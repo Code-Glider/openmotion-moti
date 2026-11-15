@@ -370,7 +370,7 @@ jobs:
   # Keep the existing required check while every independent lane runs in parallel.
   standalone:
     if: ${{ always() }}
-    needs: [template-library, maintainability, checks, studio, distribution]
+    needs: [template-library, maintainability, checks, platform-reliability, studio, distribution]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
@@ -381,7 +381,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const results = JSON.parse(process.env.VALIDATION_RESULTS);
-          for (const job of ['template-library', 'maintainability', 'checks', 'studio', 'distribution']) {
+          for (const job of ['template-library', 'maintainability', 'checks', 'platform-reliability', 'studio', 'distribution']) {
             const result = results[job]?.result;
             const expected = job === 'maintainability' && process.env.ALLOW_SKIPPED_MAINTAINABILITY === 'true'
               ? 'skipped' : 'success';
