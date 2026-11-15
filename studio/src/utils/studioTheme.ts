@@ -26,6 +26,9 @@ function applyStudioTheme(theme: StudioTheme): void {
   const root = document.documentElement;
   if (theme === "light") root.dataset.theme = "paper";
   else delete root.dataset.theme;
+  const chromeColor = document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  const value = chromeColor?.dataset[theme];
+  if (chromeColor && value) chromeColor.content = value;
 }
 
 export function studioUsesHostTheme(): boolean {

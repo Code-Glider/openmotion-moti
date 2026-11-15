@@ -7,6 +7,7 @@
 ## Name and message
 
 - **Name:** OpenMotion. Capital O and M. Command and directory names retain their actual spelling.
+- **Website metadata:** OpenDesign Motion — The fullstack agentic video editor. Keep this headline across interface languages and localize descriptions of motion videos, image/video/music/voice generation, editing, animation, reference recreation, brand video templates and design systems. Catalogue counts require a verified source; recreation is a workflow, not a guarantee of fidelity or reach.
 - **Central topic:** AI 剪辑 / **AI editing**. Use **AI video editing** for the full category and **AI editing** in concise headings. The core positioning is **The AI-native, open-source CapCut alternative.**
 - **Product headline:** The All-in-One AI-native Studio for AI editing & Motion.
 - **Experience:** Edit videos with your agent. Tell your story.
