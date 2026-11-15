@@ -22,13 +22,15 @@ test('generated entry heads contain one complete metadata set before JavaScript 
 test('sharing copy stays public, localized and HTML-safe', () => {
   for (const locale of ['en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']) {
     const meta = pageMetadata(locale);
-    assert.match(meta.title, /^OpenMotion — /);
+    assert.equal(meta.title, 'OpenDesign Motion — The fullstack agentic video editor');
+    assert.equal(meta.property['og:site_name'], 'OpenDesign Motion');
+    assert.equal(meta.name['application-name'], 'OpenDesign Motion');
     assert.equal(meta.property['og:title'], meta.name['twitter:title']);
     assert.equal(meta.property['og:description'], meta.name.description);
     assert.match(meta.property['og:locale'], /^[a-z]{2}_[A-Z]{2}$/);
     assert.doesNotMatch(JSON.stringify(meta), /localhost|127\.0\.0\.1|session=|project=/);
   }
-  assert.match(renderPageMetadata('en'), /AI video editing &amp; motion design/);
+  assert.match(renderPageMetadata('en'), /images &amp; video/);
   assert.equal(pageMetadata('unsupported').title, pageMetadata('en').title);
   assert.equal(new URL(socialImage.url).protocol, 'https:');
 });
