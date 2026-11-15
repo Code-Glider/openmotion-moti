@@ -37,6 +37,7 @@ import { validPending, uuid } from './tracking/core.ts';
 import { validHostContext, unknownHost, previewTrackingContext } from './tracking/host.ts';
 import type { HostContext } from './tracking/host.ts';
 import { collectDiagnostics, diagnosticLimits, recordDiagnostic } from './scripts/diagnostics.mjs';
+import { isWorkspaceSettingsPage } from './shared/workspace-url.ts';
 
 const sharedStore = new WorkspaceStore();
 export type Service = { trackingHosts?: Map<string, { host: HostContext; createdAt: number }>; diagnostics?: { running: boolean; lastExport: number; events: number; window: number }; studio?: Studio; runtimeRoot?: string; nativeRoot?: string; ffmpeg?: boolean; switching?: boolean; studioPort?: number; browser?: WorkspaceBrowser; editorToken?: string; ensureStudio?: (projectId?: string) => Promise<Studio>; launchStudio?: (directory: string, port: number) => Promise<Studio>; phase1?: Phase1Service; phase1Mutation?: Promise<void>; tracking?: OmTracking };
@@ -252,7 +253,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (projectHeader !== undefined && projectHeader !== id) return json(res, 400, { error: 'PROJECT_SCOPE_MISMATCH' });
       store = store.forProject(id);
     }
-    if (context.ensureStudio && (url.pathname === '/' || url.pathname.startsWith('/sessions/'))) {
+    if (context.ensureStudio && !isWorkspaceSettingsPage(url.search) && (url.pathname === '/' || url.pathname.startsWith('/sessions/'))) {
       const projectId = url.searchParams.get('project'), sessionId = url.searchParams.get('session');
       if (projectId !== null) {
         if (store.projectCatalog().projects.some(project => project.id === projectId)) await context.ensureStudio(projectId);

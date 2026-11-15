@@ -179,6 +179,6 @@ it.each([false, true])('guards browser history navigation before replacing the p
   if (failure) {
     expect(onNavigate).not.toHaveBeenCalled();
     expect(location.href).toBe(new URL(originalUrl, location.origin).href);
-    expect(workspace.error).toBe('Unsaved edit');
+    expect(workspace.navigationError?.message).toBe('Unsaved edit');
   } else expect(onNavigate).toHaveBeenCalledWith(new URL(targetUrl, location.origin).href, true);
 });

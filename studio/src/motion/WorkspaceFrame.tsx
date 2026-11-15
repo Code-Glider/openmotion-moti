@@ -18,6 +18,10 @@ import { SettingsSurfaceBoundary } from './SettingsSurfaceBoundary';
 import { McpConnectionPage } from './McpConnectionPage';
 import { WorkspaceHomeButton } from './WorkspaceHomeButton';
 import { Skeleton } from '../components/ui/Skeleton';
+import { readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
+import { WORKSPACE_LOCATION_CHANGED, writeWorkspaceHistory } from '../utils/workspaceHistory';
+import { useToast } from '../hooks/useToast';
+import { StudioToastViewport } from '../components/StudioToastViewport';
 
 // Settings shares the model-picker dependencies. Keep it in the loaded shell so
 // an open editor never requests a removed Settings chunk after a local rebuild.
@@ -51,6 +55,23 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void; onNavigate?: () => void;
 }) {
   const { t } = useI18n();
+  const [page, setPage] = useState(() => readWorkspacePage(location.search));
+  const { settings, templates: connectionsOpen } = page;
+  const libraryOpen = useRef(connectionsOpen);
+  const libraryClosed = useRef(onLibraryClose); libraryClosed.current = onLibraryClose;
+  useEffect(() => {
+    const sync = () => {
+      const next = readWorkspacePage(location.search);
+      if (libraryOpen.current && !next.templates) libraryClosed.current?.();
+      libraryOpen.current = next.templates;
+      setPage(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+    };
+    window.addEventListener(WORKSPACE_LOCATION_CHANGED, sync);
+    return () => window.removeEventListener(WORKSPACE_LOCATION_CHANGED, sync);
+  }, []);
+  const navigatePage = useCallback((patch: Partial<WorkspacePage>) => {
+    writeWorkspaceHistory(workspacePageHref(location.href, patch));
+  }, []);
   const presentation = workspacePresentation(location.search);
   const guard = useRef<EditorGuard | null>(null);
   const [editorState, setEditorState] = useState<Pick<EditorGuard, 'blocked' | 'saveState' | 'message'> | null>(null);
@@ -65,16 +86,17 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const navigate = useCallback((url: string, replace = false) => {
     if (!onNavigate) { navigateWorkspace(url, replace); return; }
     const target = preservePresentation(url, location.search);
-    if (replace) history.replaceState(null, '', target);
-    else history.pushState(null, '', target);
-    setConnectionsOpen(false);
-    setSettings(null);
+    writeWorkspaceHistory(target, replace);
     onNavigate();
   }, [onNavigate]);
   const workspace = useWorkspace(beforeViewChange, projectId, sessionId, navigate);
-  const [connectionSection, setConnectionSection] = useState<'setup' | 'templates'>(() => 'templates');
+  const navigationToast = useToast();
+  useEffect(() => {
+    if (!workspace.navigationError) return;
+    const id = navigationToast.showToast(workspace.navigationError.message, 'error', 'feedback');
+    return () => navigationToast.dismissToast(id);
+  }, [workspace.navigationError, navigationToast.showToast, navigationToast.dismissToast]);
   const libraryTrigger = useRef<HTMLElement | null>(null);
-  const [connectionsOpen, setConnectionsOpen] = useState(() => new URLSearchParams(location.search).get('templates') === '1');
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
   const [projectQuery, setProjectQuery] = useState('');
@@ -90,19 +112,18 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (navigationCollapsed) { setNavigationCollapsed(false); setSidebarOpen(true); }
     else setSidebarOpen(open => !open);
   }, [navigationCollapsed]);
-  const [settings, setSettings] = useState<SettingsSection | null>(null);
   const openSettings = useCallback((section: SettingsSection) => {
-    setSettings(section); if (narrow) setSidebarOpen(false);
-  }, [narrow]);
+    navigatePage({ settings: section, templates: false }); if (narrow) setSidebarOpen(false);
+  }, [narrow, navigatePage]);
   const homeRef = useRef<HTMLDivElement>(null);
   const openHome = useCallback(() => {
-    setSettings(null);
+    navigatePage({ settings: null, templates: false });
     setNavigationCollapsed(false);
     setSidebarOpen(true);
     // Returning home keeps the current editor mounted. The mobile drawer owns
     // its focus; on desktop, move focus off the departing settings controls.
     if (!narrow) requestAnimationFrame(() => homeRef.current?.querySelector<HTMLButtonElement>('.om-app-rail [aria-pressed="true"]')?.focus());
-  }, [narrow]);
+  }, [narrow, navigatePage]);
   const toggleHome = useCallback(() => {
     if (settings) openHome();
     else toggleSidebar();
@@ -120,10 +141,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === ',') { event.preventDefault(); openSettings('general'); }
-      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); setSettings(null); toggleSidebar(); }
+      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); navigatePage({ settings: null, templates: false }); toggleSidebar(); }
     };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
-  }, [openSettings, toggleSidebar]);
+  }, [openSettings, toggleSidebar, navigatePage]);
   const libraryBusy = workspace.busy || blocked || Boolean(editorState?.blocked);
   const switchingDisabled = libraryBusy || !workspace.status;
   const notice = workspace.error || message || editorState?.message || "";
@@ -133,12 +154,13 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const visibleNotice = notice && dismissedNotice !== noticeKey;
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
   const value: WorkspaceChrome = { workspace, switchingDisabled, saveState: editorState?.saveState || saveState, registerEditor, beforeViewChange,
-    openLibrary: trigger => { libraryTrigger.current = trigger ?? null; workspace.clearError(); setConnectionSection('templates'); setConnectionsOpen(true); },
+    openLibrary: trigger => { libraryTrigger.current = trigger ?? null; workspace.clearError(); navigatePage({ templates: true }); },
     openConnections: () => openSettings('mcp'),
     openModelSettings: () => openSettings('providers'),
     openHome, toggleSidebar, sidebarOpen, navigationCollapsed,
     toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) };
   return <WorkspaceChromeContext.Provider value={value}>
+    <StudioToastViewport {...navigationToast} />
     <Dialog.Root open={sidebarOpen && narrow && !settings && !navigationCollapsed} onOpenChange={setSidebarOpen}>
     <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
       <ApplicationHeader settings={settings} />
@@ -170,12 +192,12 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         {children}
       </div>
       {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'mcp'
-        ? <McpConnectionPage openLibrary={value.openLibrary} openProviders={value.openModelSettings} />
-        : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={setSettings} openConnections={value.openConnections} />}</SettingsSurfaceBoundary>}
+        ? <McpConnectionPage openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
+        : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
       </div>
     </div>
     </Dialog.Root>
-    {connectionsOpen && <ConnectionDialog open returnFocus={libraryTrigger.current} section={connectionSection} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => { setConnectionsOpen(false); if (connectionSection === 'templates') onLibraryClose?.(); }} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
+    {connectionsOpen && <ConnectionDialog open returnFocus={libraryTrigger.current} section="templates" templateId={page.template} onTemplateChange={template => navigatePage({ template })} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => navigatePage({ templates: false })} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
   </WorkspaceChromeContext.Provider>;
 }
 
