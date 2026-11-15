@@ -41,8 +41,9 @@ vi.mock('./useWorkspace', () => ({ useWorkspace: () => ({
   status: state.status, projects: [{ id: 'demo', title: 'Demo' }, { id: 'second', title: 'Second' }],
   busy: state.workspaceBusy, error: state.connectionError, errorSource: 'connection', clearError: vi.fn(), open: state.open, openSession: state.open, startSession: state.create, create: state.create, home: state.home, rename: state.rename,
 }) }));
-vi.mock('./ConnectionDialog', () => ({ ConnectionDialog: ({ open, section, busy, onOpen }: { open: boolean; section: string; busy: boolean; onOpen: (id: string) => void }) =>
+vi.mock('./ConnectionDialog', () => ({ ConnectionDialog: ({ open, section, busy, onOpen, onClose }: { open: boolean; section: string; busy: boolean; onOpen: (id: string) => void; onClose: () => void }) =>
   open ? <div role="dialog" aria-label="MCP connections" data-section={section}>
+    <button aria-label="关闭模板库" onClick={onClose}>Close</button>
     <button disabled={busy} onClick={() => onOpen('product-promo')}>Open Product Promo</button>
   </div> : null }));
 
@@ -102,12 +103,14 @@ it('keeps project switching, templates, history actions and native export in the
   expect(header.querySelector('.motion-workspace-menu')).toBeNull();
   expect(header.querySelector<HTMLInputElement>('[aria-label="项目名称"]')?.value).toBe('Demo');
   expect(container.querySelectorAll('[aria-label="项目名称"]')).toHaveLength(1);
+  expect(container.querySelector('.om-app-project-title > svg')).toBeNull();
   expect(container.querySelector('.om-app-header [aria-label="项目名称"]')).toBeNull();
   openSidebar();
   const project = document.querySelector<HTMLButtonElement>('.motion-session[title="Second"]')!;
   expect(header.contains(project)).toBe(false);
   expect(document.querySelector('.motion-session[aria-current="page"]')?.textContent).toContain('Demo');
-  for (const text of ['模板库', '导出']) expect(header.contains(button(text))).toBe(true);
+  expect(header.contains(button('模板库'))).toBe(false);
+  expect(header.contains(button('导出'))).toBe(true);
   expect(container.querySelector('.motion-workspace-topbar')).toBeNull();
   for (const text of ['预览', '布局', '历史', '连接 Agent', '新建会话', '首页']) expect(button(text)).toBeUndefined();
   expect(container.querySelector('.motion-save-state')).toBeNull();
@@ -115,6 +118,11 @@ it('keeps project switching, templates, history actions and native export in the
   expect(container.querySelector('.om-app-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
   expect(container.querySelector('.om-app-rail [aria-label="模型供应商"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="设置"]')).not.toBeNull();
+  const templateLibrary = container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="模板库"]');
+  expect(templateLibrary).not.toBeNull();
+  act(() => templateLibrary!.click());
+  expect(document.querySelector('[role="dialog"][aria-label="MCP connections"]')).not.toBeNull();
+  act(() => document.querySelector<HTMLButtonElement>('[aria-label="关闭模板库"]')!.click());
   expect(container.querySelector('.om-app-rail [aria-label="编辑器"]')).toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="展开或收起项目列表"]')).toBeNull();
   expect(header.querySelector('[aria-label="语言"]')).toBeNull();
@@ -134,11 +142,6 @@ it('keeps project switching, templates, history actions and native export in the
   act(() => project.click());
   expect(state.open).toHaveBeenCalledWith('projects', 'second');
   expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ page_name: 'studio', area: 'workspace', element: 'open_project' }));
-  act(() => button('模板库').click());
-  expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
-  expect(container.querySelector('[role="dialog"]')!.getAttribute('data-section')).toBe('templates');
-  act(() => button('Open Product Promo').click());
-  expect(state.create).toHaveBeenCalledWith(undefined, 'product-promo');
 });
 
 it('keeps the project title visible without a generic status while the workspace is busy', () => {
@@ -156,7 +159,6 @@ it('prevents project replacement during a native render', () => {
   openSidebar();
   expect(document.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
-  expect(button('模板库').disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[data-testid="header-export"]')!.disabled).toBe(false);
   act(() => container.querySelector<HTMLButtonElement>('[data-testid="header-export"]')!.click());
   expect(document.querySelector('[data-testid="export-dialog"]')?.textContent).toContain('Export settings and jobs');
@@ -169,7 +171,6 @@ it('prevents switching projects or issuing competing header undo while a version
   openSidebar();
   expect(document.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
-  expect(button('模板库').disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')!.disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[aria-label="重做"]')!.disabled).toBe(true);
   expect(container.textContent).toContain('正在处理版本…');

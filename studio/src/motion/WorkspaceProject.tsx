@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 
@@ -21,7 +20,6 @@ export function WorkspaceProject() {
     finally { savingRef.current = false; }
   };
   return <span className="motion-project-control om-app-project-title">
-    <RemixIcon name="folder-3-line" size={16} />
     <input
       className="om-inline-input motion-project-name-input"
       maxLength={100}

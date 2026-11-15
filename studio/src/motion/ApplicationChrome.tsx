@@ -1,4 +1,5 @@
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
+import type { MouseEvent } from 'react';
 import { RemixIcon } from '../icons/RemixIcons';
 import { Menu, MenuItem, MenuSeparator } from '../components/ui/Menu';
 import { Tooltip } from '../components/ui/Tooltip';
@@ -23,10 +24,10 @@ export function ApplicationRail({ settings, openSettings }: { settings: Settings
   const { t } = useI18n(), { account } = useAccountSummary();
   const { openHome, openLibrary, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
   const userName = account?.user?.name || account?.user?.email || t('Account');
-  const item = (label: string, icon: string, action: () => void, active = false, disabled = false) => <Tooltip label={t(label)} side="right"><button className="om-nav-item om-rail-button" aria-label={t(label)} aria-pressed={active} onClick={action} disabled={disabled}><RemixIcon name={icon} size={18} /></button></Tooltip>;
+  const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false, disabled = false) => <Tooltip label={t(label)} side="right"><button className="om-nav-item om-rail-button" aria-label={t(label)} aria-pressed={active} onClick={action} disabled={disabled}><RemixIcon name={icon} size={18} /></button></Tooltip>;
   return <nav id="om-application-navigation" className="om-app-rail om-collapsible" aria-label={t('Application navigation')} aria-hidden={navigationCollapsed} inert={navigationCollapsed}>
     {item('Home', 'home-line', openHome, !settings)}
-    {item('Template library', 'layout-grid-line', () => openLibrary(), false, switchingDisabled)}
+    {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), false, switchingDisabled)}
     <div className="om-rail-spacer" />
     {item('Help', 'question-line', () => openSettings('help'), settings === 'help')}
     {item('Settings', 'settings-3-line', () => openSettings('general'), Boolean(settings && !['providers', 'help', 'account', 'subscription'].includes(settings)))}

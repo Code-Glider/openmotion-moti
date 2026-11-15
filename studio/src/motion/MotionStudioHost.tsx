@@ -6,9 +6,8 @@ import { useStudioShellContext } from '../contexts/StudioContext';
 import { TimelineHistoryButtons } from '../components/TimelineHistoryButtons';
 import { MotionHistoryPopover } from './MotionHistoryPopover';
 import { isStudioEditSaving } from '../utils/studioPendingEdits';
-import { MotionIcon } from './icons';
 import { StudioHostContext, type StudioHost } from './StudioHost';
-import { WorkspaceFrame, useWorkspaceChrome, useOptionalWorkspaceChrome } from './WorkspaceFrame';
+import { WorkspaceFrame, useOptionalWorkspaceChrome } from './WorkspaceFrame';
 import { MotionHistoryProvider, useMotionHistoryOperation } from './MotionHistoryState';
 import { MediaGatewayProvider } from './MediaGatewayContext';
 import { usePlayerStore } from '../player/store/playerStore';
@@ -73,12 +72,8 @@ function WorkspaceHistoryActions() {
 }
 
 function WorkspaceActions() {
-  const { t, locale } = useI18n();
-  const label = locale === 'en' ? 'Template' : t('Template library');
-  const { switchingDisabled, openLibrary } = useWorkspaceChrome();
   return <div className="motion-workspace-actions">
     <WorkspaceProject />
-    <button className="motion-button motion-button-quiet" aria-label={label} title={label} aria-haspopup="dialog" disabled={switchingDisabled} onClick={event => openLibrary(event.currentTarget)}><MotionIcon name="grid" /><span className="motion-template-label">{label}</span></button>
   </div>;
 }
 
