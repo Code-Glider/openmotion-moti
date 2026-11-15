@@ -90,7 +90,7 @@ export function TimelineTrackAudioControls({ elements, trackLabel, isAudioOnly, 
       setOpen(nextOpen);
     }}>
       <Popover.Trigger openOnHover delay={150} closeDelay={250}
-        className={buttonClass} aria-label={`${muteLabel} · ${trackLabel}`} title={muteLabel} aria-pressed={silent} disabled={disabled}
+        className={buttonClass} aria-label={`${muteLabel} · ${trackLabel}`} aria-pressed={silent} disabled={disabled}
         onFocus={() => setOpen(true)}
         onClick={() => void (async () => {
           const saved = await save('muted', silent ? null : 'true', silent ? 'Unmute audio' : 'Mute audio');

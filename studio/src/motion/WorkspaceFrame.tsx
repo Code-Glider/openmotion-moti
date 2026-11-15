@@ -251,5 +251,7 @@ export function WorkspaceMenuButton() {
   const { t } = useI18n();
   const { toggleSidebar, sidebarOpen, navigationCollapsed } = useWorkspaceChrome();
   const visible = sidebarOpen && !navigationCollapsed;
-  return <button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} title={visible ? undefined : t('Open project list')} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button>;
+  // Collapsing the docked navigation is a toggle, not a dismiss, so the icon-only
+  // control keeps its tooltip in both states like the app-sidebar toggle.
+  return <button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} title={t(visible ? 'Collapse project list' : 'Open project list')} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button>;
 }
