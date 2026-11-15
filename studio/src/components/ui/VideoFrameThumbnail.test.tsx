@@ -176,4 +176,46 @@ describe("VideoFrameThumbnail", () => {
     expect(videos.length).toBe(2);
     expect(videos[1].src).toBe("b.mp4");
   });
+
+  it("never creates an image for a container without video dimensions", () => {
+    const video = render({ src: "audio-only.mp4" });
+    video.videoWidth = 0;
+    video.videoHeight = 0;
+    const encode = vi.spyOn(canvas, "toDataURL");
+    act(() => { video.dispatch("loadedmetadata"); video.dispatch("seeked"); });
+    expect(encode).not.toHaveBeenCalled();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("[data-thumbnail-loading]")).toBeNull();
+    expect(video.src).toBe("");
+  });
+
+  it.each(["empty", "throws"])("shows a fallback when canvas encoding %s", failure => {
+    const encode = vi.spyOn(canvas, "toDataURL");
+    if (failure === "empty") encode.mockReturnValue("data:,");
+    else encode.mockImplementation(() => { throw new DOMException("Tainted", "SecurityError"); });
+    const video = render({ src: "clip.mp4", fallbackLabel: "Video unavailable" });
+    act(() => video.dispatch("seeked"));
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).toBe("Video unavailable");
+    expect(video.src).toBe("");
+  });
+
+  it("replaces an image that fails to decode with the fallback", () => {
+    const video = render({ src: "clip.mp4", fallbackLabel: "Video unavailable" });
+    act(() => video.dispatch("seeked"));
+    act(() => container.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).toBe("Video unavailable");
+  });
+
+  it("discards the old frame and late events when the source changes", () => {
+    const old = render({ src: "a.mp4" });
+    act(() => old.dispatch("seeked"));
+    expect(container.querySelector("img")).not.toBeNull();
+    render({ src: "b.mp4" });
+    act(() => { old.dispatch("loadedmetadata"); old.dispatch("seeked"); old.dispatch("error"); });
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("[data-thumbnail-loading]")).not.toBeNull();
+    expect(old.loadCalls).toBe(2);
+  });
 });
