@@ -169,7 +169,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         active={!settings} expanded={sidebarOpen && !settings && !navigationCollapsed}
         previewEnabled={!narrow && !sidebarOpen && !settings && !navigationCollapsed && !connectionsOpen}
         onToggle={toggleHome}>
-        {close => <WorkspaceSidebar currentId={projectId} close={close} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
+        {close => <WorkspaceSidebar currentId={projectId} close={close} expand={() => { close(); toggleSidebar(); }} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
       </WorkspaceHomeButton>} />
       <div className="motion-workspace">
       <Dialog.Portal>
@@ -201,8 +201,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   </WorkspaceChromeContext.Provider>;
 }
 
-function WorkspaceSidebar({ currentId, close, query, setQuery, onNavigate }: {
-  currentId?: string; close: () => void; query: string; setQuery: (query: string) => void; onNavigate?: () => void;
+function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigate }: {
+  currentId?: string; close: () => void; expand?: () => void; query: string; setQuery: (query: string) => void; onNavigate?: () => void;
 }) {
   const { t } = useI18n();
   const { workspace, switchingDisabled } = useWorkspaceChrome();
@@ -212,7 +212,7 @@ function WorkspaceSidebar({ currentId, close, query, setQuery, onNavigate }: {
   return <aside className="motion-sidebar" aria-label={t('Workspace navigation')}>
     <div className="motion-sidebar-brand">
       <strong className="om-subtitle">{t('Home')}</strong>
-      <button className="motion-icon-button" onClick={close} aria-label={t('Close project list')}><MotionIcon name="sidebar" size={16} /></button>
+      <button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')} title={t(expand ? 'Open project list' : 'Close project list')}><MotionIcon name="sidebar" size={16} /></button>
     </div>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
