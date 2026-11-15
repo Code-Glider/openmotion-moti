@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { chmod, link, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { OmTracking } from '../shared/tracking.ts';
 import { WorkspaceStore } from '../workspace.ts';
 import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
@@ -14,7 +15,7 @@ import { OpenDesignAccount } from './account.ts';
 
 type Config = { version: 1; providers: Partial<Record<ProviderId, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number }>>;
   routes: Partial<Record<Modality, string>>; customModels: Model[] };
-type Options = { fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
+type Options = { tracking?: OmTracking; fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const uuid = (id: unknown): id is string => typeof id === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
 function alive(pid?: number) { try { if (!pid) return false; process.kill(pid, 0); return true; } catch { return false; } }
@@ -207,10 +208,21 @@ export class ModelGateway {
     const jobs = await Promise.all(names.filter(name => uuid(name.slice(0, -5)) && name.endsWith('.json')).map(name => this.getJob(name.slice(0, -5))));
     return jobs.filter(job => !projectId || job.projectId === projectId).sort((a, b) => b.createdAt - a.createdAt);
   }
-  private saveJob(job: GenerationJob) { return atomic(path.join(this.root, 'jobs', job.id + '.json'), job); }
+  private async saveJob(job: GenerationJob) {
+    await atomic(path.join(this.root, 'jobs', job.id + '.json'), job);
+    const fields = { modality: job.modality, job_id: job.id };
+    if (job.state === 'queued') {
+      this.options.tracking?.track('media_generation_submitted', fields, undefined, 'worker');
+    } else if (job.state !== 'running') {
+      this.options.tracking?.track('media_generation_result', {
+        ...fields, job_state: job.state, asset_count: job.assets.length,
+      }, undefined, 'worker');
+    }
+  }
   async submit(input: GenerateInput): Promise<GenerationJob> {
     if (!input || typeof input !== 'object') throw new Error('Generation input required');
     modality(input.modality);
+    this.options.tracking?.track('media_generation_requested', { modality: input.modality }, undefined, 'worker');
     if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 20_000) throw new Error('Prompt must contain 1–20000 characters');
     const params = parameters(input.parameters);
     if (input.referenceAsset !== undefined && (typeof input.referenceAsset !== 'string' || !input.referenceAsset || input.referenceAsset.length > 1024)) throw new Error('Invalid reference image path');
@@ -380,7 +392,14 @@ export class ModelGateway {
   async close() { this.closed = true; this.account.close(); for (const task of this.active.values()) task.controller.abort(); await Promise.allSettled([...this.active.values()].map(task => task.done)); }
 }
 const gateways = new WeakMap<WorkspaceStore, ModelGateway>();
-export function gatewayFor(store: WorkspaceStore) {
+export function gatewayFor(store: WorkspaceStore, tracking?: OmTracking) {
   store = store.workspaceStore ?? store;
-  let gateway = gateways.get(store); if (!gateway) { gateway = new ModelGateway(store); gateways.set(store, gateway); } return gateway;
+  let gateway = gateways.get(store);
+  if (!gateway) {
+    gateway = new ModelGateway(store, { tracking });
+    gateways.set(store, gateway);
+  } else if (tracking) {
+    gateway.options.tracking = tracking;
+  }
+  return gateway;
 }

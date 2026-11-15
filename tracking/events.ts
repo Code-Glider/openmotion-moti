@@ -6,6 +6,7 @@ export const toolNames = ['motion_media_use', 'motion_list_templates', 'motion_g
   'motion_restore_version', 'motion_export_cancel'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
 const tool = { tool_name: toolNames, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
+const generation = { modality: ['image', 'video', 'audio'] } as const;
 const business = { outcome, project_id: 'uuid', operation_id: 'uuid', replayed: 'boolean', error_code: 'code' } as const;
 // A template is identified by its catalogue id only; titles, authors and URLs are never fields.
 const template = { template_id: 'slug' } as const;
@@ -30,6 +31,10 @@ export const omEvents = {
   asset_import_result: { producers: ['mcp'], fields: { ...business, requested_count: 'integer', added_count: 'integer', reused_count: 'integer', failed_count: 'integer' }, required: ['outcome'] },
   export_request_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', queue_state: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
   export_cancel_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', state_after: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
+  media_generation_requested: { producers: ['worker'], fields: generation, required: ['modality'] },
+  media_generation_submitted: { producers: ['worker'], fields: { ...generation, job_id: 'uuid' }, required: ['modality', 'job_id'] },
+  media_generation_result: { producers: ['worker'], fields: { ...generation, job_id: 'uuid',
+    job_state: ['completed', 'failed', 'cancelled'], asset_count: 'integer' }, required: ['modality', 'job_id', 'job_state', 'asset_count'] },
   export_result: { producers: ['worker'], fields: { job_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer', technical_check: ['passed', 'failed', 'unknown'] }, required: ['job_id', 'job_state', 'duration_ms', 'technical_check'] },
   page_view: { producers: ['studio'], fields: { page_name: ['home', 'studio'], view_id: 'uuid', embedded: 'boolean', has_project: 'boolean' }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean' }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
