@@ -56,8 +56,45 @@ console.log(${JSON.stringify(failure === 'json' ? 'not-json' : '{"installed":[]}
     });
   }
   const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  assert.equal(calls.length, 2);
-  assert(calls.every(args => args.join(' ') === 'plugin list --marketplace openmotion-local --available --json'));
+  const inventoryReads = calls.filter(args => args[0] === 'plugin');
+  assert.equal(inventoryReads.length, 2);
+  assert(inventoryReads.every(args => args.join(' ') === 'plugin list --marketplace openmotion-local --available --json'));
+  assert(calls.filter(args => args[0] !== 'plugin').every(args => args.join(' ') === 'app-server --stdio'));
+});
+
+for (const kind of ['unused', 'installed', 'disabled', 'foreign', 'present']) test(`failed inventory recovery preserves the ${kind} source boundary`, async t => {
+  const { directory, previous, root } = await fixture(t);
+  if (kind !== 'present') await rm(previous, { recursive: true });
+  const codex = path.join(directory, 'codex'), log = path.join(directory, 'recovery.jsonl');
+  const config = { marketplaces: { 'openmotion-local': { source_type: kind === 'foreign' ? 'git' : 'local', source: previous } },
+    plugins: ['installed', 'disabled'].includes(kind) ? { 'openmotion@openmotion-local': { enabled: kind === 'installed' } } : {} };
+  await writeFile(codex, `#!${process.execPath}
+import fs from 'node:fs';
+import readline from 'node:readline';
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
+if (args[0] === 'app-server') {
+  readline.createInterface({input: process.stdin}).on('line', line => {
+    const message = JSON.parse(line);
+    if (!['initialize', 'config/read'].includes(message.method)) process.exit(9);
+    console.log(JSON.stringify({id: message.id, result: message.method === 'config/read' ? {config: ${JSON.stringify(config)}} : {}}));
+  });
+} else if (args[1] === 'list') process.exit(2);
+`, { mode: 0o755 });
+  if (kind === 'unused') {
+    assert.deepEqual(registerSourceMarketplace(root, { checkOnly: true, codex }), { action: 'replace_uninstalled_source', previous });
+    let calls = (await readFile(log, 'utf8')).trim().split('\n').map(JSON.parse);
+    assert(!calls.some(args => ['remove', 'add'].includes(args[2])), 'recovery preflight must remain read-only');
+    registerSourceMarketplace(root, { codex });
+    calls = (await readFile(log, 'utf8')).trim().split('\n').map(JSON.parse);
+    assert.deepEqual(calls.filter(args => ['remove', 'add'].includes(args[2])), [
+      ['plugin', 'marketplace', 'remove', 'openmotion-local'], ['plugin', 'marketplace', 'add', root],
+    ]);
+  } else {
+    assert.throws(() => registerSourceMarketplace(root, { codex }), /OPENMOTION_(?:SOURCE_IN_USE|INVENTORY_UNAVAILABLE)/);
+    const calls = (await readFile(log, 'utf8')).trim().split('\n').map(JSON.parse);
+    assert(!calls.some(args => ['remove', 'add'].includes(args[2])));
+  }
 });
 
 test('a vanished previous registration is removed and never restored', async t => {

@@ -165,8 +165,12 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
       const detailsFile = path.join(appRoot, '.artifacts/install', `onboarding-${Date.now()}-${process.pid}.json`);
       await mkdir(path.dirname(detailsFile), { recursive: true });
       await writeFile(detailsFile, JSON.stringify(result, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-      if (!hostHandoff?.hostSessionVerified && result.inlinePresentation?.status !== 'prepared') console.error('ONBOARDING_PENDING: ' + (hostHandoff?.reason || hostHandoff?.status || result.onboardingStatus)
-        + '. Installation is registered, but the welcome and cards have not been presented. Open the library, report this blocker and the required host action; do not send the library-only success welcome.');
+      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (result.callback?.reason || hostHandoff?.reason || result.callback?.status || result.onboardingStatus)
+        + '. Installation is registered; welcome/cards delivery remains unverified. '
+        + (result.inlinePresentation?.status === 'prepared'
+          ? 'The active callback must publish the verified document into this chat\'s permitted visualization directory, visibly open the template library and emit the published reference. '
+          : 'Open the library and report the required host action. ')
+        + 'Do not send a library-only success welcome or schedule a duplicate callback.');
       if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
       console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined, detailsFile }, null, 2));
     } else console.log(JSON.stringify(result, null, 2));

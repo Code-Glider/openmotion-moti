@@ -1,9 +1,55 @@
 // Source-only installer helper; never shipped as part of the npm application.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { createInterface } from 'node:readline';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// Read the effective configuration through Codex's public protocol, including
+// disabled plugin entries. This short-lived stdio process never controls the
+// desktop host, reloads MCP, creates a chat or performs an installation.
+async function readMarketplaceState(codex) {
+  const child = spawn(codex, ['app-server', '--stdio'], { stdio: ['pipe', 'pipe', 'ignore'] });
+  const lines = createInterface({ input: child.stdout });
+  let timer;
+  try {
+    return await new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('Configuration read timed out')), 3000);
+      child.on('error', reject); child.stdin.on('error', reject);
+      child.on('exit', () => reject(new Error('Configuration reader closed')));
+      let bytes = 0;
+      const send = (id, method, params) => child.stdin.write(JSON.stringify({ id, method, params }) + '\n');
+      lines.on('line', line => {
+        try {
+          bytes += Buffer.byteLength(line);
+          assert(bytes < 4 * 1024 * 1024, 'Configuration response too large');
+          const message = JSON.parse(line);
+          if (message.error) throw new Error('Configuration read rejected');
+          if (message.id === 1) send(2, 'config/read', { includeLayers: false });
+          if (message.id !== 2) return;
+          const config = message.result?.config;
+          assert(config?.marketplaces && typeof config.marketplaces === 'object' && !Array.isArray(config.marketplaces)
+            && config.plugins && typeof config.plugins === 'object' && !Array.isArray(config.plugins));
+          resolve({ marketplace: config.marketplaces['openmotion-local'],
+            pluginIds: Object.keys(config.plugins).filter(id => id.endsWith('@openmotion-local')) });
+        } catch (error) { reject(error); }
+      });
+      send(1, 'initialize', { clientInfo: { name: 'openmotion_marketplace_preflight', version: '1' }, capabilities: { experimentalApi: true } });
+    });
+  } finally { clearTimeout(timer); lines.close(); child.stdin.end(); child.kill(); }
+}
+
+function staleSourcePlan(codex) {
+  const state = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--read-marketplace-state', codex],
+    { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'pipe'] }));
+  const source = state.marketplace;
+  assert(source?.source_type === 'local' && typeof source.source === 'string' && path.isAbsolute(source.source));
+  assert(Array.isArray(state.pluginIds));
+  assert(!state.pluginIds.length, 'OPENMOTION_SOURCE_IN_USE: cached or disabled plugins still use this marketplace; no configuration was changed.');
+  assert(!existingDirectory(source.source), 'The configured source still exists');
+  return { action: 'replace_uninstalled_source', previous: source.source };
+}
 
 // A checkout can disappear while its installed plugin remains in the host cache.
 // Filesystem absence never overrides the inventory's installed-plugin guard.
@@ -45,7 +91,16 @@ export function registerSourceMarketplace(root, { checkOnly = false, codex = 'co
   let output, inventory;
   try { output = run(inventoryArgs); }
   catch {
-    throw new Error('OPENMOTION_INVENTORY_UNAVAILABLE: Codex could not read the plugin inventory. Restore any moved/deleted configured marketplace source, or check CLI compatibility and permissions. ' + retry);
+    let recovered;
+    try { recovered = staleSourcePlan(codex); }
+    catch (error) {
+      if (error.message.includes('OPENMOTION_SOURCE_IN_USE')) throw error;
+      throw new Error('OPENMOTION_INVENTORY_UNAVAILABLE: Codex could not read the plugin inventory or verify an unused missing local source. Restore any moved/deleted configured marketplace source, or check CLI compatibility and permissions. ' + retry);
+    }
+    if (checkOnly) return recovered;
+    run(['plugin', 'marketplace', 'remove', 'openmotion-local']);
+    run(['plugin', 'marketplace', 'add', root]);
+    return recovered;
   }
   try {
     inventory = JSON.parse(output);
@@ -68,6 +123,11 @@ export function registerSourceMarketplace(root, { checkOnly = false, codex = 'co
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
-  try { console.log(JSON.stringify(registerSourceMarketplace(path.resolve(process.argv[2]), { checkOnly: process.argv.includes('--check') }))); }
+  try {
+    const result = process.argv[2] === '--read-marketplace-state'
+      ? await readMarketplaceState(process.argv[3])
+      : registerSourceMarketplace(path.resolve(process.argv[2]), { checkOnly: process.argv.includes('--check') });
+    console.log(JSON.stringify(result));
+  }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }

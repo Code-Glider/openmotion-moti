@@ -16,6 +16,8 @@ export async function prepareInlineOnboarding({ appRoot, output, language = 'en'
 }
 
 export async function renderInlineOnboarding({ appRoot, output, language = 'en' }) {
+  language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
+  if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
   const { loadTemplatePresentation, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });

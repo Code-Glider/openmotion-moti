@@ -9,6 +9,16 @@ import { renderInlineOnboarding, prepareInlineOnboarding, publishInlineOnboardin
 import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
+test('onboarding locale tags normalize to a supported language and other languages fall back to English', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-onboarding-language-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const [language, expected] of [['zh-CN', 'zh'], ['FR-ca', 'fr'], ['ja_JP', 'ja'], ['de', 'en'], ['it', 'en']]) {
+    const result = await prepareInlineOnboarding({ appRoot, output: path.join(directory, language + '.html'), language });
+    assert.equal(result.status, 'prepared');
+    assert.equal(result.language, expected);
+    assert.deepEqual(result.templateIds, ['product-promo', 'nyt-graph', 'decision-tree']);
+  }
+});
 test('default installation prepares all three production cards in its own workspace without presentation flags', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-default-onboarding-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
