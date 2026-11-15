@@ -183,7 +183,7 @@ Shared Skeletons reserve the final proportions, use subtle theme-aware contrast,
 
 Browser acceptance includes actual open dropdowns, copy success/failure Toasts above a native dialog, stable content coordinates before/after feedback, keyboard dismissal, loading-to-content/error transitions, both themes and a narrow viewport. Source inspection and a component screenshot alone do not establish these behaviors.
 
-The package-owned `studio/editor-workspace.css` defines continuous editor surfaces, panel dividers, layout-menu icon alignment and timeline control-column, row, grid and icon-control styling. Studio supplies measured dock widths, row heights and tick spacing; both themes use the same semantic roles, and authored clip artwork remains independent.
+The package-owned `studio/editor-workspace.css` defines continuous editor surfaces, panel dividers, layout-menu icon alignment and timeline control-column, row, grid and icon-control styling. Project navigation, dock panels, toolbars, preview transport and timeline boundaries use a single 1px line in the shared subtle-border role. Resize hit areas and active drag feedback retain their existing geometry. Studio supplies measured dock widths, row heights and tick spacing; both themes use the same semantic roles, and authored clip artwork remains independent.
 
 The dark theme uses neutral near-black workspace surfaces, a restrained raised-control layer and low-emphasis structural borders. Text and interactive states retain the shared contrast checks. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
 

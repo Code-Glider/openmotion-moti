@@ -17,12 +17,13 @@
 @container (max-width: 360px) {
   [data-motion-studio] .motion-studio-header-compact .motion-header-export { padding-inline: var(--motion-space-8); }
 }
-:root[data-motion-ui] .motion-studio-header-centered { border-bottom: 1px solid var(--motion-border); }
+:root[data-motion-ui] .motion-studio-header-centered { border-bottom: 1px solid var(--motion-border-subtle); }
 :root[data-motion-ui] .hf-dock .dv-view:has(> .dv-groupview) { padding: 0; }
 :root[data-motion-ui] .hf-dock .dv-groupview { border: 0; border-radius: 0; outline: 0; }
 :root[data-motion-ui] .dv-shell .dv-render-overlay { border-radius: 0; overflow: hidden; }
-:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container { border-bottom: 1px solid var(--motion-border); }
-:root[data-motion-ui] .hf-dock .dv-sash::after { background: var(--motion-border); }
+:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container,
+:root[data-motion-ui] .motion-timeline-toolbar { border-bottom: 1px solid var(--motion-border-subtle); }
+:root[data-motion-ui] .hf-dock .dv-sash::after { background: var(--motion-border-subtle); }
 :root[data-motion-ui] .hf-dock .dv-sash:is(:hover, :active, :focus-visible)::after { background: var(--motion-accent); }
 
 .motion-layout-menu-option { display: flex; align-items: center; gap: var(--motion-space-8); }
@@ -42,11 +43,10 @@
 .motion-track-column-resize:focus-visible { outline: none; }
 
 /* One continuous control column; all lane content starts at its right edge. */
-:root[data-motion-ui] .motion-timeline-gutter-fill { background: var(--timeline-gutter-bg); border-right: 2px solid var(--timeline-gutter-border); }
+:root[data-motion-ui] .motion-timeline-gutter-fill { background: var(--timeline-gutter-bg); border-right: 1px solid var(--timeline-gutter-border); }
 :root[data-motion-ui] .motion-timeline-ruler { border-bottom: 1px solid var(--timeline-row-border); }
-:root[data-motion-ui] .motion-timeline-ruler-corner { border-right: 2px solid var(--timeline-gutter-border); display: flex; align-items: center; padding-inline: var(--motion-space-12); }
-/* Include the native header's 1px border so the seam aligns with the ruler and well. */
-:root[data-motion-ui] [data-timeline-row] [role="rowheader"]::after { content: ""; position: absolute; inset-block: 0; right: -1px; width: 2px; background: var(--timeline-gutter-border); pointer-events: none; }
+:root[data-motion-ui] .motion-timeline-ruler-corner { border-right: 1px solid var(--timeline-gutter-border); display: flex; align-items: center; padding-inline: var(--motion-space-12); }
+:root[data-motion-ui] [data-timeline-row] [role="rowheader"] { border-right: 1px solid var(--timeline-gutter-border); }
 .motion-timeline-timecode { font-family: var(--motion-font-mono); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); font-variant-numeric: tabular-nums; color: var(--motion-text); }
 :root[data-motion-ui] [data-timeline-row] > [role="row"] > [role="gridcell"] {
   background-image: linear-gradient(to right, var(--timeline-grid-line) 1px, transparent 1px);
