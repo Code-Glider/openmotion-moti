@@ -47,7 +47,7 @@ export const VolumeControl = memo(function VolumeControl({
         if (silent && audioVolume === 0) setAudioVolume(1);
         setAudioMuted(!silent);
       }}
-      data-studio-control="mute" disabled={disabled} aria-label={muteLabel} aria-pressed={silent}
+      data-studio-control="mute" disabled={disabled} aria-label={muteLabel} title={muteLabel} aria-pressed={silent}
       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-30 ${
         silent ? "text-accent-ink" : "text-neutral-500 hover:text-neutral-200"
       }`}>

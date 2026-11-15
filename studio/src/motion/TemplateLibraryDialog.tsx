@@ -354,7 +354,7 @@ export function TemplateLibraryDialog(props: Props) {
         <div className={styles.wordmark}><BrandLogo compact /><span className={styles.libraryLabel}>{t('Template library')}</span></div>
         <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
         <GitHubLink />
-        <button ref={libraryClose} className={styles.iconButton} disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')} title={t('Close template library')}><MotionIcon name="close" size={22} /></button>
+        <button ref={libraryClose} className={styles.iconButton} disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={22} /></button>
       </header>
       <div className={styles.toolbar}>
         <div className={styles.categories} role="group" aria-label={t('Video purpose')}>
@@ -424,7 +424,7 @@ export function TemplateLibraryDialog(props: Props) {
           <DetailMedia key={preview.id} template={preview} />
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
-          <div className={styles.detailNav}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button><span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></div>
+          <div className={styles.detailNav}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button><span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')} title={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')} title={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></div>
           <div className={styles.detailBody}>
             <h2>{preview.title}</h2>
             <a className={styles.repositoryLink} href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}<MotionIcon name="arrow-up-right" size={14} /></a>
