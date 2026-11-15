@@ -4,17 +4,18 @@ import { useI18n } from '../i18n/I18n';
 import { ConnectionDialog } from './ConnectionDialog';
 import { MotionIcon } from './icons';
 import { RemixIcon } from '../icons/RemixIcons';
-import { useWorkspace } from './useWorkspace';
+import { navigateWorkspace, useWorkspace } from './useWorkspace';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Dialog } from '@base-ui/react/dialog';
 import { StudioToast } from '../components/StudioToast';
 import { ErrorNotice } from '../components/ui/ErrorNotice';
 import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
-import { workspacePresentation } from '../../../shared/workspace-url';
+import { preservePresentation, workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
 import { ApplicationHeader, ApplicationRail } from './ApplicationChrome';
 import type { SettingsSection } from './SettingsCenter';
 import { SettingsLoading } from './settingsPrimitives';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const SettingsCenter = lazy(() => import('./SettingsCenter').then(module => ({ default: module.SettingsCenter })));
 
@@ -43,8 +44,8 @@ export function useWorkspaceChrome() {
   return value;
 }
 
-export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, blocked = false, message = '', saveState = '', onLibraryClose }: {
-  children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void;
+export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, blocked = false, message = '', saveState = '', onLibraryClose, onNavigate }: {
+  children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void; onNavigate?: () => void;
 }) {
   const { t } = useI18n();
   const presentation = workspacePresentation(location.search);
@@ -58,7 +59,16 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (guard.current?.blocked) throw new Error(guard.current.message || t('Working…'));
     await (guard.current?.waitForSaves ?? waitForSaves)();
   }, [waitForSaves, t]);
-  const workspace = useWorkspace(beforeViewChange, projectId, sessionId);
+  const navigate = useCallback((url: string, replace = false) => {
+    if (!onNavigate) { navigateWorkspace(url, replace); return; }
+    const target = preservePresentation(url, location.search);
+    if (replace) history.replaceState(null, '', target);
+    else history.pushState(null, '', target);
+    setConnectionsOpen(false);
+    setSettings(null);
+    onNavigate();
+  }, [onNavigate]);
+  const workspace = useWorkspace(beforeViewChange, projectId, sessionId, navigate);
   const [connectionSection, setConnectionSection] = useState<'setup' | 'templates'>(() => 'templates');
   const libraryTrigger = useRef<HTMLElement | null>(null);
   const [connectionsOpen, setConnectionsOpen] = useState(() => new URLSearchParams(location.search).get('templates') === '1');
@@ -159,6 +169,7 @@ function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () 
   const [query, setQuery] = useState('');
   const projects = workspace.projects;
   const filtered = projects.filter(project => project.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const loadingProjects = !workspace.status && !workspace.error && projects.length === 0;
   return <aside className="motion-sidebar" aria-label={t('Workspace navigation')}>
     <div className="motion-sidebar-brand">
       <strong className="om-subtitle">{t('Home')}</strong>
@@ -176,8 +187,10 @@ function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () 
       </Tooltip>
     </div>
     <label className="motion-session-search"><MotionIcon name="search" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
-    <nav className="motion-session-list" aria-label={t('Project list')}>
-      {!workspace.status && !workspace.error && <p className="motion-session-empty" role="status">{t('Loading projects…')}</p>}
+    <nav className="motion-session-list" aria-label={t('Project list')} aria-busy={loadingProjects}>
+      {loadingProjects && ['75%', '55%', '65%'].map(width => <div key={width} className="motion-session pointer-events-none" data-testid="project-list-skeleton" aria-hidden="true">
+        <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
+      </div>)}
       {workspace.status && !filtered.length && <p className="motion-session-empty">{t(query ? 'No matching projects' : 'Create a project with your Agent to start editing.')}</p>}
       {filtered.map(project => <button key={project.id} className="motion-session" aria-current={currentId === project.id ? 'page' : undefined}
         title={project.title} disabled={switchingDisabled} onClick={event => {

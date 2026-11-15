@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { projectHref, sessionHref } from './workspaceRouting';
+import { projectHref, requestedProject, sessionHref } from './workspaceRouting';
 import type { CreativeSession, CreationMode } from '../../../shared/session';
 import { preservePresentation } from '../../../shared/workspace-url';
 import { diagnosticFetch } from './diagnosticRequests';
@@ -24,7 +24,7 @@ export function navigateWorkspace(url: string, replace = false) {
 }
 const jsonBody = (body: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: string, sessionId?: string) {
+export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: string, sessionId?: string, navigate = navigateWorkspace) {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [sessions, setSessions] = useState<CreativeSession[]>([]);
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
@@ -36,6 +36,13 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
   const retryConnection = useCallback(() => { setCheckingConnection(true); setConnectionCheck(value => value + 1); }, []);
   const acting = useRef(false);
   const pendingSession = useRef<{ key: string; id: string } | null>(null);
+  useEffect(() => {
+    acting.current = false;
+    setBusy(false);
+    setStatus(null);
+    setError('');
+    setConnectionError('');
+  }, [projectId, sessionId]);
   const request = useCallback(<T,>(path: string, init?: RequestInit) => motionApi<T>(path, init, projectId), [projectId]);
   const updateCatalog = useCallback((catalog: ProjectCatalog) => {
     const ordered = [...catalog.projects].sort((a, b) => (b.openedAt ?? b.createdAt ?? 0) - (a.openedAt ?? a.createdAt ?? 0));
@@ -44,13 +51,36 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
     setSessions(previous => JSON.stringify(previous) === JSON.stringify(nextSessions) ? previous : nextSessions);
   }, []);
   useEffect(() => {
+    if (navigate === navigateWorkspace) return;
+    const previousUrl = location.href;
+    let cancelled = false;
+    const restore = async () => {
+      const target = location.href;
+      if (requestedProject(location.search, location.hash) === projectId && new URLSearchParams(location.search).get('session') === (sessionId ?? null)) return;
+      try {
+        if (acting.current) throw new Error('正在切换项目，请稍后重试。');
+        await waitForSaves();
+        if (!cancelled && location.href === target) navigate(target, true);
+      } catch (err) {
+        if (cancelled || location.href !== target) return;
+        history.pushState(null, '', previousUrl);
+        setError((err as Error).message);
+      }
+    };
+    window.addEventListener('popstate', restore);
+    return () => { cancelled = true; window.removeEventListener('popstate', restore); };
+  }, [navigate, projectId, sessionId, waitForSaves]);
+  useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
         const [data, catalog] = await Promise.all([
           request<WorkspaceStatus>('/project/status', { signal: controller.signal }),
-          motionApi<ProjectCatalog>('/projects', { signal: controller.signal }),
+          motionApi<ProjectCatalog>('/projects', { signal: controller.signal }).then(catalog => {
+            if (!controller.signal.aborted) updateCatalog(catalog);
+            return catalog;
+          }),
         ]);
         if (controller.signal.aborted) return;
         if (projectId && data.projectId !== projectId && !acting.current) {
@@ -58,32 +88,33 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
         }
         const session = !projectId && sessionId ? catalog.sessions?.find(item => item.id === sessionId) : undefined;
         const generated = session?.artifacts.find(item => item.id === session.activeArtifactId) ?? session?.artifacts.at(-1);
-        if (generated && !acting.current) { navigateWorkspace(sessionHref(sessionId!, generated.projectId, true), true); return; }
-        setStatus(data); updateCatalog(catalog); setConnectionError('');
+        if (generated && !acting.current) { navigate(sessionHref(sessionId!, generated.projectId, true), true); return; }
+        setStatus(data); setConnectionError('');
       } catch (err) { if (!controller.signal.aborted) setConnectionError((err as Error).message); }
       finally { if (!controller.signal.aborted) setCheckingConnection(false); }
       if (!controller.signal.aborted) timer = setTimeout(poll, 1800);
     }
     void poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [projectId, sessionId, updateCatalog, request, connectionCheck]);
+  }, [projectId, sessionId, updateCatalog, request, connectionCheck, navigate]);
 
   const transition = useCallback(async (path?: string, options?: { instruction?: string; mode?: string; templateId?: string; projectId?: string }, sessionRoute = false, revealArtifact = true) => {
     if (acting.current) return false;
     acting.current = true; setBusy(true); setError('');
     try {
       await waitForSaves();
-      if (!path) { navigateWorkspace('/'); return true; }
+      if (!path) { navigate('/'); return true; }
       const current = await request<WorkspaceStatus>('/project/status');
       if (projectId && current.projectId !== projectId) throw new Error('当前项目已切换，请刷新后重试。');
       const next = await request<WorkspaceStatus>(path, {
         method: 'POST', ...jsonBody({ expectedRevision: current.revision, expectedProjectId: current.projectId, ...options }),
       });
       if (options?.instruction) { try { localStorage.removeItem('motion.home.draft.v1'); } catch {} }
-      navigateWorkspace(sessionRoute && next.sessionId ? sessionHref(next.sessionId, next.projectId, revealArtifact) : projectHref(next.projectId));
+      navigate(sessionRoute && next.sessionId ? sessionHref(next.sessionId, next.projectId, revealArtifact) : projectHref(next.projectId));
       return true;
-    } catch (err) { setError((err as Error).message); acting.current = false; setBusy(false); return false; }
-  }, [waitForSaves, projectId, request]);
+    } catch (err) { setError((err as Error).message); return false; }
+    finally { acting.current = false; setBusy(false); }
+  }, [waitForSaves, projectId, request, navigate]);
   const open = useCallback((kind: 'templates' | 'projects', id: string) => transition(`/${kind}/${encodeURIComponent(id)}/open`), [transition]);
   const create = useCallback((instruction?: string) => transition('/projects', instruction?.trim() ? { instruction: instruction.trim() } : undefined), [transition]);
   const home = useCallback(() => transition(), [transition]);
@@ -100,18 +131,19 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
       createdId = created.sessionId;
       try { localStorage.removeItem('motion.home.draft.v1'); } catch {}
       const existing = created.session?.artifacts.find(item => item.id === created.session.activeArtifactId) ?? created.session?.artifacts[0];
-      if (existing) { navigateWorkspace(sessionHref(createdId, existing.projectId, true)); return true; }
+      if (existing) { navigate(sessionHref(createdId, existing.projectId, true)); return true; }
       const current = await request<WorkspaceStatus>('/project/status');
       const next = await request<WorkspaceStatus>(`/sessions/${createdId}/artifacts`, { method: 'POST', ...jsonBody({ expectedRevision: current.revision, expectedProjectId: current.projectId }) });
-      navigateWorkspace(sessionHref(createdId, next.projectId, true)); return true;
+      navigate(sessionHref(createdId, next.projectId, true)); return true;
     } catch (err) {
       if (createdId) {
         try { sessionStorage.setItem(`opendesign.session-error:${createdId}`, (err as Error).message); } catch {}
-        navigateWorkspace(sessionHref(createdId)); return true;
+        navigate(sessionHref(createdId)); return true;
       }
-      setError((err as Error).message); acting.current = false; setBusy(false); return false;
+      setError((err as Error).message); return false;
     }
-  }, [waitForSaves, request]);
+    finally { acting.current = false; setBusy(false); }
+  }, [waitForSaves, request, navigate]);
   const openSession = useCallback((id: string, artifactProjectId?: string) => transition(`/sessions/${encodeURIComponent(id)}/open`, artifactProjectId ? { projectId: artifactProjectId } : undefined, true, Boolean(artifactProjectId)), [transition]);
   const createArtifact = useCallback((id: string, templateId?: string) => transition(`/sessions/${encodeURIComponent(id)}/artifacts`, templateId ? { templateId } : undefined, true), [transition]);
   const renameItem = useCallback(async (id: string, title: string, kind: 'projects' | 'sessions') => {
