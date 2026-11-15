@@ -483,7 +483,7 @@ describe("Timeline without row virtualization", { timeout: 30_000 }, () => {
       const handle = host.querySelector<HTMLElement>('[aria-label="Resize track controls"]')!;
       handle.setPointerCapture = vi.fn(); handle.releasePointerCapture = vi.fn();
       const pointer = (type: string, x: number) => handle.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, button: 0, clientX: x }));
-      await act(async () => pointer("pointerdown", 140));
+      await act(async () => pointer("pointerdown", 132));
       await act(async () => pointer("pointermove", 180));
       await act(async () => pointer("pointerup", 220));
       const origin = () => Number(host.querySelector<HTMLElement>("[data-timeline-scroll-viewport]")!.dataset.timelineContentOrigin);
@@ -521,7 +521,7 @@ describe("Timeline without row virtualization", { timeout: 30_000 }, () => {
         expect(Number(scroller.dataset.timelineAutoScrollLeftInset)).toBe(labelWidth);
         expect(host.querySelector<HTMLElement>(".sticky.left-0")!.style.width).toBe(`${origin}px`);
         expect(width - origin).toBeGreaterThan(width / 2);
-        if (width === 900) expect(labelWidth).toBe(140);
+        if (width === 900) expect(labelWidth).toBe(132);
         const tick = host.querySelectorAll<HTMLElement>('[data-timeline-grid-cell="major"]')[1]!;
         const [, minutes, seconds] = /(\d+):(\d+)/.exec(tick.textContent ?? "")!;
         const at = { bubbles: true, clientX: origin + parseFloat(tick.style.left) + 0.5, clientY: 4, button: 0, pointerId: 1 };
@@ -538,9 +538,9 @@ describe("Timeline without row virtualization", { timeout: 30_000 }, () => {
       const scroller = host.querySelector<HTMLElement>("[data-timeline-scroll-viewport]")!;
       const layer = () => host.querySelector<HTMLElement>("[data-timeline-playhead-layer]");
       if (mvp) {
-        expect(host.querySelector<HTMLElement>('[role="rowheader"]')?.style.width).toBe("140px");
-        expect(scroller.dataset.timelineAutoScrollLeftInset).toBe("140");
-        expect(host.querySelector<HTMLElement>(".sticky.left-0")?.style.width).toBe("140px");
+        expect(host.querySelector<HTMLElement>('[role="rowheader"]')?.style.width).toBe("132px");
+        expect(scroller.dataset.timelineAutoScrollLeftInset).toBe("132");
+        expect(host.querySelector<HTMLElement>(".sticky.left-0")?.style.width).toBe("132px");
         expect(host.querySelector<HTMLElement>('[role="rowheader"]')?.textContent).not.toContain("Clip 0");
       }
       await scrollTimelineHorizontally(scroller, 166);

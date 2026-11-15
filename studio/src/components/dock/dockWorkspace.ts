@@ -4,10 +4,15 @@ import { COMPACT_DOCK_WIDTH, isSideCollapsed } from "./dockLayout";
 import type { DockController } from "./dockLayoutStore";
 import { previewIsEnabled } from "./dockResponsiveSides";
 
+const DEFAULT_AUTO_TIMELINE_MAX_H = 224;
+
 /** Content-sized by default; a deliberate sash resize keeps a pixel preference. */
 export function fittedTimelineHeight(content: number, host: number, manual: number | null) {
   const available = Math.max(96, host - 108);
-  return Math.round(Math.min(available, manual ?? Math.min(Math.max(160, content), Math.max(160, host * 0.42))));
+  return Math.round(Math.min(
+    available,
+    manual ?? Math.min(Math.max(160, content), DEFAULT_AUTO_TIMELINE_MAX_H, Math.max(160, host * 0.42)),
+  ));
 }
 
 export function installDockWorkspace(api: DockviewApi, controller: DockController, root: HTMLElement, projectId: string | null, storageKey: string | undefined, dockWidth: () => number) {

@@ -4,7 +4,7 @@ Checked against official documentation on 2026-11-13. Sections: discovery, reque
 
 ## Setup and discovery
 
-Save the key in editor **Media providers**. `ATLASCLOUD_API_KEY` is the environment alternative; the saved key wins. The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`; never read credential files or put keys in arguments. Shell examples document the wire protocol for service implementation or user-run diagnostics, using environment placeholders only.
+Save the key in editor **Model providers**. `ATLASCLOUD_API_KEY` is the environment alternative; the saved key wins. The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`; never read credential files or put keys in arguments. Shell examples document the wire protocol for service implementation or user-run diagnostics, using environment placeholders only.
 
 ```json
 {"action":"models","provider":"atlascloud","refresh":true,"modality":"image","query":"nano-banana","limit":20}

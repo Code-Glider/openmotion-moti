@@ -23,8 +23,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetcher);
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: string) {
-  function Harness() { workspace = useWorkspace(wait, projectId, sessionId); return null; }
+async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: string, onNavigate?: (url: string, replace?: boolean) => void) {
+  function Harness() { workspace = useWorkspace(wait, projectId, sessionId, onNavigate); return null; }
   await act(async () => root.render(<Harness />));
 }
 const writes = () => fetcher.mock.calls.filter(call => call[1]?.method === 'POST');
@@ -147,4 +147,38 @@ it('activates the viewer when an external Agent produces an artifact for an open
   fetcher.mockImplementation(async (url: string, init?: RequestInit) => url.endsWith('/projects') ? new Response(JSON.stringify({ projects: [], sessions: [{ id: 'conversation', artifacts: [{ id: 'artifact', projectId: first }] }] })) : original(url, init));
   await mount(async () => {}, undefined, 'conversation');
   expect(replace).toHaveBeenCalledWith(`/?session=conversation&project=${first}&openArtifact=1#project/${first}`);
+});
+
+it('unlocks actions after an in-page switch and scopes subsequent polling to the next project', async () => {
+  const onNavigate = vi.fn();
+  await mount(async () => {}, first, first, onNavigate);
+  await act(() => workspace.open('projects', second));
+  expect(onNavigate).toHaveBeenCalledWith(`/?project=${second}#project/${second}`);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(workspace.busy).toBe(false);
+  fetcher.mockImplementation(async (url: string) => Response.json(url.endsWith('/projects') ? { projects: [] } : { ...status, projectId: second }));
+  await mount(async () => {}, second, second, onNavigate);
+  expect(workspace.status?.projectId).toBe(second);
+  expect(workspace.error).toBe('');
+});
+
+it.each([false, true])('guards browser history navigation before replacing the project (save failure=%s)', async failure => {
+  const originalUrl = `/?session=${first}&project=${first}#project/${first}`;
+  const targetUrl = `/?session=${second}&project=${second}#project/${second}`;
+  history.replaceState(null, '', originalUrl);
+  let finishSave!: () => void;
+  const pending = new Promise<void>(resolve => { finishSave = resolve; });
+  const onNavigate = vi.fn();
+  await mount(async () => { await pending; if (failure) throw new Error('Unsaved edit'); }, first, first, onNavigate);
+  await act(async () => {
+    history.replaceState(null, '', targetUrl);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  expect(onNavigate).not.toHaveBeenCalled();
+  await act(async () => finishSave());
+  if (failure) {
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(location.href).toBe(new URL(originalUrl, location.origin).href);
+    expect(workspace.navigationError?.message).toBe('Unsaved edit');
+  } else expect(onNavigate).toHaveBeenCalledWith(new URL(targetUrl, location.origin).href, true);
 });

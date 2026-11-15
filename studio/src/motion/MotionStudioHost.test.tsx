@@ -78,6 +78,7 @@ function render(historyBusy = false) {
 function openSidebar() {
   act(() => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="首页"]')!.click());
 }
+const templates = () => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="模板库"]')!;
 const button = (text: string) => [...container.querySelectorAll('button')].find(el => el.textContent === text)!;
 
 it('shows a restore failure once in its own project through the shared toast', () => {
@@ -102,12 +103,17 @@ it('keeps project switching, templates, history actions and native export in the
   expect(header.querySelector('.motion-workspace-menu')).toBeNull();
   expect(header.querySelector<HTMLInputElement>('[aria-label="项目名称"]')?.value).toBe('Demo');
   expect(container.querySelectorAll('[aria-label="项目名称"]')).toHaveLength(1);
+  expect(container.querySelector('.om-app-project-title > svg')).toBeNull();
   expect(container.querySelector('.om-app-header [aria-label="项目名称"]')).toBeNull();
   openSidebar();
   const project = document.querySelector<HTMLButtonElement>('.motion-session[title="Second"]')!;
   expect(header.contains(project)).toBe(false);
   expect(document.querySelector('.motion-session[aria-current="page"]')?.textContent).toContain('Demo');
-  for (const text of ['模板库', '导出']) expect(header.contains(button(text))).toBe(true);
+  expect(header.contains(button('导出'))).toBe(true);
+  expect(header.querySelector('[aria-label="模板库"]')).toBeNull();
+  expect(templates()).not.toBeNull();
+  expect(header.querySelector('.motion-header-project input')).not.toBeNull();
+  expect(header.querySelector('.motion-header-leading [role="status"]')?.textContent).toBe('自动保存已开启');
   expect(container.querySelector('.motion-workspace-topbar')).toBeNull();
   for (const text of ['预览', '布局', '历史', '连接 Agent', '新建会话', '首页']) expect(button(text)).toBeUndefined();
   expect(container.querySelector('.motion-save-state')).toBeNull();
@@ -134,7 +140,7 @@ it('keeps project switching, templates, history actions and native export in the
   act(() => project.click());
   expect(state.open).toHaveBeenCalledWith('projects', 'second');
   expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ page_name: 'studio', area: 'workspace', element: 'open_project' }));
-  act(() => button('模板库').click());
+  act(() => templates().click());
   expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
   expect(container.querySelector('[role="dialog"]')!.getAttribute('data-section')).toBe('templates');
   act(() => button('Open Product Promo').click());
@@ -156,7 +162,7 @@ it('prevents project replacement during a native render', () => {
   openSidebar();
   expect(document.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
-  expect(button('模板库').disabled).toBe(true);
+  expect(templates().disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[data-testid="header-export"]')!.disabled).toBe(false);
   act(() => container.querySelector<HTMLButtonElement>('[data-testid="header-export"]')!.click());
   expect(document.querySelector('[data-testid="export-dialog"]')?.textContent).toContain('Export settings and jobs');
@@ -169,7 +175,7 @@ it('prevents switching projects or issuing competing header undo while a version
   openSidebar();
   expect(document.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
-  expect(button('模板库').disabled).toBe(true);
+  expect(templates().disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')!.disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[aria-label="重做"]')!.disabled).toBe(true);
   expect(container.textContent).toContain('正在处理版本…');
@@ -228,7 +234,7 @@ it('collapses the full desktop navigation in embeds while preserving the editor 
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
 });
 
-it.each([1440, 800])('returns home from settings without replacing the current editor at %ipx', async width => {
+it.each([[1440, '返回首页'], [800, '返回首页'], [1440, '关闭设置'], [800, '关闭设置']] as const)('returns home from settings without replacing the current editor at %ipx via %s', async (width, closeLabel) => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   render();
   const editor = container.querySelector('.motion-studio-header');
@@ -238,7 +244,7 @@ it.each([1440, 800])('returns home from settings without replacing the current e
   expect(container.querySelector('[data-testid="settings-center"]')).not.toBeNull();
   expect(container.querySelector('.motion-workspace-content')?.hasAttribute('hidden')).toBe(true);
   expect(home.getAttribute('aria-pressed')).toBe('false');
-  act(() => container.querySelector<HTMLButtonElement>('[aria-label="返回首页"]')!.click());
+  act(() => container.querySelector<HTMLButtonElement>(`[aria-label="${closeLabel}"]`)!.click());
   expect(container.querySelector('[data-testid="settings-center"]')).toBeNull();
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
   expect(container.querySelector('.motion-workspace-content')?.hasAttribute('hidden')).toBe(false);
@@ -249,8 +255,7 @@ it.each([1440, 800])('returns home from settings without replacing the current e
     act(() => document.querySelector<HTMLButtonElement>('.motion-sidebar-drawer [aria-label="关闭项目列表"]')!.click());
   } else {
     act(() => home.click());
-    expect(container.querySelector('.om-project-navigation')?.hasAttribute('inert')).toBe(false);
-    act(() => container.querySelector<HTMLButtonElement>('.motion-sidebar [aria-label="关闭项目列表"]')!.click());
+    expect(container.querySelector('.om-project-navigation')?.hasAttribute('inert')).toBe(true);
   }
   await act(async () => openSettings());
   act(() => home.click());
@@ -258,6 +263,112 @@ it.each([1440, 800])('returns home from settings without replacing the current e
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
   expect(state.open).not.toHaveBeenCalled();
   expect(state.home).not.toHaveBeenCalled();
+});
+
+async function hoverHome(pointerType = 'mouse') {
+  const home = container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="首页"]')!;
+  act(() => {
+    home.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType }));
+    home.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    home.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+  });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 220)); });
+  return home;
+}
+
+it('toggles Home and previews the searchable project list without expanding navigation or replacing the editor', async () => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+  render();
+  const editor = container.querySelector('.motion-studio-header');
+  const sidebar = container.querySelector('.om-project-navigation')!;
+  const home = container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="首页"]')!;
+  expect(home.getAttribute('aria-expanded')).toBe('true');
+  act(() => home.click());
+  expect(sidebar.hasAttribute('inert')).toBe(true);
+  expect(home.getAttribute('aria-expanded')).toBe('false');
+  expect(document.querySelector('.om-project-flyout')).toBeNull();
+  await hoverHome();
+  const preview = document.querySelector('.om-project-flyout')!;
+  expect(preview).not.toBeNull();
+  expect(sidebar.getAttribute('aria-hidden')).toBe('true');
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  expect(preview.contains(document.activeElement)).toBe(false);
+  const search = preview.querySelector<HTMLInputElement>('[aria-label="搜索项目"]')!;
+  act(() => {
+    search.focus();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'Second');
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(preview.querySelectorAll('.motion-session')).toHaveLength(1);
+  act(() => home.click());
+  expect(document.querySelector('.om-project-flyout:not([data-ending-style])')).toBeNull();
+  expect(sidebar.hasAttribute('inert')).toBe(false);
+  expect(sidebar.querySelector<HTMLInputElement>('[aria-label="搜索项目"]')?.value).toBe('Second');
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  act(() => home.click());
+  expect(sidebar.hasAttribute('inert')).toBe(true);
+  expect(state.open).not.toHaveBeenCalled();
+});
+
+it('dismisses the hover preview with Escape and preserves project switching guards', async () => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+  state.workspaceBusy = true;
+  render();
+  openSidebar();
+  await hoverHome();
+  const preview = document.querySelector('.om-project-flyout')!;
+  expect(preview.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
+  expect(preview.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
+  act(() => preview.querySelector<HTMLInputElement>('input')!.focus());
+  act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(document.querySelector('.om-project-flyout:not([data-ending-style])')).toBeNull();
+  expect(container.querySelector('.om-project-navigation')?.hasAttribute('inert')).toBe(true);
+});
+
+it.each(['panel', 'search'])('dismisses pointer departure unless the %s focus is an interactive control', async focus => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+  render();
+  openSidebar();
+  await hoverHome();
+  const preview = document.querySelector<HTMLElement>('.om-project-flyout')!;
+  const focused = focus === 'search' ? preview.querySelector<HTMLElement>('input')! : preview;
+  act(() => {
+    preview.parentElement!.dispatchEvent(new MouseEvent('mouseenter'));
+    focused.focus();
+    preview.parentElement!.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: document.body }));
+  });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+  expect(document.querySelector('.om-project-flyout:not([data-ending-style])') !== null).toBe(focus === 'search');
+  if (focus === 'search') {
+    act(() => {
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }));
+      document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      document.body.click();
+    });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+    expect(document.querySelector('.om-project-flyout:not([data-ending-style])')).toBeNull();
+  }
+});
+
+it('does not preview projects for touch pointers, mobile drawers or settings', async () => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+  render();
+  openSidebar();
+  await hoverHome('touch');
+  expect(document.querySelector('.om-project-flyout')).toBeNull();
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="设置"]')!.click());
+  await hoverHome();
+  expect(document.querySelector('.om-project-flyout')).toBeNull();
+});
+
+it('keeps Home click-operated on narrow layouts', async () => {
+  render();
+  await hoverHome();
+  expect(document.querySelector('.om-project-flyout')).toBeNull();
+  expect(document.querySelector('.motion-sidebar-drawer')).toBeNull();
+  openSidebar();
+  expect(document.querySelector('.motion-sidebar-drawer:not([data-closed])')).not.toBeNull();
 });
 
 it('saves empty project names as Untitled while Escape cancels edits', async () => {

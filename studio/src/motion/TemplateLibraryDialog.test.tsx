@@ -645,3 +645,16 @@ it('searches a long option group without losing selections hidden by the option 
   await act(async () => button('Apply filters').click());
   expect(cards()).toEqual(['brand-0', 'brand-13']);
 });
+
+it('opens the template requested by the MCP page without selecting a different card', async () => {
+  function RoutedLibrary() {
+    const [templateId, setTemplateId] = React.useState<string | null>('two');
+    return <TemplateLibraryDialog open templateId={templateId} onTemplateChange={setTemplateId} busy={false} error="" onClose={() => {}} onOpen={() => {}} />;
+  }
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RoutedLibrary /></I18nProvider>));
+  expect(current()).toBe('Second');
+  await act(async () => button('Close template preview').click());
+  expect(current()).toBeUndefined();
+  await act(async () => preview('First'));
+  expect(current()).toBe('First');
+});

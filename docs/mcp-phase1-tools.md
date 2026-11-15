@@ -38,6 +38,16 @@ Production reads a prebuilt browser bundle and three integrity-locked full MP4 p
 | openmotion_restore_version | Studio history 与保留的媒体内容 | 旧快照恢复成新版本；保留后续历史；历史资源缺失或并发冲突时拒绝覆盖 |
 | openmotion_export_cancel | 现有导出队列、进程生命周期 | 指定项目/任务；排队取消、运行中 cancelling、进程退出后 cancelled；完成竞态保持 completed |
 
+## WebMCP access from Studio
+
+Studio registers five `openmotion_studio_*` tools for observation and navigation: `openmotion_studio_look`, `openmotion_studio_select`, `openmotion_studio_seek`, `openmotion_studio_frame` and `openmotion_studio_inspect`. Selection and seeking change editor state, not project source. Video content changes use `openmotion_get_project` followed by `openmotion_edit_project`, which saves native source files with revision/version checks. The seven content-writing editor tools (`set_text`, `set_style`, `transform`, `add_animation`, `update_animation`, `add_keyframe` and `delete_animation`) are not registered or callable through WebMCP. Studio's manual editing handlers remain available. The `can` flags returned by observation tools describe manual editor capabilities, not additional WebMCP tools. Old `studio_*` names are not aliases. Refresh the page and rediscover its tools after upgrading.
+
+While Studio is open, its Motion host registers the same twelve domain `openmotion_*` tools using the shared definitions, for seventeen page tools in total. Browser Agents can discover and call them through WebMCP. Native WebMCP is preferred, with the existing Studio fallback for browsers without it. The `agentToolsEnabled` preference controls both sets and takes effect after reloading Studio. Closing or navigating away unregisters the page tools. Ordinary MCP discovery, resources and negotiated MCP App presentation are unchanged.
+
+WebMCP calls forward to the existing same-origin `/motion-api/phase1/call` service. Names, input schemas and successful service payloads are preserved, including request deduplication, explicit project/session binding, revision/version checks and export job identities. The adapter does not infer the target from the globally active project. Import `sourcePath` and template `indexPath`/`localSource` retain their host-filesystem meaning; browser-only clients need host file access for those paths. No arbitrary filesystem reader, upload API or private service credential is added to the page.
+
+Failures resolve with `{isError:true,error:{code,message,applied}}`, because rejected WebMCP callbacks can lose their error messages. Local validation and cancellation before dispatch report `applied=false`; a lost reply or cancellation after dispatch reports `applied="unknown"`. Cancellation does not roll back a committed edit or cancel a queued render; use `openmotion_export_cancel` for the named export. No automatic retry is performed: inspect the project/history or original job, and retain the original request ID when recovering an uncertain mutation. Browser/Agent permission and real end-to-end acceptance remain separate from page registration.
+
 ## 共用约束
 
 - projectId 是作品身份；sessionId 是 OpenMotion 内部会话，不能把宿主聊天 ID 自动当成它。所有数据写入明确项目。新 MCP 客户端未绑定时，默认预览报 PROJECT_NOT_BOUND，不猜全局最近工程。

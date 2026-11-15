@@ -12,21 +12,24 @@ import { useProviderDirectory } from './useProviderDirectory';
 import { gatewayRequest } from './gatewayClient';
 import { SettingsError, SettingsLoading } from './settingsPrimitives';
 import { AgentSettings, DefaultAgentCard } from './AgentSettings';
+import { GITHUB_REPOSITORY, repositorySupportLinks } from './githubRepository';
 
-export type SettingsSection = 'account' | 'subscription' | 'providers' | 'models' | 'local' | 'general' | 'appearance' | 'privacy' | 'about' | 'help';
+import type { SettingsSection } from './workspacePageRouting';
+export type { SettingsSection } from './workspacePageRouting';
 const sections: { id: SettingsSection; label: string; icon: string; group: string }[] = [
   { id: 'account', label: 'Account', icon: 'user-3-line', group: 'Personal' },
   { id: 'subscription', label: 'Subscription & usage', icon: 'bank-card-line', group: 'Personal' },
-  { id: 'providers', label: 'Model providers', icon: 'cloud-line', group: 'Models & connections' },
+  { id: 'providers', label: 'Model providers', icon: 'sparkling-line', group: 'Models & connections' },
   { id: 'models', label: 'Default Agent & models', icon: 'box-3-line', group: 'Models & connections' },
   { id: 'local', label: 'Local Agents', icon: 'computer-line', group: 'Models & connections' },
+  { id: 'mcp', label: 'MCP · Connect Agent', icon: 'plug-line', group: 'Models & connections' },
   { id: 'general', label: 'General', icon: 'equalizer-line', group: 'Preferences' },
   { id: 'appearance', label: 'Appearance', icon: 'palette-line', group: 'Preferences' },
   { id: 'privacy', label: 'Privacy & data', icon: 'shield-check-line', group: 'Preferences' },
   { id: 'help', label: 'Help', icon: 'question-line', group: 'Resources' },
   { id: 'about', label: 'About OpenMotion', icon: 'information-line', group: 'Resources' },
 ];
-export function SettingsCenter({ section, onSection, openConnections, navigationCollapsed = false }: { navigationCollapsed?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: () => void }) {
+export function SettingsCenter({ section, onSection, openConnections, navigationCollapsed = false, providerId, onProviderChange }: { navigationCollapsed?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: () => void; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t } = useI18n();
   const [search, setSearch] = useState('');
   const filtered = sections.filter(item => t(item.label).toLowerCase().includes(search.toLowerCase()));
@@ -35,7 +38,7 @@ export function SettingsCenter({ section, onSection, openConnections, navigation
       <div className="om-settings-mobile-navigation"><Select label={t('Settings')} value={section} onCommit={value => onSection(value as SettingsSection)} options={sections.map(item => ({ value: item.id, label: t(item.label), icon: <RemixIcon name={item.icon} size={16} /> }))} /></div><nav aria-label={t('Settings')} className="om-settings-sections">{filtered.map((item, index) => <div key={item.id}>{filtered[index - 1]?.group !== item.group && <p className="om-eyebrow">{t(item.group)}</p>}<button className="om-nav-item" aria-current={section === item.id ? 'page' : undefined} onClick={() => onSection(item.id)}><RemixIcon name={item.icon} size={16} /><span>{t(item.label)}</span></button></div>)}{!filtered.length && <p className="om-muted">{t('No matching settings')}</p>}</nav>
     </aside></div></div>
     <main className="om-settings-main" aria-label={t(sections.find(item => item.id === section)?.label || 'Settings')}>
-      {section === 'local' ? <AgentSettings /> : section === 'providers' ? <ModelSettings key={section} openAccount={() => onSection('account')} />
+      {section === 'local' ? <AgentSettings /> : section === 'providers' ? <ModelSettings key={section} openAccount={() => onSection('account')} providerId={providerId} onProviderChange={onProviderChange} />
         : section === 'account' || section === 'subscription' ? <AccountSettings key={section} subscription={section === 'subscription'} openProviders={() => onSection('providers')} />
         : section === 'models' ? <DefaultModels openProviders={() => onSection('providers')} />
         : section === 'appearance' ? <AppearanceSettings />
@@ -64,9 +67,9 @@ function ResourceSettings({ about, openConnections }: { about: boolean; openConn
   const { t } = useI18n();
   const [version, setVersion] = useState<string>();
   useEffect(() => { let active = true; void gatewayRequest<{ version: string }>('health').then(data => { if (active) setVersion(data.version); }).catch(() => {}); return () => { active = false; }; }, []);
-  const links = [{ label: 'Documentation', href: 'https://github.com/nexu-io/openmotion/tree/main/docs' }, { label: 'Report an issue', href: 'https://github.com/nexu-io/openmotion/issues' }, { label: 'Source code', href: 'https://github.com/nexu-io/openmotion' }];
+  const links = [{ label: 'Documentation', href: `${GITHUB_REPOSITORY}/tree/main/docs`, icon: 'file-text-line' }, ...repositorySupportLinks, { label: 'View source code', href: GITHUB_REPOSITORY, icon: 'code-s-slash-line' }];
   return <div className="om-settings-page"><h1 className="om-title">{t(about ? 'About OpenMotion' : 'Help')}</h1>{about && <section className="om-card om-about-identity"><h2 className="om-product-brand" aria-label="OpenMotion" /><p className="om-muted">{t('An editable workspace for AI video and motion.')}</p><span className="om-badge">{version ? `${t('Version')} ${version}` : t('Version unavailable')}</span></section>}
-    <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noreferrer"><span>{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span>{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
+    <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span className="om-menu-label"><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
     {about && <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Acknowledgements')}</h2><p className="om-muted">{t('Built with Hyperframes and the OpenMotion design system. Provider presets include the MIT-licensed Cherry Studio registry. Account connections use OpenDesign.')}</p><a className="om-text-link" href="https://github.com/nexu-io/openmotion/blob/main/shared/provider-registry-NOTICE.md" target="_blank" rel="noreferrer">{t('Licenses & acknowledgements')}</a></section>}
   </div>;
 }

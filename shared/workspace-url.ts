@@ -1,4 +1,9 @@
 export type WorkspacePresentation = { embedded: boolean; sidebar: boolean; conversation: boolean };
+/** Settings and MCP can open even when the retained project cannot start. */
+export function isWorkspaceSettingsPage(search: string) {
+  const page = new URLSearchParams(search).get('page');
+  return page === 'settings' || page === 'mcp';
+}
 export function workspacePresentation(search: string): WorkspacePresentation {
   const query = new URLSearchParams(search), embedded = query.get('embed') === '1';
   return { embedded, sidebar: !embedded && query.get('sidebar') !== '0', conversation: !embedded && query.get('conversation') !== '0' };

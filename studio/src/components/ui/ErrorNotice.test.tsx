@@ -56,6 +56,8 @@ it('keeps details selectable when clipboard permission is denied', async () => {
 });
 
 it('does not invent a diagnosis for unknown errors and distinguishes media failures', () => {
+  expect(errorNoticeMessage('Failed to fetch dynamically imported module: http://localhost/assets/Settings-old.js')).toBe('Interface resources could not be loaded. Reload the editor to try again.');
+  expect(errorNoticeMessage('Failed to fetch')).toBe('Cannot connect to the local studio. Check that it is running.');
   expect(errorNoticeMessage('InternalError: private/path/code')).toBe('The operation could not be completed. See error details.');
   expect(errorNoticeMessage('Invalid data while decoding media', 'export')).toContain('Check or replace');
   expect(errorNoticeMessage('unsupported codec', 'export')).toBe('This file format is not supported.');

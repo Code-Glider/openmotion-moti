@@ -7,7 +7,11 @@ export function installWebMcpHost(name) {
     value: { registerTool: async (tool) => void tools.set(tool.name, tool) },
   });
   window[name] = {
+    names: () => [...tools.keys()],
     has: (tool) => tools.has(tool),
-    call: (tool, input) => tools.get(tool).execute(input, { signal: new AbortController().signal }),
+    call: (tool, input) => {
+      if (!tools.has(tool)) throw new Error(`${tool} is not registered`);
+      return tools.get(tool).execute(input, { signal: new AbortController().signal });
+    },
   };
 }

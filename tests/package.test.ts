@@ -47,6 +47,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
     assert(![...files].some(file => file.startsWith('library/templates/catalog/') || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
+    assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
     assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');
     for (const file of ['shared/provider-presets.json', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'docs/provider-settings.md', 'gateway/account.ts', 'gateway/connections.ts', 'gateway/compatible.ts']) assert(files.has(file), 'Missing provider settings runtime or license: ' + file);
     assert(![...files].some(file => file.includes('@powerformer/vela-cli')), 'The optional account connector must not be redistributed');

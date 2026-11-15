@@ -154,7 +154,9 @@
     "Close menu or dialog": "关闭菜单或对话框",
     "Documentation": "文档",
     "Report an issue": "反馈问题",
-    "Source code": "源代码",
+    "View source code": "查看源代码",
+    "Page navigation": "页面导航",
+    "This template is no longer available.": "此模板已不可用。",
     "An editable workspace for AI video and motion.": "用于 AI 视频和动态设计的可编辑工作区。",
     "Version unavailable": "版本信息不可用",
     "Acknowledgements": "致谢",
@@ -201,7 +203,6 @@
     "Remote connection unavailable": "暂不支持远程连接",
     "Connect from your Agent": "在 Agent 中完成连接",
     "ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.": "ChatGPT 云端无法连接这个本地工作区，请在上方选择本地 Agent。",
-    "Paste this instruction into your Agent on this computer. It will guide you through setup and verify access.": "将下面的指令粘贴到这台电脑上的 Agent，它会引导你完成配置并验证连接。",
     "Copy connection instruction": "复制连接指令",
     "Manual setup": "手动配置",
     "Copy configuration": "复制配置",
@@ -312,7 +313,15 @@
     "All protocols": "全部协议",
     "context tokens": "上下文 Token",
     "System": "跟随系统",
-    "System follows your device’s appearance automatically.": "跟随系统自动切换浅色与深色外观。"
+    "System follows your device’s appearance automatically.": "跟随系统自动切换浅色与深色外观。",
+    "What's new": "更新内容",
+    "Feedback": "反馈",
+    "Not saved": "尚未保存",
+    "Auto saved: {time}": "自动保存：{time}",
+    "Auto save on": "自动保存已开启",
+    "Changes could not be saved. Resolve the error before continuing.": "更改未能保存，请先处理错误。",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "更改会自动保存，每 15 秒检查一次待保存的编辑。",
+    "Send this instruction to your Agent. It will check installation, start OpenMotion if needed, and verify the connection.": "将指令发给你的 Agent，它会检查安装状态，按需启动 OpenMotion 并验证连接。"
   },
   "ja": {
     "Local Agents": "ローカル Agent",
@@ -417,6 +426,85 @@
     "All protocols": "すべてのプロトコル",
     "context tokens": "コンテキストトークン",
     "System": "システム",
-    "System follows your device’s appearance automatically.": "デバイスの外観に合わせて自動で切り替えます。"
+    "System follows your device’s appearance automatically.": "デバイスの外観に合わせて自動で切り替えます。",
+    "What's new": "更新情報",
+    "Feedback": "フィードバック",
+    "Not saved": "未保存",
+    "Auto saved: {time}": "自動保存：{time}",
+    "Auto save on": "自動保存オン",
+    "Changes could not be saved. Resolve the error before continuing.": "変更を保存できませんでした。先にエラーを解決してください。",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "変更は自動保存されます。15 秒ごとに未保存の編集を確認します。"
+  },
+  "ko": {
+    "What's new": "새로운 소식",
+    "Feedback": "피드백",
+    "Not saved": "저장되지 않음",
+    "Auto saved: {time}": "자동 저장: {time}",
+    "Auto save on": "자동 저장 켜짐",
+    "Changes could not be saved. Resolve the error before continuing.": "변경 사항을 저장하지 못했습니다. 먼저 오류를 해결하세요.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "변경 사항은 자동으로 저장됩니다. 15초마다 대기 중인 편집을 확인합니다."
+  },
+  "de": {
+    "What's new": "Neuigkeiten",
+    "Feedback": "Feedback",
+    "Not saved": "Nicht gespeichert",
+    "Auto saved: {time}": "Automatisch gespeichert: {time}",
+    "Auto save on": "Automatisches Speichern aktiv",
+    "Changes could not be saved. Resolve the error before continuing.": "Änderungen konnten nicht gespeichert werden. Beheben Sie zuerst den Fehler.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Änderungen werden automatisch gespeichert. Ausstehende Änderungen werden alle 15 Sekunden geprüft."
+  },
+  "fr": {
+    "What's new": "Nouveautés",
+    "Feedback": "Commentaires",
+    "Not saved": "Non enregistré",
+    "Auto saved: {time}": "Enregistré automatiquement : {time}",
+    "Auto save on": "Enregistrement automatique activé",
+    "Changes could not be saved. Resolve the error before continuing.": "Les modifications n’ont pas pu être enregistrées. Résolvez d’abord l’erreur.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Les modifications sont enregistrées automatiquement et vérifiées toutes les 15 secondes."
+  },
+  "ru": {
+    "What's new": "Что нового",
+    "Feedback": "Обратная связь",
+    "Not saved": "Не сохранено",
+    "Auto saved: {time}": "Автосохранение: {time}",
+    "Auto save on": "Автосохранение включено",
+    "Changes could not be saved. Resolve the error before continuing.": "Не удалось сохранить изменения. Сначала устраните ошибку.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Изменения сохраняются автоматически. Проверка несохранённых изменений — каждые 15 секунд."
+  },
+  "es": {
+    "What's new": "Novedades",
+    "Feedback": "Comentarios",
+    "Not saved": "Sin guardar",
+    "Auto saved: {time}": "Guardado automático: {time}",
+    "Auto save on": "Guardado automático activado",
+    "Changes could not be saved. Resolve the error before continuing.": "No se pudieron guardar los cambios. Resuelve el error antes de continuar.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Los cambios se guardan automáticamente. Se comprueban los cambios pendientes cada 15 segundos."
+  },
+  "pt-BR": {
+    "What's new": "Novidades",
+    "Feedback": "Feedback",
+    "Not saved": "Não salvo",
+    "Auto saved: {time}": "Salvo automaticamente: {time}",
+    "Auto save on": "Salvamento automático ativado",
+    "Changes could not be saved. Resolve the error before continuing.": "Não foi possível salvar as alterações. Resolva o erro antes de continuar.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "As alterações são salvas automaticamente. Edições pendentes são verificadas a cada 15 segundos."
+  },
+  "it": {
+    "What's new": "Novità",
+    "Feedback": "Feedback",
+    "Not saved": "Non salvato",
+    "Auto saved: {time}": "Salvataggio automatico: {time}",
+    "Auto save on": "Salvataggio automatico attivo",
+    "Changes could not be saved. Resolve the error before continuing.": "Impossibile salvare le modifiche. Risolvi l’errore prima di continuare.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Le modifiche vengono salvate automaticamente. Quelle in sospeso vengono controllate ogni 15 secondi."
+  },
+  "tr": {
+    "What's new": "Yenilikler",
+    "Feedback": "Geri bildirim",
+    "Not saved": "Kaydedilmedi",
+    "Auto saved: {time}": "Otomatik kaydedildi: {time}",
+    "Auto save on": "Otomatik kayıt açık",
+    "Changes could not be saved. Resolve the error before continuing.": "Değişiklikler kaydedilemedi. Devam etmeden önce hatayı giderin.",
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Değişiklikler otomatik kaydedilir. Bekleyen düzenlemeler her 15 saniyede kontrol edilir."
   }
 }
