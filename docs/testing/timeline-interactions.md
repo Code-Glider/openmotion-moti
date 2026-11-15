@@ -53,6 +53,7 @@ boundary combinations. An automated pass does not replace native transport evide
 | Batch upload: sequential placement, first file rejected/failed, one final refresh | `hooks/useTimelineAssetDropFeedback.test.tsx`, `useTimelineAssetDropOps.test.tsx` | Passed: native multi-file picker selected both images, placed sequentially at 0–3 and 3–6 seconds; failure/dismiss/retry also passed |
 | Media probe, upload, save and preview failure; dismiss and retry | `hooks/useTimelineAssetDropFeedback.test.tsx` | Passed: injected upload/save/preview HTTP 503; per-file errors, floating Toast, dismiss and retry; save failure left source unchanged and preview timeout preserved the saved clip |
 | Project/composition switch while work is pending | `hooks/useTimelineAssetDropFeedback.test.tsx`; `player/components/timelineDragDrop.test.tsx` | Passed: project navigation waited for the active edit to finish, then switched without adding it to the destination project; direct scope cancellation remains deterministic coverage |
+| Refresh after an audio split, first frame, deferred playback, slow/failed media | `player/components/Player.test.ts`; shadow-reload/retry and `components/nle/NLEPreview.slowBoot.test.ts` | Passed: an isolated copy of the reported split-audio project revealed its first frame about 1.2 seconds after warm refresh; playback passed the 7.245-second split and activated the deferred second audio. Two-second-per-request media delays recovered; failed audio returned a visible first frame. Timer throttling and metadata-only audio/video have deterministic coverage |
 | Blocks/compositions keep their own insertion contracts | `hooks/useTimelineBlockDropFeedback.test.tsx`, `useTimelineCompositionDropFeedback.test.tsx` | Automated |
 | Pending reserved row rejects a second edit without saving a fractional index | `player/components/timelineDragDrop.test.tsx`, `timelinePendingRows.test.ts` | Passed: second native asset drag over a reserved row had dropEffect none and created no extra clip |
 | 200 dragover events coalesce; release before RAF; edge autoscroll updates preview | `player/components/timelineDragDrop.test.tsx` | Automated; no measured FPS claim |
@@ -76,6 +77,11 @@ boundary combinations. An automated pass does not replace native transport evide
    cancel outside the timeline, and change project during a delayed upload.
 7. Select long and short clips at several zoom levels. Check both trim grips,
    FX menu, resize cursor and actual trims. Repeat in light/dark and narrow layouts.
+8. Split a soundtrack so its second clip starts later. Refresh at zero and at a
+   retained playhead position. Confirm the first frame appears while the second
+   audio remains deferred, then play across the split and confirm its media clock
+   advances. Repeat with delayed and failed audio responses; no extra ten-second
+   wait may be caused by the deferred clip.
 
 ## Verification limits
 

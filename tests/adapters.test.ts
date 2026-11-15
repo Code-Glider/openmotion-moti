@@ -113,7 +113,7 @@ test('bundled runtime adapters preserve the Node preload and launch with a minim
     await mkdir(path.join(runtime, 'skills'));
     await cp(process.execPath, node);
     await mkdir(path.join(runtime, 'docs'));
-    for (const name of ['AGENTS.md', 'CLAUDE.md', 'cloud.md']) await writeFile(path.join(runtime, name), '# Fixture');
+    for (const name of ['AGENTS.md', 'CLAUDE.md']) await writeFile(path.join(runtime, name), '# Fixture');
     for (const filename of ['scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/zip.mjs', 'scripts/distribution.ts', 'packages/design-system/index.js', 'packages/design-system/provider-icons.js', 'shared/entry.ts', 'shared/integration.ts', 'shared/template-locale.ts', 'shared/template-prompts.ts', 'shared/workflow.ts', 'shared/workflow-entry.js', 'shared/public-names.mjs', 'packages/design-system/icons.svg', 'packages/design-system/remix-icon-LICENSE.txt', 'packages/design-system/remix-icon-NOTICE.txt']) {
       await mkdir(path.dirname(path.join(runtime, filename)), { recursive: true });
       await cp(path.join(source, filename), path.join(runtime, filename));
@@ -144,7 +144,7 @@ test('adapter export rejects invalid runtime discovery manifest fields', async (
     const data = path.join(directory, 'projects'), runtime = path.join(directory, 'runtime');
     await copyDesignGuides(runtime);
     await mkdir(path.join(runtime, 'skills'), { recursive: true }); await mkdir(path.join(runtime, 'docs'));
-    for (const name of ['AGENTS.md', 'CLAUDE.md', 'cloud.md', 'mcp.ts']) await writeFile(path.join(runtime, name), '');
+    for (const name of ['AGENTS.md', 'CLAUDE.md', 'mcp.ts']) await writeFile(path.join(runtime, name), '');
     await mkdir(path.join(runtime, 'packages/design-system'), { recursive: true });
     for (const name of ['icons.svg', 'remix-icon-LICENSE.txt', 'remix-icon-NOTICE.txt']) await cp(path.join(source, 'packages/design-system', name), path.join(runtime, 'packages/design-system', name));
     await writeFile(path.join(runtime, 'package.json'), JSON.stringify({ version: '0.6.3' }));
@@ -177,7 +177,7 @@ test('failed adapter writes remove only the new output and preserve runtime and 
     const runtime = path.join(directory, 'runtime');
     await copyDesignGuides(runtime);
     await mkdir(path.join(runtime, 'skills'), { recursive: true }); await mkdir(path.join(runtime, 'docs'));
-    for (const name of ['AGENTS.md', 'CLAUDE.md', 'cloud.md', 'mcp.ts']) await writeFile(path.join(runtime, name), '');
+    for (const name of ['AGENTS.md', 'CLAUDE.md', 'mcp.ts']) await writeFile(path.join(runtime, name), '');
     await mkdir(path.join(runtime, 'packages/design-system'), { recursive: true });
     for (const name of ['icons.svg', 'remix-icon-LICENSE.txt', 'remix-icon-NOTICE.txt']) await cp(path.join(source, 'packages/design-system', name), path.join(runtime, 'packages/design-system', name));
     await writeFile(path.join(runtime, 'package.json'), JSON.stringify({ version: '0.6.1-' + 'a'.repeat(260) }));

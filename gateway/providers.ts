@@ -76,7 +76,7 @@ function falUrl(raw: unknown): string {
 const fal: ProviderAdapter = {
   async generate(job, ctx) {
     const headers = { Authorization: `Key ${ctx.key}`, 'Content-Type': 'application/json' };
-    const promptField = job.model.mode === 'text-to-speech' ? 'text' : 'prompt';
+    const promptField = job.model.mode === 'text-to-speech' && job.model.modelId !== 'fal-ai/kokoro/american-english' ? 'text' : 'prompt';
     const payload = { ...job.model.defaults, ...job.parameters, [promptField]: job.prompt };
     const submitted = await apiJson(ctx.fetcher, `https://queue.fal.run/${job.model.modelId}`, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctx.signal });
     const statusUrl = falUrl(submitted.status_url), resultUrl = falUrl(submitted.response_url);

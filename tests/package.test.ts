@@ -37,7 +37,7 @@ test('plugin onboarding entry and its shared contract resolve inside every distr
 test('every distribution preserves public workflow dependencies and licenses while excluding development material', async () => {
   for (const profile of ['phase1', 'legacy']) {
     const files = new Set(await distributionFiles(profile));
-    for (const file of ['AGENTS.md', 'CLAUDE.md', 'cloud.md', ...designSystemDocuments, ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file)]) {
+    for (const file of ['AGENTS.md', 'CLAUDE.md', ...designSystemDocuments, ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file)]) {
       assert(files.has(file), 'Missing shared design system dependency: ' + file);
     }
     assert(![...files].some(file => file.startsWith('packages/design-system/workbench/')), 'Source-write server and workbench tests stay out of runtime distribution');
@@ -46,6 +46,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('docs/release-guide.md'), 'The public test/stable manual must ship');
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
     assert(![...files].some(file => file.startsWith('library/templates/catalog/') || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
+    for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
     assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
     assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');

@@ -176,7 +176,7 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
 
 - All registered phase-one stdio tools: accepted start and observed finish, including
   early-return catalog tools, input rejection, partial import and idempotent replay.
-- All seventeen page WebMCP tools: `webmcp_tool_started` and
+- All eighteen page WebMCP tools: `webmcp_tool_started` and
   `webmcp_tool_finished`, correlated by a fresh `call_id` per invocation, with
   the public `tool_name`, `transport=webmcp`, observed `outcome` and bounded
   `duration_ms`. These are browser-call measurements, separate from stdio MCP

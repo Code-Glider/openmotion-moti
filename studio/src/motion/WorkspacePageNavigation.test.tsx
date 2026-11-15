@@ -9,6 +9,7 @@ import { readWorkspacePage, settingsSections } from './workspacePageRouting';
 import { workspaceHistoryIndex, writeWorkspaceHistory } from '../utils/workspaceHistory';
 
 const editor = vi.hoisted(() => ({ mounts: 0, fail: false, wait: async () => {} }));
+vi.mock('./AssetsPage', () => ({ AssetsPage: () => <input aria-label="Asset draft" defaultValue="Asset prompt" /> }));
 vi.mock('./tracking', () => ({ trackMotion: vi.fn() }));
 vi.mock('./ArtifactViewer', () => ({ ArtifactViewer: ({ artifact }: { artifact: { projectId: string } }) => {
   const { registerEditor } = useWorkspaceChrome();
@@ -246,4 +247,31 @@ it('reports a missing bookmarked template and recovers without changing the reta
   await act(async () => container.querySelector<HTMLButtonElement>('dialog[aria-label="Template library"] [role=alert] button')!.click());
   expect(page()).toMatchObject({ settings: 'mcp', templates: true, template: null });
   expect(container.textContent).not.toContain('This template is no longer available.');
+});
+
+
+it('keeps Assets and editor drafts mounted across page history and restores the Assets deep link', async () => {
+  await mount();
+  const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
+  draft.value = 'Keep editor draft';
+  await click('Workspace assets');
+  expect(page().assets).toBe(true);
+  const assetDraft = container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')!;
+  assetDraft.value = 'Keep asset prompt';
+  await click('Settings');
+  expect(page().assets).toBe(false);
+  expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
+  await traverse(-1);
+  expect(page().assets).toBe(true);
+  expect(container.querySelector('[aria-label="Asset draft"]')).toBe(assetDraft);
+  expect(assetDraft.value).toBe('Keep asset prompt');
+  await click('Back to home');
+  expect(page().assets).toBe(false);
+  expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
+  expect(draft.value).toBe('Keep editor draft');
+  expect(editor.mounts).toBe(1);
+  history.replaceState(null, '', firstUrl.replace('#', '&page=assets#'));
+  await mount(1);
+  expect(page().assets).toBe(true);
+  expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(false);
 });

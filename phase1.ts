@@ -1,7 +1,9 @@
+import { probeLibraryMedia } from './gateway/asset-probe.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
 import { requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { recordDiagnostic } from './scripts/diagnostics.mjs';
 import { mediaUse } from './gateway/media-use.ts';
+import { assetOperation } from './gateway/asset-operations.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from './shared/asset-limits.ts';
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -262,6 +264,7 @@ export class Phase1Service {
     reviews.push(record); await atomicJson(file, reviews); return { projectId: args.projectId, review: record, changed: false };
   }
   async dispatch(name: string, args: any, host?: HostContext): Promise<any> {
+    if (name === 'motion_assets') return assetOperation(this.store, args, input => this.importAssets(input));
     if (name === 'motion_media_use') return mediaUse(this.store, args);
     if (name === 'motion_get_project' && !args.projectId) {
       if (args.file || args.exportJobId || args.expectedRevision || args.workId || args.includeVideo) throw new Error('INVALID_ARGUMENT: projectId is required for details');
@@ -444,6 +447,7 @@ export class Phase1Service {
             if (prior) {
               if (prior.inputHash !== inputHash) throw new Error('ITEM_ID_CONFLICT');
               if (!await stat(path.join(scoped.projectDirectory, prior.path)).catch(() => null)) throw new Error('ASSET_NOT_IN_CURRENT_VERSION: 请恢复对应版本或使用新 itemId 重新导入');
+              if (item.expectedSha256 && await fileHash(path.join(scoped.projectDirectory, prior.path)) !== item.expectedSha256) throw new Error('ASSET_CONTENT_CHANGED: the imported copy no longer matches the pinned library version');
               items.push({ ...prior, status: 'completed', reused: true }); continue;
             }
             if (!path.isAbsolute(item.sourcePath)) throw new Error('ATTACHMENT_NOT_READABLE: 需要本机实际绝对路径');
@@ -451,19 +455,12 @@ export class Phase1Service {
             if (!isAssetFileWithinLimit(info)) throw new Error('ASSET_TOO_LARGE_OR_NOT_FILE: max 500 MB (500000000 bytes)');
             const staged = path.join(staging, crypto.randomUUID()); await cloneFile(item.sourcePath, staged);
             if (!isAssetFileWithinLimit(await stat(staged))) throw new Error('ASSET_TOO_LARGE_OR_NOT_FILE: max 500 MB (500000000 bytes)');
-            const probe = await execute(verificationBinaries().ffprobe, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', staged], staging, 60_000);
-            if (probe.code) throw new Error('INVALID_MEDIA: 无法读取真实媒体');
-            const media = JSON.parse(probe.stdout), stream = media.streams?.find((s: any) => s.codec_type === 'video' && !s.disposition?.attached_pic) ?? media.streams?.find((s: any) => s.codec_type === 'audio');
-            if (!stream) throw new Error('UNSUPPORTED_MEDIA_TYPE');
-            const image: Record<string, [string, string]> = { png: ['image/png', 'png'], mjpeg: ['image/jpeg', 'jpg'], webp: ['image/webp', 'webp'], gif: ['image/gif', 'gif'] };
-            const format = String(media.format?.format_name ?? '');
-            const kind = (/image2|_pipe|^gif$/.test(format) ? image[stream.codec_name] : undefined) ?? (stream.codec_type === 'video' && format.includes('mov') ? ['video/mp4', 'mp4'] : stream.codec_type === 'video' && /webm|matroska/.test(format) ? ['video/webm', 'webm'] : stream.codec_type === 'audio' ? ({ wav: ['audio/wav', 'wav'], mp3: ['audio/mpeg', 'mp3'], ogg: ['audio/ogg', 'ogg'], flac: ['audio/flac', 'flac'], aac: ['audio/aac', 'aac'] } as any)[format] ?? (format.includes('mov') ? ['audio/mp4', 'm4a'] : null) : null);
-            if (!kind || stream.codec_type === 'video' && !(stream.width > 0 && stream.height > 0)) throw new Error('UNSUPPORTED_MEDIA_TYPE');
-            const decoded = await execute(verificationBinaries().ffmpeg, ['-v', 'error', '-xerror', '-err_detect', 'explode', '-i', staged, '-map', '0:' + stream.index, stream.codec_type === 'video' ? '-frames:v' : '-frames:a', '1', '-f', 'null', '-'], staging, 60_000);
-            if (decoded.code) throw new Error('INVALID_MEDIA: 媒体首帧无法解码');
-            const assetId = crypto.randomUUID(), relative = 'assets/imported/' + assetId + '.' + kind[1];
-            const asset = { itemId: item.itemId, assetId, inputHash, path: relative, mimeType: kind[0], size: (await stat(staged)).size,
-              sha256: await fileHash(staged), width: stream.width, height: stream.height, duration: Number(media.format.duration) || undefined, name: item.name ?? path.basename(item.sourcePath) };
+            const sha256 = await fileHash(staged);
+            if (item.expectedSha256 && sha256 !== item.expectedSha256) throw new Error('ASSET_CONTENT_CHANGED: library bytes no longer match this version');
+            const media = await probeLibraryMedia(staged).catch(error => { throw new Error('INVALID_MEDIA: ' + errorText(error)); });
+            const assetId = crypto.randomUUID(), relative = 'assets/imported/' + assetId + '.' + media.extension;
+            const asset = { itemId: item.itemId, assetId, inputHash, path: relative, mimeType: media.mimeType, size: media.bytes,
+              sha256, width: media.width, height: media.height, duration: media.duration, name: item.name ?? path.basename(item.sourcePath) };
             changes.push({ path: relative, source: staged }); added.push(asset); items.push({ ...asset, status: 'completed' });
           } catch (error) { items.push({ itemId: item.itemId, status: 'failed', error: errorText(error) }); }
         }

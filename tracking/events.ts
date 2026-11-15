@@ -1,12 +1,12 @@
 import type { Entry, Registry } from './core.ts';
 import { studioUsageEvents } from './studio-events.ts';
 
-export const toolNames = ['motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_create_project', 'motion_open_preview',
+export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_create_project', 'motion_open_preview',
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
 const tool = { tool_name: toolNames, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
-export const webMcpToolNames = ['openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
+export const webMcpToolNames = ['openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
   'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
   'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
   'openmotion_export_cancel', 'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
