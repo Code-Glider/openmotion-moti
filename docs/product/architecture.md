@@ -188,6 +188,8 @@ Video authoring and editing run without chat preview/progress components. A pers
 
 ## 能力与模块
 
+The Studio page also registers the twelve public `openmotion_*` domain tools through WebMCP. `shared/webmcp-tools.ts` reuses the schemas in `shared/phase1-tools.ts` and forwards calls to the existing same-origin `/motion-api/phase1/call` authority; it does not duplicate business handlers or change stdio MCP discovery. `OpenMotionAgentTools` lives at the Motion host boundary, alongside the existing editor-scoped `studio_*` tools, and uses the same native detection, fallback, registration lifecycle and `agentToolsEnabled` preference. Calls retain explicit project/session inputs, request IDs, revision/version checks and existing service results. Registration does not grant browser/Agent permission. Closing the page removes its tools; an already-submitted mutation or export may continue. Transport failures report `applied=unknown` and never retry automatically. Local import paths and template-index paths keep their existing host-filesystem requirements; this is not a cloud upload or remote service. MCP resources and negotiated App presentation remain on the existing MCP connection.
+
 一期公开 MCP 已按[12 Tool 契约](../mcp-phase1-tools.md) 实现本地适配与构建过滤，默认 phase1。发布清单同时控制发现/调用、HTTP 接入元数据及各分发包，原28项内部兼容实现和 Studio 服务保留。phase1.ts 负责明确项目、请求去重、批量素材/保存、具名任务与审阅；phase1-versions.ts 复用原生 history、补稳定 vN 和原生未留存媒体及保存恢复日志。恢复历史创建新版本并保留后续历史，区别于内容哈希和单文件保存。导出继续委托原渲染器并自动完整技术验证；取消区分受理和进程退出。Production Skills and MCP resource guidance share the same contract; BYOK references belong to the existing production workflow.此为本地实现，未据此宣布部署/平台/宿主业务验收。
 
 MCP version availability is derived from readable, hash-verified native or retained blobs at query time. Restore repeats this check and stages verified contents before entering the existing write transaction. Missing or corrupt historical resources report project-relative paths with `VERSION_NOT_RESTORABLE` and `applied=false`, preserving current project contents and version identity. Availability can change between calls; Studio's native GUI history retains its own restoration semantics.
@@ -207,6 +209,7 @@ Preview/export preflight and the bundled OpenMotion lint command use the pinned 
 | Editor interface language | `studio/src/i18n/`、`web/i18n.ts` | Eleven languages, Chinese by default; editor and embedded dialog labels update without remounting. Phase-one controls, export guidance, common edit-history descriptions and import/split failure messages have localized additions in all eleven languages. Retained advanced-editor controls outside the MVP may still fall back to English. Authored project content and existing instructions retain their source language; newly generated template-copy prompts use the current UI locale, and guide/download URLs come from that locale’s catalog; native-speaker review remains separate. |
 | 多 Agent 薄适配器 | `scripts/export-adapters.ts`、`shared/integration.ts` | Codex、Claude、DSH、WorkBuddy Connector 共用外置运行时；本机生成，WorkBuddy 桌面待验收，详见 [适配器](../agent-adapters.md) |
 | MCP 接入与指引 | `mcp.ts`、`mcp-tools.ts`、`shared/integration.ts`、`web/connect.*` | 本机 stdio；macOS 业务由共享后台执行，ChatGPT 云端远程 MCP 尚未提供 |
+| WebMCP access | `shared/webmcp-tools.ts`, `studio/src/motion/OpenMotionAgentTools.tsx` | Page-scoped public domain tools reuse the existing HTTP authority; editor `studio_*` tools and ordinary MCP remain independent |
 | Native template recommendation cards | `shared/mcp-template-recommendations.ts`, `mcp-ui/template-recommendations/`, `mcp.ts` | Optional connection-local presentation extension; fixed three builtin MP4s, immutable resources and existing Agent creation workflow. No project state, HTTP domain API, renderer or online catalog changes. |
 | Codex 安装 | `install.sh`、`scripts/install-motion.command` | 远端源码下载、依赖安装与编辑器构建、本地插件注册和 MCP 握手；需预装 Git、Node/npm 与支持插件的 Codex CLI，保留安装目录，遇到已有目录停止；the source installation entry is available on main |
 | Template discovery and reuse | `prism-templates.ts`, `shared/repository-template-catalog.ts`, `shared/catalog.ts`, `studio/src/motion/TemplateLibraryDialog.tsx`, `web/template-gallery.*` | One reader supplies repository-backed Studio and MCP, with a configured CMS source for distributions; exact IDs are retained |
@@ -230,6 +233,8 @@ flowchart LR
   Studio --> Session[Internal session and artifact ownership]
   User --> Host[Codex / Claude Code / DeepSeek Harness]
   Host --> MCP[本机 stdio MCP]
+  Host --> WebMCP[Studio page WebMCP tools]
+  WebMCP --> API
   Studio --> Hub[Template library]
   Hub --> Catalog[模板 / 封面 / 原帖热度快照]
   Hub --> Guide[短指令与参数化指引]

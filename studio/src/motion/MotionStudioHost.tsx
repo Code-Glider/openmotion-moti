@@ -15,6 +15,7 @@ import { usePlayerStore } from '../player/store/playerStore';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { WorkspaceProject } from './WorkspaceProject';
 import { trackMotion } from './tracking';
+import { OpenMotionAgentTools } from './OpenMotionAgentTools';
 
 export function MotionEditorFrame({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -96,5 +97,5 @@ const host: StudioHost = {
 };
 
 export function MotionStudioHost({ children }: { children: ReactNode }) {
-  return <I18nProvider><MotionHistoryProvider><StudioHostContext.Provider value={host}><StudioErrorBoundary>{children}</StudioErrorBoundary></StudioHostContext.Provider></MotionHistoryProvider></I18nProvider>;
+  return <I18nProvider><MotionHistoryProvider><StudioHostContext.Provider value={host}><StudioErrorBoundary><OpenMotionAgentTools />{children}</StudioErrorBoundary></StudioHostContext.Provider></MotionHistoryProvider></I18nProvider>;
 }
