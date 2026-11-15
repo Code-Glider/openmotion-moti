@@ -1,6 +1,7 @@
 import { MediaDurationBadge } from "./MediaDurationBadge";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";
+import { MusicNoteIcon } from "../../../../packages/design-system/react/MusicNoteIcon";
 import { useI18n } from "../../i18n/I18n";
 /**
  * AssetCard and FontRow — visual asset tile / row components for the Assets panel.
@@ -214,7 +215,7 @@ export function AssetCard({
           )}
           {audioOnly && (
             <div className="flex h-full w-full items-center justify-center bg-[var(--motion-audio-cover-surface)] text-[var(--motion-audio-preview-ink)]" data-audio-cover role="img" aria-label={t("Audio")}>
-              <RemixIcon name="music-2-fill" className="h-auto w-1/5" />
+              <MusicNoteIcon className="h-auto w-1/5" />
             </div>
           )}
           {isVideo && !audioOnly && (
