@@ -44,7 +44,7 @@ OpenMotion 是 **首个全栈 Agentic 视频生成器**。上传参考视频或�
 
 ### 从 ChatGPT 插件市场安装
 
-从零创作动效视频、复刻参考视频，或使用模板开始创作。
+**一键安装，无需手动配置。** 安装后，在对话中即可从零创作动效视频、复刻参考视频，或使用模板开始创作。
 
 **[在 ChatGPT 中安装 OpenMotion →](https://chatgpt.com/plugins/plugins_6a742d13e88481919b42002864b1bb26)**
 
