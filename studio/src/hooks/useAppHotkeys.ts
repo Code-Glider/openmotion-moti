@@ -229,6 +229,7 @@ export function useAppHotkeys({
   // ── Keydown dispatch ──
 
   const handleAppKeyDown = useCallback((event: KeyboardEvent) => {
+    if (document.querySelector('[data-editor-initializing="true"]')) return;
     const cb = cbRef.current;
     const key = event.key.toLowerCase();
     if (dispatchLinkShortcut(event, cb)) return;

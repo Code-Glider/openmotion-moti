@@ -67,6 +67,8 @@ import { preloadFontLists } from "./components/editor/propertyPanelFont";
 const getTimelineSelectionSet = () => usePlayerStore.getState().selectedElementIds;
 
 export interface StudioAppProps {
+  /** A project whose native context has already been prepared by the workspace. */
+  resolvedProjectId?: string;
   /** Clicks still select and report; the preview cannot move, edit or delete anything. */
   readOnlyPreview?: boolean;
   /** Short text shown on disabled hand-edit controls while `readOnlyPreview` is set. */
@@ -74,11 +76,11 @@ export interface StudioAppProps {
 }
 
 // fallow-ignore-next-line complexity
-export function StudioApp({ readOnlyPreview = false, readOnlyPreviewReason }: StudioAppProps = {}) {
+export function StudioApp({ readOnlyPreview = false, readOnlyPreviewReason, resolvedProjectId }: StudioAppProps = {}) {
   const mvpEditor = useStudioHost()?.mvpEditor ?? false;
   const AppFrame = useStudioHost()?.AppFrame ?? Fragment;
   const EditorFrame = useStudioHost()?.EditorFrame ?? Fragment;
-  const { projectId, resolving, waitingForServer } = useServerConnection();
+  const { projectId, resolving, waitingForServer } = useServerConnection(resolvedProjectId);
   useEffect(() => {
     if (!resolving && !waitingForServer && projectId) preloadFontLists();
   }, [projectId, resolving, waitingForServer]);
