@@ -56,7 +56,7 @@ Follow [rebuild](references/rebuild.md) for understanding the video, choosing an
 
 Import real media with `openmotion_import_assets` and use the returned paths; save text files (HTML, CSS, JS, SVG, JSON) with `openmotion_edit_project` using the latest `expectedRevision` and `expectedVersionId`. Re-read the project after a conflict instead of replaying an old batch.
 
-Before grouping reference regions into materials, account for their defining temporal changes, including internal movement within stationary boundaries. Follow the reconstruction reference to preserve those changes in source controls and check their coverage in the actual output.
+Before grouping reference regions into materials, inspect each proposed material region through time and inventory its independently changing contents, including small changes within stationary boundaries. Follow the reconstruction reference to connect those changes to source controls and check each in the actual output.
 
 When the reference is the user's own finished film and the request changes only a few details (a year, a line of copy, a logo) while everything else stays, the project may keep the original video as its base layer: import it, cover only the changed areas with clean patches and set the new text or logo as editable native elements that follow the original's timing and motion. Check that each patch leaves no smudge or seam against its surroundings. This is still the editor project and delivery below; never deliver an MP4 edited outside the project. Otherwise, placing the whole original video on the timeline is not a recreation, and an unrelated built-in template is not a substitute.
 

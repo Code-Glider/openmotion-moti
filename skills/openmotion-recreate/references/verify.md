@@ -22,6 +22,8 @@ Use the [unit's timed observations](rebuild.md#turn-observations-into-driving-da
 
 Check coverage against the defining changes observed in the reference. Include internal content movement within fixed boundaries, independently moving parts and stationary anchors wherever present. Compare direction, travel, cadence and hold intervals for each. For breakup or assembly, follow recognizable regions through release, travel and disappearance, including the handoff from intact material. Record a missing local motion or incorrect handoff as failed and repair its source control before calling the passage checked.
 
+Read back the material-region inventory from reconstruction. Give every independently changing region its own reference/output comparison and source-control result, including small moving contents inside large background materials. Revisit regions missing from this record before accepting coverage.
+
 Check these features in the complete composite. Later materials and paint operations can hide an otherwise animated control. For trackable continuous local movement, use the optional [visible-motion helper](rebuild.md#validate-and-repair-the-local-implementation) to compare feature travel, then inspect its point pairs and sequence. Include brief flashes and overlays in the unit review so whole-frame averages and a sparse overview cannot conceal missing events.
 
 For camera travel, compare stable landmarks and newly exposed boundaries through the shot. For split materials, also inspect the persistent background and overlapping objects after recomposition. A corrected moving subject still needs its surroundings and perspective to match at those times.
