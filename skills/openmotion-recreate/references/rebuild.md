@@ -8,6 +8,8 @@ For a link, obtain a local decodable copy using the host's available capabilitie
 
 Read the reference as a whole before choosing an implementation. Inspect representative frames and consecutive frames around every cut, entrance, exit and transition. Explain what persists, enters, changes, holds and exits; keep an object's identity across cuts when it is the same object. Learn from observable behaviour rather than guessing the original author's code. A one-per-second overview is for navigation only and is never evidence of motion: it drops 1–3 frame differences, entry directions, blur and flashes at cuts.
 
+For fast montages, inventory distinct shots and brief events from consecutive decoded-frame chunks through the passage before assigning units. The CLI's `measure frames --range` and `--events` can thin long windows according to `--max`. Check `every_nth_frame` for range output and the `thinned` notices on event strips. Shorten the windows or raise `--max` until the frames needed for this inventory are consecutive. Keep each brief shot's visible peak and entry/exit frames in its local comparison.
+
 When an interaction changes the scene, identify both the actor and the affected content. Inspect the state before contact, the response during the action and the settled result. For a pointer dragging a module, reconstruct the module following the pointer, neighboring modules making room and the final ordering; animating the pointer alone or sliding one module over a stationary neighbor does not reproduce the interaction. Keep these coupled changes together in the editable timing model.
 
 If decoding, frame extraction or seeking fails, recover the media tools using the runtime paths in the Skill's project step, or use another available method that exposes the required frames. Confirm the actual timestamps and inspect the resulting images; a successful command or a screenshot of an unverified playback position does not establish coverage. Keep any unresolved interval or detail explicitly unverified, and continue work that does not depend on it. Report a concrete blocker if the missing evidence cannot be recovered; do not silently replace it with an approximation.
@@ -21,7 +23,7 @@ Run `node <hyperframesCli> measure …` with the `hyperframesCli` path from `ope
 | Canvas, fps, duration | `measure probe <ref>` | Root `data-width`, `data-height`, `data-fps`, `data-duration`. Keep rational rates such as `30000/1001`; use the picture duration, not a longer audio container |
 | Hard cuts | `measure cuts <ref>` | First draft of the segmentation; verify each candidate against adjacent source frames |
 | What changes when | `measure events <ref> --map --out <dir>` | Appearance, disappearance, holds, sound onsets and beats |
-| Frame by frame | `measure frames <ref> --range a,b --roi x,y,w,h --max 16 --out <dir>` | Entry direction and style, on-screen change, exit, edge treatment |
+| Frame samples | `measure frames <ref> --range a,b --roi x,y,w,h --max 16 --out <dir>` | Entry direction and style, on-screen change, exit, edge treatment |
 | Motion curve | `measure curve <ref> --start a --end b --roi x,y,w,h` | Start, end, duration, overshoot and the closest GSAP ease; a starting estimate |
 | Text size | `measure ink <ref> --at t --roi x,y,w,h` | Ink width and height to match type scale |
 | Background and colour | `measure look <ref> --at t --grid 8x6` | Gradient direction and light-to-dark falloff |
