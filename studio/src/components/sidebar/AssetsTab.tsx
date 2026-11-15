@@ -22,6 +22,7 @@ import {
 import { AudioRow } from "./AudioRow";
 import { AssetCard, FontRow } from "./AssetCard";
 import { studioApiFetch } from "../../utils/studioApiFetch";
+import { useAudioOnlyAssets } from "./useAudioOnlyAssets";
 
 interface AssetsTabProps {
   projectId: string;
@@ -257,6 +258,7 @@ export const AssetsTab = memo(function AssetsTab({
     () => assets.filter((a) => MEDIA_EXT.test(a) || FONT_EXT.test(a)),
     [assets],
   );
+  const audioOnlyAssets = useAudioOnlyAssets(projectId, allMediaAssets);
 
   const mediaAssets = useMemo(() => {
     const all = allMediaAssets;
@@ -272,7 +274,7 @@ export const AssetsTab = memo(function AssetsTab({
   const categorized = useMemo(() => {
     const groups: Record<MediaCategory, string[]> = { audio: [], images: [], video: [], fonts: [] };
     for (const a of mediaAssets) {
-      const cat = getCategory(a);
+      const cat = audioOnlyAssets.has(a) ? "audio" : getCategory(a);
       if (cat) groups[cat].push(a);
     }
     // Sort: used assets first within each category
@@ -284,7 +286,7 @@ export const AssetsTab = memo(function AssetsTab({
       });
     }
     return groups;
-  }, [mediaAssets, usedPaths]);
+  }, [mediaAssets, usedPaths, audioOnlyAssets]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: mediaAssets.length };
     for (const cat of FILTER_ORDER) c[cat] = categorized[cat].length;

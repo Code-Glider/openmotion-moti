@@ -1,7 +1,6 @@
 import { MediaDurationBadge } from "./MediaDurationBadge";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";
-import { MusicNoteIcon } from "../../../../packages/design-system/react/MusicNoteIcon";
 import { useI18n } from "../../i18n/I18n";
 /**
  * AssetCard and FontRow — visual asset tile / row components for the Assets panel.
@@ -20,7 +19,6 @@ import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
 import { findClipForAsset, isPointerClick } from "../../utils/assetClickBehavior";
 import { basename, ext, type CopyFeedback } from "./assetHelpers";
 import { resolveMediaPreviewUrl } from "../../player/components/thumbnailUtils";
-import { probeMediaUrl, type MediaProbeResult } from "../../player/lib/mediaProbe";
 
 /** Drag payload writer shared by the asset tile and the font row: copy effect
  *  plus the timeline-asset MIME and a plain-text path fallback. */
@@ -57,18 +55,57 @@ function openAssetContextMenu(
   setContextMenu({ x: e.clientX, y: e.clientY });
 }
 
-/** Reuse the bounded metadata cache for both duration and audio-only containers. */
-function useAssetMediaMetadata(src: string, enabled: boolean): MediaProbeResult | null {
-  const [probe, setProbe] = useState<{ src: string; result: MediaProbeResult | null } | null>(null);
+/**
+ * Lazily probe a video/audio URL for its duration via a hidden HTMLVideoElement
+ * (`preload="metadata"`). The manifest only covers ~/.media assets, so project
+ * assets in assets/ have no manifest entry — this fills the gap.
+ * Returns `undefined` until the probe completes; `null` if it failed.
+ */
+function useProbedDuration(src: string, skip: boolean): number | null | undefined {
+  const [duration, setDuration] = useState<number | null | undefined>(undefined);
   useEffect(() => {
-    if (!enabled) return;
+    if (skip) return;
     let cancelled = false;
-    void probeMediaUrl(src).then(result => {
-      if (!cancelled) setProbe({ src, result });
-    });
-    return () => { cancelled = true; };
-  }, [src, enabled]);
-  return enabled && probe?.src === src ? probe.result : null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    // The in-flight probe element, so unmount cleanup can abort its network
+    // fetch (clearing `src`) instead of leaving it to finish in the background.
+    let liveVid: HTMLVideoElement | null = null;
+
+    function teardown(vid: HTMLVideoElement) {
+      vid.onloadedmetadata = null;
+      vid.onerror = null;
+      vid.src = "";
+    }
+
+    function probe(attempt: number) {
+      if (cancelled) return;
+      const vid = document.createElement("video");
+      liveVid = vid;
+      vid.preload = "metadata";
+      vid.muted = true;
+      vid.onloadedmetadata = () => {
+        const d = Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : null;
+        teardown(vid);
+        if (!cancelled) setDuration(d);
+      };
+      vid.onerror = () => {
+        teardown(vid);
+        if (!cancelled) {
+          if (attempt < 1) retryTimer = setTimeout(() => probe(attempt + 1), 50);
+          else setDuration(null);
+        }
+      };
+      vid.src = src;
+    }
+
+    probe(0);
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (liveVid) teardown(liveVid);
+    };
+  }, [src, skip]);
+  return duration;
 }
 
 export interface AssetCardProps {
@@ -117,9 +154,8 @@ export function AssetCard({
   const serveUrl = resolveMediaPreviewUrl(asset, projectId);
   const isVideo = VIDEO_EXT.test(asset);
   const isImage = IMAGE_EXT.test(asset);
-  const metadata = useAssetMediaMetadata(serveUrl, isVideo);
-  const audioOnly = !!metadata?.hasAudio && !metadata.hasVideo;
-  const resolvedDuration = duration ?? metadata?.duration;
+  const probedDuration = useProbedDuration(serveUrl, !isVideo || duration != null);
+  const resolvedDuration = duration ?? probedDuration ?? undefined;
 
   // Drag-threshold click gate: track pointer-down position so we can ignore
   // pointer-up events that followed a real drag gesture.
@@ -213,14 +249,9 @@ export function AssetCard({
               onError={() => setImgError(true)}
             />
           )}
-          {audioOnly && (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--motion-audio-cover-surface)] text-[var(--motion-audio-cover-ink)]" data-audio-cover role="img" aria-label={t("Audio")}>
-              <MusicNoteIcon className="h-auto w-1/5" />
-            </div>
-          )}
-          {isVideo && !audioOnly && (
+          {isVideo && (
             <>
-              <VideoFrameThumbnail key={serveUrl} src={serveUrl} />
+              <VideoFrameThumbnail src={serveUrl} />
               {hovered && (
                 <video
                   src={serveUrl}
