@@ -41,6 +41,13 @@ import {
   type StudioInspectInput,
   type StudioInspectResult,
 } from "./tools/inspectTools";
+// Retention is deliberate, not an oversight: this pull request stops REGISTERING
+// the seven atomic editor write tools while keeping their implementations, so
+// Studio's manual editing handlers, the shared write coordinator and the receipt
+// lens stay in one maintained place and a future registration needs no new
+// host wiring. The list below registers observation and navigation only, and the
+// retained path is exercised by `retainedEditorWritePath.test.ts`. See
+// `docs/mcp-phase1-tools.md` ("WebMCP access from Studio").
 import type { ContentToolDeps } from "./tools/contentTools";
 import type { TransformToolDeps } from "./tools/transformTools";
 import type { AnimationToolDeps } from "./tools/animationTools";
@@ -57,6 +64,15 @@ function reportRegistration(report: ToolRegistrationReport, native: boolean): vo
   }
 }
 
+/**
+ * The five registered tools read `getSnapshot`, the selection, the playhead and
+ * the frame probe. The write dep groups (`ContentToolDeps`,
+ * `TransformToolDeps`, `AnimationToolDeps`) are retained on purpose: they keep
+ * the retained write modules reachable from the host, and their handlers are
+ * still wired in `StudioAgentTools.tsx`. Trimming them would delete the entry
+ * points this pull request deliberately kept while leaving the modules and the
+ * receipt lens orphaned instead.
+ */
 export interface StudioAgentToolsDeps
   extends
     SelectionToolDeps,
@@ -72,6 +88,9 @@ export interface StudioAgentToolsDeps
 /**
  * Build the observation and navigation tools once.
  * Video content changes go through version-checked openmotion_edit_project.
+ *
+ * The atomic editor write tools are intentionally absent from this list while
+ * their modules stay maintained; see the retention note on the imports above.
  *
  * Every `execute` reads `depsRef.current` at CALL time rather than closing over
  * a snapshot, which is what lets the list be built once and still see live

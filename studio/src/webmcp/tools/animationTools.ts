@@ -1,6 +1,10 @@
 /**
  * Studio animation tools: author motion.
  *
+ * Retained but not registered as page tools in this surface; see the retention
+ * note in `../useStudioAgentTools.ts`. The four functions stay callable and
+ * tested.
+ *
  * Add, update, and delete await the shared GSAP commit pipeline. Its promise is
  * the single settlement boundary for persistence and live-preview sync, so a
  * successful tool response never races ahead of the pixels the user sees.

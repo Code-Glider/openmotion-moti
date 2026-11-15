@@ -2,9 +2,11 @@
  * `openmotion_studio_select` and `openmotion_studio_seek`: pointing the human and the agent at the
  * same thing.
  *
- * Selection is shared human-visible state. Element writes do not infer their
- * target from it: they resolve an explicit source-safe handle per call. Keeping
- * these contracts separate means a human click cannot redirect an agent write.
+ * Selection is shared human-visible state. It is optional context, never a
+ * write target: content changes go through `openmotion_get_project` and
+ * `openmotion_edit_project`, which address source files and take no element
+ * handle. Keeping these contracts separate means a human click cannot redirect
+ * an agent write.
  */
 
 import type { DomEditSelection } from "../../components/editor/domEditingTypes";
@@ -146,9 +148,12 @@ export const STUDIO_SELECT_INPUT_SCHEMA = {
 export const STUDIO_SELECT_DESCRIPTION = [
   "Select an element in HyperFrames Studio, exactly as clicking it would:",
   "the human sees the same selection box and inspector.",
-  "Call this before the first write to a target so the human sees the agent's intent.",
-  "Takes a handle from openmotion_studio_look. Selection is visual context for the human;",
-  "element writes take their own explicit handle and do not require this tool first.",
+  "Takes a handle from openmotion_studio_look. Selection is optional visual context",
+  "for the human and for openmotion_studio_inspect, which reads the current selection",
+  "when no handle is given.",
+  "Content changes use openmotion_get_project and openmotion_edit_project instead:",
+  "they write source files with revision checks and take no element handle,",
+  "so selecting first is never required before an edit.",
   "Returns `ok: true` with the resulting selection, or `ok: false` with `kind`, `reason` and a `hint`.",
 ].join(" ");
 

@@ -1,5 +1,8 @@
 /**
- * `openmotion_studio_set_text` and `openmotion_studio_set_style`: the first tools that change the file.
+ * `openmotion_studio_set_text` and `openmotion_studio_set_style`: the tools that change the file.
+ *
+ * Retained but not registered as page tools in this surface; see the retention
+ * note in `../useStudioAgentTools.ts`. Both functions stay callable and tested.
  *
  * The explicit source-safe handle is resolved to one selection per invocation.
  * That captured selection is passed into Studio's existing commit actor; visible

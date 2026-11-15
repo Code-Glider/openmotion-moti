@@ -1,6 +1,9 @@
 /**
  * `openmotion_studio_transform`: move, resize and rotate, as a drag would.
  *
+ * Retained but not registered as page tools in this surface; see the retention
+ * note in `../useStudioAgentTools.ts`. The function stays callable and tested.
+ *
  * This tool reads the element's box back after every write and reports what
  * ACTUALLY changed. That is not belt-and-braces, it is the only thing standing
  * between an agent and a silent lie, because two of the three handlers can do

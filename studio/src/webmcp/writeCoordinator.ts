@@ -350,6 +350,17 @@ async function prepareWriteSelection<T extends object>(
   return { ok: true, selection };
 }
 
+/**
+ * The coordinator behind the retained editor write modules.
+ *
+ * Its only callers are `contentTools`, `transformTools` and `animationTools`,
+ * which this pull request keeps maintained but no longer registers as page
+ * tools. `studioEditLifecycle.begin`/`finish` live here, so `TopologyLens`
+ * receipts currently have no page-tool trigger and the mounted lens stays
+ * hidden; it starts rendering again as soon as a write tool is registered, with
+ * no changes to this path. `retainedEditorWritePath.test.ts` keeps that
+ * reachability honest.
+ */
 export async function runTargetedWrite<T extends object>(
   deps: TargetedWriteDeps,
   input: TargetedWriteInput<T>,
