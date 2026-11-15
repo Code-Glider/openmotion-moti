@@ -3,6 +3,8 @@ import { isKnownMessage, sourceMessage } from '../../i18n/messages';
 /** Toasts show recognized causes, never raw diagnostics or a details affordance. */
 export function toastErrorMessage(raw: string): string {
   const message = sourceMessage(raw);
+  if (/^Provider HTTP (401|403)\b/.test(message)) return 'Provider rejected the API key or permissions.';
+  if (/^Provider HTTP 429\b/.test(message)) return 'Provider rate limit reached. Try again later.';
   if (/^VERSION_NOT_RESTORABLE:/.test(message)) return 'Historical files are unavailable. Version not restored.';
   if (/ENOENT|no such file|file not found|文件.*(?:丢失|不存在)|找不到.*文件/i.test(message)) {
     return 'Required file not found.';

@@ -2,7 +2,7 @@
    their own presentation. Scope by document so preview iframes are unaffected. */
 
 :root[data-motion-ui][data-motion-studio] :is(button, [role="button"], [role="tab"], [role="combobox"], [role="option"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], .motion-community-link):not(:where(.connection-dialog *, .connect-preview-dialog *, .motion-library *, [data-motion-catalog] *, .timeline-clip, .timeline-clip *, .dv-tabs-container:not(:has(> .dv-tab ~ .dv-tab)) > .dv-tab:has([data-preview-heading]))) {
-  &:not(:disabled):not([aria-disabled="true"]):not([data-disabled]):not(.hf-od-primary, .motion-button-primary, .bg-danger):is(:hover, :focus-visible, [data-highlighted]) {
+  &:not(:disabled):not([aria-disabled="true"]):not([data-disabled]):not(.hf-od-primary, .motion-button-primary, .bg-danger, .om-nav-item, .om-button[data-primary]):is(:hover, :focus-visible, [data-highlighted]) {
     background-color: var(--motion-hover);
     color: var(--motion-strong);
   }
@@ -25,6 +25,9 @@
     filter: none;
 
     & :is(span, svg) { color: inherit; opacity: 1; }
+
+    /* A disabled switch still needs a visible track around its thumb. */
+    &.om-switch { background-color: var(--motion-border); }
   }
 
   &:is(.hf-od-primary, .motion-button-primary):is(:disabled, [aria-disabled="true"], [data-disabled]) {

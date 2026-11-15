@@ -28,7 +28,7 @@ test('public media tool reads guides, generates fal media once and binds job que
   await gateway.configureProvider('fal', { apiKey: 'test-fal-private' });
   assert.equal((await stat(path.join(gateway.root, 'secrets.json'))).mode & 0o777, 0o600);
   const inspect = await api.call('openmotion_media_use', { action: 'inspect' });
-  assert.deepEqual(inspect.providers.map((p: any) => [p.id, p.enabled]), [['atlascloud', false], ['fal', true], ['opendesign', false], ['wavespeed', false]]);
+  assert.deepEqual(inspect.providers.map((p: any) => [p.id, p.enabled]), [['atlascloud', false], ['fal', true], ['opendesign', false], ['wavespeed', false], ['account', false]]);
   assert.doesNotMatch(JSON.stringify(inspect), /test-fal-private/);
   const reference = await api.call('openmotion_media_use', { action: 'reference', provider: 'fal' });
   assert.match(reference.content, /https:\/\/fal.ai\/docs\//);

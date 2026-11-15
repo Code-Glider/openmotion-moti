@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { designTokens } from './design-tokens.ts';
+import { providerIcons, providerIconFiles } from '../packages/design-system/provider-icons.js';
+import { publicDesignFiles, designSystemRuntimeFiles } from '../packages/design-system/index.js';
 
 const root = new URL('../', import.meta.url);
 const luminance = (hex: string) => {
@@ -13,6 +15,20 @@ const luminance = (hex: string) => {
 };
 export async function checkDesign() {
   const tokens = await designTokens(true);
+  const presets = JSON.parse(await readFile(new URL('shared/provider-presets.json', root), 'utf8')) as { id: string }[];
+  for (const id of [...presets.map(provider => provider.id), 'account', 'opendesign', 'codex', 'fal', 'atlascloud', 'wavespeed']) {
+    assert.ok(Object.hasOwn(providerIcons, id), `Built-in provider ${id} needs an explicit brand or generic icon.`);
+  }
+  for (const file of providerIconFiles) {
+    assert.ok(publicDesignFiles.includes(file) && designSystemRuntimeFiles.includes(file), `${file} must be served and distributed.`);
+    const svg = await readFile(new URL('packages/design-system/' + file, root), 'utf8');
+    assert.match(svg, /^<svg\b/);
+    assert.doesNotMatch(svg, /<script|<foreignObject|\son[a-z]+\s*=|(?:href|xlink:href)=["'](?:https?:|\/\/)/i, `${file} must remain self-contained static artwork.`);
+  }
+  for (const license of ['providers/lobe-icons-LICENSE.txt', 'providers/cherry-ui-LICENSE.txt']) {
+    assert.ok(designSystemRuntimeFiles.includes(license));
+    assert.match(await readFile(new URL('packages/design-system/' + license, root), 'utf8'), /MIT License/);
+  }
   assert.deepEqual(Object.keys(tokens.themes.light).sort(), Object.keys(tokens.themes.dark).sort(), 'Both themes need the same semantic colors.');
   const coreAliases = { 'color-surface': 'panel', 'color-text-body': 'text', 'font-sans': 'font-sans', 'radius-button': 'radius-sm', 'color-template-controls-bg': 'gallery-control', 'color-template-text': 'strong' };
   for (const [alias, role] of Object.entries(coreAliases)) assert.equal(tokens.studio[alias], `var(--motion-${role})`, `${alias} must inherit the shared theme`);
@@ -24,7 +40,7 @@ export async function checkDesign() {
       .filter(file => file.endsWith('.css')).map(file => directory + file)
   ))).flat();
   const sharedNames = new Set([...names, ...Object.keys(tokens.studio).map(name => '--' + name)]);
-  for (const file of [...consumerFiles, 'packages/design-system/base.css', 'packages/design-system/material.css', 'packages/design-system/controls.css', 'packages/design-system/catalog.css', 'packages/design-system/loading.css', 'packages/design-system/studio/adapter.css', 'packages/design-system/studio/control-states.css', 'packages/design-system/studio/feedback.css']) {
+  for (const file of [...consumerFiles, 'packages/design-system/base.css', 'packages/design-system/material.css', 'packages/design-system/controls.css', 'packages/design-system/catalog.css', 'packages/design-system/loading.css', 'packages/design-system/studio/application.css', 'packages/design-system/studio/adapter.css', 'packages/design-system/studio/control-states.css', 'packages/design-system/studio/feedback.css']) {
     const css = await readFile(new URL(file, root), 'utf8');
     assert.doesNotMatch(css, /#[\da-f]{3,8}\b|\brgba?\(|\bhsla?\(/i, `${file}: UI colors belong in tokens.json.`);
     for (const match of css.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `${file}: undefined ${match[1]}`);
@@ -38,7 +54,7 @@ export async function checkDesign() {
     for (const match of value.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `Studio token ${name}: undefined ${match[1]}`);
   }
   for (const [theme, values] of Object.entries(tokens.themes) as [string, Record<string, string>][]) {
-    for (const [ink, surface] of [['text', 'panel'], ['text', 'inset'], ['muted', 'panel'], ['dim', 'panel'], ['dim', 'bg'], ['accent', 'accent-soft'], ['on-action', 'action'], ['danger', 'danger-soft'], ['warning', 'warning-soft'], ['strong', 'highlight']]) {
+    for (const [ink, surface] of [['text', 'shell'], ['text', 'workspace'], ['text', 'panel'], ['text', 'inset'], ['muted', 'panel'], ['dim', 'panel'], ['dim', 'bg'], ['accent', 'accent-soft'], ['on-action', 'action'], ['danger', 'danger-soft'], ['warning', 'warning-soft'], ['strong', 'highlight']]) {
       const a = luminance(values[ink]), b = luminance(values[surface]);
       assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, `${theme}: ${ink} on ${surface} needs 4.5:1 contrast.`);
     }

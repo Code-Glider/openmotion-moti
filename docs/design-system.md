@@ -29,7 +29,9 @@ The current MVP opens directly into the editor. The home/session/browser rules b
 
 Functional editor icons use Remix Icon 4.9.1, matching the [reference icon catalog](https://open-design-system-leon.leon-wcl.chatgpt.site/#/icons). Original vector paths are bundled in `packages/design-system/icons.svg`, with the upstream license and notice beside it. `packages/design-system/react/RemixIcons.tsx` provides the shared React interface and legacy-name mappings, with `studio/src/icons/RemixIcons.tsx` as a forwarding entry; `MotionIcon` uses the same vectors. React consumers inline the package-owned glyphs into their SVGs, with an explicit 24×24 viewBox and currentColor, so native-dialog controls remain visible when a sprite request would fail or the runtime disconnects. Static HTML can continue using the shared sprite URL. Brand avatars use the paired asset-logo background/ink tokens, providing a stable light backing for transparent source logos in either theme. Controls default to line icons; play/pause and explicit filled states retain distinct glyphs. Brand artwork and timeline drawing geometry remain separate. MVP side-panel tabs and the preview title use text without icons. A tab strip with only one panel shows a plain heading without a selected underline. Selected tabs use the strong neutral text token, semibold weight and a 2px neutral underline. Enabled toolbar toggles use the same strong text on an inset neutral background; inactive and disabled controls retain separate contrast levels.
 
-The editor header, project drawer and template library share `packages/design-system/react/BrandLogo.tsx`, using the maintained `brand/openmotion-logo.svg` lockup: the unmodified upstream OpenDesign symbol with the OpenMotion name. The shared mask recipe follows the selected application theme through currentColor. Narrow editor headers show the same symbol without the wordmark. Original upstream assets and attribution remain in the package.
+The application header and template library share `packages/design-system/react/BrandLogo.tsx`, using the maintained `brand/openmotion-logo.svg` lockup: the unmodified upstream OpenDesign symbol with the OpenMotion name. The shared mask recipe follows the selected application theme through currentColor. Narrow editor headers show the same symbol without the wordmark. Original upstream assets and attribution remain in the package.
+
+Provider settings and model choices use locally bundled brand icons from `provider-icons.js`, with source revisions and licenses in [the provider notice](../packages/design-system/providers/NOTICE.md). Brand artwork retains its colors on a shared neutral tile in both themes; custom connections use initials and unverified brands use an explicit generic symbol.
 
 | 用途 | 浅色 | 深色 |
 | --- | --- | --- |
@@ -43,15 +45,15 @@ The editor header, project drawer and template library share `packages/design-sy
 | 表单与键盘焦点 | `#353535` | `#fafafa` |
 | 主操作 | `#202020` | `#fafafa` |
 
-品牌绿为 `#87ea5c`。绿色用于选中辅助、标题高亮与创作辅助；主要操作和表单焦点采用中性色。工作区以 1px 分隔线划分，界面背景保持平整。
+品牌绿为 `#87ea5c`。绿色用于选中辅助、标题高亮与创作辅助；主要操作和表单焦点采用中性色。The application header and left control rail share the `shell` background. The central workspace uses the `workspace` surface with a 4px outer inset and 10px corners; internal panel dividers remain local separators. Chrome icons use the muted `chrome-icon` role; `chrome-hover` and `chrome-active` provide distinct inset navigation states without raised shadows. Navigation width and opacity transition over 200ms while the editor and sidebar content stay mounted. Collapsed navigation is immediately inert and hidden from assistive technology; reduced motion disables transitions.
 
 Albert Sans / 苹方统一用于界面与引导标题。时间码、编号与数值保留 Motion 已有的 IBM Plex Mono，不复制 OD 的 JiduMono 字体资产。本地字体及 SIL OFL 许可保存在 `packages/design-system/fonts/`。
 
 - 正文 14px、控件 13px、说明 12px、密集标注至少 11px；标题 16 / 20 / 24 / 32px。
 - 常用间距 4 / 8 / 12 / 16 / 24 / 32px；圆角沿用 OD 的 2 / 4 / 8 / 12 / 16px 梯度；常规控件 4px、卡片 8px、弹窗 12px。
-- 标准控件 36px、紧凑控件 28px、图标按钮 32px；编辑器单行顶栏 52px、面板标签栏 34px。
+- Standard controls are 36px, compact controls 28px and icon buttons 32px. The application header is 40px, with a 44px control rail and 18px rail icons; the nested MVP editor toolbar is 32px; panel headings retain their existing measured geometry.
 - 常规反馈 150 / 200ms，点阵加载 1043ms；减少动态效果偏好停用循环动画。
-- 编辑器沿用 Studio 原生主题开关与 `hf-studio-ui-preferences`；设计系统独立目录仍可使用 `theme.js` 的系统外观模式。
+- Studio saves Light, Dark or System in `hf-studio-ui-preferences`. System resolves before the first paint and follows live device changes; embedded editors continue to follow the host. Appearance cards preview the actual light/dark tokens, including the split System sample. Startup and crash recovery share a centered, bounded surface, rounded error details and neutral actions; copy/export results use floating Toasts.
 
 ## 首页与全局导航
 

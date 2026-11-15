@@ -253,62 +253,30 @@ button, input, select, textarea { font-family: inherit; }
   box-shadow: var(--motion-shadow-sm);
 }
 
-/* Equal side columns center the title; narrow hosts preserve the controls before the title. */
-.motion-studio-header.motion-studio-header-centered { padding-block: 11.5px; display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, 1fr) minmax(max-content, 1fr); gap: 12px; }
-.motion-studio-header.motion-studio-header-centered > div { min-width: 0; width: auto; }
-.motion-studio-header.motion-studio-header-centered > div:last-child { justify-self: end; flex-wrap: nowrap; gap: 16px; }
-.motion-studio-header-centered .motion-header-history-actions,
-.motion-studio-header-centered .motion-header-history-actions > .motion-history-actions { gap: 4px; }
-.motion-studio-header-centered .motion-header-history-actions { position: relative; }
-.motion-studio-header-centered .motion-header-history-actions::after { content: ""; position: absolute; top: 50%; right: -8px; width: 1px; height: 16px; transform: translateY(-50%); background: var(--motion-border); pointer-events: none; }
-.motion-studio-header-centered .motion-workspace-actions { padding-right: 0; margin-right: 0; border-right: 0; }
+/* Compact editor actions; application navigation lives above the project toolbar. */
+.motion-studio-header.motion-studio-header-compact { height: var(--motion-space-32); min-height: var(--motion-space-32); padding-block: var(--motion-space-2); display: flex; flex-wrap: nowrap; gap: var(--motion-space-12); }
+.motion-studio-header.motion-studio-header-compact > div { min-width: 0; width: auto; }
+.motion-studio-header.motion-studio-header-compact > div:last-child { flex-wrap: nowrap; gap: 16px; }
+.motion-studio-header-compact .motion-header-history-actions,
+.motion-studio-header-compact .motion-header-history-actions > .motion-history-actions { gap: 4px; }
+.motion-studio-header-compact .motion-header-history-actions { position: relative; }
+.motion-studio-header-compact .motion-header-history-actions::after { content: ""; position: absolute; top: 50%; right: -8px; width: 1px; height: 16px; transform: translateY(-50%); background: var(--motion-border); pointer-events: none; }
+.motion-studio-header-compact .motion-workspace-actions { padding-right: 0; margin-right: 0; border-right: 0; }
 .motion-community-link { flex-shrink: 0; }
-.motion-studio-header-centered .motion-community-link { margin-inline-end: -4px; }
 .motion-community-link img { display: block; }
 .motion-workspace-actions .motion-icon { color: var(--motion-strong); }
-.motion-header-brand { display: inline-flex; align-items: center; gap: 10px; }
-.motion-header-project .motion-project-control { justify-content: center; }
-/* Keep one input mounted with stable geometry before, during and after editing. */
-.motion-header-project .motion-project-name-input {
-  box-sizing: border-box;
-  width: min(320px, 100%);
-  min-width: 0;
-  height: 28px;
-  padding: 4px 8px;
-  border: 1px solid transparent;
-  border-radius: var(--motion-radius-sm);
-  background: transparent;
-  color: var(--motion-strong);
-  line-height: 18px;
-  text-align: center;
-  text-overflow: ellipsis;
-}
-:root[data-motion-ui] .motion-studio-header-centered :is(button, .motion-project-name-input) {
-  font-size: var(--motion-text-md);
-  line-height: 18px;
-}
-:root[data-motion-ui] .motion-project-name-input:is(:hover, :focus) {
-  border-color: var(--motion-border);
-  background: var(--motion-bg);
-  outline: none;
-  box-shadow: none;
-}
-.motion-header-project .motion-save-state { position: absolute; top: 100%; white-space: nowrap; }
-.motion-header-project .motion-project-control { position: relative; }
 /* Measure the editor host, including when it sits beside an open sidebar. */
 @container (max-width: 700px) {
-  .motion-studio-header.motion-studio-header-centered {
-    grid-template-columns: auto minmax(24px, 1fr) auto;
+  .motion-studio-header.motion-studio-header-compact {
     gap: 8px;
   }
-  .motion-studio-header-centered .motion-header-history-actions,
-  .motion-studio-header-centered .motion-template-label { display: none; }
-  .motion-studio-header.motion-studio-header-centered > div:first-child { gap: 6px; }
-  .motion-studio-header-centered .motion-workspace-actions .motion-button {
+  .motion-studio-header-compact .motion-header-history-actions,
+  .motion-studio-header-compact .motion-template-label { display: none; }
+  .motion-studio-header.motion-studio-header-compact > div:first-child { gap: 6px; }
+  .motion-studio-header-compact .motion-workspace-actions .motion-button {
     width: 28px;
     padding: 0;
   }
-  .motion-header-project .motion-project-name-input { padding-inline: 0; text-align: left; }
 }
 
 @container (max-width: 480px) {

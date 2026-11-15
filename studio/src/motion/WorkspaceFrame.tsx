@@ -1,13 +1,10 @@
-import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { FeedbackLayer } from "../components/FeedbackLayer";
-import { createContext, useContext, useState, useRef, useCallback, lazy, Suspense, type ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
-import { LanguageMenu } from '../i18n/LanguageMenu';
 import { ConnectionDialog } from './ConnectionDialog';
 import { MotionIcon } from './icons';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useWorkspace } from './useWorkspace';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Dialog } from '@base-ui/react/dialog';
 import { StudioToast } from '../components/StudioToast';
@@ -15,9 +12,11 @@ import { ErrorNotice } from '../components/ui/ErrorNotice';
 import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
+import { ApplicationHeader, ApplicationRail } from './ApplicationChrome';
+import type { SettingsSection } from './SettingsCenter';
+import { SettingsLoading } from './settingsPrimitives';
 
-const ModelSettings = lazy(() => import('./ModelSettings').then(module => ({ default: module.ModelSettings })));
-const PrivacySettings = lazy(() => import('./PrivacySettings').then(module => ({ default: module.PrivacySettings })));
+const SettingsCenter = lazy(() => import('./SettingsCenter').then(module => ({ default: module.SettingsCenter })));
 
 type WorkspaceChrome = {
   workspace: ReturnType<typeof useWorkspace>;
@@ -26,8 +25,12 @@ type WorkspaceChrome = {
   openLibrary: (trigger?: HTMLElement) => void;
   openConnections: () => void;
   openModelSettings: () => void;
+  openHome: () => void;
   toggleSidebar: () => void;
   sidebarOpen: boolean;
+  navigationCollapsed: boolean;
+  toggleNavigation: () => void;
+  settingsOpen?: boolean;
   registerEditor: (guard: EditorGuard | null) => void;
   beforeViewChange: () => Promise<void>;
 };
@@ -59,8 +62,50 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const [connectionSection, setConnectionSection] = useState<'setup' | 'templates'>(() => 'templates');
   const libraryTrigger = useRef<HTMLElement | null>(null);
   const [connectionsOpen, setConnectionsOpen] = useState(() => new URLSearchParams(location.search).get('templates') === '1');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
+  const [navigationCollapsed, setNavigationCollapsed] = useState(() => {
+    try { return localStorage.getItem('motion.workspace.navigation.v1') === 'collapsed'; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('motion.workspace.navigation.v1', navigationCollapsed ? 'collapsed' : 'expanded'); }
+    catch { /* Navigation remains usable when browser storage is unavailable. */ }
+  }, [navigationCollapsed]);
+  const toggleSidebar = useCallback(() => {
+    if (navigationCollapsed) { setNavigationCollapsed(false); setSidebarOpen(true); }
+    else setSidebarOpen(open => !open);
+  }, [navigationCollapsed]);
+  const [settings, setSettings] = useState<SettingsSection | null>(null);
+  const openSettings = useCallback((section: SettingsSection) => {
+    setSettings(section); if (narrow) setSidebarOpen(false);
+  }, [narrow]);
+  const homeRef = useRef<HTMLDivElement>(null);
+  const openHome = useCallback(() => {
+    setSettings(null);
+    setNavigationCollapsed(false);
+    setSidebarOpen(true);
+    // Returning home keeps the current editor mounted. The mobile drawer owns
+    // its focus; on desktop, move focus off the departing settings controls.
+    if (!narrow) requestAnimationFrame(() => homeRef.current?.querySelector<HTMLButtonElement>('.om-app-rail [aria-pressed="true"]')?.focus());
+  }, [narrow]);
+  useEffect(() => {
+    const open = () => openSettings('local');
+    window.addEventListener('motion:agents-open', open);
+    return () => window.removeEventListener('motion:agents-open', open);
+  }, [openSettings]);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 999px)');
+    const update = () => { setNarrow(query.matches); if (query.matches) setSidebarOpen(false); };
+    query.addEventListener('change', update); return () => query.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') { event.preventDefault(); openSettings('general'); }
+      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); setSettings(null); toggleSidebar(); }
+    };
+    window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
+  }, [openSettings, toggleSidebar]);
   const libraryBusy = workspace.busy || blocked || Boolean(editorState?.blocked);
   const switchingDisabled = libraryBusy || !workspace.status;
   const notice = workspace.error || message || editorState?.message || "";
@@ -71,19 +116,26 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
   const value: WorkspaceChrome = { workspace, switchingDisabled, saveState: editorState?.saveState || saveState, registerEditor, beforeViewChange,
     openLibrary: trigger => { libraryTrigger.current = trigger ?? null; workspace.clearError(); setConnectionSection('templates'); setConnectionsOpen(true); },
-    openConnections: () => {},
-    openModelSettings: () => { setSidebarOpen(false); setModelSettingsOpen(true); },
-    toggleSidebar: () => setSidebarOpen(open => !open), sidebarOpen };
+    openConnections: () => openSettings('local'),
+    openModelSettings: () => openSettings('providers'),
+    openHome, toggleSidebar, sidebarOpen, navigationCollapsed,
+    toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) };
   return <WorkspaceChromeContext.Provider value={value}>
-    <Dialog.Root open={sidebarOpen} onOpenChange={setSidebarOpen}>
-    <div className="motion-workspace" data-embedded={presentation.embedded}>
+    <Dialog.Root open={sidebarOpen && narrow && !settings && !navigationCollapsed} onOpenChange={setSidebarOpen}>
+    <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
+      <ApplicationHeader settings={settings} />
+      <ApplicationRail settings={settings} openSettings={openSettings} />
+      <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
         <Dialog.Popup className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
           <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} />
         </Dialog.Popup>
       </Dialog.Portal>
-      <div className="motion-workspace-content">
+      {!narrow && !settings && <div className="om-project-navigation om-collapsible" aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
+        <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} />
+      </div>}
+      <div className="motion-workspace-content" hidden={Boolean(settings)} inert={Boolean(settings)}>
         {visibleNotice && (workspace.error && workspace.errorSource === 'connection' && isConnectionFailure(notice)
           ? <FeedbackLayer><div data-testid="motion-connection-toast" className="pointer-events-none absolute top-16 left-1/2 z-91 flex max-w-[calc(100%-32px)] -translate-x-1/2 justify-center">
               <StudioToast message="Connection lost." tone="error" presentation="feedback" singleLine
@@ -93,31 +145,24 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
               onDismiss={() => { setDismissedNotice(noticeKey); if (workspace.error) workspace.clearError(); }} />)}
         {children}
       </div>
+      {settings && <Suspense fallback={<SettingsLoading />}><SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={setSettings} openConnections={value.openConnections} /></Suspense>}
+      </div>
     </div>
     </Dialog.Root>
-    {modelSettingsOpen && <Suspense fallback={null}><ModelSettings onClose={() => setModelSettingsOpen(false)} /></Suspense>}
-    {connectionsOpen && <ConnectionDialog open returnFocus={libraryTrigger.current} section={connectionSection} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => { setConnectionsOpen(false); onLibraryClose?.(); }} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
+    {connectionsOpen && <ConnectionDialog open returnFocus={libraryTrigger.current} section={connectionSection} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => { setConnectionsOpen(false); if (connectionSection === 'templates') onLibraryClose?.(); }} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
   </WorkspaceChromeContext.Provider>;
-}
-
-function PrivacySettingsButton() {
-  const { t } = useI18n(); const [open, setOpen] = useState(false);
-  return <><button className="motion-icon-button" aria-label={t('Privacy settings')} title={t('Privacy settings')} onClick={() => setOpen(true)}><RemixIcon name="settings-3-line" size={16} /></button>
-    {open && <Suspense fallback={null}><PrivacySettings onClose={() => setOpen(false)} /></Suspense>}</>;
 }
 
 function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () => void }) {
   const { t } = useI18n();
-  const { workspace, switchingDisabled, openModelSettings } = useWorkspaceChrome();
+  const { workspace, switchingDisabled } = useWorkspaceChrome();
   const [query, setQuery] = useState('');
   const projects = workspace.projects;
   const filtered = projects.filter(project => project.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <aside className="motion-sidebar" aria-label={t('Workspace navigation')}>
     <div className="motion-sidebar-brand">
-      <Dialog.Close className="motion-icon-button" aria-label={t('Close project list')}><MotionIcon name="sidebar" size={16} /></Dialog.Close>
-      <div className="motion-brand">
-        <BrandLogo />
-      </div>
+      <strong className="om-subtitle">{t('Home')}</strong>
+      <button className="motion-icon-button" onClick={close} aria-label={t('Close project list')}><MotionIcon name="sidebar" size={16} /></button>
     </div>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
@@ -145,15 +190,12 @@ function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () 
         <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>
       </button>)}
     </nav>
-    <footer className="motion-sidebar-footer">
-      <button type="button" className="motion-byok-entry motion-button motion-button-quiet" onClick={openModelSettings}><RemixIcon name="key-2-line" size={16} />{t('Media providers')}</button>
-      <div className="motion-sidebar-settings"><PrivacySettingsButton /><ThemeToggle /><LanguageMenu /></div>
-    </footer>
   </aside>;
 }
 
 export function WorkspaceMenuButton() {
   const { t } = useI18n();
-  const { toggleSidebar, sidebarOpen } = useWorkspaceChrome();
-  return <button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={sidebarOpen} title={t(sidebarOpen ? 'Collapse project list' : 'Open project list')} aria-label={t(sidebarOpen ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button>;
+  const { toggleSidebar, sidebarOpen, navigationCollapsed } = useWorkspaceChrome();
+  const visible = sidebarOpen && !navigationCollapsed;
+  return <button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} title={t(visible ? 'Collapse project list' : 'Open project list')} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button>;
 }

@@ -10,6 +10,8 @@ import { StudioHeader } from '../components/StudioHeader';
 import { useMotionHistoryOperation } from './MotionHistoryState';
 import { trackMotion } from './tracking';
 vi.mock('./tracking', () => ({ trackMotion: vi.fn(async () => 'queued') }));
+vi.mock('./AccountSettings', () => ({ useAccountSummary: () => ({ account: null }) }));
+vi.mock('./SettingsCenter', () => ({ SettingsCenter: () => <section data-testid="settings-center">Settings</section> }));
 
 const state = vi.hoisted(() => ({
   connectionError: '',
@@ -47,7 +49,9 @@ vi.mock('./ConnectionDialog', () => ({ ConnectionDialog: ({ open, section, busy,
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
 let container: HTMLDivElement;
+const originalWidth = window.innerWidth;
 beforeEach(() => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
   window.happyDOM.settings.enableIframePageLoading = false;
   vi.clearAllMocks();
   localStorage.clear();
@@ -60,7 +64,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
 });
-afterEach(() => { act(() => root.unmount()); container.remove(); });
+afterEach(() => { act(() => root.unmount()); container.remove(); Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth }); history.replaceState(null, '', '/'); });
 function HistoryOperationState({ busy }: { busy: boolean }) {
   const { setBusy } = useMotionHistoryOperation();
   React.useEffect(() => setBusy(busy), [busy, setBusy]);
@@ -72,7 +76,7 @@ function render(historyBusy = false) {
     inspectorPanelActive={false} onExport={state.export} /></MotionEditorFrame></MotionStudioHost>));
 }
 function openSidebar() {
-  act(() => container.querySelector<HTMLButtonElement>('.motion-workspace-menu')!.click());
+  act(() => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="首页"]')!.click());
 }
 const button = (text: string) => [...container.querySelectorAll('button')].find(el => el.textContent === text)!;
 
@@ -95,6 +99,10 @@ it('shows a restore failure once in its own project through the shared toast', (
 it('keeps project switching, templates, history actions and native export in the MVP', () => {
   render();
   const header = container.querySelector('.motion-studio-header')!;
+  expect(header.querySelector('.motion-workspace-menu')).toBeNull();
+  expect(header.querySelector<HTMLInputElement>('[aria-label="项目名称"]')?.value).toBe('Demo');
+  expect(container.querySelectorAll('[aria-label="项目名称"]')).toHaveLength(1);
+  expect(container.querySelector('.om-app-header [aria-label="项目名称"]')).toBeNull();
   openSidebar();
   const project = document.querySelector<HTMLButtonElement>('.motion-session[title="Second"]')!;
   expect(header.contains(project)).toBe(false);
@@ -104,11 +112,12 @@ it('keeps project switching, templates, history actions and native export in the
   for (const text of ['预览', '布局', '历史', '连接 Agent', '新建会话', '首页']) expect(button(text)).toBeUndefined();
   expect(container.querySelector('.motion-save-state')).toBeNull();
   expect(container.querySelector('a[download]')).toBeNull();
-  expect(document.querySelector('.motion-brand')?.tagName).toBe('DIV');
-  expect(document.querySelector('.motion-sidebar-settings [aria-label="模型设置"]')).toBeNull();
-  expect(document.querySelector('.motion-sidebar-settings [aria-label="隐私设置"]')).not.toBeNull();
+  expect(container.querySelector('.om-app-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
+  expect(container.querySelector('.om-app-rail [aria-label="模型供应商"]')).not.toBeNull();
+  expect(container.querySelector('.om-app-rail [aria-label="设置"]')).not.toBeNull();
+  expect(container.querySelector('.om-app-rail [aria-label="编辑器"]')).toBeNull();
+  expect(container.querySelector('.om-app-rail [aria-label="展开或收起项目列表"]')).toBeNull();
   expect(header.querySelector('[aria-label="语言"]')).toBeNull();
-  expect(document.querySelector('.motion-sidebar-settings [aria-label="语言"]')).not.toBeNull();
   act(() => container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')!.click());
   act(() => container.querySelector<HTMLButtonElement>('[aria-label="重做"]')!.click());
   expect(state.undo).toHaveBeenCalledOnce();
@@ -169,8 +178,9 @@ it('prevents switching projects or issuing competing header undo while a version
 it('searches projects in an overlay and closes it without removing the header brand', () => {
   render();
   expect(document.querySelector('.motion-sidebar-drawer')).toBeNull();
-  expect(container.querySelector('.motion-header-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
-  expect(container.querySelector<HTMLInputElement>('.motion-header-project input')?.value).toBe('Demo');
+  expect(container.querySelector('.om-app-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
+  expect(container.querySelector('.om-app-header input')).toBeNull();
+  expect(container.querySelector<HTMLInputElement>('.motion-studio-header input')?.value).toBe('Demo');
   openSidebar();
   const drawer = document.querySelector('.motion-sidebar-drawer')!;
   expect(container.contains(drawer)).toBe(false);
@@ -178,21 +188,76 @@ it('searches projects in an overlay and closes it without removing the header br
   act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'Second'); search.dispatchEvent(new Event('input', { bubbles: true })); });
   expect(drawer.querySelectorAll('.motion-session')).toHaveLength(1);
   expect(drawer.querySelector('.motion-session')?.textContent).toContain('Second');
+  expect(drawer.querySelector('.motion-byok-entry')).toBeNull();
   act(() => drawer.querySelector<HTMLButtonElement>('[aria-label="关闭项目列表"]')!.click());
   expect(drawer.hasAttribute('data-closed')).toBe(true);
-  expect(container.querySelector('.motion-header-brand [role=img]')).not.toBeNull();
+  expect(container.querySelector('.om-app-brand [role=img]')).not.toBeNull();
 });
 
-it('starts with a closed drawer in embeds regardless of the former collapse preference', () => {
+it('collapses the full desktop navigation in embeds while preserving the editor and previous project-list state', () => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
   history.replaceState(null, '', '/?embed=1');
-  localStorage.setItem('motion.workspace.sidebar.v1', 'expanded');
   render();
   expect(document.querySelector('.motion-sidebar-drawer')).toBeNull();
-  expect(container.querySelector('.motion-studio-header .motion-workspace-menu')).not.toBeNull();
-  openSidebar();
-  expect(document.querySelector('.motion-sidebar-drawer')).not.toBeNull();
-  expect(container.querySelector('.motion-studio-header .motion-workspace-menu')).not.toBeNull();
-  history.replaceState(null, '', '/');
+  expect(container.querySelector('.motion-sidebar')).not.toBeNull();
+  const editor = container.querySelector('.motion-studio-header');
+  const sidebar = container.querySelector('.om-project-navigation')!;
+  const search = sidebar.querySelector<HTMLInputElement>('[aria-label="搜索项目"]')!;
+  act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'Second'); search.dispatchEvent(new Event('input', { bubbles: true })); });
+  const toggle = container.querySelector<HTMLButtonElement>('.om-app-sidebar-toggle')!;
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(container.querySelector('.om-app-rail')?.hasAttribute('inert')).toBe(true);
+  expect(container.querySelector('.om-app-rail')?.getAttribute('aria-hidden')).toBe('true');
+  expect(sidebar.hasAttribute('inert')).toBe(true);
+  expect(sidebar.getAttribute('aria-hidden')).toBe('true');
+  expect(container.querySelector('.om-project-navigation')).toBe(sidebar);
+  expect(localStorage.getItem('motion.workspace.navigation.v1')).toBe('collapsed');
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  act(() => toggle.click());
+  expect(container.querySelector('.om-app-rail')?.hasAttribute('inert')).toBe(false);
+  expect(sidebar.hasAttribute('inert')).toBe(false);
+  expect(sidebar.querySelector('[aria-label="搜索项目"]')).toBe(search);
+  expect(search.value).toBe('Second');
+  expect(sidebar.querySelectorAll('.motion-session')).toHaveLength(1);
+  act(() => sidebar.querySelector<HTMLButtonElement>('[aria-label="关闭项目列表"]')!.click());
+  act(() => { toggle.click(); });
+  act(() => { toggle.click(); });
+  expect(sidebar.hasAttribute('inert')).toBe(true);
+  expect(sidebar.getAttribute('aria-hidden')).toBe('true');
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+});
+
+it.each([1440, 800])('returns home from settings without replacing the current editor at %ipx', async width => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  render();
+  const editor = container.querySelector('.motion-studio-header');
+  const home = container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="首页"]')!;
+  const openSettings = () => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="设置"]')!.click();
+  await act(async () => openSettings());
+  expect(container.querySelector('[data-testid="settings-center"]')).not.toBeNull();
+  expect(container.querySelector('.motion-workspace-content')?.hasAttribute('hidden')).toBe(true);
+  expect(home.getAttribute('aria-pressed')).toBe('false');
+  act(() => container.querySelector<HTMLButtonElement>('[aria-label="返回首页"]')!.click());
+  expect(container.querySelector('[data-testid="settings-center"]')).toBeNull();
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  expect(container.querySelector('.motion-workspace-content')?.hasAttribute('hidden')).toBe(false);
+  expect(home.getAttribute('aria-pressed')).toBe('true');
+  expect(container.querySelectorAll('.om-app-rail [aria-pressed="true"]')).toHaveLength(1);
+  if (width < 1000) {
+    expect(document.querySelector('.motion-sidebar-drawer:not([data-closed])')).not.toBeNull();
+    act(() => document.querySelector<HTMLButtonElement>('.motion-sidebar-drawer [aria-label="关闭项目列表"]')!.click());
+  } else {
+    act(() => home.click());
+    expect(container.querySelector('.om-project-navigation')?.hasAttribute('inert')).toBe(false);
+    act(() => container.querySelector<HTMLButtonElement>('.motion-sidebar [aria-label="关闭项目列表"]')!.click());
+  }
+  await act(async () => openSettings());
+  act(() => home.click());
+  expect(container.querySelector('[data-testid="settings-center"]')).toBeNull();
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  expect(state.open).not.toHaveBeenCalled();
+  expect(state.home).not.toHaveBeenCalled();
 });
 
 it('saves empty project names as Untitled while Escape cancels edits', async () => {
@@ -252,7 +317,7 @@ it('dismissing a write-blocking notice does not enable project creation', () => 
 });
 
 
-it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'])('opens the community beside Export with a localized label (%s)', locale => {
+it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'])('keeps community and repository links beside the model selector with a localized label (%s)', locale => {
   localStorage.setItem('motion.studio.locale', locale);
   render();
   const link = container.querySelector<HTMLAnchorElement>('.motion-community-link')!;
@@ -262,6 +327,10 @@ it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']
   expect(container.querySelector<HTMLAnchorElement>(`a[href="${GITHUB_REPOSITORY}"]`)?.target).toBe('_blank');
   expect(link.querySelector('img')?.getAttribute('src')).toBe(discordLogo);
   expect(link.getAttribute('aria-label')).toBeTruthy();
+  expect(container.querySelector('.om-app-header')?.contains(link)).toBe(true);
+  expect(container.querySelector('.om-app-header')?.contains(container.querySelector(`a[href="${GITHUB_REPOSITORY}"]`))).toBe(true);
+  expect(container.querySelector('.om-app-header .om-model-switcher')).not.toBeNull();
+  expect(container.querySelector('.motion-studio-header')?.contains(link)).toBe(false);
   const exportButton = container.querySelector('[data-testid="header-export"]')!;
   expect(link.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

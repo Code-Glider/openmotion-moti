@@ -24,10 +24,10 @@ Production reads a prebuilt browser bundle and three integrity-locked full MP4 p
 
 | 公开 Tool | 复用来源 | 本次实现到的边界 |
 | --- | --- | --- |
-| openmotion_media_use | Shared Model Gateway | Enabled-provider discovery, bundled references, model list, generate/status/cancel for fal.ai, OpenDesign Cloud, Atlas Cloud and WaveSpeedAI; service-owned keys, explicit project, stable request ID, imported media results; does not edit the composition |
+| openmotion_media_use | Shared Model Gateway | Enabled-provider discovery, bundled references, model list, generate/status/cancel for dedicated media adapters, OpenDesign account models and registered compatible image/speech APIs; service-owned keys, explicit project, stable request ID, imported media results; does not edit the composition |
 | openmotion_list_templates | Local repository or configured CMS catalog | No query arguments; returns source, a local JSONL index, count and catalog version for local search |
 | openmotion_get_template | Same local/CMS reader | Exact ID; repository entries return local instructions, motionDocument content and absolute localSource paths |
-| openmotion_media_use | Fixture-based provider references, discovery, authenticated requests, job ownership, output validation and import, and rejection without paid retries | tests/byok.test.ts |
+| openmotion_media_use | Fixture-based provider references, discovery, authenticated requests, job ownership, output validation and import, and rejection without paid retries | tests/byok.test.ts, tests/provider-settings.test.ts |
 | openmotion_create_project | 项目目录、空白工程、模板复制、会话归属 | 新建独立载体、保存需求/来源、返回初始内容版本；宿主 Agent 制作影片 |
 | openmotion_open_preview | 原预览、项目选择、原生 lint | 打开指定已有工程；仅明确绑定的 OpenMotion 会话可省 projectId；返回真实 URL |
 | openmotion_import_assets | 素材目录、FFprobe/FFmpeg | 实际本机媒体批量持久化、逐项结果、稳定素材 ID、去重；不自动排入时间线 |
@@ -196,7 +196,7 @@ CI不按路径过滤、不跳过渲染、无失败重试或continue-on-error；�
 
 ## BYOK media-use extension
 
-Read action=reference for the selected provider, or `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed}`. The provider references belong to the existing production guidance; no separate media debugging Skill is distributed. `action=generate` requires provider, provider-native model ID, projectId, requestId, modality and prompt. Provider parameters use the selected model API schema; no key argument is accepted. The queued job is polled with action=status and the same projectId/jobId; completed means actual validated files were imported under assets/generated. Cancellation is local and best effort remotely, without a refund promise. Edits still require a fresh project revision/version. Saving a key in editor Media providers enables that provider. Cloud also requires its public HTTPS gateway origin. Configuration and live model discovery are not proof of paid generation success.
+Read action=reference for the selected provider, or `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed,account,compatible}`. The provider references belong to the existing production guidance; no separate media debugging Skill is distributed. `action=generate` requires provider, provider-native model ID, projectId, requestId, modality and prompt. Provider parameters use the selected model API schema; no key argument is accepted. The queued job is polled with action=status and the same projectId/jobId; completed means actual validated files were imported under assets/generated. Cancellation is local and best effort remotely, without a refund promise. Edits still require a fresh project revision/version. Settings → Model providers manages keys, compatible endpoints, catalogues and defaults. Account authorization registers a separate provider and its entitled models. OpenDesign Cloud retains its separate workspace key and public HTTPS gateway origin. The inspect result includes configured defaults and supported reference URIs. See [provider settings](provider-settings.md) for protocol and execution boundaries; configuration and live discovery are not proof of paid generation success.
 
 ## Final video presentation
 
