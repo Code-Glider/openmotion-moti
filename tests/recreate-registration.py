@@ -71,6 +71,10 @@ class VisibleMotionTests(unittest.TestCase):
             result.update(width=480, height=240)
         self.assertTrue(motion.suppression_warning(reference, output))
         self.assertFalse(motion.suppression_warning(reference, reference))
+        partial = {**reference, 'spanPx': [0, 6]}
+        self.assertTrue(motion.suppression_warning(reference, partial))
+        resized = {**reference, 'spanPx': [0, 12], 'width': 240, 'height': 120}
+        self.assertFalse(motion.suppression_warning(reference, resized))
         for pair in reference['pointPairs']:
             self.assertGreaterEqual(pair['start'][0], self.roi[0])
             self.assertGreaterEqual(pair['start'][1], self.roi[1])
@@ -82,6 +86,12 @@ class VisibleMotionTests(unittest.TestCase):
         self.assertAlmostEqual(result['samples'][-1]['medianDyPx'], 0, delta=.3)
         self.assertAlmostEqual(result['spanPx'][1], 6, delta=.3)
         self.assertAlmostEqual(result['pathLengthPx'], 12, delta=.5)
+
+    def test_fast_travel_accumulates_through_adjacent_frames(self):
+        result = motion.track_frames(self.sequence(range(0, 61, 6)), self.roi)
+        self.assertEqual(result['status'], 'measured', result)
+        self.assertAlmostEqual(result['spanPx'][1], 60, delta=1)
+        self.assertAlmostEqual(result['pathLengthPx'], 60, delta=1)
 
     def test_uniform_region_is_unresolved_and_cannot_clear_output(self):
         frames = [(index / 24, np.zeros_like(self.texture)) for index in range(3)]

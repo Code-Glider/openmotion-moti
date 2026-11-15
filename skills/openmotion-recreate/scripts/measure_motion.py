@@ -104,7 +104,7 @@ def suppression_warning(reference, output):
         return None
     a = np.linalg.norm(np.array(reference['spanPx']) / [reference['width'], reference['height']])
     b = np.linalg.norm(np.array(output['spanPx']) / [output['width'], output['height']])
-    return bool(a > .003 and b < a * .2)
+    return bool(a > .003 and b < a * .5)
 
 
 def main():
@@ -133,7 +133,8 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({'output': str(args.out), 'referenceStatus': reference['status'],
-                      'outputStatus': output['status'], 'possibleSuppressedMotion': warning}))
+                      'outputStatus': output['status'], 'referenceSpanPx': reference.get('spanPx'),
+                      'outputSpanPx': output.get('spanPx'), 'possibleSuppressedMotion': warning}))
     return 2 if warning is True or reference['status'] != 'measured' or output['status'] != 'measured' else 0
 
 
