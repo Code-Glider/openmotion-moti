@@ -8,6 +8,7 @@ import type { TimelineDropPlacement } from "../player/components/timelineCallbac
 import { applyPatchByTarget, readAttributeByTarget, readTagSnippetByTarget, readTagAttribute } from "./sourcePatcher";
 import { buildPatchTarget } from "../hooks/timelineEditingHelpers";
 import { formatTimelineAttributeNumber } from "../player/components/timelineEditing";
+import { planTimelineLanePersistence, withPersistedTimelineLanes } from "../player/components/timelineLanePersistence";
 
 export interface DropTrackInsertPlan {
   /** Lane the dropped clip is written on. */
@@ -130,7 +131,12 @@ export function resolveDropTrack(input: {
     return { source: applyTrackRenumbers(source, plan), track: plan.track, start: dropped.start };
   }
   if (placement.insertRow == null) {
-    return { source, ...resolveRowDrop(elements, input.placed ?? [], placement.track, dropped) };
+    const target = { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile };
+    const renumbers = planTimelineLanePersistence(elements, target);
+    return {
+      source: applyTrackRenumbers(source, { track: placement.track, renumbers }),
+      ...resolveRowDrop(withPersistedTimelineLanes(elements, renumbers), input.placed ?? [], placement.track, dropped),
+    };
   }
   const { insertRow, trackOrder } = placement;
   const plan = planDropTrackInsert({ elements, trackOrder, insertRow, dropped });

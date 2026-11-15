@@ -48,6 +48,7 @@
 - [Repository template source, storage checks and CMS publication](template-repository.md)
 - [templates/requirement.md](templates/requirement.md)
 - [test-packages.md](test-packages.md)
+- [Timeline interaction regression matrix](testing/timeline-interactions.md)
 - [Tracking integration and agent task template](../tracking/INTEGRATION.md)
 
 ## 分发与验证
