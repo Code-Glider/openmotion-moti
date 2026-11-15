@@ -61,7 +61,7 @@ async function resolveHashProject(id: string): Promise<ProjectHashVerdict> {
  * escape with the Back button.
  */
 function replaceProjectHash(projectId: string): void {
-  window.history.replaceState(null, "", buildProjectHash(projectId));
+  window.history.replaceState(window.history.state, "", buildProjectHash(projectId));
 }
 
 /**

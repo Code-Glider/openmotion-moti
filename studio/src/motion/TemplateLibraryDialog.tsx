@@ -43,7 +43,7 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { initialTemplateId?: string; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void };
+type Props = { returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 export function TemplateLibraryDialog(props: Props) {
@@ -71,6 +71,8 @@ export function TemplateLibraryDialog(props: Props) {
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
   const lastRandom = useRef<string>(undefined);
   const info = useRef<IntegrationInfo | null>(null);
+  const routeChange = useRef(props.onTemplateChange); routeChange.current = props.onTemplateChange;
+  const closeDetail = () => { routeChange.current?.(null); detail.current?.close(); };
   // Tracking state. Ids tie one detail view, one copy and one search to the events that follow from them.
   const detailView = useRef<DetailView | undefined>(undefined), searchId = useRef<string | undefined>(undefined), reportedQuery = useRef(''), shown = useRef(false);
   const pendingResult = useRef<FilterAction | undefined>(undefined), composing = useRef(false), shownCards = useRef(new Set<string>()), instructionShown = useRef<string | undefined>(undefined);
@@ -128,6 +130,7 @@ export function TemplateLibraryDialog(props: Props) {
     return () => { controller.abort(); clearInterval(timer); };
   }, [props.open, attempt, locale]);
   const available = useMemo(() => facets.map(([key, label]) => ({ key, label, values: [...new Set(catalog.flatMap(item => values(item, key)))] })).filter(facet => facet.values.length), [catalog]);
+  const missingTemplate = Boolean(props.templateId && shown.current && !loading && !error && !catalog.some(item => item.id === props.templateId));
   const categories = [...(available.find(facet => facet.key === 'uses')?.values ?? [])].sort((a, b) => {
     const rank = (value: string) => purposeOrder.includes(value) ? purposeOrder.indexOf(value) : purposeOrder.length;
     return rank(a) - rank(b);
@@ -245,7 +248,8 @@ export function TemplateLibraryDialog(props: Props) {
     if (editableOnly !== draftEditable) picked('filter_option', 'editable', undefined, draftEditable);
     setSelected(draftFilters); setEditableOnly(draftEditable); setFiltersOpen(false);
   };
-  const show = useCallback((item: GalleryTemplate, placement: Placement = 'catalog') => {
+  const show = useCallback((item: GalleryTemplate, placement: Placement = 'catalog', navigate = true) => {
+    if (navigate) routeChange.current?.(item.id);
     const view = { id: tracking.newTrackingId(), placement }; detailView.current = view; instructionShown.current = undefined;
     const index = latest.current.items.findIndex(candidate => candidate.id === item.id);
     tracking.reportDetailShown(item, view, placement === 'related' || index < 0 ? undefined : index + 1);
@@ -253,18 +257,17 @@ export function TemplateLibraryDialog(props: Props) {
     if (detailInfo.current) detailInfo.current.scrollTop = 0;
     if (!detail.current?.open) detail.current?.showModal();
   }, []);
+  useEffect(() => {
+    if (!props.open || props.templateId === undefined) return;
+    if (!props.templateId) { detail.current?.close(); return; }
+    const item = catalog.find(template => template.id === props.templateId);
+    if (item && item.id !== preview?.id) show(item, 'catalog', false);
+  }, [props.open, props.templateId, catalog, preview?.id, show]);
   const openCard = useCallback((item: GalleryTemplate) => {
     settleLatest.current();
     tracking.reportCardOpened(item, 'catalog', latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
     show(item, 'catalog');
   }, [show, listContext]);
-  const initialSelection = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (!props.open) { initialSelection.current = undefined; return; }
-    if (!props.initialTemplateId || initialSelection.current === props.initialTemplateId) return;
-    const item = catalog.find(candidate => candidate.id === props.initialTemplateId);
-    if (item) { initialSelection.current = item.id; show(item); }
-  }, [props.open, props.initialTemplateId, catalog, show]);
   const openRelated = (item: GalleryTemplate, position: number) => { tracking.reportCardOpened(item, 'related', position, listContext()); show(item, 'related'); };
   const navigate = (step: number) => {
     if (visible.length < 2) return;
@@ -339,7 +342,7 @@ export function TemplateLibraryDialog(props: Props) {
     } catch { showToast('Download failed. Please try again.', 'error', 'feedback'); tracking.reportDownloadResult(template, attemptId, 'fetch_failed', errorCode, view); }
     finally { setDownloading(false); }
   }
-  const filterBy = (key: Facet, value: string) => { picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setQuery(''); setEditableOnly(false); setBrandsOnly(false); detail.current?.close(); };
+  const filterBy = (key: Facet, value: string) => { picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
   return <dialog ref={dialog} className={styles.library} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
     event.stopPropagation();
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen) { event.preventDefault(); search.current?.focus(); }
@@ -397,6 +400,7 @@ export function TemplateLibraryDialog(props: Props) {
       {hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={() => setQuery('')} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}<button onClick={reset}>{t('Clear filters')}</button><span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>
     <main className={styles.results} aria-busy={loading}>
+      {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
       <div className={styles.grid}>
         <section className={styles.intro}><span className={styles.eyebrow}>{t('Made to move.')}</span><h1>{t('Find your next motion.')}</h1><p>{t('Explore the details. Find a direction. Make it your own.')}</p><div className={styles.introActions}><button className={styles.surprise} disabled={!visible.length || loading} onClick={surprise}><MotionIcon name="sparkles" size={17} />{t('Surprise me')}<MotionIcon name="arrow-up-right" size={16} /></button><a className={styles.submitVideo} href={templateContributionUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDiscoveryClick('submit_video', listContext())}>{t('Submit video')}<MotionIcon name="arrow-up-right" size={15} /></a></div><small>{loading && !catalog.length ? t('Loading templates…') : t('{count} templates', { count: visible.length })}</small></section>
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
@@ -406,7 +410,7 @@ export function TemplateLibraryDialog(props: Props) {
       {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
       {!loading && !visible.length && !error && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching templates. Try another name, creator or style.')}</p><button onClick={reset}>{t('Clear filters')}</button></div>}
     </main>
-    <dialog ref={detail} className={styles.detail} aria-label={t('Template preview')} onClose={() => { setPreview(null); setPrompt(''); detailView.current = undefined; }} onKeyDown={event => {
+    <dialog ref={detail} className={styles.detail} aria-label={t('Template preview')} onCancel={event => { event.preventDefault(); closeDetail(); }} onClose={() => { setPreview(null); setPrompt(''); detailView.current = undefined; }} onKeyDown={event => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }
     }}>
@@ -417,20 +421,20 @@ export function TemplateLibraryDialog(props: Props) {
           <DetailMedia key={preview.id} template={preview} />
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
-          <div className={styles.detailNav}><button className={styles.iconButton} autoFocus onClick={() => detail.current?.close()} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button><span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></div>
+          <div className={styles.detailNav}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button><span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></div>
           <div className={styles.detailBody}>
             <h2>{preview.title}</h2>
             <a className={styles.repositoryLink} href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}<MotionIcon name="arrow-up-right" size={14} /></a>
             <div className={styles.creator}><Identity template={preview} /><div><strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>{preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')} title={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a>}</div>
             {preview.description && <p className={styles.description}>{preview.description}</p>}
-            <div className={styles.actions}>{isEditableTemplate(preview) && <button className={styles.primary} disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); detail.current?.close(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}<div className={styles.recreateActions}><button disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button><button className={styles.submitTemplate} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')} title={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></div></div>
+            <div className={styles.actions}>{isEditableTemplate(preview) && <button className={styles.primary} disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}<div className={styles.recreateActions}><button disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button><button className={styles.submitTemplate} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')} title={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></div></div>
             <section ref={instructionText} className={styles.instruction} aria-label={t('Template instruction')}><header><h3>{t('Template instruction')}</h3><button disabled={!prompt} onClick={() => void copy(false, 'instruction')}><MotionIcon name="copy" size={14} />{t(feedback === 'Copied. Paste into your Agent.' ? 'Copied' : 'Copy')}</button></header>{manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>}<button disabled={!prompt} className={styles.expandInstruction} aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
             <dl className={styles.metadata}>
               {preview.duration != null && <div><dt>{t('Duration')}</dt><dd>{t('{value}s', { value: Number(preview.duration.toFixed(1)) })}</dd></div>}
               {(preview.width || preview.ratio) && <div><dt>{t('Aspect ratio')}</dt><dd>{templateRatio(preview)}</dd></div>}
               {facets.filter(([key]) => !['duration', 'ratio'].includes(key)).map(([key, label]) => values(preview, key).length > 0 && <div key={key}><dt>{t(label)}</dt><dd>{values(preview, key).map(value => <button key={value} onClick={() => filterBy(key, value)}>{key === 'brand' ? value : t(value)}</button>)}</dd></div>)}
             </dl>
-            {preview.tags.length > 0 && <div className={styles.tags}>{preview.tags.map(tag => <button key={tag} onClick={() => { clear(); setQuery(tag); detail.current?.close(); }}>{t(tag)}</button>)}</div>}
+            {preview.tags.length > 0 && <div className={styles.tags}>{preview.tags.map(tag => <button key={tag} onClick={() => { clear(); setQuery(tag); closeDetail(); }}>{t(tag)}</button>)}</div>}
             {(preview.motionDocumentUrl || preview.projectFileUrl) && <div className={styles.projectActions}>{preview.motionDocumentUrl && <button disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={15} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>}{preview.projectFileUrl && <a href={preview.projectFileUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDownloadClicked(preview, 'download_project', undefined, detailView.current)}>{t('Download OpenMotion project')}<MotionIcon name="arrow-up-right" size={14} /></a>}</div>}
             {(preview.styleDescription || preview.reviewFocus || preview.motionGuideUrl) && <section className={styles.guide} aria-label={t('Motion guide')}>
               {preview.styleDescription && <details><summary>{t('Visual style')}</summary><p>{preview.styleDescription}</p></details>}

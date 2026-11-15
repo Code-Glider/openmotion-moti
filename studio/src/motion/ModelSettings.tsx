@@ -16,11 +16,13 @@ export { kindLabels } from './ModelEditor';
 const categories = [{ id: 'all', label: 'All providers' }, { id: 'configured', label: 'Configured' }, { id: 'multimodal', label: 'Multimodal' }, { id: 'language', label: 'Language' }, { id: 'media', label: 'Media' }, { id: 'local', label: 'Local' }, { id: 'custom', label: 'Custom' }];
 type Change = (action: () => Promise<unknown>, message: string) => Promise<boolean>;
 
-export function ModelSettings({ onClose, openAccount, initialCategory = 'all' }: { onClose?: () => void; openAccount?: () => void; initialCategory?: string }) {
+export function ModelSettings({ onClose, openAccount, initialCategory = 'all', providerId, onProviderChange }: { onClose?: () => void; openAccount?: () => void; initialCategory?: string; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t } = useI18n(), directory = useProviderDirectory(), toast = useToast();
-  const [selected, setSelected] = useState(initialCategory === 'local' ? 'codex' : 'account'), [query, setQuery] = useState(''), [category, setCategory] = useState(initialCategory);
+  const [localSelected, setSelected] = useState(initialCategory === 'local' ? 'codex' : 'account'), [query, setQuery] = useState(''), [category, setCategory] = useState(initialCategory);
+  const selected = providerId === undefined ? localSelected : providerId ?? 'account';
   const [status, setStatus] = useState('all'), [protocol, setProtocol] = useState('all');
-  const [adding, setAdding] = useState(false), [detailOpen, setDetailOpen] = useState(false);
+  const [adding, setAdding] = useState(false), [localDetailOpen, setDetailOpen] = useState(false);
+  const detailOpen = providerId === undefined ? localDetailOpen : Boolean(providerId);
   const providers = directory.data?.providers.filter(provider => {
     const matches = category === 'all' || category === 'configured' && provider.configured || category === 'multimodal' && provider.kinds.length > 1
       || category === 'language' && provider.kinds.includes('text') || category === 'media' && provider.kinds.some(kind => ['image', 'video', 'audio'].includes(kind))
@@ -28,7 +30,8 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all' }:
     return matches && (status === 'all' || status === 'enabled' && provider.enabled || status === 'disabled' && !provider.enabled || status === 'configured' && provider.configured || status === 'unconfigured' && !provider.configured) && (protocol === 'all' || provider.protocol === protocol) && `${provider.label} ${provider.id}`.toLowerCase().includes(query.toLowerCase());
   }) ?? [];
   const provider = directory.data?.providers.find(provider => provider.id === selected);
-  const select = (id: string) => { setSelected(id); setDetailOpen(true); };
+  const select = (id: string) => { setSelected(id); setDetailOpen(true); onProviderChange?.(id); };
+  const closeDetail = () => { setDetailOpen(false); onProviderChange?.(null); };
   return <section className="om-provider-settings" data-detail={detailOpen} aria-label={t('Model providers')}>
     <aside className="om-provider-list">
       <div className="om-provider-search"><label className="om-field"><RemixIcon name="search-line" size={16} /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search providers…')} aria-label={t('Search providers')} /></label>
@@ -46,8 +49,8 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all' }:
       <button className="om-button om-add-provider" onClick={() => setAdding(true)}><RemixIcon name="add-line" size={16} />{t('Add provider')}</button>
     </aside>
     <div className="om-provider-detail">
-      <button className="om-button om-provider-back" onClick={() => setDetailOpen(false)}><RemixIcon name="arrow-left-line" size={16} />{t('Providers')}</button>
-      {directory.error ? <SettingsError retry={directory.refresh} /> : !directory.data ? <SettingsLoading /> : provider ? <ProviderDetail key={provider.id} provider={provider} data={directory.data} openAccount={openAccount} showToast={toast.showToast} onRemoved={() => { setSelected('account'); setDetailOpen(false); }} /> : <div className="om-empty">{t('Select a provider')}</div>}
+      <button className="om-button om-provider-back" onClick={closeDetail}><RemixIcon name="arrow-left-line" size={16} />{t('Providers')}</button>
+      {directory.error ? <SettingsError retry={directory.refresh} /> : !directory.data ? <SettingsLoading /> : provider ? <ProviderDetail key={provider.id} provider={provider} data={directory.data} openAccount={openAccount} showToast={toast.showToast} onRemoved={() => { setSelected('account'); closeDetail(); }} /> : <div className="om-empty">{t('Select a provider')}</div>}
     </div>
     {adding && <AddProvider onClose={() => setAdding(false)} onAdded={id => { setAdding(false); setCategory('all'); setQuery(''); select(id); notifyProvidersChanged(); toast.showToast(t('Provider added'), 'info'); }} showToast={toast.showToast} />}
     {onClose && <button className="om-button" onClick={onClose}>{t('Back to editor')}</button>}

@@ -13,6 +13,7 @@ import { GITHUB_REPOSITORY } from './githubRepository';
 import { McpTemplateShowcase } from './McpTemplateShowcase';
 import { COMMUNITY_URL } from './CommunityLink';
 import { mcpCapabilities, mcpBenefits, mcpFaq, mcpWorkflowComparison, mcpClientComparison } from './mcpCapabilities';
+import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import './McpConnectionPage.css';
 
 const clients: { id: string; name: string; brand: string; host: IntegrationHost }[] = [
@@ -25,12 +26,17 @@ const clients: { id: string; name: string; brand: string; host: IntegrationHost 
   { id: 'mcp', name: 'Other MCP clients', brand: 'mcp', host: 'mcp' },
 ];
 
-export function McpConnectionPage({ openLibrary, openProviders, previewsEnabled = true }: { openLibrary: (trigger?: HTMLElement, templateId?: string) => void; openProviders: () => void; previewsEnabled?: boolean }) {
+export function McpConnectionPage({ openLibrary, openProviders, previewsEnabled = true, route, onRouteChange }: { openLibrary: (trigger?: HTMLElement, templateId?: string) => void; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void }) {
   const { t, locale } = useI18n(), toast = useToast();
   const { info, failed, retry } = useIntegrationInfo();
-  const [clientId, setClientId] = useState(() => new URLSearchParams(location.search).get('host') || 'codex');
+  const [localRoute, setLocalRoute] = useState(() => readWorkspacePage(location.search));
+  const { client: clientId, setup: setupMode } = route ?? localRoute;
+  const changeRoute = (patch: Partial<WorkspacePage>) => {
+    if (onRouteChange) onRouteChange(patch);
+    else setLocalRoute(previous => ({ ...previous, ...patch }));
+  };
+  const setClientId = (client: string) => changeRoute({ client: clients.find(item => item.id === client)?.id as WorkspacePage['client'] ?? 'codex' });
   const client = clients.find(item => item.id === clientId) ?? clients[0];
-  const [setupMode, setSetupMode] = useState('agent');
   const page = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
@@ -63,7 +69,7 @@ export function McpConnectionPage({ openLibrary, openProviders, previewsEnabled 
               {!supported ? <div className="om-card om-mcp-unavailable"><RemixIcon name="information-line" size={28} /><h2>{t('Remote connection unavailable')}</h2><p>{t('ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.')}</p><pre className="om-code-block">{manual}</pre><button className="om-button" onClick={() => setClientId('codex')}>{t('Use a local Agent')}</button></div> : <div className="om-mcp-setup-grid">
                 <article className="om-card om-mcp-step">
                   <h2><span className="om-mcp-step-number">1</span>{t('Connect your Agent')}</h2>
-                  <Tabs value={setupMode} onValueChange={value => setSetupMode(String(value))}><TabsList aria-label={t('Setup method')}><Tab value="agent">{t('Let your Agent set it up')}</Tab><Tab value="manual">{t('Manual setup')}</Tab></TabsList>
+                  <Tabs value={setupMode} onValueChange={value => changeRoute({ setup: value === 'manual' ? 'manual' : 'agent' })}><TabsList aria-label={t('Setup method')}><Tab value="agent">{t('Let your Agent set it up')}</Tab><Tab value="manual">{t('Manual setup')}</Tab></TabsList>
                     <TabPanel value="agent" className="om-mcp-instruction"><p className="om-muted">{t('Copy this instruction to your Agent to install and connect OpenMotion.')}</p><pre className="om-code-block">{prompt}</pre><div className="om-mcp-actions">{copyButton(prompt, 'Copy connection instruction')}<a className="om-button" href={setupGuideUrl(info)} target="_blank" rel="noreferrer">{t('Connection guide')}<RemixIcon name="external-link-line" size={14} /></a></div></TabPanel>
                     <TabPanel value="manual" className="om-mcp-instruction">{failed ? <SettingsError retry={retry} /> : !info ? <SettingsLoading /> : <><p className="om-muted">{t(client.host === 'mcp' ? 'Merge this configuration into your client’s local MCP settings. Preserve your other servers, then reload the connection.' : 'Run this command in a local terminal, then reload the Agent connection.')}</p><pre className="om-code-block">{manual}</pre><div className="om-mcp-actions">{copyButton(manual, 'Copy configuration')}<a className="om-button" href={`/connect/config?host=${client.host}`} download>{t('Download configuration')}</a></div></>}</TabPanel>
                   </Tabs>

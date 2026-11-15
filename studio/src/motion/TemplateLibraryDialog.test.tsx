@@ -647,7 +647,11 @@ it('searches a long option group without losing selections hidden by the option 
 });
 
 it('opens the template requested by the MCP page without selecting a different card', async () => {
-  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open initialTemplateId="two" busy={false} error="" onClose={() => {}} onOpen={() => {}} /></I18nProvider>));
+  function RoutedLibrary() {
+    const [templateId, setTemplateId] = React.useState<string | null>('two');
+    return <TemplateLibraryDialog open templateId={templateId} onTemplateChange={setTemplateId} busy={false} error="" onClose={() => {}} onOpen={() => {}} />;
+  }
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RoutedLibrary /></I18nProvider>));
   expect(current()).toBe('Second');
   await act(async () => button('Close template preview').click());
   expect(current()).toBeUndefined();

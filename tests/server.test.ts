@@ -33,6 +33,18 @@ test('HTTP source writes use the same revision contract and reject stale saves',
   const health = await (await request('/api/health')).json();
   assert.equal(health.protocol, 2); assert.equal(health.engine, 'hyperframes'); assert.equal(health.dataDirectory, store.directory); assert.equal(health.ready, false);
 }));
+test('settings and MCP bookmarks load independently of an unavailable native project', () => fixture(async store => {
+  let attempts = 0;
+  const request = transport(store, { ensureStudio: async () => { attempts++; throw new Error('Native project unavailable'); } });
+  for (const route of ['/?page=mcp&host=claude&project=project', '/?page=settings&section=appearance&session=project']) {
+    const response = await request(route);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /data-motion-studio/);
+  }
+  assert.equal(attempts, 0);
+  assert.equal((await request('/?project=project')).status, 400);
+  assert.equal(attempts, 1);
+}));
 test('wrapper rejects cross-origin mutations and DNS rebinding hosts', () => fixture(async store => {
   for (const headers of [ { host: 'localhost:4173', origin: 'https://remote.example' }, { host: 'evil.example', origin: 'http://evil.example' } ]) {
     let status = 200;
