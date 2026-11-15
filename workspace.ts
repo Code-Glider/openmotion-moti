@@ -28,7 +28,7 @@ const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg',
 const studioManifests = ['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json'];
 export type SourceFile = { path: string; size: number; hash: string };
 export type FileEdit = { path: string; content: string };
-export type SavedProject = { id: string; title: string; templateId?: string; createdAt?: number; openedAt?: number };
+export type SavedProject = { id: string; title: string; titleKey?: 'OpenMotion Sample Video' | null; templateId?: string; createdAt?: number; openedAt?: number };
 export type ProjectCatalog = { activeId: string; projects: SavedProject[]; sessions?: CreativeSession[]; activeSessionId?: string };
 export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; phase1?: boolean; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
   createdAt: number; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
@@ -71,11 +71,18 @@ export class WorkspaceStore {
     let catalog: ProjectCatalog;
     try { catalog = JSON.parse(readFileSync(path.join(this.directory, 'projects.json'), 'utf8')); }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') catalog = { activeId: 'project', projects: [{ id: 'project', title: '初始工程' }] };
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') catalog = { activeId: 'project', projects: [{ id: 'project', title: 'OpenMotion 示例短片', titleKey: 'OpenMotion Sample Video' }] };
       else throw error;
     }
     if (!Array.isArray(catalog.projects) || !catalog.projects.some(item => item.id === catalog.activeId)) throw new Error('工程目录记录损坏');
     for (const item of catalog.projects) { this.projectDirectoryFor(item.id); if (typeof item.title !== 'string') throw new Error('工程名称无效'); }
+    // Older workspaces did not distinguish the built-in label from a saved name.
+    // An explicit rename records null so even a matching title remains user-owned.
+    const initial = catalog.projects.find(item => item.id === 'project');
+    if (initial && initial.titleKey === undefined && ['初始工程', 'OpenMotion 示例短片'].includes(initial.title)) {
+      initial.title = 'OpenMotion 示例短片';
+      initial.titleKey = 'OpenMotion Sample Video';
+    }
     // Legacy conversations keep their IDs and files; all new sessions own artifact IDs.
     catalog.sessions ??= catalog.projects.map(project => ({ ...project, mode: 'motion', artifacts: [{ id: project.id, kind: 'motion-project', projectId: project.id, title: project.title, templateId: project.templateId }] }));
     catalog.activeSessionId ??= catalog.sessions.find(session => session.artifacts.some(artifact => artifact.projectId === catalog.activeId))?.id;
@@ -210,6 +217,7 @@ export class WorkspaceStore {
       const project = catalog.projects.find(item => item.id === id);
       if (!project) throw new Error('工程不存在');
       project.title = title;
+      project.titleKey = null;
       await atomic(path.join(this.directory, 'projects.json'), JSON.stringify(catalog));
       return catalog;
     });
