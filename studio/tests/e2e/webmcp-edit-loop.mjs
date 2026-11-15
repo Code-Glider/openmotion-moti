@@ -224,11 +224,11 @@ async function waitForToolSurface(page, expectedCount = TOOL_COUNT) {
 async function waitForReadyLook(page) {
   const deadline = Date.now() + NAVIGATION_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const result = await callTool(page, "studio_look", { limit: 200 });
+    const result = await callTool(page, "openmotion_studio_look", { limit: 200 });
     if (result.ok && result.sceneStatus === "ready" && result.elementCount > 0) return result;
     await new Promise((resolveWait) => setTimeout(resolveWait, 150));
   }
-  throw new Error("studio_look never observed a ready scene");
+  throw new Error("openmotion_studio_look never observed a ready scene");
 }
 
 async function waitForLens(page, phase) {
@@ -374,14 +374,14 @@ function targetForSource(look, sourceFile) {
 async function selectWithBoundedReacquire(page, initialTarget, sourceFile) {
   let target = initialTarget;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const selection = await callTool(page, "studio_select", { handle: target.handle });
+    const selection = await callTool(page, "openmotion_studio_select", { handle: target.handle });
     if (selection.ok) return { selection, target };
     const targetChanged =
       selection.kind === "invalid" &&
       selection.reason === "the target changed while it was resolving";
     if (!targetChanged || attempt === 2) {
       throw new Error(
-        `studio_select failed after ${attempt + 1} attempt(s): ${JSON.stringify(selection)}`,
+        `openmotion_studio_select failed after ${attempt + 1} attempt(s): ${JSON.stringify(selection)}`,
       );
     }
     target = targetForSource(await waitForReadyLook(page), sourceFile);
@@ -422,15 +422,15 @@ async function runBrowserProof(page) {
   const definitions = await page.evaluate(() => window.__webMcpHarness.definitions());
   const writeTools = definitions.filter(
     (definition) =>
-      definition.name.startsWith("studio_") &&
+      definition.name.startsWith("openmotion_studio_") &&
       [
-        "studio_set_text",
-        "studio_set_style",
-        "studio_transform",
-        "studio_add_animation",
-        "studio_update_animation",
-        "studio_add_keyframe",
-        "studio_delete_animation",
+        "openmotion_studio_set_text",
+        "openmotion_studio_set_style",
+        "openmotion_studio_transform",
+        "openmotion_studio_add_animation",
+        "openmotion_studio_update_animation",
+        "openmotion_studio_add_keyframe",
+        "openmotion_studio_delete_animation",
       ].includes(definition.name),
   );
   for (const tool of writeTools) {
@@ -451,17 +451,17 @@ async function runBrowserProof(page) {
   const { selection } = selected;
   assert(
     selection.ok && selection.handle === left.handle,
-    `studio_select did not select the left handle: ${JSON.stringify(selection)}`,
+    `openmotion_studio_select did not select the left handle: ${JSON.stringify(selection)}`,
   );
   assert(
     selection.box.width > 1 && selection.box.height > 1,
-    `studio_select returned inert geometry: ${JSON.stringify(selection)}`,
+    `openmotion_studio_select returned inert geometry: ${JSON.stringify(selection)}`,
   );
   const selectedTarget = await page.waitForSelector('[data-dom-edit-selection-box="true"]', {
     visible: true,
     timeout: NAVIGATION_TIMEOUT_MS,
   });
-  assert(selectedTarget, "studio_select did not expose the agent target in Studio");
+  assert(selectedTarget, "openmotion_studio_select did not expose the agent target in Studio");
   await savePageScreenshot(page, "00-agent-target-selected.png");
 
   const thumbnailBeforeUrl = await findMountedThumbnailUrl(page, "left-card.html");
@@ -472,8 +472,8 @@ async function runBrowserProof(page) {
     "image/jpeg",
   );
 
-  const frameBeforeResult = await callTool(page, "studio_frame", { time: 1, settleMs: 0 });
-  assert(frameBeforeResult.ok, `Initial studio_frame failed: ${JSON.stringify(frameBeforeResult)}`);
+  const frameBeforeResult = await callTool(page, "openmotion_studio_frame", { time: 1, settleMs: 0 });
+  assert(frameBeforeResult.ok, `Initial openmotion_studio_frame failed: ${JSON.stringify(frameBeforeResult)}`);
   const frameBefore = await fetchImage(
     new URL(frameBeforeResult.url, ORIGIN),
     "frame-before.png",
@@ -486,7 +486,7 @@ async function runBrowserProof(page) {
   const rightSourceBefore = readFileSync(rightSourcePath, "utf8");
 
   const previewBeforeText = await capturePreviewHash(page);
-  const firstCall = await startToolCall(page, "studio_set_text", {
+  const firstCall = await startToolCall(page, "openmotion_studio_set_text", {
     handle: left.handle,
     text: "Agent saved this",
   });
@@ -499,7 +499,7 @@ async function runBrowserProof(page) {
 
   // Start the source renderer while acquisition is visible, but do not await
   // its comparatively slow Chrome capture before observing the short seal.
-  const frameDuringActionCall = await startToolCall(page, "studio_frame", { time: 1, settleMs: 0 });
+  const frameDuringActionCall = await startToolCall(page, "openmotion_studio_frame", { time: 1, settleMs: 0 });
 
   const firstReceipt = await awaitToolCall(page, firstCall);
   assert(firstReceipt.ok, `Text write failed: ${JSON.stringify(firstReceipt)}`);
@@ -516,14 +516,14 @@ async function runBrowserProof(page) {
   assert(!sealing.iframeHasLens, "Persisted seal leaked into the preview iframe DOM");
   await saveAnimatedPageScreenshot(page, "03-persisted-seal.png");
   const frameDuringActionResult = await awaitToolCall(page, frameDuringActionCall);
-  assert(frameDuringActionResult.ok, "studio_frame failed after starting during acquisition");
+  assert(frameDuringActionResult.ok, "openmotion_studio_frame failed after starting during acquisition");
   const frameDuringAction = await fetchImage(
     new URL(frameDuringActionResult.url, ORIGIN),
     "frame-during-action.png",
     "image/png",
   );
 
-  const repeatedCall = await startToolCall(page, "studio_set_style", {
+  const repeatedCall = await startToolCall(page, "openmotion_studio_set_style", {
     handle: left.handle,
     styles: { color: "#67e8f9" },
   });
@@ -539,7 +539,7 @@ async function runBrowserProof(page) {
     "Repeated style write was not saved",
   );
 
-  const newTargetCall = await startToolCall(page, "studio_set_style", {
+  const newTargetCall = await startToolCall(page, "openmotion_studio_set_style", {
     handle: right.handle,
     styles: { color: "#f5f3ff" },
   });
@@ -553,7 +553,7 @@ async function runBrowserProof(page) {
   );
 
   const previewBeforeTransform = await capturePreviewHash(page);
-  const transformReceipt = await callTool(page, "studio_transform", {
+  const transformReceipt = await callTool(page, "openmotion_studio_transform", {
     handle: left.handle,
     width: 280,
     height: 60,
@@ -569,10 +569,10 @@ async function runBrowserProof(page) {
   );
 
   const animationTime = 0.25;
-  const seekBeforeAnimation = await callTool(page, "studio_seek", { time: animationTime });
+  const seekBeforeAnimation = await callTool(page, "openmotion_studio_seek", { time: animationTime });
   assert(seekBeforeAnimation.ok, "Could not seek before the live-animation proof");
   const previewBeforeAnimation = await capturePreviewHash(page);
-  const animationReceipt = await callTool(page, "studio_add_animation", {
+  const animationReceipt = await callTool(page, "openmotion_studio_add_animation", {
     handle: left.handle,
     method: "from",
   });
@@ -585,7 +585,7 @@ async function runBrowserProof(page) {
     sourceAfterAnimation.includes("gsap"),
     "Animation tool returned before the GSAP source write was durable",
   );
-  const seekAfterAnimation = await callTool(page, "studio_seek", { time: animationTime });
+  const seekAfterAnimation = await callTool(page, "openmotion_studio_seek", { time: animationTime });
   assert(seekAfterAnimation.ok, "Could not seek after the live-animation proof");
   const previewAfterAnimation = await capturePreviewHash(page);
   assert(
@@ -619,10 +619,10 @@ async function runBrowserProof(page) {
     "Fresh thumbnail bytes matched stale bytes",
   );
 
-  const frameAfterResult = await callTool(page, "studio_frame", { time: 1, settleMs: 200 });
+  const frameAfterResult = await callTool(page, "openmotion_studio_frame", { time: 1, settleMs: 200 });
   assert(
     frameAfterResult.ok,
-    `Post-write studio_frame failed: ${JSON.stringify(frameAfterResult)}`,
+    `Post-write openmotion_studio_frame failed: ${JSON.stringify(frameAfterResult)}`,
   );
   const frameAfter = await fetchImage(
     new URL(frameAfterResult.url, ORIGIN),
@@ -635,7 +635,7 @@ async function runBrowserProof(page) {
   );
   await savePageScreenshot(page, "06-studio-after.png");
 
-  const historyBeforeReload = (await callTool(page, "studio_look", { limit: 1 })).history;
+  const historyBeforeReload = (await callTool(page, "openmotion_studio_look", { limit: 1 })).history;
   assert(
     historyBeforeReload?.canUndo && historyBeforeReload.undoLabel,
     "Write did not enter undo history",
@@ -645,7 +645,7 @@ async function runBrowserProof(page) {
   await waitForToolSurface(page);
   const lookAfterReload = await waitForReadyLook(page);
   const leftAfterReload = targetForSource(lookAfterReload, "compositions/left-card.html");
-  const inspectAfterReload = await callTool(page, "studio_inspect", {
+  const inspectAfterReload = await callTool(page, "openmotion_studio_inspect", {
     handle: leftAfterReload.handle,
   });
   assert(inspectAfterReload.ok, "Reloaded target could not be inspected by its new handle");

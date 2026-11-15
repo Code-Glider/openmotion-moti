@@ -171,19 +171,19 @@ async function mountEditableAgent() {
 }
 
 describe("useStudioAgentTools through @mcp-b/global", () => {
-  it("saves through studio_set_text when the in-page server calls execute with the input alone", async () => {
+  it("saves through openmotion_studio_set_text when the in-page server calls execute with the input alone", async () => {
     const { agent, handle, setText } = await mountEditableAgent();
 
     // Registry entry, as `[...document.modelContext.tools.values()]` exposes it.
-    const viaEntry = await bridgeEntry("studio_set_text").execute(
+    const viaEntry = await bridgeEntry("openmotion_studio_set_text").execute(
       { handle, text: "Through the registry" },
       new AbortController().signal,
     );
     expect(viaEntry).toMatchObject({ ok: true, stage: "saved", changed: true });
 
     // Chromium's `executeTool` extension, which the bridge also implements.
-    const descriptor = (await bridge().getTools()).find((tool) => tool.name === "studio_set_text");
-    if (!descriptor) throw new Error("expected studio_set_text in getTools()");
+    const descriptor = (await bridge().getTools()).find((tool) => tool.name === "openmotion_studio_set_text");
+    if (!descriptor) throw new Error("expected openmotion_studio_set_text in getTools()");
     const viaExecuteTool = await bridge().executeTool(
       descriptor,
       JSON.stringify({ handle, text: "Through executeTool" }),
@@ -204,7 +204,7 @@ describe("useStudioAgentTools through @mcp-b/global", () => {
 
     // The browser would call this with `(input, { signal })`; the mirror drops
     // the options before Studio's handler sees them.
-    const result = await mirroredTool("studio_set_text").execute(
+    const result = await mirroredTool("openmotion_studio_set_text").execute(
       { handle, text: "Through the native mirror" },
       { signal: new AbortController().signal },
     );

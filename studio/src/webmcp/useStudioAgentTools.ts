@@ -142,7 +142,7 @@ export function buildStudioTools(depsRef: {
 
   return [
     {
-      name: "studio_look",
+      name: "openmotion_studio_look",
       title: "Look at the composition",
       description: STUDIO_LOOK_DESCRIPTION,
       inputSchema: STUDIO_LOOK_INPUT_SCHEMA,
@@ -153,121 +153,121 @@ export function buildStudioTools(depsRef: {
         untrustedContentHint: true,
       },
       execute: (input): Promise<ToolResult<StudioLook>> =>
-        runToolBody("studio_look", async () =>
+        runToolBody("openmotion_studio_look", async () =>
           buildStudioLook(depsRef.current.getSnapshot(), input as StudioLookInput),
         ),
     },
     {
-      name: "studio_select",
+      name: "openmotion_studio_select",
       title: "Select an element",
       description: STUDIO_SELECT_DESCRIPTION,
       inputSchema: STUDIO_SELECT_INPUT_SCHEMA,
       annotations: { readOnlyHint: false, untrustedContentHint: true },
       execute: (input): Promise<ToolResult<StudioSelectResult>> =>
-        runToolBody("studio_select", () =>
+        runToolBody("openmotion_studio_select", () =>
           studioSelect(depsRef.current, readStringInput(input, "handle")),
         ),
     },
     {
-      name: "studio_seek",
+      name: "openmotion_studio_seek",
       title: "Move the playhead",
       description: STUDIO_SEEK_DESCRIPTION,
       inputSchema: STUDIO_SEEK_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
       execute: (input): Promise<ToolResult<StudioSeekResult>> =>
-        runToolBody("studio_seek", async () =>
+        runToolBody("openmotion_studio_seek", async () =>
           studioSeek(depsRef.current, readNumberInput(input, "time")),
         ),
     },
     {
-      name: "studio_frame",
+      name: "openmotion_studio_frame",
       title: "See the composition",
       description: STUDIO_FRAME_DESCRIPTION,
       inputSchema: STUDIO_FRAME_INPUT_SCHEMA,
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: (input): Promise<ToolResult<StudioFrameResult>> =>
-        runToolBody("studio_frame", () => studioFrame(depsRef.current, input as StudioFrameInput)),
+        runToolBody("openmotion_studio_frame", () => studioFrame(depsRef.current, input as StudioFrameInput)),
     },
     {
-      name: "studio_inspect",
+      name: "openmotion_studio_inspect",
       title: "Inspect one element",
       description: STUDIO_INSPECT_DESCRIPTION,
       inputSchema: STUDIO_INSPECT_INPUT_SCHEMA,
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: (input): Promise<ToolResult<StudioInspectResult>> =>
-        runToolBody("studio_inspect", () =>
+        runToolBody("openmotion_studio_inspect", () =>
           studioInspect(depsRef.current, input as StudioInspectInput),
         ),
     },
     {
-      name: "studio_set_text",
+      name: "openmotion_studio_set_text",
       title: "Set an element's text",
       description: STUDIO_SET_TEXT_DESCRIPTION,
       inputSchema: STUDIO_SET_TEXT_INPUT_SCHEMA,
       annotations: { readOnlyHint: false, untrustedContentHint: true },
-      execute: writeTool<StudioSetTextResult>("studio_set_text", (deps, input, signal) =>
+      execute: writeTool<StudioSetTextResult>("openmotion_studio_set_text", (deps, input, signal) =>
         studioSetText(deps, input, signal),
       ),
     },
     {
-      name: "studio_set_style",
+      name: "openmotion_studio_set_style",
       title: "Set an element's styles",
       description: STUDIO_SET_STYLE_DESCRIPTION,
       inputSchema: STUDIO_SET_STYLE_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
-      execute: writeTool<StudioSetStyleResult>("studio_set_style", (deps, input, signal) =>
+      execute: writeTool<StudioSetStyleResult>("openmotion_studio_set_style", (deps, input, signal) =>
         studioSetStyle(deps, input, signal),
       ),
     },
     {
-      name: "studio_transform",
+      name: "openmotion_studio_transform",
       title: "Move, resize or rotate",
       description: STUDIO_TRANSFORM_DESCRIPTION,
       inputSchema: STUDIO_TRANSFORM_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
-      execute: writeTool<StudioTransformResult>("studio_transform", (deps, input, signal) =>
+      execute: writeTool<StudioTransformResult>("openmotion_studio_transform", (deps, input, signal) =>
         studioTransform(deps, input as StudioTransformInput, signal),
       ),
     },
     {
-      name: "studio_add_animation",
+      name: "openmotion_studio_add_animation",
       title: "Add an animation",
       description: STUDIO_ADD_ANIMATION_DESCRIPTION,
       inputSchema: STUDIO_ADD_ANIMATION_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
-      execute: writeTool<StudioAddAnimationResult>("studio_add_animation", (deps, input, signal) =>
+      execute: writeTool<StudioAddAnimationResult>("openmotion_studio_add_animation", (deps, input, signal) =>
         studioAddAnimation(deps, input, signal),
       ),
     },
     {
-      name: "studio_update_animation",
+      name: "openmotion_studio_update_animation",
       title: "Change an animation",
       description: STUDIO_UPDATE_ANIMATION_DESCRIPTION,
       inputSchema: STUDIO_UPDATE_ANIMATION_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
       execute: writeTool<StudioUpdateAnimationResult>(
-        "studio_update_animation",
+        "openmotion_studio_update_animation",
         (deps, input, signal) => studioUpdateAnimation(deps, input, signal),
       ),
     },
     {
-      name: "studio_add_keyframe",
+      name: "openmotion_studio_add_keyframe",
       title: "Add a keyframe",
       description: STUDIO_ADD_KEYFRAME_DESCRIPTION,
       inputSchema: STUDIO_ADD_KEYFRAME_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
-      execute: writeTool<StudioAddKeyframeResult>("studio_add_keyframe", (deps, input, signal) =>
+      execute: writeTool<StudioAddKeyframeResult>("openmotion_studio_add_keyframe", (deps, input, signal) =>
         studioAddKeyframe(deps, input, signal),
       ),
     },
     {
-      name: "studio_delete_animation",
+      name: "openmotion_studio_delete_animation",
       title: "Remove an animation",
       description: STUDIO_DELETE_ANIMATION_DESCRIPTION,
       inputSchema: STUDIO_DELETE_ANIMATION_INPUT_SCHEMA,
       annotations: { readOnlyHint: false },
       execute: writeTool<StudioDeleteAnimationResult>(
-        "studio_delete_animation",
+        "openmotion_studio_delete_animation",
         (deps, input, signal) => studioDeleteAnimation(deps, input, signal),
       ),
     },

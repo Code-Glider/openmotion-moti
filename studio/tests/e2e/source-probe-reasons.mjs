@@ -41,13 +41,13 @@ try {
   };
   const open = async () => {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.__sourceProbe?.has('studio_look'), { timeout: 90_000 });
-    await wait(async () => (await call('studio_seek', { time: 1 })).ok);
+    await page.waitForFunction(() => window.__sourceProbe?.has('openmotion_studio_look'), { timeout: 90_000 });
+    await wait(async () => (await call('openmotion_studio_seek', { time: 1 })).ok);
   };
   const handle = async label => {
     let found;
     await wait(async () => {
-      found = (await call('studio_look', { limit: 100 })).elements?.find(element => element.label === label)?.handle;
+      found = (await call('openmotion_studio_look', { limit: 100 })).elements?.find(element => element.label === label)?.handle;
       return found;
     });
     return found;
@@ -59,9 +59,9 @@ try {
   });
   await open();
   const target = await handle('Target');
-  assert.equal((await call('studio_inspect', { handle: target })).can.editStyles, true);
+  assert.equal((await call('openmotion_studio_inspect', { handle: target })).can.editStyles, true);
   const before = await readFile(index, 'utf8');
-  results.save = await call('studio_set_style', { handle: target, styles: { backgroundColor: '#e11d48' } });
+  results.save = await call('openmotion_studio_set_style', { handle: target, styles: { backgroundColor: '#e11d48' } });
   assert.equal(results.save.ok, true, JSON.stringify(results.save));
   await wait(async () => (await readFile(index, 'utf8')) !== before);
   const saved = await readFile(index, 'utf8');
@@ -82,10 +82,10 @@ try {
     ['Dynamic', 'dynamic', 'not found in the current source', '未能在源文件中定位到它'],
   ]) {
     const current = await handle(label);
-    const inspected = await call('studio_inspect', { handle: current });
+    const inspected = await call('openmotion_studio_inspect', { handle: current });
     assert.equal(inspected.can.editStyles, false);
     assert.ok(inspected.can.reasonIfDisabled.includes(reason), JSON.stringify(inspected));
-    assert.equal((await call('studio_select', { handle: current })).ok, true);
+    assert.equal((await call('openmotion_studio_select', { handle: current })).ok, true);
     await page.waitForSelector('[data-dom-edit-selection-box="true"]');
     await page.click('[data-dom-edit-selection-box="true"]');
     await page.waitForFunction(text => document.body.innerText.includes(text), {}, text);

@@ -79,7 +79,7 @@ function installModelContext() {
 
 async function executeFirstRegistered<T>(registered: ModelContextTool[]): Promise<T> {
   const look = registered[0];
-  if (!look) throw new Error("expected studio_look to be registered");
+  if (!look) throw new Error("expected openmotion_studio_look to be registered");
   return (await look.execute({}, { signal: new AbortController().signal })) as T;
 }
 
@@ -123,18 +123,18 @@ describe("useStudioAgentTools", () => {
     });
 
     expect(registered.map((tool) => tool.name)).toEqual([
-      "studio_look",
-      "studio_select",
-      "studio_seek",
-      "studio_frame",
-      "studio_inspect",
-      "studio_set_text",
-      "studio_set_style",
-      "studio_transform",
-      "studio_add_animation",
-      "studio_update_animation",
-      "studio_add_keyframe",
-      "studio_delete_animation",
+      "openmotion_studio_look",
+      "openmotion_studio_select",
+      "openmotion_studio_seek",
+      "openmotion_studio_frame",
+      "openmotion_studio_inspect",
+      "openmotion_studio_set_text",
+      "openmotion_studio_set_style",
+      "openmotion_studio_transform",
+      "openmotion_studio_add_animation",
+      "openmotion_studio_update_animation",
+      "openmotion_studio_add_keyframe",
+      "openmotion_studio_delete_animation",
     ]);
     expect(trackEvent).toHaveBeenCalledWith("webmcp.native_present");
   });
@@ -248,7 +248,7 @@ describe("useStudioAgentTools", () => {
 
     expect(trackEvent).toHaveBeenCalledWith("webmcp_registration_failed", {
       error_name: "NotAllowedError",
-      tool_name: "studio_look",
+      tool_name: "openmotion_studio_look",
     });
   });
 
@@ -280,13 +280,13 @@ describe("useStudioAgentTools", () => {
     await act(async () => mountTools(studioAgentToolsDeps()));
 
     for (const name of [
-      "studio_set_text",
-      "studio_set_style",
-      "studio_transform",
-      "studio_add_animation",
-      "studio_update_animation",
-      "studio_add_keyframe",
-      "studio_delete_animation",
+      "openmotion_studio_set_text",
+      "openmotion_studio_set_style",
+      "openmotion_studio_transform",
+      "openmotion_studio_add_animation",
+      "openmotion_studio_update_animation",
+      "openmotion_studio_add_keyframe",
+      "openmotion_studio_delete_animation",
     ]) {
       const schema = registered.find((tool) => tool.name === name)?.inputSchema as {
         required?: string[];
@@ -316,7 +316,7 @@ describe("useStudioAgentTools", () => {
       stage: string;
       changed: boolean;
       target: { handle: string; sourceFile: string };
-    }>(registered, "studio_set_text", {
+    }>(registered, "openmotion_studio_set_text", {
       handle: targeted.agentHandle,
       text: "Edited by agent",
     });
@@ -344,14 +344,14 @@ describe("useStudioAgentTools", () => {
 
     const locked = await executeRegistered<{ ok: boolean; stage: string }>(
       registered,
-      "studio_set_text",
+      "openmotion_studio_set_text",
       { handle: targeted.agentHandle, text: "No" },
     );
     const controller = new AbortController();
     controller.abort();
     const aborted = await executeRegistered<{ ok: boolean; stage: string; cancelRequested: true }>(
       registered,
-      "studio_set_text",
+      "openmotion_studio_set_text",
       { handle: targeted.agentHandle, text: "No" },
       controller.signal,
     );
@@ -380,15 +380,15 @@ describe("useStudioAgentTools", () => {
 
     const writeTools = registered.filter((tool) => tool.annotations?.readOnlyHint === false);
     expect(writeTools.map((tool) => tool.name)).toEqual([
-      "studio_select",
-      "studio_seek",
-      "studio_set_text",
-      "studio_set_style",
-      "studio_transform",
-      "studio_add_animation",
-      "studio_update_animation",
-      "studio_add_keyframe",
-      "studio_delete_animation",
+      "openmotion_studio_select",
+      "openmotion_studio_seek",
+      "openmotion_studio_set_text",
+      "openmotion_studio_set_style",
+      "openmotion_studio_transform",
+      "openmotion_studio_add_animation",
+      "openmotion_studio_update_animation",
+      "openmotion_studio_add_keyframe",
+      "openmotion_studio_delete_animation",
     ]);
     for (const tool of writeTools) {
       // One argument, exactly as the polyfill calls it. An empty input is a bad
@@ -401,7 +401,7 @@ describe("useStudioAgentTools", () => {
 
     const saved = await executeRegisteredWithoutOptions<{ ok: boolean; stage: string }>(
       registered,
-      "studio_set_text",
+      "openmotion_studio_set_text",
       { handle: targeted.agentHandle, text: "Edited without options" },
     );
     expect(saved).toMatchObject({ ok: true, stage: "saved" });
@@ -441,14 +441,14 @@ describe("useStudioAgentTools", () => {
 
     const dispatched = await executeRegistered<{ stage: string }>(
       registered,
-      "studio_add_animation",
+      "openmotion_studio_add_animation",
       { handle: targeted.agentHandle, method: "to" },
     );
-    const saved = await executeRegistered<{ stage: string }>(registered, "studio_set_text", {
+    const saved = await executeRegistered<{ stage: string }>(registered, "openmotion_studio_set_text", {
       handle: targeted.agentHandle,
       text: "Saved",
     });
-    const verified = await executeRegistered<{ stage: string }>(registered, "studio_transform", {
+    const verified = await executeRegistered<{ stage: string }>(registered, "openmotion_studio_transform", {
       handle: targeted.agentHandle,
       width: 200,
       height: 80,
@@ -481,7 +481,7 @@ describe("useStudioAgentTools", () => {
       stage: string;
       changed: boolean;
       evidence: { version: string };
-    }>(registered, "studio_set_text", {
+    }>(registered, "openmotion_studio_set_text", {
       handle: targeted.agentHandle,
       text: "Agent",
     });
@@ -524,7 +524,7 @@ describe("useStudioAgentTools", () => {
       cancelRequested?: boolean;
     }>(
       registered,
-      "studio_set_text",
+      "openmotion_studio_set_text",
       { handle: targeted.agentHandle, text: "Late" },
       controller.signal,
     );
@@ -564,7 +564,7 @@ describe("useStudioAgentTools", () => {
       applied: Record<string, string>;
       rejected: Record<string, string>;
       propertyReceipts: Record<string, { stage: string }>;
-    }>(registered, "studio_set_style", {
+    }>(registered, "openmotion_studio_set_style", {
       handle: targeted.agentHandle,
       styles: { color: "red", left: "10px", opacity: "0.5" },
     });
