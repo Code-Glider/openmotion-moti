@@ -59,7 +59,7 @@ export function applyTrackRenumbers(source: string, plan: DropTrackInsertPlan): 
   let out = source;
   for (const { element, track } of plan.renumbers) {
     const target = buildPatchTarget(element);
-    if (!target || readAttributeByTarget(out, target, "track-index") === undefined) {
+    if (!target || !readTagSnippetByTarget(out, target)) {
       throw new Error(`Cannot renumber the track of "${element.id}" in the source`);
     }
     out = applyPatchByTarget(out, target, {
@@ -112,11 +112,9 @@ export function resolveDropTrack(input: {
     for (const element of [...elements, ...(input.placed ?? [])]) {
       const target = buildPatchTarget(element);
       const raw = target ? readAttributeByTarget(source, target, "track-index") : undefined;
-      if (raw === undefined) {
-        if (target && readTagSnippetByTarget(source, target)) throw new Error(`Cannot renumber the track of "${element.id}" in the source`);
-        continue;
-      }
-      const track = Number(raw);
+      if (!target || !readTagSnippetByTarget(source, target)) continue;
+      // Absent data-track-index is the authored default lane, not a missing node.
+      const track = raw === undefined ? 0 : Number(raw);
       if (!Number.isFinite(track)) throw new Error("Invalid authored track index");
       peers.set(element.key ?? element.id, { ...element, track, authoredTrack: track });
     }

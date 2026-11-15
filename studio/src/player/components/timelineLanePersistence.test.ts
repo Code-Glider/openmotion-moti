@@ -26,6 +26,30 @@ describe("durable displayed lanes", () => {
     expect(planTimelineLanePersistence(peers.filter(e => e.id !== "spill"), peers[0])).toEqual([]);
   });
 
+  it("materializes an implicit default track without treating its missing attribute as a missing element", () => {
+    const result = resolveDropTrack({
+      source: '<div id="main"></div><div id="spill"></div>',
+      elements: peers.slice(0, 2),
+      placement: { start: 9, track: 1 },
+      dropped: { id: "image", tag: "img", start: 9, duration: 3 },
+    });
+    expect(result).toMatchObject({ start: 9, track: 1 });
+    expect(result.source).toContain('<div id="spill" data-track-index="1">');
+    expect(result.source).toContain('<div id="main">');
+  });
+
+  it("opens a new top lane above clips with implicit track indices", () => {
+    const result = resolveDropTrack({
+      source: '<div id="main"></div><div id="spill"></div>',
+      elements: peers.slice(0, 2),
+      placement: { start: 9, track: 0, newTrack: "top" },
+      dropped: { id: "image", tag: "img", start: 9, duration: 3 },
+    });
+    expect(result).toMatchObject({ start: 9, track: 0 });
+    expect(result.source).toContain('<div id="main" data-track-index="1">');
+    expect(result.source).toContain('<div id="spill" data-track-index="2">');
+  });
+
   it("keeps foreign sources and the opposite media zone unchanged", () => {
     const foreign = { ...peers[1], id: "foreign", sourceFile: "child.html" };
     const plan = planTimelineLanePersistence([...peers, foreign], peers[0]);
