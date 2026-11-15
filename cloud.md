@@ -7,3 +7,7 @@ Every interface styling task must follow the [shared design system rules](AGENTS
 The Claude Code entry is [CLAUDE.md](CLAUDE.md). This compatibility entry does not define a separate set of rules.
 
 The design-system workbench is an independent package-owned editing surface. Keep it free of Studio and business-module imports; UI edits and Agent edits update the same design-system source. Run `npm run design:dev` to open it and `npm run design:test` for its save/conflict/independence checks.
+
+## MCP onboarding
+
+Follow [MCP onboarding and capability maintenance](AGENTS.md#mcp-onboarding-and-capability-maintenance). Changes to local MCP, media generation, Agent adapters, templates or optional presentation must keep the Studio connection page, capability descriptions, setup instructions and compatibility boundaries current in the same change.

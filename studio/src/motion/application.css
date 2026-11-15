@@ -11,6 +11,7 @@
 .om-app-navigation { display: flex; align-items: center; flex: 1; gap: var(--motion-space-8); min-width: 0; font-size: var(--motion-text-sm); }
 .motion-studio-header.motion-studio-header-compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--motion-space-8); height: var(--motion-control); min-height: var(--motion-control); padding: 0 var(--motion-space-12); }
 .motion-studio-header.motion-studio-header-compact > div { width: auto; min-width: 0; }
+.motion-studio-header.motion-studio-header-compact > .motion-header-leading { gap: var(--motion-space-12); }
 .motion-studio-header.motion-studio-header-compact > .motion-header-trailing { justify-self: end; gap: var(--motion-space-12); margin-left: 0; }
 .motion-header-project { display: flex; justify-content: center; }
 .motion-header-project .om-app-project-title { position: relative; display: inline-grid; flex: 0 1 auto; min-width: 0; max-width: 100%; }

@@ -1,5 +1,5 @@
 import { FeedbackLayer } from "../components/FeedbackLayer";
-import { createContext, useContext, useState, useRef, useCallback, useEffect, lazy, Suspense, type ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { ConnectionDialog } from './ConnectionDialog';
 import { MotionIcon } from './icons';
@@ -13,11 +13,13 @@ import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
 import { ApplicationHeader, ApplicationRail } from './ApplicationChrome';
-import type { SettingsSection } from './SettingsCenter';
-import { SettingsLoading } from './settingsPrimitives';
+import { SettingsCenter, type SettingsSection } from './SettingsCenter';
+import { SettingsSurfaceBoundary } from './SettingsSurfaceBoundary';
+import { McpConnectionPage } from './McpConnectionPage';
 import { WorkspaceHomeButton } from './WorkspaceHomeButton';
 
-const SettingsCenter = lazy(() => import('./SettingsCenter').then(module => ({ default: module.SettingsCenter })));
+// Settings shares the model-picker dependencies. Keep it in the loaded shell so
+// an open editor never requests a removed Settings chunk after a local rebuild.
 
 type WorkspaceChrome = {
   workspace: ReturnType<typeof useWorkspace>;
@@ -122,7 +124,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
   const value: WorkspaceChrome = { workspace, switchingDisabled, saveState: editorState?.saveState || saveState, registerEditor, beforeViewChange,
     openLibrary: trigger => { libraryTrigger.current = trigger ?? null; workspace.clearError(); setConnectionSection('templates'); setConnectionsOpen(true); },
-    openConnections: () => openSettings('local'),
+    openConnections: () => openSettings('mcp'),
     openModelSettings: () => openSettings('providers'),
     openHome, toggleSidebar, sidebarOpen, navigationCollapsed,
     toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) };
@@ -156,7 +158,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
               onDismiss={() => { setDismissedNotice(noticeKey); if (workspace.error) workspace.clearError(); }} />)}
         {children}
       </div>
-      {settings && <Suspense fallback={<SettingsLoading />}><SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={setSettings} openConnections={value.openConnections} /></Suspense>}
+      {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'mcp'
+        ? <McpConnectionPage openLibrary={value.openLibrary} openProviders={value.openModelSettings} />
+        : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={setSettings} openConnections={value.openConnections} />}</SettingsSurfaceBoundary>}
       </div>
     </div>
     </Dialog.Root>
