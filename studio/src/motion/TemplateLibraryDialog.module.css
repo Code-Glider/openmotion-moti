@@ -70,8 +70,7 @@
 .library .surprise { display: inline-flex; align-items: center; gap: 9px; padding: 10px 13px; border: 1px solid var(--library-line); border-radius: 9px; font-size: 13px; box-shadow: var(--motion-shadow-xs); }
 .surprise:hover:not(:disabled) { background: var(--color-template-hover); }
 .intro > small { display: block; color: var(--library-muted); font-size: 11px; margin-top: 17px; }
-.cover { display: block; width: 100%; overflow: hidden; border-radius: 11px; position: relative; padding: 0; background: var(--color-template-preview-bg) !important; text-align: left; isolation: isolate; }
-.cover::after { content: ''; position: absolute; inset: 0; border: 1px solid var(--motion-gallery-border); border-radius: inherit; pointer-events: none; }
+.cover { display: block; width: 100%; position: relative; padding: 0; text-align: left; }
 .poster, .cover > video { display: block; width: 100%; height: 100%; position: absolute; inset: 0; object-fit: cover; }
 .cover > video { transition: opacity .25s; }
 

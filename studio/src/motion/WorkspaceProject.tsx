@@ -4,12 +4,13 @@ import { useWorkspaceChrome } from './WorkspaceFrame';
 
 export function WorkspaceProject() {
   const { t } = useI18n();
-  const { workspace, switchingDisabled, saveState } = useWorkspaceChrome();
+  const { workspace, switchingDisabled } = useWorkspaceChrome();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
   const project = workspace.projects.find(item => item.id === workspace.status?.projectId);
   const editingRef = useRef(false);
   const savingRef = useRef(false);
+  const displayedTitle = editing ? title : project?.title || '';
   const finishEditing = () => { editingRef.current = false; setEditing(false); };
   const saveTitle = async () => {
     if (!editingRef.current || savingRef.current) return;
@@ -20,11 +21,13 @@ export function WorkspaceProject() {
     finally { savingRef.current = false; }
   };
   return <span className="motion-project-control om-app-project-title">
+    <span className="motion-project-name-measure" aria-hidden="true">{displayedTitle || t(project ? 'Untitled' : 'Connecting…')}</span>
     <input
       className="om-inline-input motion-project-name-input"
       maxLength={100}
       aria-label={t('Project name')}
-      value={editing ? title : project?.title || ''}
+      title={project?.title || t('Untitled')}
+      value={displayedTitle}
       placeholder={t(project ? 'Untitled' : 'Connecting…')}
       disabled={workspace.busy || switchingDisabled || !project}
       onFocus={() => {
@@ -49,7 +52,6 @@ export function WorkspaceProject() {
         }
       }}
     />
-    {saveState && <span className="motion-save-state" role="status">{saveState}</span>}
   </span>;
 }
 

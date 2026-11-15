@@ -87,7 +87,7 @@ export function templatePrompt(info: IntegrationInfo, _host: IntegrationHost, te
 }
 
 export function agentGuide(info: IntegrationInfo, host: IntegrationHost) {
-  if (host === 'chatgpt') return `# OpenMotion · ChatGPT 接入\n\n${manualConnection(info, host)}\n\n本地工作区：${info.previewUrl}\n请从 MCP 接入弹框选择可用的本机客户端。\n`;
+  if (host === 'chatgpt') return `# OpenMotion · ChatGPT 接入\n\n${manualConnection(info, host)}\n\n本地工作区：${info.previewUrl}\n请从 MCP 接入页面选择可用的本机客户端。\n`;
   return `# OpenMotion · ${hostNames[host]} 接入指引
 
 OpenMotion — Agent 会话、动效模板与可编辑产物。
@@ -140,7 +140,7 @@ ${workflowEntryGuide}
 
 新项目用 openmotion_create_project，提供 requestId、projectType、title、requirements。模板可从 Studio 选择，或调用 openmotion_list_templates 取得本地 JSONL 索引路径后用本机工具检索，再用 openmotion_get_template 读取详情。已知 ID 可直接读详情。内置及 Prism 模板用 projectType=template 创建；参考视频创建的是重建载体，由宿主 Agent 看参考并编写内容，不宣称已经生成影片。现有项目先 openmotion_get_project 列表/详情核对 projectId、sessionId、revision 与 currentVersionId。
 
-素材通过 openmotion_import_assets 批量持久导入实际本机附件，检查逐项结果；再用 openmotion_edit_project 保存原生 HTML/CSS/JS 和可选需求，传 expectedRevision、expectedVersionId 及稳定 requestId。冲突时重新读，不盲目覆盖 GUI 修改。媒体生成使用宿主或 Studio 已有能力，本期 MCP 不公开生成/供应商配置入口。
+素材通过 openmotion_import_assets 批量持久导入实际本机附件，检查逐项结果；再用 openmotion_edit_project 保存原生 HTML/CSS/JS 和可选需求，传 expectedRevision、expectedVersionId 及稳定 requestId。冲突时重新读，不盲目覆盖 GUI 修改。媒体生成使用 openmotion_media_use：先 inspect，读取选中供应商 reference，再查 models 和 schema；明确 projectId、稳定 requestId、provider、model、modality 后 generate，用同一 jobId 查 status 或 cancel。供应商和 Key 只在 Studio 的模型供应商设置中配置，不把凭据放进对话。完成素材不自动编排进时间轴；费用由实际供应商决定，不自动付费回退或重新提交。
 
 After each content edit or restore, follow previewHandoff and production/native#continuing-edits. Request the same project on the calling chat's right panel, preserving embed/query/hash and reusing the actual native Tab ID. Default foreground preserves the current chat: queue while inactive, resolve the latest version on return, and verify actual visibility and changed live content before action=record_display. Codex IAB visibility synchronization is scoped to the calling chat and does not navigate. queued is only an acknowledgment, not proof that the calling chat is inactive. Apply the same visibility checks to first delivery; hidden automation tabs, markDeliverable and completed MP4 export do not replace the editor handoff. Use visibility=queued only for confirmed inactive-chat deferral; otherwise report the display failure. Only this turn's explicit show-now request permits presentation=now and switching back; background skips presentation. Never guess a project from another chat or workspace.
 

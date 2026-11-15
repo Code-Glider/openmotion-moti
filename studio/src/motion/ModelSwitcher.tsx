@@ -11,13 +11,14 @@ import { useProviderDirectory, notifyProvidersChanged } from './useProviderDirec
 import { kindLabels, typeIcons } from './ModelEditor';
 import { ProviderAvatar, ModelAvatar, SettingsError, SettingsLoading } from './settingsPrimitives';
 import { DefaultAgentCard } from './AgentSettings';
+import { SettingsSurfaceBoundary } from './SettingsSurfaceBoundary';
 
 export function ModelSwitcher({ openSettings, capability, label }: { openSettings: () => void; capability?: ModelKind; label?: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   useEffect(() => { const close = () => setOpen(false); window.addEventListener('motion:agents-open', close); return () => window.removeEventListener('motion:agents-open', close); }, []);
   return <Popover open={open} onOpenChange={setOpen} aria-label={t('Select model')} align="end" className="om-model-picker om-selection-panel" trigger={<button className="om-button om-model-switcher" aria-label={t('Select model')}><RemixIcon name="sparkling-line" size={16} /><span>{label || t('Models')}</span><RemixIcon name="arrow-down-s-line" size={15} /></button>}>
-    {open && <ModelChoices capability={capability} close={() => setOpen(false)} openSettings={openSettings} />}
+    {open && <SettingsSurfaceBoundary><ModelChoices capability={capability} close={() => setOpen(false)} openSettings={openSettings} /></SettingsSurfaceBoundary>}
   </Popover>;
 }
 function ModelChoices({ capability, close, openSettings }: { capability?: ModelKind; close: () => void; openSettings: () => void }) {

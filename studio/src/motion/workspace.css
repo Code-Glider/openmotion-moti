@@ -11,7 +11,7 @@
 .motion-editor-placeholder-header { display: flex; align-items: center; padding-inline: var(--motion-space-12); }
 .motion-editor-placeholder-panels { display: grid; min-height: 0; }
 .motion-editor-placeholder-timeline { display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-12); overflow: hidden; }
-.motion-sidebar { display: flex; flex-direction: column; flex: 0 0 224px; width: 224px; min-height: 0; padding: 12px 12px 12px; border-right: 1px solid var(--motion-border); background: var(--motion-bg); }
+.motion-sidebar { display: flex; flex-direction: column; flex: 0 0 224px; width: 224px; min-height: 0; padding: 12px 12px 12px; background: var(--motion-bg); }
 .motion-sidebar-brand { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 16px; padding-inline: 4px; gap: 10px; }
 .motion-sidebar .motion-brand { border: 0; background: transparent; padding: 0; min-width: 0; gap: 8px; }
 .motion-sidebar .motion-brand-logo { display: block; width: 104px; max-width: 100%; height: auto; }

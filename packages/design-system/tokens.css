@@ -84,6 +84,7 @@
   --motion-radius-step-10: 10px;
   --motion-radius-step-9: 9px;
   --motion-radius-step-1: 1px;
+  --motion-gallery-media-border: color-mix(in srgb, var(--motion-strong) 12%, transparent);
   --motion-text-step-7: 7px;
   --motion-text-step-8: 8px;
   --motion-on-brand: #202020;

@@ -85,7 +85,7 @@ const TemplateCard = memo(function TemplateCard({ template, onSelect, active, on
     };
   }, [active, template.previewUrl, failed]);
   return <article className={styles.card} data-template-id={template.id} data-has-video={Boolean(template.previewUrl)}>
-    <button className={styles.cover} style={{ aspectRatio: Math.max(0.8, Math.min(1.9, templateAspect(template))) }} onClick={() => onSelect(template)}
+    <button className={`motion-gallery-card-cover ${styles.cover}`} style={{ aspectRatio: Math.max(0.8, Math.min(1.9, templateAspect(template))) }} onClick={() => onSelect(template)}
       onMouseEnter={() => onPriority(template.id)} onMouseLeave={() => onPriority(null)} onFocus={() => onPriority(template.id)} onBlur={() => onPriority(null)}
       aria-label={t('Preview template {title}', { title: template.title })}>
       <TemplatePoster template={template} />
