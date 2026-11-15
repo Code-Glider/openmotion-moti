@@ -6,7 +6,7 @@ import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
 import { execute, pluginRoot } from '../hyperframes.ts';
 import { verificationBinaries } from '../scripts/verify-export.ts';
-import { AssetLibrary } from '../gateway/asset-library.ts';
+import { AssetLibrary, assetHash } from '../gateway/asset-library.ts';
 import { ModelGateway, gatewayFor } from '../gateway/service.ts';
 import { assetOperation } from '../gateway/asset-operations.ts';
 import { AssetConversations, type AssetAgentRpc } from '../gateway/asset-chat.ts';
@@ -152,7 +152,40 @@ test('in-app Agent streams, confirms generation, persists threads, rejects dupli
   await chats.start(chat.id, { requestId: 'follow-up', text: 'Try another idea' });
   await until(() => binaries[1]?.requests.some((r: any) => r.method === 'turn/start'));
   assert.equal(binaries[1].requests.find((r: any) => r.method === 'thread/resume').params.threadId, 'codex-thread');
+  assert.equal((await chats.start(chat.id, input)).id, chat.id);
+  await assert.rejects(chats.start(chat.id, { ...input, text: 'Different paid work' }), /REQUEST_ID_CONFLICT/);
   await chats.stop(chat.id); assert.equal((await chats.get(chat.id)).state, 'cancelled');
   await chats.start(chat.id, { requestId: 'follow-up', text: 'Try another idea' }); assert.equal(binaries.length, 2);
+  await chats.start(chat.id, input);
+  const restarted = new AssetConversations(store, { resolve: async () => { throw new Error('Replay must not need Codex'); } });
+  const replay = await restarted.start(chat.id, input);
+  assert.equal(replay.messages.filter(message => message.role === 'user').length, 2);
+  assert.equal(replay.requestReceipts?.length, 2);
+  await assert.rejects(restarted.start(chat.id, { ...input, text: 'Different paid work' }), /REQUEST_ID_CONFLICT/);
+  assert.equal(binaries.length, 2);
   await chats.close(); await gatewayFor(store).close();
+}, false));
+
+test('legacy conversation receipts survive new turns and replay after references are trashed', () => fixture(async store => {
+  const library = new AssetLibrary(store), asset = await library.importFile(await image(store.directory), { requestId: 'reference', name: 'Reference' });
+  let launches = 0;
+  class FakeRpc {
+    constructor() { launches++; }
+    async request(method: string) { return method.startsWith('thread/') ? { thread: { id: 'legacy-thread' } } : method === 'turn/start' ? { turn: { id: 'turn' } } : {}; }
+    send() {}
+    close() {}
+  }
+  const chats = new AssetConversations(store, { resolve: async () => '/fake/codex', rpc: FakeRpc as unknown as typeof AssetAgentRpc });
+  try {
+    const chat = await chats.create(), input = { requestId: 'legacy', text: 'Use this reference', references: [{ assetId: asset.id, versionId: asset.currentVersionId }] };
+    await writeFile(await chats.file(chat.id), JSON.stringify({ ...chat, lastRequestId: input.requestId, lastRequestHash: assetHash(input) }));
+    await chats.start(chat.id, { requestId: 'next', text: 'A new turn' });
+    await until(() => launches === 1);
+    await chats.stop(chat.id);
+    await library.update(asset.id, { trashed: true });
+    const restarted = new AssetConversations(store, { resolve: async () => null });
+    assert.equal((await restarted.start(chat.id, input)).requestReceipts?.length, 2);
+    await assert.rejects(restarted.start(chat.id, { ...input, text: 'Changed legacy input' }), /REQUEST_ID_CONFLICT/);
+    assert.equal(launches, 1);
+  } finally { await chats.close(); }
 }, false));

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import type { AssetReference, LibraryAsset } from '../../../shared/asset-library';
 import type { GenerationJob } from '../../../shared/gateway';
 import { useI18n } from '../i18n/I18n';
@@ -17,7 +17,7 @@ import { GenerationParameters, emptyParameters, requestParameters, type Paramete
 import { useWorkspaceChrome } from './WorkspaceFrame';
 export interface AssetDraft { modality: Modality; prompt: string; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
 export function AssetComposer({ active, draft, setDraft, agentReferences, setAgentReferences, jobs, mode, onMode, taskIds, history, selectingTask, onNew, onChatChanged, onChatStarted, onCancel, onView, onReference, onCreated, onError, onClose }: {
-  active: boolean; draft: AssetDraft; setDraft: (draft: AssetDraft) => void; jobs: GenerationJob[];
+  active: boolean; draft: AssetDraft; setDraft: Dispatch<SetStateAction<AssetDraft>>; jobs: GenerationJob[];
   agentReferences: AssetDraft['references']; setAgentReferences: (references: AssetDraft['references']) => void;
   mode: AssetTaskMode; onMode: (mode: AssetTaskMode) => void; taskIds: { direct?: string; agent?: string };
   history: Omit<ComponentProps<typeof AssetTaskHistory>, 'trigger'>; selectingTask: boolean; onNew: () => void;
@@ -48,7 +48,10 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
       const parsed = requestParameters(parameters);
       const result = await assetRequest<{ job: GenerationJob }>({ action: 'generate', requestId: crypto.randomUUID(), modality: draft.modality, prompt: draft.prompt, model: selected.id, mode: selected.mode, parameters: parsed,
         ...(draft.target ? { assetId: draft.target.asset.id, parentVersionId: draft.target.versionId } : {}), references: draft.references.map(r => r.reference) });
-      if (mounted.current) { setDraft({ ...draft, model: selected.id, parameters: parsed }); onCreated(result.job); }
+      if (mounted.current) {
+        setDraft(current => current === draft ? { ...current, model: selected.id, parameters: parsed } : current);
+        onCreated(result.job);
+      }
     } catch (error) { if (mounted.current) onError((error as Error).message); } finally { if (mounted.current) setBusy(false); }
   };
   const referenceControls = (items: AssetDraft['references'], update: (references: AssetDraft['references']) => void) => <div className="om-asset-references"><button className="om-nav-item om-creation-reference" onClick={onReference} disabled={items.length >= 8}><RemixIcon name="add-line" size={16} />{t('Reference asset')}</button>{items.map(item => <button key={`${item.reference.assetId}/${item.reference.versionId}`} className="om-badge om-nav-item" onClick={() => update(items.filter(r => r !== item))} aria-label={t('Remove reference: {name}', { name: item.name })}><RemixIcon name="image-line" size={14} /><span>{item.name}</span><RemixIcon name="close-line" size={14} /></button>)}</div>;

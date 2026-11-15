@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-import { act, type ComponentProps } from 'react';
+import { act, useState, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { AssetComposer } from './AssetComposer';
+import { AssetComposer, type AssetDraft } from './AssetComposer';
 import type { Model } from '../../../shared/gateway';
 const { generate, loadGateway } = vi.hoisted(() => ({ generate: vi.fn(), loadGateway: vi.fn() }));
 vi.mock('./assetClient', () => ({ assetRequest: generate }));
@@ -35,4 +35,26 @@ it('does not silently replace the historical model with an available default', a
   expect(container.textContent).toContain('This task’s model is unavailable');
   expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
   expect(generate).not.toHaveBeenCalled();
+});
+it.each([
+  ['prompt', { prompt: 'A new idea typed while waiting' }],
+  ['model', { model: 'other:image' }],
+  ['references', { references: [{ name: 'New reference', reference: { assetId: 'asset', versionId: 'version' } }] }],
+  ['parameters', { parameters: { size: '1024x1024' } }],
+] as const)('preserves pending %s edits while recording the submitted job', async (_field, changes) => {
+  let resolve!: (value: unknown) => void;
+  generate.mockImplementation(() => new Promise(done => { resolve = done; }));
+  let latest!: AssetDraft, update!: ComponentProps<typeof AssetComposer>['setDraft'];
+  function Harness() {
+    const [draft, setDraft] = useState(props.draft); latest = draft; update = setDraft;
+    return <AssetComposer {...props} draft={draft} setDraft={setDraft} />;
+  }
+  await act(async () => root.render(<Harness />));
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  const edited = { ...props.draft, ...structuredClone(changes) } as AssetDraft;
+  await act(async () => update(edited));
+  await act(async () => resolve({ job: { id: 'submitted-job' } }));
+  expect(latest).toBe(edited);
+  expect(created).toHaveBeenCalledExactlyOnceWith({ id: 'submitted-job' });
+  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ prompt: props.draft.prompt, model: model.id, parameters: props.draft.parameters, references: [] }));
 });
