@@ -33,6 +33,8 @@ Also look for texture where the reference has it: how much a back layer blurs an
 
 Choose source and component boundaries through shared behaviour. Objects sharing geometry, state, layout or motion can form one SVG, Canvas, Three.js scene or native composition; independent contributions can stay separate. There is no requirement for one clip per object, one composition per cut, one tween per move or a fixed number of poses. Keep relative scene time distinct from the root timeline.
 
+Before flattening a region into one material, identify the changes that make it recognizable through time. A stationary frame can contain scrolling content, changing illumination or a deforming surface. Follow both its outer boundary and an internal feature to choose the controls. Preserve independently changing contributions inside a shared renderer or through separate layers. A crop provides spatial material. Reconstruct its observed temporal behavior with local paths, content updates, deformation or exposure controls.
+
 Keep content the user will change easy to locate: wording, brand, images, named objects and their motion. Use meaningful source names and declare common edits as root variables so the Studio Variables panel shows them. Variables are shortcuts, not an editing whitelist.
 
 Use code for controlled text, geometry and motion; use supplied or cropped photos, logos, screenshots and textures as local assets. Choose 2D, perspective layers or real 3D according to the observed behaviour and the needed edits. Canvas/WebGL follows the pinned runtime's seek and readiness contract: derive the picture from input time and settings, including deterministic randomness, so the same time always renders the same frame.
@@ -66,12 +68,15 @@ Keep reused implementation and newly reconstructed work identifiable. Recheck a 
 
 For an unfamiliar or inaccurate unit, describe its defining form and action, then follow recognizable features through the reference. Keep a compact record of source frame/time, feature or object, screen position, size, orientation, pose and visibility. Use relative distances and occlusion to distinguish common camera movement, part movement and deformation. Mark uncertain observations, including measurements contaminated by overlapping text or objects.
 
+Cover the features responsible for the passage's motion, including changes inside otherwise stationary objects. Compare internal feature travel with the enclosing boundary at corresponding times. Keep content replacement, scrolling, geometric displacement and brightness variation distinguishable. Retain observed holds and stationary relationships. Resolve ambiguous movement with short consecutive-frame sequences or reliable tracking, and carry occlusion or tracking uncertainty into the model choice.
+
 Convert those observations into timed controls the renderer actually reads. Keep the connection from observation to model parameter and source function inspectable. Depending on the passage, the useful record may be landmark coordinates, per-part keyframes, camera matrices, shape states, correspondence fields or per-line text bounds. Record direction/speed changes, extreme poses, fastest travel and settling. Add observations where interpolation remains uncertain.
 
 | Observed change | An editable way to encode it | Output that challenges the model |
 |---|---|---|
 | Camera travel over a surface | Match stable landmarks across views, fit transforms and interpolate the camera over a spatial material | Motion extremes, perspective, registration residuals and newly revealed areas |
 | Parts moving relative to one another | Shared parent/camera transform plus part-local paths and occlusion order | Relative distances and overlap at intermediate times |
+| Content flowing inside a stable boundary | Local content coordinates, a clipped material and timed scroll or content-state controls | Boundary position, internal feature travel, update cadence and newly exposed material |
 | Changing silhouette or surface | Timed shape states, skeleton or mesh with correspondence between recognizable parts | Intermediate pose, volume, holes and changing visibility |
 | Text assembling or leaving | Per-line or per-glyph reveal, travel, spacing, compression, opacity and blur curves | First visibility, readable hold, fastest expansion and final disappearance |
 | Streaks, flash or scan distortion | Separate time envelopes with observed direction, extent, affected layers and recovery | Frames immediately before, during and after the event in the complete layer stack |
@@ -88,17 +93,31 @@ For a form made of repeated marks or particles, separate a clean shape or bright
 
 Choose state count, extraction method, correspondence and control resolution from the reference and the host's available tools.
 
+When a scene breaks apart or reforms, follow recognizable regions from the intact scene into the transition. Record when each region releases, what texture or shape remains visible, its travel direction and how the intact material disappears. Derive fragments or marks from the participating content and keep their initial coordinates consistent with its last intact state. Choose fragment shape, grouping, velocity and lifetime from consecutive reference frames. Check the complete handoff between intact material, moving pieces and newly revealed content at intermediate times.
+
 For camera movement or surface deformation, prepare enough spatial material to cover the revealed area. Align useful views of the same structure when available. Check overlap for doubled edges and check the sampling boundary for gaps or stretched pixels. If blending imperfectly aligned views produces double structure, select a reliable source for that region and use other views to fill uncovered areas, or adjust seams and visible regions. Recheck intermediate and extreme camera positions. Use a more suitable projection, layers or geometry when one plane cannot preserve the observed relationships. Preserve weakly supported intervals in the review notes.
+
+Fit camera travel from stable scene landmarks at corresponding times. For a textured plane, the bundled `scripts/register_motion.py` can measure anchor-to-frame homographies when the host has Python, NumPy and OpenCV. Choose times within one continuous shot and exclude independently changing overlays. Run it from an available host environment, using the directory containing this Skill's `SKILL.md`.
+
+```sh
+python <skill directory>/scripts/register_motion.py reference.mp4 --anchor <anchor seconds> --times <comma-separated seconds> --out camera-observations.json
+```
+
+Optional `--roi x,y,width,height` and repeatable `--exclude x,y,width,height` use original pixels. The report records decoded timestamps, full-frame pixel matrices, inlier point pairs, residuals and spatial support. Inspect that support across the intended plane and compare projected landmarks in intermediate output. Unresolved samples return a failing exit code and carry their reason. Resolve the cut, mask, observation or representation before using those samples. Apply supported matrices to the renderer in the declared coordinates, and verify material coverage throughout the camera path.
 
 ### Prepare material in its actual use states
 
 Look through the available reference for a clear, unobstructed view of the same object before repairing an occluded one. Compare pose and lighting before using that view. When removing text or overlays, inspect the cleaned shape before stylizing it. Check bright subject details, holes, anti-aliased glyph edges, shadows, underlines and restoration seams. Use the background's structure to choose the repair method.
+
+When isolating an object, preserve the stationary structures crossing or surrounding it. Fit masks to the actual shape and depth ordering. Register other useful views to recover newly exposed material before repairing a large region. Check the reassembled scene at a matched time, including the background, object attachments and overlapping foreground. Correct shifted perspective, erased structure or patch boundaries before extending the animation.
 
 Inspect the material when the covering text or object has left, after requested content changes, and in every reused view. Follow the mask or material back to its source when a ghost moves with the subject. Preserve independently changing elements as separate source controls.
 
 ### Validate and repair the local implementation
 
 Use the pinned seekable preview or targeted native captures to iterate on the actual unit source. Compare reference and output at equal scale and corresponding times. Include observed states, intermediate times, extreme poses, the fastest displacement and entry/exit boundaries. Read back feature positions, size ratios, angles, relative distances or visible widths from the output using the same method as the reference. Review the timed sequence to assess acceleration, holds, reversals and recovery.
+
+For each defining change identified above, locate the source control and compare its actual effect in the output. Check both moving features and their stationary anchors. If a changing region was flattened into a fixed crop, recover its missing local control before refining its appearance. If neighboring states overlap as double images, align or deform their corresponding features before blending. Recheck direction, distance, cadence and disappearance through the affected interval.
 
 For the most consequential difference, name the failing feature and interval, locate its source control and repair that mechanism. An early unreadable title may need different opacity, travel and blur durations. A double contour may need corrected correspondence or material alignment. Reinspect the same failed moment and neighboring states after changing it. Keep the measured and visually estimated controls distinguishable.
 
