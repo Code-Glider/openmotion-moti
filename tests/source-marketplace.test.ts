@@ -27,6 +27,33 @@ test('an uninstalled, verified local source can be rebound while an installed so
   assert.deepEqual(sourceMarketplacePlan(previous, { installed: [entry], available: [] }), { action: 'reuse' });
 });
 
+test('a vanished or non-directory previous source is rebound instead of aborting preflight', async t => {
+  const { previous, root, entry } = await fixture(t);
+  await rm(previous, { recursive: true, force: true });
+  assert.deepEqual(sourceMarketplacePlan(root, { installed: [], available: [entry] }), { action: 'replace_uninstalled_source', previous });
+  assert.deepEqual(sourceMarketplacePlan(root, { installed: [entry], available: [] }), { action: 'replace_uninstalled_source', previous });
+  await writeFile(previous, 'moved elsewhere');
+  assert.deepEqual(sourceMarketplacePlan(root, { installed: [], available: [entry] }), { action: 'replace_uninstalled_source', previous });
+});
+
+test('a vanished previous registration is removed and never restored', async t => {
+  const { directory, previous, root, entry } = await fixture(t);
+  const codex = path.join(directory, 'codex'), log = path.join(directory, 'calls.jsonl');
+  await writeFile(codex, `#!${process.execPath}
+import fs from 'node:fs';
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
+if (args[1] === 'list') console.log(${JSON.stringify(JSON.stringify({ installed: [], available: [entry] }))});
+if (args[2] === 'add' && args[3] === ${JSON.stringify(root)}) process.exit(2);
+`, { mode: 0o755 });
+  await rm(previous, { recursive: true, force: true });
+  assert.equal(registerSourceMarketplace(root, { checkOnly: true, codex }).action, 'replace_uninstalled_source');
+  assert.throws(() => registerSourceMarketplace(root, { codex }));
+  const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(calls.filter(args => args[1] !== 'list'), [['plugin', 'marketplace', 'remove', 'openmotion-local'], ['plugin', 'marketplace', 'add', root]],
+    'a source that no longer exists must not be restored after a failed add');
+});
+
 test('foreign entries, unknown sources and unrecognized catalogs are never replaced', async t => {
   const { previous, root, entry } = await fixture(t);
   for (const changed of [

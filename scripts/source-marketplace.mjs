@@ -1,9 +1,21 @@
 // Source-only installer helper; never shipped as part of the npm application.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// A previously registered checkout can be deleted or moved; that leaves a stale
+// registration with nothing on disk to preserve, so it is reported as unresolved.
+function existingDirectory(value) {
+  try {
+    const resolved = realpathSync(value);
+    return statSync(resolved).isDirectory() ? resolved : null;
+  } catch (error) {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+    throw error;
+  }
+}
 
 export function sourceMarketplacePlan(root, inventory) {
   assert(Array.isArray(inventory.installed) && Array.isArray(inventory.available), 'Invalid Codex plugin inventory');
@@ -11,9 +23,13 @@ export function sourceMarketplacePlan(root, inventory) {
   if (!entries.length) return { action: 'add' };
   assert(entries.every(item => item.pluginId === 'openmotion@openmotion-local'), 'Refusing to replace a marketplace containing unrelated plugins');
   const sources = [...new Set(entries.map(item => item.marketplaceSource?.source))];
-  assert(sources.length === 1 && entries.every(item => item.marketplaceSource?.sourceType === 'local'), 'Refusing a non-local or ambiguous OpenMotion source');
-  const previous = realpathSync(sources[0]);
-  if (previous === realpathSync(root)) return { action: 'reuse' };
+  assert(sources.length === 1 && entries.every(item => item.marketplaceSource?.sourceType === 'local' && typeof item.marketplaceSource.source === 'string' && item.marketplaceSource.source),
+    'Refusing a non-local or ambiguous OpenMotion source');
+  const previous = existingDirectory(sources[0]);
+  if (previous && previous === realpathSync(root)) return { action: 'reuse' };
+  // The recorded checkout no longer exists: only the stale registration remains,
+  // so rebind it instead of failing the whole install before registration.
+  if (!previous) return { action: 'replace_uninstalled_source', previous: sources[0] };
   assert(!inventory.installed.length, 'OPENMOTION_SOURCE_IN_USE: another source is installed. Reuse that installation or explicitly select its upgrade; no configuration was changed.');
   const catalog = JSON.parse(readFileSync(path.join(previous, '.agents/plugins/marketplace.json'), 'utf8'));
   const manifest = JSON.parse(readFileSync(path.join(previous, '.codex-plugin/plugin.json'), 'utf8'));
@@ -31,7 +47,7 @@ export function registerSourceMarketplace(root, { checkOnly = false, codex = 'co
   if (plan.previous) run(['plugin', 'marketplace', 'remove', 'openmotion-local']);
   try { run(['plugin', 'marketplace', 'add', root]); }
   catch (error) {
-    if (plan.previous) {
+    if (plan.previous && existingDirectory(plan.previous)) {
       try { run(['plugin', 'marketplace', 'add', plan.previous]); }
       catch { throw new Error('Marketplace registration and rollback failed; restore the previous OpenMotion source: ' + plan.previous); }
     }
