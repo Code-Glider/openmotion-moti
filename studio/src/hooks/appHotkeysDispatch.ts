@@ -171,17 +171,17 @@ export function dispatchPlainKey(event: KeyboardEvent, _key: string, cb: HotkeyC
     event.preventDefault();
     if (cb.readOnlyPreview || event.repeat) return;
     const { selectedElementId, elements, currentTime } = usePlayerStore.getState();
+    // Expanded children are absent from the flat store; explain without suggesting a hidden tool.
+    if (selectedElementId && selectedElementId.includes("#") && !elements.some((e) => (e.key ?? e.id) === selectedElementId)) {
+      cb.showToast(
+        cb.disableRazorTool
+          ? "Splitting clips inside a sub-composition is not supported in this editor."
+          : `Use the razor tool (${keyHint("razorTool", keys)}) to split clips inside a sub-composition`,
+        "info",
+      );
+      return;
+    }
     if (cb.handleSplitAtPlayhead) {
-      // Expanded sub-composition children carry a qualified selection key that
-      // is not present in the flat store. Preserve the existing razor-tool
-      // guidance before the host-level split callback handles normal clips.
-      if (selectedElementId && selectedElementId.includes("#") && !elements.some((e) => (e.key ?? e.id) === selectedElementId)) {
-        cb.showToast(
-          `Use the razor tool (${keyHint("razorTool", keys)}) to split clips inside a sub-composition`,
-          "info",
-        );
-        return;
-      }
       void cb.handleSplitAtPlayhead(currentTime);
       return;
     }
@@ -194,16 +194,6 @@ export function dispatchPlainKey(event: KeyboardEvent, _key: string, cb: HotkeyC
         currentTime < el.start + el.duration
       ) {
         void cb.handleTimelineElementSplit(el, currentTime);
-        return;
-      }
-      // Expanded sub-comp children carry a qualified `sourceFile#id` selection
-      // that isn't in the raw `elements` list, so the s-key can't resolve them.
-      // Nudge toward the razor tool instead of failing silently.
-      if (!el && selectedElementId.includes("#")) {
-        cb.showToast(
-          `Use the razor tool (${keyHint("razorTool", keys)}) to split clips inside a sub-composition`,
-          "info",
-        );
         return;
       }
     }

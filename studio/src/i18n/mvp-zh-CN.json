@@ -1197,5 +1197,6 @@
   "Snapping": "吸附",
   "Snapping ({value0})": "吸附（{value0}）",
   "Generation service API settings": "生成服务 API 设置",
-  "Use your own API key to generate images, video and audio.": "使用你自己的 API Key 生成图片、视频和音频"
+  "Use your own API key to generate images, video and audio.": "使用你自己的 API Key 生成图片、视频和音频",
+  "Splitting clips inside a sub-composition is not supported in this editor.": "此编辑器不支持分割子合成内的片段。"
 }

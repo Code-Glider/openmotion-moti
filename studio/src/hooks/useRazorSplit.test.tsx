@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TimelineElement } from "../player";
 import { usePlayerStore } from "../player";
+import { StudioHostContext } from "../motion/StudioHost";
 import { useRazorSplit } from "./useRazorSplit";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -100,7 +101,7 @@ describe("useRazorSplit mutation versions", () => {
 describe("useRazorSplit linked clips", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("explains why a sub-composition child cannot use playhead split", async () => {
+  it.each([false, true])("explains sub-composition splitting in MVP: %s", async (mvpEditor) => {
     const showToast = vi.fn();
     let split: ((splitTime: number) => Promise<void>) | undefined;
     const root = createRoot(document.body.appendChild(document.createElement("div")));
@@ -120,11 +121,13 @@ describe("useRazorSplit linked clips", () => {
       elements: [{ id: "root", key: "root", tag: "div", start: 0, duration: 4, track: 0 }],
       selectedElementId: "sub-composition.html#clip",
     });
-    await act(async () => root.render(React.createElement(Harness)));
+    await act(async () => root.render(<StudioHostContext.Provider value={{ mvpEditor }}><Harness /></StudioHostContext.Provider>));
     await act(async () => { await split?.(2); });
 
     expect(showToast).toHaveBeenCalledWith(
-      "Use the razor tool to split clips inside a sub-composition",
+      mvpEditor
+        ? "Splitting clips inside a sub-composition is not supported in this editor."
+        : "Use the razor tool to split clips inside a sub-composition",
       "info",
     );
     act(() => root.unmount());

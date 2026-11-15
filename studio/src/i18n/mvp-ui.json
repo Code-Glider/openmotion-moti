@@ -313,7 +313,8 @@
     "Generation service API settings": "生成サービス API 設定",
     "Use your own API key to generate images, video and audio.": "自分の API キーで画像・動画・音声を生成します。",
     "Split ({value0})": "分割 ({value0})",
-    "Snapping ({value0})": "スナップ ({value0})"
+    "Snapping ({value0})": "スナップ ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "このエディターでは、サブコンポジション内のクリップの分割はサポートされていません。"
   },
   "ko": {
     "Join the OpenDesign community": "OpenDesign 커뮤니티에 참여하세요",
@@ -629,7 +630,8 @@
     "Generation service API settings": "생성 서비스 API 설정",
     "Use your own API key to generate images, video and audio.": "본인의 API 키로 이미지, 동영상, 오디오를 생성하세요.",
     "Split ({value0})": "분할 ({value0})",
-    "Snapping ({value0})": "스냅 ({value0})"
+    "Snapping ({value0})": "스냅 ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "이 편집기에서는 하위 컴포지션 내부의 클립 분할을 지원하지 않습니다."
   },
   "de": {
     "Join the OpenDesign community": "Tritt der OpenDesign-Community bei",
@@ -945,7 +947,8 @@
     "Generation service API settings": "API-Einstellungen für Generierungsdienste",
     "Use your own API key to generate images, video and audio.": "Mit deinem eigenen API-Schlüssel Bilder, Videos und Audio generieren.",
     "Split ({value0})": "Teilen ({value0})",
-    "Snapping ({value0})": "Einrasten ({value0})"
+    "Snapping ({value0})": "Einrasten ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Das Teilen von Clips innerhalb einer Unterkomposition wird in diesem Editor nicht unterstützt."
   },
   "fr": {
     "Join the OpenDesign community": "Rejoignez la communauté OpenDesign",
@@ -1261,7 +1264,8 @@
     "Generation service API settings": "Paramètres API des services de génération",
     "Use your own API key to generate images, video and audio.": "Utilisez votre propre clé API pour générer des images, des vidéos et du son.",
     "Split ({value0})": "Scinder ({value0})",
-    "Snapping ({value0})": "Magnétisme ({value0})"
+    "Snapping ({value0})": "Magnétisme ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Cet éditeur ne permet pas de scinder les clips à l’intérieur d’une sous-composition."
   },
   "ru": {
     "Join the OpenDesign community": "Присоединяйтесь к сообществу OpenDesign",
@@ -1577,7 +1581,8 @@
     "Generation service API settings": "Настройки API сервисов генерации",
     "Use your own API key to generate images, video and audio.": "Используйте свой API-ключ для генерации изображений, видео и аудио.",
     "Split ({value0})": "Разделить ({value0})",
-    "Snapping ({value0})": "Привязка ({value0})"
+    "Snapping ({value0})": "Привязка ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "В этом редакторе нельзя разделять клипы внутри подкомпозиции."
   },
   "es": {
     "Join the OpenDesign community": "Únete a la comunidad de OpenDesign",
@@ -1893,7 +1898,8 @@
     "Generation service API settings": "Ajustes API de servicios de generación",
     "Use your own API key to generate images, video and audio.": "Usa tu propia clave API para generar imágenes, vídeo y audio.",
     "Split ({value0})": "Dividir ({value0})",
-    "Snapping ({value0})": "Ajuste magnético ({value0})"
+    "Snapping ({value0})": "Ajuste magnético ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor no permite dividir clips dentro de una subcomposición."
   },
   "pt-BR": {
     "Join the OpenDesign community": "Junte-se à comunidade OpenDesign",
@@ -2209,7 +2215,8 @@
     "Generation service API settings": "Configurações de API dos serviços de geração",
     "Use your own API key to generate images, video and audio.": "Use sua própria chave de API para gerar imagens, vídeos e áudio.",
     "Split ({value0})": "Dividir ({value0})",
-    "Snapping ({value0})": "Encaixe ({value0})"
+    "Snapping ({value0})": "Encaixe ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor não permite dividir clipes dentro de uma subcomposição."
   },
   "it": {
     "Join the OpenDesign community": "Unisciti alla community OpenDesign",
@@ -2525,7 +2532,8 @@
     "Generation service API settings": "Impostazioni API dei servizi di generazione",
     "Use your own API key to generate images, video and audio.": "Usa la tua chiave API per generare immagini, video e audio.",
     "Split ({value0})": "Dividi ({value0})",
-    "Snapping ({value0})": "Aggancio ({value0})"
+    "Snapping ({value0})": "Aggancio ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Questo editor non supporta la divisione di clip all’interno di una sottocomposizione."
   },
   "tr": {
     "Join the OpenDesign community": "OpenDesign topluluğuna katılın",
@@ -2841,6 +2849,7 @@
     "Generation service API settings": "Üretim hizmeti API ayarları",
     "Use your own API key to generate images, video and audio.": "Kendi API anahtarınızla görsel, video ve ses oluşturun.",
     "Split ({value0})": "Böl ({value0})",
-    "Snapping ({value0})": "Yapışma ({value0})"
+    "Snapping ({value0})": "Yapışma ({value0})",
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Bu düzenleyicide alt kompozisyon içindeki klipleri bölme desteklenmiyor."
   }
 }

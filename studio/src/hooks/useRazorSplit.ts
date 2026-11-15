@@ -10,6 +10,7 @@ import { isLinkedSelectionOn } from "../utils/linkedClipPreferences";
 import { buildAtomicCutIntents, runAtomicCutTransaction } from "../utils/razorSplitTransaction";
 import type { RecordEditInput } from "./timelineEditingHelpers";
 import { useFreezeFrame } from "./useFreezeFrame";
+import { useMvpEditor } from "../motion/StudioHost";
 
 interface UseRazorSplitOptions {
   projectId: string | null;
@@ -35,6 +36,7 @@ export function useRazorSplit({
   forceReloadSdkSession,
   isRecordingRef,
 }: UseRazorSplitOptions) {
+  const mvpEditor = useMvpEditor();
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
 
@@ -165,7 +167,9 @@ export function useRazorSplit({
         selectedElementId.includes("#") &&
         !state.elements.some((element) => (element.key ?? element.id) === selectedElementId)
       ) {
-        showToast("Use the razor tool to split clips inside a sub-composition", "info");
+        showToast(mvpEditor
+          ? "Splitting clips inside a sub-composition is not supported in this editor."
+          : "Use the razor tool to split clips inside a sub-composition", "info");
         return;
       }
       const targets = selectPlayheadSplitElements(state, splitTime);
@@ -183,7 +187,7 @@ export function useRazorSplit({
         playheadCutPendingRef.current = false;
       }
     },
-    [isRecordingRef, runCut, showToast],
+    [isRecordingRef, mvpEditor, runCut, showToast],
   );
 
   const handleFreezeFrame = useFreezeFrame({

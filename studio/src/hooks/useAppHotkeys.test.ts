@@ -423,20 +423,22 @@ describe('dispatchPlainKey — "A" returns to select while the razor is armed', 
 });
 
 describe('dispatchPlainKey — split at playhead', () => {
-  it('preserves the sub-composition razor hint when the host owns splitting', () => {
+  it.each([[false, false], [false, true], [true, false], [true, true]])('explains sub-composition splitting with razor disabled: %s, host split: %s', (disableRazorTool, hostSplit) => {
     usePlayerStore.setState({
       currentTime: 2,
       elements: [bgmElement],
       selectedElementId: 'sub-composition.html#clip',
     });
     const split = vi.fn(async () => {});
-    const cb = callbacks({ handleSplitAtPlayhead: split });
+    const cb = callbacks({ handleSplitAtPlayhead: hostSplit ? split : undefined, disableRazorTool });
 
     dispatchPlainKey(press('s'), 's', cb);
 
     expect(split).not.toHaveBeenCalled();
     expect(cb.showToast).toHaveBeenCalledWith(
-      expect.stringContaining('Use the razor tool'),
+      disableRazorTool
+        ? 'Splitting clips inside a sub-composition is not supported in this editor.'
+        : expect.stringContaining('Use the razor tool'),
       'info',
     );
   });
