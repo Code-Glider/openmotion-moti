@@ -35,7 +35,8 @@ function configuration(config) {
 export async function configureNativeEnvironment(root) {
   const native = await nativeConfiguration(root);
   if (!native) {
-    await configureCachedSourceEnvironment(root);
+    // Best-effort: an unreadable or unpinned source lock must keep system-tool fallback instead of blocking startup.
+    await configureCachedSourceEnvironment(root).catch(error => console.error('Source native cache discovery was skipped: ' + error.message));
     return null;
   }
   process.env.HYPERFRAMES_FFMPEG_PATH ||= process.env.FFMPEG_PATH || native.paths.HYPERFRAMES_FFMPEG_PATH;

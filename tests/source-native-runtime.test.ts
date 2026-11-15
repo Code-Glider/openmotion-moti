@@ -89,6 +89,25 @@ test('source discovery ignores incomplete, corrupt, wrong-hash and non-executabl
   for (const [key, filename] of Object.entries(paths)) assert.equal(process.env[key], filename);
 });
 
+test('an unreadable or unpinned source runtime lock keeps system-tool fallback', async t => {
+  const { root, runtime, cache, paths } = await fixture(t);
+  await cache();
+  const warnings: string[] = [];
+  t.mock.method(console, 'error', (message: unknown) => warnings.push(String(message)));
+  const lock = path.join(root, 'scripts/runtime-lock.json');
+  const unpinned = { targets: { fixture: { platform: process.platform, arch: process.arch, browser: { executable: 'browser' } } } };
+  for (const content of ['<<<<<<< HEAD\n{broken', JSON.stringify(unpinned)]) {
+    await writeFile(lock, content);
+    assert.equal(await configureNativeEnvironment(root), null);
+    for (const key of environmentKeys) assert.equal(process.env[key], undefined);
+  }
+  assert.equal(warnings.length, 2);
+  assert(warnings.every(warning => warning.includes('Source native cache discovery was skipped')));
+  await writeFile(lock, JSON.stringify(runtime));
+  await configureNativeEnvironment(root);
+  for (const [key, filename] of Object.entries(paths)) assert.equal(process.env[key], filename);
+});
+
 test('an uncached source checkout retains system-tool fallback and creates no installation', async t => {
   const { root, installHome } = await fixture(t);
   await ensureNativeRuntime(root);
