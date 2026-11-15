@@ -168,7 +168,7 @@ test('WebMCP schemas traverse local admission and the existing Node sender witho
     assert.equal((await send(packets.slice(i, i + 16))).status, 200);
     await tracking.flush();
   }
-  assert.equal(indexed.length, 51);
+  assert.equal(indexed.length, webMcpToolNames.length * 3);
   assert(indexed.every(event => event.properties.entrypoint === 'studio' && event.properties.transport === 'webmcp'));
   for (const properties of [
     { ...packets[1].properties, transport: 'mcp' },
@@ -183,6 +183,6 @@ test('WebMCP schemas traverse local admission and the existing Node sender witho
   assert(!validProperties(omEvents, 'mcp_tool_started', { ...mcp, transport: 'webmcp' }));
   tracking.setEnabled(false);
   assert.equal((await send(packets.slice(0, 1))).status, 200);
-  assert.equal(tracking.pending(), 0); assert.equal(indexed.length, 51);
+  assert.equal(tracking.pending(), 0); assert.equal(indexed.length, webMcpToolNames.length * 3);
   tracking.close();
 }, false));

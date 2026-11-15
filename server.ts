@@ -1,4 +1,6 @@
 import { modelMetadata } from './gateway/model-metadata.ts';
+import { assetConversations } from './gateway/asset-chat.ts';
+import { assetHttp } from './gateway/asset-http.ts';
 import { getWorkflow } from './shared/workflow.ts';
 import { isMain } from './shared/entry.ts';
 import { createServer } from 'node:http';
@@ -264,6 +266,26 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
     }
     if (motionRequest) url.pathname = url.pathname.replace(/^\/(?:motion|design)-api\//, '/api/');
+    if (motionRequest && url.pathname.startsWith('/api/assets/conversations')) {
+      const chats = assetConversations(store);
+      if (url.pathname === '/api/assets/conversations') {
+        if (req.method === 'GET') return json(res, 200, { conversations: await chats.list() });
+        if (req.method === 'POST') return json(res, 200, { conversation: await chats.create() });
+      }
+      const chatRoute = url.pathname.match(/^\/api\/assets\/conversations\/([^/]+)(?:\/(turn|stop|approve))?$/);
+      if (chatRoute) {
+        const [, id, action] = chatRoute;
+        if (!action && req.method === 'GET') return json(res, 200, { conversation: await chats.get(id) });
+        if (req.method === 'POST') {
+          const data = await input(req, 128 * 1024);
+          if (action === 'turn') return json(res, 200, { conversation: await chats.start(id, data) });
+          if (action === 'stop') return json(res, 200, { conversation: await chats.stop(id) });
+          if (action === 'approve') return json(res, 200, { conversation: await chats.answer(id, data.approvalId, data.accepted) });
+        }
+      }
+      return json(res, 405, { error: 'Unsupported conversation request' });
+    }
+    if (motionRequest && url.pathname.startsWith('/api/assets/') && await assetHttp(req, res, url, store)) return;
     const editorUrl = `http://${host || 'localhost'}/#project/${store.projectId}`;
     if (motionRequest && ['/api/diagnostics', '/api/diagnostics/events'].includes(url.pathname)) {
       // Downloads are POST-only: cross-origin links must not trigger a collection.
@@ -686,9 +708,9 @@ export async function startServer(store = sharedStore, port = Number(process.env
     void gateway.tick().catch(() => console.error('Model gateway queue could not be processed'));
   };
   const timer = setInterval(tick, 500); tick();
-  return { server, get activeToolCalls() { return context.phase1?.pending ?? 0; }, openProject: async (projectId: string) => openProject(store, context, origin, (await store.get()).revision, { projectId }, store.projectId), get studio() { return context.studio!; }, ensureStudio: context.ensureStudio,
+  return { server, get activeToolCalls() { return (context.phase1?.pending ?? 0) + assetConversations(store).pending; }, openProject: async (projectId: string) => openProject(store, context, origin, (await store.get()).revision, { projectId }, store.projectId), get studio() { return context.studio!; }, ensureStudio: context.ensureStudio,
     info: async () => ({ previewUrl: origin, studioUrl: context.studio?.alive() ? `${origin}/#project/${store.projectId}` : undefined, engine: 'hyperframes', ready: true, editorReady: Boolean(context.studio?.alive()), ffmpeg, revision: (await store.get()).revision, dataDirectory: store.directory, browserOpened: false, nativeRuntime: await nativeRuntimeStatus(pluginRoot), authoringGuide: path.join(runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'), hyperframesCli: cliPath(runtimeRoot) }),
-    close: async () => { clearInterval(timer); await context.browser?.close(); await gateway.close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
+    close: async () => { clearInterval(timer); await context.browser?.close(); await gateway.close(); await assetConversations(store).close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
 }
 if (isMain(import.meta.url)) {
   try {

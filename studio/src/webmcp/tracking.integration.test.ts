@@ -22,7 +22,7 @@ async function registerTools() {
   return { registered, execute, reply };
 }
 
-it('delivers all 17 tools through the actual browser sender and never queues more events after opt-out', async () => {
+it('delivers all 18 tools through the actual browser sender and never queues more events after opt-out', async () => {
   const packets: any[] = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (init?.method === 'POST') packets.push(...JSON.parse(String(init.body)).events);
@@ -35,17 +35,17 @@ it('delivers all 17 tools through the actual browser sender and never queues mor
   await vi.dynamicImportSettled();
   for (let i = 0; i < 10 && tracking.getMotionTrackingStatus().pending; i++) await tracking.flushMotionTracking();
   expect(tracking.getMotionTrackingStatus().pending).toBe(0);
-  expect(packets.filter(packet => packet.event === 'webmcp_registration_result')).toHaveLength(17);
-  expect(packets.filter(packet => packet.event === 'webmcp_tool_started')).toHaveLength(17);
-  expect(packets.filter(packet => packet.event === 'webmcp_tool_finished')).toHaveLength(17);
+  expect(packets.filter(packet => packet.event === 'webmcp_registration_result')).toHaveLength(18);
+  expect(packets.filter(packet => packet.event === 'webmcp_tool_started')).toHaveLength(18);
+  expect(packets.filter(packet => packet.event === 'webmcp_tool_finished')).toHaveLength(18);
   expect(packets.every(packet => packet.entrypoint === 'studio' && packet.properties.transport === 'webmcp')).toBe(true);
   expect(JSON.stringify(packets)).not.toMatch(/PRIVATE|installation_id|distinct_id|api_key/);
 
   tracking.setMotionTrackingEnabled(false);
   for (const tool of registered) expect(await tool.execute({})).toBe(reply);
   await vi.dynamicImportSettled(); await tracking.flushMotionTracking();
-  expect(packets).toHaveLength(51);
-  expect(execute).toHaveBeenCalledTimes(34);
+  expect(packets).toHaveLength(registered.length * 3);
+  expect(execute).toHaveBeenCalledTimes(registered.length * 2);
 });
 
 it.each([[false, '0'], [true, '1']] as const)('keeps tools functional with collection enabled=%s and Do Not Track=%s', async (enabled, dnt) => {
