@@ -148,6 +148,9 @@ describe("useRazorSplit linked clips", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.includes("/files/")) return jsonResponse({ content: "", version: '"v0"' });
+      if (!url.includes("/file-mutations/split-batch")) {
+        throw new Error(`Unexpected request: ${url}`);
+      }
       bodies.push(String(init?.body ?? ""));
       return jsonResponse({ error: "stop" }, 409);
     });
@@ -168,7 +171,9 @@ describe("useRazorSplit linked clips", () => {
     await act(async () => {
       await split?.(video, 2);
     });
-    const targets = JSON.parse(bodies[0] ?? "{}").files[0].targets.map(
+    const body = bodies.find(Boolean);
+    expect(body).toBeDefined();
+    const targets = JSON.parse(body!).files[0].targets.map(
       (cut: { originalId: string }) => cut.originalId,
     );
     expect(targets).toEqual(["talk", "talk-audio"]);
