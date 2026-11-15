@@ -142,6 +142,8 @@
   --motion-gallery-stage-wash: rgba(255, 255, 255, 0.22);
   --motion-skeleton-base: #eceeed;
   --motion-skeleton-highlight: #f6f7f6;
+  --motion-asset-logo-bg: #ffffff;
+  --motion-asset-logo-ink: #171717;
 }
 :where([data-motion-ui][data-theme="dark"], [data-motion-ui][data-motion-studio]:not([data-theme="paper"])) {
   color-scheme: dark;
@@ -195,6 +197,8 @@
   --motion-gallery-stage-wash: rgba(0, 0, 0, 0.44);
   --motion-skeleton-base: #222222;
   --motion-skeleton-highlight: #2c2c2c;
+  --motion-asset-logo-bg: #ffffff;
+  --motion-asset-logo-ink: #171717;
 }
 @media (prefers-color-scheme: dark) {
   :where([data-motion-ui]:not([data-theme]):not([data-motion-studio])) {
@@ -249,5 +253,7 @@
     --motion-gallery-stage-wash: rgba(0, 0, 0, 0.44);
     --motion-skeleton-base: #222222;
     --motion-skeleton-highlight: #2c2c2c;
+    --motion-asset-logo-bg: #ffffff;
+    --motion-asset-logo-ink: #171717;
   }
 }

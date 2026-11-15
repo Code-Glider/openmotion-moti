@@ -15,7 +15,7 @@ It is a private source package in the standalone root application. The visual wo
 | `studio.css` | Editor control states, materials, feedback and adapter recipes. |
 | `loading.css` | Startup shell and loading-boundary appearance. |
 | `index.js` | Shared brand identity, asset URLs, icon sprite and positive public-asset list. |
-| `react/RemixIcons.tsx`, `loading.ts` | Shared React icons and loading artwork behavior. |
+| `react/RemixIcons.tsx`, `react/IconGlyph.tsx`, `loading.ts` | Shared React icons and loading artwork behavior. |
 | `brand/` | [Brandkit](brand/BRANDKIT.md), [motion art direction](brand/MOTION_DESIGN.md), logos and loading artwork. |
 | `index.html`, `catalog.*`, `token-model.js` | Standalone visual workbench and browser-safe token metadata. |
 | `generate.js`, `workbench/` | Package-owned token generation, local source-save server and deterministic tests. |
@@ -47,7 +47,7 @@ Ordinary HTML pages load `/design-system/ui.css` and set `data-motion-ui` on the
 
 Studio imports `tailwind.css` from its stylesheet and `studio.css` from its application entry. Its existing `data-motion-studio` root maps `paper` to light and the default to dark. Both adapters consume the same `--motion-*` roles. For example, `--color-surface`, catalog surfaces and ordinary control backgrounds derive from shared surface roles; they do not carry separate palettes. Theme-specific recipes belong here, not in component overrides.
 
-Use relative source imports from the application; the package exports document its public API without requiring a workspace link. Use `designSystemAsset()`, `brand` and `iconSprite` from `index.js` for dynamic asset references. Static HTML may use the stable `/design-system/` URLs. The HTTP layer exposes only the explicit asset list and retains `/web/design-system/` as a URL alias. Runtime distribution includes these files and licenses without bundling development source.
+Use relative source imports from the application; the package exports document its public API without requiring a workspace link. Use `designSystemAsset()`, `brand` and `iconSprite` from `index.js` for dynamic asset references. React icons consume `IconGlyph` to render the bundled sprite vectors inline, without an additional runtime fetch; wrap glyphs in a 24×24 SVG using currentColor. Brand-avatar backings use the paired asset-logo tokens to keep transparent artwork legible in either theme. Static HTML may use the stable `/design-system/` URLs. The HTTP layer exposes only the explicit asset list and retains `/web/design-system/` as a URL alias. Runtime distribution includes these files and licenses without bundling development source.
 
 ## Change a visual decision
 
