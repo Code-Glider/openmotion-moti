@@ -15,7 +15,7 @@ import {
   type MediaCategory,
   type CopyFeedback,
   getCategory,
-  basename,
+  filename,
   CATEGORY_LABELS,
   FILTER_ORDER,
 } from "./assetHelpers";
@@ -263,7 +263,7 @@ export const AssetsTab = memo(function AssetsTab({
     if (!searchQuery) return all;
     const q = searchQuery.toLowerCase();
     return all.filter((a) => {
-      if (basename(a).toLowerCase().includes(q)) return true;
+      if (filename(a).toLowerCase().includes(q)) return true;
       const rec = manifest.get(a);
       return rec?.description?.toLowerCase().includes(q);
     });
