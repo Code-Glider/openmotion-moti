@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { withProcessLock } from '../shared/process-lock.ts';
@@ -24,8 +24,7 @@ test('dead owners are reclaimed while competing processes remain mutually exclus
     t.after(() => { if (proc.exitCode === null && proc.signalCode === null) proc.kill('SIGKILL'); });
     await once(proc.stdout, 'data');
     const stopped = once(proc, 'exit'); proc.kill('SIGKILL'); await stopped; await killed;
-    await assert.rejects(stat(path.join(lock, 'not-an-owner')), { code: 'ENOENT' });
-    assert.equal((await readdir(lock)).length, 1);
+    assert.equal(JSON.parse(await readFile(lock, 'utf8')).pid, proc.pid);
     await writeFile(counter, '0');
     const workers = await Promise.all(Array.from({ length: 4 }, () => child(`
       import {readFile,writeFile} from 'node:fs/promises';
@@ -42,9 +41,9 @@ test('live owners are never evicted, errors release ownership, and unverifiable 
   const root = await mkdtemp(path.join(tmpdir(), 'motion-lock-')); t.after(() => rm(root, { recursive: true, force: true }));
   const lock = path.join(root, 'workspace.lock');
   await assert.rejects(withProcessLock(lock, async () => {
-    const before = await readdir(lock);
+    const before = await readFile(lock, 'utf8');
     await assert.rejects(withProcessLock(lock, async () => assert.fail('Concurrent owner'), 50), /Timed out/);
-    assert.deepEqual(await readdir(lock), before);
+    assert.equal(await readFile(lock, 'utf8'), before);
     throw new Error('work failed');
   }), /work failed/);
   await withProcessLock(lock, async () => {});
@@ -58,16 +57,16 @@ test('Windows sharing violations are retried during acquisition and release', as
   const worker = await child(`
     import fs from 'node:fs/promises'; import {syncBuiltinESMExports} from 'node:module'; import assert from 'node:assert/strict';
     Object.defineProperty(process,'platform',{value:'win32'});
-    let renames=0,unlinks=0; const rename=fs.rename,unlink=fs.unlink;
-    fs.rename=async(...args)=>{ if(++renames<=2) throw Object.assign(new Error('sharing'),{code:'EPERM'}); return rename(...args); };
+    let links=0,unlinks=0; const link=fs.link,unlink=fs.unlink;
+    fs.link=async(...args)=>{ if(++links<=2) throw Object.assign(new Error('sharing'),{code:'EPERM'}); return link(...args); };
     fs.unlink=async(...args)=>{ if(++unlinks<=2) throw Object.assign(new Error('sharing'),{code:'EACCES'}); return unlink(...args); };
     syncBuiltinESMExports(); let ran=0; await withProcessLock(${JSON.stringify(lock)},async()=>{ran++;});
-    assert.equal(ran,1);assert.equal(renames,3);assert.equal(unlinks,3);
-    const marker='1234-'+crypto.randomUUID()+'.owner';
-    await fs.mkdir(${JSON.stringify(lock)}); await fs.writeFile(${JSON.stringify(lock)}+'/'+marker,'');
+    assert.equal(ran,1);assert.equal(links,3);assert.equal(unlinks,3);
+    const owner=JSON.stringify({pid:1234,token:crypto.randomUUID()});
+    await fs.writeFile(${JSON.stringify(lock)},owner);
     process.kill=()=>{throw Object.assign(new Error('Cannot inspect process'),{code:'EPERM'});};
     await assert.rejects(withProcessLock(${JSON.stringify(lock)},async()=>assert.fail('Inaccessible owner evicted'),50),/Timed out/);
-    assert.deepEqual(await fs.readdir(${JSON.stringify(lock)}),[marker]);
+    assert.equal(await fs.readFile(${JSON.stringify(lock)},'utf8'),owner);
   `);
   await worker.exited;
 });
