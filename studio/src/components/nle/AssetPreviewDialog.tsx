@@ -114,7 +114,7 @@ function DialogMedia({ url, kind, audioMode, name }: { url: string; kind: "video
         aria-label={t("Seek preview")} data-studio-control="seek-preview" className="w-full"
         style={{ "--preview-progress": `${duration ? time / duration * 100 : 0}%` } as CSSProperties}
         onChange={event => { if (media.current) { media.current.currentTime = event.currentTarget.valueAsNumber; setTime(media.current.currentTime); } }} />
-      <div className="motion-player-control-row">
+      <div className={audioMode ? "motion-player-control-row motion-player-control-row-lg" : "motion-player-control-row"}>
         <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-text-2">{formatTime(time)} / {formatTime(duration)}</span>
         <Tooltip label={t(playing ? "Pause" : "Play")}><button type="button" aria-label={t(playing ? "Pause" : "Play")} onClick={toggle} disabled={failed}
           className={`${audioMode ? "motion-audio-preview-play " : ""}flex h-7 w-8 items-center justify-center justify-self-center rounded-md hover:bg-hover disabled:opacity-30`}><RemixIcon name={playing ? "pause-fill" : "play-fill"} size={20} /></button></Tooltip>

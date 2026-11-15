@@ -45,6 +45,7 @@ it("uses a compact live visualizer for audio and leaves the composition playhead
   expect(dialog.getAttribute("data-preview-kind")).toBe("audio");
   expect(dialog.className).toContain("280px");
   expect(dialog.querySelectorAll("svg[role=img] rect")).toHaveLength(81);
+  expect(dialog.querySelector(".motion-player-control-row")!.className).toContain("motion-player-control-row-lg");
   const audio = dialog.querySelector("audio")!;
   Object.defineProperty(audio, "duration", { value: 10 });
   act(() => audio.dispatchEvent(new Event("loadedmetadata")));
@@ -71,6 +72,7 @@ it("preserves video and image layouts, including a video whose probe fails", asy
   await render("/movie.mp4", "video");
   expect(document.querySelector('[role="dialog"]')!.className).toContain("600px");
   expect(document.querySelector("video")!.className).toContain("object-contain");
+  expect(document.querySelector(".motion-player-control-row")!.className).not.toContain("motion-player-control-row-lg");
   expect(acquireAudioPreviewAnalyser).not.toHaveBeenCalled();
   vi.mocked(probeMediaUrl).mockResolvedValue(null);
   await render("/unprobed.mp4", "video");
