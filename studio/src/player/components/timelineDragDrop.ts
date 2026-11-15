@@ -323,7 +323,8 @@ export function useTimelineAssetDrop({
         return;
       }
 
-      if (applyFileDrop(e.dataTransfer, onFileDrop, placement)) return;
+      // Dragging an asset thumbnail can also expose a browser-generated File.
+      // Reuse the explicit project asset instead of uploading that file again.
       const asset = types.includes(TIMELINE_ASSET_MIME)
         ? parseTimelineAssetPayload(e.dataTransfer.getData(TIMELINE_ASSET_MIME)) : null;
       if (asset && onAssetDrop) {
@@ -332,6 +333,7 @@ export function useTimelineAssetDrop({
           : onAssetDrop(asset.path, placement, asset.duration));
         return;
       }
+      if (applyFileDrop(e.dataTransfer, onFileDrop, placement)) return;
       applyTypedJsonDrop(e.dataTransfer, TIMELINE_BLOCK_MIME, "name", onBlockDrop, placement);
     },
     [

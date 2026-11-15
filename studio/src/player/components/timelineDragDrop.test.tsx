@@ -51,7 +51,7 @@ const FAR_CLIPS: TimelineElement[] = Array.from({ length: 100 }, (_, track) => (
 function renderHarness(
   onAssetDrop: Mock,
   sessionEpoch = 1,
-  options: { onBlockDrop?: Mock; strict?: boolean; elements?: TimelineElement[]; tracks?: number[] } = {},
+  options: { onBlockDrop?: Mock; onFileDrop?: Mock; strict?: boolean; elements?: TimelineElement[]; tracks?: number[] } = {},
 ) {
   const tracks = options.tracks ?? Array.from({ length: 100 }, (_, index) => index);
   const geometry = createTimelineRowGeometry(
@@ -74,6 +74,7 @@ function renderHarness(
       contentOrigin: 0,
       sessionEpoch: epoch,
       onAssetDrop,
+      onFileDrop: options.onFileDrop,
       onBlockDrop: options.onBlockDrop,
     });
     return null;
@@ -110,6 +111,34 @@ afterEach(() => {
 });
 
 describe("useTimelineAssetDrop", () => {
+  it("reuses an internal image asset when the browser also supplies a thumbnail File", () => {
+    const onAssetDrop = vi.fn();
+    const onFileDrop = vi.fn();
+    const view = renderHarness(onAssetDrop, 1, { onFileDrop });
+    const transfer = assetTransfer('{"path":"assets/image.svg","duration":3}');
+    transfer.types.push("Files");
+    transfer.files.push(new File(["<svg />"], "image.svg", { type: "image/svg+xml" }));
+    const event = dragEvent(transfer, 80, ROW0_MID_Y);
+    act(() => { view.api.handleAssetDragOver(event); view.api.handleAssetDrop(event); });
+    expect(onAssetDrop).toHaveBeenCalledExactlyOnceWith("assets/image.svg", { start: 2, track: 0 }, 3);
+    expect(onFileDrop).not.toHaveBeenCalled();
+    act(() => view.root.unmount());
+  });
+
+  it("still uploads external files when an accompanying asset payload is invalid", () => {
+    const onAssetDrop = vi.fn();
+    const onFileDrop = vi.fn();
+    const view = renderHarness(onAssetDrop, 1, { onFileDrop });
+    const transfer = assetTransfer("invalid JSON");
+    transfer.types.push("Files");
+    transfer.files.push(new File(["<svg />"], "external.svg", { type: "image/svg+xml" }));
+    const event = dragEvent(transfer, 80, ROW0_MID_Y);
+    act(() => { view.api.handleAssetDragOver(event); view.api.handleAssetDrop(event); });
+    expect(onFileDrop).toHaveBeenCalledExactlyOnceWith(transfer.files, { start: 2, track: 0 });
+    expect(onAssetDrop).not.toHaveBeenCalled();
+    act(() => view.root.unmount());
+  });
+
   it("does not persist a synthetic loading row as a clip track", () => {
     const onAssetDrop = vi.fn();
     usePlayerStore.setState({ pendingAssetDrops: [{
