@@ -287,6 +287,7 @@ export class ModelGateway {
     if (this.ticking || this.closed) return;
     this.ticking = true;
     try {
+      if (!(await this.listJobs()).some(job => job.state === 'queued' || job.state === 'running' && !alive(job.workerPid))) return;
       const claimed = await this.store.lock(async () => {
         const jobs = await this.listJobs();
         for (const job of jobs.filter(j => j.state === 'running' && !alive(j.workerPid))) {

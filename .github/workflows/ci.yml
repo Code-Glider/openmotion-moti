@@ -138,6 +138,37 @@ jobs:
           npm run typecheck:studio
           npm run typecheck:backend
 
+  platform-reliability:
+    name: Workspace reliability (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      OPENMOTION_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+      - name: Select checks for the changed boundary
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node .github/scripts/ci-scope.mjs
+      - name: Install locked dependencies
+        if: steps.scope.outputs.full == 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Check ownership recovery, read verification and immutable snapshots
+        if: steps.scope.outputs.full == 'true'
+        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts
+
   studio:
     name: Studio regression (${{ matrix.shard }}/2)
     env:

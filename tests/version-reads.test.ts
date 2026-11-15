@@ -1,0 +1,105 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { WorkspaceStore } from '../workspace.ts';
+import { ProjectVersions } from '../phase1-versions.ts';
+import type { ContentVersion, NativeHistory } from '../phase1-versions.ts';
+import { ModelGateway } from '../gateway/service.ts';
+import { Phase1Service } from '../phase1.ts';
+import { pluginRoot } from '../hyperframes.ts';
+
+test('queries share streaming hash checks and invalidate changed, deleted and repaired historical blobs', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-version-reads-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const previous = process.env.HYPERFRAMES_HISTORY_ROOT;
+  process.env.HYPERFRAMES_HISTORY_ROOT = path.join(root, 'native');
+  t.after(() => { if (previous === undefined) delete process.env.HYPERFRAMES_HISTORY_ROOT; else process.env.HYPERFRAMES_HISTORY_ROOT = previous; });
+  const store = new WorkspaceStore(root), versions = new ProjectVersions(store, pluginRoot), id = crypto.randomUUID();
+  await mkdir(path.join(store.projectDirectory, '.hyperframes'), { recursive: true });
+  await writeFile(path.join(store.projectDirectory, '.hyperframes/history-id'), id);
+  const bytes = Buffer.alloc(2 * 1024 * 1024, 35), hash = createHash('sha256').update(bytes).digest('hex');
+  const native = path.join(process.env.HYPERFRAMES_HISTORY_ROOT, id, 'blobs', hash.slice(0, 2), hash), retained = versions.blob(hash);
+  for (const file of [native, retained]) { await mkdir(path.dirname(file), { recursive: true }); await writeFile(file, bytes); }
+  const version: ContentVersion = { versionId: crypto.randomUUID(), versionNumber: 1, nativePoint: 'start', createdAt: Date.now(), source: 'baseline', summary: 'Fixture', revision: 'fixture',
+    files: [{ path: 'image.png', hash, size: bytes.length }, { path: 'video.mp4', hash, size: bytes.length, retained: true }] };
+  let streams = 0;
+  const original = fs.createReadStream;
+  fs.createReadStream = ((...args: Parameters<typeof fs.createReadStream>) => { if ([native, retained].includes(String(args[0]))) streams++; return original(...args); }) as typeof fs.createReadStream;
+  syncBuiltinESMExports();
+  t.after(() => { fs.createReadStream = original; syncBuiltinESMExports(); });
+  const history = { readBlob: () => readFile(native) } as unknown as NativeHistory;
+  const shown = await Promise.all(Array.from({ length: 5 }, () => versions.publicVersion(version, history, true)));
+  assert.ok(shown.every(version => version.restorable)); assert.equal(streams, 2, 'shared files are hashed once, including in-flight checks');
+  const scoped = new ProjectVersions(store.forProject('project'), pluginRoot);
+  await scoped.publicVersion(version, history, true); assert.equal(streams, 2, 'a later scoped request reuses unchanged checks');
+  for (const [file, name] of [[native, 'image.png'], [retained, 'video.mp4']]) {
+    for (const damage of ['corrupt', 'missing']) {
+      if (damage === 'corrupt') await writeFile(file, Buffer.alloc(bytes.length)); else await rm(file);
+      const listed = await scoped.publicVersion(version, history, true);
+      assert.equal(listed.restorable, false); assert.deepEqual(listed.unavailableFiles, [name]);
+      await assert.rejects(scoped.restore(history, version, 'fixture', version.versionId, 'restore-' + damage), /VERSION_NOT_RESTORABLE/);
+      await writeFile(file, bytes);
+      assert.equal((await scoped.publicVersion(version, history, true)).restorable, true);
+    }
+  }
+  const moved = path.join(process.env.HYPERFRAMES_HISTORY_ROOT, id, 'aside', hash.slice(0, 2), hash);
+  await mkdir(path.dirname(moved), { recursive: true }); await writeFile(moved, bytes); await rm(native);
+  assert.equal((await scoped.publicVersion(version, history, true)).restorable, true, 'native aside remains readable');
+});
+test('empty export and model queues do not acquire workspace locks', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-idle-')); t.after(() => rm(root, { recursive: true, force: true }));
+  const store = new WorkspaceStore(root), gateway = new ModelGateway(store); t.after(() => gateway.close());
+  store.lock = async () => assert.fail('An idle queue must not acquire a workspace lock');
+  for (let i = 0; i < 4; i++) { assert.equal(await store.claimExport(), null); await gateway.tick(); }
+});
+test('export copies remain immutable under in-place source writes and preserve revision checks', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-snapshot-')); t.after(() => rm(root, { recursive: true, force: true }));
+  const store = new WorkspaceStore(root);
+  await mkdir(path.join(store.projectDirectory, 'assets'), { recursive: true });
+  await writeFile(path.join(store.projectDirectory, 'index.html'), '<div id="main" data-composition-id="main" data-width="1920" data-height="1080" data-duration="1" data-fps="30"></div>');
+  const source = path.join(store.projectDirectory, 'assets/bytes.bin'), bytes = Buffer.alloc(64 * 1024, 53);
+  await writeFile(source, bytes);
+  const before = await store.get(), job = await store.requestExport(before.revision);
+  const handle = await (await import('node:fs/promises')).open(source, 'r+');
+  try { await handle.write(Buffer.alloc(bytes.length, 54), 0, bytes.length, 0); } finally { await handle.close(); }
+  assert.deepEqual(await readFile(path.join(store.snapshotDirectory(job.id), 'assets/bytes.bin')), bytes);
+  assert.equal(store.revision(await store.files(store.snapshotDirectory(job.id))), before.revision);
+  assert.notEqual((await store.get()).revision, before.revision);
+  await assert.rejects(store.requestExport(before.revision), /工程已经/);
+  const claims = await Promise.all([store.claimExport(), new WorkspaceStore(root).claimExport()]);
+  assert.equal(claims.filter(Boolean).length, 1, 'claiming still rechecks the job under the lock');
+});
+test('native history restores retained media after later edits and refuses corrupted retention without applying changes', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-native-restore-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const previous = process.env.HYPERFRAMES_HISTORY_ROOT;
+  process.env.HYPERFRAMES_HISTORY_ROOT = path.join(root, 'native');
+  t.after(() => { if (previous === undefined) delete process.env.HYPERFRAMES_HISTORY_ROOT; else process.env.HYPERFRAMES_HISTORY_ROOT = previous; });
+  const store = new WorkspaceStore(root), service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {},
+  });
+  const created = await service.call('openmotion_create_project', { requestId: 'create', projectType: 'natural_language', title: 'Restore fixture', requirements: 'Keep the historical media' });
+  const scoped = store.forProject(created.projectId), file = path.join(scoped.projectDirectory, 'assets/fixture.mp4'), bytes = Buffer.alloc(4096, 41);
+  await writeFile(file, bytes);
+  const imported = await service.call('openmotion_get_project', { projectId: created.projectId });
+  await writeFile(file, Buffer.alloc(bytes.length, 42));
+  const latest = await service.call('openmotion_get_project', { projectId: created.projectId });
+  const args = { projectId: created.projectId, versionId: imported.currentVersionId, expectedRevision: latest.revision, expectedVersionId: latest.currentVersionId };
+  const restored = await service.call('openmotion_restore_version', { ...args, requestId: 'restore' });
+  assert.deepEqual(await readFile(file), bytes);
+  assert.ok(restored.version.versionNumber > latest.currentVersionNumber);
+  const versions = service.versions(created.projectId), target = (await versions.index()).versions.find(version => version.versionId === imported.currentVersionId)!;
+  const media = target.files.find(item => item.path === 'assets/fixture.mp4')!;
+  assert.equal(media.retained, true);
+  await writeFile(versions.blob(media.hash), Buffer.alloc(bytes.length));
+  const before = await scoped.get();
+  await assert.rejects(service.call('openmotion_restore_version', { ...args, expectedRevision: restored.revision, expectedVersionId: restored.version.versionId, requestId: 'corrupt' }), /VERSION_NOT_RESTORABLE/);
+  assert.deepEqual(await scoped.get(), before);
+  const listed = await service.call('openmotion_list_versions', { projectId: created.projectId });
+  assert.equal(listed.versions.find((version: any) => version.versionId === target.versionId).restorable, false);
+});

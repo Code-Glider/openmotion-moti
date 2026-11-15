@@ -1,13 +1,14 @@
 import type { HostContext } from './tracking/host.ts';
 import { renderFilenameStem } from './shared/render-name.ts';
 import { createHash } from 'node:crypto';
+import { withProcessLock } from './shared/process-lock.ts';
 import { isAssetFileWithinLimit } from './shared/asset-limits.ts';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { constants, createReadStream, existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
-import { copyFile, cp, lstat, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, cp, lstat, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { delay, nativeProjectConfig, pluginRoot } from './hyperframes.ts';
+import { nativeProjectConfig, pluginRoot } from './hyperframes.ts';
 import { validateProject, duration } from './shared/legacy.ts';
 import type { Project as LegacyProject } from './shared/legacy.ts';
 import { exportExpectation } from './shared/export-expectation.ts';
@@ -50,7 +51,7 @@ async function atomic(filename: string, content: string | Buffer) {
 
 export class WorkspaceStore {
   directory: string;
-  hashes = new Map<string, { signature: string; hash: string }>();
+  hashes = new Map<string, { signature: string; hash: Promise<string> }>();
   selectedProjectId?: string;
   workspaceStore?: WorkspaceStore;
   constructor(directory = defaultDataDir, projectId?: string) { this.directory = path.resolve(directory); this.selectedProjectId = projectId; }
@@ -59,6 +60,7 @@ export class WorkspaceStore {
     if (!this.projectCatalog().projects.some(project => project.id === id)) throw new Error('PROJECT_NOT_FOUND: 工程不存在');
     this.projectDirectoryFor(id);
     const scoped = new WorkspaceStore(this.directory, id);
+    scoped.hashes = this.hashes;
     scoped.workspaceStore = this.workspaceStore ?? this;
     return scoped;
   }
@@ -217,19 +219,26 @@ export class WorkspaceStore {
   get jobFilename() { return path.join(this.directory, 'export.json'); }
 
   async lock<T>(change: () => Promise<T>): Promise<T> {
-    await mkdir(this.directory, { recursive: true });
-    const lockPath = path.join(this.directory, 'workspace.lock');
-    let lock; const end = Date.now() + 30_000;
-    while (!lock) {
-      try { lock = await open(lockPath, 'wx', 0o600); }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-        if (Date.now() > end) throw new Error('工程正在被另一进程使用，请检查 workspace.lock');
-        await delay(25);
-      }
+    return withProcessLock(path.join(this.directory, 'workspace.lock'), change);
+  }
+  async fileInfo(filename: string) {
+    const info = await stat(filename);
+    if (!info.isFile()) throw new Error('工程源文件类型无效：' + filename);
+    const signature = `${info.dev}:${info.ino}:${info.mtimeMs}:${info.ctimeMs}:${info.size}:${info.mode}`;
+    let cached = this.hashes.get(filename);
+    if (!cached || cached.signature !== signature) {
+      const hash = (async () => {
+        const hash = createHash('sha256');
+        for await (const chunk of createReadStream(filename)) hash.update(chunk);
+        const after = await stat(filename);
+        if (`${after.dev}:${after.ino}:${after.mtimeMs}:${after.ctimeMs}:${after.size}:${after.mode}` !== signature) throw new Conflict();
+        return hash.digest('hex');
+      })();
+      cached = { signature, hash }; this.hashes.set(filename, cached);
+      if (this.hashes.size > 10_000) this.hashes.delete(this.hashes.keys().next().value!);
+      void hash.catch(() => { if (this.hashes.get(filename)?.hash === hash) this.hashes.delete(filename); });
     }
-    try { return await change(); }
-    finally { await lock.close(); await rm(lockPath, { force: true }); }
+    return { size: info.size, hash: await cached.hash };
   }
 
   async safePath(name: string, directory = this.projectDirectory) {
@@ -245,16 +254,8 @@ export class WorkspaceStore {
   async files(directory = this.projectDirectory): Promise<SourceFile[]> {
     const files: SourceFile[] = [];
     const collect = async (name: string) => {
-      const filename = await this.safePath(name, directory), info = await stat(filename);
-      if (!info.isFile()) throw new Error('工程源文件类型无效：' + name);
-      const signature = `${info.ino}:${info.mtimeMs}:${info.ctimeMs}:${info.size}`;
-      let cached = this.hashes.get(filename);
-      if (!cached || cached.signature !== signature) {
-        const hash = createHash('sha256');
-        for await (const chunk of createReadStream(filename)) hash.update(chunk);
-        cached = { signature, hash: hash.digest('hex') }; this.hashes.set(filename, cached);
-      }
-      files.push({ path: name, size: info.size, hash: cached.hash });
+      const filename = await this.safePath(name, directory);
+      files.push({ path: name, ...await this.fileInfo(filename) });
       if (files.length > 5000) throw new Error('工程文件数超过 5000');
     };
     const walk = async (folder: string) => {
@@ -412,7 +413,7 @@ export class WorkspaceStore {
         for (const file of current.project.files) {
           const source = await this.safePath(file.path);
           const destination = path.join(snapshot, file.path);
-          await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination);
+          await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination, constants.COPYFILE_FICLONE);
         }
         if (this.revision(await this.files(snapshot)) !== expectedRevision || (await this.get()).revision !== expectedRevision) throw new Conflict();
         job.expected = await exportExpectation(this.directory, snapshot);
@@ -424,6 +425,8 @@ export class WorkspaceStore {
     });
   }
   async claimExport() {
+    const pending = await this.job();
+    if (!pending || pending.state !== 'pending' || pending.expiresAt < Date.now()) return null;
     return this.lock(async () => {
       const job = await this.job();
       if (!job || job.state !== 'pending' || job.expiresAt < Date.now()) return null;

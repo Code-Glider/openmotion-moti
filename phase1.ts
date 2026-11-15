@@ -220,7 +220,7 @@ export class Phase1Service {
       if (args.exportJobId && !jobs.some(job => job.id === args.exportJobId)) throw new Error('EXPORT_NOT_FOUND: 任务不属于该项目');
       const exportJob = args.exportJobId ? await this.publicJob(args.exportJobId) : jobs[0] ? await this.publicJob(jobs[0].id) : null;
       if ((await scoped.get()).revision !== state.revision) throw new Error('VERSION_CONFLICT: 读取期间工程已变化');
-      return { projectId, sessionId: owner.id, project: state.project, revision: state.revision, version: await versions.publicVersion(version, history),
+      return { projectId, sessionId: owner.id, project: state.project, revision: state.revision, version: await versions.publicVersion(version, history, true),
         currentVersionId: version.versionId, currentVersionNumber: version.versionNumber, dataDirectory: this.store.directory,
         hyperframesCli: path.join(this.runtimeRoot, 'node_modules/hyperframes/bin/hyperframes.mjs'), authoringGuide: path.join(this.runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'),
         requirements: meta.requirements ?? (await scoped.conversation(projectId)).messages.map(message => message.content).join('\n'),
@@ -228,7 +228,7 @@ export class Phase1Service {
         previewDisplay: await this.previewDisplay(projectId, version),
         exports: jobs.map(({ token, workerPid, trackingHost, ...job }) => job), reviews: await jsonFile(path.join(this.store.directory, 'phase1', 'reviews', projectId + '.json'), []),
         limits: { textBatchFiles: 100, textBatchBytes: 8388608, textReadBytes: 2097152, assetBytes: MAX_ASSET_BYTES, attachmentTransport: 'local_path' } };
-    });
+    }, 30_000);
   }
   async previewDisplay(projectId: string, version: ContentVersion) {
     const display = await jsonFile<any>(path.join(this.store.directory, 'phase1', 'preview-displays', projectId + '.json'), null);
@@ -301,9 +301,9 @@ export class Phase1Service {
         const all = [...index.versions].reverse().filter(item => !page || item.versionNumber < page.after[0]);
         const shown = all.slice(0, 5), current = index.versions.at(-1)!;
         return { projectId: args.projectId, currentVersionId: current.versionId, currentVersionNumber: current.versionNumber,
-          versions: await Promise.all(shown.map(async item => ({ ...await versions.publicVersion(item, history), isCurrent: item.versionId === current.versionId }))), pageSize: 5,
+          versions: await Promise.all(shown.map(async item => ({ ...await versions.publicVersion(item, history, true), isCurrent: item.versionId === current.versionId }))), pageSize: 5,
           hasMore: all.length > 5, nextCursor: all.length > 5 ? cursor({ kind: 'versions', scope: args.projectId, after: [shown.at(-1)!.versionNumber, shown.at(-1)!.versionId] }) : null };
-      });
+      }, 30_000);
     }
     if (name === 'motion_create_project') return this.writeRequest(name, args, async record => {
       if (args.projectType === 'natural_language' && (args.templateId || args.referenceVideoId || args.referenceUrl) || args.projectType === 'template' && (args.referenceVideoId || args.referenceUrl) || args.projectType === 'reference_video' && (args.templateId || args.referenceVideoId && args.referenceUrl)) throw new Error('INVALID_ARGUMENT: creation source must match projectType');
