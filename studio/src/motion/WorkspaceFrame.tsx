@@ -143,6 +143,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
       <ApplicationHeader settings={settings} />
       <ApplicationRail settings={settings} openSettings={openSettings} home={<WorkspaceHomeButton
+        applicationRef={homeRef}
         active={!settings} expanded={sidebarOpen && !settings && !navigationCollapsed}
         previewEnabled={!narrow && !sidebarOpen && !settings && !navigationCollapsed && !connectionsOpen}
         onToggle={toggleHome}>

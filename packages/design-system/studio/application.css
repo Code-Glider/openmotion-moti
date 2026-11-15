@@ -147,7 +147,7 @@
 
 /* Opaque selection panels stay legible over authored media in either theme. */
 [data-motion-studio] .om-selection-panel.hf-od-floating-surface { --motion-floating-surface: var(--motion-bg); --motion-floating-backdrop: none; background: var(--motion-bg); background-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: var(--motion-border-subtle); border-radius: var(--motion-radius-lg); box-shadow: var(--motion-shadow-lg); }
-[data-motion-studio] .om-project-flyout .motion-sidebar { border: 0; background: transparent; }
+[data-motion-studio] .om-project-flyout.hf-od-floating-surface { background: var(--motion-workspace); background-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: var(--motion-radius-step-10); box-shadow: var(--motion-shadow-md); }
 [data-motion-studio] :is(.om-project-flyout, .motion-sidebar-drawer) .motion-session[aria-current="page"] { color: var(--motion-strong); background: var(--motion-hover); }
 [data-motion-studio] .om-menu-panel { padding: var(--motion-space-4); max-height: var(--available-height); overflow-y: auto; overscroll-behavior: contain; }
 [data-motion-studio] .om-menu-panel :is([role="menuitem"], [role="menuitemradio"]) { min-height: var(--motion-control); padding: var(--motion-space-6) var(--motion-space-10); gap: var(--motion-space-12); border-radius: var(--motion-radius-md); font-size: var(--motion-text-md); text-decoration: none; }

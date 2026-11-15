@@ -1,5 +1,5 @@
 /* Application geometry; all presentation primitives come from the design system. */
-.om-application { display: grid; grid-template-columns: var(--motion-space-48) minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
+.om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: var(--motion-space-48) minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
 .om-app-header { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
 .om-app-leading { display: flex; align-items: center; gap: var(--motion-space-8); flex-shrink: 0; }
 [data-motion-studio] .om-app-sidebar-toggle { justify-content: center; width: 28px; min-height: 28px; padding: 0; }
@@ -32,13 +32,13 @@
 .om-account-trigger .om-avatar { width: 28px; height: 28px; border-radius: var(--motion-radius-full); }
 .om-account-menu { width: 258px; max-width: calc(100vw - 24px); }
 .om-application .motion-workspace { min-width: 0; }
-.om-project-navigation { flex: 0 0 200px; min-width: 0; overflow: hidden; }
+.om-project-navigation { flex: 0 0 var(--om-project-navigation-width); min-width: 0; overflow: hidden; }
 .om-project-navigation[aria-hidden="true"] { flex-basis: 0; }
-.om-project-flyout { width: 240px; max-width: calc(100vw - 60px); height: min(640px, calc(100dvh - 64px), var(--available-height)); overflow: hidden; }
+.om-project-flyout { width: var(--om-project-navigation-width); height: var(--anchor-height); overflow: hidden; }
 .om-project-flyout .motion-sidebar { width: 100%; height: 100%; }
 :is(.om-project-flyout, .motion-sidebar-drawer) .motion-sidebar-brand { justify-content: space-between; margin-bottom: var(--motion-space-16); }
 :is(.om-project-flyout, .motion-sidebar-drawer) .motion-session-dot { display: none; }
-.om-application .motion-sidebar { flex-basis: 200px; width: 200px; height: 100%; padding: var(--motion-space-12); }
+.om-application .motion-sidebar { flex-basis: var(--om-project-navigation-width); width: var(--om-project-navigation-width); height: 100%; padding: var(--motion-space-12); }
 .om-application .motion-sidebar-brand { justify-content: space-between; margin-bottom: var(--motion-space-16); }
 .om-application .motion-workspace-content[hidden] { display: none; }
 .om-application .motion-sidebar [aria-current="page"] { color: var(--motion-strong); background: var(--motion-hover); }
