@@ -1,8 +1,4 @@
 import type { GalleryTemplate } from '../../../shared/catalog';
-import verifiedSnapshot from './githubRepositorySnapshot.json';
-
-export const VERIFIED_REPOSITORY_STARS = verifiedSnapshot.stars;
-
 export const GITHUB_REPOSITORY = 'https://github.com/nexu-io/openmotion';
 export const repositorySupportLinks = [
   { label: "What's new", href: `${GITHUB_REPOSITORY}/releases`, icon: 'history-line' },
@@ -10,7 +6,7 @@ export const repositorySupportLinks = [
 ] as const;
 const STARS_API = 'https://api.github.com/repos/nexu-io/openmotion';
 const CACHE_KEY = 'openmotion.github-stars';
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000;
 type StarsCache = { count: number; at: number };
 
 export function templateRepositoryUrl(template: GalleryTemplate): string {
@@ -31,7 +27,8 @@ export function createRepositoryStarsReader() {
         if (value && Number.isSafeInteger(value.count) && value.count >= 0 && Number.isFinite(value.at) && value.at <= Date.now()) cached = value;
       } catch { /* Unavailable or invalid storage must not affect navigation. */ }
     }
-    if ((cached && Date.now() - cached.at < CACHE_TTL) || Date.now() < retryAt) return Promise.resolve(cached?.count ?? VERIFIED_REPOSITORY_STARS);
+    if (Date.now() < retryAt) return Promise.resolve(null);
+    if (cached && Date.now() - cached.at < CACHE_TTL) return Promise.resolve(cached.count);
     if (pending) return pending;
     pending = (async () => {
       try {
@@ -44,7 +41,7 @@ export function createRepositoryStarsReader() {
         return count as number;
       } catch {
         retryAt = Date.now() + 60_000;
-        return cached?.count ?? VERIFIED_REPOSITORY_STARS;
+        return null;
       } finally { pending = undefined; }
     })();
     return pending;

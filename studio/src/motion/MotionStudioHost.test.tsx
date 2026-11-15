@@ -233,7 +233,7 @@ it('collapses the full desktop navigation in embeds while preserving the editor 
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
 });
 
-it.each([1440, 800])('returns home from settings without replacing the current editor at %ipx', async width => {
+it.each([[1440, '返回首页'], [800, '返回首页'], [1440, '关闭设置'], [800, '关闭设置']] as const)('returns home from settings without replacing the current editor at %ipx via %s', async (width, closeLabel) => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   render();
   const editor = container.querySelector('.motion-studio-header');
@@ -243,7 +243,7 @@ it.each([1440, 800])('returns home from settings without replacing the current e
   expect(container.querySelector('[data-testid="settings-center"]')).not.toBeNull();
   expect(container.querySelector('.motion-workspace-content')?.hasAttribute('hidden')).toBe(true);
   expect(home.getAttribute('aria-pressed')).toBe('false');
-  act(() => container.querySelector<HTMLButtonElement>('[aria-label="返回首页"]')!.click());
+  act(() => container.querySelector<HTMLButtonElement>(`[aria-label="${closeLabel}"]`)!.click());
   expect(container.querySelector('[data-testid="settings-center"]')).toBeNull();
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
   expect(container.querySelector('.motion-workspace-content')?.hasAttribute('hidden')).toBe(false);
