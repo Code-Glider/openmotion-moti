@@ -85,7 +85,7 @@ MCP 接入与模板库使用同一弹框中的一张滚动页面。整体接入�
 
 显示 `42K 次查看` 等紧凑数字；悬停可查看精确数值、平台和同步日期，点击仍打开原帖。数字是 Hyperframes 收录的快照，不代表平台实时值；没有数据时省略热度，真实的零值仍显示。同源版本共享原帖数字，不叠加计数。内部目录列表和详情同时返回 `social` 中的原始数值、平台、出处、同步时间与数据来源。
 
-`GET /motion-api/template-catalog?category=featured&query=&offset=0&limit=6&grouped=true&covered=true` 返回卡片及分页信息。`total` 是当前过滤后的卡片组数，`entryTotal` 是这些组包含的原始条目数，`catalogTotal` 为895 entries (891 external entries and four bundled templates)。`galleryTotal` 为555 entries with actual covers；`covered=true` 将无封面条目过滤。`next=null` 表示已经读完。内部目录列表默认不分组，可按原始 ID 分页读取完整目录；当时一期九个公开 Tool 未开放目录查询；当前协议见上文。
+`GET /motion-api/template-catalog?category=featured&query=&offset=0&limit=6&grouped=true&covered=true` returns cards and pagination metadata. `total` counts the filtered card groups, and `entryTotal` counts their original entries. `catalogTotal` is 895 entries: 891 external entries and four bundled templates. `galleryTotal` is 555 entries with actual covers; `covered=true` filters out entries without covers. `next=null` marks the end of the results. Internal catalog listings are ungrouped by default and support pagination by original ID. The original phase-one set of nine public tools did not expose catalog queries; see the current protocol above.
 
 ## Agent 复刻
 
@@ -113,4 +113,4 @@ npm test
 
 ## Presenter-led README selection
 
-The README now also highlights nine existing `hf-reference-aroll-*` entries, three original/upstream-remix pairs and the Presenter Tech package demo. See the [creator gallery](../README.md#creator-video-gallery), [Motion Design examples](motion-design-examples.md#presenter-motion) and [source manifest](readme/people/manifest.json). The three new Presenter Story documents are design recipes; [Presenter Tech](../library/templates/presenter-tech/README.md) now includes the pinned template archive and its own runner in the Library. This does not add a Studio catalog entry, change catalog ordering or increase the four Studio-native template count.
+The README now also highlights nine existing `hf-reference-aroll-*` entries, three original/upstream-remix pairs and the Presenter Tech package demo. See the [creator gallery](../README.md#creator-video-gallery), [Motion Design examples](motion-design-examples.md#presenter-motion) and [source manifest](readme/people/manifest.json). The three new Presenter Story documents are design recipes; [Presenter Tech](../library/templates/presenter-tech/README.md) now includes the pinned template archive and its own runner in the Library. These README selections and Library resources do not register additional Studio templates or change catalog ordering. The bundled Studio template count remains four.
