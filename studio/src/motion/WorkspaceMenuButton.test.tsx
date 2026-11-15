@@ -33,6 +33,7 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
 const menu = () => container.querySelector<HTMLButtonElement>('.motion-workspace-menu')!;
+const sidebarToggle = () => container.querySelector<HTMLButtonElement>('#om-project-navigation .motion-sidebar-brand button')!;
 
 it('keeps a state-aware tooltip on the project-list toggle in both states', async () => {
   await act(async () => root.render(<I18nProvider initialLocale="en"><WorkspaceFrame waitForSaves={async () => {}}><WorkspaceMenuButton /></WorkspaceFrame></I18nProvider>));
@@ -42,4 +43,11 @@ it('keeps a state-aware tooltip on the project-list toggle in both states', asyn
   await act(async () => menu().click());
   expect(menu().getAttribute('aria-label')).toBe('Open project list');
   expect(menu().getAttribute('title')).toBe('Open project list');
+});
+
+it('keeps the state-aware tooltip on the docked sidebar toggle', async () => {
+  await act(async () => root.render(<I18nProvider initialLocale="en"><WorkspaceFrame waitForSaves={async () => {}}><WorkspaceMenuButton /></WorkspaceFrame></I18nProvider>));
+  // The docked layout's collapse control is the same toggle, so it keeps its tooltip.
+  expect(sidebarToggle().getAttribute('aria-label')).toBe('Close project list');
+  expect(sidebarToggle().getAttribute('title')).toBe('Close project list');
 });

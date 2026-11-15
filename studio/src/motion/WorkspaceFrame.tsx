@@ -212,7 +212,8 @@ function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigat
   return <aside className="motion-sidebar" aria-label={t('Workspace navigation')}>
     <div className="motion-sidebar-brand">
       <strong className="om-subtitle">{t('Home')}</strong>
-      <button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')} title={expand ? t('Open project list') : undefined}><MotionIcon name="sidebar" size={16} /></button>
+      {/* Collapsing the docked navigation toggles it back with the workspace menu button, so this icon-only control keeps a state-aware tooltip in both states. */}
+      <button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')} title={t(expand ? 'Open project list' : 'Close project list')}><MotionIcon name="sidebar" size={16} /></button>
     </div>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
