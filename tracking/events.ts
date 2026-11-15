@@ -6,6 +6,12 @@ export const toolNames = ['motion_media_use', 'motion_list_templates', 'motion_g
   'motion_restore_version', 'motion_export_cancel'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
 const tool = { tool_name: toolNames, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
+export const webMcpToolNames = ['openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
+  'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
+  'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
+  'openmotion_export_cancel', 'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
+  'openmotion_studio_frame', 'openmotion_studio_inspect'] as const;
+const webMcp = { tool_name: webMcpToolNames, transport: ['webmcp'] } as const;
 const business = { outcome, project_id: 'uuid', operation_id: 'uuid', replayed: 'boolean', error_code: 'code' } as const;
 // A template is identified by its catalogue id only; titles, authors and URLs are never fields.
 const template = { template_id: 'slug' } as const;
@@ -20,6 +26,12 @@ const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrd
 
 export const omEvents = {
   ...studioUsageEvents,
+  webmcp_tool_started: { producers: ['studio'], fields: { ...webMcp, call_id: 'uuid' },
+    required: ['tool_name', 'transport', 'call_id'] },
+  webmcp_tool_finished: { producers: ['studio'], fields: { ...webMcp, call_id: 'uuid', outcome, duration_ms: 'integer' },
+    required: ['tool_name', 'transport', 'call_id', 'outcome', 'duration_ms'] },
+  webmcp_registration_result: { producers: ['studio'], fields: { ...webMcp, outcome: ['success', 'failure', 'cancelled'], duration_ms: 'integer' },
+    required: ['tool_name', 'transport', 'outcome', 'duration_ms'] },
   mcp_tool_started: { producers: ['mcp'], fields: tool, required: ['tool_name', 'call_id', 'accepted'] },
   mcp_tool_finished: { producers: ['mcp'], fields: { ...tool, outcome, duration_ms: 'integer', error_code: 'code', replayed: 'boolean' },
     required: ['tool_name', 'call_id', 'accepted', 'outcome', 'duration_ms'] },
