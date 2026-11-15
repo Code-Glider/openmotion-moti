@@ -214,7 +214,7 @@ export function AssetCard({
             />
           )}
           {audioOnly && (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--motion-audio-cover-surface)] text-[var(--motion-audio-preview-ink)]" data-audio-cover role="img" aria-label={t("Audio")}>
+            <div className="flex h-full w-full items-center justify-center bg-[var(--motion-audio-cover-surface)] text-[var(--motion-audio-cover-ink)]" data-audio-cover role="img" aria-label={t("Audio")}>
               <MusicNoteIcon className="h-auto w-1/5" />
             </div>
           )}
