@@ -53,6 +53,8 @@ Do not pass off playback of the entire reference, a full-frame image sequence, e
 
 For a dense multi-shot film, organize reconstruction into locally reviewable units near shot or action boundaries. Keep coupled actions together, and include neighboring reference frames so an entrance or exit can cross a unit boundary. Choose unit lengths from the action and dependencies. A unit can contain several fast cuts or one continuous move.
 
+Keep independent shots with different visual mechanisms as distinct units, including when they will share one final source module. When units outnumber available worker slots, queue the remaining units and reuse workers after their current unit has been inspected. Return the source and local comparison for each unit so the coordinator can resolve its visible differences before assembling a larger passage.
+
 Use separate workers for independent units when the host supports delegation and the task authorizes it. A single Agent follows the same local process sequentially. Keep one coordinator responsible for the root timeline, shared resources and soundtrack. Give each worker disjoint source files. Save integrated changes through the existing revision-protected project workflow.
 
 Make the unit brief concrete enough to execute. Supply the following information in working notes or the worker task.
