@@ -378,7 +378,7 @@ https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手�
 
 <a id="make-your-motion-language-reusable"></a> <a id="motion-design-community"></a>
 
-### 3. 100 本以上の Motion.md で動画を再現
+### 3. 200 本以上の Motion.md で動画を再現
 
 OpenMotion が提案する **Motion.md** は、ショットの順序、長さ、トランジション、置き換え可能な素材を Markdown で記録する形式です。オンラインライブラリでは、参考動画とモーションガイドを同じ詳細ページで確認できます。
 
