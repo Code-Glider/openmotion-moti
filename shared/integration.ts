@@ -102,8 +102,7 @@ export function templatePrompt(info: IntegrationInfo, _host: IntegrationHost, te
     const message = repositoryTemplatePrompts[catalogLocale(Object.keys(repositoryTemplatePrompts), locale, 'en')];
     return message.replace(/\{(name|id)\}/g, (_, key: 'name' | 'id') => template[key === 'name' ? 'title' : 'id']);
   }
-  const environment = info.templateEnvironment ?? info.transport.env?.MOTION_TEMPLATE_ENV ?? 'prod';
-  const installUrl = `https://releases.open-design.ai/open-motion/${environment === 'dev' ? 'dev/' : ''}install.md`;
+  const installUrl = setupGuideUrl(info);
   const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
   const values = { installUrl, name: template.title, id: template.id };
   return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);

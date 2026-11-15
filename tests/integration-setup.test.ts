@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { setupPrompt, setupGuideUrl, type IntegrationInfo } from '../shared/integration.ts';
+import { setupPrompt, setupGuideUrl, templatePrompt, type IntegrationInfo } from '../shared/integration.ts';
 
 const info: IntegrationInfo = {
   name: 'OpenMotion', version: '1.0.0', templateSource: 'repository',
@@ -37,4 +37,17 @@ test('public setup retains repository and published catalog environments', () =>
   assert.equal(setupGuideUrl({ ...published, transport: { ...info.transport, env: { ...info.transport.env, MOTION_TEMPLATE_ENV: 'dev' } } }), 'https://releases.open-design.ai/open-motion/dev/install.md');
   assert.equal(setupGuideUrl({ ...info, templateEnvironment: 'dev' }), setupGuideUrl(null));
   assert.match(setupPrompt(null, 'chatgpt', 'en'), /requires a public HTTPS MCP service/);
+});
+
+test('template prompt reuses the shared published install guide', () => {
+  const template = { id: 'prism-a', title: 'Prism A' };
+  for (const published of [
+    { ...info, templateSource: 'cms' } as IntegrationInfo,
+    { ...info, templateSource: 'cms', templateEnvironment: 'dev' } as IntegrationInfo,
+    { ...info, templateSource: 'cms', transport: { ...info.transport, env: { ...info.transport.env, MOTION_TEMPLATE_ENV: 'dev' } } } as IntegrationInfo,
+  ]) {
+    for (const locale of ['en', 'zh-CN']) {
+      assert.ok(templatePrompt(published, 'codex', template, locale).includes(setupGuideUrl(published)));
+    }
+  }
 });
