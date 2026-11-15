@@ -1,5 +1,9 @@
 import type { GalleryTemplate } from '../../../shared/catalog';
 export const GITHUB_REPOSITORY = 'https://github.com/nexu-io/openmotion';
+export const repositorySupportLinks = [
+  { label: "What's new", href: `${GITHUB_REPOSITORY}/releases`, icon: 'history-line' },
+  { label: 'Feedback', href: `${GITHUB_REPOSITORY}/issues/new/choose`, icon: 'chat-1-line' },
+] as const;
 const STARS_API = 'https://api.github.com/repos/nexu-io/openmotion';
 const CACHE_KEY = 'openmotion.github-stars';
 const CACHE_TTL = 5 * 60 * 1000;

@@ -15,6 +15,7 @@ It is a private source package in the standalone root application. The visual wo
 | `studio.css` | Editor control states, materials, feedback and adapter recipes. |
 | `loading.css` | Startup shell and loading-boundary appearance. |
 | `index.js` | Shared brand identity, asset URLs, icon sprite and positive public-asset list. |
+| `metadata.js` | Localized titles, descriptions, favicon links and social-card metadata; shared by generated HTML and Studio. |
 | `provider-icons.js`, `providers/` | Local provider artwork, explicit identity mapping and complete source/license metadata. |
 | `react/RemixIcons.tsx`, `react/IconGlyph.tsx`, `loading.ts` | Shared React icons and loading artwork behavior. |
 | `brand/` | [Brandkit](brand/BRANDKIT.md), [motion art direction](brand/MOTION_DESIGN.md), logos and loading artwork. |
