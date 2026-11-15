@@ -6,6 +6,13 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { executable, extractArchive, nativeComponents, obtainAsset, readJSON, relativePath, runFile, withCacheLock, writeJSON, processAlive } from './runtime-assets.mjs';
 
+export function defaultInstallationHome(environment = 'prod') {
+  const base = process.platform === 'win32' ? process.env.LOCALAPPDATA || os.homedir() : path.join(os.homedir(), '.local/share');
+  return path.join(base, environment === 'dev' ? 'openmotion-dev' : 'openmotion');
+}
+
+export const nativeCacheDirectory = home => path.join(home, 'cache/native');
+
 export async function nativeConfiguration(root) {
   const config = await readJSON(path.join(root, '.npm-install.json'));
   if (!config) return null;
@@ -53,11 +60,11 @@ async function configureCachedSourceEnvironment(root) {
   if (Object.keys(aliases).every(key => process.env[key])) return;
   const runtime = await readJSON(path.join(root, 'scripts/runtime-lock.json'));
   if (!runtime || !Object.values(runtime.targets).some(info => info.platform === process.platform && info.arch === process.arch)) return;
-  const base = process.platform === 'win32' ? process.env.LOCALAPPDATA || os.homedir() : path.join(os.homedir(), '.local/share');
   // Reuse completed, pinned assets only. Source checkouts do not own these installations.
-  for (const home of ['openmotion', 'openmotion-dev']) {
-    for (const layout of ['cache/native', 'cache']) {
-      const cached = configuration({ schemaVersion: 1, runtime, cacheDirectory: path.join(base, home, layout) });
+  for (const environment of ['prod', 'dev']) {
+    const home = defaultInstallationHome(environment);
+    for (const cacheDirectory of [nativeCacheDirectory(home), path.join(home, 'cache')]) {
+      const cached = configuration({ schemaVersion: 1, runtime, cacheDirectory });
       for (const component of cached.components) {
         const keys = componentKeys[component].filter(key => !process.env[key]);
         if (!keys.length || !await ready(cached, component, false).catch(() => false)) continue;

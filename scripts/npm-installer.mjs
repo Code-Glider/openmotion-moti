@@ -7,7 +7,7 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { canonical, extractArchive, nativeComponents, obtainAsset, readJSON, relativePath, runFile, sha256, withLock, writeAtomic, writeJSON } from './runtime-assets.mjs';
-import { ensureNativeRuntime, startNativePreparation } from './npm-runtime.mjs';
+import { defaultInstallationHome as defaultHome, nativeCacheDirectory, ensureNativeRuntime, startNativePreparation } from './npm-runtime.mjs';
 import { hosts, hostPlan, skillTargets, obsoleteSkills, checkSkillOwner, copyHostSkills } from './npm-hosts.mjs';
 import { installedTool } from './mcp-client.mjs';
 import { checkTransport, redact } from './check-installed-mcp.mjs';
@@ -16,7 +16,6 @@ import { exportDiagnostics, recordDiagnostic } from './diagnostics.mjs';
 // Keep ownership stable so earlier local installations remain upgradable.
 export const managedBy = '@openmotion/installer';
 const bundledManifest = fileURLToPath(new URL('../payload/release-npm.json', import.meta.url));
-const defaultHome = (environment = 'prod') => path.join(process.platform === 'win32' ? process.env.LOCALAPPDATA || os.homedir() : path.join(os.homedir(), '.local/share'), environment === 'dev' ? 'openmotion-dev' : 'openmotion');
 const contains = (parent, child) => { const rel = path.relative(parent, child); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); };
 const usage = `Usage:
   openmotion setup --host <${hosts.join('|')}> [options]
@@ -129,7 +128,7 @@ export async function setup(options) {
           await runFile(process.execPath, [npm, 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: temporary });
         }
         await writeJSON(path.join(temporary, '.npm-install.json'), { schemaVersion: 1, applicationSHA256: manifest.application.sha256, installHome: home, commit: manifest.commit,
-          cacheDirectory: path.join(home, 'cache/native'), runtime: manifest.runtime, allowLocalAssets: true });
+          cacheDirectory: nativeCacheDirectory(home), runtime: manifest.runtime, allowLocalAssets: true });
         await rename(temporary, appRoot);
       } finally { await rm(temporary, { recursive: true, force: true }); }
     }

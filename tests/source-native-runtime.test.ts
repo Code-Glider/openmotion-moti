@@ -7,7 +7,7 @@ import { configureNativeEnvironment, ensureNativeRuntime, nativeRuntimeStatus } 
 
 const environmentKeys = ['HYPERFRAMES_BROWSER_PATH', 'HYPERFRAMES_FFMPEG_PATH', 'HYPERFRAMES_FFPROBE_PATH', 'MOTION_BROWSER_PATH', 'FFMPEG_PATH', 'FFPROBE_PATH'];
 
-async function fixture(t: any, bundledMedia = false) {
+async function fixture(t: any, bundledMedia = false, environment = 'prod') {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'motion-source-native-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const previous = environmentKeys.map(key => process.env[key]);
@@ -27,7 +27,7 @@ async function fixture(t: any, bundledMedia = false) {
   const localAppData = process.env.LOCALAPPDATA;
   if (process.platform === 'win32') process.env.LOCALAPPDATA = directory;
   t.after(() => localAppData === undefined ? delete process.env.LOCALAPPDATA : process.env.LOCALAPPDATA = localAppData);
-  const installHome = path.join(process.platform === 'win32' ? directory : path.join(directory, '.local/share'), 'openmotion');
+  const installHome = path.join(process.platform === 'win32' ? directory : path.join(directory, '.local/share'), environment === 'dev' ? 'openmotion-dev' : 'openmotion');
   const paths: Record<string, string> = {};
   const cache = async (layout = 'cache/native') => {
     for (const [name, value] of Object.entries(info).filter(([, value]) => typeof value === 'object') as [string, any][]) {
@@ -69,6 +69,13 @@ test('source discovery preserves explicit paths and legacy environment aliases',
   assert.equal(process.env.HYPERFRAMES_FFPROBE_PATH, '/explicit/ffprobe');
   assert.equal(process.env.HYPERFRAMES_BROWSER_PATH, '/explicit/browser');
   assert.notEqual(process.env.HYPERFRAMES_FFMPEG_PATH, paths.HYPERFRAMES_FFMPEG_PATH);
+});
+
+test('source startup falls back to the default DEV installation cache', async t => {
+  const { root, cache, paths } = await fixture(t, false, 'dev');
+  await cache();
+  assert.equal(await configureNativeEnvironment(root), null);
+  for (const [key, filename] of Object.entries(paths)) assert.equal(process.env[key], filename);
 });
 
 test('source discovery ignores incomplete, corrupt, wrong-hash and non-executable cached tools', { skip: process.platform === 'win32' }, async t => {
