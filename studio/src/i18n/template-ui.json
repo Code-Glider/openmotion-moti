@@ -44,7 +44,13 @@
     "Loading instruction…": "正在加载指令…",
     "Could not load the instruction.": "指令加载失败。",
     "TOP 100 brands": "TOP 100 品牌",
-    "Brands": "品牌"
+    "Brands": "品牌",
+    "Apply filters": "确认筛选",
+    "Clear selection": "清除本组",
+    "Filter categories": "筛选分类",
+    "Close filters": "关闭筛选",
+    "Search options…": "搜索选项…",
+    "No matching options.": "没有匹配的选项。"
   },
   "ja": {
     "Made to move.": "動き出すアイデア",
@@ -91,7 +97,13 @@
     "Loading instruction…": "指示を読み込み中…",
     "Could not load the instruction.": "指示を読み込めませんでした。",
     "TOP 100 brands": "TOP 100 ブランド",
-    "Brands": "ブランド"
+    "Brands": "ブランド",
+    "Apply filters": "絞り込みを適用",
+    "Clear selection": "この分類をクリア",
+    "Filter categories": "絞り込みの分類",
+    "Close filters": "絞り込みを閉じる",
+    "Search options…": "選択肢を検索…",
+    "No matching options.": "一致する選択肢がありません。"
   },
   "ko": {
     "Made to move.": "움직이는 아이디어",
@@ -138,7 +150,13 @@
     "Loading instruction…": "지침 불러오는 중…",
     "Could not load the instruction.": "지침을 불러오지 못했습니다.",
     "TOP 100 brands": "TOP 100 브랜드",
-    "Brands": "브랜드"
+    "Brands": "브랜드",
+    "Apply filters": "필터 적용",
+    "Clear selection": "선택 해제",
+    "Filter categories": "필터 분류",
+    "Close filters": "필터 닫기",
+    "Search options…": "옵션 검색…",
+    "No matching options.": "일치하는 옵션이 없습니다."
   },
   "de": {
     "Made to move.": "Für Bewegung gemacht",
@@ -185,7 +203,13 @@
     "Loading instruction…": "Anweisung wird geladen…",
     "Could not load the instruction.": "Anweisung konnte nicht geladen werden.",
     "TOP 100 brands": "TOP 100 Marken",
-    "Brands": "Marken"
+    "Brands": "Marken",
+    "Apply filters": "Filter anwenden",
+    "Clear selection": "Auswahl löschen",
+    "Filter categories": "Filterkategorien",
+    "Close filters": "Filter schließen",
+    "Search options…": "Optionen suchen…",
+    "No matching options.": "Keine passenden Optionen."
   },
   "fr": {
     "Made to move.": "Place au mouvement",
@@ -232,7 +256,13 @@
     "Loading instruction…": "Chargement des instructions…",
     "Could not load the instruction.": "Impossible de charger les instructions.",
     "TOP 100 brands": "TOP 100 marques",
-    "Brands": "Marques"
+    "Brands": "Marques",
+    "Apply filters": "Appliquer les filtres",
+    "Clear selection": "Effacer la sélection",
+    "Filter categories": "Catégories de filtres",
+    "Close filters": "Fermer les filtres",
+    "Search options…": "Rechercher une option…",
+    "No matching options.": "Aucune option correspondante."
   },
   "ru": {
     "Made to move.": "Создано для движения",
@@ -279,7 +309,13 @@
     "Loading instruction…": "Загрузка инструкции…",
     "Could not load the instruction.": "Не удалось загрузить инструкцию.",
     "TOP 100 brands": "ТОП-100 брендов",
-    "Brands": "Бренды"
+    "Brands": "Бренды",
+    "Apply filters": "Применить фильтры",
+    "Clear selection": "Сбросить выбор",
+    "Filter categories": "Категории фильтров",
+    "Close filters": "Закрыть фильтры",
+    "Search options…": "Поиск вариантов…",
+    "No matching options.": "Подходящих вариантов нет."
   },
   "es": {
     "Made to move.": "Ideas en movimiento",
@@ -326,7 +362,13 @@
     "Loading instruction…": "Cargando instrucciones…",
     "Could not load the instruction.": "No se pudieron cargar las instrucciones.",
     "TOP 100 brands": "TOP 100 marcas",
-    "Brands": "Marcas"
+    "Brands": "Marcas",
+    "Apply filters": "Aplicar filtros",
+    "Clear selection": "Borrar selección",
+    "Filter categories": "Categorías de filtros",
+    "Close filters": "Cerrar filtros",
+    "Search options…": "Buscar opciones…",
+    "No matching options.": "No hay opciones coincidentes."
   },
   "pt-BR": {
     "Made to move.": "Feito para se mover",
@@ -373,7 +415,13 @@
     "Loading instruction…": "Carregando instruções…",
     "Could not load the instruction.": "Não foi possível carregar as instruções.",
     "TOP 100 brands": "TOP 100 marcas",
-    "Brands": "Marcas"
+    "Brands": "Marcas",
+    "Apply filters": "Aplicar filtros",
+    "Clear selection": "Limpar seleção",
+    "Filter categories": "Categorias de filtros",
+    "Close filters": "Fechar filtros",
+    "Search options…": "Buscar opções…",
+    "No matching options.": "Nenhuma opção correspondente."
   },
   "it": {
     "Made to move.": "Idee in movimento",
@@ -420,7 +468,13 @@
     "Loading instruction…": "Caricamento istruzioni…",
     "Could not load the instruction.": "Impossibile caricare le istruzioni.",
     "TOP 100 brands": "TOP 100 brand",
-    "Brands": "Brand"
+    "Brands": "Brand",
+    "Apply filters": "Applica filtri",
+    "Clear selection": "Cancella selezione",
+    "Filter categories": "Categorie di filtri",
+    "Close filters": "Chiudi filtri",
+    "Search options…": "Cerca opzioni…",
+    "No matching options.": "Nessuna opzione corrispondente."
   },
   "tr": {
     "Made to move.": "Hareket için tasarlandı",
@@ -467,6 +521,12 @@
     "Loading instruction…": "Talimat yükleniyor…",
     "Could not load the instruction.": "Talimat yüklenemedi.",
     "TOP 100 brands": "TOP 100 marka",
-    "Brands": "Markalar"
+    "Brands": "Markalar",
+    "Apply filters": "Filtreleri uygula",
+    "Clear selection": "Seçimi temizle",
+    "Filter categories": "Filtre kategorileri",
+    "Close filters": "Filtreleri kapat",
+    "Search options…": "Seçenek ara…",
+    "No matching options.": "Eşleşen seçenek yok."
   }
 }

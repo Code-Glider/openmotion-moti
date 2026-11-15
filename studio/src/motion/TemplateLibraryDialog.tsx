@@ -8,7 +8,9 @@ import { templatePrompt, type IntegrationInfo } from '../../../shared/integratio
 import { useI18n } from '../i18n/I18n';
 import { motionApi } from './useWorkspace';
 import { MotionIcon } from './icons';
-import { Menu, MenuCheckboxItem, MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../components/ui/Menu';
+import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
+import { Popover } from '../components/ui/Popover';
+import { Tabs, TabsList, Tab, TabPanel } from '../components/ui/Tabs';
 import { Skeleton } from '../components/ui/Skeleton';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
@@ -31,6 +33,10 @@ import * as tracking from './templateLibraryTracking';
 import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './templateLibraryTracking';
 
 const brandLogos: Record<string, string> = { Notion: notionLogo, Higgsfield: higgsfieldLogo, Figma: figmaLogo, Lovable: lovableLogo, Linear: linearLogo, Firecrawl: firecrawlLogo, Kimi: kimiLogo, Pond: pondLogo };
+
+type Filters = Partial<Record<Facet, string[]>>;
+const toggleValue = (filters: Filters, key: Facet, value: string): Filters => ({ ...filters, [key]: filters[key]?.includes(value) ? filters[key]!.filter(item => item !== value) : [...(filters[key] ?? []), value] });
+const matchesFilters = (item: GalleryTemplate, filters: Filters, editable: boolean) => (!editable || isEditableTemplate(item)) && facets.every(([key]) => !filters[key]?.length || filters[key]!.some(value => values(item, key).includes(value)));
 
 function Identity({ template, brand = false }: { template: GalleryTemplate; brand?: boolean }) {
   const name = brand ? template.brand || template.author : template.authorName || template.author || template.brand || 'OpenMotion';
@@ -105,12 +111,16 @@ export function TemplateLibraryDialog(props: Props) {
   const [catalog, setCatalog] = useState<GalleryTemplate[]>([]);
   const [warning, setWarning] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(false);
   const [attempt, retry] = useState(0), [query, setQuery] = useState(''), [sort, setSort] = useState<Sort>('recommended');
-  const [selected, setSelected] = useState<Partial<Record<Facet, string[]>>>({});
+  const [selected, setSelected] = useState<Filters>({});
   const [preview, setPreview] = useState<GalleryTemplate | null>(null), [prompt, setPrompt] = useState(''), [feedback, setFeedback] = useState('');
   const [manualCopy, setManualCopy] = useState('');
   const [promptError, setPromptError] = useState(false), [promptAttempt, retryPrompt] = useState(0);
   const [priority, setPriority] = useState<string | null>(null), [filtersOpen, setFiltersOpen] = useState(false);
   const [editableOnly, setEditableOnly] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<Filters>({});
+  const [draftEditable, setDraftEditable] = useState(false);
+  const [filterTab, setFilterTab] = useState<Facet>('uses');
+  const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
   const lastRandom = useRef<string>(undefined);
@@ -178,15 +188,19 @@ export function TemplateLibraryDialog(props: Props) {
   });
   const industries = available.find(facet => facet.key === 'industries')?.values ?? [];
   const sortOptions = [['recommended', 'Recommended order'], ['name', 'Name A–Z'], ['reverse', 'Name Z–A'], ['duration', 'Duration']] as const;
-  const filterLabel = (key: Facet, label: string) => t(key === 'uses' ? 'By video purpose' : key === 'industries' ? 'By industry' : label);
   const hasFilters = Boolean(query || editableOnly || brandsOnly || Object.values(selected).some(items => items?.length));
-  const visible = useMemo(() => {
+  const searchable = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
     return catalog.filter(item => {
       const text = [item.id, item.title, item.description, item.authorName, item.author, ...item.tags, ...facets.flatMap(([key]) => values(item, key).flatMap(value => [value, t(value)]))].join(' ').toLocaleLowerCase();
-      return (!brandsOnly || Boolean(item.brand?.trim())) && (!editableOnly || isEditableTemplate(item)) && terms.every(term => text.includes(term)) && facets.every(([key]) => !selected[key]?.length || selected[key]!.some(value => values(item, key).includes(value)));
-    }).sort((a, b) => sort === 'recommended' ? (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) : sort === 'duration' ? (a.duration ?? Infinity) - (b.duration ?? Infinity) : a.title.localeCompare(b.title, locale) * (sort === 'reverse' ? -1 : 1));
-  }, [catalog, query, selected, sort, locale, editableOnly, brandsOnly]);
+      return (!brandsOnly || Boolean(item.brand?.trim())) && terms.every(term => text.includes(term));
+    });
+  }, [catalog, query, brandsOnly, t]);
+  const draftCount = useMemo(() => filtersOpen ? searchable.filter(item => matchesFilters(item, draftFilters, draftEditable)).length : 0, [filtersOpen, searchable, draftFilters, draftEditable]);
+  const hasDraftFilters = draftEditable || Object.values(draftFilters).some(items => items?.length);
+  const visible = useMemo(() => {
+    return searchable.filter(item => matchesFilters(item, selected, editableOnly)).sort((a, b) => sort === 'recommended' ? (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) : sort === 'duration' ? (a.duration ?? Infinity) - (b.duration ?? Infinity) : a.title.localeCompare(b.title, locale) * (sort === 'reverse' ? -1 : 1));
+  }, [searchable, selected, sort, locale, editableOnly]);
   useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly]);
   const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly);
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
@@ -267,7 +281,24 @@ export function TemplateLibraryDialog(props: Props) {
     if (next !== sort) pendingResult.current = 'sort_change';
     setSort(next);
   };
-  const openFilters = (next: boolean) => { if (next && !filtersOpen) tracking.reportDiscoveryClick('filter_open', listContext()); setFiltersOpen(next); };
+  const openFilters = (next: boolean) => {
+    if (next && !filtersOpen) {
+      tracking.reportDiscoveryClick('filter_open', listContext());
+      setDraftFilters(selected); setDraftEditable(editableOnly); setFacetQuery('');
+      setFilterTab(available.some(facet => facet.key === filterTab) ? filterTab : available[0]?.key ?? 'uses');
+    }
+    setFiltersOpen(next);
+  };
+  const applyFilters = () => {
+    for (const [key] of facets) {
+      const previous = selected[key] ?? [], next = draftFilters[key] ?? [];
+      for (const value of new Set([...previous, ...next])) {
+        if (previous.includes(value) !== next.includes(value)) picked('filter_option', key, value, next.includes(value));
+      }
+    }
+    if (editableOnly !== draftEditable) picked('filter_option', 'editable', undefined, draftEditable);
+    setSelected(draftFilters); setEditableOnly(draftEditable); setFiltersOpen(false);
+  };
   const show = useCallback((item: GalleryTemplate, placement: Placement = 'catalog') => {
     const view = { id: tracking.newTrackingId(), placement }; detailView.current = view; instructionShown.current = undefined;
     const index = latest.current.items.findIndex(candidate => candidate.id === item.id);
@@ -381,17 +412,29 @@ export function TemplateLibraryDialog(props: Props) {
               {industries.map(value => <MenuRadioItem key={value} value={value}>{t(value)}</MenuRadioItem>)}
             </MenuRadioGroup>
           </Menu>}
-          <Menu modal={false} open={filtersOpen} onOpenChange={openFilters} container={null} align="end" aria-label={t('Filters')} className={`${styles.discoveryMenu} ${styles.filterMenu}`}
+          <Popover modal={false} open={filtersOpen} onOpenChange={openFilters} container={null} align="end" aria-label={t('Filters')} className={styles.filterPopover}
             trigger={<button className={`${styles.dropdownButton} ${styles.filterIcon}`} aria-label={t('Filters')} title={t('Filters')}><MotionIcon name="sliders" size={17} />{(Object.values(selected).flat().length + Number(editableOnly)) > 0 && <span className={styles.filterIndicator} aria-hidden="true" />}</button>}>
-            <MenuCheckboxItem checked={editableOnly} onCheckedChange={toggleEditable} closeOnClick={false}>{t('Ready to edit')}</MenuCheckboxItem>
-            {available.filter(facet => facet.key !== 'industries').map(facet => <div key={facet.key} role="group" aria-label={filterLabel(facet.key, facet.label)}>
-              <MenuSeparator /><div className={styles.menuHeading}>{filterLabel(facet.key, facet.label)}</div>
-              {facet.values.map(value => <MenuCheckboxItem key={value} checked={selected[facet.key]?.includes(value) ?? false} onCheckedChange={() => toggle(facet.key, value)} closeOnClick={false}>
-                <span className={styles.facetOption}>{facet.key === 'brand' && <Identity template={catalog.find(item => item.brand === value)!} brand />}{facet.key === 'brand' ? value : t(value)}</span>
-              </MenuCheckboxItem>)}
-            </div>)}
-            <MenuSeparator /><MenuItem disabled={!hasFilters} closeOnClick={false} onClick={reset}>{t('Clear filters')}</MenuItem>
-          </Menu>
+            <header className={styles.filterHeader}><strong>{t('Filters')}</strong><button role="checkbox" aria-checked={draftEditable} className={styles.editableChoice} onClick={() => setDraftEditable(!draftEditable)}>{t('Ready to edit')}<span className={styles.choiceCheck} aria-hidden="true">{draftEditable && <MotionIcon name="check" size={12} />}</span></button><button className={styles.iconButton} onClick={() => setFiltersOpen(false)} aria-label={t('Close filters')}><MotionIcon name="close" size={17} /></button></header>
+            <Tabs value={filterTab} onValueChange={value => { setFilterTab(value as Facet); setFacetQuery(''); }} orientation="vertical" className={styles.filterBody}>
+              <TabsList className={styles.filterTabs} aria-label={t('Filter categories')}>
+                {available.map(facet => <Tab key={facet.key} value={facet.key} className={styles.filterTab} aria-label={t(facet.label)}><span>{t(facet.label)}</span>{Boolean(draftFilters[facet.key]?.length) && <span className={styles.tabCount}>{draftFilters[facet.key]!.length}</span>}</Tab>)}
+              </TabsList>
+              {available.map(facet => <TabPanel key={facet.key} value={facet.key} className={styles.filterPanel}>
+                <div className={styles.facetHeader}><strong>{t(facet.label)}</strong><button disabled={!draftFilters[facet.key]?.length} onClick={() => setDraftFilters(previous => ({ ...previous, [facet.key]: [] }))}>{t('Clear selection')}</button></div>
+                {facet.values.length > 12 && <label className={styles.facetSearch}><MotionIcon name="search" size={14} /><input type="search" value={facetQuery} onChange={event => setFacetQuery(event.target.value)} placeholder={t('Search options…')} aria-label={t('Search options…')} /></label>}
+                <div className={styles.facetGrid}>
+                  {(facet.key === 'uses' ? categories : facet.values).filter(value => t(value).toLocaleLowerCase().includes(facetQuery.trim().toLocaleLowerCase())).map(value => {
+                    const checked = draftFilters[facet.key]?.includes(value) ?? false;
+                    return <button key={value} role="checkbox" aria-checked={checked} aria-label={facet.key === 'brand' ? value : t(value)} className={styles.facetChoice} onClick={() => setDraftFilters(previous => toggleValue(previous, facet.key, value))}>
+                      <span className={styles.facetOption}>{facet.key === 'brand' && <Identity template={catalog.find(item => item.brand === value)!} brand />}<span>{facet.key === 'brand' ? value : t(value)}</span></span><span className={styles.choiceCheck} aria-hidden="true">{checked && <MotionIcon name="check" size={12} />}</span>
+                    </button>;
+                  })}
+                </div>
+                {facetQuery.trim() && !facet.values.some(value => t(value).toLocaleLowerCase().includes(facetQuery.trim().toLocaleLowerCase())) && <p className={styles.facetEmpty}>{t('No matching options.')}</p>}
+              </TabPanel>)}
+            </Tabs>
+            <footer className={styles.filterFooter}><button className={styles.clearFilters} disabled={!hasDraftFilters} onClick={() => { setDraftFilters({}); setDraftEditable(false); }}>{t('Clear filters')}</button><span role="status" aria-live="polite" aria-atomic="true">{t('{count} templates', { count: draftCount })}</span><button className={styles.applyFilters} onClick={applyFilters}>{t('Apply filters')}<MotionIcon name="arrow-right" size={14} /></button></footer>
+          </Popover>
           <div className={styles.sortControl}><Menu modal={false} container={null} align="end" aria-label={t('Sort')} className={styles.discoveryMenu}
             trigger={<button className={styles.dropdownButton} aria-label={t('Sort')}><span>{t(sortOptions.find(([value]) => value === sort)![1])}</span><MotionIcon name="chevron-down" size={16} /></button>}>
             <MenuRadioGroup value={sort} onValueChange={changeSort}>{sortOptions.map(([value, label]) => <MenuRadioItem key={value} value={value}>{t(label)}</MenuRadioItem>)}</MenuRadioGroup>
