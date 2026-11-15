@@ -33,7 +33,7 @@ import { recoverProjectTransactions } from './phase1-versions.ts';
 import { verifyExport } from './scripts/verify-export.ts';
 import { createAppTracking, closeTracking, saveTrackingPreference, trackingPreference, trackingLockReason, type OmTracking } from './shared/tracking.ts';
 import { studioEvents } from './tracking/events.ts';
-import { nativeRuntimeStatus, startNativePreparation, requireNativeRuntime } from './scripts/npm-runtime.mjs';
+import { configureNativeEnvironment, nativeRuntimeStatus, startNativePreparation, requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { nativeRouteCapability } from './shared/native-runtime.ts';
 import { validPending, uuid } from './tracking/core.ts';
 import { validHostContext, unknownHost, previewTrackingContext } from './tracking/host.ts';
@@ -658,6 +658,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
 export async function startServer(store = sharedStore, port = Number(process.env.PORT || 4173), options: { editor?: boolean; fallbackIfPortBusy?: boolean; editorToken?: string; privateHandler?: (req: IncomingMessage, res: ServerResponse) => Promise<boolean> } = { editor: process.env.MOTION_HEADLESS !== '1' }) {
   await access(path.join(pluginRoot, 'studio/build/index.html')).catch(() => { throw new Error('编辑器尚未构建，请先运行 npm run build:studio。'); });
   const runtimeRoot = await ensureRuntime(store.directory, false);
+  await configureNativeEnvironment(pluginRoot);
   void startNativePreparation(pluginRoot).catch(error => console.error('Native preparation could not start: ' + error.message));
   await recoverProjectTransactions(store, runtimeRoot);
   const ffmpeg = await execute(process.env.HYPERFRAMES_FFMPEG_PATH || process.env.FFMPEG_PATH || 'ffmpeg', ['-version'], pluginRoot, 5000).then(r => r.code === 0, () => false);

@@ -1,5 +1,6 @@
 {
   "ja": {
+    "OpenMotion Sample Video": "OpenMotion サンプル動画",
     "Join the OpenDesign community": "OpenDesign コミュニティに参加しませんか",
     "Expand": "展開",
     "Collapse": "折りたたむ",
@@ -317,6 +318,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "このエディターでは、サブコンポジション内のクリップの分割はサポートされていません。"
   },
   "ko": {
+    "OpenMotion Sample Video": "OpenMotion 예제 영상",
     "Join the OpenDesign community": "OpenDesign 커뮤니티에 참여하세요",
     "Expand": "펼치기",
     "Collapse": "접기",
@@ -634,6 +636,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "이 편집기에서는 하위 컴포지션 내부의 클립 분할을 지원하지 않습니다."
   },
   "de": {
+    "OpenMotion Sample Video": "OpenMotion-Beispielvideo",
     "Join the OpenDesign community": "Tritt der OpenDesign-Community bei",
     "Expand": "Erweitern",
     "Collapse": "Einklappen",
@@ -951,6 +954,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Das Teilen von Clips innerhalb einer Unterkomposition wird in diesem Editor nicht unterstützt."
   },
   "fr": {
+    "OpenMotion Sample Video": "Vidéo d’exemple OpenMotion",
     "Join the OpenDesign community": "Rejoignez la communauté OpenDesign",
     "Expand": "Développer",
     "Collapse": "Réduire",
@@ -1268,6 +1272,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Cet éditeur ne permet pas de scinder les clips à l’intérieur d’une sous-composition."
   },
   "ru": {
+    "OpenMotion Sample Video": "Пример видео OpenMotion",
     "Join the OpenDesign community": "Присоединяйтесь к сообществу OpenDesign",
     "Expand": "Развернуть",
     "Collapse": "Свернуть",
@@ -1585,6 +1590,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "В этом редакторе нельзя разделять клипы внутри подкомпозиции."
   },
   "es": {
+    "OpenMotion Sample Video": "Vídeo de ejemplo de OpenMotion",
     "Join the OpenDesign community": "Únete a la comunidad de OpenDesign",
     "Expand": "Expandir",
     "Collapse": "Contraer",
@@ -1902,6 +1908,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor no permite dividir clips dentro de una subcomposición."
   },
   "pt-BR": {
+    "OpenMotion Sample Video": "Vídeo de exemplo do OpenMotion",
     "Join the OpenDesign community": "Junte-se à comunidade OpenDesign",
     "Expand": "Expandir",
     "Collapse": "Recolher",
@@ -2219,6 +2226,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor não permite dividir clipes dentro de uma subcomposição."
   },
   "it": {
+    "OpenMotion Sample Video": "Video di esempio OpenMotion",
     "Join the OpenDesign community": "Unisciti alla community OpenDesign",
     "Expand": "Espandi",
     "Collapse": "Comprimi",
@@ -2536,6 +2544,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Questo editor non supporta la divisione di clip all’interno di una sottocomposizione."
   },
   "tr": {
+    "OpenMotion Sample Video": "OpenMotion Örnek Videosu",
     "Join the OpenDesign community": "OpenDesign topluluğuna katılın",
     "Expand": "Genişlet",
     "Collapse": "Daralt",
