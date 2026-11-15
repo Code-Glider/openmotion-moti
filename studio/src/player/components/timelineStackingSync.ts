@@ -89,11 +89,9 @@ export function samePaintScope(
 /**
  * Two clips overlap in time when their half-open [start, end) intervals intersect.
  *
- * NOTE the float slack: this DELIBERATELY diverges from `timeRangesOverlap`'s exact
- * strict-`<` (timelineCollision.ts). A boolean collision decision is idempotent, so
- * exact `<` is fine there; here the result drives a VISIBLE stacking re-lane, so the
- * epsilon guards against float fuzz (e.g. 19.8 + 6.4 vs 26.2) spuriously overlapping two
- * abutting clips and shuffling lanes. The two are intended to differ, not align.
+ * Keep the native floating-point tolerance for paint-stack changes. Editor lane
+ * comparisons additionally tolerate millisecond serialization drift, but that
+ * tolerance must not suppress z-index updates for clips that actually co-paint.
  */
 function overlapsInTime(
   a: Pick<StackingElement, "start" | "duration">,
