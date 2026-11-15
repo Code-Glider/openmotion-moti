@@ -34,8 +34,9 @@ it("uses an audio cover for an audio-only MP4 even with known duration, retainin
   vi.mocked(probeMediaUrl).mockResolvedValue({ hasAudio: true, hasVideo: false, duration: 10 });
   await render("assets/voice.mp4", 10);
   hover();
-  expect(host.querySelector("[data-audio-cover]")?.textContent).toBe("Audio");
-  expect(host.querySelector('[data-remix-icon="voiceprint-line"]')).not.toBeNull();
+  expect(host.querySelector("[data-audio-cover]")?.textContent).toBe("");
+  expect(host.querySelector("[data-audio-cover]")?.getAttribute("aria-label")).toBe("Audio");
+  expect(host.querySelector('[data-remix-icon="music-2-line"]')).not.toBeNull();
   expect(host.querySelector("[data-video-thumbnail]")).toBeNull();
   expect(host.querySelector("video")).toBeNull();
   expect(host.textContent).toContain("00:10");

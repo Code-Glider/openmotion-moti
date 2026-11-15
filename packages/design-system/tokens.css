@@ -154,6 +154,7 @@
   --motion-gallery-stage-wash: rgba(255, 255, 255, 0.22);
   --motion-skeleton-base: #eceeed;
   --motion-skeleton-highlight: #f6f7f6;
+  --motion-audio-cover-surface: var(--motion-neutral-n3);
   --motion-audio-preview-surface: var(--motion-neutral-n0);
   --motion-audio-preview-well: var(--motion-neutral-n2);
   --motion-audio-preview-icon-well: var(--motion-neutral-n2);
@@ -215,6 +216,7 @@
   --motion-gallery-stage-wash: rgba(0, 0, 0, 0.44);
   --motion-skeleton-base: #222222;
   --motion-skeleton-highlight: #2c2c2c;
+  --motion-audio-cover-surface: var(--motion-neutral-n11);
   --motion-audio-preview-surface: var(--motion-neutral-n11);
   --motion-audio-preview-well: var(--motion-bg);
   --motion-audio-preview-icon-well: var(--motion-neutral-n10);
@@ -277,6 +279,7 @@
     --motion-gallery-stage-wash: rgba(0, 0, 0, 0.44);
     --motion-skeleton-base: #222222;
     --motion-skeleton-highlight: #2c2c2c;
+    --motion-audio-cover-surface: var(--motion-neutral-n11);
     --motion-audio-preview-surface: var(--motion-neutral-n11);
     --motion-audio-preview-well: var(--motion-bg);
     --motion-audio-preview-icon-well: var(--motion-neutral-n10);

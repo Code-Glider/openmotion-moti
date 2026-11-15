@@ -213,9 +213,8 @@ export function AssetCard({
             />
           )}
           {audioOnly && (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[var(--motion-audio-preview-well)] text-[var(--motion-audio-preview-ink)]" data-audio-cover>
-              <RemixIcon name="voiceprint-line" size={40} />
-              <span className="text-step-11 font-medium">{t("Audio")}</span>
+            <div className="flex h-full w-full items-center justify-center bg-[var(--motion-audio-cover-surface)] text-[var(--motion-audio-preview-ink)]" data-audio-cover role="img" aria-label={t("Audio")}>
+              <RemixIcon name="music-2-line" className="h-auto w-1/5" />
             </div>
           )}
           {isVideo && !audioOnly && (
