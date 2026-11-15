@@ -68,6 +68,8 @@ Make the unit brief concrete enough to execute. Supply the following information
 | Integration | Coordinate space, global-to-local time mapping, asset paths, entry points and shared typography |
 | Return | Editable source, asset mapping, timed observations, actual local output comparisons and remaining differences |
 
+For each independent visual mechanism, keep a compact entry in the existing unit notes identifying its source observations, defining form and surrounding relationships, chosen material/geometry, current local comparison and next repair. Compare the first usable reconstruction with the reference at a clear pose and a state that challenges that choice, including the surrounding scene. Use the result to decide whether to refine the controls or revise the material, geometry or isolation boundary before extending the mechanism. A changed defining form or removed surrounding structure belongs in that decision even when movement and appearance measurements pass. Keep separate entries when one worker or source module handles several mechanisms. Reread the relevant entry when resuming or switching work and continue its recorded next action. Carry unresolved differences and the compared source/output identities into integration.
+
 Keep reused implementation and newly reconstructed work identifiable. Recheck a reused object at every new appearance, including a different scale, camera, occluder or text state. Respect the supplied-input boundary when the task calls for an independent experiment.
 
 ### Turn observations into driving data
