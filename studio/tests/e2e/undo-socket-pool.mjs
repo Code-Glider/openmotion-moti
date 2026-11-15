@@ -65,6 +65,7 @@ try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 900 });
   await page.evaluateOnNewDocument(installWebMcpHost, "__undoPool");
+  await page.evaluateOnNewDocument(() => localStorage.setItem("motion.studio.locale", "en"));
   const call = (name, input) =>
     Promise.race([
       page.evaluate((n, i) => window.__undoPool.call(n, i), name, input),
@@ -160,10 +161,14 @@ try {
   for (let round = 0; round < ROUNDS; round++) {
     const before = readIndex();
     const shownBefore = await previewColor();
-    await call("openmotion_studio_set_style", {
-      handle: target.handle,
-      styles: { backgroundColor: colors[round % colors.length] },
-    });
+    // Exercise the manual editor save path; WebMCP content-writing tools are not registered.
+    await call("openmotion_studio_select", { handle: target.handle });
+    await page.waitForSelector('[aria-label="Pick color color"]');
+    await page.click('[aria-label="Pick color color"]');
+    const hex = await page.waitForSelector('[role="dialog"][aria-label="Color color picker"] input');
+    await hex.click({ clickCount: 3 });
+    await page.keyboard.type(colors[round % colors.length]);
+    await page.click('[aria-label="Close color picker"]');
     if (!(await until(() => readIndex() !== before, 10_000)))
       throw new Error(`round ${round}: the edit never reached disk`);
     // Without pinned media the gate would pass on any build, so it refuses to measure.

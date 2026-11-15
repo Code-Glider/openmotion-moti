@@ -34,7 +34,7 @@ function context() {
   return { registered, registerTool };
 }
 
-it('native registration coexists with all Studio tools and survives rerenders without duplicate registration', async () => {
+it('native registration coexists with the five Studio observation/navigation tools and survives rerenders without duplicate registration', async () => {
   const native = context();
   Object.defineProperty(document, 'modelContext', { value: native, configurable: true });
   const studioController = new AbortController();
@@ -42,6 +42,8 @@ it('native registration coexists with all Studio tools and survives rerenders wi
   expect((await registerStudioTools(native, studio, studioController.signal)).failed).toEqual([]);
   await act(async () => root.render(<StrictMode><OpenMotionAgentTools /></StrictMode>));
   expect([...native.registered.keys()].sort()).toEqual([...studio, ...phase1Tools].map(tool => tool.name).sort());
+  expect(native.registered.size).toBe(17);
+  expect([...native.registered.keys()]).not.toContain('openmotion_studio_set_text');
   expect(loadPolyfill).not.toHaveBeenCalled();
   const count = native.registerTool.mock.calls.length;
   await act(async () => root.render(<StrictMode><OpenMotionAgentTools /></StrictMode>));

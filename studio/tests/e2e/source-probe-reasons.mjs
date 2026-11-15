@@ -60,22 +60,32 @@ try {
   await open();
   const target = await handle('Target');
   assert.equal((await call('openmotion_studio_inspect', { handle: target })).can.editStyles, true);
-  const before = await readFile(index, 'utf8');
-  results.save = await call('openmotion_studio_set_style', { handle: target, styles: { backgroundColor: '#e11d48' } });
-  assert.equal(results.save.ok, true, JSON.stringify(results.save));
+  const current = await call('openmotion_get_project', { projectId: store.projectId, file: { path: 'index.html' } });
+  const before = current.file.content;
+  results.save = await call('openmotion_edit_project', {
+    projectId: store.projectId, requestId: 'source-probe-color', expectedRevision: current.revision,
+    expectedVersionId: current.version.versionId,
+    files: [{ path: 'index.html', content: current.file.content.replace('background:#2463eb', 'background:#e11d48') }],
+  });
+  assert.equal(results.save.changed, true, JSON.stringify(results.save));
   await wait(async () => (await readFile(index, 'utf8')) !== before);
   const saved = await readFile(index, 'utf8');
   await open();
   await wait(async () => await color() === 'rgb(225, 29, 72)');
   results.refreshAfterSave = true;
-  await page.keyboard.down('Control'); await page.keyboard.press('z'); await page.keyboard.up('Control');
+  const latest = await call('openmotion_get_project', { projectId: store.projectId });
+  results.restore = await call('openmotion_restore_version', {
+    projectId: store.projectId, requestId: 'source-probe-restore', versionId: current.version.versionId,
+    expectedRevision: latest.revision, expectedVersionId: latest.version.versionId,
+  });
+  assert.equal(results.restore.isError, undefined, JSON.stringify(results.restore));
   await wait(async () => (await readFile(index, 'utf8')) === before);
   await wait(async () => await color() === 'rgb(36, 99, 235)');
-  results.undo = true;
+  results.restored = true;
   await open();
   await wait(async () => await color() === 'rgb(36, 99, 235)');
-  results.refreshAfterUndo = true;
-  await page.screenshot({ path: path.join(evidence, 'save-refresh-undo.png') });
+  results.refreshAfterRestore = true;
+  await page.screenshot({ path: path.join(evidence, 'save-refresh-restore.png') });
 
   for (const [label, id, reason, text] of [
     ['Static Svg', 'static-svg', 'cannot be edited visually yet', '此类元素暂不支持直接编辑'],
