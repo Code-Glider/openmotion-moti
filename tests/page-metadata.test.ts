@@ -45,7 +45,7 @@ test('social previews keep the registered sharing artwork separate from the loca
   assert.ok(socialImage.url.includes(hero.sha256), 'The share URL must identify immutable original bytes.');
   assert.ok(hero.bytes < 5 * 1024 * 1024, 'Keep the image within the large social card size limit.');
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
-  assert.ok(readme.includes('src="docs/readme/remix-en.webp"'), 'The README opens with its localized WebP cover.');
+  assert.ok(readme.includes('src="docs/readme/remix-en.webp"'), 'The English README uses its localized WebP cover.');
   assert.ok(!readme.includes(socialImage.url), 'Localized README covers stay local; sharing keeps the registered JPEG artwork.');
   const mediaKit = await readFile(new URL('../docs/media-kit.md', import.meta.url), 'utf8');
   assert.match(mediaKit, /Current Studio Open Graph\/Twitter image/, 'The media kit names which surfaces reuse the registered sharing image.');

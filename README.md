@@ -1,11 +1,9 @@
-<a id="openmotion"></a>
+<p align="center"><img src="docs/readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-# OpenMotion: Remix Any Video with Your AI Agent
-
-Paste a reference video link, then swap in your logo, colors, and copy. Edit scenes in HTML and export an MP4. Free and open source.
+<p align="center"><strong>Remix Any Video with Your AI Agent</strong></p>
 
 <p align="center">
-  <img src="docs/readme/remix-en.webp" width="100%" alt="Dan Martell’s original beside an OpenMotion remake with Riya. A handwritten keyword sits between two lines of bold captions, with the editable Studio timeline below.">
+  <picture><source media="(max-width: 600px)" srcset="docs/readme/remix-en.webp"><img src="docs/readme/remix-en.webp" width="100%" alt="Dan Martell’s original beside an OpenMotion remake with Riya. A handwritten keyword sits between two lines of bold captions, with the editable Studio timeline below."></picture>
 </p>
 
 <p align="center">
@@ -32,6 +30,10 @@ Paste a reference video link, then swap in your logo, colors, and copy. Edit sce
 **English** · [简体中文](docs/README.zh-CN.md) · [日本語](docs/README.ja.md)
 
 </div>
+
+# OpenMotion
+
+OpenMotion is **the first full-stack agentic video generator**. Upload a reference video or paste a social video link to **recreate it with your own brand kit and copy**.
 
 - 🎬 **Full-stack video recreation.** Code video with HTML. Your agent breaks down the reference, rebuilds its shots and transitions, and generates missing assets. Edit the timing in Studio and render an MP4 from the same project.
 - 🔑 **BYOA — Bring Your Own Agent. BYOK — Bring Your Own Keys.** OpenMotion is free and open source. Recreate videos in [your local agent](#agent-wall) and use your own API keys at every layer.
@@ -292,7 +294,7 @@ Product tutorial + live demonstration<br>
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. From reference video to editable scenes
+### 1. The first full-stack agentic video generator
 
 **Code video with HTML.** OpenMotion uses HTML, CSS and JavaScript to describe scenes, typography, layout, transitions and timing. Recorded footage, generated clips, images, music and voice-over become media inside the composition. The same project opens in Studio and renders to MP4.
 

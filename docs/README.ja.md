@@ -1,11 +1,9 @@
-<a id="openmotion"></a>
+<p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-# OpenMotion｜自分の AI エージェントであらゆる動画をリミックス
-
-参考動画のリンクを貼り付け、ロゴや配色、テキストを差し替えられます。HTML でシーンを編集し、MP4 に書き出せます。無料のオープンソースツールです。
+<p align="center"><strong>自分の AI エージェントであらゆる動画をリミックス</strong></p>
 
 <p align="center">
-  <img src="readme/remix-ja.webp" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。">
+  <picture><source media="(max-width: 600px)" srcset="readme/remix-ja.webp"><img src="readme/remix-ja.webp" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。"></picture>
 </p>
 
 <p align="center">
@@ -32,6 +30,10 @@
 [English](../README.md) · [简体中文](README.zh-CN.md) · **日本語**
 
 </div>
+
+# OpenMotion
+
+OpenMotion は、**エージェントが動画制作の全工程を担う初のフルスタック動画生成ツール**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
 
 - 🎬 **動画の分析から再現・書き出しまで。** エージェントが参考動画を分析し、カットとトランジションを HTML で組み直し、足りない素材を生成します。同じプロジェクトを Studio で開き、間合いを調整して MP4 に書き出せます。
 - 🔑 **BYOA（自分のエージェント）と BYOK（自分の API キー）。** OpenMotion は無料のオープンソースソフトウェアです。[使い慣れたローカルエージェント](#agent-wall)で動画を再現し、各工程に自分の API キーを使えます。
@@ -292,7 +294,7 @@ https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手�
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. 参考動画から編集可能なシーンへ
+### 1. エージェントが動画制作の全工程を担う初のフルスタック動画生成ツール
 
 **HTML で動画を書く。** シーン、書体、レイアウト、トランジションとそのタイミングを HTML、CSS、JavaScript で記述します。実写、生成したクリップ、画像、音楽、ナレーションを組み合わせ、同じプロジェクトを Studio で開いて MP4 に書き出せます。
 

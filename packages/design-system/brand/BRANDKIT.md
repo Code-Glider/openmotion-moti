@@ -50,7 +50,7 @@ These are artwork guidance, not replacements for the application's [UI tokens](.
 - [OpenDesign symbol](../../../docs/readme/opendesign-symbol.svg): upstream mark, retained unmodified and credited; do not present it as a newly designed OpenMotion logo.
 - [Sources and generation prompts](../../../docs/readme/ASSETS.md).
 
-Open the README with the localized website headline. The English headline is **OpenMotion: Remix Any Video with Your AI Agent**. Place the introduction above the localized cover, which includes the OpenMotion symbol and wordmark. Use the same mark in covers and closing banners. Keep cover text within generous margins. Do not add badges, prices, adoption figures or customer logos without factual support. Reference films, template posters and screenshots retain their original identity; consistent framing must not rewrite their content.
+Center the [OpenMotion symbol and wordmark](openmotion-logo.svg) at the top of the README. Place **Remix Any Video with Your AI Agent** or its localized translation between the logo and the cover. Keep the plain-text heading `OpenMotion` directly above the introduction. Use the same mark in covers and closing banners. Keep cover text within generous margins. Do not add badges, prices, adoption figures or customer logos without factual support. Reference films, template posters and screenshots retain their original identity; consistent framing must not rewrite their content.
 
 ## Motion handoff
 

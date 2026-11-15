@@ -89,9 +89,13 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));
     const studioCapture = media.get('docs/readme/live-product/studio-in-use.png');
     assert(studioCapture, 'The Studio capture must retain its registered media identity');
-    assert(readme.includes('# OpenMotion: Remix Any Video with Your AI Agent'));
-    const cover = `src="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/remix-en.webp"`;
-    assert(readme.includes(cover));
+    assert.match(readme, /^# OpenMotion$/m);
+    assert(readme.includes('<strong>Remix Any Video with Your AI Agent</strong>'));
+    const readmeAssets = `https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme`;
+    assert(readme.includes(`src="${readmeAssets}/openmotion-logo.svg"`));
+    const cover = `${readmeAssets}/remix-en.webp`;
+    assert(readme.includes(`src="${cover}"`));
+    assert(readme.includes(`srcset="${cover}"`));
     assert(readme.includes(`https://github.com/nexu-io/openmotion/blob/${release.commit}/docs/motion-md.md`));
     assert(readme.includes('](#choose-agent)'));
     assert(readme.includes('href="https://open-design.ai/motion/'));
@@ -102,7 +106,8 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(!readme.startsWith('# Motion application npm package'));
     const embeddedReadme = await readFile(path.join(application, 'README.md'), 'utf8');
     assert(embeddedReadme.includes('](docs/motion-md.md)'), 'Installed documentation keeps local links to shipped guides');
-    assert(embeddedReadme.includes(cover));
+    assert(embeddedReadme.includes(`src="${cover}"`));
+    assert(embeddedReadme.includes(`srcset="${cover}"`));
     assert(embeddedReadme.includes(`src="${studioCapture}"`));
     await assert.rejects(readdir(path.join(application, 'docs/readme/media')), { code: 'ENOENT' });
     await assert.rejects(readFile(path.join(application, 'scripts/install-library-skill.mjs')), { code: 'ENOENT' });
