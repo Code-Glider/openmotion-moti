@@ -81,6 +81,8 @@ Convert those observations into timed controls the renderer actually reads. Keep
 | Text assembling or leaving | Per-line or per-glyph reveal, travel, spacing, compression, opacity and blur curves | First visibility, readable hold, fastest expansion and final disappearance |
 | Streaks, flash or scan distortion | Separate time envelopes with observed direction, extent, affected layers and recovery | Frames immediately before, during and after the event in the complete layer stack |
 
+Match the temporal behavior of content inside a fixed boundary. Continuous scrolling needs local-coordinate motion or aligned field interpolation between observations. Discrete refreshes need their observed update cadence. Check between material samples for artificial holds, jumps or double text.
+
 A changing silhouette needs controls for its internal change. If one spatial sample plus a global transform fits the endpoints but misses an intermediate pose, add a constraint at that time and revise the representation that failed. Connect the same recognizable parts through time. Correct unreliable correspondence around occlusion, repaired text or disappearing features by changing anchors, masks, state grouping or the model. Check estimated motion against the visible travel before limiting it.
 
 For a form made of repeated marks or particles, separate a clean shape or brightness field from the mark renderer. The following construction is useful when the reference exposes a recoverable underlying form.
@@ -91,9 +93,11 @@ For a form made of repeated marks or particles, separate a clean shape or bright
 4. Establish corresponding parts between neighboring states in each continuous group, using reliable landmarks, manual anchors or available tracking/flow methods. Check the correspondence on the cleaned fields, especially at repaired or occluded regions.
 5. At query time, select the surrounding states and warp their fields toward that time using the correspondence. Blend aligned values, then sample the resulting field to drive mark placement, area or opacity. Keep material, deterministic variation, text and transient effects separately addressable. Inspect the field and styled output at intermediate times, and add a state or revise correspondence where the form fails.
 
+Calibrate the field-to-mark transfer in the rendered picture. A field sampled from already dim, sparse marks can lose brightness and coverage again when used as mark opacity or area. Compare the cleaned field, isolated marks and complete composite at matched times. Adjust field strength, mark coverage and material separately while preserving thin features, holes and the observed background. Inspect clean held states as well as blur-heavy movement.
+
 Choose state count, extraction method, correspondence and control resolution from the reference and the host's available tools.
 
-When a scene breaks apart or reforms, follow recognizable regions from the intact scene into the transition. Record when each region releases, what texture or shape remains visible, its travel direction and how the intact material disappears. Derive fragments or marks from the participating content and keep their initial coordinates consistent with its last intact state. Choose fragment shape, grouping, velocity and lifetime from consecutive reference frames. Check the complete handoff between intact material, moving pieces and newly revealed content at intermediate times.
+When a scene breaks apart or reforms, follow recognizable regions from the intact scene into the transition. Record when each region releases, what texture or shape remains visible, its travel direction and how the intact material disappears. Derive fragments or marks from the participating content and keep their initial coordinates consistent with its last intact state. Choose fragment shape, grouping, velocity and lifetime from consecutive reference frames. When individual marks cannot be tracked reliably, model the evolving spatial density, brightness and directional streaks with timed fields and supported correspondence. Compare release, peak spread and decay against the intact-to-transition handoff in the complete composite.
 
 For camera movement or surface deformation, prepare enough spatial material to cover the revealed area. Align useful views of the same structure when available. Check overlap for doubled edges and check the sampling boundary for gaps or stretched pixels. If blending imperfectly aligned views produces double structure, select a reliable source for that region and use other views to fill uncovered areas, or adjust seams and visible regions. Recheck intermediate and extreme camera positions. Use a more suitable projection, layers or geometry when one plane cannot preserve the observed relationships. Preserve weakly supported intervals in the review notes.
 
@@ -119,11 +123,21 @@ Use the pinned seekable preview or targeted native captures to iterate on the ac
 
 For each defining change identified above, locate the source control and compare its actual effect in the output. Check both moving features and their stationary anchors. If a changing region was flattened into a fixed crop, recover its missing local control before refining its appearance. If neighboring states overlap as double images, align or deform their corresponding features before blending. Recheck direction, distance, cadence and disappearance through the affected interval.
 
+An animated source parameter can be hidden by an opaque material, a clip, an overlay or a later paint operation. Compare the fully composited output region before accepting that control. For trackable local movement, the bundled `scripts/measure_motion.py` can compare visible feature travel across continuous reference/output intervals using host Python, NumPy and OpenCV.
+
+```sh
+python <skill directory>/scripts/measure_motion.py reference.mp4 output.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out visible-motion.json
+```
+
+Choose a region belonging to the moving feature and measure its stationary anchor separately. Coordinates use each video's original pixels. Supply `--output-roi` when the output needs different coordinates. The report includes decoded times, displacement samples, travel span, retained features and point pairs. A possible-suppression warning or unresolved tracking returns a failing exit code. Inspect the tracked features and layer stack before deciding the cause. Small motion, changing content, occlusion and mixed movement can invalidate the comparison. The helper's warning is diagnostic and leaves timing, direction and semantic fidelity for visual review.
+
 For the most consequential difference, name the failing feature and interval, locate its source control and repair that mechanism. An early unreadable title may need different opacity, travel and blur durations. A double contour may need corrected correspondence or material alignment. Reinspect the same failed moment and neighboring states after changing it. Keep the measured and visually estimated controls distinguishable.
 
 Calibrate light, density, edges and material on the established motion. For exposure sampling, check preserved brightness and high-frequency marks for repeated copies or comb-like gaps. Adjust temporal sampling or directional integration when needed, and match the observed streak direction, extent and clear hold. Keep frame-specific flash peaks and recovery explicit. Inspect later text and post-processing layers for marks that alter a flash after it is drawn.
 
 Return the working source and actual comparison evidence with the brief's time range, asset identities, shared dependencies and remaining differences. Keep generation scripts consistent with the final corrected source when they are part of the handoff. Use local captures for targeted fixes, then verify the final integrated export as [check and deliver](verify.md) describes.
+
+Check every planned unit against its defining action and brief transient events before marking it ready for integration. When an independent visual reviewer is available and authorized, give them the reference and actual local output with the requested changes. Keep the review focused on visible differences. Feed concrete failed intervals back into the unit's source repair and recheck them in the integrated film.
 
 ### Integrate the inspected units
 
