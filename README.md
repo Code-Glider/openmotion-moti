@@ -378,7 +378,9 @@ Provider credentials stay in your workspace, separate from the video project. Yo
 
 OpenMotion introduces **Motion.md**: a Markdown format for shot order, timing, transitions and the assets you can replace. The online library brings reference videos and their motion guides into the same detail page.
 
-The Brand Kit section records your logo, colors, fonts, voice and approved product facts. Keep the reference’s motion and pacing while making the result recognizably yours.
+The Brand Kit section records your identity, voice and approved product facts; the Design section can reference an independent `DESIGN.md` for visual rules. Keep the reference’s motion and pacing while making the result recognizably yours.
+
+To share an industry or brand system, use the [Motion Package v0.2 draft](docs/motion-package-spec.md) and [authoring toolkit](packages/motion-package/README.md). A package combines the design and motion documents with materials, declared dependencies and optional `SKILL.md`. The included recipe demonstrates two content presets; automatic Studio import and rendered fidelity remain separate from package validation.
 
 ![Motion.md and brand context](docs/readme/diagrams/creative-context.svg)
 

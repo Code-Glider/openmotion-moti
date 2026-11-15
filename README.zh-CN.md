@@ -376,7 +376,9 @@ npm start
 
 OpenMotion 首次定义了 **Motion.md**：用 Markdown 记录镜头顺序、时长、转场和可替换素材。线上模板库将参考视频与动效说明集中在同一个详情页。
 
-Brand Kit 章节记录自己的 Logo、配色、字体、语气和已确认的产品信息。保留参考片的运动方式与节奏，同时让成片呈现自己的品牌。
+Brand Kit 章节记录品牌身份、语气和已确认的产品信息；Design 章节可引用独立的 `DESIGN.md` 复用视觉规则。保留参考片的运动方式与节奏，同时让成片呈现自己的品牌。
+
+分享行业或品牌体系时，可使用 [Motion Package v0.2 草案](docs/motion-package-spec.md)和[编写工具](packages/motion-package/README.md)，把设计与动效文档、素材、依赖声明和可选的 `SKILL.md` 打包。随附配方演示两个主题输入；包校验不等于 Studio 自动导入或成片还原度验收。
 
 ![Motion.md and brand context](docs/readme/diagrams/creative-context.svg)
 

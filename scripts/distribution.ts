@@ -7,6 +7,28 @@ import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/des
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 // New documentation and developer scripts require an explicit distribution decision.
+const motionPackageFiles = [
+  'docs/motion-package-spec.md',
+  'packages/motion-package/README.md',
+  'packages/motion-package/package.json',
+  'packages/motion-package/schema.json',
+  'packages/motion-package/index.mjs',
+  'packages/motion-package/cli.mjs',
+  'packages/motion-package/examples/product-story/motion-package.json',
+  'packages/motion-package/examples/product-story/README.md',
+  'packages/motion-package/examples/product-story/MOTION.md',
+  'packages/motion-package/examples/product-story/DESIGN.md',
+  'packages/motion-package/examples/product-story/SKILL.md',
+  'packages/motion-package/examples/product-story/LICENSE',
+  'packages/motion-package/examples/product-story/inputs.schema.json',
+  'packages/motion-package/examples/product-story/elements/emphasis.svg',
+  'packages/motion-package/examples/product-story/materials/requirements.md',
+  'packages/motion-package/examples/product-story/materials/sequence.json',
+  'packages/motion-package/examples/product-story/presets/product.json',
+  'packages/motion-package/examples/product-story/presets/lesson.json',
+  'packages/motion-package/examples/product-story/scripts/plan.mjs',
+];
+
 const motionDesignRemixFiles = [
   'library/skills/openmotion-design-remix/LICENSE',
   'library/skills/openmotion-design-remix/NOTICE.md',
@@ -475,6 +497,7 @@ const localReadmeResourceFiles = [
 ];
 
 export const distributionDocuments = [
+  ...motionPackageFiles,
   ...designSystemDocuments, 'cloud.md',
   ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
