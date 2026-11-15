@@ -5,8 +5,8 @@ import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// A previously registered checkout can be deleted or moved; that leaves a stale
-// registration with nothing on disk to preserve, so it is reported as unresolved.
+// A checkout can disappear while its installed plugin remains in the host cache.
+// Filesystem absence never overrides the inventory's installed-plugin guard.
 function existingDirectory(value) {
   try {
     const resolved = realpathSync(value);
@@ -27,10 +27,9 @@ export function sourceMarketplacePlan(root, inventory) {
     'Refusing a non-local or ambiguous OpenMotion source');
   const previous = existingDirectory(sources[0]);
   if (previous && previous === realpathSync(root)) return { action: 'reuse' };
-  // The recorded checkout no longer exists: only the stale registration remains,
-  // so rebind it instead of failing the whole install before registration.
-  if (!previous) return { action: 'replace_uninstalled_source', previous: sources[0] };
   assert(!inventory.installed.length, 'OPENMOTION_SOURCE_IN_USE: another source is installed. Reuse that installation or explicitly select its upgrade; no configuration was changed.');
+  // Rebind a vanished source only when the host positively reported no install.
+  if (!previous) return { action: 'replace_uninstalled_source', previous: sources[0] };
   const catalog = JSON.parse(readFileSync(path.join(previous, '.agents/plugins/marketplace.json'), 'utf8'));
   const manifest = JSON.parse(readFileSync(path.join(previous, '.codex-plugin/plugin.json'), 'utf8'));
   assert(catalog.name === 'openmotion-local' && catalog.plugins?.length === 1
@@ -41,7 +40,19 @@ export function sourceMarketplacePlan(root, inventory) {
 
 export function registerSourceMarketplace(root, { checkOnly = false, codex = 'codex' } = {}) {
   const run = args => execFileSync(codex, args, { encoding: 'utf8', timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'] });
-  const inventory = JSON.parse(run(['plugin', 'list', '--marketplace', 'openmotion-local', '--available', '--json']));
+  const inventoryArgs = ['plugin', 'list', '--marketplace', 'openmotion-local', '--available', '--json'];
+  const retry = 'Retry `codex ' + inventoryArgs.join(' ') + '`. No host configuration was changed.';
+  let output, inventory;
+  try { output = run(inventoryArgs); }
+  catch {
+    throw new Error('OPENMOTION_INVENTORY_UNAVAILABLE: Codex could not read the plugin inventory. Restore any moved/deleted configured marketplace source, or check CLI compatibility and permissions. ' + retry);
+  }
+  try {
+    inventory = JSON.parse(output);
+    assert(inventory && Array.isArray(inventory.installed) && Array.isArray(inventory.available));
+  } catch {
+    throw new Error('OPENMOTION_INVENTORY_INVALID: Codex must return JSON with installed and available arrays. Use a compatible Codex CLI. ' + retry);
+  }
   const plan = sourceMarketplacePlan(root, inventory);
   if (checkOnly || plan.action === 'reuse') return plan;
   if (plan.previous) run(['plugin', 'marketplace', 'remove', 'openmotion-local']);

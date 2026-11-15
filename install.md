@@ -27,6 +27,8 @@ bash /tmp/openmotion-source-install.sh
 
 `OPENMOTION_INSTALL_DIR` selects a persistent empty destination. If the intended checkout already exists, verify its origin, version and local changes, then run its `bash scripts/install-motion.command` instead of cloning another copy. Never overwrite or update an unrelated checkout. The installer reuses a built Studio, checks source conflicts before dependency work, and can rebind a verified old `openmotion-local` source only when no plugin from it is installed. An active source is preserved and reported for an explicit upgrade decision.
 
+Source preflight requires a readable Codex plugin inventory. An unregistered marketplace normally returns empty `installed` and `available` arrays and can be added. `OPENMOTION_INVENTORY_UNAVAILABLE` or `OPENMOTION_INVENTORY_INVALID` stops before host configuration changes and gives the exact inventory command to retry. If a configured checkout was moved or deleted and Codex cannot list plugins, restore that source path first; its absence does not prove that no cached plugin is installed. Read failures, malformed output and installed entries are never silently treated as an empty inventory.
+
 Source download depends on network throughput and is measured separately; installation time is not guaranteed. The installer emits phase durations and saves local timings plus a concise onboarding result under `.artifacts/install/`; read that result once. Use bounded process waits instead of repeated status polls and guide/source reads. A prebuilt published application avoids source build/download work but is a separate, exact-version installation route; never silently substitute it for the requested main source.
 
 ## Other hosts: clone and start

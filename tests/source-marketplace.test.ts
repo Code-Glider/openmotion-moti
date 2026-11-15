@@ -31,9 +31,33 @@ test('a vanished or non-directory previous source is rebound instead of aborting
   const { previous, root, entry } = await fixture(t);
   await rm(previous, { recursive: true, force: true });
   assert.deepEqual(sourceMarketplacePlan(root, { installed: [], available: [entry] }), { action: 'replace_uninstalled_source', previous });
-  assert.deepEqual(sourceMarketplacePlan(root, { installed: [entry], available: [] }), { action: 'replace_uninstalled_source', previous });
+  assert.throws(() => sourceMarketplacePlan(root, { installed: [entry], available: [] }), /OPENMOTION_SOURCE_IN_USE/,
+    'installed cached plugins remain protected even after their source disappears');
   await writeFile(previous, 'moved elsewhere');
   assert.deepEqual(sourceMarketplacePlan(root, { installed: [], available: [entry] }), { action: 'replace_uninstalled_source', previous });
+  assert.throws(() => sourceMarketplacePlan(root, { installed: [entry], available: [] }), /OPENMOTION_SOURCE_IN_USE/);
+});
+
+for (const failure of ['command', 'json', 'shape']) test(`unreadable ${failure} inventory stops without any host mutation and gives a recovery action`, async t => {
+  const { directory, root } = await fixture(t);
+  const codex = path.join(directory, 'codex'), log = path.join(directory, 'inventory-calls.jsonl');
+  await writeFile(codex, `#!${process.execPath}
+import fs from 'node:fs';
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + '\\n');
+if (${JSON.stringify(failure)} === 'command') process.exit(2);
+console.log(${JSON.stringify(failure === 'json' ? 'not-json' : '{"installed":[]}')});
+`, { mode: 0o755 });
+  for (const checkOnly of [true, false]) {
+    assert.throws(() => registerSourceMarketplace(root, { checkOnly, codex }), error => {
+      assert.match(String(error), failure === 'command' ? /OPENMOTION_INVENTORY_UNAVAILABLE/ : /OPENMOTION_INVENTORY_INVALID/);
+      assert.match(String(error), /codex plugin list/);
+      assert.match(String(error), /No host configuration was changed/);
+      return true;
+    });
+  }
+  const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(calls.length, 2);
+  assert(calls.every(args => args.join(' ') === 'plugin list --marketplace openmotion-local --available --json'));
 });
 
 test('a vanished previous registration is removed and never restored', async t => {
