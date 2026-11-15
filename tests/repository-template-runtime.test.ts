@@ -39,7 +39,7 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }) {
 test('repository index, detail and gallery read local files with no CMS dependency and observe edits', async t => {
   const f = await fixture(t);
   const first = await f.catalog.index();
-  assert.equal(first.source, 'repository'); assert.equal(first.total, 4);
+  assert.equal(first.source, 'repository'); assert.equal(first.total, 5);
   const row = JSON.parse((await readFile(first.indexPath, 'utf8')).split('\n')[0]);
   assert.equal(row.localSource.directory, await realpath(f.folder));
   const detail = await f.catalog.detail(f.id);

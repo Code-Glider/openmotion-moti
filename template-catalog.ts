@@ -17,9 +17,9 @@ export const libraryTemplates: GalleryTemplate[] = [...catalogTemplates(snapshot
   const original = snapshot.entries.find((entry: { id: string }) => entry.id === template.id);
   return { ...enrichTemplate(template, original.video, metadataById.get(template.id), metadata), posterUrl: cover && cover.video === original.video && /^\/web\/catalog\/covers\/[a-f0-9]{24}\.(?:jpg|webp)$/.test(cover.poster) ? cover.poster : undefined };
 }), ...templates.map(template => ({
-  id: template.id, title: template.title, subtitle: `${template.label} · Hyperframes`, description: template.description,
+  id: template.id, title: template.title, subtitle: `${template.label} · ${template.author}`, description: template.description,
   collection: 'builtin' as const, kind: 'builtin' as const, tags: [template.label], duration: template.duration, ratio: '16:9',
-  posterUrl: template.poster, sourceUrl: template.source, author: 'Hyperframes',
+  posterUrl: template.poster, sourceUrl: template.source, author: template.author,
 }))];
 export function listTemplates(options: NonNullable<Parameters<typeof templatePage>[1]> & { covered?: boolean } = {}) {
   const items = options.covered ? libraryTemplates.filter(template => template.posterUrl) : libraryTemplates;

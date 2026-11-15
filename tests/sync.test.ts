@@ -10,14 +10,14 @@ import { fixture, legacyProject } from './fixtures.ts';
 
 test('Studio source changes are visible to MCP; MCP source writes reach the same native files', () => fixture(async store => {
   const first = await store.get();
-  const source = (await store.readFile('compositions/first.html')).content;
-  await writeFile(path.join(store.projectDirectory, 'compositions/first.html'), source.replace('Make it', 'Studio edit'));
+  const source = (await store.readFile('compositions/intro.html')).content;
+  await writeFile(path.join(store.projectDirectory, 'compositions/intro.html'), source.replace('Great work', 'Studio edit'));
   const read = await callTool('openmotion_get_project', {}, new WorkspaceStore(store.directory));
   assert.notEqual(read.revision, first.revision); assert.equal(read.project!.format, 'hyperframes');
   assert.ok(!JSON.stringify(read).includes('base64'));
   await assert.rejects(store.writeFiles(first.revision, [{ path: 'index.html', content: 'stale' }]), Conflict);
-  const next = await callTool('openmotion_write_files', { expectedRevision: read.revision, files: [{ path: 'compositions/first.html', content: source.replace('Make it', 'Agent edit') }] }, store);
-  assert.match((await store.readFile('compositions/first.html')).content, /Agent edit/);
+  const next = await callTool('openmotion_write_files', { expectedRevision: read.revision, files: [{ path: 'compositions/intro.html', content: source.replace('Great work', 'Agent edit') }] }, store);
+  assert.match((await store.readFile('compositions/intro.html')).content, /Agent edit/);
   assert.equal((await new WorkspaceStore(store.directory).get()).revision, next.revision);
   const browser = await (await transport(store)('/api/project')).json(); assert.equal(browser.revision, next.revision);
 }));
@@ -58,7 +58,7 @@ test('asset imports are local files and their content participates in revisions'
 }));
 test('render snapshots include scene sources and assets and survive later Studio edits', () => fixture(async store => {
   const initial = await store.get(); const job = await store.requestExport(initial.revision);
-  await store.writeFiles(initial.revision, [{ path: 'compositions/first.html', content: '<template>next version</template>' }]);
+  await store.writeFiles(initial.revision, [{ path: 'compositions/intro.html', content: '<template>next version</template>' }]);
   assert.equal(store.revision(await store.files(store.snapshotDirectory(job.id))), initial.revision);
   const claimed = await store.claimExport(); assert.equal(claimed!.id, job.id);
   assert.equal(await new WorkspaceStore(store.directory).claimExport(), null);

@@ -573,6 +573,7 @@ export async function distributionFiles(profile: string): Promise<string[]> {
   for (const directory of ['shared', 'gateway']) await walk(directory, /\.(?:ts|mjs|json)$/);
   await walk('web', /\.(?:ts|js|json|html|css|svg|jpg|png|webp|ttf|woff2?|txt)$/);
   for (const directory of ['templates', 'template-library']) await walk(directory, /\.(?:html|js|json|css|svg|jpg|png|webp|md|txt|ttf|woff2?)$/);
+  files.push('template-library/openmotion-welcome/assets/soundtrack.m4a');
   for (const skill of packagedSkills) await walk('skills/' + skill, /\.(?:md|mjs|ts|py|json|ya?ml)$/);
   await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
   await walk('studio/public', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);

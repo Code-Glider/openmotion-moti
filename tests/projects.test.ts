@@ -28,11 +28,11 @@ for (const entry of ['sidebar', 'direct preview'] as const) {
       const initial = store.forProject('project');
       const file = path.join(initial.projectDirectory, 'index.html');
       const withoutStampedIds = (source: string) => source.replace(/ data-hf-id="[^"]*"/g, '');
-      assert.equal(withoutStampedIds(await readFile(file, 'utf8')), await readFile(path.join(pluginRoot, 'templates/index.html'), 'utf8'));
-      assert.ok((await initial.files()).some(file => file.path === 'compositions/first.html'));
+      assert.equal(withoutStampedIds(await readFile(file, 'utf8')), await readFile(path.join(pluginRoot, 'template-library/openmotion-welcome/index.html'), 'utf8'));
+      assert.ok((await initial.files()).some(file => file.path === 'compositions/intro.html'));
       assert.equal(withoutStampedIds(await readFile(path.join(directory, 'index.html'), 'utf8')), before);
       if (entry === 'direct preview') assert.equal(store.projectId, id, 'preview warming retains active project ownership');
-      const edited = (await readFile(file, 'utf8')).replace('Motion · First story', 'My saved title');
+      const edited = (await readFile(file, 'utf8')).replace('OpenMotion Welcome', 'My saved title');
       await writeFile(file, edited);
       await running.openProject(id);
       await running.openProject('project');
