@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { WorkspaceStore } from '../workspace.ts';
 import { ProjectVersions } from '../phase1-versions.ts';
 import type { ContentVersion, NativeHistory } from '../phase1-versions.ts';
@@ -102,4 +103,43 @@ test('native history restores retained media after later edits and refuses corru
   assert.deepEqual(await scoped.get(), before);
   const listed = await service.call('openmotion_list_versions', { projectId: created.projectId });
   assert.equal(listed.versions.find((version: any) => version.versionId === target.versionId).restorable, false);
+});
+test('media kept only in native aside reads as restorable and restores through the native reader', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-aside-restore-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const previous = process.env.HYPERFRAMES_HISTORY_ROOT, nativeRoot = path.join(root, 'native');
+  process.env.HYPERFRAMES_HISTORY_ROOT = nativeRoot;
+  t.after(() => { if (previous === undefined) delete process.env.HYPERFRAMES_HISTORY_ROOT; else process.env.HYPERFRAMES_HISTORY_ROOT = previous; });
+  const store = new WorkspaceStore(root), service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {},
+  });
+  const created = await service.call('openmotion_create_project', { requestId: 'create', projectType: 'natural_language', title: 'Aside fixture', requirements: 'Restore media only native history keeps aside' });
+  const scoped = store.forProject(created.projectId), media = path.join(scoped.projectDirectory, 'assets/aside.mp4'), bytes = Buffer.from('media bytes native history keeps in aside');
+  // Studio adds media and undoes the addition, so native history moves the bytes out of the project into aside.
+  const native = await import(pathToFileURL(path.join(pluginRoot, 'node_modules/@hyperframes/studio-server/dist/history/index.js')).href);
+  const history = await native.openProjectHistory({ projectDir: scoped.projectDirectory, historyRoot: nativeRoot, ownerWaitMs: 50 });
+  try {
+    const window = await history.beginWindow({ kind: 'person', name: 'You' }, 'Add media');
+    await mkdir(path.dirname(media), { recursive: true });
+    await writeFile(media, bytes);
+    const added = await window.close();
+    await history.checkpoint();
+    await history.undo(added.id, { who: { kind: 'person', name: 'You' } });
+    await history.checkpoint();
+  } finally { await history.close(); }
+  const detail = await service.call('openmotion_get_project', { projectId: created.projectId });
+  const versions = service.versions(created.projectId), target = (await versions.index()).versions.find(version => version.files.some(item => item.path === 'assets/aside.mp4'))!;
+  const blob = target.files.find(item => item.path === 'assets/aside.mp4')!;
+  const historyId = (await readFile(path.join(scoped.projectDirectory, '.hyperframes/history-id'), 'utf8')).trim();
+  const sharded = path.join('blobs', blob.hash.slice(0, 2), blob.hash), aside = path.join(nativeRoot, historyId, 'aside', blob.hash.slice(0, 2), blob.hash);
+  assert.equal(blob.retained, undefined, 'native history keeps this media, so it is not retained');
+  assert.equal(fs.existsSync(versions.blob(blob.hash)), false, 'no retained copy exists');
+  assert.equal(fs.existsSync(path.join(nativeRoot, historyId, sharded)), false, 'no copied native blob exists');
+  assert.equal(fs.existsSync(aside), true, 'the bytes live only under native aside');
+  const listed = await service.call('openmotion_list_versions', { projectId: created.projectId });
+  assert.equal(listed.versions.find((version: any) => version.versionId === target.versionId).restorable, true, 'the cached verdict accepts the aside location');
+  const restored = await service.call('openmotion_restore_version', { projectId: created.projectId, versionId: target.versionId,
+    expectedRevision: detail.revision, expectedVersionId: detail.currentVersionId, requestId: 'restore-aside' });
+  assert.deepEqual(await readFile(media), bytes, 'restore stages the aside blob through the native reader');
+  assert.ok(restored.version.versionNumber > detail.currentVersionNumber);
 });

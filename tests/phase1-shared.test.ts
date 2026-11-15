@@ -21,12 +21,16 @@ test('a stalled native project open times out and releases the other MCP client 
     process.kill(nativePid!, 'SIGSTOP'); paused = true;
     assert.ok((await clients[1].call('openmotion_get_project')).projects.some((project: any) => project.id === projects[1].projectId), 'listing must work without the paused native service');
     const started = Date.now();
-    opening = clients[0].call('openmotion_open_preview', { projectId: projects[0].projectId }).then(value => ({ value }), error => ({ error }));
+    let openingSettled = false;
+    opening = clients[0].call('openmotion_open_preview', { projectId: projects[0].projectId })
+      .then(value => ({ value }), error => ({ error })).finally(() => { openingSettled = true; });
+    // Issued while the native open still holds its stall, so a queue behind that call would miss the 2-second race.
+    listing = clients[1].call('openmotion_get_project');
+    const listed = await Promise.race([listing, pause(2000).then(() => { throw new Error('Other MCP client remains blocked by the in-flight native open'); })]);
+    assert.ok(listed.projects.some((project: any) => project.id === projects[1].projectId));
+    assert.equal(openingSettled, false, 'the other client listed while the native open was still in flight');
     const opened = await Promise.race([opening, pause(35_000).then(() => { throw new Error('Native project open exceeded its deadline'); })]);
     assert.match(String(opened.error), /timeout|timed out/i);
-    listing = clients[1].call('openmotion_get_project');
-    const listed = await Promise.race([listing, pause(2000).then(() => { throw new Error('Other MCP client remains blocked after opening timeout'); })]);
-    assert.ok(listed.projects.some((project: any) => project.id === projects[1].projectId));
     console.log(JSON.stringify({ scenario: 'native-opening-timeout', elapsedMs: Date.now() - started, otherClientListedWhileNativePaused: true }));
     process.kill(nativePid!, 'SIGCONT'); paused = false;
     assert.equal((await clients[0].call('openmotion_open_preview', { projectId: projects[0].projectId })).projectId, projects[0].projectId, 'opening can be retried after native recovery');
