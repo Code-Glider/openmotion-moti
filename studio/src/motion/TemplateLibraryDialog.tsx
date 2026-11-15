@@ -1,3 +1,4 @@
+import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { GitHubLink } from './GitHubLink';
 import { GithubLogo } from '@phosphor-icons/react';
 import { templateRepositoryUrl } from './githubRepository';
@@ -361,7 +362,7 @@ export function TemplateLibraryDialog(props: Props) {
   }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
-        <div className={styles.wordmark}><MotionIcon name="film" size={22} /><strong>OpenMotion</strong><span>{t('Template library')}</span></div>
+        <div className={styles.wordmark}><BrandLogo /><span className={styles.libraryLabel}>{t('Template library')}</span></div>
         <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
         <GitHubLink />
         <button ref={libraryClose} className={styles.iconButton} disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')} title={t('Close template library')}><MotionIcon name="close" size={22} /></button>

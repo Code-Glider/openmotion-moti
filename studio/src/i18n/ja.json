@@ -1805,5 +1805,6 @@
   "Usage guide": "使い方",
   "API origin": "API オリジン",
   "Use the gateway address shown on your Cloud API key page.": "Cloud の API キーページに表示されるゲートウェイアドレスを入力してください。",
-  "Save settings": "設定を保存"
+  "Save settings": "設定を保存",
+  "Fit timeline to content": "タイムラインをコンテンツに合わせる"
 }

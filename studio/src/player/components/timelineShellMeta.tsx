@@ -32,6 +32,7 @@ export interface TimelineShellMetaInputs {
   shiftHeld: boolean;
   labelMode: boolean;
   contentOrigin: number;
+  contentGutter?: number;
   zoomMode: "fit" | "manual";
   theme: Pick<TimelineTheme, "shellBackground" | "shellBorder">;
   razor: {
@@ -91,7 +92,7 @@ export function buildTimelineShellMeta(input: TimelineShellMetaInputs): Timeline
       onLostPointerCapture: pointer.onPointerCancel,
     },
     elementCount: input.elementCount,
-    labelColumnWidth: input.labelMode ? input.contentOrigin - GUTTER : 0,
+    labelColumnWidth: input.labelMode ? input.contentOrigin - (input.contentGutter ?? GUTTER) : 0,
     razorGuide:
       activeTool === "razor" && razor.razorGuideX !== null ? (
         <TimelineRazorGuideOverlay x={razor.razorGuideX} />

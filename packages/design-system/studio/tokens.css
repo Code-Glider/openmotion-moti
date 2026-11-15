@@ -74,13 +74,14 @@
   --color-code-string: light-dark(oklch(0.468 0.142 143), oklch(0.793 0.11 133));
   --color-brand-gradient-from: #06e3fa;
   --color-brand-gradient-to: #4fdb5e;
-  --timeline-shell-bg: var(--motion-panel);
+  --timeline-shell-bg: var(--motion-bg);
   --timeline-shell-border: var(--motion-border);
   --timeline-ruler-border: color-mix(in oklab, var(--color-text-0) 16%, transparent);
-  --timeline-row-bg: var(--motion-panel);
-  --timeline-row-border: var(--motion-border);
+  --timeline-row-bg: color-mix(in srgb, var(--motion-bg) 35%, var(--motion-panel));
+  --timeline-row-border: color-mix(in srgb, var(--motion-border) 70%, var(--motion-bg));
   --timeline-gutter-bg: var(--motion-panel);
-  --timeline-gutter-border: var(--motion-border);
+  --timeline-gutter-border: var(--motion-border-strong);
+  --timeline-grid-line: color-mix(in srgb, var(--motion-border) 40%, transparent);
   --timeline-text-primary: var(--color-text-0);
   --timeline-text-secondary: var(--color-text-2);
   --timeline-tick-text: var(--color-text-2);
@@ -329,4 +330,5 @@
   --text-2xl: var(--motion-text-section);
   --radius-xl: var(--motion-radius-lg);
   --radius-2xl: var(--motion-radius-xl);
+  --timeline-ruler-bg: var(--motion-panel);
 }

@@ -35,7 +35,7 @@ export function TimelineEmptyState({
   const { t } = useI18n();
   const mvp = useMvpEditor();
   const gateway = useMediaGateway();
-  const emptyOrigin = mvp ? (contentOrigin ?? MVP_LABEL_COL_W + GUTTER) : GUTTER;
+  const emptyOrigin = mvp ? (contentOrigin ?? MVP_LABEL_COL_W) : GUTTER;
   const hideGuide = !!gateway?.generationOpen && !isDragOver;
   return (
     <div
@@ -80,7 +80,7 @@ export function TimelineEmptyState({
           style={{ top: trackTopPadding, height: TRACK_H }}
           aria-hidden={!isDragOver}
         >
-          <span className="motion-empty-timeline-label" style={{ width: MVP_LABEL_COL_W }}>A-roll</span>
+          <span className="motion-empty-timeline-label" style={{ width: emptyOrigin }}>V1</span>
           <div className="motion-empty-timeline-lane" style={{ left: emptyOrigin, top: CLIP_Y, bottom: CLIP_Y }}>{isDragOver && <span>{t("Drop media files to import")}</span>}</div>
         </div> : <div
           data-motion-empty-media

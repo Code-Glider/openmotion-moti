@@ -19,13 +19,13 @@ import { elementFxChain, groupAutomationLanes, isCarveLane } from "./automationL
 import { AUTOMATION_LANE_H } from "./automationLaneHeight";
 import { clipTimingStart } from "../../hooks/gsapShared";
 import { LaneToggleButton, LayerDisclosureRow } from "./LayerDisclosureRow";
-import { LABEL_COL_W, MVP_LABEL_COL_W, TRACK_H, getTimelineLaneTop } from "./timelineLayout";
+import { LABEL_COL_W, TRACK_H, getTimelineLaneTop } from "./timelineLayout";
 import type { TimelineTheme } from "./timelineTheme";
 import { trackDisplaySuffix } from "./timelineTrackDisplay";
 import { AutomationLaneHeaderRow, PropertyGroupHeaderRow } from "./trackHeaderLabelRows";
 import { useMemo } from "react";
 import { useMvpEditor } from "../../motion/StudioHost";
-import { TimelineTrackAudioControls } from "./TimelineTrackAudioControls";
+import { TimelineTrackControls } from "./TimelineTrackControls";
 
 /** Accent rail + inset marking a row as a group MEMBER, matching the level-2
  *  nesting its `aria-level` already reports. */
@@ -111,7 +111,7 @@ export function TimelineTrackHeader({
   rovingTargetId = null,
 }: TimelineTrackHeaderProps) {
   const mvp = useMvpEditor();
-  const labelColumnWidth = mvp ? MVP_LABEL_COL_W : LABEL_COL_W;
+  const labelColumnWidth = mvp ? contentOrigin : LABEL_COL_W;
   const clipPercentage = keyframeClip
     ? ((currentTime - keyframeClip.start) / keyframeClip.duration) * 100
     : 0;
@@ -209,9 +209,6 @@ export function TimelineTrackHeader({
   // moment an envelope appeared.
   const isKeyframeLayer = !!keyframeClip && disclosable && !isAudioTrack;
   const isAudioOnly = isAudioOnlyTrack(trackElements);
-  const audioControls = mvp ? <TimelineTrackAudioControls elements={trackElements} trackLabel={trackLabel}
-    isAudioOnly={isAudioOnly} hidden={isTrackHidden}
-    onUnhide={() => { void onToggleTrackHidden?.(trackNumber, false, trackDisplayNumber); }} /> : null;
   // What the lane disclosure calls this row. A row of several clips is named
   // for the TRACK, not for whichever is selected — the lanes are the track's,
   // shared per property, so "Narration 2 lanes" read as if they were that one
@@ -298,7 +295,15 @@ export function TimelineTrackHeader({
           : {}),
       }}
     >
-      {!isKeyframeLayer ? (
+      {mvp ? (
+        <div className="motion-track-controls-row" style={{ height: TRACK_H }}>
+          <TimelineTrackControls elements={trackElements} track={trackNumber} number={trackDisplayNumber}
+            label={trackLabel} hidden={isTrackHidden} audioOnly={isAudioOnly} toggleHidden={onToggleTrackHidden}>
+            {disclosable && <LaneToggleButton name={laneOwnerName} isExpanded={isExpanded}
+              lanesId={lanesId} onToggle={onToggleClipExpanded} />}
+          </TimelineTrackControls>
+        </div>
+      ) : !isKeyframeLayer ? (
         <>
           {/* The two lines own exactly TRACK_H, not the whole header.
               `justify-center` on the header itself centred them in its FULL
@@ -324,7 +329,6 @@ export function TimelineTrackHeader({
               isAudioOnly={isAudioOnly}
               onToggleTrackHidden={onToggleTrackHidden}
               hideVisibility={mvp && isAudioOnly}
-              audioControls={audioControls}
               // On the control line rather than a third row of its own.
               trailing={
                 <>
@@ -391,7 +395,6 @@ export function TimelineTrackHeader({
                 (hover-gated, and only while expanded) left a keyframed track with
                 no way to be hidden at all by keyboard, and put the control on a
                 row it does not act on. */}
-            {audioControls}
             {!(mvp && isAudioOnly) && <VisibilityButton
               hidden={isTrackHidden}
               trackNumber={trackNumber}

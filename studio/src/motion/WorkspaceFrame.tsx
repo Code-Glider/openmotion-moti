@@ -1,4 +1,4 @@
-import { brand, designSystemAsset } from "../../../packages/design-system/index.js";
+import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { FeedbackLayer } from "../components/FeedbackLayer";
 import { createContext, useContext, useState, useRef, useCallback, lazy, Suspense, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -13,7 +13,6 @@ import { Dialog } from '@base-ui/react/dialog';
 import { StudioToast } from '../components/StudioToast';
 import { ErrorNotice } from '../components/ui/ErrorNotice';
 import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
-import { useShownStudioTheme } from '../utils/studioTheme';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
 
@@ -109,7 +108,6 @@ function PrivacySettingsButton() {
 
 function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () => void }) {
   const { t } = useI18n();
-  const theme = useShownStudioTheme();
   const { workspace, switchingDisabled, openModelSettings } = useWorkspaceChrome();
   const [query, setQuery] = useState('');
   const projects = workspace.projects;
@@ -118,7 +116,7 @@ function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () 
     <div className="motion-sidebar-brand">
       <Dialog.Close className="motion-icon-button" aria-label={t('Close project list')}><MotionIcon name="sidebar" size={16} /></Dialog.Close>
       <div className="motion-brand">
-        <img className="motion-brand-logo" src={designSystemAsset(brand.editorLogo[theme])} alt={brand.editorName} width="104" height="18" />
+        <BrandLogo />
       </div>
     </div>
     <div className="motion-session-heading">

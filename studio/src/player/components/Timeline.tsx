@@ -1,7 +1,8 @@
 import { useI18n } from "../../i18n/I18n";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { TimelineMediaBar } from '../../motion/TimelineMediaBar';
+import { TimelineColumnResize } from './TimelineColumnResize';
 import type { TimelineProps } from "./TimelineTypes";
 import { TimelineProvider, useTimelineContext } from "./TimelineProvider";
 import {
@@ -37,10 +38,14 @@ export {
   getTimelineVisibleTimeRange,
 } from "./timelineViewportGeometry";
 
-function TimelineView() {
+function TimelineView({ onContentHeightChange }: Pick<TimelineProps, "onContentHeightChange">) {
   const { t } = useI18n();
   const { state, meta } = useTimelineContext();
-  const { timelineReady, elements } = state;
+  const { timelineReady, elements, canvas } = state;
+  const changing = Boolean(canvas.draggedElement || canvas.resizingClip);
+  useEffect(() => {
+    if (timelineReady && !changing) onContentHeightChange?.(elements.length ? canvas.intrinsicHeight : 128);
+  }, [timelineReady, changing, elements.length, canvas.intrinsicHeight, onContentHeightChange]);
   if (!timelineReady || elements.length === 0) {
     return <TimelineEmptyStatePart />;
   }
@@ -51,6 +56,7 @@ function TimelineView() {
         <TimelineRazorGuide />
       </div>
       <TimelineOverlays />
+      <TimelineColumnResize />
     </div>
   );
 }
@@ -59,7 +65,7 @@ const TimelineComposed = memo(function TimelineComposed(props: TimelineProps = {
   const mvp = useMvpEditor();
   return (
     <TimelineProvider {...props} showAudioEffects={mvp ? false : props.showAudioEffects} showKeyframes={mvp ? false : props.showKeyframes}>
-      <TimelineView />
+      <TimelineView onContentHeightChange={props.onContentHeightChange} />
       <TimelineMediaBar />
     </TimelineProvider>
   );

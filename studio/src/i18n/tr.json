@@ -1805,5 +1805,6 @@
   "Usage guide": "Kullanım kılavuzu",
   "API origin": "API adresi",
   "Use the gateway address shown on your Cloud API key page.": "Cloud API anahtarı sayfanızda gösterilen ağ geçidi adresini kullanın.",
-  "Save settings": "Ayarları kaydet"
+  "Save settings": "Ayarları kaydet",
+  "Fit timeline to content": "Zaman çizelgesini içeriğe sığdır"
 }

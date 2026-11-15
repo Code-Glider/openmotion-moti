@@ -1841,5 +1841,6 @@
   "Usage guide": "Guida all’uso",
   "API origin": "Origine API",
   "Use the gateway address shown on your Cloud API key page.": "Usa l’indirizzo del gateway mostrato nella pagina delle chiavi API Cloud.",
-  "Save settings": "Salva impostazioni"
+  "Save settings": "Salva impostazioni",
+  "Fit timeline to content": "Adatta la timeline al contenuto"
 }

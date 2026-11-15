@@ -169,7 +169,7 @@ it('prevents switching projects or issuing competing header undo while a version
 it('searches projects in an overlay and closes it without removing the header brand', () => {
   render();
   expect(document.querySelector('.motion-sidebar-drawer')).toBeNull();
-  expect(container.querySelector('.motion-header-brand img')?.getAttribute('alt')).toBe('OpenDesign');
+  expect(container.querySelector('.motion-header-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
   expect(container.querySelector<HTMLInputElement>('.motion-header-project input')?.value).toBe('Demo');
   openSidebar();
   const drawer = document.querySelector('.motion-sidebar-drawer')!;
@@ -180,7 +180,7 @@ it('searches projects in an overlay and closes it without removing the header br
   expect(drawer.querySelector('.motion-session')?.textContent).toContain('Second');
   act(() => drawer.querySelector<HTMLButtonElement>('[aria-label="关闭项目列表"]')!.click());
   expect(drawer.hasAttribute('data-closed')).toBe(true);
-  expect(container.querySelector('.motion-header-brand img')).not.toBeNull();
+  expect(container.querySelector('.motion-header-brand [role=img]')).not.toBeNull();
 });
 
 it('starts with a closed drawer in embeds regardless of the former collapse preference', () => {

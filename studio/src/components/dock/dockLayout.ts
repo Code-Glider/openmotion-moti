@@ -11,14 +11,11 @@ const DEFAULT_TIMELINE_H = 360;
 const DEFAULT_LEFT = ["compositions", "assets", "code", "catalog"] as const;
 const DEFAULT_RIGHT = ["design", "layers", "renders", "variables", "motionBlur"] as const;
 export const COLLAPSED_SIDE_WIDTH = 48;
-const BREAKPOINT_SIDE_WIDTH = 320;
 const MIN_MVP_SIDE_WIDTH = 260;
-export const DOCK_GAPS = 12;
+export const DOCK_GAPS = 0;
 // Preserve existing narrow-host collapse breakpoints independently of resizable side minimums.
-export const COMPACT_DOCK_WIDTH = MIN_PREVIEW_W + 2 * BREAKPOINT_SIDE_WIDTH + DOCK_GAPS;
-export const PREVIEW_ONLY_DOCK_WIDTH = MIN_PREVIEW_W + BREAKPOINT_SIDE_WIDTH + COLLAPSED_SIDE_WIDTH + DOCK_GAPS;
-export const collapsedSideWidth = (width: number, fixedLayout = false) =>
-  fixedLayout && width < PREVIEW_ONLY_DOCK_WIDTH ? 0 : COLLAPSED_SIDE_WIDTH;
+export const COMPACT_DOCK_WIDTH = 1012;
+export const SIDE_FOCUS_DOCK_WIDTH = 740;
 export const isSideCollapsed = (group: DockviewApi["groups"][number]) =>
   group.element.classList.contains("hf-dock-side-collapsed");
 
@@ -34,18 +31,17 @@ export function defaultSideWidths(viewportWidth: number) {
 }
 
 /**
- * Fixed MVP sides keep their readable control width; the controller collapses them
- * when space runs out. Free-layout sides retain the native shrinking policy.
+ * Fixed MVP sides keep their readable control width; narrow hosts stack expanded sides. Free-layout sides retain the native shrinking policy.
  */
 export function sideMinimumWidth(dockWidth: number, fixedLayout = false): number {
-  if (fixedLayout) return MIN_MVP_SIDE_WIDTH;
+  if (fixedLayout) return Math.min(MIN_MVP_SIDE_WIDTH, Math.max(0, dockWidth - COLLAPSED_SIDE_WIDTH - DOCK_GAPS));
   const fair = Math.floor((dockWidth - MIN_PREVIEW_W) / 2);
   return Math.min(MIN_SIDE_W, Math.max(MIN_SIDE_W_FLOOR, fair));
 }
 
 export function previewMinimumWidth(dockWidth: number, fixedLayout: boolean): number {
   if (!fixedLayout) return MIN_PREVIEW_W;
-  return Math.min(MIN_PREVIEW_W, Math.max(0, dockWidth - 2 * collapsedSideWidth(dockWidth, true) - DOCK_GAPS));
+  return Math.min(MIN_PREVIEW_W, Math.max(0, dockWidth - 2 * MIN_MVP_SIDE_WIDTH - DOCK_GAPS));
 }
 
 function holdsPreview(group: DockviewApi["groups"][number]) {
@@ -66,9 +62,18 @@ export function sideZone(group: DockviewApi["groups"][number]): "left" | "right"
 export function applySideMinimums(api: DockviewApi, dockWidth = window.innerWidth, fixedLayout = false) {
   const compact = fixedLayout && dockWidth < COMPACT_DOCK_WIDTH;
   const cap = defaultSideWidths(dockWidth);
-  const railWidth = collapsedSideWidth(dockWidth, fixedLayout);
+  const railWidth = COLLAPSED_SIDE_WIDTH;
+  // Reserve a complete track below the toolbar/ruler, including the wrapped phone toolbar.
+  const timelineHeight = fixedLayout ? (dockWidth <= 480 ? 160 : 128) : MIN_TIMELINE_H;
+  const hostHeight = api.groups[0]?.element.closest<HTMLElement>(".hf-dock")?.clientHeight ?? 0;
+  const previewHeight = fixedLayout && hostHeight > 0
+    ? Math.min(MIN_PREVIEW_H, Math.max(96, hostHeight - timelineHeight - DOCK_GAPS))
+    : MIN_PREVIEW_H;
   for (const group of api.groups) {
-    group.element.classList.toggle("hf-dock-side-hidden", railWidth === 0 && !!sideZone(group));
+    if (fixedLayout) {
+      if (holdsPreview(group)) group.api.setConstraints({ minimumHeight: previewHeight });
+      if (group.panels.some(panel => panel.id === "timeline")) group.api.setConstraints({ minimumHeight: timelineHeight });
+    }
     if (group.element.hasAttribute("data-side-motion")) continue;
     if (isSideCollapsed(group)) {
       group.api.setConstraints({ minimumWidth: railWidth, maximumWidth: railWidth });

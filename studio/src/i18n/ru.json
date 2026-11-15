@@ -1865,5 +1865,6 @@
   "Usage guide": "Руководство",
   "API origin": "Адрес API",
   "Use the gateway address shown on your Cloud API key page.": "Используйте адрес шлюза со страницы ключа API Cloud.",
-  "Save settings": "Сохранить настройки"
+  "Save settings": "Сохранить настройки",
+  "Fit timeline to content": "Подогнать шкалу времени под содержимое"
 }

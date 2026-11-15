@@ -177,6 +177,7 @@ export function useTimelineClipDrag({
         playheadTime: usePlayerStore.getState().currentTime,
         beatTimes: includeBeats ? snapContextRef.current.beatTimes : [],
         excludeElementKey,
+        excludeElementKeys: gestureSelectedKeysRef.current,
       });
       snapTargetsCacheRef.current.set(cacheKey, targets);
       return targets;
@@ -196,6 +197,7 @@ export function useTimelineClipDrag({
   const [draggedClip, setDraggedClipState] = useState<DraggedClipState | null>(null);
   const draggedClipRef = useRef<DraggedClipState | null>(null);
   const publishDraggedClip = useCallback((next: DraggedClipState | null) => {
+    if (next?.started) markTimelineMotion();
     draggedClipRef.current = next;
     setDraggedClipState(next);
   }, []);

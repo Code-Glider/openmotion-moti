@@ -1,4 +1,5 @@
 import type { TimelineElement } from "../store/playerStore";
+import { collisionLane } from "./timelineCollisionIndex";
 
 /** Audio member tracks mark the audio zone, including members hidden by a group header. */
 export function timelineAudioRow(
@@ -98,12 +99,12 @@ export function resolveNearestFreeStart(
   minStart = 0,
   origin: number | null = null,
 ): number {
-  const busy = elements
-    .filter((el) => (el.key ?? el.id) !== excludeKey && el.track === track)
-    .sort((a, b) => a.start - b.start);
+  const busy = collisionLane(elements, track);
   let best = Number.POSITIVE_INFINITY;
   let gapStart = minStart;
-  for (const el of [...busy, null]) {
+  for (let index = 0; index <= busy.length; index++) {
+    const el = busy[index];
+    if (el && (el.key ?? el.id) === excludeKey) continue;
     const latest = el ? floorCenti(el.start - duration) : Number.POSITIVE_INFINITY;
     if (latest >= gapStart) {
       const candidate = Math.min(Math.max(start, gapStart), latest);
@@ -114,7 +115,7 @@ export function resolveNearestFreeStart(
   if (origin === null || origin < minStart || !isNearer(origin, best, start)) return best;
   // Float slack at both ends: 0.333 + 1.733 is 2.0660000000000003, a hair past a neighbour at 2.066.
   const [from, to] = [origin + 1e-6, origin + duration - 1e-6];
-  const clear = busy.every((el) => !timeRangesOverlap(from, to, el.start, el.start + el.duration));
+  const clear = busy.every((el) => (el.key ?? el.id) === excludeKey || !timeRangesOverlap(from, to, el.start, el.start + el.duration));
   return clear ? origin : best;
 }
 

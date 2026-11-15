@@ -19,10 +19,8 @@ body { font-family: var(--motion-font-sans); font-size: var(--motion-text-md); }
 button, input, select, textarea { font-family: inherit; }
 :root[data-motion-ui] :focus-visible { outline: 1px solid var(--motion-border-strong); outline-offset: 1px; }
 :root[data-motion-ui] [data-panel-search-input]:focus-visible { outline: none; }
-.hf-dock .dv-view:has(> .dv-groupview) { padding: 0; }
-.hf-dock .dv-groupview { border-radius: 0; border: 0; outline: 0; }
 .hf-dock { --dv-tabs-and-actions-container-height: 34px; --dv-tab-font-size: var(--motion-text-sm); --dv-tabs-and-actions-container-font-size: var(--motion-text-sm); }
-.hf-dock .dv-tabs-and-actions-container { padding: 0 6px; align-items: center; border-bottom: 1px solid var(--motion-border); }
+.hf-dock .dv-tabs-and-actions-container { padding: 0 6px; align-items: center; }
 /* Keep selected labels legible even when Dockview injects its theme rules later. */
 :root[data-motion-ui] .hf-dock {
   --dv-activegroup-visiblepanel-tab-color: var(--motion-strong);
@@ -269,7 +267,6 @@ button, input, select, textarea { font-family: inherit; }
 .motion-community-link img { display: block; }
 .motion-workspace-actions .motion-icon { color: var(--motion-strong); }
 .motion-header-brand { display: inline-flex; align-items: center; gap: 10px; }
-.motion-header-brand img { display: block; width: 104px; height: auto; }
 .motion-header-project .motion-project-control { justify-content: center; }
 /* Keep one input mounted with stable geometry before, during and after editing. */
 .motion-header-project .motion-project-name-input {
@@ -314,6 +311,20 @@ button, input, select, textarea { font-family: inherit; }
   .motion-header-project .motion-project-name-input { padding-inline: 0; text-align: left; }
 }
 
+@container (max-width: 480px) {
+  .motion-studio-header-centered .motion-community-link { display: none; }
+  .motion-studio-header-centered .motion-github-link { min-height: 28px; width: 28px; padding: 0; }
+  .motion-studio-header-centered .motion-github-link > span { display: none; }
+  .motion-studio-header.motion-studio-header-centered > div:last-child { gap: var(--motion-space-8); }
+  /* Keep the import action beside whole tool groups, never over their buttons. */
+  .motion-timeline-toolbar > .motion-timeline-toolbar > div {
+    flex-wrap: wrap;
+    row-gap: var(--motion-space-4);
+  }
+  .motion-timeline-toolbar > .motion-timeline-toolbar > div > div,
+  .motion-timeline-media-actions { flex-shrink: 0; }
+}
+
 /* Timeline menus use the shared floating surface and the same menu typography. */
 :root[data-motion-ui] .hf-od-floating-surface.motion-context-menu {
   font-family: var(--motion-font-sans);
@@ -353,7 +364,7 @@ button, input, select, textarea { font-family: inherit; }
 .motion-empty-timeline.is-drag-over .motion-empty-timeline-lane { border-color: var(--motion-accent); color: var(--motion-accent); }
 
 .motion-panel-empty-content { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-/* Asset and timeline imports share one compact secondary-button recipe. */
+/* Compact secondary import control for the asset browser. */
 :root[data-motion-ui] button.motion-import-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; height: 28px; min-height: 28px; padding: 0 8px; border: 1px solid var(--motion-border); border-radius: var(--motion-radius-step-6); background: var(--motion-raised); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-medium); line-height: 16px; white-space: nowrap; }
 :root[data-motion-ui] button.motion-import-button:enabled { color: var(--motion-strong); }
 :root[data-motion-ui] button.motion-import-button:enabled:hover { background: var(--motion-hover); }
@@ -377,3 +388,5 @@ button, input, select, textarea { font-family: inherit; }
   scrollbar-width: thin;
   scrollbar-color: var(--motion-border-strong) transparent;
 }
+
+.motion-editor-layout-menu { width: min(240px, calc(100vw - 16px)); max-height: var(--available-height); overflow-y: auto; }

@@ -293,6 +293,9 @@ export function useTimelineEditing({
     handleTimelineElementsDelete: track(
       guard(withLinkPartners, linkEditing.handleLinkedElementsDelete),
     ),
+    handleTimelineTrackDelete: track(
+      guard((trackNumber) => withLinkPartners(usePlayerStore.getState().elements.filter(el => el.track === trackNumber)), linkEditing.handleDeleteTrack),
+    ),
     handleTimelineElementDeleteOnly: track(
       guard((element) => [element], linkEditing.handleDeleteElementOnly),
     ),

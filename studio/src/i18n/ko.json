@@ -1805,5 +1805,6 @@
   "Usage guide": "사용 안내",
   "API origin": "API 주소",
   "Use the gateway address shown on your Cloud API key page.": "Cloud API 키 페이지에 표시된 게이트웨이 주소를 입력하세요.",
-  "Save settings": "설정 저장"
+  "Save settings": "설정 저장",
+  "Fit timeline to content": "타임라인을 콘텐츠에 맞추기"
 }

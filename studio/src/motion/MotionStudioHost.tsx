@@ -1,4 +1,5 @@
-import { brand, designSystemAsset } from "../../../packages/design-system/index.js";
+import { EditorLayoutMenu } from "./EditorLayoutMenu";
+import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { GitHubLink } from './GitHubLink';
 import { CommunityLink } from './CommunityLink';
 import { StudioErrorBoundary } from '../components/StudioErrorBoundary';
@@ -13,15 +14,13 @@ import { StudioHostContext, type StudioHost } from './StudioHost';
 import { WorkspaceFrame, WorkspaceMenuButton, useWorkspaceChrome, useOptionalWorkspaceChrome } from './WorkspaceFrame';
 import { MotionHistoryProvider, useMotionHistoryOperation } from './MotionHistoryState';
 import { MediaGatewayProvider } from './MediaGatewayContext';
-import { useShownStudioTheme } from '../utils/studioTheme';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
 
 function WorkspaceBrand() {
-  const theme = useShownStudioTheme();
   return <span className="motion-header-brand">
     <WorkspaceMenuButton />
-    <img src={designSystemAsset(brand.editorLogo[theme])} alt={brand.editorName} width="104" height="18" />
+    <BrandLogo compact />
   </span>;
 }
 
@@ -145,7 +144,7 @@ const host: StudioHost = {
   communityAction: <><CommunityLink /><GitHubLink /></>,
   historyActions: <WorkspaceHistoryActions />,
   previewAction: <></>,
-  windowMenu: <></>,
+  windowMenu: <EditorLayoutMenu />,
   themeToggle: false,
 
   AppFrame: MotionEditorFrame,

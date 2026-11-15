@@ -1,4 +1,6 @@
 import { memo, type RefObject } from "react";
+import { TimelineTimecode } from "./TimelineTimecode";
+import { useMvpEditor } from "../../motion/StudioHost";
 import { useSettledScrollLeft } from "./useSettledScrollLeft";
 import type { TimelineTheme } from "./timelineTheme";
 import { RULER_H, getTimelineBeatEntries } from "./timelineLayout";
@@ -90,6 +92,8 @@ export const TimelineRuler = memo(function TimelineRuler({
   renderTimeRange,
   scrollRef,
 }: TimelineRulerProps) {
+  const mvp = useMvpEditor();
+  const rulerBackground = mvp ? "var(--timeline-ruler-bg)" : theme.shellBackground;
   const beatTimes = beatAnalysis?.beatTimes ?? [];
   const beatStrengths = beatAnalysis?.beatStrengths ?? [];
   const beatEntries = getTimelineBeatEntries(beatTimes, beatStrengths, renderTimeRange);
@@ -138,17 +142,17 @@ export const TimelineRuler = memo(function TimelineRuler({
           scrolling underneath don't bleed through; z-index sits above the track
           rows and drag overlays but below the playhead (z 100). */}
       <div
-        className="sticky top-0 flex"
+        className="sticky top-0 flex motion-timeline-ruler"
         style={{ height: RULER_H, width: contentOrigin + trackContentWidth, zIndex: 70 }}
       >
         <div
-          className="sticky left-0 z-12 shrink-0"
+          className="sticky left-0 z-12 shrink-0 motion-timeline-ruler-corner"
           style={{
             width: contentOrigin,
             // Ruler corner uses the panel surface — same as the ruler strip itself.
-            background: theme.shellBackground,
+            background: rulerBackground,
           }}
-        />
+        >{mvp && <TimelineTimecode />}</div>
         {/* Breathing pad before 00:00 is folded into contentOrigin (see
             Timeline.tsx: GUTTER + TRACKS_LEFT_PAD), so no separate pad div. */}
         <div
@@ -159,7 +163,7 @@ export const TimelineRuler = memo(function TimelineRuler({
             width: trackContentWidth,
             // Ruler background = the panel surface token — no bottom border,
             // no tick lines (CapCut-style clean ruler, labels only).
-            background: theme.shellBackground,
+            background: rulerBackground,
           }}
         >
           {/* Each 1px tick line is shifted -0.5px so its CENTER sits exactly on
@@ -206,7 +210,7 @@ export const TimelineRuler = memo(function TimelineRuler({
               scrollRef={scrollRef}
               major={major}
               pps={pps}
-              background={theme.shellBackground}
+              background={rulerBackground}
             />
           )}
         </div>
