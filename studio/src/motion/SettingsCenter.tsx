@@ -60,10 +60,9 @@ function GeneralSettings({ openConnections }: { openConnections: () => void }) {
   const { t, locale, setLocale } = useI18n();
   return <div className="om-settings-page"><h1 className="om-title">{t('General')}</h1><div className="om-card"><div className="om-preference-row"><div><h2 className="om-subtitle">{t('Language')}</h2><p className="om-muted">{t('Display language for the workspace')}</p></div><div className="om-preference-control"><Select label={t('Language')} value={locale} onCommit={value => setLocale(value as Locale)} options={languages.map(item => ({ value: item.locale, label: item.label }))} /></div></div><div className="om-preference-row"><div><h2 className="om-subtitle">{t('Connect Agent')}</h2><p className="om-muted">{t('Connect your preferred Agent to this workspace.')}</p></div><button className="om-button" onClick={openConnections}>{t('Set up connection')}</button></div></div><section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Keyboard shortcuts')}</h2><div className="om-preference-row"><span>{t('Open settings')}</span><kbd>⌘ / Ctrl + ,</kbd></div><div className="om-preference-row"><span>{t('Toggle project list')}</span><kbd>Alt + B</kbd></div><div className="om-preference-row"><span>{t('Close menu or dialog')}</span><kbd>Esc</kbd></div></section></div>;
 }
-const communityLinks = [
-  { label: 'Discord', href: 'https://discord.com/invite/M7NnHS9gNa' },
-  { label: 'Feishu group', href: 'https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841' },
-];
+// Public community invitation shared with the README. The release scan keeps the internal
+// Feishu invitation readable in the README only, so Studio ships the public destination.
+const communityLink = { label: 'Discord', href: 'https://discord.com/invite/M7NnHS9gNa' };
 
 function ResourceSettings({ about, openConnections }: { about: boolean; openConnections: () => void }) {
   const { t } = useI18n();
@@ -74,11 +73,9 @@ function ResourceSettings({ about, openConnections }: { about: boolean; openConn
     <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noreferrer"><span>{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span>{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
     {!about && <section className="om-card om-resource-links" aria-labelledby="om-community-heading">
       <h2 id="om-community-heading" className="om-subtitle">{t('Community')}</h2>
-      {communityLinks.map(({ label, href }) => (
-        <a className="om-nav-item om-resource-link" key={href} href={href} target="_blank" rel="noopener noreferrer">
-          <span>{t(label)}</span><RemixIcon name="external-link-line" size={16} />
-        </a>
-      ))}
+      <a className="om-nav-item om-resource-link" href={communityLink.href} target="_blank" rel="noopener noreferrer">
+        <span>{t(communityLink.label)}</span><RemixIcon name="external-link-line" size={16} />
+      </a>
     </section>}
     {about && <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Acknowledgements')}</h2><p className="om-muted">{t('Built with Hyperframes and the OpenMotion design system. Provider presets include the MIT-licensed Cherry Studio registry. Account connections use OpenDesign.')}</p><a className="om-text-link" href="https://github.com/nexu-io/openmotion/blob/main/shared/provider-registry-NOTICE.md" target="_blank" rel="noreferrer">{t('Licenses & acknowledgements')}</a></section>}
   </div>;
