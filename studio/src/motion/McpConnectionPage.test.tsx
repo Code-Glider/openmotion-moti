@@ -38,7 +38,9 @@ it('switches client-specific setup, copies exact template instructions and perfo
   expect(document.querySelector('a[download]')?.getAttribute('href')).toBe('/connect/config?host=claude');
   await act(async () => button('Copy template prompt').click());
   expect(copy).toHaveBeenCalledWith(expect.stringContaining('fixture-film'));
-  expect(copy.mock.calls[0][0]).toContain('host=claude');
+  expect(copy.mock.calls[0][0]).toContain('Claude Code');
+  expect(copy.mock.calls[0][0]).toContain('https://github.com/nexu-io/openmotion#quick-start');
+  expect(copy.mock.calls[0][0]).not.toContain('127.0.0.1');
   expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toContain('Copied to clipboard');
   expect(document.querySelector('.om-mcp-content [role=status]')).toBeNull();
   await act(async () => button('View all templates').click()); expect(openLibrary).toHaveBeenCalledOnce();
@@ -54,15 +56,23 @@ it('switches client-specific setup, copies exact template instructions and perfo
 it('contains unavailable setup and catalogue independently, retries and reserves failed poster geometry', async () => {
   let broken = true;
   vi.stubGlobal('fetch', vi.fn(async (url: string) => broken ? Response.json({}, { status: 503 }) : Response.json(url.includes('template-catalog') ? { items: [template] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
   await mount();
+  expect(button('Copy connection instruction').disabled).toBe(false);
+  await act(async () => button('Copy connection instruction').click());
+  expect(copy).toHaveBeenCalledWith(expect.stringContaining('https://github.com/nexu-io/openmotion#quick-start'));
+  expect(copy.mock.calls[0][0]).not.toContain('127.0.0.1');
+  await act(async () => tab('Manual setup').click());
   expect(document.body.textContent).toContain('Could not load settings');
+  expect(document.querySelector('a[download]')).toBeNull();
   expect(document.body.textContent).toContain('Templates could not be loaded');
-  expect(document.body.textContent).toContain('What you can ask it to do');
+  expect(document.body.textContent).toContain('Your visual MCP guide');
   broken = false;
   for (const retry of [...document.querySelectorAll<HTMLButtonElement>('button')].filter(node => node.textContent === 'Retry')) await act(async () => retry.click());
+  await act(async () => tab('Let your Agent set it up').click());
   expect(button('Copy connection instruction').disabled).toBe(false);
   expect(document.body.textContent).toContain('Fixture film');
-  const poster = document.querySelector('.om-mcp-template-poster')!;
+  const poster = document.querySelector('.om-gallery-poster')!;
   act(() => poster.querySelector('img')!.dispatchEvent(new Event('error')));
   expect(poster.querySelector('img')).toBeNull();
   expect(poster.textContent).toBe('Fixture film');
@@ -71,7 +81,51 @@ it('contains unavailable setup and catalogue independently, retries and reserves
 it('aborts pending setup and template reads when leaving the page', async () => {
   const signals: AbortSignal[] = [];
   vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => { signals.push(init.signal!); return new Promise(() => {}); }));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
   await mount(); expect(signals).toHaveLength(2);
+  expect(button('Copy connection instruction').disabled).toBe(false);
+  await act(async () => button('Copy connection instruction').click());
+  expect(copy).toHaveBeenCalledWith(expect.stringContaining('https://github.com/nexu-io/openmotion#quick-start'));
+  expect(document.querySelector('a[download]')).toBeNull();
   act(() => root!.unmount()); root = undefined;
   expect(signals.every(signal => signal.aborted)).toBe(true);
+});
+
+class PreviewObserver {
+  static latest: PreviewObserver;
+  elements: Element[] = [];
+  constructor(private callback: IntersectionObserverCallback) { PreviewObserver.latest = this; }
+  observe(element: Element) { this.elements.push(element); }
+  disconnect() {}
+  emit(ratio: number) { this.callback(this.elements.map(target => ({ target, isIntersecting: ratio > 0, intersectionRatio: ratio }) as IntersectionObserverEntry), this as unknown as IntersectionObserver); }
+}
+
+it('filters the full catalogue, autoplays only visible cards and hands off the exact template', async () => {
+  const first = { ...template, author: 'Designer', previewUrl: '/first.mp4', uses: ['Product launch'] };
+  const second = { ...first, id: 'brand-film', title: 'Brand film', previewUrl: '/second.mp4', uses: ['Brand promotion'] };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(!url.includes('template-catalog') ? info : url.includes('offset=60') ? { items: [second], next: null } : { items: [first], next: 60 })));
+  vi.stubGlobal('IntersectionObserver', PreviewObserver);
+  const preference = Object.assign(new EventTarget(), { matches: false });
+  vi.stubGlobal('matchMedia', () => preference);
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  const { openLibrary } = await mount();
+  expect(document.querySelectorAll('video[src]')).toHaveLength(0);
+  await act(async () => PreviewObserver.latest.emit(1));
+  expect(document.querySelectorAll('video[src]')).toHaveLength(2);
+  await act(async () => { preference.matches = true; preference.dispatchEvent(new Event('change')); });
+  expect(document.querySelectorAll('video[src]')).toHaveLength(0);
+  await act(async () => { preference.matches = false; preference.dispatchEvent(new Event('change')); });
+  expect(document.querySelectorAll('video[src]')).toHaveLength(2);
+  await act(async () => tab('Brand & company films').click());
+  expect(document.querySelectorAll('[data-template-id]')).toHaveLength(1);
+  expect(document.querySelector('[data-template-id]')?.getAttribute('data-template-id')).toBe('brand-film');
+  await act(async () => PreviewObserver.latest.emit(1));
+  expect(document.querySelector('video[src]')?.getAttribute('src')).toBe('/second.mp4');
+  await act(async () => button('Preview template Brand film').click());
+  expect(openLibrary).toHaveBeenCalledWith(expect.any(HTMLButtonElement), 'brand-film');
+  await act(async () => PreviewObserver.latest.emit(0));
+  expect(document.querySelectorAll('video[src]')).toHaveLength(0);
+  expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
 });

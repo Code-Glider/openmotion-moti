@@ -26,7 +26,7 @@ type WorkspaceChrome = {
   workspace: ReturnType<typeof useWorkspace>;
   switchingDisabled: boolean;
   saveState: string;
-  openLibrary: (trigger?: HTMLElement) => void;
+  openLibrary: (trigger?: HTMLElement, templateId?: string) => void;
   openConnections: () => void;
   openModelSettings: () => void;
   openHome: () => void;
@@ -73,6 +73,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [onNavigate]);
   const workspace = useWorkspace(beforeViewChange, projectId, sessionId, navigate);
   const [connectionSection, setConnectionSection] = useState<'setup' | 'templates'>(() => 'templates');
+  const [libraryTemplateId, setLibraryTemplateId] = useState<string>();
   const libraryTrigger = useRef<HTMLElement | null>(null);
   const [connectionsOpen, setConnectionsOpen] = useState(() => new URLSearchParams(location.search).get('templates') === '1');
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
@@ -133,7 +134,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const visibleNotice = notice && dismissedNotice !== noticeKey;
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
   const value: WorkspaceChrome = { workspace, switchingDisabled, saveState: editorState?.saveState || saveState, registerEditor, beforeViewChange,
-    openLibrary: trigger => { libraryTrigger.current = trigger ?? null; workspace.clearError(); setConnectionSection('templates'); setConnectionsOpen(true); },
+    openLibrary: (trigger, templateId) => { setLibraryTemplateId(templateId); libraryTrigger.current = trigger ?? null; workspace.clearError(); setConnectionSection('templates'); setConnectionsOpen(true); },
     openConnections: () => openSettings('mcp'),
     openModelSettings: () => openSettings('providers'),
     openHome, toggleSidebar, sidebarOpen, navigationCollapsed,
@@ -170,12 +171,12 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         {children}
       </div>
       {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'mcp'
-        ? <McpConnectionPage openLibrary={value.openLibrary} openProviders={value.openModelSettings} />
+        ? <McpConnectionPage previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} />
         : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={setSettings} openConnections={value.openConnections} />}</SettingsSurfaceBoundary>}
       </div>
     </div>
     </Dialog.Root>
-    {connectionsOpen && <ConnectionDialog open returnFocus={libraryTrigger.current} section={connectionSection} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => { setConnectionsOpen(false); if (connectionSection === 'templates') onLibraryClose?.(); }} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
+    {connectionsOpen && <ConnectionDialog open initialTemplateId={libraryTemplateId} returnFocus={libraryTrigger.current} section={connectionSection} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => { setConnectionsOpen(false); if (connectionSection === 'templates') onLibraryClose?.(); }} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
   </WorkspaceChromeContext.Provider>;
 }
 

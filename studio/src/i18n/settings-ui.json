@@ -201,7 +201,6 @@
     "Remote connection unavailable": "暂不支持远程连接",
     "Connect from your Agent": "在 Agent 中完成连接",
     "ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.": "ChatGPT 云端无法连接这个本地工作区，请在上方选择本地 Agent。",
-    "Paste this instruction into your Agent on this computer. It will guide you through setup and verify access.": "将下面的指令粘贴到这台电脑上的 Agent，它会引导你完成配置并验证连接。",
     "Copy connection instruction": "复制连接指令",
     "Manual setup": "手动配置",
     "Copy configuration": "复制配置",
@@ -319,7 +318,8 @@
     "Auto saved: {time}": "自动保存：{time}",
     "Auto save on": "自动保存已开启",
     "Changes could not be saved. Resolve the error before continuing.": "更改未能保存，请先处理错误。",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "更改会自动保存，每 15 秒检查一次待保存的编辑。"
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "更改会自动保存，每 15 秒检查一次待保存的编辑。",
+    "Send this instruction to your Agent. It will check installation, start OpenMotion if needed, and verify the connection.": "将指令发给你的 Agent，它会检查安装状态，按需启动 OpenMotion 并验证连接。"
   },
   "ja": {
     "Local Agents": "ローカル Agent",

@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { brand, designSystemAsset } from '../../../packages/design-system/index.js';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
-import { manualConnection, setupPrompt, templatePrompt, type IntegrationHost } from '../../../shared/integration';
-import { isEditableTemplate, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
+import { manualConnection, setupPrompt, setupGuideUrl, templatePrompt, type IntegrationHost } from '../../../shared/integration';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { Tabs, TabsList, Tab, TabPanel } from '../components/ui/Tabs';
-import { Skeleton } from '../components/ui/Skeleton';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
 import { ProviderAvatar, SettingsError, SettingsLoading } from './settingsPrimitives';
 import { useIntegrationInfo } from './useIntegrationInfo';
-import { motionApi } from './useWorkspace';
 import { GITHUB_REPOSITORY } from './githubRepository';
-import { mcpCapabilities, mcpBenefits, mcpFaq } from './mcpCapabilities';
+import { McpTemplateShowcase } from './McpTemplateShowcase';
+import { COMMUNITY_URL } from './CommunityLink';
+import { mcpCapabilities, mcpBenefits, mcpFaq, mcpWorkflowComparison, mcpClientComparison } from './mcpCapabilities';
 import './McpConnectionPage.css';
 
 const clients: { id: string; name: string; brand: string; host: IntegrationHost }[] = [
@@ -26,34 +25,27 @@ const clients: { id: string; name: string; brand: string; host: IntegrationHost 
   { id: 'mcp', name: 'Other MCP clients', brand: 'mcp', host: 'mcp' },
 ];
 
-export function McpConnectionPage({ openLibrary, openProviders }: { openLibrary: (trigger?: HTMLElement) => void; openProviders: () => void }) {
+export function McpConnectionPage({ openLibrary, openProviders, previewsEnabled = true }: { openLibrary: (trigger?: HTMLElement, templateId?: string) => void; openProviders: () => void; previewsEnabled?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast();
   const { info, failed, retry } = useIntegrationInfo();
   const [clientId, setClientId] = useState(() => new URLSearchParams(location.search).get('host') || 'codex');
   const client = clients.find(item => item.id === clientId) ?? clients[0];
   const [setupMode, setSetupMode] = useState('agent');
-  const [templates, setTemplates] = useState<GalleryTemplate[] | null>(null), [templateFailed, setTemplateFailed] = useState(false), [attempt, retryTemplates] = useState(0);
+  const page = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
-  useEffect(() => {
-    const controller = new AbortController();
-    setTemplates(null); setTemplateFailed(false);
-    void motionApi<TemplatePage>(`/template-catalog?category=all&covered=true&limit=6&offset=0&locale=${encodeURIComponent(locale)}`, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]) })
-      .then(page => { if (!Array.isArray(page.items)) throw new Error('Invalid catalogue'); if (!controller.signal.aborted) setTemplates(page.items.slice(0, 6)); })
-      .catch(() => { if (!controller.signal.aborted) setTemplateFailed(true); });
-    return () => controller.abort();
-  }, [locale, attempt]);
+  const scrollTo = (id: string) => page.current?.querySelector<HTMLElement>(`#${id}`)?.scrollIntoView({ block: 'start' });
   const supported = client.host !== 'chatgpt';
   const language = locale === 'zh-CN' ? 'zh-CN' : 'en';
-  const prompt = info ? setupPrompt(info, client.host, language).replace('MCP / CLI', client.name) : '';
+  const prompt = setupPrompt(info, client.host, language).replace('MCP / CLI', client.name);
   const manual = info ? manualConnection(info, client.host, language) : '';
   async function copy(text: string) {
     try { await navigator.clipboard.writeText(text); toast.showToast(t('Copied to clipboard'), 'info', 'feedback'); }
     catch { toast.showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback'); }
   }
   const copyCreation = (text: string) => copy(`${prompt}\n\n${t(text)}`);
-  const copyButton = (text: string, label = 'Copy prompt') => <button className="om-button" disabled={!info || !supported} onClick={() => void copy(text)}><RemixIcon name="file-copy-line" size={16} />{t(label)}</button>;
-  return <main className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
+  const copyButton = (text: string, label = 'Copy prompt') => <button className="om-button" disabled={!text || !supported} onClick={() => void copy(text)}><RemixIcon name="file-copy-line" size={16} />{t(label)}</button>;
+  return <main ref={page} className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
     <div className="om-mcp-content">
       <section className="om-mcp-hero om-mcp-section">
         <div className="om-mcp-art" aria-hidden="true">
@@ -63,21 +55,20 @@ export function McpConnectionPage({ openLibrary, openProviders }: { openLibrary:
         </div>
         <p className="om-mcp-eyebrow">OPENMOTION × MCP</p>
         <h1 id="mcp-title" ref={heading} tabIndex={-1}>{t('Create in {agent}', { agent: t(client.name) })}<br /><span>{t('Make it move with OpenMotion.')}</span></h1>
-        <p className="om-mcp-lead">{t('Your Agent. Your ideas. One editable video workspace.')}</p>
+        <p className="om-mcp-lead">{t('Create through MCP in your Agent. Keep projects, assets and versions in OpenMotion, ready to edit and reuse.')}</p>
         <Tabs value={client.id} onValueChange={value => setClientId(String(value))}>
           <TabsList className="om-mcp-client-tabs" aria-label={t('Agent client')}>{clients.map(item => <Tab value={item.id} key={item.id}><ClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}</TabsList>
           {clients.map(item => <TabPanel value={item.id} key={item.id}>
             <div className="om-mcp-setup-tray">
-              <div className="om-mcp-setup-top"><span className="om-badge"><RemixIcon name="computer-line" size={14} />{t('Local workspace · stdio')}</span><span className="om-muted">{t('No project changes during setup')}</span></div>
-              {failed ? <SettingsError retry={retry} /> : !info ? <SettingsLoading /> : !supported ? <div className="om-card om-mcp-unavailable"><RemixIcon name="information-line" size={28} /><h2>{t('Remote connection unavailable')}</h2><p>{t('ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.')}</p><pre className="om-code-block">{manual}</pre><button className="om-button" onClick={() => setClientId('codex')}>{t('Use a local Agent')}</button></div> : <div className="om-mcp-setup-grid">
+              {!supported ? <div className="om-card om-mcp-unavailable"><RemixIcon name="information-line" size={28} /><h2>{t('Remote connection unavailable')}</h2><p>{t('ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.')}</p><pre className="om-code-block">{manual}</pre><button className="om-button" onClick={() => setClientId('codex')}>{t('Use a local Agent')}</button></div> : <div className="om-mcp-setup-grid">
                 <article className="om-card om-mcp-step">
                   <h2><span className="om-mcp-step-number">1</span>{t('Connect your Agent')}</h2>
                   <Tabs value={setupMode} onValueChange={value => setSetupMode(String(value))}><TabsList aria-label={t('Setup method')}><Tab value="agent">{t('Let your Agent set it up')}</Tab><Tab value="manual">{t('Manual setup')}</Tab></TabsList>
-                    <TabPanel value="agent"><p className="om-muted">{t('Paste this instruction into your Agent on this computer. It will guide you through setup and verify access.')}</p><pre className="om-code-block">{prompt}</pre><div className="om-mcp-actions">{copyButton(prompt, 'Copy connection instruction')}<a className="om-button" href={`/connect/guide?host=${client.host}`} target="_blank" rel="noreferrer">{t('Connection guide')}<RemixIcon name="external-link-line" size={14} /></a></div></TabPanel>
-                    <TabPanel value="manual"><p className="om-muted">{t(client.host === 'mcp' ? 'Merge this configuration into your client’s local MCP settings. Preserve your other servers, then reload the connection.' : 'Run this command in a local terminal, then reload the Agent connection.')}</p><pre className="om-code-block">{manual}</pre><div className="om-mcp-actions">{copyButton(manual, 'Copy configuration')}<a className="om-button" href={`/connect/config?host=${client.host}`} download>{t('Download configuration')}</a></div></TabPanel>
+                    <TabPanel value="agent" className="om-mcp-instruction"><p className="om-muted">{t('Copy this instruction to your Agent to install and connect OpenMotion.')}</p><pre className="om-code-block">{prompt}</pre><div className="om-mcp-actions">{copyButton(prompt, 'Copy connection instruction')}<a className="om-button" href={setupGuideUrl(info)} target="_blank" rel="noreferrer">{t('Connection guide')}<RemixIcon name="external-link-line" size={14} /></a></div></TabPanel>
+                    <TabPanel value="manual" className="om-mcp-instruction">{failed ? <SettingsError retry={retry} /> : !info ? <SettingsLoading /> : <><p className="om-muted">{t(client.host === 'mcp' ? 'Merge this configuration into your client’s local MCP settings. Preserve your other servers, then reload the connection.' : 'Run this command in a local terminal, then reload the Agent connection.')}</p><pre className="om-code-block">{manual}</pre><div className="om-mcp-actions">{copyButton(manual, 'Copy configuration')}<a className="om-button" href={`/connect/config?host=${client.host}`} download>{t('Download configuration')}</a></div></>}</TabPanel>
                   </Tabs>
                 </article>
-                <article className="om-card om-mcp-step"><h2><span className="om-mcp-step-number">2</span>{t('Start creating in {agent}', { agent: t(client.name) })}</h2><p className="om-muted">{t('After connection, ask your Agent to read this workspace, then describe your film. Start with an idea, your material or a template.')}</p>
+                <article className="om-card om-mcp-step"><h2><span className="om-mcp-step-number">2</span>{t('Start creating in {agent}', { agent: t(client.name) })}</h2><p className="om-muted">{t('Tell your Agent what you want to make. Start with an idea, your material or a template.')}</p>
                   <div className="om-mcp-starters">{mcpCapabilities.slice(0, 4).map(capability => <button className="om-nav-item" key={capability.id} onClick={() => void copyCreation(capability.prompt)}><RemixIcon name={capability.icon} size={18} />{t(capability.title)}</button>)}</div>
                   <button className="om-button" data-primary onClick={event => openLibrary(event.currentTarget)}><RemixIcon name="clapperboard-line" size={16} />{t('Explore templates')}<RemixIcon name="arrow-right-line" size={16} /></button>
                 </article>
@@ -85,43 +76,39 @@ export function McpConnectionPage({ openLibrary, openProviders }: { openLibrary:
             </div>
           </TabPanel>)}
         </Tabs>
-        <p className="om-mcp-connection-note om-muted">{t('Workspace status confirms this app is reachable. Your Agent verifies its connection after setup.')}{info && <span> · v{info.version}</span>}</p>
       </section>
 
-      <section className="om-mcp-section" aria-labelledby="mcp-templates"><div className="om-mcp-section-heading"><div><p className="om-mcp-eyebrow">{t('A starting point for every idea')}</p><h2 id="mcp-templates">{t('Bring a template into your conversation')}</h2></div><button className="om-button" onClick={event => openLibrary(event.currentTarget)}>{t('View all templates')}<RemixIcon name="arrow-right-line" size={16} /></button></div>
-        {templateFailed ? <div className="om-card om-mcp-unavailable"><p>{t('Templates could not be loaded.')}</p><button className="om-button" onClick={() => retryTemplates(value => value + 1)}>{t('Retry')}</button></div> : <div className="om-mcp-template-grid">{templates === null ? [1, 2, 3].map(key => <Skeleton key={key} className="om-mcp-template-skeleton" />) : templates.map(template => <article className="om-mcp-template" key={template.id}>
-          <McpTemplatePoster template={template} />
-          <div className="om-mcp-template-body"><span className="om-badge">{t(isEditableTemplate(template) ? 'Ready to edit' : 'Reference · Agent recreation')}</span><h3>{template.title}</h3><p className="om-muted">{template.description || template.subtitle}</p><div className="om-mcp-actions">{copyButton(info ? `${prompt}\n\n${templatePrompt(info, client.host, template, locale)}` : '', 'Copy template prompt')}<button className="om-button" onClick={event => openLibrary(event.currentTarget)} aria-label={t('View all templates')}>{t('Template library')}<RemixIcon name="arrow-right-line" size={14} /></button></div></div>
-        </article>)}</div>}{templates?.length === 0 && <p className="om-muted">{t('No templates available. Open the library or try again later.')}</p>}
-      </section>
+      <McpTemplateShowcase scroller={page} enabled={previewsEnabled} canCopy={Boolean(info && supported)} openLibrary={openLibrary} onCopy={template => { if (info) void copy(`${prompt}\n\n${templatePrompt(info, client.host, template, locale)}`); }} />
 
-      <section className="om-mcp-section"><h2>{t('Why create with OpenMotion in your Agent?')}</h2><div className="om-mcp-benefit-grid">{mcpBenefits.map((item, index) => <article key={item.title} className="om-mcp-feature" data-featured={index === 0}><RemixIcon name={item.icon} size={26} /><h3>{t(item.title)}</h3><p>{t(item.description)}</p></article>)}</div></section>
-      <section className="om-mcp-section"><h2>{t('What you can ask it to do')}</h2><p className="om-muted">{t('Every capability below maps to the current public MCP tools. Media generation requires a configured provider.')}</p><div className="om-mcp-capability-grid">{mcpCapabilities.map(item => <article className="om-mcp-feature" key={item.id}><RemixIcon name={item.icon} size={24} /><h3>{t(item.title)}</h3><p>{t(item.description)}</p><button className="om-text-link" disabled={!info || !supported} onClick={() => void copyCreation(item.prompt)}>{t('Copy an example')}<RemixIcon name="file-copy-line" size={14} /></button></article>)}</div>
+      <section className="om-mcp-section"><h2>{t('Give your Agent a workspace worth keeping')}</h2><div className="om-mcp-benefit-grid">{mcpBenefits.map((item, index) => <article key={item.title} className="om-mcp-feature" data-featured={index === 0}><RemixIcon name={item.icon} size={26} /><h3>{t(item.title)}</h3><p>{t(item.description)}</p></article>)}</div></section>
+      <section className="om-mcp-section" id="mcp-capabilities"><h2>{t('Your visual MCP guide')}</h2><p className="om-muted">{t('Choose a task and copy its example into your connected Agent. Projects and assets stay in your workspace; media generation uses your configured providers.')}</p><div className="om-mcp-capability-grid">{mcpCapabilities.map(item => <article className="om-mcp-feature" key={item.id}><RemixIcon name={item.icon} size={24} /><h3>{t(item.title)}</h3><p>{t(item.description)}</p><button className="om-text-link" disabled={!supported} onClick={() => void copyCreation(item.prompt)}>{t('Copy an example')}<RemixIcon name="file-copy-line" size={14} /></button></article>)}</div>
         <details className="om-mcp-tool-details"><summary>{t('Tools exposed by this installation')}{info && ` · ${info.tools.length}`}</summary><div className="om-mcp-tool-list">{info?.tools.map(tool => <div key={tool.name}><code>{tool.name}</code><p className="om-muted">{t(mcpCapabilities.find(item => (item.tools as readonly string[]).includes(tool.name))?.description || tool.description)}</p></div>)}</div></details>
       </section>
-      <section className="om-mcp-section"><h2>{t('What each client can do')}</h2><p className="om-muted">{t('Local connection, generation and inline presentation are different capabilities.')}</p><div className="om-mcp-table-wrap" tabIndex={0} role="region" aria-label={t('Client compatibility')}><table className="om-mcp-table"><thead><tr><th>{t('Capability')}</th><th>Codex / Claude Code / DeepSeek</th><th>{t('Desktop / other MCP clients')}</th><th>ChatGPT {t('Cloud')}</th></tr></thead><tbody>{[
-        ['Connection', 'Local stdio', 'Local stdio, when supported', 'Not available'],
-        ['Templates, editing and version history', 'Supported', 'Requires tools and resource support', 'Not available'],
-        ['Images, video, music and voice', 'With configured providers', 'With configured providers', 'Not available'],
-        ['Local material', 'Explicit local file paths', 'Host file access required', 'Not available'],
-        ['Preview and MP4 export', 'Local Studio and export links', 'Local Studio and export links', 'Not available'],
-        ['Inline template cards and final video', 'Requires MCP Apps negotiation', 'Requires MCP Apps negotiation', 'Not available'],
-      ].map(row => <tr key={row[0]}>{row.map((cell, i) => i === 0 ? <th scope="row" key={i}>{t(cell)}</th> : <td key={i}>{t(cell)}</td>)}</tr>)}</tbody></table></div></section>
-      <section className="om-mcp-section"><h2>{t('MCP, Skills or local API?')}</h2><div className="om-mcp-capability-grid">{[
-        ['plug-line', 'MCP', 'Connect compatible Agents to the same local project tools. Use the generated configuration above; the editor address is not an HTTP MCP endpoint.', 'docs/mcp-phase1-tools.md'],
+      <section className="om-mcp-section" id="mcp-comparison"><div className="om-mcp-section-heading"><div><p className="om-mcp-eyebrow">{t('From a conversation to a reusable project')}</p><h2>{t('Choose the workflow that fits your idea')}</h2><p className="om-muted">{t('Create through MCP, refine in Studio, and keep the project and assets for your next version.')}</p></div></div><ComparisonTable label="Workflow comparison" columns={['Capability', 'OpenMotion + Agent', 'Direct model API', 'Studio by hand']} rows={mcpWorkflowComparison} featured /></section>
+      <section className="om-mcp-section" id="mcp-clients"><h2>{t('What each client can do')}</h2><p className="om-muted">{t('Local connection, generation and inline presentation are different capabilities.')}</p><ComparisonTable label="Client compatibility" columns={['Capability', 'Codex / Claude Code / Cursor / DeepSeek', 'Desktop / other MCP clients', 'ChatGPT Cloud']} rows={mcpClientComparison} /><p className="om-mcp-footnote">{t('Support here describes this local installation. Your Agent must expose the tools and resources; media generation also needs an available provider.')}</p></section>
+      <section className="om-mcp-section" id="mcp-connections"><h2>{t('MCP, Skills or local API?')}</h2><div className="om-mcp-capability-grid">{[
+        ['plug-line', 'MCP', 'MCP connects compatible Agents to your local workspace. Use the same tools to create and edit projects, discover templates and import assets.', 'docs/mcp-phase1-tools.md'],
         ['file-text-line', 'Production Skills', 'Give your Agent the creative workflow, reference guides and verification rules. Installed Skills and MCP resources share the maintained guidance.', 'docs/skills.md'],
         ['code-s-slash-line', 'Local API & CLI', 'For local development and automation. Use the documented application boundary and project safeguards; no hosted public API is provided here.', 'docs/agent-adapters.md'],
       ].map(([icon, title, body, doc]) => <article className="om-mcp-feature" key={title}><RemixIcon name={icon} size={24} /><h3>{t(title)}</h3><p>{t(body)}</p><a className="om-text-link" href={`${GITHUB_REPOSITORY}/blob/main/${doc}`} target="_blank" rel="noreferrer">{t('Documentation')}<RemixIcon name="external-link-line" size={14} /></a></article>)}</div></section>
       <section className="om-mcp-section om-mcp-policy-grid"><div><h2>{t('Costs & limits')}</h2><ul>{['Connecting does not run a model or start a render. Agent subscriptions and media-provider charges are separate.', 'Generation depends on provider access, model support and available quota. There is no universal free-generation allowance or fixed completion time.', 'Use the same generation or export job to check progress. Cancellation depends on the task and provider; it does not guarantee a refund.'].map(text => <li key={text}>{t(text)}</li>)}</ul><button className="om-button" onClick={openProviders}><RemixIcon name="sparkling-line" size={16} />{t('Manage providers')}</button></div><div><h2>{t('Privacy & permissions')}</h2><ul>{['The local Agent receives access to workspace tools. Keep your existing MCP servers and connect the correct installation.', 'Provider credentials are stored outside projects and injected by the local service. Never paste API keys into a conversation.', 'Cloud generation sends the required prompt and reference material to the selected provider. Projects and local exports remain in your workspace.'].map(text => <li key={text}>{t(text)}</li>)}</ul></div></section>
-      <section className="om-mcp-section om-mcp-faq"><h2>{t('Frequently asked questions')}</h2><div>{mcpFaq.map(([question, answer]) => <details key={question}><summary>{t(question)}<RemixIcon name="arrow-down-s-line" size={18} /></summary><p className="om-muted">{t(answer)}</p></details>)}<a className="om-text-link" href={`${GITHUB_REPOSITORY}/issues/new/choose`} target="_blank" rel="noreferrer">{t('Feedback')}<RemixIcon name="external-link-line" size={14} /></a></div></section>
-      <footer className="om-mcp-footer"><BrandLogo /><h2>{t('Your next film starts with a conversation.')}</h2><div className="om-mcp-actions"><button className="om-button" onClick={event => openLibrary(event.currentTarget)}>{t('Explore templates')}</button><a className="om-button" href={`${GITHUB_REPOSITORY}/tree/main/docs`} target="_blank" rel="noreferrer">{t('Documentation')}</a></div></footer>
+      <section className="om-mcp-section om-mcp-faq" id="mcp-faq"><div className="om-mcp-faq-intro"><p className="om-mcp-eyebrow">{t('A little more clarity')}</p><h2>{t('Frequently asked questions')}</h2><p className="om-muted">{t('Connect, create, save and reuse—all in one guide.')}</p><div className="om-mcp-contact"><h3>{t('Contact us')}</h3><p>{t('Need a hand or have an idea? Talk with the community or send us feedback.')}</p><a className="om-text-link" href={COMMUNITY_URL} target="_blank" rel="noreferrer">{t('Join the community')}<RemixIcon name="arrow-right-line" size={16} /></a><a className="om-text-link" href={`${GITHUB_REPOSITORY}/issues/new/choose`} target="_blank" rel="noreferrer">{t('Report an issue')}<RemixIcon name="external-link-line" size={14} /></a></div></div><div>{mcpFaq.map(([question, answer]) => <details key={question}><summary>{t(question)}<RemixIcon name="arrow-down-s-line" size={18} /></summary><p className="om-muted">{t(answer)}</p></details>)}</div></section>
+      <footer className="om-mcp-footer">
+        <div className="om-mcp-footer-intro"><BrandLogo /><p className="om-mcp-eyebrow">{t('The fullstack agentic video editor')}</p><h2>{t('Create in your Agent. Build on it in OpenMotion.')}</h2><p>{t('Connect with MCP. Keep editable projects, finished videos and assets together, ready for your next idea.')}</p><div className="om-mcp-actions"><button className="om-button" data-primary onClick={() => scrollTo('mcp-title')}>{t('Connect your Agent')}<RemixIcon name="arrow-right-line" size={16} /></button><a className="om-button" href={COMMUNITY_URL} target="_blank" rel="noreferrer">{t('Join the community')}</a></div></div>
+        <nav className="om-mcp-footer-links" aria-label={t('MCP resources')}>
+          <div><h3>{t('Create')}</h3><button onClick={event => openLibrary(event.currentTarget)}>{t('Template library')}</button><button onClick={() => scrollTo('mcp-capabilities')}>{t('Motion & animation')}</button><button onClick={openProviders}>{t('Images, video, music and voice')}</button><button onClick={() => scrollTo('mcp-comparison')}>{t('Compare workflows')}</button></div>
+          <div><h3>{t('Connect')}</h3><button onClick={() => scrollTo('mcp-title')}>{t('Agent setup')}</button><button onClick={() => scrollTo('mcp-clients')}>{t('Client compatibility')}</button><a href={`${GITHUB_REPOSITORY}/blob/main/docs/skills.md`} target="_blank" rel="noreferrer">{t('Production Skills')}</a><a href={`${GITHUB_REPOSITORY}/blob/main/docs/mcp-phase1-tools.md`} target="_blank" rel="noreferrer">{t('MCP tool reference')}</a></div>
+          <div><h3>{t('Resources')}</h3><a href={`${GITHUB_REPOSITORY}/tree/main/docs`} target="_blank" rel="noreferrer">{t('Documentation')}</a><a href={GITHUB_REPOSITORY} target="_blank" rel="noreferrer">GitHub</a><button onClick={() => scrollTo('mcp-faq')}>{t('Frequently asked questions')}</button><a href={`${GITHUB_REPOSITORY}/issues/new/choose`} target="_blank" rel="noreferrer">{t('Contact us')}</a></div>
+        </nav>
+      </footer>
+
     </div><StudioToastViewport {...toast} />
   </main>;
 }
 
-function McpTemplatePoster({ template }: { template: GalleryTemplate }) {
-  const [failed, setFailed] = useState(false), [loaded, setLoaded] = useState(false);
-  return <div className="om-mcp-template-poster">{template.posterUrl && !failed ? <>{!loaded && <Skeleton />}<img src={template.posterUrl} alt={template.title} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} /></> : <div className="om-mcp-poster-fallback"><RemixIcon name="clapperboard-line" size={32} /><span>{template.title}</span></div>}</div>;
+function ComparisonTable({ label, columns, rows, featured = false }: { label: string; columns: readonly string[]; rows: readonly (readonly string[])[]; featured?: boolean }) {
+  const { t } = useI18n();
+  return <div className="om-mcp-table-wrap" tabIndex={0} role="region" aria-label={t(label)}><table className="om-mcp-table" data-featured={featured}><thead><tr>{columns.map(column => <th key={column} scope="col">{t(column)}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row[0]}>{row.map((cell, i) => i === 0 ? <th scope="row" key={i}>{t(cell)}</th> : <td key={i}>{featured && i === 1 && <RemixIcon name="check-line" size={16} />}{t(cell)}</td>)}</tr>)}</tbody></table></div>;
 }
 
 function ClientAvatar({ client }: { client: typeof clients[number] }) {

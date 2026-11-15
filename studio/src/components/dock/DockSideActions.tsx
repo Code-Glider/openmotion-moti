@@ -38,7 +38,7 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
   if (!collapsed) return <div className="hf-dock-side-actions">{toggle}</div>;
   return createPortal(
     <nav className="hf-dock-side-rail" aria-label={t(zone === "left" ? "Left panels" : "Right panels")}>
-      {toggle}
+      <div className="hf-dock-side-rail-header">{toggle}</div>
       <div className="hf-dock-side-rail-divider" role="separator" />
       <div className="hf-dock-side-rail-items">
         {panels.map(panel => {

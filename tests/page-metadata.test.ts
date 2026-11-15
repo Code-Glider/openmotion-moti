@@ -22,17 +22,35 @@ test('generated entry heads contain one complete metadata set before JavaScript 
 test('sharing copy stays public, localized and HTML-safe', () => {
   for (const locale of ['en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']) {
     const meta = pageMetadata(locale);
-    assert.equal(meta.title, 'OpenDesign Motion — The fullstack agentic video editor');
+    assert.equal(meta.title, 'OpenDesign Motion — AI Video & Motion Design');
     assert.equal(meta.property['og:site_name'], 'OpenDesign Motion');
     assert.equal(meta.name['application-name'], 'OpenDesign Motion');
     assert.equal(meta.property['og:title'], meta.name['twitter:title']);
+    assert.equal(meta.property['og:title'], 'OpenDesign Motion — Create with your AI agent');
     assert.equal(meta.property['og:description'], meta.name.description);
     assert.match(meta.property['og:locale'], /^[a-z]{2}_[A-Z]{2}$/);
     assert.doesNotMatch(JSON.stringify(meta), /localhost|127\.0\.0\.1|session=|project=/);
   }
-  assert.match(renderPageMetadata('en'), /images &amp; video/);
+  assert.match(renderPageMetadata('en'), /AI Video &amp; Motion Design/);
   assert.equal(pageMetadata('unsupported').title, pageMetadata('en').title);
-  assert.equal(new URL(socialImage.url).protocol, 'https:');
+  assert.match(socialImage.url, /^https:\/\/releases\.open-design\.ai\//);
+  assert.equal(pageMetadata().property['og:image:secure_url'], socialImage.url);
+});
+
+test('social previews reuse the registered README hero and matching card fields', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../repository-media.json', import.meta.url), 'utf8'));
+  const hero = manifest.files.find((file: { path: string }) => file.path === 'docs/readme/brand-hero.jpg');
+  assert.ok(hero, 'The README hero must retain its public media record.');
+  assert.equal(socialImage.url, hero.url);
+  assert.ok(socialImage.url.includes(hero.sha256), 'The share URL must identify immutable original bytes.');
+  assert.ok(hero.bytes < 5 * 1024 * 1024, 'Keep the image within the large social card size limit.');
+  const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+  assert.ok(readme.includes(socialImage.url), 'The website and README must use the same hero.');
+  const meta = pageMetadata();
+  assert.equal(meta.name['twitter:image'], meta.property['og:image']);
+  assert.equal(meta.name['twitter:image:alt'], meta.property['og:image:alt']);
+  assert.equal(meta.property['og:image:secure_url'], meta.property['og:image']);
+  assert.equal(meta.property['og:image:type'], 'image/jpeg');
 });
 
 test('bookmark assets retain the product symbol and correctly sized PNG fallbacks', async () => {

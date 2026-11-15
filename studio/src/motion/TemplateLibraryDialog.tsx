@@ -2,7 +2,7 @@ import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { GitHubLink } from './GitHubLink';
 import { GithubLogo } from '@phosphor-icons/react';
 import { templateRepositoryUrl } from './githubRepository';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isEditableTemplate, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
 import { templatePrompt, type IntegrationInfo } from '../../../shared/integration';
 import { useI18n } from '../i18n/I18n';
@@ -18,43 +18,16 @@ import { purposeOrder } from './templateDiscoveryTaxonomy';
 import { templateContributionUrl, templateSubmissionPrompt } from './templateContribution';
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
-import figmaLogo from './template-brands/figma.png';
-import lovableLogo from './template-brands/lovable.svg';
-import linearLogo from './template-brands/linear.svg';
-import firecrawlLogo from './template-brands/firecrawl.png';
-import kimiLogo from './template-brands/kimi.png';
-import pondLogo from './template-brands/pond.svg';
-import notionLogo from './template-brands/notion.png';
-import higgsfieldLogo from './template-brands/higgsfield.png';
 import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, randomTemplate, type Facet } from './templateDiscovery';
+import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
 import { useTemplateImpressions } from './useTemplateImpressions';
 import * as tracking from './templateLibraryTracking';
 import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './templateLibraryTracking';
 
-const brandLogos: Record<string, string> = { Notion: notionLogo, Higgsfield: higgsfieldLogo, Figma: figmaLogo, Lovable: lovableLogo, Linear: linearLogo, Firecrawl: firecrawlLogo, Kimi: kimiLogo, Pond: pondLogo };
-
 type Filters = Partial<Record<Facet, string[]>>;
 const toggleValue = (filters: Filters, key: Facet, value: string): Filters => ({ ...filters, [key]: filters[key]?.includes(value) ? filters[key]!.filter(item => item !== value) : [...(filters[key] ?? []), value] });
 const matchesFilters = (item: GalleryTemplate, filters: Filters, editable: boolean) => (!editable || isEditableTemplate(item)) && facets.every(([key]) => !filters[key]?.length || filters[key]!.some(value => values(item, key).includes(value)));
-
-function Identity({ template, brand = false }: { template: GalleryTemplate; brand?: boolean }) {
-  const name = brand ? template.brand || template.author : template.authorName || template.author || template.brand || 'OpenMotion';
-  const [failedUrls, setFailedUrls] = useState<string[]>([]);
-  const candidates = [!brand && template.authorAvatarUrl, template.brandLogoUrl, brandLogos[template.brand ?? '']];
-  const url = candidates.find((candidate): candidate is string => Boolean(candidate) && !failedUrls.includes(candidate as string));
-  return <span className={styles.avatar} aria-hidden="true">{name.slice(0, 1)}{url
-    && <img src={url} alt="" loading="lazy" onError={() => setFailedUrls(previous => [...previous, url])} />}</span>;
-}
-
-function TemplatePoster({ template, eager = false }: { template: GalleryTemplate; eager?: boolean }) {
-  const [loaded, setLoaded] = useState(false), [failed, setFailed] = useState(false);
-  return <div className={styles.poster} data-loaded={loaded}>
-    {!loaded && <Skeleton className={styles.posterSkeleton} animated={false} />}
-    {(!template.posterUrl || failed) && <div className={styles.posterFallback}><MotionIcon name="film" size={26} /><span>{template.title}</span></div>}
-    {template.posterUrl && !failed && <img src={template.posterUrl} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
-  </div>;
-}
 
 function DetailMedia({ template }: { template: GalleryTemplate }) {
   const { t } = useI18n();
@@ -69,35 +42,8 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
   </div>;
 }
 
-const TemplateCard = memo(function TemplateCard({ template, onSelect, active, onPriority }: { template: GalleryTemplate; onSelect: (template: GalleryTemplate) => void; active: boolean; onPriority: (id: string | null) => void }) {
-  const { t } = useI18n();
-  const video = useRef<HTMLVideoElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    const element = video.current;
-    if (!element || !active || !template.previewUrl || failed) return;
-    let cancelled = false;
-    element.src = template.previewUrl;
-    void element.play().catch(() => { if (!cancelled) setPlaying(false); });
-    return () => {
-      cancelled = true; element.pause(); element.removeAttribute('src'); element.load(); setPlaying(false);
-    };
-  }, [active, template.previewUrl, failed]);
-  return <article className={styles.card} data-template-id={template.id} data-has-video={Boolean(template.previewUrl)}>
-    <button className={`motion-gallery-card-cover ${styles.cover}`} style={{ aspectRatio: Math.max(0.8, Math.min(1.9, templateAspect(template))) }} onClick={() => onSelect(template)}
-      onMouseEnter={() => onPriority(template.id)} onMouseLeave={() => onPriority(null)} onFocus={() => onPriority(template.id)} onBlur={() => onPriority(null)}
-      aria-label={t('Preview template {title}', { title: template.title })}>
-      <TemplatePoster template={template} />
-      {template.previewUrl && <video ref={video} muted playsInline loop preload="none" aria-hidden="true" onPlaying={() => setPlaying(true)} onError={() => { setFailed(true); setPlaying(false); }} style={{ opacity: active && playing ? 1 : 0 }} />}
-      <span className={styles.cardShade} />
-      <span className={styles.cardTop}><span>{t(isEditableTemplate(template) ? 'Ready to edit' : template.styles?.[0] || 'Motion design')}</span>{template.duration != null && <span>{t('{value}s', { value: Number(template.duration.toFixed(1)) })}</span>}</span>
-      <span className={styles.cardBottom}><Identity template={template} /><span className={styles.cardCaption}><strong>{template.title}</strong><small>{template.authorName || template.author || template.brand}</small></span><span className={styles.cardArrow}><MotionIcon name="arrow-up-right" size={18} /></span></span>
-    </button>
-  </article>;
-});
 
-type Props = { returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void };
+type Props = { initialTemplateId?: string; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 export function TemplateLibraryDialog(props: Props) {
@@ -312,6 +258,13 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardOpened(item, 'catalog', latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
     show(item, 'catalog');
   }, [show, listContext]);
+  const initialSelection = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!props.open) { initialSelection.current = undefined; return; }
+    if (!props.initialTemplateId || initialSelection.current === props.initialTemplateId) return;
+    const item = catalog.find(candidate => candidate.id === props.initialTemplateId);
+    if (item) { initialSelection.current = item.id; show(item); }
+  }, [props.open, props.initialTemplateId, catalog, show]);
   const openRelated = (item: GalleryTemplate, position: number) => { tracking.reportCardOpened(item, 'related', position, listContext()); show(item, 'related'); };
   const navigate = (step: number) => {
     if (visible.length < 2) return;

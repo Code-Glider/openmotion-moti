@@ -2,36 +2,38 @@ import { brand, designSystemAsset } from './index.js';
 
 // Product copy only: never derive share metadata from a project, session or local URL.
 const copy = {
-  en: ['Create motion videos with AI agents. Generate images & video, music and voiceovers; edit and animate, recreate viral videos and ads, and build with brand video templates and design systems.', 'en_US'],
-  'zh-CN': ['与 AI Agent 一起制作动效视频：生成图片、视频、音乐与配音，剪辑视频、制作动画，复刻热门视频和广告。结合品牌视频模板与品牌设计系统，从创意到成片，保留可编辑工程。', 'zh_CN'],
-  ja: ['AI エージェントとモーション動画を制作。画像・動画・音楽・ナレーションの生成から編集・アニメーションまで。話題の動画や広告を再現し、ブランド動画テンプレートとデザインシステムで仕上げます。', 'ja_JP'],
-  ko: ['AI 에이전트와 모션 영상을 만드세요. 이미지·영상·음악·내레이션 생성부터 편집과 애니메이션까지. 인기 영상과 광고를 재현하고 브랜드 영상 템플릿과 디자인 시스템으로 완성하세요.', 'ko_KR'],
-  de: ['Erstelle Motion-Videos mit KI-Agenten: Bilder, Videos, Musik und Voiceovers generieren, schneiden und animieren. Gestalte virale Videos und Werbung nach und nutze Markenvorlagen und Designsysteme.', 'de_DE'],
-  fr: ['Créez des vidéos animées avec des agents IA : images, vidéos, musique, voix off, montage et animation. Recréez des vidéos virales et des publicités avec des modèles vidéo de marque et des systèmes de design.', 'fr_FR'],
-  ru: ['Создавайте моушн-видео с ИИ-агентами: изображения, видео, музыку и озвучку, монтаж и анимацию. Воссоздавайте популярные ролики и рекламу с видеошаблонами брендов и дизайн-системами.', 'ru_RU'],
-  es: ['Crea vídeos animados con agentes de IA: imágenes, vídeo, música, voz en off, edición y animación. Recrea vídeos virales y anuncios con plantillas de vídeo de marca y sistemas de diseño.', 'es_ES'],
-  'pt-BR': ['Crie vídeos de motion design com agentes de IA: imagens, vídeo, música, narração, edição e animação. Recrie vídeos virais e anúncios com templates de vídeo de marcas e sistemas de design.', 'pt_BR'],
-  it: ['Crea video animati con agenti IA: immagini, video, musica, voci fuori campo, montaggio e animazione. Ricrea video virali e pubblicità con modelli video di brand e sistemi di design.', 'it_IT'],
-  tr: ['Yapay zekâ ajanlarıyla hareketli videolar oluşturun: görsel, video, müzik ve seslendirme üretin; düzenleyin ve canlandırın. Viral videoları ve reklamları marka video şablonları ve tasarım sistemleriyle yeniden oluşturun.', 'tr_TR'],
+  en: ['The fullstack agentic video editor. Turn ideas, brand templates and references into editable videos. Generate images, video, music and voiceovers with your AI agent.', 'en_US'],
+  'zh-CN': ['全栈 Agent 视频编辑器。把创意、品牌模板和参考视频变成可编辑作品；生成图片、视频、音乐与配音，完成剪辑、动效和动画，从灵感到成片。', 'zh_CN'],
+  ja: ['AI エージェントと、アイデア・ブランドテンプレート・参考映像を編集可能な動画へ。画像、動画、音楽、ナレーションの生成から、編集・モーションデザイン・アニメーションまで。', 'ja_JP'],
+  ko: ['AI 에이전트와 아이디어, 브랜드 템플릿, 참고 영상을 편집 가능한 영상으로 만드세요. 이미지·영상·음악·내레이션 생성부터 편집, 모션 디자인, 애니메이션까지.', 'ko_KR'],
+  de: ['Mit deinem KI-Agenten von Ideen, Markenvorlagen und Referenzen zum editierbaren Video. Bilder, Videos, Musik und Voiceovers erstellen, schneiden und animieren.', 'de_DE'],
+  fr: ['Avec votre agent IA, transformez idées, modèles de marque et références en vidéos modifiables. Générez images, vidéos, musique et voix off, puis montez et animez.', 'fr_FR'],
+  ru: ['Превращайте идеи, шаблоны брендов и референсы в редактируемые видео вместе с ИИ-агентом. Создавайте изображения, видео, музыку и озвучку, монтируйте и анимируйте.', 'ru_RU'],
+  es: ['Convierte ideas, plantillas de marca y referencias en vídeos editables con tu agente de IA. Genera imágenes, vídeo, música y voz en off; edita y anima.', 'es_ES'],
+  'pt-BR': ['Transforme ideias, templates de marca e referências em vídeos editáveis com seu agente de IA. Gere imagens, vídeo, música e narração; edite e anime.', 'pt_BR'],
+  it: ['Trasforma idee, modelli di brand e riferimenti in video modificabili con il tuo agente IA. Genera immagini, video, musica e voci fuori campo; monta e anima.', 'it_IT'],
+  tr: ['Yapay zekâ ajanınızla fikirleri, marka şablonlarını ve referansları düzenlenebilir videolara dönüştürün. Görsel, video, müzik ve seslendirme üretin; kurgulayın ve canlandırın.', 'tr_TR'],
 };
 
-// Existing public, immutable brand artwork; dimensions verified against the original.
+// Reuse the public README hero unchanged. Its immutable URL and attribution are
+// recorded in repository-media.json and docs/readme/ASSETS.md.
 export const socialImage = Object.freeze({
-  url: 'https://releases.open-design.ai/open-motion/media/sha256/9683e195639f5f6a54524f33fe4c7c3f4ec47efebb97fc93e4ec38895dd08412.jpg',
-  width: 1280, height: 640, type: 'image/jpeg',
-  alt: 'OpenDesign Motion social preview with a blue and green painted landscape.',
+  url: 'https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg',
+  width: 1586, height: 992, type: 'image/jpeg',
+  alt: 'OpenMotion video recreation: a reference beside its remake, with the editable Studio timeline below.',
 });
 
 export function pageMetadata(locale = 'zh-CN') {
   const [description, ogLocale] = copy[locale] ?? copy.en;
-  const title = `${brand.website.name} — ${brand.website.tagline}`;
+  const title = `${brand.website.name} — AI Video & Motion Design`;
+  const shareTitle = `${brand.website.name} — Create with your AI agent`;
   return {
     title,
     name: { description, 'application-name': brand.website.name, 'apple-mobile-web-app-title': brand.website.name,
       robots: 'noindex, nofollow', 'color-scheme': 'light dark',
-      'twitter:card': 'summary_large_image', 'twitter:title': title, 'twitter:description': description,
+      'twitter:card': 'summary_large_image', 'twitter:title': shareTitle, 'twitter:description': description,
       'twitter:image': socialImage.url, 'twitter:image:alt': socialImage.alt },
-    property: { 'og:type': 'website', 'og:site_name': brand.website.name, 'og:title': title,
+    property: { 'og:type': 'website', 'og:site_name': brand.website.name, 'og:title': shareTitle,
       'og:description': description, 'og:locale': ogLocale, 'og:image': socialImage.url,
       'og:image:secure_url': socialImage.url, 'og:image:type': socialImage.type,
       'og:image:width': String(socialImage.width), 'og:image:height': String(socialImage.height), 'og:image:alt': socialImage.alt },

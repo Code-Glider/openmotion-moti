@@ -23,6 +23,11 @@
 :root[data-motion-ui] .dv-shell .dv-render-overlay { border-radius: 0; overflow: hidden; }
 :root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container,
 :root[data-motion-ui] .motion-timeline-toolbar { border-bottom: 1px solid var(--motion-border-subtle); }
+/* Collapsed rails continue the same header baseline as expanded panels. */
+:root[data-motion-ui] .hf-dock .hf-dock-side-rail { padding: 0; gap: 0; }
+:root[data-motion-ui] .hf-dock .hf-dock-side-rail-header { display: grid; place-items: center; flex: none; width: 100%; height: calc(var(--dv-tabs-and-actions-container-height) - 1px); }
+:root[data-motion-ui] .hf-dock .hf-dock-side-rail-divider { width: 100%; border-top: 1px solid var(--motion-border-subtle); }
+:root[data-motion-ui] .hf-dock .hf-dock-side-rail-items { padding-block: var(--motion-space-6); }
 :root[data-motion-ui] .hf-dock .dv-sash::after { background: var(--motion-border-subtle); }
 :root[data-motion-ui] .hf-dock .dv-sash:is(:hover, :active, :focus-visible)::after { background: var(--motion-accent); }
 

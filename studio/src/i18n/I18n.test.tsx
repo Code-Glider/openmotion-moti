@@ -99,7 +99,7 @@ it('restores and synchronizes every supported preference without replacing edito
     expect(document.head.querySelector('meta[name=description]')?.getAttribute('content')).toBe(pageMetadata(locale).name.description);
     expect(document.head.querySelector('meta[property="og:locale"]')?.getAttribute('content')).toBe(pageMetadata(locale).property['og:locale']);
     expect(document.head.querySelectorAll('meta[property="og:title"]')).toHaveLength(1);
-    expect(document.head.querySelector('meta[name="twitter:title"]')?.getAttribute('content')).toBe(document.title);
+    expect(document.head.querySelector('meta[name="twitter:title"]')?.getAttribute('content')).toBe(pageMetadata(locale).name['twitter:title']);
     expect(host.querySelector('h1')?.textContent).toBe(translate(locale, 'Preview'));
     expect(host.querySelector('input')).toBe(input);
     expect(host.querySelector('iframe')).toBe(preview);

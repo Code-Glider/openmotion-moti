@@ -66,13 +66,36 @@ export function apiDiscoveryCommand(info: IntegrationInfo) {
 }
 
 export function guideUrl(info: IntegrationInfo, host: IntegrationHost, templateId?: string) { return `${info.previewUrl}/connect/guide?host=${host}${templateId ? '&template=' + encodeURIComponent(templateId) : ''}`; }
-export function setupPrompt(info: IntegrationInfo, host: IntegrationHost, locale: 'zh-CN' | 'en' = 'zh-CN') {
+export const setupReadmeUrl = 'https://github.com/nexu-io/openmotion#quick-start';
+export function setupGuideUrl(info: IntegrationInfo | null) {
+  if (!info || info.templateSource === 'repository') return 'https://github.com/nexu-io/openmotion/blob/main/install.md';
+  const environment = info.templateEnvironment ?? info.transport.env.MOTION_TEMPLATE_ENV ?? 'prod';
+  return `https://releases.open-design.ai/open-motion/${environment === 'dev' ? 'dev/' : ''}install.md`;
+}
+
+// Bootstrap instructions must work before an installation or local server exists.
+// Exact local paths belong only to manual configuration and the running service's guide.
+export function setupPrompt(info: IntegrationInfo | null, host: IntegrationHost, locale: 'zh-CN' | 'en' = 'zh-CN') {
   if (locale === 'en') {
     if (host === 'chatgpt') return 'ChatGPT cloud requires a public HTTPS MCP service. This workspace uses local stdio. Choose Codex, Claude Code, or DeepSeek Harness to start creating.';
-    return `Read ${guideUrl(info, host)} and connect OpenMotion to ${hostNames[host]}. Verify the connection, then help me start creating.`;
+    return `Help me install and connect OpenMotion in ${hostNames[host]}.
+Read the GitHub README: ${setupReadmeUrl}
+Follow the installation guide: ${setupGuideUrl(info)}
+
+1. Check for an existing installation and connection first. Reuse its workspace; preserve projects, credentials and other MCP settings.
+2. Install only if missing. If the existing service is stopped, start it following its guide and use the actual startup URL, never a guessed port.
+3. Discover OpenMotion tools in this Agent and call openmotion_get_project to verify the workspace. Configuration alone does not prove connection; report any blocker.
+4. Once connected, open the template library. Wait for my creative brief before creating or changing a project.`;
   }
   if (host === 'chatgpt') return 'ChatGPT 云端需要公开 HTTPS MCP 服务。当前工作区使用本机 stdio，可先选择 Codex、Claude Code 或 DeepSeek Harness 开始创作。';
-  return `请读取 ${guideUrl(info, host)}，将 OpenMotion 接入 ${hostNames[host]}，验证后带我开始创作。`;
+  return `帮我在 ${hostNames[host]} 中安装并接入 OpenMotion。
+先阅读 GitHub README：${setupReadmeUrl}
+再按安装指南操作：${setupGuideUrl(info)}
+
+1. 先检查是否已经安装和连接，优先复用现有工作区，保留工程、凭据及其他 MCP 配置。
+2. 未安装时再安装；已安装但服务未启动时，按对应指南启动，使用实际返回的地址，不猜测端口。
+3. 在当前 Agent 中发现 OpenMotion 工具，调用 openmotion_get_project 验证工作区。仅写入配置不代表连接成功；遇到阻碍请说明。
+4. 接入后打开模板库，等我给出创作要求后再创建或修改工程。`;
 }
 export function templatePrompt(info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
   if (info.templateSource === 'repository') {

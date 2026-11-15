@@ -20,7 +20,7 @@ async function mount(section: 'setup' | 'templates' = 'setup') {
 }
 function button(name: string) { return [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => (node.getAttribute('aria-label') || node.textContent?.trim()) === name)!; }
 
-it('opens connection setup in the MVP and copies instructions for this installation', async () => {
+it('opens connection setup in the MVP and copies public installation instructions', async () => {
   const fetcher = vi.fn(async () => Response.json(info)); vi.stubGlobal('fetch', fetcher);
   const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
   const close = await mount();
@@ -28,7 +28,7 @@ it('opens connection setup in the MVP and copies instructions for this installat
   expect(document.body.textContent).not.toContain('Template library fixture');
   expect(document.body.textContent).toContain('Workspace reachable');
   await act(async () => button('Copy connection instruction').click());
-  expect(copy).toHaveBeenCalledWith(expect.stringContaining('http://127.0.0.1:4567/connect/guide?host=codex'));
+  expect(copy).toHaveBeenCalledWith(expect.stringContaining('https://github.com/nexu-io/openmotion#quick-start'));
   expect(document.querySelector('[role=status]')?.textContent).toContain('Copied to clipboard');
   expect(document.querySelector('.om-agent-connection [role=status]')).toBeNull();
   expect(fetcher).toHaveBeenCalledTimes(1);
@@ -45,11 +45,14 @@ it('recovers from an unavailable integration without showing stale configuration
   let fail = true;
   vi.stubGlobal('fetch', vi.fn(async () => fail ? Response.json({}, { status: 503 }) : Response.json(info)));
   await mount(); expect(document.querySelector('[role=alert]')?.textContent).toContain('Could not reach this workspace');
-  expect(button('Copy connection instruction')).toBeUndefined();
+  expect(button('Copy connection instruction').disabled).toBe(false);
+  expect(document.querySelector('a[download]')).toBeNull();
+  expect(document.querySelector('pre')?.textContent).not.toContain('/fixture');
   fail = false; await act(async () => button('Retry').click());
   expect(button('Copy connection instruction')).toBeTruthy();
   fail = true; await act(async () => button('Refresh status').click());
-  expect(button('Copy connection instruction')).toBeUndefined();
+  expect(button('Copy connection instruction').disabled).toBe(false);
+  expect(document.querySelector('a[download]')).toBeNull();
 });
 
 it('updates manual setup with the selected client and explains unsupported cloud access', async () => {
@@ -62,7 +65,7 @@ it('updates manual setup with the selected client and explains unsupported cloud
     await act(async () => option.click());
   };
   await select('Claude Code');
-  expect(document.querySelector('.om-agent-connection')?.textContent).toContain('host=claude');
+  expect(document.querySelector('.om-agent-connection')?.textContent).toContain('connect OpenMotion in Claude Code');
   expect(document.querySelector('a[download]')?.getAttribute('href')).toBe('/connect/config?host=claude');
   expect(document.querySelector('details pre')?.textContent).toContain('claude mcp add');
   await select('ChatGPT');
