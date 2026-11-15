@@ -7,6 +7,15 @@ import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/des
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+test('onboarding Skill is discoverable from the registered plugin roots', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8'));
+  const entry = manifest.extensions['com.openai'].onboardingSkill.replace(/^\.\//, '');
+  const skillRoots = (Array.isArray(manifest.skills) ? manifest.skills : [manifest.skills])
+    .map((root: string) => root.replace(/^\.\//, '').replace(/\/$/, ''));
+  assert(skillRoots.some((root: string) => entry === root || entry.startsWith(root + '/')),
+    'Codex plugin/read returns no onboardingSkill unless its entry is inside a registered Skill root');
+});
+
 test('plugin onboarding entry and its shared contract resolve inside every distribution', async () => {
   const manifest = JSON.parse(await readFile(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8'));
   const entry = manifest.extensions['com.openai'].onboardingSkill.replace(/^\.\//, '');
