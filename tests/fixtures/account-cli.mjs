@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Synthetic account connector. Never contacts an account service or reads user credentials.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 const home = process.env.AMR_HOME;
 if (!home || !home.includes('motion-')) throw new Error('Use an isolated OpenMotion fixture directory');
@@ -12,7 +12,11 @@ if (args[0] === 'login') {
   const timer = setInterval(() => {
     if (!existsSync(path.join(home, 'authorize'))) return;
     clearInterval(timer);
-    writeFileSync(path.join(home, 'config.json'), JSON.stringify({ profiles: { prod: { runtimeKey: 'synthetic-private-account-key', user: { name: 'Fixture user', email: 'fixture@example.test' } } } }), { mode: 0o600 });
+    // Polling readers must see either absent/old credentials or the complete
+    // new JSON, never the truncate/write interval of a direct overwrite.
+    const target = path.join(home, 'config.json'), temporary = target + '.' + process.pid + '.tmp';
+    writeFileSync(temporary, JSON.stringify({ profiles: { prod: { runtimeKey: 'synthetic-private-account-key', user: { name: 'Fixture user', email: 'fixture@example.test' } } } }), { mode: 0o600 });
+    renameSync(temporary, target);
     console.log('OPEN_DESIGN_AMR_AUTH_COMPLETION\tcredentials_persisted');
   }, 20);
   process.stdin.on('data', data => { if (String(data).includes('credentials_accepted')) process.exit(0); else process.exit(1); });
