@@ -15,6 +15,7 @@ import { trackMotion } from './tracking';
 import { ApplicationHeader, ApplicationRail } from './ApplicationChrome';
 import type { SettingsSection } from './SettingsCenter';
 import { SettingsLoading } from './settingsPrimitives';
+import { WorkspaceHomeButton } from './WorkspaceHomeButton';
 
 const SettingsCenter = lazy(() => import('./SettingsCenter').then(module => ({ default: module.SettingsCenter })));
 
@@ -64,6 +65,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const [connectionsOpen, setConnectionsOpen] = useState(() => new URLSearchParams(location.search).get('templates') === '1');
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
+  const [projectQuery, setProjectQuery] = useState('');
   const [navigationCollapsed, setNavigationCollapsed] = useState(() => {
     try { return localStorage.getItem('motion.workspace.navigation.v1') === 'collapsed'; }
     catch { return false; }
@@ -89,6 +91,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     // its focus; on desktop, move focus off the departing settings controls.
     if (!narrow) requestAnimationFrame(() => homeRef.current?.querySelector<HTMLButtonElement>('.om-app-rail [aria-pressed="true"]')?.focus());
   }, [narrow]);
+  const toggleHome = useCallback(() => {
+    if (settings) openHome();
+    else toggleSidebar();
+  }, [settings, openHome, toggleSidebar]);
   useEffect(() => {
     const open = () => openSettings('local');
     window.addEventListener('motion:agents-open', open);
@@ -124,16 +130,21 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     <Dialog.Root open={sidebarOpen && narrow && !settings && !navigationCollapsed} onOpenChange={setSidebarOpen}>
     <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
       <ApplicationHeader settings={settings} />
-      <ApplicationRail settings={settings} openSettings={openSettings} />
+      <ApplicationRail settings={settings} openSettings={openSettings} home={<WorkspaceHomeButton
+        active={!settings} expanded={sidebarOpen && !settings && !navigationCollapsed}
+        previewEnabled={!narrow && !sidebarOpen && !settings && !navigationCollapsed && !connectionsOpen}
+        onToggle={toggleHome}>
+        {close => <WorkspaceSidebar currentId={projectId} close={close} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
+      </WorkspaceHomeButton>} />
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
-        <Dialog.Popup className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
-          <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} />
+        <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
+          <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
         </Dialog.Popup>
       </Dialog.Portal>
-      {!narrow && !settings && <div className="om-project-navigation om-collapsible" aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
-        <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} />
+      {!narrow && !settings && <div id="om-project-navigation" className="om-project-navigation om-collapsible" aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
+        <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
       </div>}
       <div className="motion-workspace-content" hidden={Boolean(settings)} inert={Boolean(settings)}>
         {visibleNotice && (workspace.error && workspace.errorSource === 'connection' && isConnectionFailure(notice)
@@ -153,10 +164,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   </WorkspaceChromeContext.Provider>;
 }
 
-function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () => void }) {
+function WorkspaceSidebar({ currentId, close, query, setQuery, onNavigate }: {
+  currentId?: string; close: () => void; query: string; setQuery: (query: string) => void; onNavigate?: () => void;
+}) {
   const { t } = useI18n();
   const { workspace, switchingDisabled } = useWorkspaceChrome();
-  const [query, setQuery] = useState('');
   const projects = workspace.projects;
   const filtered = projects.filter(project => project.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <aside className="motion-sidebar" aria-label={t('Workspace navigation')}>
@@ -170,6 +182,7 @@ function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () 
         <button type="button" className="motion-icon-button" aria-label={t('New project')} disabled={switchingDisabled} onClick={event => {
           void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'new_creation', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
           void workspace.create();
+          onNavigate?.();
         }}>
           <MotionIcon name="plus" size={16} />
         </button>
@@ -185,6 +198,7 @@ function WorkspaceSidebar({ currentId, close }: { currentId?: string; close: () 
           else {
             void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'open_project', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
             void workspace.open('projects', project.id);
+            onNavigate?.();
           }
         }}>
         <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>

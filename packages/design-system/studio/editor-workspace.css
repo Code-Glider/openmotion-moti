@@ -1,4 +1,22 @@
 /* Continuous editor surfaces. Dockview retains geometry and resize hit targets. */
+[data-motion-studio] .om-application .motion-studio-header-compact,
+[data-motion-studio] .motion-preview-transport { background: var(--motion-panel); color: var(--motion-text); border-radius: 0; }
+[data-motion-studio] .motion-studio-header-compact { border-bottom: 1px solid var(--motion-border-subtle); }
+[data-motion-studio] .motion-preview-transport { padding-block: var(--motion-space-4); border-top: 1px solid var(--motion-border-subtle); }
+[data-motion-studio] .motion-autosave-status { color: var(--motion-muted); font-size: var(--motion-text-xs); font-variant-numeric: tabular-nums; }
+[data-motion-studio] .motion-autosave-status[data-state="error"] { color: var(--motion-danger); }
+[data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: motion-autosave-spin var(--motion-duration-loading) linear infinite; }
+@keyframes motion-autosave-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { [data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: none; } }
+[data-motion-studio] .motion-header-project :is(.motion-project-name-input, .motion-project-name-measure) { height: var(--motion-control-sm); padding: var(--motion-space-4) var(--motion-space-12); font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); line-height: var(--motion-space-18); }
+[data-motion-studio] .motion-project-name-measure { border: 1px solid transparent; }
+[data-motion-studio] .motion-studio-header-compact .motion-header-export { height: var(--motion-control-sm); padding-inline: var(--motion-space-16); border-radius: var(--motion-radius-md); flex-shrink: 0; }
+@container (max-width: 420px) {
+  [data-motion-studio] .motion-studio-header-compact .motion-header-export { padding-inline: var(--motion-space-12); }
+}
+@container (max-width: 360px) {
+  [data-motion-studio] .motion-studio-header-compact .motion-header-export { padding-inline: var(--motion-space-8); }
+}
 :root[data-motion-ui] .motion-studio-header-centered { border-bottom: 1px solid var(--motion-border); }
 :root[data-motion-ui] .hf-dock .dv-view:has(> .dv-groupview) { padding: 0; }
 :root[data-motion-ui] .hf-dock .dv-groupview { border: 0; border-radius: 0; outline: 0; }

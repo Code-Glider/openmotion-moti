@@ -12,6 +12,7 @@ import { useProviderDirectory } from './useProviderDirectory';
 import { gatewayRequest } from './gatewayClient';
 import { SettingsError, SettingsLoading } from './settingsPrimitives';
 import { AgentSettings, DefaultAgentCard } from './AgentSettings';
+import { GITHUB_REPOSITORY, repositorySupportLinks } from './githubRepository';
 
 export type SettingsSection = 'account' | 'subscription' | 'providers' | 'models' | 'local' | 'general' | 'appearance' | 'privacy' | 'about' | 'help';
 const sections: { id: SettingsSection; label: string; icon: string; group: string }[] = [
@@ -64,9 +65,9 @@ function ResourceSettings({ about, openConnections }: { about: boolean; openConn
   const { t } = useI18n();
   const [version, setVersion] = useState<string>();
   useEffect(() => { let active = true; void gatewayRequest<{ version: string }>('health').then(data => { if (active) setVersion(data.version); }).catch(() => {}); return () => { active = false; }; }, []);
-  const links = [{ label: 'Documentation', href: 'https://github.com/nexu-io/openmotion/tree/main/docs' }, { label: 'Report an issue', href: 'https://github.com/nexu-io/openmotion/issues' }, { label: 'Source code', href: 'https://github.com/nexu-io/openmotion' }];
+  const links = [{ label: 'Documentation', href: `${GITHUB_REPOSITORY}/tree/main/docs`, icon: 'file-text-line' }, ...repositorySupportLinks, { label: 'Source code', href: GITHUB_REPOSITORY, icon: 'code-s-slash-line' }];
   return <div className="om-settings-page"><h1 className="om-title">{t(about ? 'About OpenMotion' : 'Help')}</h1>{about && <section className="om-card om-about-identity"><h2 className="om-product-brand" aria-label="OpenMotion" /><p className="om-muted">{t('An editable workspace for AI video and motion.')}</p><span className="om-badge">{version ? `${t('Version')} ${version}` : t('Version unavailable')}</span></section>}
-    <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noreferrer"><span>{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span>{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
+    <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span className="om-menu-label"><RemixIcon name="terminal-box-line" size={16} />{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
     {about && <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Acknowledgements')}</h2><p className="om-muted">{t('Built with Hyperframes and the OpenMotion design system. Provider presets include the MIT-licensed Cherry Studio registry. Account connections use OpenDesign.')}</p><a className="om-text-link" href="https://github.com/nexu-io/openmotion/blob/main/shared/provider-registry-NOTICE.md" target="_blank" rel="noreferrer">{t('Licenses & acknowledgements')}</a></section>}
   </div>;
 }

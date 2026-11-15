@@ -6,6 +6,7 @@ import { studioApiFetch } from "../utils/studioApiFetch";
 import { setStudioPendingEditClaimClock } from "../utils/studioPendingEdits";
 import type { RecordEditInput } from "../utils/studioFileHistory";
 import { generateId } from "../utils/generateId";
+import { observeStudioSavedAt } from "../utils/studioSaveState";
 
 interface ApplyCallbacks {
   readFile: (path: string) => Promise<string>;
@@ -222,6 +223,7 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
       : EMPTY;
     if (projectIdRef.current !== projectId) return;
     if (!next) return console.error("The history's reply was unreadable.");
+    observeStudioSavedAt(projectId, Math.max(0, ...next.entries.map(entry => entry.endedAt)));
     setView(next);
     own.offered(seen, next);
   }, [projectId, own]);

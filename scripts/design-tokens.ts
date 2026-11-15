@@ -11,6 +11,7 @@ export interface DesignTokens {
 
 export { renderDesignTokens } from '../packages/design-system/generate.js';
 import { renderDesignTokens } from '../packages/design-system/generate.js';
+import { renderPageMetadata } from '../packages/design-system/metadata.js';
 
 export async function designTokens(checkOnly = false) {
   const tokens = JSON.parse(await readFile(new URL('tokens.json', directory), 'utf8'));
@@ -32,6 +33,17 @@ export async function designTokens(checkOnly = false) {
     if (checkOnly) {
       if (!data.equals(await readFile(new URL(target, directory)))) throw new Error(`${target} is stale. Run npm run design:tokens.`);
     } else await writeFile(new URL(target, directory), data);
+  }
+  for (const [file, surface] of [['../../studio/index.html', 'studio'], ['index.html', 'design-system']]) {
+    const url = new URL(file, directory);
+    const html = await readFile(url, 'utf8');
+    const block = /<!-- openmotion:metadata -->[\s\S]*?<!-- \/openmotion:metadata -->/;
+    if (!block.test(html)) throw new Error(`${file} is missing its generated metadata block.`);
+    const theme = surface === 'studio' ? `\n<meta name="theme-color" content="${tokens.themes.light.shell}" data-light="${tokens.themes.light.shell}" data-dark="${tokens.themes.dark.shell}" />` : '';
+    const generated = html.replace(block, `<!-- openmotion:metadata -->\n${renderPageMetadata('zh-CN', surface)}${theme}\n<!-- /openmotion:metadata -->`);
+    if (checkOnly) {
+      if (html !== generated) throw new Error(`${file} metadata is stale. Run npm run design:tokens.`);
+    } else await writeFile(url, generated);
   }
   return tokens;
 }
