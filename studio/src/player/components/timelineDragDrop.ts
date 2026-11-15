@@ -169,6 +169,7 @@ export function useTimelineAssetDrop({
   const previewRafRef = useRef(0);
   const activeDropEpochRef = useRef<number | null>(null);
   const refusedDragRef = useRef(false);
+  const pendingRowRef = useRef(false);
 
   const stopAutoScroll = useCallback(() => {
     dragPointerRef.current = null;
@@ -207,7 +208,8 @@ export function useTimelineAssetDrop({
     const pointer = dragPointerRef.current;
     if (!pointer || pointer.sessionEpoch !== sessionEpoch) return;
     const next = resolveDropPlacement(pointer.clientX, pointer.clientY, pointer.canInsertTrack);
-    if (isPendingTimelineRow(next.track, elementsRef.current)) {
+    pendingRowRef.current = isPendingTimelineRow(next.track, elementsRef.current);
+    if (pendingRowRef.current) {
       setDropPreview(null);
       return;
     }
@@ -280,6 +282,7 @@ export function useTimelineAssetDrop({
           if (pointer) syncAutoScroll(pointer.clientX, pointer.clientY);
         });
       }
+      e.dataTransfer.dropEffect = pendingRowRef.current ? "none" : "copy";
     },
     [readOnlyPress, updatePreview, sessionEpoch, syncAutoScroll],
   );
@@ -287,6 +290,7 @@ export function useTimelineAssetDrop({
   const clearDropPreview = useCallback(() => {
     activeDropEpochRef.current = null;
     refusedDragRef.current = false;
+    pendingRowRef.current = false;
     stopAutoScroll();
     setIsDragOver(false);
     setDropPreview(null);

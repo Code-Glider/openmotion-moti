@@ -118,7 +118,9 @@ describe("useTimelineAssetDrop", () => {
     }] });
     const view = renderHarness(onAssetDrop, 1, { elements: [FAR_CLIPS[0]], tracks: [-0.5, 0] });
     const event = dragEvent(assetTransfer('{"path":"b.png"}'), 80, ROW0_MID_Y);
-    act(() => { view.api.handleAssetDragOver(event); view.api.handleAssetDrop(event); });
+    act(() => view.api.handleAssetDragOver(event));
+    expect(event.dataTransfer.dropEffect).toBe("none");
+    act(() => view.api.handleAssetDrop(event));
     expect(onAssetDrop).not.toHaveBeenCalled();
     expect(view.api.dropPreview).toBeNull();
     act(() => view.root.unmount());

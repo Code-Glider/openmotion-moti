@@ -96,8 +96,8 @@ export const TimelineClip = memo(function TimelineClip({
   const isAudioClip = isAudioTimelineElement(el);
   const ladder = clipWidthLadder(widthPx);
   const showHandles = handleOpacity > 0.01 && (widthPx >= HANDLES_MIN_PX || isSelected);
-  // Center grips on the outer borders; narrow clips retain two distinct hit targets.
-  const trimHitWidth = Math.min(CLIP_TRIM_HIT_PX, widthPx);
+  // Center grips on the outer borders and leave the middle of short clips available to move.
+  const trimHitWidth = Math.min(CLIP_TRIM_HIT_PX, widthPx / 2);
   const showLabel = !mvp && (!isAudioClip || ladder === "labeled");
   const showDefaultText = !hasCustomContent && ladder === "labeled";
   const startLabel = el.start.toFixed(1);
