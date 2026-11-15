@@ -37,6 +37,9 @@ async function fixture(run: (context: { directory: string; destination: string; 
     }
     await run({ directory, destination, log, env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
       OPENMOTION_INSTALL_DIR: destination, OPENMOTION_REF: 'test-ref', MOTION_TEST_SOURCE: source,
+      // Exercise a known calling chat without inheriting a developer's real
+      // session or relying on CI to provide one. The control socket is absent.
+      CODEX_THREAD_ID: '11111111-1111-4111-8111-111111111111', CODEX_SESSION_ID: '',
       OPENMOTION_CODEX_SOCKET: path.join(directory, 'absent-host.sock'),
       MOTION_TEST_NODE: process.execPath, MOTION_TEST_LOG: log } });
   } finally { await rm(directory, { recursive: true, force: true }); }
@@ -69,6 +72,22 @@ test('remote entry point builds a fresh checkout before registering and checking
     assert.deepEqual(phases.map(phase => phase.phase), ['source-download', 'source-preflight', 'dependencies', 'studio-build', 'marketplace', 'plugin', 'mcp-preflight', 'onboarding']);
     assert(phases.every(phase => Number.isInteger(phase.seconds) && phase.seconds >= 0));
     assert.ok(commands.indexOf('MCP check') < commands.indexOf('Template library prepared'));
+  });
+});
+
+test('source setup without a calling chat reports that boundary without invoking host control', async () => {
+  await fixture(async ({ log, env }) => {
+    const result = spawnSync('bash', [path.join(root, 'install.sh')], {
+      env: { ...env, CODEX_THREAD_ID: '', CODEX_SESSION_ID: '' }, encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /ONBOARDING_PENDING.*CURRENT_CHAT_UNKNOWN/);
+    const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
+    assert.equal(onboarding.installationStatus, 'installed');
+    assert.equal(onboarding.hostHandoff.reason, 'CURRENT_CHAT_UNKNOWN');
+    assert.equal(onboarding.hostHandoff.hostSessionVerified, false);
+    assert.equal(onboarding.hostHandoff.presentationVerified, false);
+    assert.doesNotMatch(await readFile(log, 'utf8'), /codex (?:queue|app-server)/);
   });
 });
 
