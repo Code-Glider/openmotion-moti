@@ -276,6 +276,24 @@ async function hoverHome(pointerType = 'mouse') {
   return home;
 }
 
+it.each(['pinned', 'drawer', 'hover'] as const)('keeps the %s project list open when clicking the current project', async surface => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: surface === 'drawer' ? 800 : 1440 });
+  await act(async () => render());
+  const editor = container.querySelector('.motion-studio-header');
+  if (surface !== 'pinned') openSidebar();
+  if (surface === 'hover') await hoverHome();
+  const selector = surface === 'pinned' ? '.om-project-navigation' : surface === 'drawer' ? '.motion-sidebar-drawer' : '.om-project-flyout';
+  const sidebar = document.querySelector<HTMLElement>(selector)!;
+  act(() => sidebar.querySelector<HTMLButtonElement>('.motion-session[aria-current="page"]')!.click());
+  expect(sidebar.hasAttribute('inert')).toBe(false);
+  expect(sidebar.hasAttribute('data-closed')).toBe(false);
+  expect(sidebar.hasAttribute('data-ending-style')).toBe(false);
+  expect(state.open).not.toHaveBeenCalled();
+  expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  act(() => sidebar.querySelector<HTMLButtonElement>('.motion-session[title="Second"]')!.click());
+  expect(state.open).toHaveBeenCalledExactlyOnceWith('projects', 'second');
+});
+
 it('toggles Home and previews the searchable project list without expanding navigation or replacing the editor', async () => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
   render();
