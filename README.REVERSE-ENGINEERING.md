@@ -434,12 +434,12 @@ Explore **42 full-length reference films and 393 motion clips** for shot timing 
 
 ##### Editable Studio templates
 
-OpenMotion also ships three editable projects. In Studio, choose one under **Templates → Ready to edit** to create your own copy.
+OpenMotion also ships four editable projects. In Studio, choose one under **Templates → Ready to edit** to create your own copy.
 
-| [Product Promo · 20s](template-library/product-promo/) | [NYT Graph · 15s](template-library/nyt-graph/) | [Decision Tree · 10s](template-library/decision-tree/) |
-| --- | --- | --- |
-| [![Product Promo template preview](template-library/product-promo/poster.jpg)](template-library/product-promo/) | [![NYT Graph template preview](template-library/nyt-graph/poster.jpg)](template-library/nyt-graph/) | [![Decision Tree template preview](template-library/decision-tree/poster.jpg)](template-library/decision-tree/) |
-| Swap in your product screenshots, headline and end card. | Replace the figures, units and annotations. | Change the question, branches and reveal order. |
+| [OpenMotion Welcome · 37.3s](template-library/openmotion-welcome/) | [Product Promo · 20s](template-library/product-promo/) | [NYT Graph · 15s](template-library/nyt-graph/) | [Decision Tree · 10s](template-library/decision-tree/) |
+| --- | --- | --- | --- |
+| [![OpenMotion Welcome template preview](template-library/openmotion-welcome/poster.jpg)](template-library/openmotion-welcome/) | [![Product Promo template preview](template-library/product-promo/poster.jpg)](template-library/product-promo/) | [![NYT Graph template preview](template-library/nyt-graph/poster.jpg)](template-library/nyt-graph/) | [![Decision Tree template preview](template-library/decision-tree/poster.jpg)](template-library/decision-tree/) |
+| Rename the brand, rewrite the welcome copy and check the closing invitation. | Swap in your product screenshots, headline and end card. | Replace the figures, units and annotations. | Change the question, branches and reveal order. |
 
 For a presenter-led video with screen demonstrations, the [Presenter Tech template package](library/templates/presenter-tech/README.md) includes its own local runner.
 
