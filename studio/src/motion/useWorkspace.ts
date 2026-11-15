@@ -3,7 +3,7 @@ import { projectHref, requestedProject, sessionHref } from './workspaceRouting';
 import type { CreativeSession, CreationMode } from '../../../shared/session';
 import { preservePresentation } from '../../../shared/workspace-url';
 import { diagnosticFetch } from './diagnosticRequests';
-import { initializeWorkspaceHistory, WORKSPACE_LOCATION_CHANGED, workspaceHistoryIndex, writeWorkspaceHistory } from '../utils/workspaceHistory';
+import { initializeWorkspaceHistory, WORKSPACE_LOCATION_CHANGED, workspaceHistoryIndex, workspaceHistorySession, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { readWorkspacePage } from './workspacePageRouting';
 
 export type SavedProject = { id: string; title: string; templateId?: string; createdAt?: number; openedAt?: number };
@@ -57,10 +57,10 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
   useEffect(() => {
     if (navigate === navigateWorkspace) return;
     initializeWorkspaceHistory();
-    let previousUrl = location.href, previousIndex = workspaceHistoryIndex();
+    let previousUrl = location.href, previousIndex = workspaceHistoryIndex(), previousSession = workspaceHistorySession();
     let cancelled = false, generation = 0;
     let restoringUrl: string | null = null;
-    const accepted = () => { previousUrl = location.href; previousIndex = workspaceHistoryIndex(); generation++; };
+    const accepted = () => { previousUrl = location.href; previousIndex = workspaceHistoryIndex(); previousSession = workspaceHistorySession(); generation++; };
     const restore = async () => {
       const target = location.href, targetIndex = workspaceHistoryIndex(), attempt = ++generation;
       if (target === restoringUrl) {
@@ -84,7 +84,7 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
         if (cancelled || attempt !== generation || location.href !== target) return;
         // Restore our entry without truncating Forward history. Older/external
         // entries have no index, so replace only that unknown entry as a fallback.
-        if (previousIndex !== null && targetIndex !== null && previousIndex !== targetIndex) {
+        if (previousSession === workspaceHistorySession() && previousIndex !== null && targetIndex !== null && previousIndex !== targetIndex) {
           restoringUrl = previousUrl;
           history.go(previousIndex - targetIndex);
         }

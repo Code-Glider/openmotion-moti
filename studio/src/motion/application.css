@@ -1,6 +1,6 @@
 /* Application geometry; all presentation primitives come from the design system. */
 .om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: var(--motion-space-48) minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
-.om-app-header { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
+.om-app-header { container-type: inline-size; grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
 .om-app-leading { display: flex; align-items: center; gap: var(--motion-space-8); flex-shrink: 0; }
 [data-motion-studio] .om-app-sidebar-toggle { justify-content: center; width: 28px; min-height: 28px; padding: 0; }
 .om-application[data-navigation-collapsed="true"] { grid-template-columns: 0px minmax(0, 1fr); }
@@ -178,12 +178,6 @@
   .om-model-filters .om-field { flex-basis: 100%; }
   .om-provider-form .om-settings-row > .om-muted { max-width: 100%; }
 }
-@media (max-width: 400px) {
-  .om-app-header { gap: var(--motion-space-8); padding-inline: var(--motion-space-8); }
-
-  .om-app-header:has(.om-app-navigation button) .om-app-brand { display: none; }
-}
-
 .om-agent-connection { display: grid; gap: var(--motion-space-20); min-width: 0; }
 .om-agent-connection .om-code-block { max-height: 200px; overflow: auto; }
 .om-agent-connection details > summary { cursor: pointer; padding-block: var(--motion-space-8); }

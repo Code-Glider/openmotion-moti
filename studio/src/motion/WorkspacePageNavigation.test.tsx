@@ -34,6 +34,8 @@ const page = () => readWorkspacePage(location.search);
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === label || node.textContent?.trim() === label)!;
 const click = async (label: string) => { expect(button(label), label).toBeTruthy(); await act(async () => button(label).click()); };
 const traverse = async (delta: number) => { await act(async () => { history.go(delta); await new Promise(resolve => setTimeout(resolve, 0)); }); };
+const historyButton = (label: string, scope = '.om-app-header') => container.querySelector<HTMLButtonElement>(`${scope} .om-history-navigation button[aria-label="${label}"]`)!;
+const clickHistory = async (label: string, scope?: string) => { await act(async () => { historyButton(label, scope).click(); await new Promise(resolve => setTimeout(resolve, 0)); }); };
 async function mount(key = 0) { await act(async () => root.render(<I18nProvider initialLocale="en"><MotionApp key={key} /></I18nProvider>)); }
 beforeEach(() => {
   localStorage.clear(); history.replaceState(null, '', firstUrl);
@@ -134,6 +136,37 @@ it('restores provider details and returns to the providers list through history'
   expect(container.querySelector('.om-provider-settings')?.getAttribute('data-detail')).toBe('false');
 });
 
+it('uses the header controls for visited pages, preserves Forward on reload and drops abandoned destinations', async () => {
+  await mount();
+  expect(historyButton('Back').disabled).toBe(true);
+  expect(historyButton('Forward').disabled).toBe(true);
+  await click('MCP · Connect Agent'); await click('Settings');
+  expect(historyButton('Back').disabled).toBe(false);
+  await clickHistory('Back'); expect(page().settings).toBe('mcp');
+  expect(historyButton('Forward').disabled).toBe(false);
+  await mount(1);
+  expect(historyButton('Forward').disabled).toBe(false);
+  await clickHistory('Forward'); expect(page().settings).toBe('general');
+  expect(historyButton('Forward').disabled).toBe(true);
+  await clickHistory('Back'); await clickHistory('Back');
+  expect(historyButton('Back').disabled).toBe(true);
+  expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
+  await clickHistory('Forward'); expect(page().settings).toBe('mcp');
+  await click('Help'); expect(historyButton('Forward').disabled).toBe(true);
+});
+
+it('keeps history controls inside the active template dialogs', async () => {
+  const library = 'dialog[aria-label="Template library"] > div > header';
+  const detail = 'dialog[aria-label="Template preview"] > header';
+  await mount(); await click('MCP · Connect Agent'); await click('Explore templates');
+  await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
+  await clickHistory('Back', detail); expect(page().template).toBeNull();
+  expect(historyButton('Forward', library).disabled).toBe(false);
+  await clickHistory('Forward', library); expect(page().template).toBe('product-promo');
+  await clickHistory('Back', detail); await clickHistory('Back', library);
+  expect(page()).toMatchObject({ settings: 'mcp', templates: false });
+});
+
 it('restores template details from a copied link and closes back to the originating MCP page', async () => {
   await mount(); await click('MCP · Connect Agent'); await click('Claude Code'); await click('Explore templates');
   expect(page()).toMatchObject({ templates: true, settings: 'mcp' });
@@ -154,7 +187,7 @@ it('restores a rejected project history entry without losing the later Forward d
   await click('Second project');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
   editor.fail = true;
-  await traverse(-1); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  await clickHistory('Back'); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
   expect(new URLSearchParams(location.search).get('project')).toBe(second);
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
   expect(document.querySelector('[data-feedback-layer] [role=alert]')).not.toBeNull();

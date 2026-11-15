@@ -12,12 +12,13 @@ import { repositorySupportLinks } from './githubRepository';
 import type { SettingsSection } from './SettingsCenter';
 import type { ReactNode } from 'react';
 import type { MouseEvent } from 'react';
+import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
 
 export function ApplicationHeader({ settings }: { settings: SettingsSection | null }) {
   const { t } = useI18n();
   const { openHome, openModelSettings, navigationCollapsed, toggleNavigation } = useWorkspaceChrome();
   return <header className="om-app-header">
-    <div className="om-app-leading"><Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><button className="om-nav-item om-app-sidebar-toggle" onClick={toggleNavigation} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><RemixIcon name="side-bar-line" size={16} /></button></Tooltip><div className="om-app-brand"><BrandLogo /></div></div>
+    <div className="om-app-leading"><Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><button className="om-nav-item om-app-sidebar-toggle" onClick={toggleNavigation} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><RemixIcon name="side-bar-line" size={16} /></button></Tooltip><WorkspaceHistoryNavigation /><div className="om-app-brand"><BrandLogo compact /></div></div>
     <div className="om-app-navigation">{settings ? <button className="om-nav-item" onClick={openHome} aria-label={t('Back to home')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Back to home')}</span></button> : null}</div>
     <div className="om-app-header-actions"><div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>{!settings && <ModelSwitcher openSettings={openModelSettings} />}{settings && <Tooltip label={t('Close settings')}><button className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button></Tooltip>}</div>
   </header>;

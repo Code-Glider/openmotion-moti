@@ -1,5 +1,6 @@
 import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { GitHubLink } from './GitHubLink';
+import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
 import { GithubLogo } from '@phosphor-icons/react';
 import { templateRepositoryUrl } from './githubRepository';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -403,7 +404,8 @@ export function TemplateLibraryDialog(props: Props) {
   }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
-        <div className={styles.wordmark}><BrandLogo /><span className={styles.libraryLabel}>{t('Template library')}</span></div>
+        {props.onTemplateChange && <WorkspaceHistoryNavigation />}
+        <div className={styles.wordmark}><BrandLogo compact /><span className={styles.libraryLabel}>{t('Template library')}</span></div>
         <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
         <GitHubLink />
         <button ref={libraryClose} className={styles.iconButton} disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')} title={t('Close template library')}><MotionIcon name="close" size={22} /></button>
@@ -464,10 +466,11 @@ export function TemplateLibraryDialog(props: Props) {
       {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
       {!loading && !visible.length && !error && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching templates. Try another name, creator or style.')}</p><button onClick={reset}>{t('Clear filters')}</button></div>}
     </main>
-    <dialog ref={detail} className={styles.detail} aria-label={t('Template preview')} onCancel={event => { event.preventDefault(); closeDetail(); }} onClose={() => { setPreview(null); setPrompt(''); detailView.current = undefined; }} onKeyDown={event => {
+    <dialog ref={detail} className={styles.detail} data-history-navigation={Boolean(props.onTemplateChange)} aria-label={t('Template preview')} onCancel={event => { event.preventDefault(); closeDetail(); }} onClose={() => { setPreview(null); setPrompt(''); detailView.current = undefined; }} onKeyDown={event => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }
     }}>
+      {preview && props.onTemplateChange && <header className={styles.historyHeader}><WorkspaceHistoryNavigation /><BrandLogo /></header>}
       {preview && <div className={styles.detailGrid}>
         <div className={styles.stage}>
           {preview.posterUrl && <img className={styles.ambient} src={preview.posterUrl} alt="" aria-hidden="true" />}
