@@ -64,6 +64,7 @@
 [data-motion-studio] .om-nav-item:focus-visible { outline-offset: -2px; }
 [data-motion-studio] .om-button[data-primary]:enabled:hover { background: var(--motion-action-hover); color: var(--motion-on-action); }
 /* Chrome states stay quieter than the workspace's primary actions. */
+[data-motion-studio] .om-rail-button { justify-content: center; width: var(--motion-control); height: var(--motion-control); min-height: var(--motion-control); aspect-ratio: 1; flex-shrink: 0; padding: 0; }
 [data-motion-studio] :is(.om-rail-button, .om-app-sidebar-toggle) { color: var(--motion-chrome-icon); }
 [data-motion-studio] :is(.om-rail-button, .om-app-sidebar-toggle):enabled:hover { color: var(--motion-text); background: var(--motion-chrome-hover); }
 [data-motion-studio] .om-rail-button:is([aria-pressed="true"], [aria-current="page"], [aria-expanded="true"]) { color: var(--motion-strong); background: var(--motion-chrome-active); }
