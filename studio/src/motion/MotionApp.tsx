@@ -6,6 +6,7 @@ import { requestedProject, validWorkspaceProject } from './workspaceRouting';
 import type { SessionDetail, SessionArtifact } from '../../../shared/session';
 import { ArtifactViewer } from './ArtifactViewer';
 import { MotionLoading } from './MotionLoading';
+import { RecoveryScreen } from '../components/RecoveryScreen';
 import { trackMotion } from './tracking';
 
 const noPendingSaves = async () => {};
@@ -70,7 +71,7 @@ export function MotionApp() {
   };
   return <WorkspaceFrame waitForSaves={noPendingSaves} projectId={ready?.artifact?.projectId}
     sessionId={libraryOnly ? undefined : ready?.sessionId} onLibraryClose={libraryOnly ? closeLibrary : undefined}>
-    {error ? <div className="motion-route-state" role="alert"><h1>{t('Could not open project')}</h1><p>{t(error)}</p><div><WorkspaceMenuButton /><a className="motion-button" href="/">{t('Open active project')}</a><button className="motion-button" onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div></div>
+    {error ? <RecoveryScreen title={t('Could not open project')} message={error}><button className="om-button" data-primary onClick={() => retry(value => value + 1)}>{t('Retry')}</button><a className="om-button" href="/">{t('Open active project')}</a></RecoveryScreen>
       : ready ? ready.artifact ? <ArtifactViewer artifact={ready.artifact} /> : <div className="motion-route-state"><WorkspaceMenuButton />{t('Create a project with your Agent to start editing.')}</div>
       : libraryOnly ? <TemplateLibraryLanding /> : <MotionLoading />}
   </WorkspaceFrame>;

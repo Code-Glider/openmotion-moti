@@ -18,6 +18,8 @@ import {
 import type { TimelineTrackGroupInfo } from "./useTimelineTrackDerivations";
 import { groupAutomationElement } from "./groupAutomationElement";
 import { AUTOMATION_LANE_H } from "./automationLaneHeight";
+import { useMvpEditor } from "../../motion/StudioHost";
+import { centerTimelineTracks } from "./timelineTrackAlignment";
 
 /** Automation rows the GROUP itself owns — its `data-automation`, not its members'. */
 function groupOwnLaneCount(group: TimelineTrackGroupInfo): number {
@@ -226,13 +228,9 @@ function useTimelineRowHeights(
     selectedElementId,
     selectedElementIds,
   ]);
-  const rowGeometryRef = useRef<TimelineRowGeometry>(rowGeometry);
-  rowGeometryRef.current = rowGeometry;
   return {
     laneCounts,
     rowGeometry,
-    rowGeometryRef,
-    rowHeights: rowGeometry.rowHeights,
   };
 }
 
@@ -242,7 +240,9 @@ export function useTimelineTrackLayout(
   selectedElementId: string | null,
   selectedElementIds: ReadonlySet<string>,
   trackPadding?: TimelineTrackPadding,
+  viewportHeight = 0,
 ) {
+  const centered = useMvpEditor();
   const { tracks, trackStyles, trackOrder, groups, trackGroupOf } =
     useTimelineTrackDerivations(expandedElements);
   const trackOrderRef = useRef(trackOrder);
@@ -253,14 +253,17 @@ export function useTimelineTrackLayout(
   );
   const trackInsertLayoutRef = useRef(trackInsertLayout);
   trackInsertLayoutRef.current = trackInsertLayout;
-  const { laneCounts, rowGeometry, rowGeometryRef, rowHeights } = useTimelineRowHeights(
+  const { laneCounts, rowGeometry: naturalGeometry } = useTimelineRowHeights(
     tracks,
     gsapAnimations,
     selectedElementId,
     selectedElementIds,
     groups,
-    trackPadding,
+    centered ? { top: trackPadding?.top ?? TRACK_H, bottom: trackPadding?.bottom ?? TRACK_H } : trackPadding,
   );
+  const rowGeometry = useMemo(() => centered ? centerTimelineTracks(naturalGeometry, viewportHeight) : naturalGeometry, [centered, naturalGeometry, viewportHeight]);
+  const rowGeometryRef = useRef(rowGeometry);
+  rowGeometryRef.current = rowGeometry;
 
   return {
     tracks,
@@ -271,7 +274,8 @@ export function useTimelineTrackLayout(
     laneCounts,
     rowGeometry,
     rowGeometryRef,
-    rowHeights,
+    rowHeights: rowGeometry.rowHeights,
+    intrinsicHeight: naturalGeometry.canvasHeight,
     groups,
     trackGroupOf,
   };

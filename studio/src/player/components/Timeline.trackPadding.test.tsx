@@ -102,6 +102,7 @@ describe("Timeline trackPadding", () => {
     const ghost = host.querySelector<HTMLElement>('[data-testid="timeline-drag-landing"]');
     expect(top(ghost)).toBe(`${RULER_H + TRACK_H + CLIP_Y}px`);
     pointer(window, "pointermove", RULER_H + 3 * TRACK_H + TRACK_H / 2);
+    await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
     const lane = host.querySelector<HTMLElement>("[data-timeline-new-track-lane]");
     expect(top(lane)).toBe(`${RULER_H + 3 * TRACK_H}px`);
     expect(lane?.style.height).toBe(`${TRACK_H}px`);

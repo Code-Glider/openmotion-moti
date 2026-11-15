@@ -22,7 +22,7 @@ test('catalog returns a local searchable index; disk cache revalidates with ETag
   const catalog = new TemplateCatalog(directory, { fetch: remote.request });
   const [index, page] = await Promise.all([catalog.index(), catalog.page({ query: '品牌' })]);
   assert.equal(remote.requests.length, 1);
-  assert.equal(index.total, 4); // One published template and three built-ins.
+  assert.equal(index.total, 5); // One published template and four built-ins.
   assert.equal('items' in index, false);
   const lines = (await readFile(index.indexPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   assert.equal(lines[0].templateId, page.items[0].id);

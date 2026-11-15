@@ -4,6 +4,8 @@ import { useI18n } from '../../i18n/I18n';
 import { RemixIcon } from '../../icons/RemixIcons';
 import { errorNoticeMessage, type ErrorContext } from './errorNoticeMessage';
 import './errorNotice.css';
+import { useToast } from '../../hooks/useToast';
+import { StudioToastViewport } from '../StudioToastViewport';
 
 export function ErrorNotice({ message, context = 'operation', compact = false, action, onDismiss }: {
   message: string;
@@ -16,11 +18,11 @@ export function ErrorNotice({ message, context = 'operation', compact = false, a
   const id = useId();
   const [expanded, setExpanded] = useState(false);
   useEffect(() => { recordBrowserDiagnostic('operation_error', message); }, [message]);
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const toast = useToast();
   const summary = errorNoticeMessage(message, context);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(message); setCopyState('copied'); }
-    catch { setCopyState('failed'); }
+    try { await navigator.clipboard.writeText(message); toast.showToast('Copied!', 'info', 'feedback'); }
+    catch { toast.showToast('Copy failed. Select the details to copy them.', 'error', 'feedback'); }
   };
   return <div className={`motion-error-notice${compact ? ' motion-error-notice-compact' : ''}`}>
     <div className="motion-error-notice-row">
@@ -33,8 +35,8 @@ export function ErrorNotice({ message, context = 'operation', compact = false, a
     </div>
     {expanded && <div id={id} className="motion-error-notice-details">
       <pre tabIndex={0} aria-label={t('Error details')}>{message}</pre>
-      <button type="button" onClick={() => void copy()}>{t(copyState === 'copied' ? 'Copied!' : 'Copy error information')}</button>
-      <span role="status">{copyState === 'failed' ? t('Copy failed. Select the details to copy them.') : copyState === 'copied' ? t('Copied!') : ''}</span>
+      <button type="button" onClick={() => void copy()}>{t('Copy error information')}</button>
     </div>}
+    <StudioToastViewport {...toast} />
   </div>;
 }

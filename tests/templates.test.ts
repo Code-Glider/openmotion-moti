@@ -21,7 +21,7 @@ test('official templates open in native Studio, preserve edits and switch the pr
   const post = (url: string, expectedRevision: string) => fetch(base + url, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedRevision }) });
   try {
     const catalog = await (await fetch(base + '/api/templates')).json();
-    assert.deepEqual(catalog.templates.map(item => item.id), ['product-promo', 'nyt-graph', 'decision-tree']);
+    assert.deepEqual(catalog.templates.map(item => item.id), ['product-promo', 'nyt-graph', 'decision-tree', 'openmotion-welcome']);
     const opened: { id: string; directory: string }[] = [];
     for (const template of catalog.templates) {
       const before = await store.get(), previousStudio = running.studio;
@@ -47,7 +47,7 @@ test('official templates open in native Studio, preserve edits and switch the pr
       opened.push({ id: openedProject.projectId, directory: store.projectDirectory });
       assert.equal((await post(`/api/templates/${template.id}/open`, before.revision)).status, 409);
     }
-    const saved = await (await fetch(base + '/motion-api/projects')).json(); assert.equal(saved.projects.length, 4);
+    const saved = await (await fetch(base + '/motion-api/projects')).json(); assert.equal(saved.projects.length, 5);
     assert.equal((await post('/api/templates/unknown/open', (await store.get()).revision)).status, 400);
     assert.equal(store.projectDirectory, opened.at(-1)!.directory);
     assert.equal((await post('/motion-api/projects/project/open', (await store.get()).revision)).status, 200);

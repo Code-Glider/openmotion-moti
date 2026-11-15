@@ -129,6 +129,8 @@ export interface TimelineEditCallbacks {
   ) => Promise<TimelineEditOutcome | void>;
   onBlockedEditAttempt?: (element: TimelineElement, intent: BlockedTimelineEditIntent) => void;
   onLinkEdit?: (edit: TimelineLinkEdit) => Promise<void> | void;
+  /** Delete exactly this row, without following linked clips on other tracks. */
+  onDeleteTrack?: (track: number) => Promise<void> | void;
   onDeleteElementOnly?: (element: TimelineElement) => Promise<void> | void;
   onSplitElement?: (element: TimelineElement, splitTime: number) => Promise<void> | void;
   onRazorSplit?: (element: TimelineElement, splitTime: number) => Promise<void> | void;

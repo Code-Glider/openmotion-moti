@@ -8,6 +8,7 @@ import type { TimelineElement } from '../store/timelineElement';
 import { usePlayerStore } from '../store/playerStore';
 import { probeMediaUrl } from '../lib/mediaProbe';
 import { authoredSrcPath, resolveMediaPreviewUrl } from './thumbnailUtils';
+import { useTimelineReadOnlyPress } from './timelineReadOnly';
 
 const buttonClass = 'flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-3 hover:bg-hover hover:text-text-0 disabled:opacity-40';
 
@@ -22,6 +23,7 @@ export function TimelineTrackAudioControls({ elements, trackLabel, isAudioOnly, 
   const { t } = useI18n();
   const { onSetElementsAttributeQuiet } = useTimelineEditContextOptional();
   const shell = useStudioShellContextOptional();
+  const readOnly = useTimelineReadOnlyPress();
   const projectId = usePlayerStore(state => state.timelineProjectId);
   const sourceUrl = (el: TimelineElement) => el.src
     ? projectId ? resolveMediaPreviewUrl(authoredSrcPath(el.src), projectId, window.location.origin) : el.src
@@ -55,7 +57,7 @@ export function TimelineTrackAudioControls({ elements, trackLabel, isAudioOnly, 
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
   useEffect(() => { setDraft(sliderVolume); setDirty(false); }, [signature, open]);
-  const disabled = busy || !onSetElementsAttributeQuiet || !!shell?.writeBlockedReason || !!shell?.renderQueue?.isRendering;
+  const disabled = busy || !!readOnly || !onSetElementsAttributeQuiet || !!shell?.writeBlockedReason || !!shell?.renderQueue?.isRendering;
   if (!clips.length) return null;
 
   const save = async (attr: string, value: string | null, label: string) => {

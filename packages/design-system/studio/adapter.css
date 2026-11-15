@@ -26,6 +26,6 @@
 }
 
 /* Header actions share one softly rounded rectangle, including neutral links. */
-:root[data-motion-ui][data-motion-studio] .motion-studio-header-centered :is(button, a) {
+:root[data-motion-ui][data-motion-studio] :is(.motion-studio-header-compact, .om-app-header) :is(button, a) {
   border-radius: var(--motion-radius-md);
 }

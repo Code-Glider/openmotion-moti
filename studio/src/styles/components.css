@@ -15,11 +15,16 @@
 .motion-player-secondary { gap: 6px; }
 
 @container motion-player (max-width: 420px) {
-  .motion-player-secondary { gap: 2px; }
+  .motion-player-secondary { gap: var(--motion-space-2); }
   .motion-player-control-row {
-    column-gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 32px auto;
+    column-gap: var(--motion-space-4);
   }
-  .motion-player-optional { display: none; }
+}
+
+@container motion-player (max-width: 300px) {
+  .motion-player-control-row { grid-template-columns: minmax(0, 1fr) 32px; }
+  .motion-player-secondary { grid-column: 1 / -1; }
 }
 
 .hf-volume-vertical-range {

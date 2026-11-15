@@ -16,6 +16,7 @@ import "./styles/studio.css";
 import "./motion/theme.css";
 import "./motion/workspace.css";
 import "../../packages/design-system/studio.css";
+import "./motion/application.css";
 import { MotionStudioHost } from "./motion/MotionStudioHost";
 import { initializeDiagnostics, recordBrowserDiagnostic } from './motion/diagnostics';
 import { bindEmbeddedStudioTheme } from './utils/studioTheme';

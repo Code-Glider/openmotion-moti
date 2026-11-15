@@ -1,4 +1,4 @@
-import { iconSprite } from "../index.js";
+import { IconGlyph } from "./IconGlyph";
 import { forwardRef } from "react";
 import type { Icon, IconProps } from "@phosphor-icons/react";
 export type { Icon, IconProps } from "@phosphor-icons/react";
@@ -17,7 +17,7 @@ export const RemixIcon = forwardRef<SVGSVGElement, IconProps & { name: string }>
       fill="currentColor" stroke="none" data-remix-icon={variant}
       style={mirrored ? { ...style, transform: `${style?.transform ?? ""} scaleX(-1)` } : style}>
       {alt && <title>{alt}</title>}
-      <use href={`${iconSprite}#ri-${variant}`} />
+      <IconGlyph id={`ri-${variant}`} />
       {children}
     </svg>;
   },

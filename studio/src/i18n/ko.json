@@ -1805,5 +1805,13 @@
   "Usage guide": "사용 안내",
   "API origin": "API 주소",
   "Use the gateway address shown on your Cloud API key page.": "Cloud API 키 페이지에 표시된 게이트웨이 주소를 입력하세요.",
-  "Save settings": "설정 저장"
+  "Save settings": "설정 저장",
+  "Fit timeline to content": "타임라인을 콘텐츠에 맞추기",
+  "Resize track controls": "트랙 컨트롤 너비 조절",
+  "Track {number}": "트랙 {number}",
+  "Lock track": "트랙 잠금",
+  "Unlock track": "트랙 잠금 해제",
+  "Delete track": "트랙 삭제",
+  "Unlock the track before deleting it": "삭제하기 전에 트랙 잠금을 해제하세요",
+  "Open the composition to delete this track": "이 트랙을 삭제하려면 컴포지션을 여세요"
 }

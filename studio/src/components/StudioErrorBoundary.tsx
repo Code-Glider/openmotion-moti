@@ -3,8 +3,7 @@ import { useStudioHost } from '../motion/StudioHost';
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { trackStudioEvent } from "../utils/studioTelemetry";
 import { CrashFeedbackPrompt } from "./feedback/CrashFeedbackPrompt";
-import { ErrorNotice } from './ui/ErrorNotice';
-import { DiagnosticExport } from '../motion/DiagnosticExport';
+import { RecoveryScreen } from './RecoveryScreen';
 import { recordBrowserDiagnostic } from '../motion/diagnostics';
 
 interface Props {
@@ -44,34 +43,10 @@ function CrashScreen({ error, retry }: { error: Error; retry: () => void }) {
   const { t } = useI18n();
   const host = useStudioHost();
   return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-neutral-950 font-sans text-neutral-200">
-        <div className="text-lg font-semibold">{t('Something went wrong')}</div>
-        <div className="max-w-[480px] text-center text-[13px] text-neutral-500">
-          <ErrorNotice message={error.message} />
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <button
-            onClick={retry}
-            className="rounded-md bg-accent px-5 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover active:scale-[0.98]"
-          >
-            {t('Try again')}
-          </button>
-          {/* If the error recurs immediately, "Try again" loops — a full reload
-              is the recovery path that always works. */}
-          <button
-            onClick={() => window.location.reload()}
-            className="rounded-md border border-neutral-700 px-5 py-2 text-sm font-medium text-neutral-300 transition-colors hover:bg-neutral-800 active:scale-[0.98]"
-          >
-            {t('Reload Studio')}
-          </button>
-        </div>
-        <DiagnosticExport />
-        {/* The crash report tells us what broke; only the user can tell us what
-            they were doing when it did. This is also the one screen where they
-            have nothing else to get on with. */}
-        <div className="mt-6">
-          {host?.feedback !== false && <CrashFeedbackPrompt />}
-        </div>
-      </div>
+      <RecoveryScreen fullscreen title={t('Something went wrong')} message={error.message}
+        feedback={host?.feedback !== false ? <CrashFeedbackPrompt /> : undefined}>
+        <button className="om-button" data-primary onClick={retry}>{t('Try again')}</button>
+        <button className="om-button" onClick={() => window.location.reload()}>{t('Reload Studio')}</button>
+      </RecoveryScreen>
   );
 }

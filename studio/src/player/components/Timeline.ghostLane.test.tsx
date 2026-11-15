@@ -75,6 +75,7 @@ describe("Timeline ghost lane", () => {
     pointer(window, "pointermove", ROW1_MID);
     expect(ghost()?.dataset.active).toBeUndefined();
     pointer(window, "pointermove", GHOST_MID);
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     expect(ghost()?.dataset.active).toBe("true");
     // Dragging the last track's clip adds a preview row; the lane must stay under the pointer.
     expect(ghost()?.style.top).toBe(`${getTimelineRowTop(3) + CLIP_Y}px`);

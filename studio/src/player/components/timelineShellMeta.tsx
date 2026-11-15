@@ -9,6 +9,7 @@ import {
   shouldIgnoreTimelinePointerDown,
 } from "./timelineProviderStateBuilders";
 import { TimelineRazorGuideOverlay } from "./TimelineRazorInteraction";
+import { GUTTER } from "./timelineLayout";
 import type { TimelineTheme } from "./timelineTheme";
 
 type ViewportHandlers = Pick<
@@ -30,8 +31,8 @@ export interface TimelineShellMetaInputs {
   activeTool: string;
   shiftHeld: boolean;
   labelMode: boolean;
-  labelColumnWidth: number;
   contentOrigin: number;
+  contentGutter?: number;
   zoomMode: "fit" | "manual";
   theme: Pick<TimelineTheme, "shellBackground" | "shellBorder">;
   razor: {
@@ -91,7 +92,7 @@ export function buildTimelineShellMeta(input: TimelineShellMetaInputs): Timeline
       onLostPointerCapture: pointer.onPointerCancel,
     },
     elementCount: input.elementCount,
-    labelColumnWidth: input.labelColumnWidth,
+    labelColumnWidth: input.labelMode ? input.contentOrigin - (input.contentGutter ?? GUTTER) : 0,
     razorGuide:
       activeTool === "razor" && razor.razorGuideX !== null ? (
         <TimelineRazorGuideOverlay x={razor.razorGuideX} />

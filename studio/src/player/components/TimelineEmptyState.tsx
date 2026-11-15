@@ -1,7 +1,7 @@
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
 import type { DragEventHandler } from "react";
-import { CLIP_Y, GUTTER, MVP_LABEL_COL_W, MVP_GUTTER, RULER_H, TRACK_H, TRACKS_TOP_PAD } from "./timelineLayout";
+import { CLIP_Y, GUTTER, MVP_LABEL_COL_W, RULER_H, TRACK_H, TRACKS_TOP_PAD } from "./timelineLayout";
 import { useMediaGateway } from "../../motion/MediaGatewayContext";
 import { usePlayerStore } from "../store/playerStore";
 import { mediaPopoverAnchor } from "../../motion/mediaPopoverPosition";
@@ -35,7 +35,7 @@ export function TimelineEmptyState({
   const { t } = useI18n();
   const mvp = useMvpEditor();
   const gateway = useMediaGateway();
-  const emptyOrigin = mvp ? (contentOrigin ?? MVP_LABEL_COL_W + MVP_GUTTER) : GUTTER;
+  const emptyOrigin = mvp ? (contentOrigin ?? MVP_LABEL_COL_W) : GUTTER;
   const hideGuide = !!gateway?.generationOpen && !isDragOver;
   return (
     <div
@@ -80,7 +80,7 @@ export function TimelineEmptyState({
           style={{ top: trackTopPadding, height: TRACK_H }}
           aria-hidden={!isDragOver}
         >
-          <span className="motion-empty-timeline-label" style={{ width: MVP_LABEL_COL_W }}>A-roll</span>
+          <span className="motion-empty-timeline-label" style={{ width: emptyOrigin }}>V1</span>
           <div className="motion-empty-timeline-lane" style={{ left: emptyOrigin, top: CLIP_Y, bottom: CLIP_Y }}>{isDragOver && <span>{t("Drop media files to import")}</span>}</div>
         </div> : <div
           data-motion-empty-media

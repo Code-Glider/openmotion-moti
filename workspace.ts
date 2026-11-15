@@ -15,6 +15,7 @@ import type { ExportExpectation } from './shared/export-spec.ts';
 import { validateInstruction, type ProjectConversation, type ProjectMessage } from './shared/conversation.ts';
 import { creationMode, type CreativeSession, type SessionDetail } from './shared/session.ts';
 import { templateConfig } from './shared/template-config.ts';
+import { copyTemplate, welcomeTemplateId } from './template-library.ts';
 
 const legacyDataDir = fileURLToPath(new URL('.motion-data/', import.meta.url));
 const productionDataDir = process.platform === 'darwin' && !existsSync(legacyDataDir)
@@ -351,7 +352,7 @@ export class WorkspaceStore {
         if (old.project) legacy = validateProject(old.project);
       } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
       if (legacy) await migrateLegacy(legacy, staging);
-      else await cp(path.join(pluginRoot, 'templates'), staging, { recursive: true });
+      else await copyTemplate(welcomeTemplateId, staging, runtimeRoot);
       await copyFile(path.join(runtimeRoot, 'node_modules/gsap/dist/gsap.min.js'), path.join(staging, 'assets/gsap.min.js'));
       await writeFile(path.join(staging, 'hyperframes.json'), JSON.stringify(nativeProjectConfig, null, 2));
       // The legacy workspace.json remains untouched. Never replace an existing native entry.

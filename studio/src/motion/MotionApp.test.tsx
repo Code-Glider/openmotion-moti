@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MotionApp, resolveWorkspaceProject } from './MotionApp';
-import { I18nProvider } from '../i18n/I18n';
+import { I18nProvider, translate } from '../i18n/I18n';
 import { trackMotion } from './tracking';
 
 vi.mock('../App', () => ({ StudioApp: () => null }));
@@ -109,7 +109,7 @@ it.each(['deleted project', 'empty session'])('keeps the project drawer reachabl
   const root = createRoot(container);
   try {
     await act(async () => root.render(<I18nProvider><MotionApp /></I18nProvider>));
-    const toggle = container.querySelector<HTMLButtonElement>('.motion-workspace-menu');
+    const toggle = container.querySelector<HTMLButtonElement>(`.om-app-rail button[aria-label="${translate('zh-CN', 'Home')}"]`);
     expect(toggle).not.toBeNull();
     await act(async () => toggle!.click());
     expect(document.querySelector('.motion-session')?.textContent).toContain('Existing project');
@@ -132,7 +132,11 @@ it('shows the brand while opening and exposes failures instead of leaving the sp
     expect(container.querySelector('[role="status"] .motion-loading-mark')).not.toBeNull();
     await act(async () => fail(new Error('Project unavailable')));
     expect(container.querySelector('.motion-loading')).toBeNull();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Project unavailable');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+    expect(container.querySelector('pre')).toBeNull();
+    const details = container.querySelector<HTMLButtonElement>('.motion-error-notice-actions button')!;
+    await act(async () => details.click());
+    expect(container.querySelector('pre')?.textContent).toBe('Project unavailable');
   } finally {
     act(() => root.unmount());
     container.remove();

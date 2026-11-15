@@ -7,9 +7,17 @@ import { TIMELINE_SCROLL_SETTLE_MS } from "./useTimelineScrollViewport";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const resizeObservers = new Set<MockResizeObserver>();
 class MockResizeObserver {
+  private target?: Element;
   constructor(private readonly callback: ResizeObserverCallback) {}
   observe(target: Element) {
+    this.target = target;
+    resizeObservers.add(this);
+    this.resize();
+  }
+  resize() {
+    const target = this.target!;
     this.callback(
       [
         {
@@ -21,7 +29,7 @@ class MockResizeObserver {
     );
   }
   unobserve() {}
-  disconnect() {}
+  disconnect() { resizeObservers.delete(this); }
 }
 
 const originalResizeObserver = globalThis.ResizeObserver;
@@ -395,6 +403,40 @@ describe("Timeline row virtualization", { timeout: 30_000 }, () => {
   });
 });
 
+describe("MVP centered track geometry", () => {
+  it.each(["0", "1"])("centers tracks, retains intrinsic sizing and aligns drops with virtualization=%s", async flag => {
+    vi.stubEnv("VITE_STUDIO_TIMELINE_ROW_VIRTUALIZATION_ENABLED", flag);
+    vi.resetModules();
+    const [{ Timeline }, { usePlayerStore }, { StudioHostContext }, { dragTimelineFixtureAsset }] = await Promise.all([
+      import("./Timeline"), import("../store/playerStore"), import("../../motion/StudioHost"), import("./timelineMountFixtures"),
+    ]);
+    clientHeight = 400;
+    usePlayerStore.setState({ duration: 10, currentTime: 0, timelineReady: true, elements: clipsByTrack(3, 2, true) });
+    const onAssetDrop = vi.fn();
+    const onContentHeightChange = vi.fn();
+    const { host, root } = await mountTimeline(<StudioHostContext.Provider value={{ mvpEditor: true }}>
+      <Timeline onAssetDrop={onAssetDrop} onContentHeightChange={onContentHeightChange} />
+    </StudioHostContext.Provider>);
+    try {
+      const viewport = host.querySelector<HTMLElement>("[data-timeline-scroll-viewport]")!;
+      for (const height of [400, 560, 200]) {
+        await act(async () => { clientHeight = height; for (const observer of resizeObservers) observer.resize(); });
+        const pad = Math.max(48, (height - 24 - 3 * 48) / 2);
+        const lane = host.querySelector<HTMLElement>('[data-testid="timeline-ghost-lane"]')!;
+        expect(parseFloat(lane.style.top)).toBe(24 + pad + 3 * 48 + 3);
+        expect(onContentHeightChange.mock.calls.at(-1)?.[0]).toBe(24 + 48 + 3 * 48 + 48);
+        dragTimelineFixtureAsset(viewport, "dragover", 24 + pad + 48 + 24);
+        expect(host.querySelector<HTMLElement>('[data-testid="timeline-drop-preview"]')?.style.top).toBe(`${24 + pad + 48 + 3}px`);
+        dragTimelineFixtureAsset(viewport, "drop", 24 + pad + 48 + 24);
+        expect(onAssetDrop).toHaveBeenLastCalledWith("a.png", expect.objectContaining({ track: 1 }));
+      }
+    } finally {
+      act(() => root.unmount()); usePlayerStore.getState().reset();
+      vi.stubEnv("VITE_STUDIO_TIMELINE_ROW_VIRTUALIZATION_ENABLED", "1"); vi.resetModules();
+    }
+  });
+});
+
 /**
  * The rollback build mounts every clip, so the scroll-time concessions
  * windowing makes are pure cost there. This block pins that explicit fallback
@@ -416,13 +458,16 @@ describe("Timeline without row virtualization", { timeout: 30_000 }, () => {
     });
 
     const { StudioHostContext } = await import("../../motion/StudioHost");
+    const onSeek = vi.fn();
     const { host, root } = await mountTimeline(
       <StudioHostContext.Provider value={{ mvpEditor }}><Timeline
+        onSeek={onSeek}
         renderClipContent={() => <span data-rich-content />}
       /></StudioHostContext.Provider>,
     );
     return {
       host,
+      onSeek,
       dispose: () => {
         act(() => root.unmount());
         usePlayerStore.getState().reset();
@@ -432,6 +477,61 @@ describe("Timeline without row virtualization", { timeout: 30_000 }, () => {
     };
   }
 
+  it("resizes the control column with the final pointer sample and keeps the saved width across narrow hosts", async () => {
+    const { host, dispose } = await renderUnvirtualizedTimeline(true);
+    try {
+      const handle = host.querySelector<HTMLElement>('[aria-label="Resize track controls"]')!;
+      handle.setPointerCapture = vi.fn(); handle.releasePointerCapture = vi.fn();
+      const pointer = (type: string, x: number) => handle.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, button: 0, clientX: x }));
+      await act(async () => pointer("pointerdown", 132));
+      await act(async () => pointer("pointermove", 180));
+      await act(async () => pointer("pointerup", 220));
+      const origin = () => Number(host.querySelector<HTMLElement>("[data-timeline-scroll-viewport]")!.dataset.timelineContentOrigin);
+      expect(origin()).toBe(220);
+      expect(host.querySelector<HTMLElement>('[role="rowheader"]')!.style.width).toBe("220px");
+      clientWidth = 320;
+      await act(async () => resizeObservers.forEach(observer => observer.resize()));
+      expect(origin()).toBe(106);
+      clientWidth = 900;
+      await act(async () => resizeObservers.forEach(observer => observer.resize()));
+      expect(origin()).toBe(220);
+      await act(async () => handle.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", shiftKey: true, bubbles: true })));
+      expect(origin()).toBe(210);
+      await act(async () => pointer("pointerdown", 210));
+      await act(async () => pointer("pointermove", 180));
+      await act(async () => pointer("pointercancel", 180));
+      expect(origin()).toBe(210);
+    } finally { dispose(); localStorage.clear(); }
+  });
+
+  it("keeps narrow MVP headers, ruler seeking and drag bounds aligned through resizing", async () => {
+    const { host, onSeek, dispose } = await renderUnvirtualizedTimeline(true);
+    try {
+      const scroller = host.querySelector<HTMLElement>("[data-timeline-scroll-viewport]")!;
+      scroller.setPointerCapture = vi.fn();
+      scroller.releasePointerCapture = vi.fn();
+      for (const width of [320, 480, 900]) {
+        await act(async () => {
+          clientWidth = width;
+          for (const observer of resizeObservers) observer.resize();
+        });
+        const origin = Number(scroller.dataset.timelineContentOrigin);
+        const labelWidth = parseFloat(host.querySelector<HTMLElement>('[role="rowheader"]')!.style.width);
+        expect(origin - labelWidth).toBe(0);
+        expect(Number(scroller.dataset.timelineAutoScrollLeftInset)).toBe(labelWidth);
+        expect(host.querySelector<HTMLElement>(".sticky.left-0")!.style.width).toBe(`${origin}px`);
+        expect(width - origin).toBeGreaterThan(width / 2);
+        if (width === 900) expect(labelWidth).toBe(132);
+        const tick = host.querySelectorAll<HTMLElement>('[data-timeline-grid-cell="major"]')[1]!;
+        const [, minutes, seconds] = /(\d+):(\d+)/.exec(tick.textContent ?? "")!;
+        const at = { bubbles: true, clientX: origin + parseFloat(tick.style.left) + 0.5, clientY: 4, button: 0, pointerId: 1 };
+        await act(async () => tick.dispatchEvent(new PointerEvent("pointerdown", at)));
+        await act(async () => tick.dispatchEvent(new PointerEvent("pointerup", at)));
+        expect(onSeek.mock.calls.at(-1)?.[0]).toBeCloseTo(Number(minutes) * 60 + Number(seconds), 1);
+      }
+    } finally { dispose(); }
+  });
+
   it.each([false, true])("keeps a scrolled-off playhead clipped with aligned headers throughout scrolling (MVP: %s)", async mvp => {
     const { host, dispose } = await renderUnvirtualizedTimeline(mvp);
     try {
@@ -440,14 +540,9 @@ describe("Timeline without row virtualization", { timeout: 30_000 }, () => {
       if (mvp) {
         expect(host.querySelector<HTMLElement>('[role="rowheader"]')?.style.width).toBe("132px");
         expect(scroller.dataset.timelineAutoScrollLeftInset).toBe("132");
-        expect(host.querySelector<HTMLElement>(".sticky.left-0")?.style.width).toBe("144px");
-        expect(host.textContent).toContain("Clip 0");
+        expect(host.querySelector<HTMLElement>(".sticky.left-0")?.style.width).toBe("132px");
+        expect(host.querySelector<HTMLElement>('[role="rowheader"]')?.textContent).not.toContain("Clip 0");
       }
-      const trackHeader = host.querySelector<HTMLElement>('[role="rowheader"]')!;
-      const lane = host.querySelector<HTMLElement>('[role="gridcell"][data-timeline-zoom-scale]')!;
-      const rulerOrigin = host.querySelector<HTMLElement>(".sticky.left-0")!;
-      // Clips and the ruler must agree on time zero after compacting the leading gap.
-      expect(parseFloat(trackHeader.style.width) + parseFloat(lane.style.marginLeft)).toBe(parseFloat(rulerOrigin.style.width));
       await scrollTimelineHorizontally(scroller, 166);
       // The ruler's corner is as wide as the track headers; the glow may overhang by 6.5px.
       const headerWidth = parseFloat(

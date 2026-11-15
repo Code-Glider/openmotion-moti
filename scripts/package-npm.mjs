@@ -6,12 +6,15 @@ import assert from 'node:assert/strict';
 import { PUPPETEER_REVISIONS } from 'puppeteer-core';
 import { releaseProfile } from '../shared/mcp-registry.ts';
 import { distributionFiles } from './distribution.ts';
+import { welcomeSharedAssets } from '../template-library.ts';
 import { packageTemplateConfig } from '../shared/template-config.ts';
 import { checkReleaseVersion, releaseTemplateEnvironment } from './release-version.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 // GitHub serves the full showcase. npm ships the application and its technical documentation.
 function isShowcaseAsset(file) {
+  // The welcome film needs these exact maintained runtime assets and licenses.
+  if (welcomeSharedAssets.some(([source]) => source === file)) return false;
   // Plugin and MCP branding reads these symbols from the installed application.
   if (/^docs\/readme\/opendesign-symbol(?:-dark|-auto)?\.svg$/.test(file)) return false;
   return file === 'scripts/install-library-skill.mjs' || /^(?:examples|library)\//.test(file) || file.startsWith('docs/readme/');

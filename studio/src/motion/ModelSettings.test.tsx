@@ -9,75 +9,46 @@ import { I18nProvider } from '../i18n/I18n';
 let root: Root | undefined;
 afterEach(() => { act(() => root?.unmount()); root = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function type(label: string, value: string) {
-  const el = document.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value);
-  el.dispatchEvent(new Event('input', { bubbles: true }));
+  const input = document.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
 }
+function click(text: string) { const button = [...document.querySelectorAll('button')].find(button => button.textContent?.trim() === text)!; expect(button).toBeTruthy(); button.click(); }
 async function mount() {
-  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function () { this.setAttribute('open', ''); });
-  vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function () { this.removeAttribute('open'); });
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
-  await act(async () => root!.render(<I18nProvider initialLocale="en"><ModelSettings onClose={() => {}} /></I18nProvider>));
+  await act(async () => root!.render(<I18nProvider initialLocale="en"><ModelSettings openAccount={() => {}} /></I18nProvider>));
 }
-
-it('shows the three visible BYOK providers; saving a key enables it and clears the secret input', async () => {
+const account = { id: 'account', label: 'OpenDesign', protocol: 'account', category: 'account', kinds: ['text', 'image'], configured: false, enabled: false, available: false };
+for (const [id, label] of [['fal', 'fal.ai'], ['atlascloud', 'Atlas Cloud'], ['wavespeed', 'WaveSpeedAI']]) it(`saves and removes ${label} credentials without revealing the key or making a paid call`, async () => {
   let configured = false; const writes: unknown[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (init?.method === 'PUT') { const body = JSON.parse(String(init.body)); writes.push(body); configured = !!body.apiKey; return Response.json({}); }
-    if (url.includes('capabilities')) return Response.json({ providers: [
-      { id: 'fal', label: 'fal.ai', configured, credentialSource: configured ? 'stored' : 'none', reason: 'API key required' },
-      { id: 'opendesign', label: 'OpenDesign Cloud', configured: false, credentialSource: 'none', baseUrl: '', reason: 'API key required' },
-      { id: 'codex', label: 'Codex', configured: true }, { id: 'atlascloud', label: 'Atlas Cloud', configured: false, reason: 'API key required' }, { id: 'wavespeed', label: 'WaveSpeedAI', configured: false, reason: 'API key required' }], routes: {} });
-    return Response.json({ models: [], nextOffset: null });
+    if (init?.method === 'PUT') { expect(url).toBe(`/motion-api/settings/providers/${id}`); const body = JSON.parse(String(init.body)); writes.push(body); configured = !!body.apiKey; return Response.json({}); }
+    expect(url).toBe('/motion-api/settings/providers');
+    return Response.json({ providers: [account, { id, label, protocol: 'media', category: 'multimodal', kinds: ['image', 'video', 'audio'], baseUrl: 'https://api.example', configured, enabled: configured, available: configured, credentialSource: configured ? 'stored' : 'none' }], models: [], defaults: {} });
   }));
   await mount();
-  expect(document.body.textContent).toContain('Generation service API settings');
-  expect(document.body.textContent).toContain('Atlas Cloud'); expect(document.body.textContent).toContain('WaveSpeedAI'); expect(document.body.textContent).not.toContain('Codex');
-  expect(document.querySelectorAll('.motion-provider-card')).toHaveLength(3);
-  expect(document.body.textContent).not.toContain('OpenDesign Cloud');
-  expect(document.querySelector('input[type="checkbox"]')).toBeNull();
-  expect(document.querySelector('a[href="/motion-api/models/providers/fal/reference"]')).not.toBeNull();
-  await act(async () => type('fal.ai API key', 'private-fal-test'));
-  const form = document.querySelector('input[aria-label="fal.ai API key"]')!.closest('form')!;
-  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-  expect(writes).toEqual([{ apiKey: 'private-fal-test' }]);
-  expect(document.querySelector<HTMLInputElement>('[aria-label="fal.ai API key"]')!.value).toBe('');
-  expect(form.closest('article')!.textContent).toContain('Configured');
-  expect(document.body.textContent).not.toContain('private-fal-test');
-  expect(document.querySelector('details')).toBeNull();
-  expect(vi.mocked(fetch).mock.calls.every(([url]) => String(url).includes('/models/providers/') || String(url).endsWith('/models/capabilities'))).toBe(true);
-  await act(async () => Array.from(form.querySelectorAll('button')).find(el => el.textContent === 'Remove saved key')!.click());
-  expect(writes[1]).toEqual({ apiKey: null });
-  expect(form.closest('article')!.textContent).toContain('Not configured');
-});
-
-for (const configured of [false, true]) it(`hides Cloud settings without changing its ${configured ? 'saved' : 'empty'} configuration`, async () => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    expect(init?.method).not.toBe('PUT');
-    expect(url).toBe('/motion-api/models/capabilities');
-    return Response.json({ providers: [{ id: 'opendesign', label: 'OpenDesign Cloud', configured, credentialSource: configured ? 'stored' : 'none', baseUrl: 'https://cloud.example', reason: '' }], routes: {} });
-  }));
-  await mount();
-  expect(document.body.textContent).not.toContain('OpenDesign Cloud');
-  expect(document.querySelector('[aria-label="OpenDesign Cloud API key"]')).toBeNull();
-  expect(document.querySelector('[aria-label="OpenDesign Cloud API origin"]')).toBeNull();
-  expect(document.querySelector('a[href="/motion-api/models/providers/opendesign/reference"]')).toBeNull();
-  expect(fetch).toHaveBeenCalledTimes(1);
-});
-
-for (const [id, label] of [['atlascloud', 'Atlas Cloud'], ['wavespeed', 'WaveSpeedAI']]) it(`saves and removes ${label} credentials without loading models`, async () => {
-  let configured = false; const writes: unknown[] = [];
-  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (init?.method === 'PUT') { expect(url).toBe(`/motion-api/models/providers/${id}`); const body = JSON.parse(String(init.body)); writes.push(body); configured = !!body.apiKey; return Response.json({}); }
-    expect(url).toBe('/motion-api/models/capabilities');
-    return Response.json({ providers: [{ id, label, configured, credentialSource: configured ? 'stored' : 'none', reason: '' }], routes: {} });
-  }));
-  await mount();
-  await act(async () => type(`${label} API key`, 'private-new-provider'));
+  expect(document.body.textContent).toContain('One account. Your models, together.');
+  await act(async () => document.querySelectorAll<HTMLButtonElement>('.om-provider-item')[1].click());
+  await act(async () => type(`${label} API key`, 'synthetic-private-key'));
   await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-  expect(writes).toEqual([{ apiKey: 'private-new-provider' }]);
+  expect(writes).toEqual([{ apiKey: 'synthetic-private-key' }]);
   expect(document.querySelector<HTMLInputElement>(`[aria-label="${label} API key"]`)!.value).toBe('');
-  expect(document.body.textContent).toContain('Configured'); expect(document.querySelector('details')).toBeNull();
-  await act(async () => Array.from(document.querySelectorAll('button')).find(el => el.textContent === 'Remove saved key')!.click());
-  expect(writes[1]).toEqual({ apiKey: null }); expect(document.body.textContent).toContain('Not configured');
+  expect(document.querySelector('[role=switch]')?.getAttribute('aria-checked')).toBe('true');
+  expect(document.body.textContent).not.toContain('synthetic-private-key');
+  await act(async () => click('Remove saved key'));
+  expect(writes[1]).toEqual({ apiKey: null });
+  expect(document.querySelector('[role=switch]')?.getAttribute('aria-checked')).toBe('false');
+});
+
+it('searches providers without mutating credentials and recovers from failed directory loading', async () => {
+  let failed = true;
+  const fetcher = vi.fn(async () => failed ? Response.json({ error: 'unavailable' }, { status: 503 }) : Response.json({ providers: [account], models: [], defaults: {} }));
+  vi.stubGlobal('fetch', fetcher); await mount();
+  expect(document.body.textContent).toContain('Could not load settings');
+  failed = false; await act(async () => click('Retry'));
+  await act(async () => type('Search providers', 'absent'));
+  expect(document.body.textContent).toContain('No matching providers');
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Clear filters"]')!.click());
+  expect(document.querySelectorAll('.om-provider-item')).toHaveLength(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });

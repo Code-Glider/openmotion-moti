@@ -64,21 +64,19 @@ export const StudioHeader = memo(function StudioHeader({
 
   return (
     <HeaderFrame>
-    <div className={cn("flex items-center justify-between h-10 px-3 bg-surface shrink-0", !host?.mvpEditor && "border-b border-border-strong", host && "motion-studio-header", host?.mvpEditor && "motion-studio-header-centered")}>
+    <div className={cn("flex items-center justify-between h-10 px-3 bg-surface shrink-0", !host?.mvpEditor && "border-b border-border-strong", host && "motion-studio-header", host?.mvpEditor && "motion-studio-header-compact")}>
       {/* Left: logo + project name */}
       <div className="flex items-center gap-3">
-        {host?.brand ?? <HyperframesLogo />}
+        {!host?.mvpEditor && (host?.brand ?? <HyperframesLogo />)}
         {host?.mvpEditor && host.headerActions}
         {!host?.mvpEditor && <><span className="text-text-5 select-none" aria-hidden="true">
           |
         </span>
         <span className="text-step-11 font-medium text-text-1">{host?.projectLabel ?? projectId}</span></>}
       </div>
-      {host?.mvpEditor && <div className="motion-header-project">{host.projectLabel ?? projectId}</div>}
       {/* Right: toolbar buttons */}
       <div className="flex items-center gap-3">
         {!host?.mvpEditor && host?.headerActions}
-        {host?.mvpEditor && host.communityAction}
         {host?.historyActions}
         {host?.previewAction}
         {!host?.mvpEditor && <div className="flex h-ctl items-center divide-x divide-border-strong overflow-hidden rounded-md border border-border-strong bg-bg-2">

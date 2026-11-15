@@ -185,6 +185,23 @@ interface GroupDrag {
   moving: ReadonlySet<string>;
 }
 
+const groupCache = new WeakMap<readonly TimelineElement[], WeakMap<ReadonlySet<string>, Map<TimelineElement, GroupDrag & { shift: ReturnType<typeof heldAudioShiftRange> }>>>();
+
+/** Selection and source snapshots are fixed for a gesture; only its landing changes. */
+function preparedGroup(drag: DraggedClipState, ctx: DragPreviewContext) {
+  let selections = groupCache.get(ctx.elements);
+  if (!selections) { selections = new WeakMap(); groupCache.set(ctx.elements, selections); }
+  let groups = selections.get(ctx.selectedKeys);
+  if (!groups) { groups = new Map(); selections.set(ctx.selectedKeys, groups); }
+  const cached = groups.get(drag.element);
+  if (cached) return cached;
+  const group = resolveGroupDrag(drag, ctx);
+  const movers = ctx.elements.filter(element => group.moving.has(element.key ?? element.id));
+  const prepared = { ...group, shift: heldAudioShiftRange(movers, ctx.elements, group.moving) };
+  groups.set(drag.element, prepared);
+  return prepared;
+}
+
 function resolveGroupDrag(drag: DraggedClipState, ctx: DragPreviewContext): GroupDrag {
   const movers = resolveGroupMovers(
     ctx.elements,
@@ -261,13 +278,8 @@ export function computeDragPreview(
     target !== null && !guideIfSaved(drag.element, { start: snapped.start }, target, pps);
   const snap = missed ? { start: nextMove.start, snapTime: null, snapType: null } : snapped;
   // A group moves rigidly: the grabbed clip stops where any mover would cross its host's start.
-  const group = resolveGroupDrag(drag, ctx);
-  const dragKey = drag.element.key ?? drag.element.id;
-  const passengers = ctx.elements.filter(
-    (el) => (el.key ?? el.id) !== dragKey && group.moving.has(el.key ?? el.id),
-  );
-  const movers = [drag.element, ...passengers];
-  const shift = heldAudioShiftRange(movers, ctx.elements, group.moving);
+  const group = preparedGroup(drag, ctx);
+  const shift = group.shift;
   const origin = drag.element.start;
   const floored = Math.max(snap.start, group.floor);
   const previewStart = origin + Math.max(shift.min, Math.min(floored - origin, shift.max));

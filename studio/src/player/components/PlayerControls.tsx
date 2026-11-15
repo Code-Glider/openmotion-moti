@@ -243,7 +243,7 @@ export const PlayerControls = memo(function PlayerControls({
             setAudioMuted={setAudioMuted}
             setAudioVolume={setAudioVolume}
           />
-          <span className="motion-player-optional flex items-center gap-[inherit]">
+          <span className="flex items-center gap-[inherit]">
           <SpeedMenu
             playbackRate={playbackRate}
             setPlaybackRate={setPlaybackRate}

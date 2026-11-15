@@ -334,13 +334,13 @@ export function ColorField({
           role="dialog"
           aria-label={t("{label} color picker", { label: label })}
           tabIndex={-1}
-          className="fixed z-9999 w-[292px] overflow-hidden rounded-2xl border border-neutral-700 bg-neutral-950 shadow-2xl shadow-black/50 outline-hidden"
+          className="fixed z-9999 flex max-h-[calc(100dvh-24px)] w-[min(292px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-neutral-700 bg-neutral-950 shadow-2xl shadow-black/50 outline-hidden"
           style={{
             left: panelPosition?.left ?? -9999,
             top: panelPosition?.top ?? -9999,
           }}
         >
-          <div className="flex items-center justify-between border-b border-neutral-800 px-3 py-2">
+          <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-3 py-2">
             <div className="min-w-0">
               <div className="truncate text-[11px] font-medium text-neutral-100">{label}</div>
               <div className="text-[9px] uppercase tracking-[0.16em] text-neutral-600">{t("Color")}</div>
@@ -357,7 +357,7 @@ export function ColorField({
               <X size={13} />
             </button>
           </div>
-          <div className="space-y-3 p-3">
+          <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-3">
             <div
               className="relative h-36 cursor-crosshair overflow-hidden rounded-xl border border-neutral-700 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
               style={{ backgroundColor: hueColor }}

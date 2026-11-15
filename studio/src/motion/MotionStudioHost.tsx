@@ -1,6 +1,4 @@
-import { brand, designSystemAsset } from "../../../packages/design-system/index.js";
-import { GitHubLink } from './GitHubLink';
-import { CommunityLink } from './CommunityLink';
+import { EditorLayoutMenu } from "./EditorLayoutMenu";
 import { StudioErrorBoundary } from '../components/StudioErrorBoundary';
 import { I18nProvider, useI18n } from "../i18n/I18n";
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -10,20 +8,13 @@ import { MotionHistoryPopover } from './MotionHistoryPopover';
 import { isStudioEditSaving } from '../utils/studioPendingEdits';
 import { MotionIcon } from './icons';
 import { StudioHostContext, type StudioHost } from './StudioHost';
-import { WorkspaceFrame, WorkspaceMenuButton, useWorkspaceChrome, useOptionalWorkspaceChrome } from './WorkspaceFrame';
+import { WorkspaceFrame, useWorkspaceChrome, useOptionalWorkspaceChrome } from './WorkspaceFrame';
 import { MotionHistoryProvider, useMotionHistoryOperation } from './MotionHistoryState';
 import { MediaGatewayProvider } from './MediaGatewayContext';
-import { useShownStudioTheme } from '../utils/studioTheme';
+import { usePlayerStore } from '../player/store/playerStore';
 import { workspacePresentation } from '../../../shared/workspace-url';
+import { WorkspaceProject } from './WorkspaceProject';
 import { trackMotion } from './tracking';
-
-function WorkspaceBrand() {
-  const theme = useShownStudioTheme();
-  return <span className="motion-header-brand">
-    <WorkspaceMenuButton />
-    <img src={designSystemAsset(brand.editorLogo[theme])} alt={brand.editorName} width="104" height="18" />
-  </span>;
-}
 
 export function MotionEditorFrame({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -31,6 +22,9 @@ export function MotionEditorFrame({ children }: { children: ReactNode }) {
   const historyOperation = useMotionHistoryOperation();
   const chrome = useOptionalWorkspaceChrome();
   const register = chrome?.registerEditor;
+  useEffect(() => {
+    if (chrome?.settingsOpen) usePlayerStore.getState().requestPlayback(false);
+  }, [chrome?.settingsOpen]);
   const [saving, setSaving] = useState(isStudioEditSaving);
   const load = useRef({ id: crypto.randomUUID(), sent: false });
   useEffect(() => {
@@ -67,57 +61,6 @@ function HistoryRestoreFeedback() {
   return null;
 }
 
-function WorkspaceProject() {
-  const { t } = useI18n();
-  const { workspace, switchingDisabled, saveState } = useWorkspaceChrome();
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState('');
-  const project = workspace.projects.find(item => item.id === workspace.status?.projectId);
-  const editingRef = useRef(false);
-  const savingRef = useRef(false);
-  const finishEditing = () => { editingRef.current = false; setEditing(false); };
-  const saveTitle = async () => {
-    if (!editingRef.current || savingRef.current) return;
-    const nextTitle = title.trim() || t('Untitled');
-    if (!project || nextTitle === project.title) { finishEditing(); return; }
-    savingRef.current = true;
-    try { if (await workspace.rename(project.id, nextTitle)) finishEditing(); }
-    finally { savingRef.current = false; }
-  };
-  return <span className="motion-project-control">
-    <input
-      className="motion-project-name-input"
-      maxLength={100}
-      aria-label={t('Project name')}
-      value={editing ? title : project?.title || ''}
-      placeholder={t(project ? 'Untitled' : 'Connecting…')}
-      disabled={workspace.busy || switchingDisabled || !project}
-      onFocus={() => {
-        if (editingRef.current) return;
-        setTitle(project?.title || '');
-        editingRef.current = true;
-        setEditing(true);
-      }}
-      onChange={event => setTitle(event.target.value)}
-      onBlur={() => void saveTitle()}
-      onKeyDown={event => {
-        if (event.nativeEvent.isComposing) return;
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          event.stopPropagation();
-          finishEditing();
-          event.currentTarget.blur();
-        }
-      }}
-    />
-    {saveState && <span className="motion-save-state" role="status">{saveState}</span>}
-  </span>;
-}
-
 function WorkspaceHistoryActions() {
   const operation = useMotionHistoryOperation();
   return <div className="motion-history-actions motion-header-history-actions">
@@ -133,19 +76,18 @@ function WorkspaceActions() {
   const label = locale === 'en' ? 'Template' : t('Template library');
   const { switchingDisabled, openLibrary } = useWorkspaceChrome();
   return <div className="motion-workspace-actions">
+    <WorkspaceProject />
     <button className="motion-button motion-button-quiet" aria-label={label} title={label} aria-haspopup="dialog" disabled={switchingDisabled} onClick={event => openLibrary(event.currentTarget)}><MotionIcon name="grid" /><span className="motion-template-label">{label}</span></button>
   </div>;
 }
 
 const host: StudioHost = {
   mvpEditor: true,
-  brand: <WorkspaceBrand />,
-  projectLabel: <WorkspaceProject />,
   headerActions: <WorkspaceActions />,
-  communityAction: <><CommunityLink /><GitHubLink /></>,
+  communityAction: <></>,
   historyActions: <WorkspaceHistoryActions />,
   previewAction: <></>,
-  windowMenu: <></>,
+  windowMenu: <EditorLayoutMenu />,
   themeToggle: false,
 
   AppFrame: MotionEditorFrame,

@@ -2,7 +2,8 @@
 export const modalities = ['image', 'video', 'audio'] as const;
 export type Modality = typeof modalities[number];
 export const mediaProviders = ['fal', 'opendesign', 'atlascloud', 'wavespeed'] as const;
-export type ProviderId = 'codex' | typeof mediaProviders[number];
+/** Built-in media IDs and service-registered compatible connections share one route identity. */
+export type ProviderId = string;
 export type Model = {
   id: string; provider: ProviderId; modelId: string; label: string; modality: Modality;
   source: 'builtin' | 'live' | 'custom'; mode: string;
@@ -12,7 +13,7 @@ export type Model = {
 export type Agent = { id: string; label: string; installed: boolean; authenticated: boolean;
   imageGeneration: boolean; available: boolean; reason: string };
 export type ProviderState = { id: ProviderId; label: string; enabled: boolean; configured: boolean;
-  available: boolean; credentialSource: 'stored' | 'environment' | 'local-agent' | 'none';
+  available: boolean; credentialSource: 'stored' | 'environment' | 'local-agent' | 'account' | 'none';
   verification: 'unverified' | 'verified' | 'rejected'; reason: string; checkedAt?: number; baseUrl?: string };
 export type GatewayStatus = { providers: ProviderState[]; agents: Agent[];
   routes: Partial<Record<Modality, string>>;
@@ -27,6 +28,7 @@ export type GenerateInput = { modality: Modality; prompt: string; model?: string
 export type GeneratedAsset = { path: string; mimeType: string; bytes: number; available?: boolean };
 export type GenerationJob = { id: string; projectId: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   providerOrigin?: string;
+  providerRevision?: string;
   modality: Modality; prompt: string; model: Model; parameters: Record<string, unknown>;
   usage?: GenerateInput['usage']; idempotencyKey?: string; requestHash: string;
   reference?: { path: string; sha256: string; mimeType: string; bytes: number };

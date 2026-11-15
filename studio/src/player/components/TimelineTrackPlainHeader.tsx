@@ -13,6 +13,7 @@ export function VisibilityButton({
   trackDisplayNumber,
   asMute,
   onToggle,
+  disabled = false,
 }: {
   hidden: boolean;
   trackNumber: number;
@@ -20,6 +21,7 @@ export function VisibilityButton({
   /** `data-hidden` silences an audio-only track, so its toggle is a mute. */
   asMute: boolean;
   onToggle: TimelineEditCallbacks["onToggleTrackHidden"];
+  disabled?: boolean;
 }) {
   const { t } = useI18n();
   const mvp = useMvpEditor();
@@ -32,6 +34,8 @@ export function VisibilityButton({
       type="button"
       aria-label={label}
       title={label}
+      disabled={disabled}
+      aria-pressed={hidden}
       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 transition-colors focus-visible:outline-solid focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--timeline-accent)] ${
         hidden && !mvp
           ? "text-[var(--timeline-accent)] hover:text-[var(--timeline-text-solid)]"
@@ -81,6 +85,7 @@ export function PlainTrackHeader({
   hideVisibility?: boolean;
   audioControls?: React.ReactNode;
 }) {
+  const mvp = useMvpEditor();
   return (
     <>
       {/* One line: the name, then every control pushed to the right edge. The
@@ -89,7 +94,7 @@ export function PlainTrackHeader({
           `truncate`), and the controls are `shrink-0`, so they hold the edge
           and the name gives way instead. */}
       <div className="flex min-w-0 items-center gap-1">
-        {isAudioTrack && (
+        {isAudioTrack && !mvp && (
           <Music
             size={12}
             weight="fill"
@@ -100,7 +105,7 @@ export function PlainTrackHeader({
         {/* No `flex-1`: the name takes only the width it needs, so the clip
             count sits against it rather than being pushed out to meet the
             controls. The slack goes to the `ml-auto` group below instead. */}
-        {showTrackLabel && (
+        {showTrackLabel && !mvp && (
           <span title={trackLabel} className="min-w-0 truncate text-[11px] leading-tight">
             {trackLabel}
           </span>

@@ -42,6 +42,12 @@ OpenMotion is **the first full-stack agentic video generator**. Upload a referen
 
 <a id="快速开始"></a> <a id="quick-start"></a>
 
+### Install from ChatGPT Marketplace
+
+**One-click installation. No manual configuration required.** Once installed, create motion videos from scratch, recreate reference videos, or start from a template—all in your conversation.
+
+**[Install OpenMotion in ChatGPT →](https://chatgpt.com/plugins/plugins_6a742d13e88481919b42002864b1bb26)**
+
 <a id="start-in-codex"></a>
 
 ### Install in your agent
@@ -378,7 +384,9 @@ Provider credentials stay in your workspace, separate from the video project. Yo
 
 OpenMotion introduces **Motion.md**: a Markdown format for shot order, timing, transitions and the assets you can replace. The online library brings reference videos and their motion guides into the same detail page.
 
-The Brand Kit section records your logo, colors, fonts, voice and approved product facts. Keep the reference’s motion and pacing while making the result recognizably yours.
+The Brand Kit section records your identity, voice and approved product facts; the Design section can reference an independent `DESIGN.md` for visual rules. Keep the reference’s motion and pacing while making the result recognizably yours.
+
+To share an industry or brand system, use the [Motion Package v0.2 draft](docs/motion-package-spec.md) and [authoring toolkit](packages/motion-package/README.md). A package combines the design and motion documents with materials, declared dependencies and optional `SKILL.md`. The included recipe demonstrates two content presets; automatic Studio import and rendered fidelity remain separate from package validation.
 
 ![Motion.md and brand context](docs/readme/diagrams/creative-context.svg)
 
@@ -434,7 +442,7 @@ For agent-led installation, use the [installation instruction above](#quick-star
 
 After a successful Agent-led installation, open the editor's template library in the current conversation, without creating a project. Browse and preview first; choose **Open and edit** to create an independent editable copy. Setup provides a direct library link even before the chat reloads MCP. See the [installation reply rules](docs/install.md#installation-success-reply).
 
-For video playback deliverables, supported MCP Apps hosts can show [per-round progress and version playback](docs/inline-video.md). The integrated host release remains subject to acceptance.
+During video creation and editing, the chat stays free of preview areas. OpenMotion presents the editable Studio when the final video is ready to preview, then shows [the final video in chat](docs/inline-video.md) after its MP4 export completes and passes verification. Native-host acceptance of an installed build remains separate.
 
 If MCP tools are missing or fail to connect, use the installed [connection diagnosis and recovery guide](docs/npm-installation.md#missing-mcp-tools-or-a-failed-connection) to inspect the actual host configuration and verify the original workspace before continuing.
 

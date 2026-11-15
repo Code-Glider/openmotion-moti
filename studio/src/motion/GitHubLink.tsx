@@ -24,7 +24,7 @@ export function GitHubLink() {
   }, []);
   const count = stars === null ? null : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(stars);
   const label = stars === null ? t('OpenMotion on GitHub') : `${t('OpenMotion on GitHub')}, ${t('{count} GitHub stars', { count: formatNumber(stars) })}`;
-  return <a className={styles.link} href={GITHUB_REPOSITORY} target="_blank" rel="noopener noreferrer"
+  return <a className={`${styles.link} motion-github-link`} href={GITHUB_REPOSITORY} target="_blank" rel="noopener noreferrer"
     aria-label={label} title={label}>
     <GitHubMark />{count !== null && <span className={styles.count} aria-hidden="true">{count}</span>}
   </a>;

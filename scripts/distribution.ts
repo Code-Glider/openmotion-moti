@@ -7,6 +7,28 @@ import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/des
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 // New documentation and developer scripts require an explicit distribution decision.
+const motionPackageFiles = [
+  'docs/motion-package-spec.md',
+  'packages/motion-package/README.md',
+  'packages/motion-package/package.json',
+  'packages/motion-package/schema.json',
+  'packages/motion-package/index.mjs',
+  'packages/motion-package/cli.mjs',
+  'packages/motion-package/examples/product-story/motion-package.json',
+  'packages/motion-package/examples/product-story/README.md',
+  'packages/motion-package/examples/product-story/MOTION.md',
+  'packages/motion-package/examples/product-story/DESIGN.md',
+  'packages/motion-package/examples/product-story/SKILL.md',
+  'packages/motion-package/examples/product-story/LICENSE',
+  'packages/motion-package/examples/product-story/inputs.schema.json',
+  'packages/motion-package/examples/product-story/elements/emphasis.svg',
+  'packages/motion-package/examples/product-story/materials/requirements.md',
+  'packages/motion-package/examples/product-story/materials/sequence.json',
+  'packages/motion-package/examples/product-story/presets/product.json',
+  'packages/motion-package/examples/product-story/presets/lesson.json',
+  'packages/motion-package/examples/product-story/scripts/plan.mjs',
+];
+
 const motionDesignRemixFiles = [
   'library/skills/openmotion-design-remix/LICENSE',
   'library/skills/openmotion-design-remix/NOTICE.md',
@@ -475,6 +497,7 @@ const localReadmeResourceFiles = [
 ];
 
 export const distributionDocuments = [
+  ...motionPackageFiles,
   ...designSystemDocuments, 'cloud.md',
   ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
@@ -482,7 +505,7 @@ export const distributionDocuments = [
   'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md',
   'tracking/README.md', 'tracking/INTEGRATION.md', 'tracking/posthog-geoip.hog',
   'docs/agent-adapters.md', 'docs/browser-runtime.md', 'docs/design-system.md', 'docs/editor-fork.md',
-  'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
+  'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/provider-settings.md', 'docs/local-agents.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
   'docs/motion-extension-scope.md', 'docs/npm-installation.md', 'docs/install.md', 'docs/release-guide.md', 'docs/release-workflows.md', 'docs/templates/release-record.md', 'docs/project-workspace.md',
   'docs/repository-migration.md', 'docs/session-architecture.md', 'docs/shared-editor.md',
   'docs/README.zh-CN.md', 'docs/README.ja.md',
@@ -543,12 +566,12 @@ export async function distributionFiles(profile: string): Promise<string[]> {
     'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts',
     'scripts/runtime-assets.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
-    'scripts/install-onboarding.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
+    'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
     'scripts/diagnostics.mjs', 'scripts/diagnostic-redaction.mjs', 'scripts/zip.mjs',
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',
     'scripts/repository-media.ts', 'scripts/build-template-cards.mjs',
-    'shared/workflow-entry.js', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
-    'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts',
+    'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
+    'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json',
     'mcp-ui/template-recommendations/LICENSE', 'mcp-ui/template-recommendations/NOTICE.md',
@@ -573,6 +596,7 @@ export async function distributionFiles(profile: string): Promise<string[]> {
   for (const directory of ['shared', 'gateway']) await walk(directory, /\.(?:ts|mjs|json)$/);
   await walk('web', /\.(?:ts|js|json|html|css|svg|jpg|png|webp|ttf|woff2?|txt)$/);
   for (const directory of ['templates', 'template-library']) await walk(directory, /\.(?:html|js|json|css|svg|jpg|png|webp|md|txt|ttf|woff2?)$/);
+  files.push('template-library/openmotion-welcome/assets/soundtrack.m4a');
   for (const skill of packagedSkills) await walk('skills/' + skill, /\.(?:md|mjs|ts|py|json|ya?ml)$/);
   await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
   await walk('studio/public', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);

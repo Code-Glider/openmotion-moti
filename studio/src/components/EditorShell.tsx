@@ -114,6 +114,7 @@ export const EditorShell = memo(function EditorShell({
   handleFreezeFrame,
   handleLinkEdit,
   handleTimelineElementDeleteOnly,
+  handleTimelineTrackDelete,
   onCopyClip,
   onPasteClip,
   onDuplicateClip,
@@ -178,6 +179,7 @@ export const EditorShell = memo(function EditorShell({
     handleFreezeFrame,
     handleLinkEdit,
     handleTimelineElementDeleteOnly,
+  handleTimelineTrackDelete,
   });
 
   return (
