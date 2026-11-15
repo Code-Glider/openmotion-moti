@@ -1,4 +1,6 @@
 /** Browser-safe public asset contract. No dependency on Studio or the application server. */
+import { providerIconFiles } from './provider-icons.js';
+export { providerIcons, modelBrandId } from './provider-icons.js';
 export const designSystemBase = '/design-system';
 export const designSystemAsset = (name) => `${designSystemBase}/${name}`;
 export const brand = Object.freeze({
@@ -14,13 +16,15 @@ export const iconSprite = designSystemAsset('icons.svg');
 /** Positive HTTP/distribution list: adding a file to the package does not expose it. */
 export const publicDesignFiles = Object.freeze([
   'tokens.json', 'tokens.css', 'ui.css', 'fonts.css', 'base.css', 'controls.css', 'material.css',
-  'loading.css', 'studio.css', 'studio/adapter.css', 'studio/control-states.css', 'studio/feedback.css', 'studio/editor-workspace.css',
+  'loading.css', 'studio.css', 'studio/adapter.css', 'studio/control-states.css', 'studio/feedback.css', 'studio/editor-workspace.css', 'studio/application.css',
   'index.html', 'theme.js', 'catalog.js', 'catalog-view.js', 'catalog.css', 'token-model.js', 'generate.js', 'icons.svg',
   'opendesign-dark.svg', 'opendesign-light.svg', 'brand/openmotion-logo.svg',
   'brand/loading-mark.svg', 'brand/loading-wordmark.svg', 'brand/favicon.svg',
   'fonts/AlbertSans-VariableFont_wght.ttf', 'fonts/IBMPlexMono-Regular.ttf',
   'fonts/Albert-Sans-OFL.txt', 'fonts/IBM-Plex-Mono-OFL.txt', 'fonts/NOTICES.txt',
   'remix-icon-LICENSE.txt', 'remix-icon-NOTICE.txt',
+  ...providerIconFiles, 'providers/sources.json', 'providers/NOTICE.md',
+  'providers/lobe-icons-LICENSE.txt', 'providers/cherry-ui-LICENSE.txt',
 ]);
 
 export const designSystemDocuments = Object.freeze([
@@ -29,7 +33,7 @@ export const designSystemDocuments = Object.freeze([
 ]);
 
 export const designSystemRuntimeFiles = Object.freeze([
-  ...publicDesignFiles, 'index.js', 'package.json', 'tailwind.css',
+  ...publicDesignFiles, 'index.js', 'provider-icons.js', 'package.json', 'tailwind.css',
   'studio/theme.css', 'studio/tokens.css', 'studio/palette-reset.css',
 ]);
 

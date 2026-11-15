@@ -18,6 +18,8 @@ export const workflowRegistry = {
       edit: 'skills/openmotion-production/references/edit.md',
       portable: 'skills/openmotion-production/references/portable-project.md',
       materials: 'skills/openmotion-production/references/materials.md',
+      account: 'skills/openmotion-production/references/media-providers/account.md',
+      compatible: 'skills/openmotion-production/references/media-providers/compatible.md',
       fal: 'skills/openmotion-production/references/media-providers/fal.md',
       opendesign: 'skills/openmotion-production/references/media-providers/opendesign.md',
       atlascloud: 'skills/openmotion-production/references/media-providers/atlascloud.md',

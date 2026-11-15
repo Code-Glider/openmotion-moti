@@ -4,6 +4,7 @@ import { parseDockLayout } from "../components/dock/dockLayoutSchema";
 
 export type TimelineTimeDisplayMode = "time" | "frame";
 export type StudioTheme = "light" | "dark";
+export type StudioThemePreference = StudioTheme | "system";
 
 export interface StudioUiPreferences {
   timelineVisible?: boolean;
@@ -45,7 +46,7 @@ export interface StudioUiPreferences {
    * intentionally scoped to one mount.
    */
   agentToolsEnabled?: boolean;
-  theme?: StudioTheme;
+  theme?: StudioThemePreference;
   /** The dock's serialized panel tree; parsed by `parseDockLayout` on read. */
   dockLayout?: SerializedDockview;
   workspaceLayout?: { left: boolean; right: boolean; preview?: boolean; timeline: boolean; timelineHeight: number | null };
@@ -140,7 +141,7 @@ function readStorage(storage: Storage | null, key: string): StudioUiPreferences 
     if (typeof parsed.rippleEditEnabled === "boolean") {
       preferences.rippleEditEnabled = parsed.rippleEditEnabled;
     }
-    if (parsed.theme === "light" || parsed.theme === "dark") preferences.theme = parsed.theme;
+    if (parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "system") preferences.theme = parsed.theme;
     if (parsed.timeDisplayMode === "time" || parsed.timeDisplayMode === "frame") {
       preferences.timeDisplayMode = parsed.timeDisplayMode;
     }

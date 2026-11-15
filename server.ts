@@ -1,3 +1,4 @@
+import { modelMetadata } from './gateway/model-metadata.ts';
 import { getWorkflow } from './shared/workflow.ts';
 import { isMain } from './shared/entry.ts';
 import { createServer } from 'node:http';
@@ -21,6 +22,8 @@ import { agentGuide, integrationConfig, integrationHost, type IntegrationInfo } 
 import { validateInstruction } from './shared/conversation.ts';
 import { creationMode, creationModes, artifactViewers, type CreativeSession, type CreationMode } from './shared/session.ts';
 import { gatewayFor } from './gateway/service.ts';
+import { providerDirectory, setDefaultModel, syncProvider } from './gateway/settings.ts';
+import { localAgentsFor } from './gateway/local-agents.ts';
 import { WorkspaceBrowser } from './browser.ts';
 import { Phase1Service } from './phase1.ts';
 import { phase1McpCapabilities } from './shared/phase1-tools.ts';
@@ -400,6 +403,60 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (!context.studio?.alive()) return json(res, 503, { error: 'Hyperframes Studio 尚未就绪，请重新打开预览并检查 studio.log' });
       return json(res, 200, { url: editorUrl, projectDirectory: store.projectDirectory, projectId: store.projectCatalog().activeId });
     }
+    if (motionRequest && url.pathname.startsWith('/api/settings/')) {
+      const gateway = gatewayFor(store);
+      const agents = localAgentsFor(store.directory);
+      if (url.pathname === '/api/settings/agents' && req.method === 'GET') return json(res, 200, await agents.list());
+      if (url.pathname === '/api/settings/default-agent' && req.method === 'PUT') { const body = await input(req); await agents.choose(body.choice); return json(res, 200, { ok: true }); }
+      const agentAction = url.pathname.match(/^\/api\/settings\/agents\/([a-z0-9-]+)\/(inspect|models|prepare|open)$/);
+      if (agentAction && req.method === 'POST') {
+        const [, id, action] = agentAction;
+        if (action === 'inspect') return json(res, 200, await agents.inspect(id));
+        const body = await input(req);
+        if (action === 'models') { await agents.addModel(id, body.model); return json(res, 200, { ok: true }); }
+        if (!['login', 'launch'].includes(body.action)) throw new Error('Invalid Agent action');
+        const choice = { agent: id, model: body.model ?? 'default', ...(body.reasoning ? { reasoning: body.reasoning } : {}) };
+        const plan = await agents[action === 'open' ? 'open' : 'prepare'](choice, store.projectDirectory, new URL(editorUrl).origin, body.action);
+        return json(res, 200, plan);
+      }
+      if (url.pathname === '/api/settings/providers' && req.method === 'GET') return json(res, 200, await providerDirectory(gateway));
+      if (url.pathname === '/api/settings/providers' && req.method === 'POST') return json(res, 200, { id: await gateway.connections.configure(null, await input(req)) });
+      const provider = url.pathname.match(/^\/api\/settings\/providers\/([a-z0-9-]+)(\/sync|\/models)?$/);
+      if (provider) {
+        const id = provider[1];
+        if (!provider[2] && req.method === 'PUT') return json(res, 200, await gateway.configureProvider(id, await input(req)));
+        if (!provider[2] && req.method === 'DELETE') { await gateway.connections.remove(id); return json(res, 200, { ok: true }); }
+        if (provider[2] === '/sync' && req.method === 'POST') { await syncProvider(gateway, id); return json(res, 200, { ok: true }); }
+        if (provider[2] === '/models' && req.method === 'POST') {
+          const body = await input(req);
+          if (['fal', 'opendesign', 'atlascloud', 'wavespeed'].includes(id)) {
+            modelMetadata(body);
+            const model = await gateway.registerModel({ ...body, provider: id, modality: body.kind, mode: body.kind === 'audio' ? 'text-to-speech' : `text-to-${body.kind}` });
+            await gateway.connections.updateMetadata(model.model.id, body);
+            return json(res, 200, model);
+          }
+          return json(res, 200, await gateway.connections.saveModel(id, body));
+        }
+      }
+      if (url.pathname === '/api/settings/models' && req.method === 'PUT') {
+        const body = await input(req);
+        if (typeof body.id !== 'string' || body.enabled !== null && typeof body.enabled !== 'boolean') throw new Error('Invalid model update');
+        await gateway.connections.updateModel(body.id, body.enabled); return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/settings/models' && req.method === 'PATCH') {
+        const body = await input(req), directory = await providerDirectory(gateway);
+        if (typeof body.id !== 'string' || !directory.models.some(model => model.id === body.id)) throw new Error('Model not found');
+        await gateway.connections.updateMetadata(body.id, body); return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/settings/default-model' && req.method === 'PUT') {
+        const body = await input(req); await setDefaultModel(gateway, body.kind, body.model); return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/settings/account' && req.method === 'GET') return json(res, 200, await gateway.account.summary(url.searchParams.get('refresh') === 'true'));
+      if (url.pathname === '/api/settings/account/login' && req.method === 'POST') return json(res, 200, await gateway.account.login());
+      if (url.pathname === '/api/settings/account/cancel' && req.method === 'POST') return json(res, 200, await gateway.account.cancel());
+      if (url.pathname === '/api/settings/account/logout' && req.method === 'POST') return json(res, 200, await gateway.account.logout());
+      return json(res, 404, { error: 'Settings endpoint not found' });
+    }
     if (motionRequest && (url.pathname.startsWith('/api/models') || url.pathname.startsWith('/api/generations'))) {
       const gateway = gatewayFor(store);
       if (url.pathname === '/api/models/capabilities' && req.method === 'GET') return json(res, 200, await gateway.status(url.searchParams.get('refresh') === 'true'));
@@ -408,7 +465,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         query: url.searchParams.get('query') ?? '', refresh: url.searchParams.get('refresh') === 'true',
         offset: Number(url.searchParams.get('offset') ?? 0), limit: Number(url.searchParams.get('limit') ?? 100),
       }));
-      const reference = url.pathname.match(/^\/api\/models\/providers\/(fal|opendesign|atlascloud|wavespeed)\/reference$/);
+      const reference = url.pathname.match(/^\/api\/models\/providers\/(fal|opendesign|atlascloud|wavespeed|account|compatible)\/reference$/);
       if (reference && req.method === 'GET') {
         const guide = await getWorkflow(reference[1], 'production');
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(guide.content);

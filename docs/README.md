@@ -27,6 +27,8 @@
 - [hyperframes.md](hyperframes.md)
 - [mcp-phase1-tools.md](mcp-phase1-tools.md)
 - [model-gateway.md](model-gateway.md)
+- [Application settings and model connections](provider-settings.md)
+- [Local Agent installation, sign-in and model selection](local-agents.md)
 - [openmotion-director.md](openmotion-director.md)
 - [motion-extension-scope.md](motion-extension-scope.md)
 - [npm-installation.md](npm-installation.md)

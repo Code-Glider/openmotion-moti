@@ -166,6 +166,14 @@
   --motion-audio-preview-on-action: var(--motion-neutral-n0);
   --motion-asset-logo-bg: #ffffff;
   --motion-asset-logo-ink: #171717;
+  --motion-shell: #f4f4f4;
+  --motion-workspace: #ffffff;
+  --motion-brand-surface: #ffffff;
+  --motion-chrome-icon: #757575;
+  --motion-chrome-hover: #ebebeb;
+  --motion-chrome-active: #e1e1e1;
+  --motion-border-subtle: #eaeaea;
+  --motion-nav-hover: #f7f7f7;
 }
 :where([data-motion-ui][data-theme="dark"], [data-motion-ui][data-motion-studio]:not([data-theme="paper"])) {
   color-scheme: dark;
@@ -231,6 +239,14 @@
   --motion-audio-preview-on-action: var(--motion-neutral-n11);
   --motion-asset-logo-bg: #ffffff;
   --motion-asset-logo-ink: #171717;
+  --motion-shell: #292929;
+  --motion-workspace: #303030;
+  --motion-brand-surface: #ffffff;
+  --motion-chrome-icon: #aaaaaa;
+  --motion-chrome-hover: #383838;
+  --motion-chrome-active: #454545;
+  --motion-border-subtle: #414141;
+  --motion-nav-hover: #383838;
 }
 @media (prefers-color-scheme: dark) {
   :where([data-motion-ui]:not([data-theme]):not([data-motion-studio])) {
@@ -297,5 +313,13 @@
     --motion-audio-preview-on-action: var(--motion-neutral-n11);
     --motion-asset-logo-bg: #ffffff;
     --motion-asset-logo-ink: #171717;
+    --motion-shell: #292929;
+    --motion-workspace: #303030;
+    --motion-brand-surface: #ffffff;
+    --motion-chrome-icon: #aaaaaa;
+    --motion-chrome-hover: #383838;
+    --motion-chrome-active: #454545;
+    --motion-border-subtle: #414141;
+    --motion-nav-hover: #383838;
   }
 }

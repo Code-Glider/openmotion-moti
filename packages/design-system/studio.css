@@ -7,6 +7,7 @@
 @import "./studio/control-states.css";
 @import "./studio/feedback.css";
 @import "./studio/editor-workspace.css";
+@import "./studio/application.css";
 
 /* Asset geometry is shared; currentColor follows the application's selected theme. */
 .motion-brand-lockup {

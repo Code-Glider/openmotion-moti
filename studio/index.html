@@ -8,15 +8,15 @@
     <script>
       // Embedded browsers receive the host's color scheme. Resolve it before paint;
       // standalone Studio keeps its saved choice. main.tsx binds live host changes.
-      let theme = "light";
-      if (new URLSearchParams(location.search).get("embed") === "1") {
-        if (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches) theme = "dark";
-      } else {
-        try {
-          if (JSON.parse(localStorage.getItem("hf-studio-ui-preferences") || "{}").theme === "dark")
-            theme = "dark";
-        } catch (e) {}
-      }
+      let preference = "light";
+      try {
+        const saved = JSON.parse(localStorage.getItem("hf-studio-ui-preferences") || "{}")?.theme;
+        if (saved === "light" || saved === "dark" || saved === "system") preference = saved;
+      } catch (e) {}
+      document.documentElement.dataset.themePreference = preference;
+      let theme = preference;
+      if (new URLSearchParams(location.search).get("embed") === "1" || preference === "system")
+        theme = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
       if (theme === "light") document.documentElement.dataset.theme = "paper";
       else delete document.documentElement.dataset.theme;
     </script>

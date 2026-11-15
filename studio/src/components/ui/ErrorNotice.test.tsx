@@ -30,7 +30,8 @@ it('hides raw diagnostics until expanded and preserves them for copy', async () 
   expect(host.querySelector('script')).toBeNull();
   await act(async () => button('复制错误信息').click());
   expect(copy).toHaveBeenCalledWith(message);
-  expect(host.querySelector('[role=status]')?.textContent).toBe('已复制');
+  expect(host.querySelector('[role=status]')).toBeNull();
+  expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toBe('已复制');
 });
 
 it('only runs an explicitly provided action and prevents repeat clicks while busy', () => {
@@ -50,7 +51,7 @@ it('keeps details selectable when clipboard permission is denied', async () => {
   act(() => root.render(<ErrorNotice message="unknown diagnostic" />));
   act(() => button('Error details').click());
   await act(async () => button('Copy error information').click());
-  expect(host.querySelector('[role=status]')?.textContent).toContain('Select the details');
+  expect(document.querySelector('.motion-feedback-layer [role=alert]')?.textContent).toContain('Select the details');
   expect(host.querySelector('pre')?.tabIndex).toBe(0);
 });
 
