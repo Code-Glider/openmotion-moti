@@ -36,7 +36,7 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
     <span className="motion-track-kind" title={`${name} · ${label}`} aria-label={name}>
       <RemixIcon name={audioOnly ? 'music-2-line' : 'film-line'} size={16} />
     </span>
-    <button type="button" className="motion-track-control" aria-label={`${lockLabel} · ${name}`} title={lockLabel}
+    <button type="button" aria-label={`${lockLabel} · ${name}`} title={lockLabel}
       aria-pressed={locked} disabled={disabled || !edits.onSetElementsAttributeQuiet}
       onClick={() => void run(() => edits.onSetElementsAttributeQuiet?.(elements.map(element => ({ element, value: locked ? null : '' })), 'data-timeline-locked', locked ? 'Unlock track' : 'Lock track'))}>
       <RemixIcon name={locked ? 'lock-line' : 'lock-unlock-line'} size={16} />
@@ -45,7 +45,7 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
     <TimelineTrackAudioControls elements={elements} trackLabel={name} isAudioOnly={audioOnly} hidden={hidden}
       onUnhide={() => { void toggleHidden?.(track, false, number); }} />
     {children}
-    <button type="button" className="motion-track-control" aria-label={`${t('Delete track')} · ${name}`} title={t('Delete track')}
+    <button type="button" aria-label={`${t('Delete track')} · ${name}`} title={t('Delete track')}
       disabled={disabled || locked || !edits.onDeleteTrack} onClick={() => void run(() => edits.onDeleteTrack?.(track))}>
       <RemixIcon name="delete-bin-line" size={16} />
     </button>

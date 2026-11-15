@@ -1842,5 +1842,12 @@
   "API origin": "API-Ursprung",
   "Use the gateway address shown on your Cloud API key page.": "Verwenden Sie die Gateway-Adresse auf Ihrer Cloud-API-Schlüsselseite.",
   "Save settings": "Einstellungen speichern",
-  "Fit timeline to content": "Zeitleiste an Inhalt anpassen"
+  "Fit timeline to content": "Zeitleiste an Inhalt anpassen",
+  "Resize track controls": "Spursteuerung in der Breite anpassen",
+  "Track {number}": "Spur {number}",
+  "Lock track": "Spur sperren",
+  "Unlock track": "Spur entsperren",
+  "Delete track": "Spur löschen",
+  "Unlock the track before deleting it": "Entsperren Sie die Spur, bevor Sie sie löschen",
+  "Open the composition to delete this track": "Öffnen Sie die Komposition, um diese Spur zu löschen"
 }

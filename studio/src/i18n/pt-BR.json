@@ -1842,5 +1842,12 @@
   "API origin": "Origem da API",
   "Use the gateway address shown on your Cloud API key page.": "Use o endereço do gateway exibido na página da sua chave API do Cloud.",
   "Save settings": "Salvar configurações",
-  "Fit timeline to content": "Ajustar linha do tempo ao conteúdo"
+  "Fit timeline to content": "Ajustar linha do tempo ao conteúdo",
+  "Resize track controls": "Redimensionar os controles da faixa",
+  "Track {number}": "Faixa {number}",
+  "Lock track": "Bloquear faixa",
+  "Unlock track": "Desbloquear faixa",
+  "Delete track": "Excluir faixa",
+  "Unlock the track before deleting it": "Desbloqueie a faixa antes de excluí-la",
+  "Open the composition to delete this track": "Abra a composição para excluir esta faixa"
 }

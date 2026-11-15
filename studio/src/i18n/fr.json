@@ -1842,5 +1842,12 @@
   "API origin": "Origine de l’API",
   "Use the gateway address shown on your Cloud API key page.": "Utilisez l’adresse de passerelle affichée sur la page de votre clé API Cloud.",
   "Save settings": "Enregistrer les paramètres",
-  "Fit timeline to content": "Adapter la chronologie au contenu"
+  "Fit timeline to content": "Adapter la chronologie au contenu",
+  "Resize track controls": "Redimensionner les commandes de piste",
+  "Track {number}": "Piste {number}",
+  "Lock track": "Verrouiller la piste",
+  "Unlock track": "Déverrouiller la piste",
+  "Delete track": "Supprimer la piste",
+  "Unlock the track before deleting it": "Déverrouillez la piste avant de la supprimer",
+  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste"
 }
