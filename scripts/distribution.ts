@@ -183,6 +183,7 @@ const localReadmeResourceFiles = [
   'examples/motion-studies/signoff.html',
   'examples/motion-studies/signoff.mp4',
   'docs/readme/openmotion-logo.svg',
+  'docs/readme/remix-en.webp', 'docs/readme/remix-zh.webp', 'docs/readme/remix-ja.webp',
   'docs/readme/community-star.svg', 'docs/readme/community-star.zh-CN.svg', 'docs/readme/community-star.ja.svg',
   'docs/readme/community-star.gif',
   'docs/readme/brand-hero.ja.jpg',

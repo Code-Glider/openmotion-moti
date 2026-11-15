@@ -1,9 +1,11 @@
-<p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
+<a id="openmotion"></a>
 
-<p align="center"><strong>あらゆる動画を分析・再現</strong></p>
+# OpenMotion｜自分の AI エージェントであらゆる動画をリミックス
+
+参考動画のリンクを貼り付け、ロゴや配色、テキストを差し替えられます。HTML でシーンを編集し、MP4 に書き出せます。無料のオープンソースツールです。
 
 <p align="center">
-  <picture><source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg"><img src="https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。"></picture>
+  <img src="readme/remix-ja.webp" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。">
 </p>
 
 <p align="center">
@@ -14,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-design.ai/motion/"><img src="readme/badges/website.ja.svg" alt="OpenMotion 公式サイト" /></a>
+  <a href="https://open-design.ai/ja/motion/"><img src="readme/badges/website.ja.svg" alt="OpenMotion 公式サイト" /></a>
   <a href="https://go.open-design.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=openmotion&amp;utm_content=readme_ja"><img src="readme/badges/opendesign-go.svg" alt="OpenDesign Go のモデル利用プラン" /></a>
   <a href="https://discord.com/invite/M7NnHS9gNa"><img src="readme/badges/discord.svg" alt="OpenMotion の Discord コミュニティに参加" /></a>
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841"><img src="readme/badges/feishu.svg" alt="OpenMotion の Feishu グループに参加" /></a>
@@ -30,10 +32,6 @@
 [English](../README.md) · [简体中文](README.zh-CN.md) · **日本語**
 
 </div>
-
-# OpenMotion
-
-OpenMotion は、**エージェントが動画制作の全工程を担う初のフルスタック動画生成ツール**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
 
 - 🎬 **動画の分析から再現・書き出しまで。** エージェントが参考動画を分析し、カットとトランジションを HTML で組み直し、足りない素材を生成します。同じプロジェクトを Studio で開き、間合いを調整して MP4 に書き出せます。
 - 🔑 **BYOA（自分のエージェント）と BYOK（自分の API キー）。** OpenMotion は無料のオープンソースソフトウェアです。[使い慣れたローカルエージェント](#agent-wall)で動画を再現し、各工程に自分の API キーを使えます。
@@ -294,7 +292,7 @@ https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手�
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. エージェントが動画制作の全工程を担う初のフルスタック動画生成ツール
+### 1. 参考動画から編集可能なシーンへ
 
 **HTML で動画を書く。** シーン、書体、レイアウト、トランジションとそのタイミングを HTML、CSS、JavaScript で記述します。実写、生成したクリップ、画像、音楽、ナレーションを組み合わせ、同じプロジェクトを Studio で開いて MP4 に書き出せます。
 
@@ -714,7 +712,7 @@ BYOA は既存クライアントを使い、BYOK は対応するモデルアカ�
 
 OpenMotion の専用サイトは `open-design.ai/openmotion` に開設予定です。
 
-[OpenDesign の動画ギャラリー](https://open-design.ai/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_ja) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [Feishu](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
+[OpenDesign の動画ギャラリー](https://open-design.ai/ja/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_ja) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [Feishu](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
 
 [**GitHub で OpenMotion にスターを付ける**](https://github.com/nexu-io/openmotion)
 
@@ -730,7 +728,7 @@ OpenMotion のライセンスは [Apache-2.0](../LICENSE)です。第三者の�
 
 | 出典 | 関係 |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | UI の由来、リソース構成、ブランドの方針。[デザインシステム](design-system.md) と [Motion ショーケース](https://open-design.ai/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | UI の由来、リソース構成、ブランドの方針。[デザインシステム](design-system.md) と [Motion ショーケース](https://open-design.ai/ja/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML 動画合成、Studio、レンダリングの基盤（0.9.7 固定）。制作者の参考、外部改編デモ、部品ソース。[エンジンの説明](hyperframes.md)、[テンプレートの告知](../template-library/NOTICE.md) と[カタログの出典](template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech ソースを Presenter Tech として収録。[ライセンスとクレジット](../library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | エージェントによる話題の動画の再構築と編集可能な派生版の着想。ランタイムの導入なし |

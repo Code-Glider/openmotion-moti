@@ -1,9 +1,11 @@
-<p align="center"><img src="docs/readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
+<a id="openmotion"></a>
 
-<p align="center"><strong>拆解并复刻任何视频</strong></p>
+# OpenMotion｜用你的 AI Agent 二创任意视频
+
+粘贴参考视频链接，换上自己的标志、配色和文案。用 HTML 编辑分镜，再导出 MP4。免费开源。
 
 <p align="center">
-  <picture><source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg"><img src="https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg" width="100%" alt="Dan Martell 原片与 OpenMotion 复刻并排展示：Riya 出镜，荧光黄手写关键词叠在两行白色粗体字幕之间。下方是 Studio 字幕时间轴。"></picture>
+  <img src="docs/readme/remix-zh.webp" width="100%" alt="Dan Martell 原片与 OpenMotion 复刻并排展示：Riya 出镜，荧光黄手写关键词叠在两行白色粗体字幕之间。下方是 Studio 字幕时间轴。">
 </p>
 
 <p align="center">
@@ -14,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-design.ai/motion/"><img src="docs/readme/badges/website.zh-CN.svg" alt="OpenMotion 官网" /></a>
+  <a href="https://open-design.ai/zh/motion/"><img src="docs/readme/badges/website.zh-CN.svg" alt="OpenMotion 官网" /></a>
   <a href="https://go.open-design.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=openmotion&amp;utm_content=readme_zh"><img src="docs/readme/badges/opendesign-go.svg" alt="OpenDesign Go 模型订阅" /></a>
   <a href="https://discord.com/invite/M7NnHS9gNa"><img src="docs/readme/badges/discord.svg" alt="加入 OpenMotion Discord 社区" /></a>
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841"><img src="docs/readme/badges/feishu.zh-CN.svg" alt="加入 OpenMotion 飞书群" /></a>
@@ -30,10 +32,6 @@
 [English](README.md) · **简体中文** · [日本語](docs/README.ja.md)
 
 </div>
-
-# OpenMotion
-
-OpenMotion 是 **首个全栈 Agentic 视频生成器**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
 
 - 🎬 **全栈视频复刻。** Agent 拆解参考片，用 HTML 重建镜头和转场，并生成缺少的素材。你可以在同一工程里用 Studio 调整剪辑节奏，再渲染导出 MP4。
 - 🔑 **BYOA（自带 Agent）与 BYOK（自带 API 密钥）。** OpenMotion 开源免费。直接在[常用的本地 Agent](#agent-wall) 里复刻视频，每一层都能用自己的 API 密钥。
@@ -294,7 +292,7 @@ npm start
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. 首个全栈 Agentic 视频生成器
+### 1. 从参考视频到可编辑的分镜
 
 **用 HTML 写视频。** OpenMotion 用 HTML、CSS、JavaScript 描述场景、字体、布局、转场和时间。实拍、生成片段、图片、音乐和旁白作为合成素材，同一工程可在 Studio 打开并渲染为 MP4。
 
@@ -714,7 +712,7 @@ BYOA 让 Agent 留在已有客户端，BYOK 连接受支持的模型账号。Stu
 
 OpenMotion 独立官网将上线于 `open-design.ai/openmotion`。
 
-[OpenDesign 动效展示](https://open-design.ai/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_zh) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
+[OpenDesign 动效展示](https://open-design.ai/zh/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_zh) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
 
 [**在 GitHub 上给 OpenMotion 点个 Star**](https://github.com/nexu-io/openmotion)
 
@@ -730,7 +728,7 @@ OpenMotion 采用 [Apache-2.0](LICENSE)许可。第三方代码、模板、媒�
 
 | 来源 | 关联 |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | 界面来源、资源结构和品牌方向；[设计体系](docs/design-system.md) 和 [Motion 展示](https://open-design.ai/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | 界面来源、资源结构和品牌方向；[设计体系](docs/design-system.md) 和 [Motion 展示](https://open-design.ai/zh/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML 视频合成、Studio 和渲染基础，固定为 0.9.7；创作者参考、外部改编演示与组件源码；[引擎说明](docs/hyperframes.md)、[模板声明](template-library/NOTICE.md) 和[目录来源](docs/template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech 源码以 Presenter Tech 打包；[许可与署名](library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | Agent 主导热门视频复刻与可编辑版本的灵感来源；未引入运行时 |
