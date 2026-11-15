@@ -9,6 +9,24 @@
   --color-border-input: var(--motion-gallery-border);
 }
 
+/* Media fills one rounded clip. A translucent inner edge stays quiet on both
+   bright posters and dark video frames without adding a second outer border. */
+:root[data-motion-ui] .motion-gallery-card-cover {
+  overflow: hidden;
+  isolation: isolate;
+  border: 0;
+  border-radius: var(--motion-radius-lg);
+  background: var(--motion-gallery-control);
+}
+:root[data-motion-ui] .motion-gallery-card-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--motion-gallery-media-border);
+  pointer-events: none;
+}
+
 /* OD control recipes, scoped to visual hooks; existing sizes and state handling stay native. */
 :root[data-motion-ui] .hf-od-primary {
   --color-accent: var(--motion-action);
