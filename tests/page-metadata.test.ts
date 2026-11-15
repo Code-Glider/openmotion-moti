@@ -37,15 +37,19 @@ test('sharing copy stays public, localized and HTML-safe', () => {
   assert.equal(pageMetadata().property['og:image:secure_url'], socialImage.url);
 });
 
-test('social previews reuse the registered README hero and matching card fields', async () => {
+test('social previews keep the registered sharing artwork separate from the localized README covers', async () => {
   const manifest = JSON.parse(await readFile(new URL('../repository-media.json', import.meta.url), 'utf8'));
   const hero = manifest.files.find((file: { path: string }) => file.path === 'docs/readme/brand-hero.jpg');
-  assert.ok(hero, 'The README hero must retain its public media record.');
+  assert.ok(hero, 'The previous README hero must retain its public media record.');
   assert.equal(socialImage.url, hero.url);
   assert.ok(socialImage.url.includes(hero.sha256), 'The share URL must identify immutable original bytes.');
   assert.ok(hero.bytes < 5 * 1024 * 1024, 'Keep the image within the large social card size limit.');
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
-  assert.ok(readme.includes(socialImage.url), 'The website and README must use the same hero.');
+  assert.ok(readme.includes('src="docs/readme/remix-en.webp"'), 'The README opens with its localized WebP cover.');
+  assert.ok(!readme.includes(socialImage.url), 'Localized README covers stay local; sharing keeps the registered JPEG artwork.');
+  const mediaKit = await readFile(new URL('../docs/media-kit.md', import.meta.url), 'utf8');
+  assert.match(mediaKit, /Current Studio Open Graph\/Twitter image/, 'The media kit names which surfaces reuse the registered sharing image.');
+  assert.match(mediaKit, /previous README artwork/, 'The documented split explains why sharing keeps the earlier README artwork.');
   const meta = pageMetadata();
   assert.equal(meta.name['twitter:image'], meta.property['og:image']);
   assert.equal(meta.name['twitter:image:alt'], meta.property['og:image:alt']);
