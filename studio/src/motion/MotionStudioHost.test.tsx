@@ -3,8 +3,6 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MotionEditorFrame, MotionStudioHost } from './MotionStudioHost';
-import { COMMUNITY_URL } from './CommunityLink';
-import discordLogo from './community-discord.svg';
 import { GITHUB_REPOSITORY } from './githubRepository';
 import { StudioHeader } from '../components/StudioHeader';
 import { useMotionHistoryOperation } from './MotionHistoryState';
@@ -317,22 +315,18 @@ it('dismissing a write-blocking notice does not enable project creation', () => 
 });
 
 
-it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'])('keeps community and repository links beside the model selector with a localized label (%s)', locale => {
+it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'])('shows the OpenMotion brand and a single external link to GitHub in the header (%s)', locale => {
   localStorage.setItem('motion.studio.locale', locale);
   render();
-  const link = container.querySelector<HTMLAnchorElement>('.motion-community-link')!;
-  expect(link.href).toBe(COMMUNITY_URL);
-  expect(link.target).toBe('_blank');
-  expect(link.rel).toContain('noopener');
-  expect(container.querySelector<HTMLAnchorElement>(`a[href="${GITHUB_REPOSITORY}"]`)?.target).toBe('_blank');
-  expect(link.querySelector('img')?.getAttribute('src')).toBe(discordLogo);
-  expect(link.getAttribute('aria-label')).toBeTruthy();
-  expect(container.querySelector('.om-app-header')?.contains(link)).toBe(true);
-  expect(container.querySelector('.om-app-header')?.contains(container.querySelector(`a[href="${GITHUB_REPOSITORY}"]`))).toBe(true);
-  expect(container.querySelector('.om-app-header .om-model-switcher')).not.toBeNull();
-  expect(container.querySelector('.motion-studio-header')?.contains(link)).toBe(false);
-  const exportButton = container.querySelector('[data-testid="header-export"]')!;
-  expect(link.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const header = container.querySelector('.om-app-header')!;
+  expect(header.querySelector('[role="img"][aria-label="OpenMotion"]')).not.toBeNull();
+  const links = header.querySelectorAll<HTMLAnchorElement>('a[href]');
+  expect(links).toHaveLength(1);
+  expect(links[0].href).toBe(GITHUB_REPOSITORY);
+  expect(links[0].target).toBe('_blank');
+  expect(links[0].relList.contains('noopener')).toBe(true);
+  expect(links[0].getAttribute('aria-label')).toContain('GitHub');
+  expect(header.querySelector('.om-model-switcher')).not.toBeNull();
 });
 
 
