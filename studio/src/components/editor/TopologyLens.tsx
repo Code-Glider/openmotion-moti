@@ -82,7 +82,14 @@ function useTopologyLensState(): TopologyLensState {
   return state;
 }
 
-/** Studio-parent chrome driven by the same invocation and receipt as WebMCP. */
+/**
+ * Studio-parent chrome driven by the same invocation and receipt as WebMCP.
+ *
+ * The receipt comes from the retained write coordinator, whose tools are not
+ * registered as page tools in this surface, so the lens stays hidden until one
+ * is registered again. It is kept mounted and tested so that re-registration
+ * does not also have to restore the visual proof of an applied edit.
+ */
 export function TopologyLens({ iframeRef, activeCompositionPath }: TopologyLensProps) {
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const state = useTopologyLensState();
