@@ -4,7 +4,7 @@ For the local agent reading this guide: ordinary product installation uses a rev
 
 ## Codex: prebuilt installation
 
-For the cold-install latency target, select an artifact with prebuilt npm dependencies matching this machine. Lightweight packages still download dependencies during setup. See [target-specific package builds](docs/npm-installation.md).
+To avoid dependency downloads during setup, select an artifact with prebuilt npm dependencies matching this machine. Lightweight packages still download dependencies during setup. See [target-specific package builds](docs/npm-installation.md).
 
 Use the exact package specification and, for a candidate URL/file, SHA256 from its accepted installation guide or manifest. Do not guess an unpublished version or apply new installer flags to an older published package. This branch's local candidate is not a public release. A package containing `--onboarding-output` can use the current chat's existing inline renderer without MCP hot reload:
 
@@ -27,7 +27,7 @@ bash /tmp/openmotion-source-install.sh
 
 `OPENMOTION_INSTALL_DIR` selects a persistent empty destination. If the intended checkout already exists, verify its origin, version and local changes, then run its `bash scripts/install-motion.command` instead of cloning another copy. Never overwrite or update an unrelated checkout. The installer reuses a built Studio, checks source conflicts before dependency work, and can rebind a verified old `openmotion-local` source only when no plugin from it is installed. An active source is preserved and reported for an explicit upgrade decision.
 
-Treat **120 seconds as a target, not a guarantee**: source download depends on network throughput and is measured separately. The installer emits phase durations and saves local timings plus a concise onboarding result under `.artifacts/install/`; read that result once. Use bounded process waits instead of repeated status polls and guide/source reads. A prebuilt published application avoids source build/download work but is a separate, exact-version installation route; never silently substitute it for the requested main source.
+Source download depends on network throughput and is measured separately; installation time is not guaranteed. The installer emits phase durations and saves local timings plus a concise onboarding result under `.artifacts/install/`; read that result once. Use bounded process waits instead of repeated status polls and guide/source reads. A prebuilt published application avoids source build/download work but is a separate, exact-version installation route; never silently substitute it for the requested main source.
 
 ## Other hosts: clone and start
 

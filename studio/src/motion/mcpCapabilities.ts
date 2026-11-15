@@ -31,7 +31,7 @@ export const mcpFaq = [
   ['Can ChatGPT cloud connect to this workspace?', 'This installation exposes local stdio, not a public HTTPS MCP endpoint. Use a local Agent or compatible desktop MCP client. The editor URL is not an MCP server URL.'],
   ['Can I recreate a reference video?', 'Yes. Give your Agent the reference and your brand. The recreation Skill analyses and rebuilds the film as editable source. Access to the reference, media understanding and fidelity depend on the host and supplied material.'],
   ['Where do I find my finished work?', 'Projects, source files, assets and versions stay in your local OpenMotion workspace. Open the project in Studio or ask a connected Agent to read it and continue. Completed exports provide the MP4.'],
-  ['Can I see templates and videos inside my Agent?', 'Clients that negotiate MCP Apps can discover optional template recommendation cards and the final-video player. Other clients use the same local template library, editor and video links. Host support varies.'],
+  ['Can I see templates and videos inside my Agent?', 'Clients that negotiate MCP Apps can discover optional template cards and the final-video player. Codex installation callbacks can also show the welcome and three video cards through a supported inline renderer while opening the template library. This does not verify native MCP discovery. Other clients use the local library, editor and video links; host support varies.'],
   ['How do I disconnect an Agent?', 'Remove the OpenMotion MCP entry or plugin in that Agent. This does not delete projects. Remove provider credentials separately in Model providers if you no longer want generation access.'],
   ['Does connecting start generation or spend credits?', 'No. Copying setup instructions, browsing templates and checking a connection do not start media generation. Provider requests may incur charges; ask your Agent to confirm the model, scope and cost first.'],
 ] as const;
@@ -57,5 +57,5 @@ export const mcpClientComparison = [
   ['Local material', 'Explicit local file paths', 'Host file access required', 'Not available'],
   ['Version history and restoration', 'Supported', 'Requires tools and resource support', 'Not available'],
   ['Preview and MP4 export', 'Local Studio and export links', 'Local Studio and export links', 'Not available'],
-  ['Inline template cards and final video', 'Requires MCP Apps negotiation', 'Requires MCP Apps negotiation', 'Not available'],
+  ['Inline template cards and final video', 'Codex inline onboarding or MCP Apps; final video requires MCP Apps', 'Requires MCP Apps negotiation', 'Not available'],
 ] as const;

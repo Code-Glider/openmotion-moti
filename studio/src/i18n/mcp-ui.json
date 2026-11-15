@@ -194,6 +194,8 @@
     "Can I continue with another Agent?": "可以换一个 Agent 继续做吗？",
     "Yes. Connect a compatible Agent to the same workspace and ask it to read the saved project before editing. Projects and assets can be reused; provide any conversation context it needs separately.": "可以。将兼容的 Agent 接入同一工作区，让它读取已保存的工程再继续编辑。工程和素材可以复用，需要的聊天上下文请另行提供。",
     "Copy this instruction to your Agent to install and connect OpenMotion.": "复制指令发给 Agent，让它帮你安装并接入 OpenMotion。",
-    "Tell your Agent what you want to make. Start with an idea, your material or a template.": "告诉 Agent 想做什么，从想法、素材或模板开始。"
+    "Tell your Agent what you want to make. Start with an idea, your material or a template.": "告诉 Agent 想做什么，从想法、素材或模板开始。",
+    "Clients that negotiate MCP Apps can discover optional template cards and the final-video player. Codex installation callbacks can also show the welcome and three video cards through a supported inline renderer while opening the template library. This does not verify native MCP discovery. Other clients use the local library, editor and video links; host support varies.": "协商 MCP Apps 的客户端可发现可选模板卡片和成片播放器。Codex 安装回调也可通过宿主支持的内联渲染器展示欢迎与三张视频卡片，同时打开模板库。这不代表原生 MCP 工具已被发现。其他客户端使用本地模板库、编辑器和视频链接；具体取决于宿主支持。",
+    "Codex inline onboarding or MCP Apps; final video requires MCP Apps": "Codex 内联欢迎流程或 MCP Apps；成片播放器需要 MCP Apps"
   }
 }
