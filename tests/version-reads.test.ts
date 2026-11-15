@@ -14,6 +14,35 @@ import { ModelGateway } from '../gateway/service.ts';
 import { Phase1Service } from '../phase1.ts';
 import { pluginRoot } from '../hyperframes.ts';
 
+test('project catalog reads finish after a stalled preview has entered the shared service', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-catalog-queue-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const store = new WorkspaceStore(root);
+  await mkdir(store.projectDirectory, { recursive: true });
+  await writeFile(path.join(store.projectDirectory, 'index.html'), 'catalog fixture');
+  const service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {},
+  });
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const dispatch = service.dispatch.bind(service);
+  service.dispatch = async (name, args, host) => {
+    if (name === 'motion_open_preview') { entered.resolve(); await release.promise; return { projectId: args.projectId }; }
+    return dispatch(name, args, host);
+  };
+  let openingSettled = false;
+  const opening = service.call('openmotion_open_preview', { projectId: 'project' }).finally(() => { openingSettled = true; });
+  let listing: Promise<any> | undefined, timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await entered.promise;
+    listing = service.call('openmotion_get_project', {});
+    const listed = await Promise.race([listing, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Catalog read queued behind the stalled preview')), 1000);
+    })]);
+    assert.ok(listed.projects.some((project: any) => project.id === 'project'));
+    assert.equal(openingSettled, false);
+  } finally { clearTimeout(timer); release.resolve(); await Promise.allSettled([opening, listing]); }
+});
+
 test('queries share streaming hash checks and invalidate changed, deleted and repaired historical blobs', async t => {
   const root = await mkdtemp(path.join(tmpdir(), 'motion-version-reads-'));
   t.after(() => rm(root, { recursive: true, force: true }));
