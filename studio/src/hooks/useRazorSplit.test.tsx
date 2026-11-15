@@ -3,6 +3,7 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TimelineElement } from "../player";
+import { usePlayerStore } from "../player";
 import { useRazorSplit } from "./useRazorSplit";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -98,6 +99,37 @@ describe("useRazorSplit mutation versions", () => {
 
 describe("useRazorSplit linked clips", () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it("explains why a sub-composition child cannot use playhead split", async () => {
+    const showToast = vi.fn();
+    let split: ((splitTime: number) => Promise<void>) | undefined;
+    const root = createRoot(document.body.appendChild(document.createElement("div")));
+    function Harness() {
+      split = useRazorSplit({
+        projectId: "p1",
+        activeCompPath: "index.html",
+        showToast,
+        writeProjectFile: vi.fn(),
+        recordEdit: vi.fn(),
+        reloadPreview: vi.fn(),
+      }).handleSplitAtPlayhead;
+      return null;
+    }
+
+    usePlayerStore.setState({
+      elements: [{ id: "root", key: "root", tag: "div", start: 0, duration: 4, track: 0 }],
+      selectedElementId: "sub-composition.html#clip",
+    });
+    await act(async () => root.render(React.createElement(Harness)));
+    await act(async () => { await split?.(2); });
+
+    expect(showToast).toHaveBeenCalledWith(
+      "Use the razor tool to split clips inside a sub-composition",
+      "info",
+    );
+    act(() => root.unmount());
+    usePlayerStore.setState({ elements: [], selectedElementId: null });
+  });
 
   it("splits every member of a linked pair in one cut", async () => {
     const { usePlayerStore } = await import("../player");

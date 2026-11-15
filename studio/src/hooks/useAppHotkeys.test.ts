@@ -422,6 +422,26 @@ describe('dispatchPlainKey — "A" returns to select while the razor is armed', 
   });
 });
 
+describe('dispatchPlainKey — split at playhead', () => {
+  it('preserves the sub-composition razor hint when the host owns splitting', () => {
+    usePlayerStore.setState({
+      currentTime: 2,
+      elements: [bgmElement],
+      selectedElementId: 'sub-composition.html#clip',
+    });
+    const split = vi.fn(async () => {});
+    const cb = callbacks({ handleSplitAtPlayhead: split });
+
+    dispatchPlainKey(press('s'), 's', cb);
+
+    expect(split).not.toHaveBeenCalled();
+    expect(cb.showToast).toHaveBeenCalledWith(
+      expect.stringContaining('Use the razor tool'),
+      'info',
+    );
+  });
+});
+
 describe("hotkeys with the preview read-only", () => {
   beforeEach(() => {
     usePlayerStore.setState({ elements: [bgmElement], selectedElementId: null });

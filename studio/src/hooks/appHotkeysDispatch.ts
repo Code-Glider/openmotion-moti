@@ -170,11 +170,21 @@ export function dispatchPlainKey(event: KeyboardEvent, _key: string, cb: HotkeyC
     // so secondary listeners do not reinterpret the same key as Snap toggle.
     event.preventDefault();
     if (cb.readOnlyPreview || event.repeat) return;
+    const { selectedElementId, elements, currentTime } = usePlayerStore.getState();
     if (cb.handleSplitAtPlayhead) {
-      void cb.handleSplitAtPlayhead(usePlayerStore.getState().currentTime);
+      // Expanded sub-composition children carry a qualified selection key that
+      // is not present in the flat store. Preserve the existing razor-tool
+      // guidance before the host-level split callback handles normal clips.
+      if (selectedElementId && selectedElementId.includes("#") && !elements.some((e) => (e.key ?? e.id) === selectedElementId)) {
+        cb.showToast(
+          `Use the razor tool (${keyHint("razorTool", keys)}) to split clips inside a sub-composition`,
+          "info",
+        );
+        return;
+      }
+      void cb.handleSplitAtPlayhead(currentTime);
       return;
     }
-    const { selectedElementId, elements, currentTime } = usePlayerStore.getState();
     if (selectedElementId) {
       const el = elements.find((e) => (e.key ?? e.id) === selectedElementId);
       if (

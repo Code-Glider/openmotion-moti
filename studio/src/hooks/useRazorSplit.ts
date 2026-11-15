@@ -158,7 +158,17 @@ export function useRazorSplit({
         showToast("Cannot edit timeline while recording", "error");
         return;
       }
-      const targets = selectPlayheadSplitElements(usePlayerStore.getState(), splitTime);
+      const state = usePlayerStore.getState();
+      const selectedElementId = state.selectedElementId;
+      if (
+        selectedElementId &&
+        selectedElementId.includes("#") &&
+        !state.elements.some((element) => (element.key ?? element.id) === selectedElementId)
+      ) {
+        showToast("Use the razor tool to split clips inside a sub-composition", "info");
+        return;
+      }
+      const targets = selectPlayheadSplitElements(state, splitTime);
       if (targets.length === 0) return;
       playheadCutPendingRef.current = true;
       try {
