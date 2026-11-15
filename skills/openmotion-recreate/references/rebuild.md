@@ -78,6 +78,14 @@ Cover the features responsible for the passage's motion, including changes insid
 
 Fast or repetitive content can match a neighboring repeat across a sparse frame gap and underestimate travel. Begin with adjacent decoded frames, follow recognizable features and check the accumulated path before fitting a longer interval. Keep displacement units, coordinate scale and elapsed time explicit when deriving velocity. Inspect the tracked feature's own region separately from nearby stationary structure.
 
+Measure source travel before assigning velocities for each trackable local region. The optional `scripts/measure_motion.py` accepts a reference alone for observations before authoring, using host Python, NumPy and OpenCV. Choose a continuous interval with recognizable features and inspect its samples and point pairs.
+
+```sh
+python <skill directory>/scripts/measure_motion.py reference.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out source-motion.json
+```
+
+The source-only report has `comparisonPerformed: false` and `output: null`. Fit controls from the observed displacement and elapsed time in the declared coordinate scale. After rendering, supply both videos to compare the same region. Repeat this for the independently moving regions in the inventory, preserving unresolved observations explicitly.
+
 Convert those observations into timed controls the renderer actually reads. Keep the connection from observation to model parameter and source function inspectable. Depending on the passage, the useful record may be landmark coordinates, per-part keyframes, camera matrices, shape states, correspondence fields or per-line text bounds. Record direction/speed changes, extreme poses, fastest travel and settling. Add observations where interpolation remains uncertain.
 
 | Observed change | An editable way to encode it | Output that challenges the model |

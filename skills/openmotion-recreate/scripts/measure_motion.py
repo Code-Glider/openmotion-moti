@@ -1,4 +1,4 @@
-"""Compare visible feature travel in corresponding reference and output regions.
+"""Observe source feature travel or compare corresponding source/output regions.
 
 Optional host helper requiring NumPy and OpenCV. Tracks a continuous interval at
 each video's native frame rate. It reports observations and possible suppression,
@@ -110,7 +110,7 @@ def suppression_warning(reference, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('reference', type=Path)
-    parser.add_argument('output', type=Path)
+    parser.add_argument('output', type=Path, nargs='?', help='Output video. Omit it to observe source motion before authoring.')
     parser.add_argument('--start', type=float, required=True)
     parser.add_argument('--end', type=float, required=True)
     parser.add_argument('--roi', type=rectangle, help='Reference region in original pixels.')
@@ -125,17 +125,26 @@ def main():
         parser.exit(2, 'This optional helper requires NumPy and OpenCV in the host Python environment.\n')
     if not np.isfinite([args.start, args.end]).all() or args.start < 0 or args.end <= args.start or args.max_width < 64:
         parser.error('Use finite times with 0 <= start < end and --max-width of at least 64.')
+    if args.output is None and args.output_roi is not None:
+        parser.error('--output-roi requires an output video.')
     reference = measure_video(args.reference, args.start, args.end, args.roi, args.max_width)
-    output = measure_video(args.output, args.start, args.end, args.output_roi or args.roi, args.max_width)
-    warning = suppression_warning(reference, output)
-    report = {'reference': reference, 'output': output, 'possibleSuppressedMotion': warning,
-              'limits': 'Corresponding continuous intervals on the same clock. Select a region belonging to the feature being checked. Mixed stationary and moving content, occlusion, material changes and uncertain tracking need visual review. This measures visible output and does not establish object identity or semantic correctness.'}
+    report = {'reference': reference, 'output': None, 'comparisonPerformed': False, 'possibleSuppressedMotion': None,
+              'limits': 'Source-only observations require an output comparison after rendering. Comparisons use corresponding continuous intervals on the same clock. Select a region belonging to the feature being checked. Mixed stationary and moving content, occlusion, material changes and uncertain tracking need visual review. Object identity and semantic fidelity require visual inspection.'}
+    summary = {'output': str(args.out), 'referenceStatus': reference['status'], 'outputStatus': None,
+               'referenceSpanPx': reference.get('spanPx'), 'outputSpanPx': None,
+               'comparisonPerformed': False, 'possibleSuppressedMotion': None}
+    failed = reference['status'] != 'measured'
+    if args.output is not None:
+        output = measure_video(args.output, args.start, args.end, args.output_roi or args.roi, args.max_width)
+        warning = suppression_warning(reference, output)
+        report.update(output=output, comparisonPerformed=True, possibleSuppressedMotion=warning)
+        summary.update(outputStatus=output['status'], outputSpanPx=output.get('spanPx'),
+                       comparisonPerformed=True, possibleSuppressedMotion=warning)
+        failed = failed or output['status'] != 'measured' or warning is True
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + '\n')
-    print(json.dumps({'output': str(args.out), 'referenceStatus': reference['status'],
-                      'outputStatus': output['status'], 'referenceSpanPx': reference.get('spanPx'),
-                      'outputSpanPx': output.get('spanPx'), 'possibleSuppressedMotion': warning}))
-    return 2 if warning is True or reference['status'] != 'measured' or output['status'] != 'measured' else 0
+    print(json.dumps(summary))
+    return 2 if failed else 0
 
 
 if __name__ == '__main__':

@@ -1,8 +1,10 @@
 """Run with a host Python environment containing NumPy and OpenCV."""
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -113,6 +115,41 @@ class VisibleMotionTests(unittest.TestCase):
             self.assertAlmostEqual(result['samples'][-1]['time'], .625, places=3)
             incomplete = motion.measure_video(filename, .125, 1.5, self.roi, 640)
             self.assertEqual(incomplete['status'], 'unresolved')
+
+    def test_source_observation_cli_and_existing_output_comparison(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            for name, positions in [('moving', range(20)), ('static', [0] * 20)]:
+                writer = cv2.VideoWriter(str(directory / (name + '.avi')), cv2.VideoWriter_fourcc(*'MJPG'), 24, (480, 240))
+                self.assertTrue(writer.isOpened())
+                for _, image in self.sequence(positions):
+                    writer.write(image)
+                writer.release()
+            command = [sys.executable, str(source.with_name('measure_motion.py')), str(directory / 'moving.avi')]
+            timing = ['--start', '.125', '--end', '.625', '--roi', ','.join(map(str, self.roi))]
+            source_report = directory / 'source.json'
+            observed = subprocess.run([*command, *timing, '--out', str(source_report)], capture_output=True, text=True)
+            self.assertEqual(observed.returncode, 0, observed.stderr)
+            report = json.loads(source_report.read_text())
+            self.assertFalse(report['comparisonPerformed'])
+            self.assertIsNone(report['output'])
+            self.assertIsNone(report['possibleSuppressedMotion'])
+            self.assertAlmostEqual(report['reference']['spanPx'][1], 12, delta=.5)
+            self.assertEqual(len(report['reference']['samples']), 13)
+            invalid = subprocess.run([*command, *timing, '--output-roi', '90,40,300,160', '--out', str(source_report)], capture_output=True, text=True)
+            self.assertEqual(invalid.returncode, 2)
+
+            comparison_report = directory / 'comparison.json'
+            compared = subprocess.run([*command, str(directory / 'static.avi'), *timing, '--out', str(comparison_report)], capture_output=True, text=True)
+            self.assertEqual(compared.returncode, 2, compared.stderr)
+            report = json.loads(comparison_report.read_text())
+            self.assertTrue(report['comparisonPerformed'])
+            self.assertTrue(report['possibleSuppressedMotion'])
+            self.assertEqual(report['output']['status'], 'measured')
+
+            identical = subprocess.run([*command, str(directory / 'moving.avi'), *timing, '--out', str(comparison_report)], capture_output=True, text=True)
+            self.assertEqual(identical.returncode, 0, identical.stderr)
+            self.assertFalse(json.loads(comparison_report.read_text())['possibleSuppressedMotion'])
 
 
 if __name__ == '__main__':
