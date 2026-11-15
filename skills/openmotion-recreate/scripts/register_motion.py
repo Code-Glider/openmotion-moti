@@ -16,6 +16,8 @@ def estimate_transform(anchor, current, roi, excluded=(), max_width=960):
     x, y, width, height = roi
     scale = min(1.0, max_width / width)
     size = (round(width * scale), round(height * scale))
+    if min(size) < 2:
+        return {'status': 'unresolved', 'reason': 'The selected region is too small for feature registration after resizing.'}
     coordinate_scale = np.array([size[0] / width, size[1] / height])
     images = [cv2.resize(image[y:y + height, x:x + width], size)
               for image in [anchor, current]]

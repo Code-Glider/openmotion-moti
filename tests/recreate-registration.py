@@ -49,6 +49,11 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual(result['status'], 'unresolved')
         self.assertNotIn('anchorToFrame', result)
 
+    def test_thin_region_is_unresolved_when_downsampled(self):
+        result = registration.estimate_transform(self.anchor, self.anchor, [0, 100, 1280, 1], max_width=64)
+        self.assertEqual(result['status'], 'unresolved', result)
+        self.assertNotIn('anchorToFrame', result)
+
 
 class VisibleMotionTests(unittest.TestCase):
     def setUp(self):
