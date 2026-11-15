@@ -142,6 +142,8 @@ For catalog discovery requests (browse, compare or recommend), the template rout
 
 后续需求应注明改变了哪一步、影响哪些角色，以及用户能观察到的完成条件。
 
+Audio asset previews use a compact 640px-wide, 280px-high dialog with 81 thin monochrome bars, mirrored horizontally and vertically. A live Web Audio spectrum drives stationary peaks with fast attack and slower release. The display fits the occupied frequency range, adds small shoulders around peaks and gates amplitude by measured RMS; it is an audio-reactive visual treatment, not a calibrated frequency plot or a scrolling sample history. Silence settles to a flat baseline. The neutral seek track and circular play control remain scoped to audio previews. Bars update during playback and freeze on pause; the existing seek control remains the time reference. The existing metadata reader identifies audio-only video containers for this dialog without changing asset-list classification or composition source. Video and image previews retain their existing layout. Analysis shares the preview's media element, volume, rate and loop without downloading or playing a second copy. Unsafe cross-origin sources retain native playback with an unavailable visualization; capture starts only after the audio context is running. Closing or replacing the preview releases its animation and audio graph, including development effect replays.
+
 Asset selection, acquisition and replacement use the shared [material policy](../../skills/openmotion-production/references/materials.md) across all five production routes. Source priority is a host-Agent decision within existing workflow scope and user constraints; this does not add a search/generation backend or trigger acquisition for preview/export-only work.
 
 ## 职责分层与依赖方向
