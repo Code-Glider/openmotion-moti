@@ -6,6 +6,12 @@ Old `motion_*` / legacy `design_*` Tool names and `motion://` resource addresses
 
 Renaming does not change schemas, defaults, engine versions, permissions or project data formats. Internal request identities and telemetry keys retain their original names so retries cannot duplicate saved changes or exports. Compatible running backends are negotiated using either Tool spelling. See [installation and migration](npm-installation.md#public-names-and-compatibility). Generic terms such as motion graphics and motion blur remain animation terminology.
 
+## Media tools and upstream guidance
+
+All production entries share the [material tool policy](../skills/openmotion-production/references/materials.md#tool-ownership-and-discovery): project work stays in OpenMotion, while existing assets, general-purpose retrieval/generation and configured OpenMotion media providers can fill material gaps. ChatCut and other video-platform tools, including stock search, are excluded by default unless the user explicitly requests that platform for the operation. Tool discovery must consider ownership as well as capability.
+
+The [native engine boundary](../skills/openmotion-production/references/native.md#engine-guidance-boundary) applies to both filesystem guides and MCP engine resources. Hyperframes supplies technical constraints, not supplier onboarding, creative routes, mandatory soundtrack defaults or delivery policy. These are Agent instructions, not host-level tool isolation; refreshed Skills must be loaded before evaluating model behavior.
+
 ## 可选社区资源
 
 [`library/`](../library/README.zh-CN.md) 收纳可选创作 Skills、模板索引、组件配方、`MOTION_DESIGN.md` 设计体系与 Brandkits。首个 [`brandkit`](../library/skills/openmotion-brandkit/SKILL.md) 只整理品牌上下文，可用 `npx skills add ./library/skills --skill openmotion-brandkit` 单独安装。它不进入以下五个核心制作入口、不自动注册为 MCP resource，也不改变制作意图路由。资源需要由用户或 Agent 明确选择与提供；新增条目遵循[贡献清单](../library/ENTRY_TEMPLATE.md)。
