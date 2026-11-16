@@ -70,10 +70,10 @@ async function body(request: IncomingMessage): Promise<unknown> {
 }
 export async function serve(options: Options): Promise<Service> {
   const workspace = new Workspace(options.data);
-  const previews = new Previews(workspace);
   const templates = options.prism
     ? new PrismTemplates(workspace, options.prism, options.onPrismRead)
     : new Templates(workspace);
+  const previews = new Previews(workspace, async (input) => templates.execute("template_read", input));
   const exports = new Exports(workspace, options.renderer, options.endpoint);
   const generations = new Generations(workspace, options.gateway);
   const archives = new Archives(workspace, options.endpoint);
@@ -134,9 +134,21 @@ export async function serve(options: Options): Promise<Service> {
           { ok: true, pid: process.pid, ...(options.environment ? { environment: options.environment } : {}) },
           origin,
         );
-      if (request.method === "POST" && ["/preview/open", "/preview/close"].includes(request.url ?? "")) {
+      if (
+        request.method === "POST" &&
+        ["/preview/open", "/preview/template", "/preview/close"].includes(request.url ?? "")
+      ) {
         const input = await body(request);
-        reply(response, 200, request.url === "/preview/open" ? previews.open(input) : previews.release(input), origin);
+        reply(
+          response,
+          200,
+          request.url === "/preview/open"
+            ? previews.open(input)
+            : request.url === "/preview/template"
+              ? await previews.openTemplate(input)
+              : previews.release(input),
+          origin,
+        );
         return;
       }
       if (request.method === "POST" && ["/motion/context", "/motion/host"].includes(request.url ?? "")) {

@@ -159,3 +159,74 @@ it("rejects broken composition candidates atomically, retains confirmed views an
     views.release({ id: confirmed.id });
     expect(response(views, url).status).toBe(404);
   }));
+
+it("previews exact verified template source without creating or selecting a project", async () => {
+  const { list, read } = await import("@open-motion/templates");
+  const root = mkdtempSync(join(tmpdir(), "template-view-")),
+    workspace = new Workspace(root);
+  const selected = list().templates[0]!;
+  let reads = 0;
+  const views = new Previews(workspace, async (input) => {
+    reads++;
+    return read(input);
+  });
+  try {
+    const before = workspace.execute("workspace_state", {}),
+      input = { id: randomUUID(), template: { id: selected.id, contentHash: selected.contentHash } };
+    const opened = await views.openTemplate(input);
+    expect(opened).toMatchObject({ id: input.id, revision: selected.contentHash, template: selected });
+    expect(await views.openTemplate(input)).toEqual(opened);
+    expect(reads).toBe(1);
+    const shown = response(views, `/preview/${input.id}/index.html`);
+    expect(shown.status).toBe(200);
+    expect(response(views, `/preview/${input.id}/assets/fonts.css`).body).toContain("data:font/woff2;base64,");
+    expect(shown.headers["content-security-policy"]).toContain("connect-src 'none'");
+    expect(response(views, `/preview/${input.id}/licenses/fonts.txt`).body).toContain("SIL OPEN FONT LICENSE");
+    await expect(
+      views.openTemplate({ ...input, template: { ...input.template, contentHash: `sha256:${"0".repeat(64)}` } }),
+    ).rejects.toThrow("different source");
+    await expect(
+      views.openTemplate({
+        id: randomUUID(),
+        template: { ...input.template, contentHash: `sha256:${"0".repeat(64)}` },
+      }),
+    ).rejects.toThrow("changed");
+    expect(workspace.execute("workspace_state", {})).toEqual(before);
+    expect(workspace.execute("project_list", {}).projects).toEqual([]);
+    views.release({ id: input.id });
+    expect(response(views, `/preview/${input.id}/index.html`).status).toBe(404);
+  } finally {
+    views.close();
+    workspace.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+it("bounds in-flight template readers and never resurrects a view closed before verification finishes", async () => {
+  const { list, read } = await import("@open-motion/templates");
+  const root = mkdtempSync(join(tmpdir(), "template-view-drain-")),
+    workspace = new Workspace(root),
+    template = list().templates[2]!;
+  const releases: (() => void)[] = [];
+  const views = new Previews(workspace, () => new Promise((resolve) => releases.push(() => resolve(read(template)))));
+  try {
+    const inputs = Array.from({ length: 16 }, () => ({
+      id: randomUUID(),
+      template: { id: template.id, contentHash: template.contentHash },
+    }));
+    const pending = inputs.map((input) => views.openTemplate(input));
+    const replay = views.openTemplate(inputs[0]);
+    expect(releases).toHaveLength(16);
+    await expect(views.openTemplate({ ...inputs[0], id: randomUUID() })).rejects.toThrow("close an existing");
+    views.release({ id: inputs[0]!.id });
+    views.close();
+    for (const release of releases) release();
+    const result = await Promise.allSettled([...pending, replay]);
+    expect(result.every((item) => item.status === "rejected" && String(item.reason).includes("closed"))).toBe(true);
+    for (const input of inputs) expect(response(views, `/preview/${input.id}/index.html`).status).toBe(404);
+    expect(workspace.execute("workspace_state", {}).sessions).toEqual([]);
+  } finally {
+    views.close();
+    workspace.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});

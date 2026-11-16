@@ -15,7 +15,7 @@ import { chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
 import type { Config } from "@";
 
-const repo = fileURLToPath(new URL("../../../../", import.meta.url)),
+const repo = fileURLToPath(new URL("../../../../../", import.meta.url)),
   evidence = join(repo, ".artifacts", "workspace-parity", randomUUID()),
   root = join(evidence, "sidecar"),
   report: Record<string, unknown> = { reference: "03d6df8615a2cb87727241406b9671c184ff497a" };
@@ -66,7 +66,7 @@ async function start() {
     capability: Awaited<ReturnType<typeof factory.issue>> | undefined;
   const web = await source(factory, {
     name: "web",
-    directory: fileURLToPath(new URL("../../dist/", import.meta.url)),
+    directory: fileURLToPath(new URL("../../../dist/", import.meta.url)),
     documents: {
       "/bootstrap.json": () => {
         if (!bootstrap) throw Error("fixture not ready");

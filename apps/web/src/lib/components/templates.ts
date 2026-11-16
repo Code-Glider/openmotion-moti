@@ -1,5 +1,5 @@
 import { button, disclosure, field, note, slot } from "@open-motion/components";
-import type { Descriptor, TemplateOutput } from "@open-motion/templates/contract";
+import { catalogEntries, type Descriptor, type TemplateOutput } from "@open-motion/templates/contract";
 import type { Client } from "../../api.js";
 
 type Catalog = TemplateOutput<"template_list">;
@@ -115,10 +115,7 @@ export class Templates {
         const result = await this.client.execute("template_list", {});
         if (this.disposed) return;
         const first = !this.catalog,
-          entries: Entry[] = [...result.templates];
-        for (const entry of result.catalog?.entries ?? [])
-          if (!entries.some((ready) => ready.id === entry.id && ready.contentHash === entry.contentHash))
-            entries.push(entry);
+          entries = catalogEntries(result);
         this.catalog = entries;
         if (first && !this.selected) this.selected = entries[0];
         this.select.replaceChildren(

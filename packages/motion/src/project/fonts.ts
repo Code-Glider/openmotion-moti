@@ -1,5 +1,5 @@
 /** Runs only in the derived native document; font loading is distinct from the timeline protocol. */
-export function fontBridge() {
+export function fontBridge(all = false) {
   const surface = window as typeof window & { __openMotionFonts?: Promise<void>; __hfStartupError?: string };
   const loaded = async () => {
     const families = JSON.parse(document.documentElement.getAttribute("data-open-motion-fonts") ?? "[]") as string[];
@@ -11,6 +11,13 @@ export function fontBridge() {
         if (!faces.length || faces.some((face) => face.status !== "loaded")) throw Error("project font unavailable");
       }),
     );
+    if (all) {
+      const faces = [...document.fonts];
+      if (faces.length > 64) throw Error("template font face limit exceeded");
+      await Promise.all(faces.map((face) => face.load()));
+    }
+    await document.fonts.ready;
+    if ([...document.fonts].some((face) => face.status === "error")) throw Error("native font unavailable");
   };
   surface.__openMotionFonts = loaded();
   void surface.__openMotionFonts.then(

@@ -42,7 +42,17 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     requestedEntry: string | undefined,
     flight = Promise.resolve();
   const pages = new Pages(document, () => showPage()),
-    library = new Library(document, client);
+    library = new Library(document, client, {
+      select: (template) => pages.go("templates", template),
+      back: () => pages.go("templates"),
+      resume: (trigger) => creation.open(trigger),
+      create: (template, title, trigger) => {
+        if (busy || editor.unconfirmed || creation.pending || editor.incoming) return;
+        initialEntry = undefined;
+        requestedEntry = undefined;
+        creation.fromTemplate(template, title, trigger);
+      },
+    });
   shell.rail.append(pages.element);
   shell.body.append(library.element);
   const run = (action: () => Promise<void>, next?: () => Promise<void>, recordAddress = true) => {
@@ -123,7 +133,10 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     changed: () => render(message),
     status: (value, state) => synchronization.status(value, state),
   });
-  const creation = new Creation(document, editor, client, run);
+  const creation = new Creation(document, editor, client, run, () => {
+    initialEntry = undefined;
+    pages.go("editor");
+  });
   const navigation = new Navigation(document, client, {
     open: async (artifact) => {
       let opened = false;
@@ -291,6 +304,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     navigation.update(editor, blocked, theme === "dark", busy);
     creation.update(busy, blocked, message);
     archives.update(editor, blocked);
+    library.update(blocked, creation.pending, busy);
     newProject.disabled = busy || (blocked && !creation.pending);
     if (!editor.sources.some((f) => f.path === file)) file = "index.html";
     source.setAttribute("aria-label", file);
@@ -308,7 +322,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     shell.editor.hidden = !showing;
     shell.editor.inert = !showing;
     shell.header.hidden = !showing;
-    library.activate(!showing);
+    library.activate(!showing, pages.template);
     if (!showing) studio.pause();
     if (
       showing &&
