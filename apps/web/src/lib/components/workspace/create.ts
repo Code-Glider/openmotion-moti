@@ -23,6 +23,7 @@ export class Creation {
     private editor: Editor,
     client: Client,
     private run: (action: () => Promise<void>) => void,
+    private created?: () => void,
   ) {
     this.view = dialog(document, "新建项目");
     this.title = document.createElement("input");
@@ -51,11 +52,19 @@ export class Creation {
   open(trigger?: HTMLElement) {
     this.view.open(trigger);
   }
+  fromTemplate(template: Template, title: string, trigger: HTMLElement) {
+    if (this.pending) return;
+    this.title.value = title;
+    this.templates.element.open = false;
+    this.view.open(trigger);
+    this.begin(title, template);
+  }
   private begin(title: string, template?: Template) {
     this.intent ??= { title, template };
     this.run(async () => {
       const intent = this.intent;
       if (!intent) return;
+      if (!this.editor.initialized) await this.editor.load();
       intent.session ??= await this.editor.createSession(intent.title);
       intent.artifact ??= intent.template
         ? await this.editor.createTemplate(
@@ -74,6 +83,7 @@ export class Creation {
       this.title.value = "";
       this.templates.created();
       this.view.close();
+      this.created?.();
     });
   }
   update(busy: boolean, blocked: boolean, message: string) {

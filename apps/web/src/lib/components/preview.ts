@@ -1,13 +1,25 @@
 import { previewFrame, previewViewport } from "@open-motion/components";
 import { inspectRuntimeProtocol, runtimeProtocolMetadata } from "@open-motion/motion/protocol";
+import type { TemplateInput } from "@open-motion/templates/contract";
 import { isFontResource, type Project } from "@open-motion/workspace/contract";
 import type { Client } from "../../api.js";
+
+type Source = {
+  key: string;
+  revision: string;
+  artifactId?: string;
+  fonts: boolean;
+  current(): boolean;
+  open(): Promise<{ id: string; revision: string; url: string }>;
+};
 /** The only Web owner for candidate frames, runtime messages and ephemeral view retirement. */
 export class NativePreview {
+  private scopeId = crypto.randomUUID();
   private view?: {
     id: string;
     revision: string;
-    artifactId: string;
+    artifactId?: string;
+    key: string;
     frame: HTMLIFrameElement;
     container: HTMLElement;
     fps: number;
@@ -97,10 +109,29 @@ export class NativePreview {
     );
   }
   open(project: Project): Promise<void> {
+    return this.openSource({
+      key: `project:${project.artifactId}:${project.revision}`,
+      revision: project.revision,
+      artifactId: project.artifactId,
+      fonts: project.resources.some(isFontResource),
+      current: () => this.current()?.artifactId === project.artifactId && this.current()?.revision === project.revision,
+      open: () => this.client.preview(project, this.scopeId),
+    });
+  }
+  openTemplate(template: TemplateInput<"template_read">): Promise<void> {
+    return this.openSource({
+      key: `template:${template.id}:${template.contentHash}`,
+      revision: template.contentHash,
+      fonts: true,
+      current: () => true,
+      open: () => this.client.templatePreview(template, this.scopeId),
+    });
+  }
+  private openSource(source: Source): Promise<void> {
     if (this.disposed) return Promise.reject(new Error("preview owner is disposed"));
-    const key = `${project.artifactId}:${project.revision}`;
+    const key = source.key;
     if (this.flight?.key === key) return this.flight.work;
-    const work = this.perform(project).finally(() => {
+    const work = this.perform(source).finally(() => {
       this.pending.delete(work);
       if (this.flight?.work === work) this.flight = undefined;
     });
@@ -108,27 +139,24 @@ export class NativePreview {
     this.flight = { key, work };
     return work;
   }
-  private async perform(project: Project) {
+  private async perform(source: Source) {
     const epoch = ++this.epoch;
     this.candidate?.cancel();
-    const current = () =>
-      epoch === this.epoch &&
-      this.current()?.artifactId === project.artifactId &&
-      this.current()?.revision === project.revision;
+    const current = () => epoch === this.epoch && source.current();
     await this.draining;
     if (!current()) return;
-    if (this.view?.artifactId === project.artifactId && this.view.revision === project.revision) {
+    if (this.view?.key === source.key) {
       this.events.message("预览就绪");
       return;
     }
     this.events.message("正在加载预览");
-    const opened = await this.client.preview(project);
+    const opened = await source.open();
     if (!current()) {
       await this.client.closePreview(opened.id);
       return;
     }
     const document = this.host.ownerDocument,
-      frame = previewFrame(document, "影片预览"),
+      frame = previewFrame(document, source.artifactId ? "影片预览" : "模板预览"),
       viewport = previewViewport(document),
       window = document.defaultView;
     frame.setAttribute("sandbox", "allow-scripts");
@@ -144,7 +172,7 @@ export class NativePreview {
     try {
       const fps = await new Promise<number>((done, reject) => {
         let nativeFps: number | undefined,
-          fontsReady = !project.resources.some(isFontResource);
+          fontsReady = !source.fonts;
         const cleanup = () => {
           clearTimeout(timer);
           window.removeEventListener("message", message);
@@ -216,7 +244,8 @@ export class NativePreview {
       const previous = this.view;
       const present = {
         ...opened,
-        artifactId: project.artifactId,
+        artifactId: source.artifactId,
+        key: source.key,
         frame,
         container: viewport.element,
         fps,
@@ -240,7 +269,7 @@ export class NativePreview {
       }
       if (this.view !== present) return;
       present.acceptTime = true;
-      this.host.dataset.revision = project.revision;
+      this.host.dataset.revision = source.revision;
       this.select(this.selection, this.editable, this.scope);
       this.events.message("预览就绪");
       this.events.ready();
@@ -258,7 +287,7 @@ export class NativePreview {
     this.view = undefined;
     this.host.removeAttribute("data-revision");
     this.events.message("");
-    this.draining = this.draining.catch(() => {}).then(() => this.client.closePreviews());
+    this.draining = this.draining.catch(() => {}).then(() => this.client.closePreviews(this.scopeId));
     void this.draining.catch((error) => this.events.message(`视图撤销未确认：${error.message}`));
     return this.draining;
   }
@@ -269,6 +298,6 @@ export class NativePreview {
     const closing = this.close();
     await Promise.allSettled(pending);
     await closing;
-    await this.client.closePreviews();
+    await this.client.closePreviews(this.scopeId);
   }
 }

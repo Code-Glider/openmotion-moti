@@ -3,6 +3,7 @@ import type { Clip } from "@open-motion/motion";
 import type { AnimationInput, EditInput, NativeValues } from "@open-motion/motion/contract";
 import type { ContextModel, HostChange, Source } from "@open-motion/motion/project";
 import type { ExportInput, ExportOperation, ExportOutput } from "@open-motion/render/contract";
+import type { Descriptor, TemplateInput } from "@open-motion/templates/contract";
 import type {
   Project,
   Input as WorkspaceInput,
@@ -30,7 +31,7 @@ export interface Health {
 }
 export class Client {
   private origin: string;
-  private previews = new Map<string, string>();
+  private previews = new Map<string, { id: string; scope?: string }>();
   constructor(
     origin: string,
     private token: string,
@@ -77,10 +78,11 @@ export class Client {
   }
   async preview(
     project: Pick<Project, "sessionId" | "artifactId" | "revision">,
+    scope?: string,
   ): Promise<{ id: string; revision: string; url: string }> {
-    const key = JSON.stringify([project.sessionId, project.artifactId, project.revision]);
-    const id = this.previews.get(key) ?? crypto.randomUUID();
-    this.previews.set(key, id);
+    const key = JSON.stringify([scope, "project", project.sessionId, project.artifactId, project.revision]);
+    const id = this.previews.get(key)?.id ?? crypto.randomUUID();
+    this.previews.set(key, { id, scope });
     const result = (await this.send("/preview/open", {
       id,
       sessionId: project.sessionId,
@@ -89,12 +91,30 @@ export class Client {
     })) as { id: string; revision: string };
     return { ...result, url: `${this.origin}/preview/${result.id}/index.html` };
   }
+  async templatePreview(
+    template: TemplateInput<"template_read">,
+    scope?: string,
+  ): Promise<{ id: string; revision: string; url: string; template: Descriptor }> {
+    const key = JSON.stringify([scope, "template", template.id, template.contentHash]);
+    const id = this.previews.get(key)?.id ?? crypto.randomUUID();
+    this.previews.set(key, { id, scope });
+    const result = (await this.send("/preview/template", { id, template })) as {
+      id: string;
+      revision: string;
+      template: Descriptor;
+    };
+    return { ...result, url: `${this.origin}/preview/${result.id}/index.html` };
+  }
   async closePreview(id: string): Promise<void> {
     await this.send("/preview/close", { id }, true);
-    for (const [key, value] of this.previews) if (value === id) this.previews.delete(key);
+    for (const [key, value] of this.previews) if (value.id === id) this.previews.delete(key);
   }
-  async closePreviews(): Promise<void> {
-    await Promise.all([...this.previews.values()].map((id) => this.closePreview(id)));
+  async closePreviews(scope?: string): Promise<void> {
+    await Promise.all(
+      [...this.previews.values()]
+        .filter((view) => scope === undefined || view.scope === scope)
+        .map((view) => this.closePreview(view.id)),
+    );
   }
   async health(): Promise<Health> {
     return (await this.send("/health")) as Health;

@@ -40,3 +40,24 @@ it("rejects unknown versions and returns isolated copies rather than mutable cat
   expect(read(descriptor).files[0]!.content).not.toBe("mutated");
   expect(list().templates[0]!.title).toBe("Product Promo");
 });
+
+it("projects discovery by exact id/hash while retaining distinct source versions", async () => {
+  const { catalogEntries } = await import("@/contract.js");
+  const ready = list().templates[0]!,
+    discovery = { ...ready, upstreamId: "remote", availability: "source-required" as const };
+  const newer = { ...discovery, contentHash: `sha256:${"f".repeat(64)}` };
+  const entries = catalogEntries({
+    templates: [ready],
+    catalog: {
+      publicationId: "v1",
+      environment: "prod",
+      resourceId: crypto.randomUUID(),
+      channel: "main",
+      locale: "en",
+      contentHash: ready.contentHash,
+      stale: false,
+      entries: [discovery, newer],
+    },
+  });
+  expect(entries).toEqual([ready, newer]);
+});

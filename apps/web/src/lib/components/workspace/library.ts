@@ -1,12 +1,20 @@
 import { button, field, heading, layout, note, panel, slot } from "@open-motion/components";
-import type { TemplateOutput } from "@open-motion/templates/contract";
+import {
+  catalogEntries,
+  type Descriptor,
+  type TemplateInput,
+  type TemplateOutput,
+} from "@open-motion/templates/contract";
 import type { Client } from "../../../api.js";
+import { TemplateDetail } from "./detail.js";
 
 type Catalog = TemplateOutput<"template_list">;
 type Entry = Catalog["templates"][number] | NonNullable<Catalog["catalog"]>["entries"][number];
 /** Read-only presentation of the existing catalogue; creates no session, project or preview. */
 export class Library {
   readonly element: HTMLElement;
+  private detail: TemplateDetail;
+  private content: HTMLElement;
   private query: HTMLInputElement;
   private list: HTMLElement;
   private status: HTMLElement;
@@ -24,6 +32,12 @@ export class Library {
   constructor(
     document: Document,
     private client: Client,
+    private actions: {
+      select(template: TemplateInput<"template_read">): void;
+      back(): void;
+      create(template: Descriptor, title: string, trigger: HTMLElement): void;
+      resume(trigger: HTMLElement): void;
+    },
   ) {
     this.element = slot(document, "fill");
     this.element.setAttribute("role", "region");
@@ -31,7 +45,8 @@ export class Library {
     this.element.hidden = true;
     this.element.inert = true;
     const content = slot(document, "content"),
-      actions = slot(document, "toolbar");
+      toolbar = slot(document, "toolbar");
+    this.content = content;
     this.query = document.createElement("input");
     this.query.type = "search";
     this.query.maxLength = 120;
@@ -66,23 +81,30 @@ export class Library {
     this.status.setAttribute("role", "status");
     this.list = layout(document, "stack");
     this.list.setAttribute("aria-label", "模板目录");
-    actions.append(this.refresh, this.previous, this.next);
+    toolbar.append(this.refresh, this.previous, this.next);
     content.append(
       heading(document, "模板库"),
-      note(document, "浏览不会创建项目。返回编辑工作区后，可从新建项目选择模板。"),
+      note(document, "浏览不会创建项目。查看模板详情和原生预览，再明确创建独立工程。"),
       field(document, "搜索模板", this.query),
-      actions,
+      toolbar,
       this.status,
       this.list,
     );
-    this.element.append(content);
+    this.detail = new TemplateDetail(document, client, actions);
+    this.element.append(content, this.detail.element);
     this.render();
   }
-  activate(active: boolean) {
+  activate(visible: boolean, target?: TemplateInput<"template_read"> | null) {
+    const returnFocus =
+      visible && target === undefined && this.detail.element.contains(this.element.ownerDocument.activeElement);
+    this.element.hidden = !visible;
+    this.element.inert = !visible;
+    this.content.hidden = target !== undefined;
+    this.detail.activate(visible && target !== undefined, target);
+    if (returnFocus) this.query.focus();
+    const active = visible && target === undefined;
     if (this.active === active) return;
     this.active = active;
-    this.element.hidden = !active;
-    this.element.inert = !active;
     if (!active) {
       if (this.flight)
         this.status.textContent = this.catalog ? "刷新已暂停 · 保留上次目录，可刷新重试" : "目录读取已暂停";
@@ -104,9 +126,7 @@ export class Library {
       .then(
         (result) => {
           if (this.disposed || !this.active || epoch !== this.epoch) return;
-          const entries: Entry[] = [...result.templates];
-          for (const entry of result.catalog?.entries ?? [])
-            if (!entries.some((e) => e.id === entry.id && e.contentHash === entry.contentHash)) entries.push(entry);
+          const entries = catalogEntries(result);
           this.catalog = entries;
           this.page = 0;
           this.status.textContent = result.catalogError
@@ -154,16 +174,25 @@ export class Library {
               : `${entry.duration} 秒 · ${entry.width} × ${entry.height}`,
           ),
           note(document, `${entry.source} · ${entry.license}`),
+          button(document, {
+            label: "查看模板详情",
+            disabled: "availability" in entry && entry.availability === "unsupported",
+            onClick: () => this.actions.select({ id: entry.id, contentHash: entry.contentHash }),
+          }),
         );
         return card;
       }),
     );
     if (this.catalog && !entries.length) this.list.append(note(document, query ? "没有匹配的模板" : "目录中暂无模板"));
   }
+  update(blocked: boolean, pending = false, busy = false) {
+    this.detail.update(blocked, pending, busy);
+  }
   async dispose() {
     this.disposed = true;
     this.controller?.abort();
     this.epoch++;
+    await this.detail.dispose();
     await Promise.all(this.flights);
     this.element.remove();
   }

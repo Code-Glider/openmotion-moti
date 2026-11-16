@@ -1,5 +1,5 @@
 import { resourceFontFamily } from "@open-motion/workspace/contract";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { Motion } from "@";
 import { assembleProject, type MediaFact } from "@/project/assemble.js";
 
@@ -65,5 +65,49 @@ it("reads literal quoted font families from authored Agent source without changi
     expect(compiled.html).toContain(family);
   } finally {
     model.dispose();
+  }
+});
+
+it("waits for every template font face and actual font readiness, and reports failed or excessive faces", async () => {
+  const { fontBridge } = await import("@/project/fonts.js");
+  const messages: { ready: boolean }[] = [],
+    ready = Promise.withResolvers<void>(),
+    load = vi.fn(async () => {});
+  const configure = (faces: { load(): Promise<void> }[], fontsReady = Promise.resolve()) => {
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("parent", { postMessage: (value: { ready: boolean }) => messages.push(value) });
+    vi.stubGlobal("document", {
+      documentElement: { getAttribute: () => "[]" },
+      fonts: Object.assign(new Set(faces), { ready: fontsReady, load: async () => [] }),
+    });
+  };
+  try {
+    configure([{ load }], ready.promise);
+    fontBridge(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(messages).toEqual([]);
+    expect(load).toHaveBeenCalledOnce();
+    ready.resolve();
+    await Reflect.get(window, "__openMotionFonts");
+    expect(messages.at(-1)?.ready).toBe(true);
+    configure([
+      {
+        load: async () => {
+          throw Error("bad font bytes");
+        },
+      },
+    ]);
+    fontBridge(true);
+    await expect(Reflect.get(window, "__openMotionFonts")).rejects.toThrow("bad font bytes");
+    expect(messages.at(-1)?.ready).toBe(false);
+    load.mockClear();
+    configure(Array.from({ length: 65 }, () => ({ load })));
+    fontBridge(true);
+    await expect(Reflect.get(window, "__openMotionFonts")).rejects.toThrow("font face limit");
+    expect(load).not.toHaveBeenCalled();
+    expect(messages.at(-1)?.ready).toBe(false);
+  } finally {
+    vi.unstubAllGlobals();
   }
 });

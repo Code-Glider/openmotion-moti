@@ -1,4 +1,5 @@
 import { button, note, setButtonSelected, slot } from "@open-motion/components";
+import { type TemplateInput, templateSchemas } from "@open-motion/templates/contract";
 
 export type Page = "editor" | "templates";
 type Position = { visit: string; index: number };
@@ -20,6 +21,7 @@ function position(value: unknown): Position | undefined {
 export class Pages {
   readonly element: HTMLElement;
   page: Page = "editor";
+  template: TemplateInput<"template_read"> | null | undefined;
   private window: Window | null;
   private address?: URL;
   private current: Position = { visit: crypto.randomUUID(), index: 0 };
@@ -87,6 +89,7 @@ export class Pages {
       this.replace(this.address);
       this.remember();
       this.page = this.read();
+      this.readTemplate();
       this.window.addEventListener("popstate", this.pop);
       this.window.addEventListener("hashchange", this.hash);
     }
@@ -97,6 +100,19 @@ export class Pages {
       this.address.searchParams.get("page") === "templates"
       ? "templates"
       : "editor";
+  }
+  private readTemplate() {
+    const params = this.address?.searchParams;
+    this.template = undefined;
+    if (this.page !== "templates" || !params || (!params.has("template") && !params.has("templateHash"))) return;
+    const result = templateSchemas.template_read.safeParse({
+      id: params.get("template"),
+      contentHash: params.get("templateHash"),
+    });
+    this.template =
+      params.getAll("template").length === 1 && params.getAll("templateHash").length === 1 && result.success
+        ? result.data
+        : null;
   }
   private state() {
     const state = this.window?.history.state;
@@ -144,13 +160,15 @@ export class Pages {
   };
   private publish() {
     this.page = this.read();
+    this.readTemplate();
     this.render();
     this.changed(this.page);
   }
-  go(page: Page) {
-    if (this.traversing || page === this.page) return;
+  go(page: Page, template?: TemplateInput<"template_read">) {
+    if (this.traversing) return;
     if (!this.window || !this.address) {
       this.page = page;
+      this.template = template;
       this.render();
       this.changed(page);
       return;
@@ -158,6 +176,13 @@ export class Pages {
     const address = new URL(this.window.location.href);
     if (page === "templates") address.searchParams.set("page", "templates");
     else address.searchParams.delete("page");
+    address.searchParams.delete("template");
+    address.searchParams.delete("templateHash");
+    if (page === "templates" && template) {
+      address.searchParams.set("template", template.id);
+      address.searchParams.set("templateHash", template.contentHash);
+    }
+    if (address.href === this.address.href) return;
     const current = this.current;
     this.current = { ...current, index: current.index + 1 };
     try {

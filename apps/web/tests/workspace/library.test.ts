@@ -26,7 +26,12 @@ it("fences catalogue responses across page changes and drains even an abort-igno
   const pending: { resolve: (response: Response) => void; signal?: AbortSignal | null }[] = [];
   const transport: Transport = (_url, init) =>
     new Promise((resolve) => pending.push({ resolve, signal: init?.signal }));
-  const view = new Library(document, new Client("http://127.0.0.1:4100", "fixture", transport));
+  const view = new Library(document, new Client("http://127.0.0.1:4100", "fixture", transport), {
+    select: () => {},
+    resume: () => {},
+    back: () => {},
+    create: () => {},
+  });
   document.body.append(view.element);
   view.activate(true);
   expect(pending).toHaveLength(1);
@@ -66,7 +71,12 @@ it("retains catalogue and search on refresh failure and bounds local paging", as
     if (fail) throw Error("offline");
     return new Response(JSON.stringify(catalog("Card", 13)));
   };
-  const view = new Library(document, new Client("http://127.0.0.1:4100", "fixture", transport));
+  const view = new Library(document, new Client("http://127.0.0.1:4100", "fixture", transport), {
+    select: () => {},
+    resume: () => {},
+    back: () => {},
+    create: () => {},
+  });
   document.body.append(view.element);
   try {
     view.activate(true);

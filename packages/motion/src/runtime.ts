@@ -12,10 +12,10 @@ declare const OPEN_MOTION_GSAP: string;
 export const gsap = OPEN_MOTION_GSAP;
 export const runtime = getHyperframeRuntimeScript();
 /** Derived read-only HTML. Never write injected engines back into native source. */
-export function preview(html: string, base: string): string {
+export function preview(html: string, base: string, verifyFonts = false): string {
   const clean = stripEmbeddedRuntimeScripts(html);
   const head = injectTagsAtHeadStart(clean, `<script src="${base}__gsap.js"></script>`);
-  const selection = `<script>(${fontBridge.toString()})();(${editorBridge.toString()})()</script>`;
+  const selection = `<script>(${fontBridge.toString()})(${JSON.stringify(verifyFonts)});(${editorBridge.toString()})()</script>`;
   return insertRuntimeTag(
     head + selection,
     `<script data-hyperframes-preview-runtime src="${base}__runtime.js"></script>`,
