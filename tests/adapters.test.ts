@@ -27,6 +27,9 @@ test('local adapters share one runtime, launch outside its cwd and preserve prev
       for (const skill of ['openmotion-director', 'openmotion-template-to-video', 'openmotion-video-to-template']) {
         assert.equal(await readFile(path.join(output, host, 'openmotion/skills', skill, 'SKILL.md'), 'utf8'), await readFile(path.join(source, 'skills', skill, 'SKILL.md'), 'utf8'));
       }
+      for (const file of ['references/unchanged-export.md', 'scripts/delivery.mjs', 'scripts/playback.mjs']) {
+        assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-template-to-video', file), 'utf8'), await readFile(path.join(source, 'skills/openmotion-template-to-video', file), 'utf8'));
+      }
       for (const file of ['references/typography.md', 'references/fonts.md', 'fonts/catalog.json']) {
         assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-production', file), 'utf8'), await readFile(path.join(source, 'skills/openmotion-production', file), 'utf8'));
       }

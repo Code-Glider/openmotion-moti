@@ -536,3 +536,14 @@ test('no-publication rehearsal carries one accepted candidate through npm and st
   assert.equal(result.tags.test, f.candidate.version); assert.equal(waits, 3);
   await assert.rejects(waitForRegistry(f.candidate, () => false, { fetcher, wait, attempts: 2 }), /timed out/);
 });
+
+test('manual npm release roots are enabled only for the official repository', async () => {
+  for (const [file, job] of [['motion-candidate.yml', 'candidate'], ['motion-publish-test.yml', 'verify'], ['motion-publication-recovery.yml', 'select-ref']]) {
+    const workflow = await readFile(new URL('../.github/workflows/' + file, import.meta.url), 'utf8');
+    const block = workflow.split('  ' + job + ':')[1]?.split(/\n  [a-z][a-z-]*:/)[0];
+    assert.match(block || '', /if: github.repository == 'nexu-io\/openmotion'/, file);
+    const triggers = workflow.split('\npermissions:')[0];
+    assert.match(triggers, /workflow_dispatch:/, file);
+    assert.doesNotMatch(triggers, /(?:^|\n)  (?:push|pull_request|schedule):/, file);
+  }
+});

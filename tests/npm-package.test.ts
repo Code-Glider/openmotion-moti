@@ -32,16 +32,18 @@ async function verifyBundledTemplates(application: string) {
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
-test('shared Agent instructions keep npm retirement controls synchronized', async () => {
+test('shared Agent instructions keep source-default, optional npm and release controls synchronized', async () => {
   const section = async file => {
     const text = await readFile(new URL(`../${file}`, import.meta.url), 'utf8');
     return text.split('## Candidate and publication controls\n')[1].split('\n## ')[0].trim();
   };
   const shared = await section('AGENTS.md');
   assert(shared.includes('New repository installations use the source bootstrap in install.md'));
-  assert(shared.includes('Published npm application installation is retired'));
-  assert(shared.includes('Candidate-build, npm-publication and snapshot-recovery workflow roots are disabled'));
-  assert(shared.includes('without separate authorization') && shared.includes('Preserve existing installations, projects, credentials'));
+  assert(shared.includes('Published npm application installation is optional') && shared.includes('explicit user choice'));
+  assert(shared.includes('Never silently substitute npm for source or mix installations'));
+  assert(shared.includes('Test publishes under `candidate`') && shared.includes('non-blocking Mac/Windows cold installs'));
+  assert(shared.includes('Stable publishes publicly under `stage`') && shared.includes('requires both exact prod cold installs to pass'));
+  assert(shared.includes('separately authorized manual publication/recovery') && shared.includes('Preserve existing installations, projects, credentials'));
   assert(shared.includes('npm remains the source dependency/build tool'));
   assert.equal(await section('CLAUDE.md'), shared, 'CLAUDE.md must mirror the AGENTS.md release controls');
 });
@@ -179,7 +181,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(entries.includes('scripts/inline-onboarding.mjs'));
     assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
     assert(entries.includes('shared/editor-launch.pl'), 'macOS shared editor launcher must ship');
-    for (const script of ['vision-runtime.mjs', 'lint-project.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
+    for (const script of ['vision-runtime.mjs', 'lint-project.mjs', 'recover-workspace-lock.ts', 'cleanup-harness-bundles.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
     await readFile(path.join(installer, 'package/scripts/check-installed-mcp.mjs'));
     const diagnosticFile = path.join(directory, 'packaged-diagnostics.zip');
     await runFile(process.execPath, [cli, 'diagnostics', '--home', path.join(directory, 'not-installed'), '--output', diagnosticFile]);

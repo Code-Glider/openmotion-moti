@@ -40,8 +40,7 @@ env:
 
 jobs:
   verify:
-    # Retired: repository installations use the source bootstrap.
-    if: ${{ false }}
+    if: github.repository == 'nexu-io/openmotion'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
