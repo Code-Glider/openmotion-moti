@@ -326,6 +326,27 @@ test('a revocation retry in flight holds back sign-in and sign-out and cannot re
   assert.equal(await access(file('config.json')).then(() => true, () => false), false);
 }));
 
+test('production billing uses the authenticated summary and preserves HTTP refusals', t => fixture(async store => {
+  const account = new OpenDesignAccount(store.directory);
+  await mkdir(account.home, { recursive: true });
+  await writeFile(path.join(store.directory, 'account/session.json'), JSON.stringify({ id: 'test-session' }));
+  const profile = { apiUrl: 'https://amr-api.open-design.ai', user: { id: 'test' }, controlKey: 'test-control', controlKeyId: 'test-id', runtimeKey: 'test-runtime' };
+  await writeFile(path.join(account.home, 'config.json'), JSON.stringify({ profiles: { prod: profile } }));
+  let response = Response.json({ membershipTier: 'pro', balanceUsd: '12.3456' });
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    assert.equal(url, 'https://amr-api.open-design.ai/api/v1/billing/summary');
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer test-control');
+    assert.equal(init.redirect, 'error');
+    return response;
+  });
+  const summary = await account.summary(true);
+  assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.3456');
+  response = Response.json({ error: 'workspace_billing_scope_locked' }, { status: 403 });
+  const denied = await account.summary(true);
+  assert.deepEqual(denied.billingError, { status: 403, code: 'workspace_billing_scope_locked' });
+  assert.equal(denied.balance, undefined);
+}));
+
 test('billing reads an empty tier as Free, keeps the session on refusal and asks to sign in again on a rejected key', t => fixture(async store => {
   await chmod(binary, 0o755);
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];

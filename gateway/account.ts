@@ -15,7 +15,7 @@ const execute = promisify(execFile);
 const consoleUrl = 'https://open-design.ai/cloud';
 const connectorVersion = '0.1.10';
 export type SignInRecord = EventFields<typeof omEvents['account_sign_in_result']>;
-type Profile = { controlKey?: string; controlKeyId?: string; runtimeKey?: string; pendingLogin?: unknown; user?: { id?: string; name?: string; email?: string } };
+type Profile = { apiUrl?: string; controlKey?: string; controlKeyId?: string; runtimeKey?: string; pendingLogin?: unknown; user?: { id?: string; name?: string; email?: string } };
 /** Connector-owned credentials file. `pendingRevocations` holds keys whose remote revocation has not been confirmed yet. */
 type CredentialsFile = { profiles?: Record<string, Profile>; pendingRevocations?: unknown[] };
 type AccountOptions = {
@@ -69,7 +69,9 @@ function failureCode(attempt: AccountAttempt, cancelled: boolean): AccountErrorC
   return 'setup_failed';
 }
 
-/** OpenDesign's versioned CLI owns device authorization, credentials and billing. */
+const productionApi = 'https://amr-api.open-design.ai';
+
+/** OpenDesign's versioned CLI owns device authorization and credentials. */
 export class OpenDesignAccount {
   readonly home: string;
   private child?: ChildProcess;
@@ -193,9 +195,30 @@ export class OpenDesignAccount {
       ...(this.attempt ? { attempt: { ...this.attempt, stages: [...this.attempt.stages] } } : {}),
       error: this.error, errorCode: this.errorCode, consoleUrl };
   }
+  private async billingSummary(profile: Profile) {
+    // Other connector environments retain their own endpoint and credential handling.
+    if (profile.apiUrl?.replace(/\/$/, '') !== productionApi) {
+      return JSON.parse(await this.run(['billing', 'summary', '--format', 'json']));
+    }
+    const response = await fetch(productionApi + '/api/v1/billing/summary', {
+      headers: { Authorization: 'Bearer ' + profile.controlKey, Accept: 'application/json' },
+      redirect: 'error', signal: AbortSignal.timeout(15_000),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      const code = typeof data?.error === 'string' && /^[a-z0-9_]{1,64}$/.test(data.error) ? ': ' + data.error : '';
+      throw new AccountRequestError('API request failed with status ' + response.status + code);
+    }
+    if (!data || !Object.hasOwn(data, 'membershipTier') ||
+        (data.membershipTier !== null && typeof data.membershipTier !== 'string') ||
+        (typeof data.balanceUsd !== 'string' && typeof data.totalAvailableCreditsUsd !== 'string')) {
+      throw new Error('Invalid billing summary');
+    }
+    return data;
+  }
   private async readBilling(generation: number, profile: Profile) {
     try {
-      const data = JSON.parse(await this.run(['billing', 'summary', '--format', 'json']));
+      const data = await this.billingSummary(profile);
       if (generation !== this.generation) return;
       // The account service leaves the tier empty for accounts without a subscription.
       const tier = typeof data.membershipTier === 'string' ? data.membershipTier.trim() : '';
