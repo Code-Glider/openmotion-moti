@@ -588,7 +588,7 @@ Watch the reference video on the left. In the details panel, expand **Visual sty
 
 In the details panel, choose **Show instruction** to read the prompt. **Recreate template** copies it to the clipboard. Paste it into your agent with your brand kit and creative brief. Open the resulting project in Studio to edit and export.
 
-![Send the template to your agent](docs/readme/live-product/remix.en.jpg)
+![Template preview beside the expanded instruction and Recreate template button, with a confirmation that the instruction was copied.](docs/readme/live-product/remix.en.jpg)
 
 <a id="open-projects-reusable-knowledge"></a> <a id="developer-architecture"></a>
 

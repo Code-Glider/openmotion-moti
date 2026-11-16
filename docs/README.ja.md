@@ -575,7 +575,7 @@ OpenMotion で添付の参考動画を自社ブランド向けに再構築して
 
 詳細パネルで「指示を表示」を開き、「テンプレートを再現」を押して指示をコピーします。ブランド素材や制作要件を添えてエージェントに貼り付け、生成されたプロジェクトを Studio で編集して書き出せます。
 
-![テンプレートをエージェントに渡す](readme/live-product/remix.ja.jpg)
+![テンプレートのプレビュー、展開した指示、「テンプレートを再現」ボタン、コピー完了の通知が同じ画面に表示されています。](readme/live-product/remix.ja.jpg)
 
 <a id="open-projects-reusable-knowledge"></a> <a id="developer-architecture"></a>
 

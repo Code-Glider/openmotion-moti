@@ -575,7 +575,7 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 在详情面板点击「查看完整指令」，再点「复刻模板」复制指令。将它粘贴到 Agent，补充品牌素材和创作要求，再到 Studio 打开生成的工程，继续剪辑并导出。
 
-![把模板交给 Agent](readme/live-product/remix.zh-CN.jpg)
+![Studio 模板详情全屏：左侧预览参考视频，右侧显示完整指令和「复刻模板」按钮，顶部提示指令已复制。](readme/live-product/remix.zh-CN.jpg)
 
 <a id="open-projects-reusable-knowledge"></a> <a id="developer-architecture"></a>
 

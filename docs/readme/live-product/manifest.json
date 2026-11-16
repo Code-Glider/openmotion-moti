@@ -5,7 +5,7 @@
   "catalogVersion": "b478155a-feab-4576-a75e-1d13025b8188",
   "source": "OpenMotion Studio in an isolated workspace, using the production catalog and the bundled sample project.",
   "templateId": "motion-c74e1725-6fd2-4885-be7f-f1f705e9af66",
-  "note": "Captured with the English, Simplified Chinese and Japanese interfaces. The detail preview is paused at 18.1 seconds. The remix image is cropped to the expanded instruction and its copy action.",
+  "note": "Captured with the English, Simplified Chinese and Japanese interfaces. The detail preview is paused at 18.1 seconds. Each remix screenshot shows the full Studio viewport, with the video paused at 22.2 seconds, the instruction expanded and the successful copy confirmation visible.",
   "files": [
     {
       "file": "docs/readme/live-product/detail.en.jpg",
@@ -54,18 +54,18 @@
     },
     {
       "file": "docs/readme/live-product/remix.en.jpg",
-      "bytes": 41043,
-      "sha256": "bc3897a2e19d892db63c9cfd11d6830476c8a8d6e5a085f2b41aecbf239e3ace"
+      "bytes": 278133,
+      "sha256": "3a9447dc6dcf96486b3867d905960481836b8324b1bd3cb50b7ad5e0492e440a"
     },
     {
       "file": "docs/readme/live-product/remix.ja.jpg",
-      "bytes": 45876,
-      "sha256": "8ac2ed0a054fda8e92221cab0ffa9891f6527b46ebbf8b90b0a5444299756394"
+      "bytes": 291451,
+      "sha256": "b876ef98b2d522f3e12d025026f976585cf1bd084ad314092e9c40f5e48b52e1"
     },
     {
       "file": "docs/readme/live-product/remix.zh-CN.jpg",
-      "bytes": 32937,
-      "sha256": "02142c223928a282e38fb2f484cc035ccc73352c6eaaf76583a0e2a7071244c3"
+      "bytes": 264416,
+      "sha256": "3630ea5e91b5471164474e4e6c98be59a9a8cda47aef868e0ddb294dc76f043d"
     }
   ]
 }
