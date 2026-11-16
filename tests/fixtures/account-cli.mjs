@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Synthetic account connector. Never contacts an account service or reads user credentials.
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 const home = process.env.AMR_HOME;
 if (!home || !home.includes('motion-')) throw new Error('Use an isolated OpenMotion fixture directory');
@@ -8,57 +8,110 @@ mkdirSync(home, { recursive: true, mode: 0o700 });
 const args = process.argv.slice(2), json = value => console.log(JSON.stringify(value));
 const mode = () => existsSync(path.join(home, 'fixture-mode')) ? readFileSync(path.join(home, 'fixture-mode'), 'utf8') : '';
 const target = path.join(home, 'config.json');
+const read = () => existsSync(target) ? JSON.parse(readFileSync(target, 'utf8')) : { profiles: {} };
 // Polling readers must see either absent/old credentials or the complete
 // new JSON, never the truncate/write interval of a direct overwrite.
-const publish = profile => {
+const save = file => {
   const temporary = target + '.' + process.pid + '.tmp';
-  writeFileSync(temporary, JSON.stringify({ profiles: { prod: profile } }), { mode: 0o600 });
+  writeFileSync(temporary, JSON.stringify(file), { mode: 0o600 });
   renameSync(temporary, target);
+};
+const publish = profile => save({ ...read(), profiles: { prod: profile } });
+// Remote revocation of queued keys; while an `offline` marker exists the records stay queued for a later retry.
+const revoke = () => {
+  const file = read();
+  if (!file.pendingRevocations?.length) return false;
+  if (existsSync(path.join(home, 'offline'))) return true;
+  const log = path.join(home, 'revoked.json');
+  writeFileSync(log, JSON.stringify([...(existsSync(log) ? JSON.parse(readFileSync(log, 'utf8')) : []), ...file.pendingRevocations.map(entry => entry.controlKeyId)]));
+  delete file.pendingRevocations; save(file);
+  return false;
 };
 // Mirrors the connector's `jsonl-v1` stage lines, emitted only when the caller asks for them.
 const stage = (name, result, errorKind) => {
   const id = process.env.OPEN_DESIGN_AMR_AUTH_ATTEMPT_ID;
   if (process.env.OPEN_DESIGN_AMR_AUTH_STAGE_FORMAT === 'jsonl-v1' && id) console.log('OPEN_DESIGN_AMR_AUTH_STAGE\t' + JSON.stringify({ schema_version: 1, auth_attempt_id: id, stage: name, result, ...(errorKind ? { error_kind: errorKind } : {}) }));
 };
+// A rolled-back attempt queues its issued key for revocation and restores the profile it replaced.
+const rollback = (profile, previous) => {
+  const file = read();
+  if (profile.controlKey && profile.controlKeyId) file.pendingRevocations = [...(file.pendingRevocations ?? []), { controlKeyId: profile.controlKeyId, controlKey: profile.controlKey }];
+  if (previous) file.profiles.prod = previous; else delete file.profiles.prod;
+  save(file); revoke();
+};
+// Saves issued credentials as pending, waits for the caller's receipt, then confirms them with the service.
+const confirm = (profile, scenario, previous) => {
+  publish({ ...profile, pendingLogin: { deviceId: 'fixture-device', ...(previous ? { previous } : {}) } });
+  stage('credential_persist_result', 'success');
+  console.log('OPEN_DESIGN_AMR_AUTH_COMPLETION\tcredentials_persisted');
+  process.stdin.once('data', data => {
+    const accepted = String(data).includes('credentials_accepted');
+    // An unreachable service keeps the credentials pending for the next sign-in.
+    if (accepted && scenario === 'login-complete-unavailable') process.exit(1);
+    // A rejected receipt or a refused service confirmation rolls the attempt back.
+    if (!accepted || scenario === 'login-complete-failure') { rollback(profile, previous); process.exit(1); }
+    publish(profile); process.exit(0);
+  });
+};
 if (args[0] === 'login') {
   const scenario = mode();
   console.log('OPEN_DESIGN_AMR_AUTH_COMPLETION\tstdin-v1');
+  revoke();
   stage('attempt_started', 'started');
-  if (scenario === 'login-create-failure') {
+  const saved = read().profiles?.prod;
+  if (saved?.pendingLogin) {
+    // Resuming an interrupted attempt prints no activation link and confirms the saved credentials again.
+    const { pendingLogin, ...profile } = saved;
+    stage('device_authorization_result', 'success'); stage('token_exchange_result', 'success');
+    confirm(profile, scenario === 'resume-rejected' ? 'login-complete-failure' : scenario, pendingLogin.previous);
+  } else if (scenario === 'login-create-failure') {
     stage('device_auth_create_result', 'failed', 'network_error');
     console.error('Error: start device authorization: private upstream data');
     process.exit(1);
+  } else {
+    stage('device_auth_create_result', 'success');
+    console.log('Open this URL to continue:\nhttps://open-design.ai/activate?code=TEST-123\n\nCode: TEST-123');
+    stage('activation_ready', 'success'); stage('browser_open_result', 'success');
+    const timer = setInterval(() => {
+      if (!existsSync(path.join(home, 'authorize'))) return;
+      clearInterval(timer);
+      if (scenario === 'login-denied') {
+        console.log('OPEN_DESIGN_AMR_AUTH_COMPLETION\tcancelled');
+        stage('device_authorization_result', 'failed', 'oauth_denied');
+        process.exit(1);
+      }
+      stage('device_authorization_result', 'success');
+      // The connector returns without another stage when issued credentials lack their revocation ID.
+      if (scenario === 'login-missing-key-id') process.exit(1);
+      // A transient service failure while exchanging the approved authorization stores nothing.
+      if (scenario === 'login-exchange-failure') {
+        stage('token_exchange_result', 'failed', 'network_error');
+        console.error('Error: exchange authorization code: private upstream data');
+        process.exit(1);
+      }
+      stage('token_exchange_result', 'success');
+      // A local write failure leaves no credentials behind either.
+      if (scenario === 'login-persist-failure') {
+        stage('credential_persist_result', 'failed', 'credential_persist_error');
+        console.error('Error: write credentials: private local path');
+        process.exit(1);
+      }
+      const profile = { controlKey: 'synthetic-private-control-key', controlKeyId: 'fixture-control-key-id', runtimeKey: 'synthetic-private-account-key',
+        user: { id: 'fixture-user-id', name: 'Fixture user', email: 'fixture@example.test' } };
+      if (scenario === 'login-incomplete') delete profile.controlKey;
+      confirm(profile, scenario, saved);
+    }, 20);
   }
-  stage('device_auth_create_result', 'success');
-  console.log('Open this URL to continue:\nhttps://open-design.ai/activate?code=TEST-123\n\nCode: TEST-123');
-  stage('activation_ready', 'success'); stage('browser_open_result', 'success');
-  const timer = setInterval(() => {
-    if (!existsSync(path.join(home, 'authorize'))) return;
-    clearInterval(timer);
-    if (scenario === 'login-denied') {
-      console.log('OPEN_DESIGN_AMR_AUTH_COMPLETION\tcancelled');
-      stage('device_authorization_result', 'failed', 'oauth_denied');
-      process.exit(1);
-    }
-    stage('device_authorization_result', 'success');
-    // The connector returns without another stage when issued credentials lack their revocation ID.
-    if (scenario === 'login-missing-key-id') process.exit(1);
-    stage('token_exchange_result', 'success');
-    const profile = { controlKey: 'synthetic-private-control-key', controlKeyId: 'fixture-control-key-id', runtimeKey: 'synthetic-private-account-key',
-      user: { id: 'fixture-user-id', name: 'Fixture user', email: 'fixture@example.test' } };
-    if (scenario === 'login-incomplete') delete profile.controlKey;
-    // The connector stores credentials as pending until the caller accepts them and the service confirms the receipt.
-    publish({ ...profile, pendingLogin: { deviceId: 'fixture-device' } });
-    stage('credential_persist_result', 'success');
-    console.log('OPEN_DESIGN_AMR_AUTH_COMPLETION\tcredentials_persisted');
-    process.stdin.once('data', data => {
-      // A rejected receipt or a failed service confirmation rolls the attempt back.
-      if (!String(data).includes('credentials_accepted') || scenario === 'login-complete-failure') { rmSync(target, { force: true }); process.exit(1); }
-      publish(profile); process.exit(0);
-    });
-  }, 20);
-} else if (args[0] === 'logout') process.exit(0);
-else if (args[0] === 'billing') {
+} else if (args[0] === 'logout') {
+  // Sign-out queues this account's key for revocation and clears it locally before trying the service.
+  const file = read(), profile = file.profiles?.prod;
+  if (args.includes('--retry-pending')) writeFileSync(path.join(home, 'retries'), 'x', { flag: 'a' });
+  else if (profile?.controlKey) {
+    file.pendingRevocations = [...(file.pendingRevocations ?? []), { controlKeyId: profile.controlKeyId, controlKey: profile.controlKey }];
+    file.profiles.prod = {}; save(file);
+  }
+  json({ ok: true, revocationPending: revoke() });
+} else if (args[0] === 'billing') {
   const scenario = mode();
   if (scenario === 'billing-failure') { console.error('private upstream data'); process.exit(1); }
   if (scenario === 'billing-403') { console.error('Error: fetch billing summary: API request failed with status 403: workspace_billing_scope_locked'); process.exit(1); }

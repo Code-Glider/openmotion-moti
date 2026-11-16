@@ -280,7 +280,12 @@ async function main() {
     const state = await readJSON(path.join(values.home || defaultHome(environment), 'install.json'));
     assert(state?.managedBy === managedBy, 'Run setup first');
     await ensureNativeRuntime(state.appRoot);
-    console.log('Pinned FFmpeg, ffprobe and browser are ready.');
+    const runtime = (await readJSON(path.join(state.appRoot, '.npm-install.json')))?.runtime;
+    if (runtime?.vision) {
+      const { ensureVisionRuntime } = await import(pathToFileURL(path.join(state.appRoot, 'scripts/vision-runtime.mjs')).href);
+      await ensureVisionRuntime(state.appRoot);
+    }
+    console.log('Pinned native components and configured vision tools are ready.');
   } else if (command === 'diagnose') {
     const result = await diagnose({ home: values.home, host: values.host, codex: values.codex, claude: values.claude, dsh: values.dsh, profile: values.profile });
     console.log(JSON.stringify(result, null, 2));

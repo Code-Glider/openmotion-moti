@@ -151,10 +151,11 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     for (const host of ['codex', 'claude', 'deepseek', 'workbuddy']) assert(help.includes(host), host);
     await readFile(path.join(installer, 'package/LICENSE'));
     assert.deepEqual((await readdir(path.join(application, 'skills'))).sort(), [...packagedSkills].sort());
-    assert.equal(release.skills.length, 5);
+    assert.equal(release.skills.length, packagedSkills.length);
     assert(release.skills.every((name: string) => name.startsWith('openmotion-')));
     assert.match(await readFile(path.join(application, 'skills/openmotion-production/agents/openai.yaml'), 'utf8'), /OpenMotion Production/);
-    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
+    assert.match(await readFile(path.join(application, 'skills/openmotion-media/agents/openai.yaml'), 'utf8'), /OpenMotion Media/);
+    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-media/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
       assert.equal(await readFile(path.join(application, document), 'utf8'), await readFile(document, 'utf8'));
     }
     assert.equal(await sha256(path.join(application, 'package-lock.json')), release.locks.npm);
@@ -166,7 +167,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
-    for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py']) {
+    for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py', 'vision-tools.mjs']) {
       const filename = 'skills/openmotion-recreate/scripts/' + script;
       assert(entries.includes(filename), 'Missing recreation helper: ' + script);
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
@@ -176,13 +177,13 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(entries.includes('scripts/inline-onboarding.mjs'));
     assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
     assert(entries.includes('shared/editor-launch.pl'), 'macOS shared editor launcher must ship');
-    for (const script of ['lint-project.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
+    for (const script of ['vision-runtime.mjs', 'lint-project.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
     await readFile(path.join(installer, 'package/scripts/check-installed-mcp.mjs'));
     const diagnosticFile = path.join(directory, 'packaged-diagnostics.zip');
     await runFile(process.execPath, [cli, 'diagnostics', '--home', path.join(directory, 'not-installed'), '--output', diagnosticFile]);
     assert.match(await runFile('unzip', ['-p', diagnosticFile, 'metadata.json']), new RegExp(version.replaceAll('.', '\\.')));
     assert.equal((await json(path.join(application, 'shared/build-info.json'))).commit, release.commit);
-    assert(entries.includes('shared/workflow-entry.js'), 'Workflow discovery must ship with the five Skills');
+    assert(entries.includes('shared/workflow-entry.js'), 'Workflow discovery must ship with the packaged Skills');
     assert(!entries.split('\n').some(file => file.split('/').some(part => part.startsWith('._'))), 'Do not distribute macOS file metadata');
     assert(entries.includes('template-library/NOTICE.md'));
     assert(!entries.includes('studio/build/index.html.map'));

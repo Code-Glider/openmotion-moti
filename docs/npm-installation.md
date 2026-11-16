@@ -220,3 +220,11 @@ For defects, include exact package/app version, source SHA, OS/CPU, Node/Agent v
 The hosted [installation guide template](install.md) provides the short Agent entry. Ordinary CI retains a candidate preview; the separate test publication workflow verifies the accepted candidate, publishes the same bytes, checks the exact registry installation and archives immutable version instructions before advancing the moving test guide. Repository R2 configuration, channel acceptance and enabled manual workflow entries are prerequisites. See [hosted instruction publication](release-guide.md#hosted-installation-instructions).
 
 Maintainers: see [manual candidate and test publication workflows](release-workflows.md) for fixed source/version selection, immutable snapshots, registry verification and recovery. A candidate artifact is not a published npm version.
+
+## Managed recreation analysis
+
+Recreation measurement and registration use a private Python environment with the exact Python, NumPy and headless OpenCV versions and platform hashes in `scripts/runtime-lock.json`. First use of `skills/openmotion-recreate/scripts/vision-tools.mjs` prepares it in the installation cache. `openmotion prepare --home DIR` also prepares it explicitly. User-installed Python, pip and uv are unnecessary. Preparation downloads the locked archives once, installs only those local wheels without an index or dependency resolution, and publishes the environment atomically after checking imports and versions. Completed environments are reused across application versions sharing the same runtime identity.
+
+Complete platform ZIPs include the Python archive and both wheels in `runtime/vision-assets` for offline preparation. Lightweight npm installations need network access on first use. The vision tools support macOS 13+ arm64 and Windows 11+ x64. Host execution and network permissions still apply. Preparation failures report an error and can be retried with the same entry's `prepare` command. Project HTML/JavaScript and exported MP4s do not acquire a Python runtime dependency.
+
+The original Python distribution license files, NumPy distribution licenses and OpenCV wheel licenses (including bundled native-library notices) are retained in the shipped archives and installed environment. Source provenance is recorded in the pinned public URLs and hashes.
