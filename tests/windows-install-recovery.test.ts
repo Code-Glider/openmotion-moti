@@ -83,3 +83,20 @@ test('offline legacy recovery requires confirmation, preserves evidence and refu
     await assert.rejects(recoverWorkspaceLock(root, true), /only an empty regular/);
   }
 });
+
+test('configured SIGKILL terminates a child that handles SIGTERM and releases parent pipes', { skip: process.platform === 'win32', timeout: 5000 }, async t => {
+  const root = await fixture(t), ready = path.join(root, 'ready'), signal = path.join(root, 'term');
+  const module = new URL('../scripts/runtime-assets.mjs', import.meta.url).href;
+  const code = `import fs from 'node:fs';process.on('SIGTERM',()=>fs.writeFileSync(${JSON.stringify(signal)},'received'));fs.writeFileSync(${JSON.stringify(ready)},String(process.pid));setInterval(()=>{},1000);`;
+  const proc = spawn(process.execPath, ['--input-type=module', '-e', `import {runFile} from ${JSON.stringify(module)};
+    try { await runFile(process.execPath,['--input-type=module','-e',${JSON.stringify(code)}],{timeout:600,killSignal:'SIGKILL'});process.exitCode=2; }
+    catch(e) { if(e.code!=='ETIMEDOUT')process.exitCode=3; }`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(async () => {
+    if (proc.exitCode === null) proc.kill('SIGKILL');
+    const pid = Number(await readFile(ready, 'utf8').catch(() => '0'));
+    if (pid > 0) try { process.kill(pid, 'SIGKILL'); } catch {}
+  });
+  assert.equal((await once(proc, 'exit'))[0], 0);
+  assert(Number(await readFile(ready, 'utf8')) > 0);
+  await assert.rejects(readFile(signal), { code: 'ENOENT' });
+});

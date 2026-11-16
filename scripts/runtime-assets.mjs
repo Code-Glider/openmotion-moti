@@ -78,7 +78,7 @@ async function downloadAttempt(asset, filename, progress, attempt, maxAttempts) 
 
 export async function runFile(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const { timeout = 300_000, ...spawnOptions } = options;
+    const { timeout = 300_000, killSignal = 'SIGTERM', ...spawnOptions } = options;
     const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, ...spawnOptions });
     let stdout = '', stderr = '', settled = false;
     const finish = (error, output) => {
@@ -89,7 +89,7 @@ export async function runFile(command, args, options = {}) {
     };
     // Own and clear the deadline on every terminal path, including a failed spawn.
     const timer = timeout > 0 ? setTimeout(() => {
-      child.kill();
+      child.kill(killSignal);
       finish(Object.assign(new Error(`${command} timed out after ${timeout}ms`), { code: 'ETIMEDOUT' }));
     }, timeout) : undefined;
     timer?.unref();

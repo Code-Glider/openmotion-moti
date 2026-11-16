@@ -35,6 +35,24 @@ async function runHostCli(command, args, options) {
   return runFile(resolved.command, [...resolved.args, ...args], options);
 }
 
+export async function ownedHarnessBundle(directory, home, configFile) {
+  if (!directory || path.dirname(directory) !== path.join(home, 'hosts') || !/^(deepseek|deepseek-[0-9a-f-]{36})$/.test(path.basename(directory))) return false;
+  if (await canonical(directory) !== directory) return false;
+  const scope = await readJSON(path.join(directory, 'scope.json'));
+  return scope?.managedBy === owner && scope.installHome === home && scope.host === 'deepseek'
+    && (scope.configFile === undefined || scope.configFile === configFile);
+}
+
+export async function harnessBundleInventory(home, configFile) {
+  const entries = await readdir(path.join(home, 'hosts'), { withFileTypes: true }).catch(error => { if (error.code !== 'ENOENT') throw error; return []; });
+  const owned = [];
+  for (const entry of entries) {
+    const directory = path.join(home, 'hosts', entry.name);
+    if (entry.isDirectory() && await ownedHarnessBundle(directory, home, configFile)) owned.push(directory);
+  }
+  return owned.sort();
+}
+
 export async function hostPlan(options, home, launcher, previous, bundleId) {
   const host = options.host || 'codex';
   assert(hosts.includes(host), 'Supported hosts: ' + hosts.join(', '));
@@ -98,7 +116,9 @@ export async function hostPlan(options, home, launcher, previous, bundleId) {
   const bundleDirectory = bundleId ? path.join(home, 'hosts', 'deepseek-' + bundleId) : previousBundle;
   const dependency = current?.dependencies?.[bundleName];
   const dependencyPath = dependency && /^(file|link):/.test(dependency) ? await canonical(path.resolve(path.dirname(configFile), dependency.replace(/^(file|link):/, ''))) : null;
-  assert(!dependency || (saved?.configFile === configFile && dependencyPath === previousBundle), 'Existing Harness OpenMotion bundle is not owned by this installation');
+  const ownedDependency = dependencyPath && await ownedHarnessBundle(dependencyPath, home, configFile);
+  assert(!dependency || (saved?.configFile === configFile && dependencyPath === previousBundle) || ownedDependency, 'Existing Harness OpenMotion bundle is not owned by this installation');
+  const activeBundle = dependencyPath || previousBundle;
   assert(!saved || saved.configFile === configFile, 'This Harness install already targets another profile; use a separate installation for that profile');
   let dsh = options.dsh || 'dsh';
   if (!options.dsh && process.platform === 'darwin') {
@@ -106,11 +126,18 @@ export async function hostPlan(options, home, launcher, previous, bundleId) {
     try { await access(desktop); dsh = desktop; } catch {}
   }
   if (bundleId) await resolveHostCommand(dsh);
-  metadata.configFile = configFile; metadata.profile = profile; metadata.bundleDirectory = bundleDirectory; metadata.skillsDirectory = path.join(bundleDirectory, 'skills'); metadata.layout = 'deepseek';
+  metadata.configFile = configFile; metadata.profile = profile; metadata.bundleDirectory = bundleDirectory;
+  metadata.retainedBundles = (await harnessBundleInventory(home, configFile)).filter(directory => directory !== bundleDirectory);
+  metadata.skillsDirectory = path.join(bundleDirectory, 'skills'); metadata.layout = 'deepseek';
   return { host, skillsDirectory: path.join(bundleDirectory, 'skills'), layout: 'deepseek', metadata,
+    isRegistered: async () => {
+      const latest = await readJSON(configFile);
+      const value = latest?.dependencies?.[bundleName];
+      return typeof value === 'string' && /^(file|link):/.test(value) && await canonical(path.resolve(path.dirname(configFile), value.replace(/^(file|link):/, ''))) === bundleDirectory;
+    },
     readConnection: async () => {
       if (!dependency) return null;
-      const patch = await readJSON(path.join(bundleDirectory, 'cordis.patch.yml'));
+      const patch = await readJSON(path.join(activeBundle, 'cordis.patch.yml'));
       assert(patch === null || Array.isArray(patch), 'Invalid managed Harness MCP bundle. Run setup for the same host, home and profile to repair it.');
       const configured = patch?.flatMap(item => item.insert || []).find(item => item.id === 'mcp-openmotion')?.config;
       return configured && { transport: { ...configured, type: configured.transport } };
@@ -153,7 +180,7 @@ export async function checkSkillOwner(target, home, host, layout) {
 }
 
 export async function copyHostSkills(stage, target, appRoot, plan, home, version, dataDirectory) {
-  const scope = { managedBy: owner, installHome: home, runtimeRoot: appRoot, version, dataDirectory, host: plan.host };
+  const scope = { managedBy: owner, installHome: home, runtimeRoot: appRoot, version, dataDirectory, host: plan.host, ...(plan.host === 'deepseek' ? { configFile: plan.metadata.configFile } : {}) };
   if (plan.layout !== 'flat') {
     for (const name of ['skills', 'docs', 'README.md', 'AGENTS.md', 'CLAUDE.md']) await cp(path.join(appRoot, name), path.join(stage, name), { recursive: true });
     await writeJSON(path.join(stage, 'scope.json'), scope);
