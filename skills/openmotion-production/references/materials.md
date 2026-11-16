@@ -40,7 +40,7 @@ If available tools cannot supply the material, report the specific gap and conti
 
 ## BYOK provider references
 
-Pure motion graphics stay native in code: do not call, suggest or ask about generation. When a task genuinely needs generated imagery, footage, speech or music, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
+Apply the [generation boundary](#generation-boundary) above. When it selects generation, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
 
 Read only the selected provider's document for model queries, request templates, polling and error interpretation:
 

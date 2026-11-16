@@ -13,4 +13,3 @@ Contributor-only scenarios for detecting unintended creative bias. These checks 
 - 只调整已有视频的一个接点，不能重做其余内容。
 
 检查是否遵守各自目标、选择性填写字段、保留不同表达方式且不扩张范围。验证实际效果时，使用相同资料与环境比较旧／新流程，保留生成波动、失败与成本记录；单次模型自评不能证明稳定提升。
-

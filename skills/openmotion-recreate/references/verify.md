@@ -37,6 +37,8 @@ Verify the consequence of each meaningful interaction, not only the moving actor
 
 ## 3. Measure with numbers
 
+For shots produced as generated media, whole-frame brightness, detail and accent values are diagnostic, not pass/fail gates or reasons to regenerate: judge those shots by role, framing, subject type, motion and timing. Keep every numeric gate for native text, logos, UI and other regions meant to match the reference, and all final-file technical checks.
+
 Looking is not enough: complete this step before reporting the recreation as checked. If tools or reference frames remain unavailable after recovery, record the affected check as blocked with its cause; do not omit it or treat it as passed. Measure at least one moment in every segment you found while reading the reference (the parts between cuts and major changes), including the opening, the densest frame and the ending frame (or the end card when there is one). In a segment that moves, such as a zoom, camera move or transition, pick a moment in the middle of the movement, not a hold before or after it. For each moment, view both frames at the delivered size and run the measurer bundled with this Skill (the Skill directory is the one holding this Skill's `SKILL.md`):
 
 ```sh
