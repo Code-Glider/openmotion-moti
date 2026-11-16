@@ -67,12 +67,14 @@ else if (args[0] === 'billing') {
   if (scenario === 'billing-403-text') { console.error('Error: fetch billing summary: API request failed with status 403: rate-limited by edge'); process.exit(1); }
   json(scenario === 'billing-free' ? { membershipTier: null, balanceUsd: '0.00' } : { membershipTier: 'pro', balanceUsd: '12.50' });
 } else if (args[0] === 'model') json({ source: 'remote', data: [{ id: 'language-one', enabled: true }, { id: 'disabled-one', enabled: false }] });
-else if (args[0] === 'media') json({ models: ['image', 'video', 'audio'].map(kind => ({ model: `fixture-${kind}`, kind, enabled: true })) });
+// The connector reports speech and music models as `audio_speech` / `audio_music`.
+else if (args[0] === 'media') json({ models: [...['image', 'video', 'audio'].map(kind => ({ model: `fixture-${kind}`, kind: kind === 'audio' ? 'audio_speech' : kind, enabled: true })), { model: 'fixture-music', kind: 'audio_music' }] });
 else if (args[1] === 'get') {
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
   const bytes = args[0] === 'image' ? png : args[0] === 'audio' ? Buffer.concat([Buffer.from('ID3'), Buffer.alloc(40)]) : Buffer.concat([Buffer.from('00000018667479706d703432000000006d703432', 'hex'), Buffer.alloc(32)]);
   writeFileSync(args[args.indexOf('--output') + 1], bytes);
-  json({ task_id: args[2], status: 'succeeded' });
+  // A succeeded `image get` prints the downloaded asset instead of the task.
+  json(args[0] === 'image' ? { asset_id: 'fixture-asset', status: 'ready', kind: 'image', mime_type: 'image/png', size_bytes: bytes.length } : { task_id: args[2], status: 'succeeded' });
 } else if (['gen', 'speech'].includes(args[1])) {
   const file = path.join(home, 'submissions.json');
   const calls = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
