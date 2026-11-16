@@ -3,10 +3,10 @@ import { assetVersion, type LibraryAsset } from '../../../shared/asset-library';
 import type { GenerationJob } from '../../../shared/gateway';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { Dialog } from '@base-ui/react/dialog';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
-import { AssetBrowserContent, useAssetBrowser, AssetPicker, assetKinds, type AssetKind } from './AssetBrowser';
+import { AssetBrowserContent, useAssetBrowser, AssetPicker, type AssetKind } from './AssetBrowser';
+import { AssetGalleryToolbar } from './AssetGalleryToolbar';
 import { AssetTaskMenu } from './AssetTaskHistory';
 import { assetTasks, mergeAssetJobs, type AssetChatSummary, type AssetTask, type AssetTaskMode } from './assetTasks';
 import { gatewayRequest } from './gatewayClient';
@@ -20,8 +20,6 @@ export function AssetsPage({ active }: { active: boolean }) {
   const [kind, setKind] = useState<AssetKind>('all'), [revision, setRevision] = useState(0), [creating, setCreating] = useState(false), [picking, setPicking] = useState(false), [uploading, setUploading] = useState(false), [selected, setSelected] = useState<LibraryAsset>(), [versionId, setVersionId] = useState(''), [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [draft, setDraft] = useState<AssetDraft>({ modality: 'image', prompt: '', references: [] });
   const [mobileView, setMobileView] = useState<'library' | 'create'>('create');
-  const [navigationOpen, setNavigationOpen] = useState(false);
-  const page = useRef<HTMLDivElement>(null);
   const [agentReferences, setAgentReferences] = useState<AssetDraft['references']>([]);
   const [mode, setMode] = useState<AssetTaskMode>('direct'), [taskIds, setTaskIds] = useState<{ direct?: string; agent?: string }>({}), [taskEpoch, setTaskEpoch] = useState(0);
   const [conversations, setConversations] = useState<AssetChatSummary[]>([]), [historyLoading, setHistoryLoading] = useState(true), [historyError, setHistoryError] = useState<string>(), [historyRetry, setHistoryRetry] = useState(0), [selectingTask, setSelectingTask] = useState(false);
@@ -96,7 +94,7 @@ export function AssetsPage({ active }: { active: boolean }) {
         try { const asset = await uploadLibraryAsset(file, targetId, parentVersionId); count++; if (newVersion && request === selectionRequest.current && selectedAsset.current?.id === targetId) open(asset); }
         catch (error) { onError(`${file.name}: ${(error as Error).message}`); }
       }
-      if (count) { refresh(); toast.showToast(t('Saved {count} assets', { count }), 'info'); }
+      if (count) { refresh(); toast.showToast(t('Upload successful'), 'info'); }
     } finally { setUploading(false); }
   };
   const persistUpdate = async (assetId: string, changes: Record<string, unknown>) => {
@@ -120,7 +118,7 @@ export function AssetsPage({ active }: { active: boolean }) {
     }
   };
   const update = async (assetId: string, changes: Record<string, unknown>) => {
-    if (pendingWrites.current.has(assetId)) return;
+    if (pendingWrites.current.has(assetId)) return false;
     try {
       await persistUpdate(assetId, changes);
       if (changes.trashed === true) toast.showToast(t('Asset removed'), 'info', undefined, {
@@ -130,7 +128,8 @@ export function AssetsPage({ active }: { active: boolean }) {
         },
       });
       else toast.showToast(t(changes.trashed === false ? 'Asset restored' : 'Saved'), 'info');
-    } catch (error) { onError((error as Error).message); }
+      return true;
+    } catch (error) { onError((error as Error).message); return false; }
   };
   const cancelJob = (job: GenerationJob) => { void assetRequest({ action: 'cancel', jobId: job.id }).then(() => setHistoryRetry(value => value + 1)).catch(error => onError(error.message)); };
   const retrySave = async (job: GenerationJob) => {
@@ -194,33 +193,22 @@ export function AssetsPage({ active }: { active: boolean }) {
       knownJobs.current = mergeAssetJobs(knownJobs.current, [job]); setJobs(knownJobs.current); setTaskIds(current => ({ ...current, direct: job.id }));
       refresh(); toast.showToast(t('Generation started. Track it in Tasks.'), 'info');
     }} onError={onError} onClose={() => { selectionRequest.current++; setSelectingTask(false); setCreating(false); }} />;
-  const chooseKind = (next: AssetKind) => { setKind(next); setMobileView('library'); setNavigationOpen(false); };
-  const navigationTrigger = <Dialog.Trigger className="om-nav-item om-rail-button" aria-label={t('Asset types')} title={t('Asset types')}><RemixIcon name="side-bar-line" size={18} /></Dialog.Trigger>;
-  const navigation = <><button className="om-button" onClick={() => { setNavigationOpen(false); create(); }}><RemixIcon name="add-line" size={18} />{t('AI Create Asset')}</button><nav aria-label={t('Asset types')}>{assetKinds.map(item => <button className="om-nav-item" aria-current={kind === item.id ? 'page' : undefined} key={item.id} onClick={() => chooseKind(item.id)}><RemixIcon name={item.icon} size={18} />{t(item.label)}</button>)}</nav><div className="om-asset-sidebar-spacer" /><button className="om-nav-item" aria-current={kind === 'trash' ? 'page' : undefined} onClick={() => chooseKind('trash')}><RemixIcon name="delete-bin-line" size={18} />{t('Trash')}</button></>;
-  return <Dialog.Root open={navigationOpen && active && !selected} onOpenChange={setNavigationOpen}><div ref={page} className="om-assets-page" data-creating={creating} data-previewing={Boolean(selected)} data-mobile-view={mobileView}>
+  return <div className="om-assets-page" data-creating={creating} data-previewing={Boolean(selected)} data-mobile-view={mobileView}>
     {selected ? <AssetDetailWorkspace asset={selected} versionId={versionId} active={active} uploading={uploading} saving={updatingAssets.has(selected.id)} editor={creating ? composer : undefined} taskControls={taskMenu}
       navigation={<AssetBrowserContent browser={browser} onOpen={open} compact selectedId={selected.id} />}
       onBack={closePreview} onVersion={setVersionId} onUpdate={changes => update(selected.id, changes)} onEdit={edit}
       onReference={() => { startDraft({ modality: selected.modality, prompt: '', references: [{ reference: { assetId: selected.id, versionId }, name: selected.name }] }); }}
       onOpenReference={reference => { void openReference(reference); }}
       onUpload={() => replace.current?.click()} onDownload={() => toast.showToast(t('Download started'), 'info')} /> : <>
-    {creating && <div className="om-assets-toolbar"><div className="om-asset-navigation-entry">{navigationTrigger}</div>
-    <div className="om-assets-view-switch" role="group" aria-label={t('Workspace assets')}><div className="om-choice-tabs">
+    {creating && <div className="om-assets-view-switch" role="group" aria-label={t('Workspace assets')}><div className="om-choice-tabs">
       <button className="om-nav-item" aria-pressed={mobileView === 'library'} onClick={() => setMobileView('library')}>{t('Asset library')}</button>
       <button className="om-nav-item" aria-pressed={mobileView === 'create'} onClick={() => setMobileView('create')}>{t('AI Create')}</button>
-    </div></div>
-    </div>}
-    <Dialog.Portal container={page} style={{ display: 'contents' }}>
-      <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
-      <Dialog.Popup className="motion-sidebar-drawer" onKeyDown={event => event.stopPropagation()}>
-        <div className="om-asset-navigation-content om-surface-divider"><header className="om-asset-navigation-heading"><Dialog.Title className="om-subtitle">{t('Workspace assets')}</Dialog.Title><Dialog.Close className="om-nav-item" aria-label={t('Close')}><RemixIcon name="close-line" size={18} /></Dialog.Close></header>{navigation}</div>
-      </Dialog.Popup>
-    </Dialog.Portal>
+    </div></div>}
     <div className="om-assets-library">
-    <ResizablePane className="om-assets-sidebar om-surface-divider" storageKey="motion-assets-navigation-width" initial={200} min={164} max={300} edge="right" label={t('Resize asset navigation')}><h1 className="om-subtitle">{t('Workspace assets')}</h1>{navigation}</ResizablePane>
     <main ref={gallery} className="om-assets-main" onDragOver={e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); void importFiles(Array.from(e.dataTransfer.files)); } }}>
-      <header className="om-assets-heading"><div><div className="om-assets-title"><div className="om-asset-navigation-entry">{navigationTrigger}</div><h2 className="om-title">{t(kind === 'trash' ? 'Trash' : assetKinds.find(k => k.id === kind)!.label)}</h2></div><p className="om-muted">{t('One library for every creation.')}</p></div><div className="om-asset-actions">{taskMenu}<button className="om-button" disabled={uploading} onClick={() => upload.current?.click()}><RemixIcon name="upload-2-line" size={16} />{t(uploading ? 'Uploading…' : 'Upload')}</button><button className="om-button" data-primary onClick={create}><RemixIcon name="add-line" size={16} />{t('AI Create')}</button></div></header>
-      <AssetBrowserContent browser={browser} onOpen={open} onCreate={modality => { startDraft({ modality, prompt: '', references: [] }); }} />
+      <header className="om-assets-heading"><div><h1 className="om-title">{t(kind === 'trash' ? 'Trash' : 'Workspace assets')}</h1><p className="om-muted">{t('One library for every creation.')}</p></div><div className="om-asset-actions">{taskMenu}<button className="om-button" disabled={uploading} onClick={() => upload.current?.click()}><RemixIcon name="upload-2-line" size={16} />{t(uploading ? 'Uploading…' : 'Upload')}</button><button className="om-button" data-primary onClick={create}><RemixIcon name="add-line" size={16} />{t('AI Create')}</button></div></header>
+
+      <AssetBrowserContent browser={browser} hoverPreview={active} toolbar={<AssetGalleryToolbar browser={browser} onKindChange={setKind} />} onOpen={open} onCreate={modality => { startDraft({ modality, prompt: '', references: [] }); }} />
     </main>
     {creating && <ResizablePane className="om-creator-pane" storageKey="motion-assets-creator-width" initial={460} min={340} max={800} edge="left" label={t('Resize creator')}>{composer}</ResizablePane>}
     </div>
@@ -231,5 +219,5 @@ export function AssetsPage({ active }: { active: boolean }) {
       const references = [...items.filter(r => r.reference.assetId !== reference.assetId || r.reference.versionId !== reference.versionId), { reference, name: asset.name }];
       if (mode === 'agent') setAgentReferences(references); else setDraft({ ...draft, references }); setPicking(false); }} />}
     <StudioToastViewport {...toast} />
-  </div></Dialog.Root>;
+  </div>;
 }

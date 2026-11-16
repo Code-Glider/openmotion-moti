@@ -19,6 +19,7 @@
 [data-motion-studio] .om-inline-input:focus { background: var(--motion-bg); border-color: var(--motion-selected); outline: none; }
 [data-motion-studio] .om-inline-input:disabled { color: var(--motion-control-disabled); }
 [data-motion-studio] .om-nav-item { display: flex; align-items: center; gap: var(--motion-space-8); min-height: var(--motion-space-32); padding: var(--motion-space-6) var(--motion-space-10); border: 0; border-radius: var(--motion-radius-md); background: transparent; color: var(--motion-text); text-align: left; font-size: var(--motion-text-md); cursor: pointer; transition: background-color var(--motion-duration-fast), color var(--motion-duration-fast); }
+[data-motion-studio] .om-nav-item[data-compact] { gap: var(--motion-space-4); padding-inline: var(--motion-space-6); }
 [data-motion-studio] .om-nav-item:hover { color: var(--motion-strong); background: var(--motion-nav-hover); }
 [data-motion-studio] .om-nav-item:is([aria-current="page"], [aria-pressed="true"]) { color: var(--motion-strong); background: var(--motion-hover); }
 [data-motion-studio] .om-nav-item[aria-current="page"] { font-weight: var(--motion-weight-medium); }
@@ -280,6 +281,8 @@
 [data-motion-studio] .om-asset-workspace-header { border-bottom: 1px solid var(--motion-border-subtle); }
 [data-motion-studio] .om-asset-viewer { background: var(--motion-panel); }
 [data-motion-studio] .om-asset-inspector-pane { border-inline-start: 1px solid var(--motion-border-subtle); }
+[data-motion-studio] .om-asset-name-display { padding-inline: 0; font-size: var(--motion-text-heading); font-weight: var(--motion-weight-semibold); color: var(--motion-strong); }
+[data-motion-studio] .om-asset-name-display:hover { background: transparent; }
 [data-motion-studio] .om-asset-workspace-header > strong,
 [data-motion-studio] .om-asset-workspace-header > :where(.contents) > strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
 [data-motion-studio] .om-asset-metadata { font-size: var(--motion-text-sm); }
@@ -288,11 +291,13 @@
 [data-motion-studio] .om-asset-provenance { font-size: var(--motion-text-md); line-height: var(--motion-leading-prose); }
 [data-motion-studio] .om-asset-provenance pre { font-size: var(--motion-text-sm); padding: var(--motion-space-8); border-radius: var(--motion-radius-md); background: var(--motion-panel); }
 [data-motion-studio] .om-asset-version { border: 1px solid transparent; border-radius: var(--motion-radius-lg); }
-[data-motion-studio] .om-asset-version[aria-pressed="true"] { border-color: var(--motion-border); background: var(--motion-hover); }
+[data-motion-studio] .om-asset-version[aria-pressed="true"] { border-color: var(--motion-asset-version-selected-border); background: var(--motion-asset-version-selected-bg); }
 [data-motion-studio] .om-asset-version strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
 [data-motion-studio] .om-asset-version small { color: var(--motion-muted); font-size: var(--motion-text-xs); }
 [data-motion-studio] .om-asset-versions, [data-motion-studio] .om-asset-inspector-footer { border-top: 1px solid var(--motion-border-subtle); padding-top: var(--motion-space-16); }
-[data-motion-studio] .om-asset-filmstrip .om-asset-open[aria-current="true"] { background: var(--motion-hover); box-shadow: inset 0 0 0 1px var(--motion-border); }
+[data-motion-studio] .om-asset-filmstrip .om-asset-open[aria-current="true"] { background: transparent; }
+[data-motion-studio] .om-asset-filmstrip .om-asset-tile:has(.om-asset-open[aria-current="true"]) { border-width: 1.2px; border-color: var(--motion-neutral-n11); }
+[data-motion-studio] .om-asset-filmstrip .om-asset-tile-caption strong { font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); }
 [data-motion-studio] .om-creation-setup { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-10); padding: var(--motion-space-16); border: 1px dashed var(--motion-border); border-radius: var(--motion-radius-lg); }
 [data-motion-studio] .om-creation-setup > svg { color: var(--motion-creative-agent); }
 [data-motion-studio] .om-creation-setup > p { flex: 1; min-width: 120px; }

@@ -115,6 +115,8 @@
   --motion-border: #dbdbdb;
   --motion-border-strong: #bdbdbd;
   --motion-text: #494949;
+  --motion-asset-version-selected-bg: var(--motion-neutral-n2);
+  --motion-asset-version-selected-border: var(--motion-neutral-n3);
   --motion-muted: #5c5c5c;
   --motion-dim: #696969;
   --motion-placeholder: #848484;
@@ -190,6 +192,8 @@
   --motion-border: #303030;
   --motion-border-strong: #505050;
   --motion-text: #d6d6d6;
+  --motion-asset-version-selected-bg: var(--motion-neutral-n11);
+  --motion-asset-version-selected-border: var(--motion-neutral-n9);
   --motion-muted: #a8a8a8;
   --motion-dim: #919191;
   --motion-placeholder: #808080;
@@ -266,6 +270,8 @@
     --motion-border: #303030;
     --motion-border-strong: #505050;
     --motion-text: #d6d6d6;
+    --motion-asset-version-selected-bg: var(--motion-neutral-n11);
+    --motion-asset-version-selected-border: var(--motion-neutral-n9);
     --motion-muted: #a8a8a8;
     --motion-dim: #919191;
     --motion-placeholder: #808080;
