@@ -33,6 +33,10 @@ export type GenerateInput = { modality: Modality; prompt: string; model?: string
   usage?: { compositionId?: string; elementId?: string; property?: string } };
 export type GeneratedAsset = { path: string; mimeType: string; bytes: number; available?: boolean };
 export type GenerationJob = { id: string; projectId?: string; library?: LibraryGeneration & { assetId: string; createNew?: boolean }; libraryAssets?: { assetId: string; versionId: string }[]; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  /** New generation results also belong to the local workspace library. */
+  saveToLibrary?: boolean;
+  /** Durable local outputs remain; retry_save never invokes a model. */
+  savePending?: boolean;
   providerOrigin?: string;
   providerRevision?: string;
   modality: Modality; prompt: string; model: Model; parameters: Record<string, unknown>;

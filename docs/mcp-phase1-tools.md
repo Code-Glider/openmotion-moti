@@ -25,7 +25,7 @@ Production reads a prebuilt browser bundle and three integrity-locked full MP4 p
 | 公开 Tool | 复用来源 | 本次实现到的边界 |
 | --- | --- | --- |
 | openmotion_assets | Workspace asset library and Model Gateway | List/get/upload, generate/jobs/status/cancel, rename/trash/restore, immutable versions/references and explicit version import into projects; see [Assets](assets.md) |
-| openmotion_media_use | Shared Model Gateway | Enabled-provider discovery, bundled references, model list, generate/status/cancel for dedicated media adapters, OpenDesign account models and registered compatible image/speech APIs; service-owned keys, explicit project, stable request ID, imported media results; does not edit the composition |
+| openmotion_media_use | Shared Model Gateway | Enabled-provider discovery, bundled references, model list, generate/status/cancel for dedicated media adapters, OpenDesign account models and registered compatible image/speech APIs; service-owned keys, explicit project, stable request ID, automatic local asset-library saving and original project paths, save-only recovery; does not edit the composition |
 | openmotion_list_templates | Local repository or configured CMS catalog | No query arguments; returns source, a local JSONL index, count and catalog version for local search |
 | openmotion_get_template | Same local/CMS reader | Exact ID; repository entries return local instructions, motionDocument content and absolute localSource paths |
 | openmotion_media_use | Fixture-based provider references, discovery, authenticated requests, job ownership, output validation and import, and rejection without paid retries | tests/byok.test.ts, tests/provider-settings.test.ts |
@@ -67,7 +67,7 @@ The shared WebMCP registrar measures all eighteen page tools through the existin
 
 ### openmotion_assets
 
-The additive protocol-1 asset tool manages a workspace library independently of projects. Actions are `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`, `cancel` and `import_to_project`. Import and generation use stable request IDs. Versions preserve bytes, hashes, prompt/model/parameters and pinned references; changing the current version does not rewrite historical files. Trash is reversible. Project import requires explicit projectId and versionId and reuses the ordinary project import/history transaction. Model support and costs remain gateway-owned; local Codex image editing accepts one image reference. See [asset architecture and limits](assets.md).
+The additive protocol-1 asset tool manages a workspace library independently of projects. Actions are `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`, `cancel`, `retry_save` and `import_to_project`. Import and generation use stable request IDs. Versions preserve bytes, hashes, prompt/model/parameters and pinned references; changing the current version does not rewrite historical files. Trash is reversible. Project import requires explicit projectId and versionId and reuses the ordinary project import/history transaction. Model support and costs remain gateway-owned; local Codex image editing accepts one image reference. See [asset architecture and limits](assets.md).
 
 ### openmotion_list_templates / openmotion_get_template
 
@@ -217,6 +217,9 @@ CI不按路径过滤、不跳过渲染、无失败重试或continue-on-error；�
 参数拒绝另有回归：顶层/嵌套的constructor、__proto__、toString等未声明字段，以及类型不正确的分页游标，必须明确失败。不能把schema中的additionalProperties=false单独当作运行时校验已完成。
 
 ## BYOK media-use extension
+
+New completed media results are saved to the local workspace asset library as well as the original project paths. `job.libraryAssets` pins each immutable `assetId/versionId`; `job.assets` retains project-relative paths. When `savePending` is true, call `action=retry_save` with the original `projectId`, `jobId` and a stable `requestId`. This retries local saving only, does not invoke a provider and cannot overwrite changed project files. The same action is available through `openmotion_assets` and Studio task recovery. Historical completed jobs are not backfilled.
+
 
 Read action=reference for the selected provider, or `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed,account,compatible}`. The provider references belong to the existing production guidance; the supporting `openmotion-media` Skill (`openmotion://workflow/media/start`) carries the generation workflow, and the retired `openmotion-debug-media` Skill is not distributed. `action=generate` requires provider, provider-native model ID, projectId, requestId, modality and prompt. Provider parameters use the selected model API schema; no key argument is accepted. The queued job is polled with action=status and the same projectId/jobId; completed means actual validated files were imported under assets/generated. Cancellation is local and best effort remotely, without a refund promise. Edits still require a fresh project revision/version. Settings → Model providers (`模型供应商` in Chinese UI) manages keys, compatible endpoints, catalogues and defaults. Account authorization registers a separate provider and its entitled models. OpenDesign Cloud retains its separate workspace key and public HTTPS gateway origin. The inspect result includes configured defaults and supported reference URIs. See [provider settings](provider-settings.md) for protocol and execution boundaries; configuration and live discovery are not proof of paid generation success.
 

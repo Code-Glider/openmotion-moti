@@ -25,11 +25,12 @@ export async function assetOperation(store: WorkspaceStore, args: any, importPro
       library: { assetId: args.assetId, title: args.name, parentVersionId: args.parentVersionId, references: args.references, conversationId: args.conversationId } });
     return { job, next: { action: 'status', jobId: job.id } };
   }
-  if (args.action === 'jobs') return { jobs: (await gateway.listJobs()).filter(job => job.library && (!args.conversationId || job.library.conversationId === args.conversationId)).slice(0, 100) };
-  if (args.action === 'status' || args.action === 'cancel') {
+  if (args.action === 'jobs') return { jobs: (await gateway.listJobs()).filter(job => (job.library || job.saveToLibrary) && (!args.conversationId || job.library?.conversationId === args.conversationId)).slice(0, 100) };
+  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {
     const job = await gateway.getJob(args.jobId);
-    if (!job.library) throw new Error('ASSET_JOB_NOT_FOUND');
-    return { job: args.action === 'cancel' ? await gateway.cancel(job.id) : job };
+    if (!job.library && !job.saveToLibrary) throw new Error('ASSET_JOB_NOT_FOUND');
+    if (args.action === 'retry_save' && !args.requestId) throw new Error('A stable requestId is required');
+    return { job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
   if (args.action === 'import_to_project') {
     if (!importProject || !args.projectId || !args.requestId) throw new Error('Explicit projectId and requestId are required');

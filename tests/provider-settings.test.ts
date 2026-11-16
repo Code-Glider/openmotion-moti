@@ -1,6 +1,7 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
-import { access, chmod, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { spawn, type SpawnOptions } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,6 +89,8 @@ test('account device authorization, billing, remote models and all media outputs
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
   t.after(() => gateway.close());
+  await mkdir(account.home, { recursive: true });
+  await Promise.all((['video', 'audio'] as const).map(async kind => writeFile(path.join(account.home, `fixture-${kind}`), await mediaBytes(kind))));
   assert.equal((await account.summary()).state, 'signed-out');
   await signIn(account);
   const summary = await account.summary(true);

@@ -28,7 +28,7 @@ else if (args[0] === 'billing') {
 else if (args[0] === 'media') json({ models: ['image', 'video', 'audio'].map(kind => ({ model: `fixture-${kind}`, kind, enabled: true })) });
 else if (args[1] === 'get') {
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
-  const bytes = args[0] === 'image' ? png : args[0] === 'audio' ? Buffer.concat([Buffer.from('ID3'), Buffer.alloc(40)]) : Buffer.concat([Buffer.from('00000018667479706d703432000000006d703432', 'hex'), Buffer.alloc(32)]);
+  const bytes = args[0] === 'image' ? png : readFileSync(path.join(home, `fixture-${args[0]}`));
   writeFileSync(args[args.indexOf('--output') + 1], bytes);
   json({ task_id: args[2], status: 'succeeded' });
 } else if (['gen', 'speech'].includes(args[1])) {
