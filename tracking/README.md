@@ -67,6 +67,37 @@ confirmed, and never treats a valid opt-out as a retryable failure. Callers can
 inspect local queue/configuration statuses and a content-free status snapshot;
 see [diagnostics and retry semantics](INTEGRATION.md#diagnose-without-logging-event-contents).
 
+## North-star evidence and task ledger
+
+The runtime now records a local export task ledger before returning an accepted
+export request. Each export keeps its task ID, project, optional work-round ID,
+acceptance time, explicit deadline, terminal time and observed outcome. A worker
+terminal result updates the same ledger and emits `task_terminal`; unknown or
+cancelled results remain separate from success. An export whose worker vanished or
+whose deadline passed is reconciled once with outcome `unknown`, so its accepted
+entry also gets a terminal time and the same event; whichever caller closes the task
+(the worker tick or a status read) states that evidence. A tick never
+reconciles an export this process is still rendering, and a worker whose job was
+closed that way does not restate its terminal outcome. The ledger is
+installation-local, atomic and does not contain prompts, source content or
+credentials.
+
+Host run boundaries use the existing work-round ID returned by
+`openmotion_open_preview(action=begin)`. The MCP boundary emits
+`host_run_started` and `host_state_changed`; a host-reported visible preview with
+verified content emits `host_preview_observed` and `host_run_delivered`. A verified
+technical export can also close the same run with `host_run_delivered`. A failed or
+cancelled export emits the corresponding host terminal event. These events do not
+claim a run boundary when the host did not provide a work-round ID.
+
+Quality evidence is explicit. Technical export, preview visibility and recorded
+content review each emit `check_required` and `check_completed` with a version,
+checklist, checker type and bounded evidence reference. A technical export check
+does not assert visual or human acceptance. Queue workers emit `queue_snapshot` at
+most once per minute and `worker_heartbeat` with bounded counts. Confirmed
+correctness incidents and recovery evidence use `incident_confirmed` and
+`recovery_recorded`; ordinary task failures are not incidents.
+
 ## Identity, properties and privacy
 
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
@@ -290,3 +321,22 @@ or permanent collector rejection may lose events. Add durable delivery if produc
 decisions require guaranteed counts. Public ingest tokens are not read/admin keys,
 but forged events and quota abuse still require collector-side rate limiting and
 monitoring; this package is not an anti-fraud boundary.
+
+## AI asset generation
+
+The shared model gateway owns three worker events for Studio and MCP. Each carries
+`modality` (`image`, `video`, or `audio`); speech and music both use `audio`.
+
+| Event | Emission point | Additional fields |
+| --- | --- | --- |
+| `media_generation_requested` | A generation submission reaches the gateway with a recognized modality, before validation and routing. | None |
+| `media_generation_submitted` | The gateway persists a new queued job. Replaying its idempotency key returns the original job. | `job_id` |
+| `media_generation_result` | The gateway persists a completed, failed, cancelled or interrupted job. Interrupted workers produce a failed result. | `job_id`, `job_state`, `asset_count` |
+
+Count distinct anonymous installations per modality and window, and distinct
+submitted jobs. Attribute results to the original submission date. A job succeeds
+when it completes with at least one saved asset. The success rate divides those
+jobs by all submitted jobs, including cancelled, failed and unresolved jobs at
+the report cutoff. Inspect, list and status calls do not enter this cohort.
+A local save retry can update the terminal result for the same job. Use the latest result per job at the report cutoff. It does not add a model request or submission. Count outputs saved to the workspace library or project once per output.
+Generation uses the existing telemetry preference and installation identity.

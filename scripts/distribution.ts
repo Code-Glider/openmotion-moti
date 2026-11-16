@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagedSkills } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
+import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -562,6 +563,7 @@ export const distributionDocuments = [
 export async function distributionFiles(profile: string, include: (file: string) => boolean = () => true): Promise<string[]> {
   if (!['phase1', 'legacy'].includes(profile)) throw new Error('Unknown distribution profile: ' + profile);
   const files = [
+    ...onboardingSourceFiles,
     ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file),
     ...distributionDocuments, 'LICENSE', '.codex-plugin/plugin.json', '.codex-plugin/onboarding/SKILL.md', '.mcp.json', 'marketplace.example.json',
     'package.json', 'package-lock.json',
@@ -575,7 +577,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',
     'scripts/repository-media.ts', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'scripts/build-template-cards.mjs',
     'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
-    'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts',
+    'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
     // The inline Node renderer streams the welcome from this shared translation source.

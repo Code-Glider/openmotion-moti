@@ -37,7 +37,12 @@ const connectionContexts = new WeakMap<object, Map<string, string>>();
 
 function trackingFor(store: WorkspaceStore) {
   let tracking = trackingByStore.get(store);
-  if (!tracking) { tracking = createAppTracking(store.directory, 'mcp'); trackingByStore.set(store, tracking); }
+  if (!tracking) {
+    const created = createAppTracking(store.directory, 'mcp');
+    tracking = created; trackingByStore.set(store, tracking);
+    // Read paths close interrupted exports too, so they report through the same tracker.
+    void created.then(value => { store.tracking ??= value; });
+  }
   return tracking;
 }
 const runtimeRoot = fileURLToPath(new URL('./', import.meta.url));
@@ -145,7 +150,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const finalVideo = name === finalVideoTool.name;
         const definition = finalVideo ? finalVideoTool : phase1Tools.find(tool => tool.name === publicToolName(name))!;
         validateInput(definition.inputSchema, args);
-        if (internalName === 'motion_open_preview' && args.target !== 'templates' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
+        if (internalName === 'motion_open_preview' && args.target !== 'templates' && args.target !== 'providers' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
         if (args.sessionId === undefined) delete args.sessionId;
         if (['repository', 'hosted'].includes(templateConfig().source) && ['motion_list_templates', 'motion_get_template'].includes(internalName)) {
           const catalog = templateCatalogFor(store.directory);
@@ -176,7 +181,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const editor = await ensureEditor(store.directory);
         const reply = await editorRequest(editor, '/editor-api/tools/call', { name: legacyToolName(name), arguments: message.params?.arguments || {}, selection: connection.selection });
         connection.selection = reply.selection; value = reply.result;
-      } else value = await callTool(name, message.params?.arguments || {}, store);
+      } else value = await callTool(name, message.params?.arguments || {}, store, await trackingFor(store));
       return result({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Tool failed';

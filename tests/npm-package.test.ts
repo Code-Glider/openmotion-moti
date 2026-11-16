@@ -12,6 +12,7 @@ import { protocolClient } from '../scripts/smoke-test-package.mjs';
 import { packagedSkills } from '../shared/workflow.ts';
 import { mcpRegistry } from '../mcp.ts';
 import { stableReports } from '../.github/scripts/motion-release.mjs';
+import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'));
 async function verifyTrackingPolicy(application: string, mode: 'test' | 'stable' | 'local') {
@@ -145,6 +146,11 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const sourceMode = await runFile(process.execPath, ['--input-type=module', '-e', `import {templateConfig} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/template-config.ts')).href)}; process.stdout.write(templateConfig().source);`], { env: sourceEnv });
     assert.equal(sourceMode, 'hosted', 'An npm application without repository templates must read the latest hosted catalog');
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
+    for (const file of onboardingSourceFiles) assert.equal(await sha256(path.join(application, file)), await sha256(file));
+    const cards = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e',
+      `import {loadTemplatePresentation,showTemplateRecommendations} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/mcp-template-recommendations.ts')).href)}; console.log(JSON.stringify(showTemplateRecommendations(loadTemplatePresentation(),{templateIds:${JSON.stringify(onboardingTemplateIds.slice(-3))}})));`]));
+    assert.deepEqual(cards.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(-3));
+    assert(cards.cards.every((card: any) => card.templateKind === 'reference' && !card.createArgs));
     const readme = await readFile(path.join(installer, 'package/README.md'), 'utf8');
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));
     const hero = media.get('docs/readme/brand-hero.jpg');
@@ -224,7 +230,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const entries = await runFile('tar', ['-tf', built.application]);
     assert(!/\/(node_modules|runtime)\//.test(entries));
     assert(entries.includes('skills/openmotion-production/SKILL.md'));
-    for (const file of ['gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-production/references/media-providers/fal.md', 'skills/openmotion-production/references/media-providers/opendesign.md', 'skills/openmotion-production/references/media-providers/atlascloud.md', 'skills/openmotion-production/references/media-providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
+    for (const file of ['shared/provider-registry.ts', 'gateway/connections.ts', 'gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-production/references/media-providers/fal.md', 'skills/openmotion-production/references/media-providers/opendesign.md', 'skills/openmotion-production/references/media-providers/atlascloud.md', 'skills/openmotion-production/references/media-providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
@@ -233,7 +239,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
       assert(entries.includes(filename), 'Missing recreation helper: ' + script);
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
     }
-    assert(entries.includes('skills/openmotion-recreate/references/verify.md'));
+    for (const file of ['rebuild.md', 'reconstruction.md', 'verify.md']) assert(entries.includes('skills/openmotion-recreate/references/' + file), 'Missing recreation reference: ' + file);
     assert(entries.includes('studio/build/index.html'));
     assert(entries.includes('scripts/inline-onboarding.mjs'));
     assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));

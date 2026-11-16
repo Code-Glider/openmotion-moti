@@ -62,7 +62,7 @@ Copy this instruction into your local agent to set up OpenMotion from source:
 Read https://github.com/nexu-io/openmotion/blob/main/install.md and follow the instructions to install and connect OpenMotion in the current agent.
 ```
 
-After setup, the agent opens the local template library and suggests a template. Confirm the choice before creating a project. [Source installation guide](install.md)
+After setup, the agent opens the local template library and presents three reference-video cards randomly selected from a curated pool. Preview one, then choose **Recreate template** and send your brief to start creating. Cards show their video purpose at the top left of each preview. Reference previews require internet access. [Source installation guide](install.md) · [Onboarding selection](docs/install-onboarding.md#maintained-recommendation-selection)
 
 ### Install the published npm app (optional)
 
@@ -425,7 +425,7 @@ Connect fal.ai in **Model Settings** and refresh its catalog to find GPT Image 2
 
 | Make what the video needs | Built-in model catalog examples | Bring it into your film |
 | --- | --- | --- |
-| **🖼️ Images** | Codex Image; Nano Banana 2 via Atlas Cloud; FLUX Schnell via fal.ai | Brand visuals, scene artwork and supporting images; reference-based editing through the supported Codex image path |
+| **🖼️ Images** | Codex Image; Nano Banana 2 via Atlas Cloud; FLUX Schnell via fal.ai | Brand visuals, scene artwork and supporting images; reference-based editing with Codex Image or an OpenDesign account image model that supports edits |
 | **🎬 Video** | Seedance 2.0 via Atlas Cloud; Wan 2.2 via fal.ai | Generated shots and B-roll to combine with your footage and motion |
 | **🎵 Music** | Suno v4 via Atlas Cloud | A soundtrack built around your mood and creative brief |
 | **🎙️ TTS / voice-over** | Kokoro via fal.ai | Narration from your approved script, placed alongside the visuals and music |
@@ -524,7 +524,7 @@ This copies instructions; it does not install the runtime or register MCP. Keep 
 
 <a id="local-agent-connection"></a>
 
-**Connect a local agent** · Follow the installation guide for your client. Use the configuration below in clients with local stdio MCP support. In a shell-based agent, open the project directory and use the [local engine CLI](skills/openmotion-production/references/native.md) to preview and render the HTML scenes.
+**Connect a local agent** · Follow the installation guide for your client. Use the configuration below in clients with local stdio MCP support. In a shell-based agent, open the project directory and use the [local engine CLI](skills/openmotion-production/references/native.md) to preview and render the HTML scenes. For the published npm application, run `openmotion setup --host <agent-name>` (for example `opencode`); setup installs the app and Skills and returns the exact launcher entry to add. [Other local Agents](docs/npm-installation.md#other-local-agents)
 
 <a id="manual-mcp"></a>
 
