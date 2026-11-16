@@ -48,13 +48,13 @@ Speech:
 
 A contract alternative is model `byteplus-tts-2` with voice `zh_female_vv_uranus_bigtts`; choose a voice belonging to the selected model. Neither example proves workspace access.
 
-Music (replace `YOUR_MUSIC_MODEL_ID` with an available `audio_music` model):
+Music:
 
 ```json
-{"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-music-01","model":"YOUR_MUSIC_MODEL_ID","modality":"audio","mode":"text-to-audio","prompt":"Gentle instrumental piano, warm and calm, no vocals","parameters":{"music_length_ms":10000}}
+{"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-music-01","model":"elevenlabs-music-v2","modality":"audio","mode":"text-to-audio","prompt":"Gentle instrumental piano, warm and calm, no vocals","parameters":{"music_length_ms":10000}}
 ```
 
-Music does not require a voice. The example requests 10 seconds using the provider-native `music_length_ms` option; accepted parameters and duration limits depend on the selected model. OpenMotion passes music options through without rounding the duration to a preset.
+`elevenlabs-music-v2` is a built-in entry: the Cloud catalogue does not list it yet, so discovery shows it with `source: "builtin"`. Like the speech examples, it does not prove workspace access. Music does not require a voice. The example requests 10 seconds using the provider-native `music_length_ms` option; accepted parameters and duration limits depend on the selected model. OpenMotion passes music options through without rounding the duration to a preset.
 
 Wire mapping (all paths are relative to the dashboard API origin):
 
