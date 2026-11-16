@@ -14,6 +14,25 @@ const originalRetry = await readFile(retryUrl, 'utf8');
 const retrySource = fixCaptureModule(retryUrl.href, originalRetry);
 const bufferError = 'net::ERR_NO_BUFFER_SPACE at http://localhost:62840/index.html';
 
+test('accelerated canvas injection supports modern and legacy HTML-in-Canvas APIs', async () => {
+  const source = fixCaptureModule(captureUrl.href, await readFile(captureUrl, 'utf8'));
+  const inject = source.match(/^async function injectDrawElementCanvas\([^]*?^}/m)![0];
+  for (const modern of [false, true]) {
+    const root: any = { parentNode: { insertBefore() {} }, attributes: {}, setAttribute(name: string, value: string) { this.attributes[name] = value; } };
+    const canvas: any = { attributes: {}, style: {}, appendChild() {}, setAttribute(name: string, value: string) { this.attributes[name] = value; } };
+    const context = {
+      HTMLCanvasElement: { prototype: modern ? { content: 'drawable' } : {} },
+      document: { querySelector: () => root, getElementById: () => null, createElement: (tag: string) => tag === 'canvas' ? canvas : { style: {} } },
+      window: {}, getComputedStyle: () => ({ opacity: '1' }),
+    };
+    await runInNewContext(inject + '\ninjectDrawElementCanvas', context)({ evaluate: (fn: any, args: any) => fn(args) }, 320, 180);
+    assert.equal(canvas.attributes.layoutsubtree, '');
+    assert.equal(canvas.attributes.content, modern ? 'drawable' : undefined);
+    assert.equal(root.attributes.drawable, modern ? '' : undefined);
+    assert.equal(canvas.width, 320); assert.equal(canvas.height, 180);
+  }
+});
+
 test('the pinned classifier treats socket-buffer pressure as transient while preserving content errors and cancellation', async () => {
   assert.equal(JSON.parse(await readFile(new URL('../node_modules/hyperframes/package.json', import.meta.url), 'utf8')).version, HYPERFRAMES_VERSION);
   await import(retryUrl.href);
