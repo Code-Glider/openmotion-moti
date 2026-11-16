@@ -280,7 +280,8 @@
 [data-motion-studio] .om-asset-workspace-header { border-bottom: 1px solid var(--motion-border-subtle); }
 [data-motion-studio] .om-asset-viewer { background: var(--motion-panel); }
 [data-motion-studio] .om-asset-inspector-pane { border-inline-start: 1px solid var(--motion-border-subtle); }
-[data-motion-studio] .om-asset-workspace-header > strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
+[data-motion-studio] .om-asset-workspace-header > strong,
+[data-motion-studio] .om-asset-workspace-header > :where(.contents) > strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
 [data-motion-studio] .om-asset-metadata { font-size: var(--motion-text-sm); }
 [data-motion-studio] .om-asset-metadata dt { color: var(--motion-muted); }
 [data-motion-studio] .om-asset-metadata dd { margin: 0; color: var(--motion-text); }
