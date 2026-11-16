@@ -705,6 +705,9 @@ export async function startServer(store = sharedStore, port = Number(process.env
   } catch (error) { context.tracking?.close(); await context.studio?.close(); throw error; }
   const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
   const gateway = gatewayFor(store);
+  gateway.account.options.track = record => context.tracking?.track('account_sign_in_result', record);
+  // `node --test` runs use synthetic connectors; skip the real installation there. Closing the service stops an unfinished one.
+  if (!process.env.NODE_TEST_CONTEXT) gateway.account.prefetch();
   const tick = () => {
     void renderNext(store, runtimeRoot, context.tracking).catch(error => console.error(error.message));
     void gateway.tick().catch(() => console.error('Model gateway queue could not be processed'));
