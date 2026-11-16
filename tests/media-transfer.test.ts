@@ -9,6 +9,7 @@ import { commitCleanup, finalizeMediaCleanup, prepareMediaCleanup, preparePullRe
 import { pullMedia } from '../scripts/repository-media.ts';
 import { downloadMedia, mediaDigest, mediaKey, mediaOrigin, validateMediaManifest, type MediaLock } from '../shared/repository-media.ts';
 import { refreshManifest } from '../scripts/template-library.ts';
+import { mergePreparedPullRequest, preparedMergeStatus } from '../scripts/merge-prepared-pr.ts';
 
 const sourceSHA = 'a'.repeat(40), prefix = 'library/templates/catalog/motion-demo/';
 function fixture() {
@@ -172,8 +173,121 @@ test('fork write access and workflow trust are checked before any media transfer
   const old = process.env.OPENMOTION_MEDIA_MAINTAINER_TOKEN;
   process.env.OPENMOTION_MEDIA_MAINTAINER_TOKEN = 'test-token';
   t.after(() => { if (old === undefined) delete process.env.OPENMOTION_MEDIA_MAINTAINER_TOKEN; else process.env.OPENMOTION_MEDIA_MAINTAINER_TOKEN = old; });
-  let reads = 0;
-  t.mock.method(globalThis, 'fetch', async () => { reads++; return Response.json({ state: 'open', draft: false, base: { ref: 'main' }, head: { repo: { full_name: 'contributor/fork' } }, maintainer_can_modify: false }); });
+  const f = fixture();
+  t.mock.method(globalThis, 'fetch', async input => {
+    const url = String(input);
+    if (url.endsWith('/pulls/42')) return Response.json({ state: 'open', draft: false, base: { ref: 'main', sha: 'b'.repeat(40) }, head: { sha: sourceSHA, repo: { full_name: 'contributor/fork' } }, maintainer_can_modify: false });
+    if (url.endsWith('/openmotion')) return Response.json({ permissions: { push: true }, allow_squash_merge: true });
+    if (url.includes('/git/trees/')) return Response.json({ tree: url.includes(sourceSHA) ? f.tree() : [] });
+    const file = f.tree().find(file => url.endsWith('/git/blobs/' + file.sha));
+    assert(file, 'No storage or other API call is allowed before fork authorization: ' + url);
+    return new Response(new Uint8Array(await f.read(file)));
+  });
   await assert.rejects(preparePullRequest(42, true), /Allow edits by maintainers/);
-  assert.equal(reads, 1);
+});
+
+test('ordinary fork PRs skip uploads and cleanup without requiring contributor edit permission', async t => {
+  const directory = await isolated(t), output = path.join(directory, 'output');
+  await writeFile(output, '');
+  const before = { actions: process.env.GITHUB_ACTIONS, token: process.env.OPENMOTION_MEDIA_MAINTAINER_TOKEN, output: process.env.GITHUB_OUTPUT };
+  process.env.GITHUB_ACTIONS = 'false';
+  process.env.OPENMOTION_MEDIA_MAINTAINER_TOKEN = 'test-token';
+  process.env.GITHUB_OUTPUT = output;
+  t.after(() => {
+    for (const [key, value] of Object.entries({ GITHUB_ACTIONS: before.actions, OPENMOTION_MEDIA_MAINTAINER_TOKEN: before.token, GITHUB_OUTPUT: before.output })) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  });
+  t.mock.method(globalThis, 'fetch', async input => {
+    const url = String(input);
+    if (url.endsWith('/pulls/42')) return Response.json({ state: 'open', draft: false, base: { ref: 'main', sha: 'b'.repeat(40) }, head: { sha: sourceSHA, repo: { full_name: 'contributor/fork' } }, maintainer_can_modify: false });
+    if (url.endsWith('/openmotion')) return Response.json({ permissions: { push: true }, allow_squash_merge: true });
+    assert(url.includes('/git/trees/'), 'No media download, upload or cleanup write is allowed: ' + url);
+    return Response.json({ tree: url.includes(sourceSHA) ? [{ path: 'server.ts', mode: '100644', sha: 'c'.repeat(40), size: 100, type: 'blob' }] : [] });
+  });
+  const plan = await preparePullRequest(42, true);
+  assert.equal(plan.media.length, 0);
+  assert.equal(plan.changes.length, 0);
+  assert.equal(await readFile(output, 'utf8'), `head_sha=${sourceSHA}\n`);
+});
+
+function mergeState() {
+  const page = (nodes: any[]) => ({ nodes, pageInfo: { hasNextPage: false } });
+  return { state: 'OPEN', isDraft: false, baseRefName: 'main', headRefOid: sourceSHA, mergeable: 'MERGEABLE', reviewDecision: 'APPROVED',
+    labels: page([]), latestReviews: page([{ state: 'APPROVED' }]), reviewThreads: page([]),
+    commits: { nodes: [{ commit: { oid: sourceSHA, statusCheckRollup: { contexts: page([
+      { name: 'standalone', status: 'COMPLETED', conclusion: 'SUCCESS' },
+      { name: 'controls', status: 'COMPLETED', conclusion: 'SUCCESS' },
+    ]) } } }] } };
+}
+
+test('the merge entry waits for new-head CI and then sends only a SHA-guarded Squash merge', async () => {
+  let polls = 0, merges = 0, waits = 0;
+  await mergePreparedPullRequest(42, sourceSHA, { token: 'test-token', wait: async () => { waits++; },
+    request: async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/graphql')) {
+        const pr = mergeState();
+        if (++polls === 1) pr.commits.nodes[0].commit.statusCheckRollup.contexts.nodes.pop();
+        return Response.json({ data: { repository: { pullRequest: pr } } });
+      }
+      assert.equal(url, 'https://api.github.com/repos/nexu-io/openmotion/pulls/42/merge');
+      assert.equal(init?.method, 'PUT');
+      assert.deepEqual(JSON.parse(String(init.body)), { merge_method: 'squash', sha: sourceSHA });
+      merges++;
+      return Response.json({ merged: true });
+    },
+  });
+  assert.equal(polls, 2); assert.equal(waits, 1); assert.equal(merges, 1);
+});
+
+test('merge guards stop changed PRs, failed checks, requested changes, conflicts and holds without any merge write', async () => {
+  const scenarios: [string, (pr: any) => void, RegExp][] = [
+    ['contributor push', pr => { pr.headRefOid = 'b'.repeat(40); }, /changed after preparation/],
+    ['wrong check SHA', pr => { pr.commits.nodes[0].commit.oid = 'b'.repeat(40); }, /prepared commit/],
+    ['CI failure', pr => { pr.commits.nodes[0].commit.statusCheckRollup.contexts.nodes[0].conclusion = 'FAILURE'; }, /CI failed/],
+    ['change request', pr => { pr.latestReviews.nodes = [{ state: 'CHANGES_REQUESTED' }]; }, /requested changes/],
+    ['conflict', pr => { pr.mergeable = 'CONFLICTING'; }, /conflicts/],
+    ['hold', pr => { pr.labels.nodes = [{ name: 'do-not-merge' }]; }, /hold/],
+    ['closed', pr => { pr.state = 'CLOSED'; }, /no longer open/],
+  ];
+  for (const [name, change, expected] of scenarios) {
+    const pr = mergeState(); change(pr);
+    await assert.rejects(mergePreparedPullRequest(42, sourceSHA, { token: 'test-token', request: async input => {
+      assert(String(input).endsWith('/graphql'), name + ' must not write');
+      return Response.json({ data: { repository: { pullRequest: pr } } });
+    } }), expected, name);
+  }
+});
+
+test('unresolved threads and renewed review wait; timeout leaves the PR open', async () => {
+  const pr = mergeState();
+  pr.reviewThreads.nodes = [{ isResolved: false }];
+  assert.equal(preparedMergeStatus(pr, sourceSHA), 'waiting');
+  pr.reviewThreads.nodes = []; pr.reviewDecision = 'REVIEW_REQUIRED';
+  assert.equal(preparedMergeStatus(pr, sourceSHA), 'waiting');
+  let clock = 0;
+  await assert.rejects(mergePreparedPullRequest(42, sourceSHA, { token: 'test-token', timeout: 20, now: () => clock,
+    wait: async () => { clock += 25; }, request: async input => {
+      assert(String(input).endsWith('/graphql'), 'Unreviewed PR must not merge');
+      return Response.json({ data: { repository: { pullRequest: pr } } });
+    },
+  }), /Timed out/);
+});
+
+test('media preparation and merging are maintainer-dispatched and storage credentials never reach the merge job', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/prepare-pr-media.yml', import.meta.url), 'utf8');
+  const triggers = workflow.split('\npermissions:')[0];
+  assert.match(triggers, /workflow_dispatch:/);
+  assert.doesNotMatch(triggers, /(?:^|\n)  (?:push|pull_request|pull_request_target|pull_request_review|merge_group):/);
+  const merge = workflow.split('\n  merge:\n')[1];
+  assert(merge.includes('needs: prepare') && merge.includes('needs.prepare.outputs.head_sha'));
+  assert(!merge.includes('CLOUDFLARE_R2') && !merge.includes('AWS_'));
+  assert(merge.includes("github.ref == 'refs/heads/main'"));
+  assert(workflow.includes('ref: ${{ github.sha }}'));
+  const result = spawnSync(process.execPath, ['scripts/merge-prepared-pr.ts', '42', sourceSHA], {
+    encoding: 'utf8', env: { ...process.env, GITHUB_EVENT_NAME: 'pull_request' },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /maintainer-started workflow/);
 });
