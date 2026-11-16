@@ -28,6 +28,8 @@
 - [hyperframes.md](hyperframes.md)
 - [mcp-phase1-tools.md](mcp-phase1-tools.md)
 - [Workspace assets, versions and Agent creation](assets.md)
+- [Curated fonts and on-demand import](fonts.md)
+- [Typography evaluation and fixed-scene comparison](reports/typography-evaluation.md)
 - [model-gateway.md](model-gateway.md)
 - [Application settings and model connections](provider-settings.md)
 - [Local Agent installation, sign-in and model selection](local-agents.md)

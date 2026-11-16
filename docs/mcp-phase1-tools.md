@@ -97,9 +97,13 @@ openmotion_edit_project and openmotion_restore_version accept the same optional 
 
 可选 action=record_review，须 projectId、requestId、review，记录已观察对象/versionId/结论/依据/来源与可选时间范围，不修改源码。
 
+### Curated font resources
+
+`resources/read openmotion://fonts/index` returns a compact 40-family index; the returned `openmotion://fonts/<id>` URIs expose only the requested metadata and the installed preparation command. The command downloads size/hash-pinned upstream font bytes and license into a user cache, never a project. Existing `openmotion_import_assets` then persists chosen local files through its normal version transaction. Catalog metadata ships with the Skills; the full font collection does not.
+
 ### openmotion_import_assets
 
-必填 projectId、requestId、items；每项 itemId、sourcePath，可选 name。支持探测并首帧解码的 PNG/JPEG/WebP/GIF、MP4/WebM 及 WAV/MP3/OGG/FLAC/AAC/M4A。格式以实际媒体流/容器为准。字体、SVG/PDF、任意 URL 下载本期不在此入口支持范围。
+必填 projectId、requestId、items；每项 itemId、sourcePath，可选 name。Font items may also provide an absolute licensePath (UTF-8 text, at most 128 KiB), copied with the font in the same version.支持探测并首帧解码的 PNG/JPEG/WebP/GIF、MP4/WebM 及 WAV/MP3/OGG/FLAC/AAC/M4A。格式以实际媒体流/容器为准。TTF/OTF/TTC/WOFF/WOFF2 font files are parsed through the existing font metadata reader, without FFmpeg for font-only batches. They return actual family/weight/style, project-relative fontFaceCss and optional license path/hash. Collections select the nearest upright regular face; choose a standalone or variable resource for an explicit weight. SVG/PDF and arbitrary URL downloads remain outside this Tool.
 
 返回 status=completed/partial/failed、items 中的素材 ID、相对 path、MIME、大小、SHA256、实际可得规格或单项错误，以及发生保存时的新版本。相同 itemId/输入复用现有素材；同 itemId 改输入冲突；纠正失败项使用新 requestId。导入不自动替换元素或放进时间线。
 

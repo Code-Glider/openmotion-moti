@@ -27,6 +27,8 @@
 [data-motion-studio] .om-button:hover { background: var(--motion-hover); color: var(--motion-strong); }
 [data-motion-studio] .om-button[data-primary] { background: var(--motion-action); color: var(--motion-on-action); border-color: var(--motion-action); }
 [data-motion-studio] .om-button:disabled { color: var(--motion-control-disabled); background: var(--motion-panel); border-color: var(--motion-border); cursor: default; }
+[data-motion-studio] .om-text-link[data-quiet] { background: transparent; text-decoration: none; }
+[data-motion-studio] .om-text-link[data-quiet]:hover:not(:disabled):not([aria-disabled="true"]) { background: transparent; text-decoration: underline; }
 [data-motion-studio] .om-card { border: 1px solid var(--motion-border-subtle); border-radius: var(--motion-radius-lg); background: var(--motion-bg); padding: var(--motion-space-16); }
 [data-motion-studio] .om-card-stack { display: grid; align-content: start; justify-items: start; gap: var(--motion-space-12); }
 [data-motion-studio] .om-card-stack > :is(.om-settings-row, .om-muted) { width: 100%; }

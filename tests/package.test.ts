@@ -47,6 +47,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
     assert(![...files].some(file => file.startsWith('library/templates/catalog/') || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
     for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
+    for (const file of ['scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/import-font.ts', 'skills/openmotion-production/fonts/catalog.json']) assert(files.has(file), 'Missing font dependency: ' + file);
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
     assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
     assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');

@@ -93,7 +93,8 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const mobileHero = media.get('docs/readme/brand-hero.mobile.jpg');
     const studioCapture = media.get('docs/readme/live-product/studio-in-use.png');
     assert(hero && mobileHero && studioCapture, 'Public README previews must retain registered media identities');
-    assert(readme.includes("Reverse engineering for any video"));
+    assert(readme.includes('The open-source CapCut &amp; Claude Motion alternative'));
+    assert(readme.includes(`srcset="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/capcut-claude-motion-cover.webp"`));
     assert(readme.includes(hero));
     assert(readme.includes(`src="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/openmotion-logo.svg"`));
     assert(readme.includes(`https://github.com/nexu-io/openmotion/blob/${release.commit}/docs/motion-md.md`));
@@ -107,6 +108,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(!readme.startsWith('# Motion application npm package'));
     const embeddedReadme = await readFile(path.join(application, 'README.md'), 'utf8');
     assert(embeddedReadme.includes('](docs/motion-md.md)'), 'Installed documentation keeps local links to shipped guides');
+    assert(embeddedReadme.includes(`srcset="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/capcut-claude-motion-cover.webp"`));
     assert(embeddedReadme.includes(`srcset="${mobileHero}"`));
     assert(embeddedReadme.includes(`src="${studioCapture}"`));
     await assert.rejects(readdir(path.join(application, 'docs/readme/media')), { code: 'ENOENT' });
@@ -155,7 +157,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(release.skills.every((name: string) => name.startsWith('openmotion-')));
     assert.match(await readFile(path.join(application, 'skills/openmotion-production/agents/openai.yaml'), 'utf8'), /OpenMotion Production/);
     assert.match(await readFile(path.join(application, 'skills/openmotion-media/agents/openai.yaml'), 'utf8'), /OpenMotion Media/);
-    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-media/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
+    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-media/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/typography.md', 'skills/openmotion-production/references/fonts.md', 'skills/openmotion-production/fonts/catalog.json', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
       assert.equal(await readFile(path.join(application, document), 'utf8'), await readFile(document, 'utf8'));
     }
     assert.equal(await sha256(path.join(application, 'package-lock.json')), release.locks.npm);

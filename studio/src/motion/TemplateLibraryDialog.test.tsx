@@ -208,6 +208,44 @@ it('returns an actionable empty state and disables random discovery for no match
   await act(async () => button('Clear filters').click());
   expect(cards()).toHaveLength(3);
 });
+it('reveals metadata labels only while truncated and hides the tooltip when space becomes available', async () => {
+  const observers: ResizeObserverStub[] = [];
+  class ResizeObserverStub {
+    targets = new Set<Element>();
+    constructor(public callback: ResizeObserverCallback) { observers.push(this); }
+    observe(target: Element) { this.targets.add(target); }
+    unobserve(target: Element) { this.targets.delete(target); }
+    disconnect() { this.targets.clear(); }
+  }
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+  await mount();
+  await act(async () => preview('First'));
+  const detail = host.querySelector('dialog[aria-label="Template preview"]')!;
+  const tag = button('Figma', detail);
+  let availableWidth = 100;
+  Object.defineProperties(tag, {
+    clientWidth: { get: () => availableWidth },
+    scrollWidth: { get: () => 80 },
+  });
+  const observer = observers.find(item => item.targets.has(tag))!;
+  const resize = () => observer.callback([], observer as unknown as ResizeObserver);
+  const settleTooltip = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); }); };
+  act(resize);
+  act(() => tag.focus());
+  await settleTooltip();
+  expect(detail.querySelector('[role="tooltip"]')).toBeNull();
+
+  act(() => tag.blur());
+  act(() => { availableWidth = 40; resize(); });
+  act(() => tag.focus());
+  await settleTooltip();
+  expect(detail.querySelector('[role="tooltip"]')?.textContent).toBe('Figma');
+
+  act(() => { availableWidth = 100; resize(); });
+  await settleTooltip();
+  expect(detail.querySelector('[role="tooltip"]')).toBeNull();
+  expect(tag.getAttribute('aria-describedby')).toBeNull();
+});
 it('reloads localized catalog content and clears language-specific filters', async () => {
   function App() {
     const { setLocale } = useI18n();
@@ -423,14 +461,13 @@ it('reports the library funnel with registered fields: library, card open, detai
   expect(events('ui_click', { element: 'start_use' })).toEqual([expect.objectContaining({ template_action: 'recreate', template_id: 'one', detail_view_id: shown.detail_view_id })]);
   expect(events('ui_click', { element: 'select_template' })).toHaveLength(0);
   expect(events('ui_click', { element: 'copy_template' })).toHaveLength(0);
-  expect(events('ui_click', { element: 'copy_instruction' })).toHaveLength(0);
   expect(events('template_instruction_copy_result')).toEqual([expect.objectContaining({ copy_status: 'clipboard_written', host_product: 'codex', instruction_kind: 'template_use', template_id: 'one' })]);
   await act(async () => button('Recreate and submit', detail).click());
   expect(events('ui_click', { element: 'start_use', template_action: 'recreate_submit' })).toHaveLength(1);
   expect(events('template_instruction_copy_result', { instruction_kind: 'recreate_submit' })).toHaveLength(1);
   vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('denied'));
-  await act(async () => [...detail.querySelectorAll('button')].find(node => node.textContent === 'Copied' || node.textContent === 'Copy')!.click());
-  const [click] = events('ui_click', { element: 'copy_instruction' });
+  await act(async () => button('Recreate template', detail).click());
+  const click = events('ui_click', { element: 'start_use', template_action: 'recreate' }).at(-1)!;
   expect(events('template_instruction_copy_result', { copy_status: 'manual_fallback_shown' })).toEqual([expect.objectContaining({ copy_attempt_id: click.copy_attempt_id })]);
   vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
   await act(async () => button('Download motion.md', detail).click());

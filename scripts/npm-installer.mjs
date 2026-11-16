@@ -169,12 +169,6 @@ export async function setup(options) {
       const onboarding = await prepareInstallationFlow({ appRoot, dataDirectory, templateEnvironment,
         host: plan.host, onboardingOutput: options.onboardingOutput, codex: options.codex, expectedVersion: manifest.version });
       onboarding.directAccess = directAccess(home, plan.host, appRoot, options);
-      if (plan.host === 'codex' && onboarding.inlinePresentation?.status === 'prepared' && onboarding.preview.status === 'ready') {
-        const { scheduleInstallationOnboarding } = await import(pathToFileURL(path.join(appRoot, 'scripts/onboarding-callback.mjs')).href);
-        onboarding.callback = await scheduleInstallationOnboarding({ appRoot, dataDirectory, version: manifest.version,
-          onboarding, entry: 'npm', codex: options.codex });
-        if (onboarding.callback.status === 'queued') onboarding.onboardingStatus = 'callback_queued';
-      }
       return { ...state, host: plan.host, hostInstallation: plan.metadata, nativeDependencies: 'background-preparation; status and retry available in Studio', onboarding };
     } catch (error) {
       if (wroteLauncher && !previous) await rm(launcher, { force: true });

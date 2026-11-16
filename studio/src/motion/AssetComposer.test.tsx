@@ -21,6 +21,15 @@ const props: ComponentProps<typeof AssetComposer> = {
 };
 beforeEach(() => { vi.clearAllMocks(); loadGateway.mockResolvedValue({ models: [model], status: { providers: [{ id: 'codex', available: true }], routes: {} } }); container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+it('temporarily hides the Agent tab and keeps direct generation available when viewing a conversation', async () => {
+  await act(async () => root.render(<AssetComposer {...props} mode="agent" />));
+  expect(container.querySelector('button[aria-label="Agent conversation"]')).toBeNull();
+  const direct = container.querySelector<HTMLButtonElement>('button[aria-label="Direct generation"]')!;
+  expect(direct.textContent).toBe('Generate');
+  expect(direct.getAttribute('aria-pressed')).toBe('false');
+  await act(async () => direct.click());
+  expect(props.onMode).toHaveBeenCalledExactlyOnceWith('direct');
+});
 it('restores native and custom parameters without submitting until explicitly requested', async () => {
   generate.mockResolvedValue({ job: { id: 'new-job' } });
   await act(async () => root.render(<AssetComposer {...props} />));
