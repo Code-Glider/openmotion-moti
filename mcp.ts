@@ -18,7 +18,7 @@ import { isMain } from './shared/entry.ts';
 import type { Selection } from './editor-runtime.ts';
 import { createAppTracking, closeTracking, trackingError, type OmTracking } from './shared/tracking.ts';
 import { uuid } from './tracking/core.ts';
-import { toolNames } from './tracking/events.ts';
+import { assetToolAction, toolNames } from './tracking/events.ts';
 import { identifyHost, unknownHost } from './tracking/host.ts';
 import type { HostContext } from './tracking/host.ts';
 import { templateCatalogFor } from './prism-templates.ts';
@@ -67,7 +67,8 @@ export async function rpc(message: any, store = new WorkspaceStore(), registry =
   const tracking = await trackingFor(store), started = performance.now(), callId = crypto.randomUUID();
   let accepted = false;
   try { validateInput(phase1Tools.find(tool => tool.name === publicToolName(message.params.name))!.inputSchema, message.params.arguments ?? {}); accepted = true; } catch {}
-  const fields = { tool_name: name as typeof toolNames[number], call_id: callId, accepted,
+  const action = assetToolAction(name, message.params.arguments);
+  const fields = { tool_name: name as typeof toolNames[number], call_id: callId, accepted, ...(action ? { action } : {}),
     ...(uuid.test(message.params.arguments?.requestId) ? { operation_id: message.params.arguments.requestId } : {}) };
   if (accepted) tracking.track('mcp_tool_started', fields, undefined, undefined, host);
   const response = await invokeRpc(message, store, registry, connection, host, trackingContext, clientState);

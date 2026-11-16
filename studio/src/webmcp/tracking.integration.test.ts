@@ -31,7 +31,8 @@ it('delivers all 19 tools through the actual browser sender and never queues mor
   const tracking = await import('../motion/tracking');
   await tracking.initializeTracking();
   const { registered, execute, reply } = await registerTools();
-  for (const tool of registered) expect(await tool.execute({ path: '/PRIVATE', prompt: 'PRIVATE' })).toBe(reply);
+  for (const tool of registered) expect(await tool.execute({ path: '/PRIVATE', prompt: 'PRIVATE',
+    ...(tool.name === 'openmotion_assets_use' ? { action: 'read' } : tool.name === 'openmotion_assets' ? { action: 'get' } : {}) })).toBe(reply);
   await vi.dynamicImportSettled();
   for (let i = 0; i < 10 && tracking.getMotionTrackingStatus().pending; i++) await tracking.flushMotionTracking();
   expect(tracking.getMotionTrackingStatus().pending).toBe(0);
@@ -39,10 +40,12 @@ it('delivers all 19 tools through the actual browser sender and never queues mor
   expect(packets.filter(packet => packet.event === 'webmcp_tool_started')).toHaveLength(19);
   expect(packets.filter(packet => packet.event === 'webmcp_tool_finished')).toHaveLength(19);
   expect(packets.every(packet => packet.entrypoint === 'studio' && packet.properties.transport === 'webmcp')).toBe(true);
+  expect(packets.filter(packet => packet.properties.action === 'read').map(packet => packet.event)).toEqual(['webmcp_tool_started', 'webmcp_tool_finished']);
+  expect(packets.filter(packet => packet.properties.action === 'get')).toHaveLength(2);
   expect(JSON.stringify(packets)).not.toMatch(/PRIVATE|installation_id|distinct_id|api_key/);
 
   tracking.setMotionTrackingEnabled(false);
-  for (const tool of registered) expect(await tool.execute({})).toBe(reply);
+  for (const tool of registered) expect(await tool.execute({ action: 'read' })).toBe(reply);
   await vi.dynamicImportSettled(); await tracking.flushMotionTracking();
   expect(packets).toHaveLength(registered.length * 3);
   expect(execute).toHaveBeenCalledTimes(registered.length * 2);

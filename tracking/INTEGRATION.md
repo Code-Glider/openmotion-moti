@@ -54,7 +54,7 @@ the agent can determine file paths and existing helpers from code.
 | Signal | Existing location | Extension rule |
 | --- | --- | --- |
 | Accepted MCP start and observed finish | `mcp.ts`, `toolNames` in `tracking/events.ts` | All registered tools use the wrapper; the preferred asset name shares the original motion_assets telemetry identity with its compatibility name. Do not add another start/finish pair inside a handler. Reconcile the tool contract and this list if adding a tool. |
-| WebMCP callback and registration result | `studio/src/webmcp/registrar.ts` and its tracking wrapper | All eighteen registered page tools share one reporting boundary. Keep `transport=webmcp`, correlate start/finish by `call_id`, and preserve callback results, cancellation and errors. Update the closed tool-name list and its descriptor-alignment test when the public set changes. |
+| WebMCP callback and registration result | `studio/src/webmcp/registrar.ts` and its tracking wrapper | All nineteen registered page tools share one reporting boundary. Keep `transport=webmcp`, correlate start/finish by `call_id`, and preserve callback results, cancellation and errors. Update the closed tool-name list and its descriptor-alignment test when the public set changes. |
 | Committed phase-one business result | `phase1.ts` and `trackPhase1Result` in `shared/tracking.ts` | Use the shared domain completion. Replayed operations skip new domain completions. A successful call need not have made a useful edit. |
 | Render/export terminal state | `renderNext` in `server.ts` | Emit from the worker's observed terminal state. A queued job is not a completed video. |
 | Studio interaction or readiness | Components under `studio/src/motion/`, using `tracking.ts` there | Track an intentional handler or a guarded readiness/completion callback. Avoid unguarded render/effect reporting. |
@@ -65,6 +65,11 @@ intent and extend only its necessary enum values. Use a result event for persist
 effects; do not infer success from intent. If MCP and Studio reach the same operation,
 choose one domain owner. Two calls to `track()` create two UUIDs and are not
 automatically recognized as the same business action.
+
+Asset tool start/finish events also carry the shared, closed optional `action`
+category. Use `assetToolAction` from `tracking/events.ts` at the existing wrapper
+boundary; never report raw input actions. Read usage, success-rate and latency
+queries use finished events as described in [coverage](README.md#implemented-signals-and-limits).
 
 ## Register and call an event
 
