@@ -18,11 +18,15 @@ async function owningRuntime(explicit) {
 }
 
 const sha256 = data => createHash('sha256').update(data).digest('hex');
-// Mirrors WorkspaceStore: node_modules/renders/dist/output plus tool caches are not project source.
-const nonSourceDirectories = new Set(['node_modules', 'renders', 'dist', 'output', '.git', '.cache', '.thumbnails', '.history', '.artifacts']);
+// Mirrors WorkspaceStore: node_modules/renders/output plus tool caches are not project source.
+const nonSourceDirectories = new Set(['node_modules', 'renders', 'output', '.git', '.cache', '.thumbnails', '.history', '.artifacts']);
+// WorkspaceStore also omits dist trees from the revision, but projects load them directly
+// (e.g. vendor/gsap-3.14.2/dist/gsap.min.js), so they ship as non-revision content.
+const nonRevisionDirectories = new Set(['dist']);
 // The native Studio manifests are the only revision-bearing .hyperframes entries; history-id is editor metadata.
 const nativeManifests = new Set(['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json']);
 const editorMetadata = new Set(['.hyperframes/history-id']);
+const isNonRevision = relative => relative.split('/').some(part => nonRevisionDirectories.has(part));
 const excluded = relative => {
   const parts = relative.split('/');
   if (parts.some(part => nonSourceDirectories.has(part))) return true;
@@ -60,7 +64,7 @@ function validateInventory(detail, files) {
   }
   // The pinned inventory is the complete revision-bearing file set; a file the workspace added after the
   // project read changes the revision, so packaging it under the old revision would misreport the source.
-  for (const name of files.keys()) assert(seen.has(name) || editorMetadata.has(name), 'SOURCE_DRIFT: unpinned source file ' + name);
+  for (const name of files.keys()) assert(seen.has(name) || editorMetadata.has(name) || isNonRevision(name), 'SOURCE_DRIFT: unpinned source file ' + name);
   assert(files.has('index.html'), 'MISSING_HTML_ENTRY');
 }
 function checkDependencies(files) {
