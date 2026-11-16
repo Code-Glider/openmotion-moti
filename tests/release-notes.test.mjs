@@ -139,7 +139,31 @@ test('diverged or truncated comparison data is explicitly rejected or disclosed'
   };
   await assert.rejects(prepareCandidateNotes(f.build, { env, fetcher }), /ancestor/);
   status = 'ahead'; pages = 0;
-  assert((await prepareCandidateNotes(f.build, { env, fetcher })).includes('first 1,000 commits'));
+  const truncated = await prepareCandidateNotes(f.build, { env, fetcher });
+  assert(truncated.includes('first 1,000 of 1,001 compared commits'));
+});
+
+test('a comparison page the endpoint returns short is disclosed instead of failing the build', async t => {
+  const f = await fixture(t, '0.6.4-test.99');
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit }, base = 'a'.repeat(40);
+  // GitHub's comparison endpoint caps the returned commits while total_commits reports the whole delta.
+  for (const [available, total] of [[250, 300], [300, 350]]) {
+    await rm(path.join(f.build, 'release-notes.md'), { force: true });
+    const calls = [];
+    const fetcher = async url => {
+      if (url.includes('/releases?')) return Response.json([{ tag_name: 'v0.6.4-test.98', prerelease: true }]);
+      if (url.includes('/git/ref/')) return Response.json({ object: { type: 'commit', sha: base } });
+      const page = Number(new URL(url).searchParams.get('page')); calls.push(page);
+      const first = (page - 1) * 100;
+      return Response.json({ status: 'ahead', total_commits: total, commits: Array.from({ length: Math.max(0, Math.min(100, available - first)) },
+        (_, i) => ({ sha: (first + i + 1).toString(16).padStart(40, '0'), commit: { message: `Change ${first + i}` } })) });
+    };
+    const body = await prepareCandidateNotes(f.build, { env, fetcher });
+    assert(body.includes(`Only the first ${available} of ${total} compared commits are shown; inspect the full comparison.`));
+    assert(body.includes(`[Full source comparison/history](https://github.com/nexu-io/openmotion/compare/${base}...${f.candidate.sourceCommit})`));
+    assert.equal((body.match(/^- Change /gm) ?? []).length, available, 'Truncated ranges must not repeat rows');
+    assert.equal(calls.length, Math.ceil(available / 100) + (available % 100 === 0 ? 1 : 0), 'Stop at the first page the endpoint cannot extend');
+  }
 });
 
 test('older schema-2 candidates retain generated publication notes without inventing a sealed draft', async t => {

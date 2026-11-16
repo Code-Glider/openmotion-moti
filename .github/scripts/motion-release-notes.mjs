@@ -52,15 +52,19 @@ export async function prepareCandidateNotes(directory, { env = process.env, fetc
     assert.equal(object.type, 'commit'); assert.match(object.sha, /^[a-f0-9]{40}$/); base = object.sha;
     link = `https://github.com/${repository}/compare/${base}...${source}`;
     commits = [];
+    let total = 0, truncated = false;
     for (let page = 1; page <= 10; page++) {
       const compared = await api(`/compare/${base}...${source}?per_page=100&page=${page}`);
       assert(['ahead', 'identical'].includes(compared.status), 'Published baseline must be an ancestor of the selected source');
       assert(Array.isArray(compared.commits) && Number.isSafeInteger(compared.total_commits) && compared.total_commits >= 0, 'Invalid comparison metadata');
-      commits.push(...compared.commits);
-      assert(compared.commits.length || commits.length >= compared.total_commits, 'Incomplete comparison page');
-      if (commits.length >= compared.total_commits) break;
-      if (page === 10) warning = 'Only the first 1,000 commits are shown; inspect the full comparison.';
+      total = compared.total_commits; commits.push(...compared.commits);
+      if (commits.length >= total) break;
+      // The comparison endpoint caps how many commits it returns, so a short or empty
+      // page ends the readable delta instead of signalling a malformed response.
+      truncated = compared.commits.length < 100 || page === 10;
+      if (truncated) break;
     }
+    if (truncated) warning = `Only the first ${commits.length.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} compared commits are shown; inspect the full comparison.`;
   } else {
     // First-channel history is bounded; use the full-history link for older changes.
     commits = await api(`/commits?sha=${source}&per_page=100`);
