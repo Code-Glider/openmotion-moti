@@ -1,62 +1,71 @@
 {
-  "capturedAt": "2026-11-12",
-  "runtimeVersion": "0.6.5",
-  "source": "Installed OpenMotion Studio captures and a user-provided Studio screenshot",
-  "note": "Catalog, detail and recreation-dialog captures use an isolated demo workspace and the production template catalog. The additional Studio screenshot is retained exactly as supplied; its runtime version is unspecified.",
+  "capturedAt": "2026-11-16",
+  "sourceCommit": "450e8f32d199cecddf4cfe3d2f5d6b30897eb296",
+  "catalogSource": "cms",
+  "catalogVersion": "b478155a-feab-4576-a75e-1d13025b8188",
+  "source": "OpenMotion Studio in an isolated workspace, using the production catalog and the bundled sample project.",
+  "templateId": "motion-c74e1725-6fd2-4885-be7f-f1f705e9af66",
+  "note": "Captured with the English, Simplified Chinese and Japanese interfaces. The detail preview is paused at 18.1 seconds. The remix image is cropped to the expanded instruction and its copy action.",
   "files": [
     {
-      "file": "docs/readme/live-product/catalog.en.jpg",
-      "bytes": 126600,
-      "sha256": "b54075cdc0f0e7a46da035afecd1c39afd9596ebbe6fe52d13f6f19c8df3c495"
-    },
-    {
-      "file": "docs/readme/live-product/catalog.ja.jpg",
-      "bytes": 129897,
-      "sha256": "70d396c18c6d2e8d6c9a6d47804a8d813eaa3bdde75df000e5cfca6de8f38e1a"
-    },
-    {
-      "file": "docs/readme/live-product/catalog.zh-CN.jpg",
-      "bytes": 124495,
-      "sha256": "01b43503d98d59a407d5cfb6baf9a31660670c195513601e501a781250d069ea"
-    },
-    {
       "file": "docs/readme/live-product/detail.en.jpg",
-      "bytes": 92076,
-      "sha256": "802fd1990c6aa4d731a776dc6f0e3a70f87ac0f448895b2ff55a2baeffa60371"
+      "bytes": 149738,
+      "sha256": "93ddcc111e05a2a53c9f8347461483fb4e0bf949275e0a072776270ae8a69322"
     },
     {
       "file": "docs/readme/live-product/detail.ja.jpg",
-      "bytes": 97298,
-      "sha256": "15816843027f0828e5c10f5ea238e850d4585ccb1de284a82e133df9232ad0d1"
+      "bytes": 153307,
+      "sha256": "5356934d3c8dadcc45180742d6adcdc9cdd8dd0495b0f6eaeebeca5527a96d4d"
     },
     {
       "file": "docs/readme/live-product/detail.zh-CN.jpg",
-      "bytes": 82002,
-      "sha256": "390bceaccb868e4fd1324dd9d78d372e09e7dd95cb462a2fab6d94e2368f081a"
+      "bytes": 144376,
+      "sha256": "d68a13845e1ad3de5383438ac15a3b9ee38f3ccad999b3eaa056fd8b6b208f78"
+    },
+    {
+      "file": "docs/readme/live-product/editor.en.jpg",
+      "bytes": 160021,
+      "sha256": "7aa9bb6ffdc509e10332a243717204e6652f8a956b71ef1723fcd5343e7d9292"
+    },
+    {
+      "file": "docs/readme/live-product/editor.ja.jpg",
+      "bytes": 162057,
+      "sha256": "187114ed098613026b154769eee0bf92a62c60203b27d23c805745561130cf04"
+    },
+    {
+      "file": "docs/readme/live-product/editor.zh-CN.jpg",
+      "bytes": 158730,
+      "sha256": "b761245d47141e8781f9c5945137a93556e157a3d5d145f9ba93a6c5e633bf53"
+    },
+    {
+      "file": "docs/readme/live-product/library.en.jpg",
+      "bytes": 200923,
+      "sha256": "795df1186b61c149c5b8b9d968b074de28a6ac4e2ba3ec737c105fb78cc494eb"
+    },
+    {
+      "file": "docs/readme/live-product/library.ja.jpg",
+      "bytes": 200610,
+      "sha256": "6525b36bbbc0b0fff5f50c6fa22314443ce4893b72b1bd7f7e0a580737305da2"
+    },
+    {
+      "file": "docs/readme/live-product/library.zh-CN.jpg",
+      "bytes": 201373,
+      "sha256": "1993bcef63e8cef9ac701fdbcc820ff623d5da767ae1c6a948d2de398a4cd9ff"
     },
     {
       "file": "docs/readme/live-product/remix.en.jpg",
-      "bytes": 76061,
-      "sha256": "8cb70e57a3d2360a43a84b20b797e37a6bb0865dc90861901099ababf42cffda"
+      "bytes": 41043,
+      "sha256": "bc3897a2e19d892db63c9cfd11d6830476c8a8d6e5a085f2b41aecbf239e3ace"
     },
     {
       "file": "docs/readme/live-product/remix.ja.jpg",
-      "bytes": 74647,
-      "sha256": "5d4b93d6c403bc0316be1ef03c2e654a062ffeb300805a1cf4393ccb411ffe6a"
+      "bytes": 45876,
+      "sha256": "8ac2ed0a054fda8e92221cab0ffa9891f6527b46ebbf8b90b0a5444299756394"
     },
     {
       "file": "docs/readme/live-product/remix.zh-CN.jpg",
-      "bytes": 66694,
-      "sha256": "c55bb45a151ccd7855faf1507d4efce283a178097a1491e2b66b81110a44ce43"
-    },
-    {
-      "file": "docs/readme/live-product/studio-in-use.png",
-      "bytes": 2065288,
-      "sha256": "f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073",
-      "source": "User-provided screenshot shared for inclusion in the README",
-      "runtimeVersion": null,
-      "uiLocale": "zh-CN",
-      "alterations": "None; original PNG retained"
+      "bytes": 32937,
+      "sha256": "02142c223928a282e38fb2f484cc035ccc73352c6eaaf76583a0e2a7071244c3"
     }
   ]
 }

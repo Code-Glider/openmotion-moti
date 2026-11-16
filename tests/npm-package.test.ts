@@ -93,8 +93,8 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));
     const hero = media.get('docs/readme/brand-hero.jpg');
     const mobileHero = media.get('docs/readme/brand-hero.mobile.jpg');
-    const studioCapture = media.get('docs/readme/live-product/studio-in-use.png');
-    assert(hero && mobileHero && studioCapture, 'Public README previews must retain registered media identities');
+    const studioCapture = `https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/live-product/editor.en.jpg`;
+    assert(hero && mobileHero, 'Public README covers must retain registered media identities');
     assert(readme.includes('The open-source Claude Motion &amp; CapCut alternative'));
     assert(readme.includes(`srcset="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/capcut-claude-motion-cover.webp"`));
     assert(readme.includes(hero));

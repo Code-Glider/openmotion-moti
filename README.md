@@ -309,7 +309,7 @@ If historical media are unavailable, an Agent restore is refused before changing
 
 <a id="studio-in-use"></a>
 
-<img src="https://releases.open-design.ai/open-motion/media/sha256/f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073.png" width="100%" alt="Studio in use: imported media on the left, video preview in the center, and an editable timeline below.">
+<img src="docs/readme/live-product/editor.en.jpg" width="100%" alt="The sample project in Studio with its compositions, video preview, scene timeline and audio waveform.">
 
 Review your video, arrange clips and export from the same Studio workspace.
 
@@ -401,7 +401,7 @@ Browse by **reference brand, use case and video type**, or search for a specific
 
 Reference-only entries start a reconstruction workflow. When editable source is available, your agent can adapt the project directly.
 
-![Find a template, then make it yours](https://releases.open-design.ai/open-motion/media/sha256/b54075cdc0f0e7a46da035afecd1c39afd9596ebbe6fe52d13f6f19c8df3c495.jpg)
+![Find a template, then make it yours](docs/readme/live-product/library.en.jpg)
 
 [Browse the template library](https://open-design.ai/templates/)
 
@@ -580,13 +580,13 @@ export an MP4 and retain the source for the next edit.
 
 #### Review the template and its Motion.md
 
-Open a template to watch the reference and read its visual style and production notes. Download Motion.md when you want the guide as a reusable file.
+Watch the reference video on the left. In the details panel, expand **Visual style** or **Production notes**, or choose **Download motion.md** to save the guide.
 
 ![Review the template and its Motion.md](docs/readme/live-product/detail.en.jpg)
 
 #### Send the template to your agent
 
-Choose **Recreate template**, copy the instruction and add your brand kit, copy and creative requirements. Your agent installs or connects OpenMotion if needed, then works from the selected template. Open the resulting project in Studio to review the timing, continue editing and export.
+In the details panel, choose **Show instruction** to read the prompt. **Recreate template** copies it to the clipboard. Paste it into your agent with your brand kit and creative brief. Open the resulting project in Studio to edit and export.
 
 ![Send the template to your agent](docs/readme/live-product/remix.en.jpg)
 

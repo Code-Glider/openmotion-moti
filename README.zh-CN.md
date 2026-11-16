@@ -307,7 +307,7 @@ npm start
 
 <a id="studio-in-use"></a>
 
-<img src="https://releases.open-design.ai/open-motion/media/sha256/f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073.png" width="100%" alt="Studio 实际使用界面：左侧为导入素材，中间为视频预览，下方为可编辑时间轴。">
+<img src="docs/readme/live-product/editor.zh-CN.jpg" width="100%" alt="Studio 示例工程：左侧是片段列表，中间是视频预览，下方是场景时间线和音频波形。">
 
 在同一个 Studio 工作区中预览视频、排列片段并导出成片。
 
@@ -399,7 +399,7 @@ Brand Kit 章节记录品牌身份、语气和已确认的产品信息；Design 
 
 仅有参考视频的条目会进入复刻流程；提供可编辑源码的条目可以直接交给 Agent 改编。
 
-![选好模板，再换成自己的内容](https://releases.open-design.ai/open-motion/media/sha256/01b43503d98d59a407d5cfb6baf9a31660670c195513601e501a781250d069ea.jpg)
+![选好模板，再换成自己的内容](docs/readme/live-product/library.zh-CN.jpg)
 
 [浏览全部线上模板](https://open-design.ai/templates/)
 
@@ -567,13 +567,13 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 #### 查看模板与 Motion.md
 
-打开模板，查看参考视频、风格描述与制作要点。需要复用这份说明时，可以下载 Motion.md。
+在左侧播放参考视频，在右侧展开「风格描述」或「制作要点」。需要保存指南时，点击「下载 motion.md」。
 
 ![查看模板与 Motion.md](docs/readme/live-product/detail.zh-CN.jpg)
 
 #### 把模板交给 Agent
 
-点击**复刻模板**，复制指令，并补充自己的 Brand Kit、文案和创作要求。Agent 会在需要时安装或接入 OpenMotion，然后基于所选模板制作。打开生成的工程，在 Studio 检查节奏、继续编辑并导出。
+在详情面板点击「查看完整指令」，再点「复刻模板」复制指令。将它粘贴到 Agent，补充品牌素材和创作要求，再到 Studio 打开生成的工程，继续剪辑并导出。
 
 ![把模板交给 Agent](docs/readme/live-product/remix.zh-CN.jpg)
 
