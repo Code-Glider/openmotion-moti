@@ -50,3 +50,16 @@ test('template orchestration depends on shared execution without reverse overrid
   assert.ok(!catalog.content.includes('## First-run experience defaults'));
   assert.ok(!catalog.content.includes('## `product-proof`'));
 });
+
+test('final presentation timeout preserves file verification and pending editor evidence', async () => {
+  const runtime = await getWorkflow('production');
+  const verification = await getWorkflow('verification');
+  const native = await getWorkflow('native');
+  assert.match(runtime.content, /openmotion_show_video` in its own host tool call/);
+  assert.match(runtime.content, /about 60 seconds[\s\S]*already verified MP4's absolute file path and finish/);
+  assert.match(runtime.content, /timeout cannot turn a pending\/hidden\/unavailable editor into confirmed delivery/);
+  assert.match(verification.content, /Retain all actual-file playback checks above/);
+  assert.match(verification.content, /Play from start to end/);
+  assert.match(verification.content, /Replay from the beginning/);
+  assert.match(native.content, /only a visible preview with the latest content actually inspected can be `confirmed`/);
+});

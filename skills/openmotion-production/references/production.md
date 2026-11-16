@@ -29,6 +29,10 @@ Once the final authored video and supporting assets are ready for preview, compl
 
 For an actual video creation/content-edit turn, render the final version once. Wait for its MP4 export to complete and pass technical verification, then call the discovered `openmotion_show_video({projectId,workId})` once to display the final video in the chat. No intermediate, queued, checking or rendering state creates a chat video frame. The player loads that fixed completed export; earlier final videos retain their own versions. This final playback does not require a separate download request. Hosts without the presentation Tool keep the existing file/player delivery path. Explicit editor-only work, unchanged template opening, reviews and existing-link requests do not start an unwanted render.
 
+Call `openmotion_show_video` in its own host tool call, not in a script/batch with other commands. Bound this final presentation wait to about 60 seconds. If it has not returned, immediately give the already verified MP4's absolute file path and finish, stating that chat presentation is pending. Do not inspect plugin source, build a custom playback page or repeatedly retry presentation. Keep the completed export identity and prior checks; this timeout does not waive actual-file playback checks or prove the player is visible.
+
+Keep editor display evidence separate: only submit `record_display` for a current editor state actually observed under the [shared handoff](native.md#continuing-edits). A presentation timeout cannot turn a pending/hidden/unavailable editor into confirmed delivery. Report the latest observed editor limitation alongside the file; do not start a new presentation recovery loop after this deadline.
+
 The final player and the editable Studio are separate delivery surfaces. Verify the actual final player and the current editor handoff; source save, a Tool success or a completed render does not prove either surface is visible or playable.
 
 ## Execution
