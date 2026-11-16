@@ -45,7 +45,7 @@ export const workflowRegistry = {
       examples: 'skills/openmotion-director/references/examples.md',
     },
   },
-  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md' } },
+  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md', firstuse: 'skills/openmotion-template-to-video/references/first-use.md', recipes: 'skills/openmotion-template-to-video/references/recipes.md' } },
   recreate: {
     status: 'ready',
     sections: {

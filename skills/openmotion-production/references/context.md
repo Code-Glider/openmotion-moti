@@ -42,8 +42,8 @@ Read Hyperframes guidance within the [native engine boundary](native.md#engine-g
 | Selecting/replacing fonts, changing text hierarchy, or diagnosing typography | [Typography](typography.md); preserve the selected route and established identity. Local edits cover affected text only; unchanged preview/export and audio-only work do not trigger selection. |
 | Original creation / major redesign | The selected director entry owns its creative reading set; apply [shared review](review.md) to the actual affected work. |
 | Implementing established sound decisions or adjusting audio tracks, including locked picture | [Sound execution and timing anchors](sound.md), plus sound-related [review](review.md); do not load original creative design. New sound narrative design reads the selected director entry's sound guidance instead. |
-| 原样使用模板、不做修改 | Opening only uses the [editable preview handoff](native.md#editable-preview-handoff). Explicit HTML/MP4 file delivery uses [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md), which owns its minimal reading/check sequence. An edited project cannot reuse the original template preview. |
-| 使用／适配可编辑模板，需要创建、编辑或渲染工程 | [模板能力说明](templates.md)、审片；unchanged file export follows its scoped branch above, without loading authoring/creative references solely because a render was requested. |
+| Existing accepted content, without content changes | Editor-only uses the [editable preview handoff](native.md#editable-preview-handoff). Explicit file delivery applies [delivery scope](production.md#delivery-scope), [source pinning](native.md#pin-source-for-independent-deliverables) and [verification scope](verification.md#verification-scope). The selected entry owns its sequence; no authoring/creative read is required solely to export. An edited project cannot reuse an old preview. |
+| Selecting or adapting an editable catalog template | [Catalog capabilities](templates.md) when an ID/source is unresolved; content changes use affected-scope review. Rendering accepted content follows the file-delivery scope above. |
 | 明确要求视频转可复用模板 | [openmotion-video-to-template](../../openmotion-video-to-template/SKILL.md) 的制作与打包参考按阶段读取；制作决策、审片及实际参考视频 |
 | 复刻视频 | [制作决策](decisions.md)、审片，另实际检查参考视频 |
 | 局部文字／视觉修改或动态审片 | 审片；沿用已有结构，不补读整套原创流程 |
@@ -82,7 +82,7 @@ Motion 质量是基础职责，不以用户是否说“丝滑”作为加载条�
 
 工程操作前读 [运行规范](production.md)；编写原生内容前读 [Native authoring](native.md) 及返回的固定版本引擎指南。确认活动项目和最新 revision，复用已有工程，只有任务确实需要时创建或切换项目。冲突时检查新源文件，不盲目重放旧写入。
 
-需要新渲染的导出/成片交付读 [验证](verification.md)。已有适用的导出任务时先查询，不重复提交；验证依据须对应实际 revision 和文件。原样使用模板按 openmotion-template-to-video 在编辑器中交付，不导出。starter 默认停在可编辑草稿，但用户本次明确要求成片或导出时，以用户范围为准。
+需要新渲染的导出/成片交付读 [验证](verification.md)。已有适用的导出任务时先查询，不重复提交；验证依据须对应实际 revision 和文件。For accepted content, stop at editor-only delivery unless the current request asks for files; an explicit MP4 request includes export and final-file checks. starter 默认停在可编辑草稿，但用户本次明确要求成片或导出时，以用户范围为准。
 
 ## 防止漏读、重复与循环
 

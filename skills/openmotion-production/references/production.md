@@ -17,7 +17,11 @@ When selecting, obtaining or replacing media, apply the [shared material policy]
 
 ## Final video delivery
 
-Unchanged-template requests for HTML/project or MP4 files use [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md). Its version-pinned parallel delivery and scoped reading/check sequence take precedence over the authoring work-round flow below; retain the actual final-file checks and separate editor presentation status.
+### Delivery scope
+
+The current request selects the delivery stage. Editor-only, draft, review and existing-link requests do not create an export. Requested HTML/project files need packaging and source/editor checks; an MP4 request also needs the completed export's technical and actual-file playback checks under [verification scope](verification.md#verification-scope).
+
+File-only delivery of already accepted content follows [source pinning](native.md#pin-source-for-independent-deliverables), without creating an authoring work round or loading creative design. Begin a work round only if the discovered final-video presentation Tool requires a workId. The selected creative entry composes these operations; it does not override shared version, verification or display requirements. Actual creation/content editing follows the work-round flow below.
 
 During generation and editing, do not create an inline progress or video component and do not open the right-hand editor for intermediate saves. Begin a business work round silently with `openmotion_open_preview({action:"begin",projectId,requestId,mode:"create"|"modify"})`; retain `inlineWork.id` as `workId` through saves and the final export. This call presents no UI.
 

@@ -20,9 +20,17 @@ Read linked engine references only for the technical question at hand. Use a doc
 6. For original creation, reference-video recreation and editable-template production, complete the editable preview handoff below once this turn's final video HTML and assets are complete and ready for preview. Existing-project content edits apply its continuing-edit rules once the final video is ready for preview, regardless of the selected Skill. Other scopes open Studio on request.
 7. Inspect actual motion, timing, sound and affected joins. Local/Studio changes become native content snapshots; querying flushes saved history metadata without editing source. Return to step 2 after GUI edits.
 
+## Pin source for independent deliverables
+
+For already accepted content, complete any required native preflight/editor normalization first, then read the current revision, currentVersionId and file inventory with `openmotion_get_project`. Reuse an applicable current read; no save or asset import is required merely to pin an unchanged source.
+
+Bind requested outputs to this same source identity. Immutable export, packaging and host presentation can proceed independently after normalization. A revision change or package hash mismatch invalidates the pending package: read the newer source and reconcile before continuing. Preserve any in-flight export and its original job identity; do not resubmit blindly. Reuse an existing export only with matching content/version, specification, dependency identity and actual file hash.
+
+Presentation is read-only. Apply the handoff below, including stable paused zero-second playback and accurate display evidence. Retain queued/hidden/unavailable status and the exact usable URL after bounded recovery; a failed or unobserved panel does not block independent verified file delivery.
+
 ## Editable preview handoff
 
-For [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md), finish initial normalization and pin the source before running immutable export/packaging and host presentation in parallel. This handoff's visibility, playback-state and bounded-retry requirements remain; an unresolved panel is reported separately from delivered files rather than blocking independent export work.
+Independent delivery work follows [source pinning](#pin-source-for-independent-deliverables) before export or packaging. This handoff's visibility, playback-state and bounded-retry requirements remain; an unresolved panel is reported separately from delivered files rather than blocking independent export work.
 
 The first output of original creation, reference-video recreation and editable-template production automatically includes an editable preview. Once the final requested video HTML and its supporting files/assets are complete and ready for preview, call `openmotion_open_preview({projectId})` for that same project, then visibly open its exact returned `previewUrl` in the host's built-in browser. No additional user request or confirmation is needed. Intermediate drafts and saves do not trigger this handoff. An explicitly requested draft/editor preview and unchanged template opening retain their scope; the final ready HTML preview need not wait for MP4 export. An empty carrier's `index.html` is not the requested output. Explicit user instructions to stay in the background take precedence.
 

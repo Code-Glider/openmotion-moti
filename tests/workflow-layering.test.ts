@@ -33,3 +33,20 @@ test('shared audio execution and review do not require original sound design or 
   assert.match(sound.content, /实际使用的音频版本/);
   assert.match(sound.content, /正常速度声画体验/);
 });
+
+test('template orchestration depends on shared execution without reverse overrides', async () => {
+  for (const section of ['context', 'native', 'production', 'templates', 'verification']) {
+    const document = await getWorkflow(section);
+    assert.ok(!document.references.some(reference => reference.workflow === 'template'), section);
+  }
+  const unchanged = await getWorkflow('unchanged', 'template');
+  for (const section of ['native', 'production', 'verification']) {
+    assert.ok(unchanged.references.some(reference => reference.workflow === 'production' && reference.section === section));
+  }
+  for (const section of ['firstuse', 'recipes']) {
+    assert.equal((await getWorkflow(section, 'template')).workflow, 'template');
+  }
+  const catalog = await getWorkflow('templates');
+  assert.ok(!catalog.content.includes('## First-run experience defaults'));
+  assert.ok(!catalog.content.includes('## `product-proof`'));
+});
