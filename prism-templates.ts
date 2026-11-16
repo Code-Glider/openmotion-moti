@@ -206,7 +206,7 @@ export class TemplateCatalog {
 
   async detail(id: string) {
     const snapshot = await this.refresh();
-    const template = builtinTemplates.find(item => item.id === id) ?? this.templates(snapshot).find(item => item.id === id);
+    const template: EditableTemplate | undefined = builtinTemplates.find(item => item.id === id) ?? this.templates(snapshot).find(item => item.id === id);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');
     if (template.localSource) {
       const instructions = (await readRepositoryFile(this.repositoryRoot, id + '/TEMPLATE.md')).toString('utf8');

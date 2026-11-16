@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import type { TemplatePublication } from './repository-template-catalog.ts';
+import type { PublishedTemplate, TemplatePublication } from './repository-template-catalog.ts';
 
 const repository = 'nexu-io/openmotion';
 const ref = 'main';
@@ -74,7 +74,7 @@ export async function loadGithubCatalog(request: Request = fetch): Promise<Githu
       for (const locale of locales) {
         const entry = { ...record.entry, ...record.locales[locale] };
         assert(entry.templateId === id && entry.original?.templateName && Array.isArray(entry.files), 'Invalid GitHub template metadata');
-        publication.content[locale].templates.push(entry);
+        publication.content[locale].templates.push(entry as PublishedTemplate);
       }
       records.set(id, record);
     }
