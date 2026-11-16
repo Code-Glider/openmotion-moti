@@ -49,7 +49,7 @@ Do not pass off playback of the entire reference, a full-frame image sequence, e
 
 ## Establish a difficult visual system
 
-Dense multi-shot work, unfamiliar visual mechanisms and movement that still differs after a repair follow [difficult visual reconstruction](reconstruction.md): shot and action units, observation-driven controls, material in its use states, local validation and integration. Read it before authoring those passages.
+Dense multi-shot work, unfamiliar visual mechanisms and movement that still differs after a repair follow [difficult visual reconstruction](reconstruction.md). Read it before authoring those passages. It covers [Plan shot and action units](reconstruction.md#plan-shot-and-action-units), [Turn observations into driving data](reconstruction.md#turn-observations-into-driving-data), [Prepare material in its actual use states](reconstruction.md#prepare-material-in-its-actual-use-states), [Validate and repair the local implementation](reconstruction.md#validate-and-repair-the-local-implementation) and [Integrate the inspected units](reconstruction.md#integrate-the-inspected-units).
 
 ## Assets, text and fonts in this package
 
