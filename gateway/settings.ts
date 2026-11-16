@@ -1,4 +1,4 @@
-import type { DirectoryModel, ModelKind, ProviderConnection, ProviderDirectory } from '../shared/provider-directory.ts';
+import { publicProviderConnection, type DirectoryModel, type ModelKind, type ProviderConnection, type ProviderDirectory } from '../shared/provider-directory.ts';
 import { isGatewayProvider, isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import type { ModelGateway } from './service.ts';
 
@@ -18,7 +18,7 @@ export async function providerDirectory(gateway: ModelGateway): Promise<Provider
     models.push(...page.models.filter(model => media.some(p => p.id === model.provider)).map(model => ({ ...model, kind: model.modality, enabled: true })));
     offset = page.nextOffset;
   }
-  return { providers: [official, ...media, ...connections], models: [...models, ...saved.models, ...accountModels].map(model => ({ ...model, ...saved.modelOverrides?.[model.id] })), defaults };
+  return { providers: [official, ...media, ...connections].map(publicProviderConnection), models: [...models, ...saved.models, ...accountModels].map(model => ({ ...model, ...saved.modelOverrides?.[model.id] })), defaults };
 }
 export async function syncProvider(gateway: ModelGateway, id: string) {
   if (id === 'account') await gateway.account.models(true);

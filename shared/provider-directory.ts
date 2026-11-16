@@ -14,6 +14,13 @@ export type ProviderConnection = ProviderDefinition & {
   credentialSource: 'stored' | 'environment' | 'local-agent' | 'account' | 'none';
   reason: string;
 };
+/** Keep registry internals and saved revisions outside the public connection payload. */
+export function publicProviderConnection(provider: ProviderConnection): ProviderConnection {
+  const { id, label, protocol, baseUrl, kinds, category, website, docs, setupRequired, baseUrlEditable,
+    configured, enabled, available, custom, credentialSource, reason } = provider;
+  return { id, label, protocol, baseUrl, kinds, category, website, docs, setupRequired, baseUrlEditable,
+    configured, enabled, available, custom, credentialSource, reason };
+}
 export const modelCapabilities = ['reasoning', 'tools'] as const;
 export const inputModalities = ['vision', 'audio', 'video'] as const;
 export type ModelMetadata = {

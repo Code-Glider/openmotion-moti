@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { chmod } from 'node:fs/promises';
 import path from 'node:path';
 import { isGatewayProvider, isMediaProvider, providerRegistry, registeredProvider } from '../shared/provider-registry.ts';
-import { modelKinds, type DirectoryModel, type ModelKind, type ModelMetadata, type ProviderConnection, type ProviderDefinition, type ProviderProtocol } from '../shared/provider-directory.ts';
+import { modelKinds, publicProviderConnection, type DirectoryModel, type ModelKind, type ModelMetadata, type ProviderConnection, type ProviderDefinition, type ProviderProtocol } from '../shared/provider-directory.ts';
 import { modelMetadata } from './model-metadata.ts';
 import { modalities, type Model, type Modality, type ProviderState } from '../shared/gateway.ts';
 import type { WorkspaceStore } from '../workspace.ts';
@@ -71,8 +71,8 @@ export class ProviderConnections {
       const baseUrl = saved.baseUrl ?? definition.baseUrl;
       const available = configured && enabled && Boolean(baseUrl) && !definition.setupRequired;
       const kinds = [...new Set([...definition.kinds, ...config.models.filter(model => model.provider === definition.id).map(model => model.kind)])];
-      return { ...definition, ...saved, baseUrl, kinds, custom: !!saved.custom, configured, enabled, available,
-        credentialSource: configured ? 'stored' : 'none', reason: definition.setupRequired ? 'This provider requires a dedicated integration. Use a compatible API endpoint as a custom provider.' : !configured ? 'API key required' : !enabled ? 'Disabled' : 'Configured; availability and quota are checked when generating' };
+      return publicProviderConnection({ ...definition, ...saved, baseUrl, kinds, custom: !!saved.custom, configured, enabled, available,
+        credentialSource: configured ? 'stored' : 'none', reason: definition.setupRequired ? 'This provider requires a dedicated integration. Use a compatible API endpoint as a custom provider.' : !configured ? 'API key required' : !enabled ? 'Disabled' : 'Configured; availability and quota are checked when generating' });
     });
   }
   async configure(id: string | null, input: Record<string, unknown>) {
