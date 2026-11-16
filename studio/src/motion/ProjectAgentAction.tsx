@@ -80,13 +80,16 @@ function ProjectAgentContent({ projectId, onClose }: { projectId: string; onClos
 
   return <>
     <div className="flex min-w-0 flex-col gap-2 px-4 pt-1 pb-4">
-      <strong className="text-step-16 font-semibold leading-snug break-words">{title}</strong>
-      <p className="text-step-13 leading-relaxed text-text-2">
-        {t('Copy the instruction, paste it into another conversation, and continue editing this project.')}{' '}
-        <Button variant="ghost" size="sm" className="inline-flex align-baseline px-1 font-normal underline underline-offset-2" onClick={() => { onClose(); openConnections(); }}>
+      <div className="flex min-w-0 items-center gap-2 text-step-12">
+        <span className="shrink-0 text-text-3">{t('Current project')}</span>
+        <span className="min-w-0 truncate font-medium text-text-1" title={title}>{title}</span>
+      </div>
+      <div className="flex flex-col items-start gap-1">
+        <p className="text-step-12 leading-relaxed text-text-2">{t('Copy the instruction to another conversation to continue editing this project.')}</p>
+        <Button variant="ghost" size="sm" className="-ml-1 px-1 font-normal underline underline-offset-2" onClick={() => { onClose(); openConnections(); }}>
           {t('Connection help')}<RemixIcon name="arrow-right-up-line" size={12} />
         </Button>
-      </p>
+      </div>
       {failed ? <SettingsError retry={retry} /> : !info ? <SettingsLoading /> : null}
       {manualCopy && <textarea className="om-field min-h-32 w-full resize-y text-step-11" aria-label={t('Project instruction')}
         readOnly value={manualCopy} onFocus={event => event.currentTarget.select()} />}

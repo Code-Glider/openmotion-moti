@@ -1,7 +1,8 @@
 {
   "zh-CN": {
     "MCP": "MCP",
-    "Copy the instruction, paste it into another conversation, and continue editing this project.": "复制指令，粘贴到其他会话中，继续编辑这个项目。",
+    "Current project": "当前项目",
+    "Copy the instruction to another conversation to continue editing this project.": "复制指令到其他会话，继续编辑此项目。",
     "Connection help": "接入帮助",
     "Copy instruction": "复制指令",
     "Project instruction": "项目指令",
