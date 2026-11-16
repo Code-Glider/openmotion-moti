@@ -103,7 +103,18 @@ for (const [workflow, definition] of Object.entries(workflowRegistry)) for (cons
   if (!documents.has(documentId)) documents.set(documentId, { workflow, section, documentId });
 }
 
-const withoutFences = (content: string) => content.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*(?:\n|$)/gm, '');
+// A fence closes only on a run of the same character at least as long as its opener; an unclosed fence runs to the end of the document.
+function withoutFences(content: string) {
+  let fence: string | undefined;
+  return content.split('\n').filter(line => {
+    if (fence) {
+      if (new RegExp(`^ {0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}[ \\t]*$`).test(line)) fence = undefined;
+      return false;
+    }
+    fence = line.match(/^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/)?.[1];
+    return !fence;
+  }).join('\n');
+}
 
 // Inline links and reference-link definitions; ignore fenced examples and inline code.
 function markdownHrefs(content: string) {
@@ -135,15 +146,25 @@ export function workflowReferences(content: string, documentId: string) {
   return [...references.values()];
 }
 
-/** Heading anchors as GitHub renders them, including -1, -2 suffixes for repeated headings. */
+/**
+ * GitHub-style anchors for ATX (`#`) headings: visible text without link, emphasis or HTML markup,
+ * with -1, -2 suffixes that never collide with another heading's slug. Setext headings and custom
+ * HTML anchors are outside the supported subset for workflow documents.
+ */
 export function markdownAnchors(content: string) {
   const anchors = new Set<string>();
-  const counts = new Map<string, number>();
-  for (const [, text] of withoutFences(content).matchAll(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/gm)) {
-    const base = text.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').trim().toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-');
-    const repeat = counts.get(base) ?? 0;
-    counts.set(base, repeat + 1);
-    anchors.add(repeat ? `${base}-${repeat}` : base);
+  const repeats = new Map<string, number>();
+  for (const [, heading] of withoutFences(content).matchAll(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/gm)) {
+    const visible = heading.split(/(`+[^`]*`+)/).map((part, index) => index % 2 ? part
+      : part.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]+>/g, '').replace(/(^|[^\p{L}\p{N}_])_+|_+(?=$|[^\p{L}\p{N}_])/gu, '$1')).join('');
+    const base = visible.trim().toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-');
+    let anchor = base;
+    while (anchors.has(anchor)) {
+      const repeat = (repeats.get(base) ?? 0) + 1;
+      repeats.set(base, repeat);
+      anchor = `${base}-${repeat}`;
+    }
+    anchors.add(anchor);
   }
   return anchors;
 }

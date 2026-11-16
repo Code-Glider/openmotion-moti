@@ -1,6 +1,6 @@
 # Reconstruct a difficult visual system
 
-This page continues [rebuild](rebuild.md) for openmotion-recreate. Read it before authoring a passage that has any of the following: dense multi-shot work or several units to integrate; an unfamiliar visual mechanism, such as camera travel over a surface, a changing silhouette, content flowing inside a fixed boundary, repeated marks or particles, a scene breaking apart or reforming, or localized flashes and distortion; or movement whose rebuilt output still differs from the reference after a repair. Passages that the rebuild steps already reproduce do not need it.
+This page continues [rebuild](rebuild.md) for openmotion-recreate. Read it before authoring a passage that has any of the following: dense multi-shot work split into units for coordinated integration; an unfamiliar visual mechanism, such as camera travel over a surface, a changing silhouette, content flowing inside a fixed boundary, repeated marks or particles, a scene breaking apart or reforming, or localized flashes and distortion; or movement whose rebuilt output still differs from the reference after a repair. Passages that the rebuild steps already reproduce do not need it.
 
 ## Plan shot and action units
 
