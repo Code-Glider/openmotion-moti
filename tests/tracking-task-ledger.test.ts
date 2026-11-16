@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { TaskLedger } from '../tracking/task-ledger.ts';
-import { validProperties } from '../tracking/core.ts';
+import { createTracker, validProperties } from '../tracking/core.ts';
+import type { PendingEvent } from '../tracking/core.ts';
 import { omEvents } from '../tracking/events.ts';
 import { fixture } from './fixtures.ts';
 
@@ -55,6 +56,9 @@ test('the shared export entry accepts the task before the worker closes it', () 
 }));
 
 test('an interrupted export is reconciled with a terminal ledger outcome', () => fixture(async store => {
+  const events: PendingEvent[] = [], tracking = createTracker({ registry: omEvents, entrypoint: 'mcp', enabled: true, flushIntervalMs: 0,
+    send: async batch => { events.push(...batch); return 'accepted'; } });
+  store.tracking = tracking;
   const current = await store.get();
   const job = await store.requestExport(current.revision);
   const stale = (await store.job(job.id))!;
@@ -66,6 +70,17 @@ test('an interrupted export is reconciled with a terminal ledger outcome', () =>
   assert.equal(task.outcome, 'unknown');
   assert.equal(task.applied, 'unknown');
   assert.ok(task.terminal_at);
+  // The read that closed the task is the one owner of its terminal evidence.
+  await tracking.flush();
+  const terminal = events.filter(event => event.event === 'task_terminal');
+  assert.equal(terminal.length, 1);
+  assert.equal(terminal[0].entrypoint, 'worker');
+  assert.equal(terminal[0].properties.outcome, 'unknown');
+  assert.equal(terminal[0].properties.terminal_at, task.terminal_at, 'the evidence keeps the ledger terminal time');
+  await store.status(job.id);
+  await tracking.flush();
+  assert.equal(events.filter(event => event.event === 'task_terminal').length, 1, 'a later read does not restate the terminal outcome');
+  tracking.close();
 }));
 
 test('an unreadable task ledger never fails an accepted export', () => fixture(async store => {

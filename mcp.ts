@@ -37,7 +37,12 @@ const connectionContexts = new WeakMap<object, Map<string, string>>();
 
 function trackingFor(store: WorkspaceStore) {
   let tracking = trackingByStore.get(store);
-  if (!tracking) { tracking = createAppTracking(store.directory, 'mcp'); trackingByStore.set(store, tracking); }
+  if (!tracking) {
+    const created = createAppTracking(store.directory, 'mcp');
+    tracking = created; trackingByStore.set(store, tracking);
+    // Read paths close interrupted exports too, so they report through the same tracker.
+    void created.then(value => { store.tracking ??= value; });
+  }
   return tracking;
 }
 const runtimeRoot = fileURLToPath(new URL('./', import.meta.url));

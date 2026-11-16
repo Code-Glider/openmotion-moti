@@ -85,17 +85,12 @@ export function technicalCheckResult(job: Pick<ExportJob, 'state' | 'verificatio
   return status === 'passed' ? 'pass' as const : status === 'failed' ? 'fail' as const : job.state === 'completed' ? 'error' as const : 'unreviewed' as const;
 }
 
-// The worker tick owns the terminal evidence of an export no worker claimed or finished.
+// The reconciling owner states the terminal evidence of an export no worker claimed or finished.
 async function trackInterruptedExport(store: WorkspaceStore, seen: ExportJob, tracking?: OmTracking) {
-  const { job, reconciled } = await store.reconcileInterruptedExport(seen);
+  const { job, reconciled } = await store.reconcileInterruptedExport(seen, tracking);
   if (!reconciled || !job) return;
   // Nothing else may keep rendering a job this tick just closed.
   runningExports.get(job.id)?.abort();
-  if (!tracking) return;
-  const host = validHostContext(job.trackingHost) ? job.trackingHost : undefined;
-  tracking.track('task_terminal', { task_id: job.id, task_type: 'export', ...(job.projectId ? { project_id: job.projectId } : {}),
-    ...(job.workId ? { run_id: job.workId } : {}), outcome: 'unknown', applied: 'unknown',
-    terminal_at: new Date(job.terminalAt ?? Date.now()).toISOString() }, undefined, 'worker', host);
 }
 
 // The worker that claimed a job states its terminal result once; a reconciled job was already closed by its tick.
@@ -743,6 +738,7 @@ export async function startServer(store = sharedStore, port = Number(process.env
   const ffmpeg = await execute(process.env.HYPERFRAMES_FFMPEG_PATH || process.env.FFMPEG_PATH || 'ffmpeg', ['-version'], pluginRoot, 5000).then(r => r.code === 0, () => false);
   const context: Service = { runtimeRoot, nativeRoot: pluginRoot, ffmpeg, studioPort: !port || port === 65535 ? 4174 : port + 1, editorToken: options.editorToken,
     tracking: await createAppTracking(store.directory, 'mcp') };
+  store.tracking = context.tracking;
   context.launchStudio = async (directory, chosenPort) => {
     if (!process.env.OPENMOTION_EDITOR_LOCK_FD) return startStudio(runtimeRoot, directory, path.join(store.directory, 'studio.log'), chosenPort, store.directory);
     const probe = createServer();

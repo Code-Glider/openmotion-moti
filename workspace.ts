@@ -1,4 +1,6 @@
+import { validHostContext } from './tracking/host.ts';
 import type { HostContext } from './tracking/host.ts';
+import type { OmTracking } from './shared/tracking.ts';
 import { TaskLedger } from './tracking/task-ledger.ts';
 import { uuid } from './tracking/core.ts';
 import { recordDiagnostic } from './scripts/diagnostics.mjs';
@@ -61,6 +63,8 @@ export class WorkspaceStore {
   hashes = new Map<string, { signature: string; hash: Promise<string> }>();
   selectedProjectId?: string;
   workspaceStore?: WorkspaceStore;
+  // Read paths can close an interrupted export too, so they state the same terminal evidence.
+  tracking?: OmTracking;
   constructor(directory = defaultDataDir, projectId?: string) { this.directory = path.resolve(directory); this.selectedProjectId = projectId; }
   get projectId() { return this.selectedProjectId ?? this.projectCatalog().activeId; }
   forProject(id: string) {
@@ -69,6 +73,7 @@ export class WorkspaceStore {
     const scoped = new WorkspaceStore(this.directory, id);
     scoped.hashes = this.hashes;
     scoped.workspaceStore = this.workspaceStore ?? this;
+    scoped.tracking = this.tracking;
     return scoped;
   }
   projectDirectoryFor(id: string) {
@@ -398,7 +403,7 @@ export class WorkspaceStore {
     const current = await this.get();
     let job = await this.job(jobId);
     if (this.selectedProjectId !== undefined && job?.projectId && job.projectId !== this.projectId) job = null;
-    if (job && interruptedExport(job)) job = (await this.reconcileInterruptedExport(job)).job;
+    if (job && interruptedExport(job)) job = (await this.reconcileInterruptedExport(job, this.tracking)).job;
     if (job?.state === 'completed') {
       try { if (!(await stat(this.exportPath(job))).size) throw new Error('empty'); }
       catch { job.state = 'failed'; job.error = '导出文件已不存在，请重新导出'; delete job.file; await this.saveJob(job); }
@@ -451,24 +456,30 @@ export class WorkspaceStore {
     }
   }
   /** Close an export whose worker vanished or whose deadline passed; exactly one caller owns the transition. */
-  async reconcileInterruptedExport(seen: ExportJob): Promise<{ job: ExportJob | null; reconciled: boolean }> {
+  async reconcileInterruptedExport(seen: ExportJob, tracking = this.tracking): Promise<{ job: ExportJob | null; reconciled: boolean }> {
     return this.lock(async () => {
       const job = await this.job(seen.id);
       if (!job || !interruptedExport(job)) return { job, reconciled: false };
       job.state = 'failed'; job.error = '后台渲染已中断或超时，请重新导出'; job.terminalAt = Date.now(); job.observedOutcome = 'unknown';
       await this.saveJob(job);
-      await this.reconcileTask(job);
+      const ledger = await this.reconcileTask(job);
+      // Whichever caller owns this transition states the terminal evidence once, so a read never closes a task silently.
+      tracking?.track('task_terminal', { task_id: job.id, task_type: 'export', ...(job.projectId ? { project_id: job.projectId } : {}),
+        ...(job.workId ? { run_id: job.workId } : {}), outcome: 'unknown', applied: 'unknown',
+        terminal_at: ledger?.terminal_at ?? new Date(job.terminalAt ?? Date.now()).toISOString() }, undefined, 'worker',
+        validHostContext(job.trackingHost) ? job.trackingHost : undefined);
       return { job, reconciled: true };
     });
   }
   // An interrupted export is reconciled here, so its accepted task still gets a terminal outcome.
   private async reconcileTask(job: ExportJob) {
-    try { await new TaskLedger(this.directory).terminal(job.id, 'unknown', 'unknown'); }
+    try { return await new TaskLedger(this.directory).terminal(job.id, 'unknown', 'unknown'); }
     catch (error) {
       // A degraded acceptance leaves no record to close, which is not an error of its own.
-      if (error instanceof Error && error.message === 'TASK_LEDGER_NOT_FOUND') return;
+      if (error instanceof Error && error.message === 'TASK_LEDGER_NOT_FOUND') return null;
       await recordDiagnostic(this.directory, { kind: 'task_ledger_failed', jobId: job.id, projectId: job.projectId,
         message: error instanceof Error ? error.message : 'task ledger reconcile failed' }).catch(() => {});
+      return null;
     }
   }
   async claimExport() {

@@ -74,8 +74,9 @@ export request. Each export keeps its task ID, project, optional work-round ID,
 acceptance time, explicit deadline, terminal time and observed outcome. A worker
 terminal result updates the same ledger and emits `task_terminal`; unknown or
 cancelled results remain separate from success. An export whose worker vanished or
-whose deadline passed is reconciled once by the worker tick with outcome `unknown`,
-so its accepted entry also gets a terminal time and the same event. A tick never
+whose deadline passed is reconciled once with outcome `unknown`, so its accepted
+entry also gets a terminal time and the same event; whichever caller closes the task
+(the worker tick or a status read) states that evidence. A tick never
 reconciles an export this process is still rendering, and a worker whose job was
 closed that way does not restate its terminal outcome. The ledger is
 installation-local, atomic and does not contain prompts, source content or
