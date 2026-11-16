@@ -17,6 +17,8 @@ When selecting, obtaining or replacing media, apply the [shared material policy]
 
 ## Final video delivery
 
+Unchanged-template requests for HTML/project or MP4 files use [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md). Its version-pinned parallel delivery and scoped reading/check sequence take precedence over the authoring work-round flow below; retain the actual final-file checks and separate editor presentation status.
+
 During generation and editing, do not create an inline progress or video component and do not open the right-hand editor for intermediate saves. Begin a business work round silently with `openmotion_open_preview({action:"begin",projectId,requestId,mode:"create"|"modify"})`; retain `inlineWork.id` as `workId` through saves and the final export. This call presents no UI.
 
 Once the final authored video and supporting assets are ready for preview, complete the editable Studio handoff on the right. Do not open an empty carrier or partial draft merely to show activity. Explicit editor-only or show-now requests retain their scope, and an explicit background preference still skips presentation.
