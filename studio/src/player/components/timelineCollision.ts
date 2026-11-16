@@ -150,7 +150,7 @@ function groupHeaderAim(
   return { kind: "origin", ...input.origin };
 }
 
-// A deliberate seam opens a track; other aims land at the nearest free time on a row of the clip's kind.
+// A deliberate seam opens a track. Only the magnetic main track resolves collisions in time.
 export function resolveZoneDropPlacement(input: {
   order: number[];
   audioTracks: ReadonlySet<number>;
@@ -167,6 +167,8 @@ export function resolveZoneDropPlacement(input: {
   minStart?: number;
   /** Where the dragged clip sits now. */
   origin?: { track: number; start: number };
+  /** Enabled main track, resolved from the full gesture source before filtering movers. */
+  magneticMainTrack?: number | null;
   /** Gesture-local collision landing; ignored when changing rows or inserting. */
   previous?: { track: number; start: number; switchMargin: number };
 }): { track: number; insertRow: number | null; start: number } {
@@ -201,18 +203,41 @@ export function resolveZoneDropPlacement(input: {
       insertRow--;
     return { track: desired, insertRow, start };
   }
-  const origin = input.origin?.track === desired ? input.origin.start : null;
-  const freeStart = resolveNearestFreeStart(
-    elements,
-    desired,
-    start,
-    duration,
-    dragKey,
-    minStart,
-    origin,
-    input.previous?.track === desired ? input.previous : undefined,
-  );
-  return { track: desired, insertRow: null, start: freeStart };
+  if (!isAudio && input.magneticMainTrack === desired) {
+    const origin = input.origin?.track === desired ? input.origin.start : null;
+    const freeStart = resolveNearestFreeStart(
+      elements,
+      desired,
+      start,
+      duration,
+      dragKey,
+      minStart,
+      origin,
+      input.previous?.track === desired ? input.previous : undefined,
+    );
+    return { track: desired, insertRow: null, start: freeStart };
+  }
+  // Collision changes the lane, never the pointer's horizontal time. Search
+  // upward inside the same kind zone, then open a lane above the aimed row.
+  const safeStart = Math.max(minStart ?? 0, start);
+  if (input.origin?.track === desired && Math.abs(safeStart - input.origin.start) < 0.005)
+    return { track: desired, insertRow: null, start: input.origin.start };
+  if (isLaneFree(elements, desired, safeStart, safeStart + duration, dragKey))
+    return { track: desired, insertRow: null, start: safeStart };
+  const row = order.indexOf(desired);
+  for (let index = row - 1; index >= 0; index--) {
+    const track = order[index];
+    if (!zoneTracks.includes(track) || (input.origin?.track === track && track !== desired)) continue;
+    if (isLaneFree(elements, track, safeStart, safeStart + duration, dragKey))
+      return { track, insertRow: null, start: safeStart };
+  }
+  let insertRow = row;
+  while (insertRow > 0 && input.allowedInsertRows && !input.allowedInsertRows.has(insertRow)) insertRow--;
+  if (isInsertAllowedForZone(insertRow, audioRow, isAudio, input.allowedInsertRows))
+    return { track: desired, insertRow, start: safeStart };
+  // A protected group boundary cannot be split. Keep the origin lane and time
+  // rather than silently moving the clip to a different time.
+  return { track: input.origin?.track ?? desired, insertRow: null, start: input.origin?.start ?? safeStart };
 }
 
 /**

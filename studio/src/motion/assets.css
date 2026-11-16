@@ -113,7 +113,7 @@
 .om-pane-resizer[data-edge="right"] { right: -5px; }
 .om-generation-settings { display: flex; gap: var(--motion-space-4); align-items: center; }
 .om-generation-summary { flex: 1; min-width: 0; }
-.om-generation-summary > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.om-generation-summary > span:not(.contents), .om-generation-summary > .contents > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .om-generation-popover { width: 360px; max-width: calc(100vw - 32px); max-height: min(640px, var(--available-height)); overflow-y: auto; display: grid; gap: var(--motion-space-12); }
 .om-agent-settings-popover { width: 300px; max-width: calc(100vw - 32px); display: grid; gap: var(--motion-space-16); }
 .om-generation-fields { display: grid; gap: var(--motion-space-12); }
@@ -143,7 +143,7 @@
 /* Single-file workspace: filmstrip, selected bytes and immutable version history. */
 .om-asset-workspace { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
 .om-asset-workspace-header { display: flex; align-items: center; gap: var(--motion-space-12); padding: var(--motion-space-10) var(--motion-space-16); flex: none; }
-.om-asset-workspace-header > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.om-asset-workspace-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .om-asset-workspace-actions { margin-inline-start: auto; flex: none; display: flex; align-items: center; gap: var(--motion-space-8); }
 .om-asset-workspace-header > button { flex: none; }
 .om-asset-workspace-body { display: flex; min-height: 0; flex: 1; }
@@ -186,7 +186,7 @@
 .om-task-modes { flex: none; }
 .om-task-picker { flex: 1; min-width: 0; justify-content: space-between; }
 .om-task-picker > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.om-task-toolbar > button:not(.om-task-picker) { flex: none; }
+.om-task-toolbar button:not(.om-task-picker) { flex: none; }
 .om-task-history { width: 360px; max-width: calc(100vw - var(--motion-space-24)); max-height: min(480px, var(--available-height)); display: flex; flex-direction: column; gap: var(--motion-space-10); overflow: hidden; }
 .om-task-history > * { flex-shrink: 0; }
 .om-task-history-heading { display: flex; align-items: center; gap: var(--motion-space-8); }
@@ -195,8 +195,8 @@
 .om-task-history > .om-task-history-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: var(--motion-space-4); padding: var(--motion-space-4); margin: calc(var(--motion-space-4) * -1); }
 .om-task-item { display: flex; width: 100%; gap: var(--motion-space-10); text-align: start; }
 .om-task-item-copy { display: grid; gap: var(--motion-space-4); flex: 1; min-width: 0; }
-.om-task-item-copy > strong, .om-task-item-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.om-task-item-copy > span { display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; }
+.om-task-item-copy strong, .om-task-item-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.om-task-item-copy > span:not(.contents) { display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; }
 .om-task-state { display: inline-flex; align-items: center; gap: var(--motion-space-4); flex: none; }
 .om-task-item-end { display: grid; justify-items: end; gap: var(--motion-space-4); flex: none; }
 .om-task-history-footer { display: flex; gap: var(--motion-space-6); align-items: center; }
@@ -245,7 +245,7 @@
   .om-asset-composer { padding: var(--motion-space-16); }
   .om-creator-pane .om-asset-composer > * { width: min(100%, 560px); align-self: center; }
   .om-asset-workspace-header { flex-wrap: wrap; gap: var(--motion-space-8); }
-  .om-asset-workspace-header > strong { flex: 1; }
+  .om-asset-workspace-header > strong, .om-asset-workspace-header > :where(.contents) > strong { flex: 1; }
   .om-asset-workspace-actions { width: 100%; justify-content: flex-end; }
   .om-asset-workspace-body { grid-template-columns: minmax(0, 1fr); }
   .om-asset-workspace[data-mobile-view="details"] .om-asset-workspace-body { grid-template-rows: minmax(0, 1fr); }

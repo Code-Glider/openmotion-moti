@@ -1850,5 +1850,9 @@
   "Delete track": "Elimina traccia",
   "Unlock the track before deleting it": "Sblocca la traccia prima di eliminarla",
   "Open the composition to delete this track": "Apri la composizione per eliminare questa traccia",
+  "Main track magnet": "Magnete traccia principale",
+  "Timeline linkage": "Collegamento timeline",
+  "Trim left to playhead": "Taglia a sinistra fino al cursore",
+  "Trim right to playhead": "Taglia a destra fino al cursore",
   "Screen too small to expand this panel": "Lo schermo è troppo piccolo per espandere questo pannello"
 }
