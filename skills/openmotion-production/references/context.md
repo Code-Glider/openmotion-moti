@@ -40,12 +40,12 @@ Read Hyperframes guidance within the [native engine boundary](native.md#engine-g
 | 需要选择、获取或替换素材，含原创、模板适配、复刻与局部修改 | [素材选择与来源优先级](materials.md)；沿用所选路线的能力和保持项；仅查看、预览或导出既有内容不触发 |
 | 需要通过 BYOK 生成图片、视频、配音或音乐素材，或单独执行素材生成请求 | [openmotion-media](../../openmotion-media/SKILL.md) 及所选供应商参考；纯动态图形（原生 HTML/CSS/SVG/Canvas/3D 可直接实现）不触发、不询问 |
 | Selecting/replacing fonts, changing text hierarchy, or diagnosing typography | [Typography](typography.md); preserve the selected route and established identity. Local edits cover affected text only; unchanged preview/export and audio-only work do not trigger selection. |
-| 原创新片／大幅重编 | [动作脚本](../../openmotion-director/references/action-script.md)、[动态表现](../../openmotion-director/references/motion-craft.md)、[动作短句](../../openmotion-director/references/motion-phrases.md)、[审片](../../openmotion-director/references/motion-review.md) |
-| 新设计声音叙事或工程音轨调整，含画面锁定 | [声音叙事](../../openmotion-director/references/sound-narrative.md)、[动作脚本的声画锚点](../../openmotion-director/references/action-script.md)、审片；只应用声音相关内容，不启动原创流程 |
+| Original creation / major redesign | The selected director entry owns its creative reading set; apply [shared review](review.md) to the actual affected work. |
+| Implementing established sound decisions or adjusting audio tracks, including locked picture | [Sound execution and timing anchors](sound.md), plus sound-related [review](review.md); do not load original creative design. New sound narrative design reads the selected director entry's sound guidance instead. |
 | 原样使用模板、不做修改 | Opening only uses the [editable preview handoff](native.md#editable-preview-handoff). Explicit HTML/MP4 file delivery uses [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md), which owns its minimal reading/check sequence. An edited project cannot reuse the original template preview. |
 | 使用／适配可编辑模板，需要创建、编辑或渲染工程 | [模板能力说明](templates.md)、审片；unchanged file export follows its scoped branch above, without loading authoring/creative references solely because a render was requested. |
 | 明确要求视频转可复用模板 | [openmotion-video-to-template](../../openmotion-video-to-template/SKILL.md) 的制作与打包参考按阶段读取；制作决策、审片及实际参考视频 |
-| 复刻视频 | [制作决策](../../openmotion-director/references/production-decisions.md)、审片，另实际检查参考视频 |
+| 复刻视频 | [制作决策](decisions.md)、审片，另实际检查参考视频 |
 | 局部文字／视觉修改或动态审片 | 审片；沿用已有结构，不补读整套原创流程 |
 | 修改已有内容，含声音、模板内容替换和大幅重编 | 追加 [共享修改流程](edit.md)；首次创作、仅查看／审片／导出无需因此加载 |
 | 制作／修改多段画面、截图、复现对象或状态延续 | 追加制作决策；多段模板草稿也适用，不能因使用默认内容省略 |

@@ -19,6 +19,9 @@ export const workflowRegistry = {
       edit: 'skills/openmotion-production/references/edit.md',
       portable: 'skills/openmotion-production/references/portable-project.md',
       materials: 'skills/openmotion-production/references/materials.md',
+      decisions: 'skills/openmotion-production/references/decisions.md',
+      review: 'skills/openmotion-production/references/review.md',
+      sound: 'skills/openmotion-production/references/sound.md',
       account: 'skills/openmotion-production/references/media-providers/account.md',
       compatible: 'skills/openmotion-production/references/media-providers/compatible.md',
       fal: 'skills/openmotion-production/references/media-providers/fal.md',
@@ -36,9 +39,9 @@ export const workflowRegistry = {
       actions: 'skills/openmotion-director/references/action-script.md',
       craft: 'skills/openmotion-director/references/motion-craft.md',
       phrases: 'skills/openmotion-director/references/motion-phrases.md',
-      decisions: 'skills/openmotion-director/references/production-decisions.md',
+      decisions: 'skills/openmotion-production/references/decisions.md',
       sound: 'skills/openmotion-director/references/sound-narrative.md',
-      review: 'skills/openmotion-director/references/motion-review.md',
+      review: 'skills/openmotion-production/references/review.md',
       examples: 'skills/openmotion-director/references/examples.md',
     },
   },
@@ -101,6 +104,18 @@ export async function readWorkflowResource(uri: unknown, dataDirectory: string) 
 const documents = new Map<string, { workflow: string; section: string; documentId: string }>();
 for (const [workflow, definition] of Object.entries(workflowRegistry)) for (const [section, documentId] of Object.entries(definition.sections)) {
   if (!documents.has(documentId)) documents.set(documentId, { workflow, section, documentId });
+}
+
+// Old installed Markdown paths resolve to the maintained production body. Keep the
+// requested director route on direct reads, but canonical production identity in references.
+export const workflowDocumentAliases = {
+  'skills/openmotion-director/references/production-decisions.md': 'skills/openmotion-production/references/decisions.md',
+  'skills/openmotion-director/references/motion-review.md': 'skills/openmotion-production/references/review.md',
+} as const;
+for (const [legacy, canonical] of Object.entries(workflowDocumentAliases)) {
+  const target = documents.get(canonical);
+  if (!target) throw new Error('Unknown canonical workflow document: ' + canonical);
+  documents.set(legacy, target);
 }
 
 // A fence closes only on a run of the same character at least as long as its opener; an unclosed fence runs to the end of the document.
