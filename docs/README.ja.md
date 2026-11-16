@@ -64,15 +64,15 @@ https://github.com/nexu-io/openmotion/blob/main/install.md を読み、手順に
 
 セットアップ後、エージェントがローカルのテンプレートライブラリを開き、テンプレートを提案します。選択を確認してからプロジェクトを作成します。[ソースインストールガイド](../install.md)
 
-### Install the published npm app (optional)
+### 公開 npm アプリをインストール（任意）
 
-Source setup above remains the default for repository installation. To explicitly choose the published application with prebuilt Studio and its configured online catalog, copy this instruction into your local agent:
+上記のソースセットアップがリポジトリインストールの既定です。ビルド済み Studio と設定済みのオンラインテンプレートライブラリを含む公開アプリを明示的に選ぶ場合は、次の指示をローカルエージェントにコピーしてください：
 
 ```text
-Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect the published npm application in the current agent.
+https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手順に従って現在のエージェントに公開 npm アプリをインストールして接続してください。
 ```
 
-[Published application installation and channel selection](install.md). Published versions can lag behind this checkout.
+[公開アプリのインストールとチャネルの選択](install.md)。公開バージョンはこのチェックアウトより古い場合があります。
 
 ### リポジトリをローカルで起動する
 

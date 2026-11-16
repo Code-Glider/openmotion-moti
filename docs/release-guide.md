@@ -63,7 +63,7 @@ Each defect needs exact package/source/OS/host/environment/catalog identity, pro
 
 ## Hosted installation instructions
 
-[docs/templates/npm-install.md](templates/npm-install.md) is the public Agent-facing guide template, and the shared onboarding contract in [docs/install-onboarding.md](install-onboarding.md#installation-success-reply) is inlined into every generated guide. The generator reads the actual complete npm tgz and its embedded manifest, pins the npm name/version and built source SHA, and records the guide and package hashes. It does not build or publish the application. `docs/install.md` is not an input: it now only points new installations at the source guide.
+[docs/templates/npm-install.md](templates/npm-install.md) is the public Agent-facing guide template, and the shared onboarding contract in [docs/install-onboarding.md](install-onboarding.md#installation-success-reply) is inlined into every generated guide. The generator reads the actual complete npm tgz and its embedded manifest, pins the npm name/version and built source SHA, and records the guide and package hashes. It does not build or publish the application. `docs/install.md` is not a generator input, but it is the source-repository entry that routes explicitly selected npm installations to the published stable or test guide; the default repository route stays `install.md`.
 
 Ordinary npm/DEV CI builds generate a **candidate-only** guide and retain it as an Actions artifact for 14 days. The publisher rejects candidate previews. Public guides require test/DEV or stable/prod identity; private builds cannot produce them.
 
