@@ -1,4 +1,4 @@
-import { parse, type CallExpression, type Identifier, type Literal, type MemberExpression, type Node, type TemplateLiteral } from "acorn";
+import { parse, type CallExpression, type Identifier, type Literal, type MemberExpression, type Node as AstNode, type TemplateLiteral } from "acorn";
 import { walkCompositionDescendants } from "@hyperframes/parsers/hf-ids";
 import type { PatchTarget } from "./sourcePatcher";
 
@@ -66,7 +66,7 @@ function findTarget(document: Document, target: PatchTarget): Element | undefine
   return target.selector ? selectorMatches(document, target.selector)[target.selectorIndex ?? 0] : undefined;
 }
 
-function staticString(node: Node | undefined): string | null {
+function staticString(node: AstNode | undefined): string | null {
   if (!node) return null;
   if (node.type === "Literal") {
     const value = (node as Literal).value;
@@ -80,7 +80,7 @@ function staticString(node: Node | undefined): string | null {
 }
 
 /** Resolve the nodes a script receives a lookup from, so scoped selectors keep their own reference point. */
-function lookupScopes(node: Node, document: Document): (Document | DocumentFragment | Element)[] | null {
+function lookupScopes(node: AstNode, document: Document): (Document | DocumentFragment | Element)[] | null {
   // Each template's script runs with its instantiated composition as document.
   if (node.type === "Identifier" && (node as Identifier).name === "document") {
     return [document, ...allDescendants(document)
@@ -131,7 +131,7 @@ function propertyName(member: MemberExpression): string | undefined {
   return undefined;
 }
 
-function lookupTouchesRemoval(member: MemberExpression, parent: Node | undefined, document: Document, pendingDocument: Document, originals: ReadonlyMap<globalThis.Node, Element>): boolean {
+function lookupTouchesRemoval(member: MemberExpression, parent: AstNode | undefined, document: Document, pendingDocument: Document, originals: ReadonlyMap<Node, Element>): boolean {
   const method = propertyName(member);
   if (!method || !LOOKUPS.has(method)) return false;
   // Aliased or dynamic lookups cannot be resolved safely without executing authored code.
@@ -139,12 +139,12 @@ function lookupTouchesRemoval(member: MemberExpression, parent: Node | undefined
   const before = lookupScopes(parent, document);
   const after = lookupScopes(parent, pendingDocument);
   if (!before || !after) return true;
-  const survivingMatches = new Set<globalThis.Node | undefined>(after.map((element) => originals.get(element)));
+  const survivingMatches = new Set<Node | undefined>(after.map((element) => originals.get(element)));
   // Removing a sibling can invalidate a selector even when its original match survives.
   return before.some((element) => !survivingMatches.has(element));
 }
 
-function hasDependency(node: Node, document: Document, pendingDocument: Document, originals: ReadonlyMap<globalThis.Node, Element>, parent?: Node): boolean {
+function hasDependency(node: AstNode, document: Document, pendingDocument: Document, originals: ReadonlyMap<Node, Element>, parent?: AstNode): boolean {
   if (node.type === "MemberExpression" && lookupTouchesRemoval(node as MemberExpression, parent, document, pendingDocument, originals)) return true;
   for (const child of Object.values(node)) {
     const children = Array.isArray(child) ? child : [child];
