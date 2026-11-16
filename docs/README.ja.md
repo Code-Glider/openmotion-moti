@@ -1,6 +1,6 @@
 <p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>CapCut と Claude Motion に代わるオープンソースの動画スタジオ</strong></p>
+<p align="center"><strong>Claude Motion と CapCut に代わるオープンソースの動画スタジオ</strong></p>
 
 <p align="center">
   <picture>
@@ -37,7 +37,7 @@
 
 # OpenMotion
 
-OpenMotion は、**AI エージェントが動画制作の全工程を担うフルスタックの動画スタジオ**であり、**CapCut と Claude Motion に代わるオープンソースの選択肢**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
+OpenMotion は、**AI エージェントが動画制作の全工程を担うフルスタックの動画スタジオ**であり、**Claude Motion と CapCut に代わるオープンソースの選択肢**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
 
 - 🎬 **動画の分析から再現・書き出しまで。** エージェントが参考動画を分析し、カットとトランジションを HTML で組み直し、足りない素材を生成します。同じプロジェクトを Studio で開き、間合いを調整して MP4 に書き出せます。
 - 🔑 **BYOA（自分のエージェント）と BYOK（自分の API キー）。** OpenMotion は無料のオープンソースソフトウェアです。[使い慣れたローカルエージェント](#agent-wall)で動画を再現し、各工程に自分の API キーを使えます。

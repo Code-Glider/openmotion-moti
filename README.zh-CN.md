@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>CapCut 与 Claude Motion 的开源替代方案</strong></p>
+<p align="center"><strong>Claude Motion 与 CapCut 的开源替代方案</strong></p>
 
 <p align="center">
   <picture>
@@ -37,7 +37,7 @@
 
 # OpenMotion
 
-OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **CapCut 与 Claude Motion 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
+OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **Claude Motion 与 CapCut 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
 
 - 🎬 **全栈视频复刻。** Agent 拆解参考片，用 HTML 重建镜头和转场，并生成缺少的素材。你可以在同一工程里用 Studio 调整剪辑节奏，再渲染导出 MP4。
 - 🔑 **BYOA（自带 Agent）与 BYOK（自带 API 密钥）。** OpenMotion 开源免费。直接在[常用的本地 Agent](#agent-wall) 里复刻视频，每一层都能用自己的 API 密钥。
