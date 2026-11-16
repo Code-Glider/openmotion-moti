@@ -82,7 +82,7 @@ const fal: ProviderAdapter = {
   async generate(job, ctx) {
     const headers = { Authorization: `Key ${ctx.key}`, 'Content-Type': 'application/json' };
     // Sound effects use text too; the input key does not make a model a speech model.
-    const textInput = ['fal-ai/elevenlabs/sound-effects', 'fal-ai/elevenlabs/sound-effects/v2', 'elevenlabs/sound-effects/v3'].includes(job.model.modelId)
+    const textInput = ['fal-ai/elevenlabs/sound-effects', 'fal-ai/elevenlabs/sound-effects/v2', 'elevenlabs/sound-effects/v3', 'fal-ai/elevenlabs/sound-effects/v3'].includes(job.model.modelId)
       || job.model.mode === 'text-to-speech' && job.model.modelId !== 'fal-ai/kokoro/american-english';
     const promptField = textInput ? 'text' : 'prompt';
     const payload = { ...job.model.defaults, ...job.parameters, [promptField]: job.prompt };

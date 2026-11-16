@@ -123,6 +123,7 @@ for (const [model, category, field, parameters] of [
   ['fal-ai/elevenlabs/music', 'text-to-audio', 'prompt', { music_length_ms: 10000 }],
   ['fal-ai/elevenlabs/sound-effects/v2', 'text-to-audio', 'text', { duration_seconds: 2, loop: true }],
   ['elevenlabs/sound-effects/v3', 'text-to-audio', 'text', { duration_seconds: 2, loop: true }],
+  ['fal-ai/elevenlabs/sound-effects/v3', 'text-to-audio', 'text', { duration_seconds: 2, loop: true }],
 ] as const) test(`fal discovers and runs ${model} with its native audio input`, () => fixture(async store => {
   const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
   gateway.options.download = async () => audio;
