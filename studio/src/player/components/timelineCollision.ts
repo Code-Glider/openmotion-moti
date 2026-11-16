@@ -1,5 +1,6 @@
 import type { TimelineElement } from "../store/playerStore";
 import { collisionLane } from "./timelineCollisionIndex";
+import { timelineSpansOverlap } from "./timelineTimeBounds";
 
 /** Audio member tracks mark the audio zone, including members hidden by a group header. */
 export function timelineAudioRow(
@@ -215,7 +216,7 @@ export function timeRangesOverlap(
   bStart: number,
   bEnd: number,
 ): boolean {
-  return aStart < bEnd && bStart < aEnd;
+  return timelineSpansOverlap(aStart, aEnd, bStart, bEnd);
 }
 
 /**

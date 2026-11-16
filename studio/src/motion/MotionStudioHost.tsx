@@ -1,20 +1,22 @@
 import { EditorLayoutMenu } from "./EditorLayoutMenu";
 import { StudioErrorBoundary } from '../components/StudioErrorBoundary';
 import { I18nProvider, useI18n } from "../i18n/I18n";
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { useStudioShellContext } from '../contexts/StudioContext';
 import { TimelineHistoryButtons } from '../components/TimelineHistoryButtons';
 import { MotionHistoryPopover } from './MotionHistoryPopover';
-import { isStudioEditSaving } from '../utils/studioPendingEdits';
-import { MotionIcon } from './icons';
+import { isStudioEditSaving, subscribeStudioEditSaving } from '../utils/studioPendingEdits';
+import { useStudioAutosave } from '../hooks/useStudioAutosave';
 import { StudioHostContext, type StudioHost } from './StudioHost';
-import { WorkspaceFrame, useWorkspaceChrome, useOptionalWorkspaceChrome } from './WorkspaceFrame';
+import { WorkspaceFrame, useOptionalWorkspaceChrome } from './WorkspaceFrame';
 import { MotionHistoryProvider, useMotionHistoryOperation } from './MotionHistoryState';
 import { MediaGatewayProvider } from './MediaGatewayContext';
 import { usePlayerStore } from '../player/store/playerStore';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { WorkspaceProject } from './WorkspaceProject';
+import { WorkspaceSaveStatus } from './WorkspaceSaveStatus';
 import { trackMotion } from './tracking';
+import { OpenMotionAgentTools } from './OpenMotionAgentTools';
 
 export function MotionEditorFrame({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -25,7 +27,7 @@ export function MotionEditorFrame({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (chrome?.settingsOpen) usePlayerStore.getState().requestPlayback(false);
   }, [chrome?.settingsOpen]);
-  const [saving, setSaving] = useState(isStudioEditSaving);
+  const saving = useSyncExternalStore(subscribeStudioEditSaving, isStudioEditSaving, isStudioEditSaving);
   const load = useRef({ id: crypto.randomUUID(), sent: false });
   useEffect(() => {
     if (load.current.sent) return;
@@ -33,11 +35,8 @@ export function MotionEditorFrame({ children }: { children: ReactNode }) {
     void trackMotion('studio_load_result', { load_id: load.current.id, outcome: 'success',
       embedded: workspacePresentation(location.search).embedded, duration_ms: Math.min(86_400_000, Math.round(performance.now())) });
   }, []);
-  useEffect(() => {
-    const timer = window.setInterval(() => setSaving(isStudioEditSaving()), 250);
-    return () => clearInterval(timer);
-  }, []);
   const blocked = renderQueue.isRendering || historyOperation.busy || Boolean(writeBlockedReason);
+  useStudioAutosave({ projectId, blocked, flush: () => waitForPendingDomEditSaves({ blur: false }) });
   const saveState = t(historyOperation.busy ? 'Updating version…' : renderQueue.isRendering ? 'Rendering…' : writeBlockedReason ? 'Needs attention' : saving ? 'Saving…' : '');
   useEffect(() => {
     register?.({ waitForSaves: waitForPendingDomEditSaves, blocked, saveState, message: writeBlockedReason || '' });
@@ -71,19 +70,10 @@ function WorkspaceHistoryActions() {
   </div>;
 }
 
-function WorkspaceActions() {
-  const { t, locale } = useI18n();
-  const label = locale === 'en' ? 'Template' : t('Template library');
-  const { switchingDisabled, openLibrary } = useWorkspaceChrome();
-  return <div className="motion-workspace-actions">
-    <WorkspaceProject />
-    <button className="motion-button motion-button-quiet" aria-label={label} title={label} aria-haspopup="dialog" disabled={switchingDisabled} onClick={event => openLibrary(event.currentTarget)}><MotionIcon name="grid" /><span className="motion-template-label">{label}</span></button>
-  </div>;
-}
-
 const host: StudioHost = {
   mvpEditor: true,
-  headerActions: <WorkspaceActions />,
+  headerActions: <WorkspaceSaveStatus />,
+  projectLabel: <WorkspaceProject />,
   communityAction: <></>,
   historyActions: <WorkspaceHistoryActions />,
   previewAction: <></>,
@@ -96,5 +86,5 @@ const host: StudioHost = {
 };
 
 export function MotionStudioHost({ children }: { children: ReactNode }) {
-  return <I18nProvider><MotionHistoryProvider><StudioHostContext.Provider value={host}><StudioErrorBoundary>{children}</StudioErrorBoundary></StudioHostContext.Provider></MotionHistoryProvider></I18nProvider>;
+  return <I18nProvider><MotionHistoryProvider><StudioHostContext.Provider value={host}><StudioErrorBoundary><OpenMotionAgentTools />{children}</StudioErrorBoundary></StudioHostContext.Provider></MotionHistoryProvider></I18nProvider>;
 }

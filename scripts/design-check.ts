@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { designTokens } from './design-tokens.ts';
 import { providerIcons, providerIconFiles } from '../packages/design-system/provider-icons.js';
 import { publicDesignFiles, designSystemRuntimeFiles } from '../packages/design-system/index.js';
+import { providerRegistry } from '../shared/provider-registry.ts';
 
 const root = new URL('../', import.meta.url);
 const luminance = (hex: string) => {
@@ -15,8 +16,7 @@ const luminance = (hex: string) => {
 };
 export async function checkDesign() {
   const tokens = await designTokens(true);
-  const presets = JSON.parse(await readFile(new URL('shared/provider-presets.json', root), 'utf8')) as { id: string }[];
-  for (const id of [...presets.map(provider => provider.id), 'account', 'opendesign', 'codex', 'fal', 'atlascloud', 'wavespeed']) {
+  for (const { id } of providerRegistry) {
     assert.ok(Object.hasOwn(providerIcons, id), `Built-in provider ${id} needs an explicit brand or generic icon.`);
   }
   for (const file of providerIconFiles) {
@@ -40,7 +40,7 @@ export async function checkDesign() {
       .filter(file => file.endsWith('.css')).map(file => directory + file)
   ))).flat();
   const sharedNames = new Set([...names, ...Object.keys(tokens.studio).map(name => '--' + name)]);
-  for (const file of [...consumerFiles, 'packages/design-system/base.css', 'packages/design-system/material.css', 'packages/design-system/controls.css', 'packages/design-system/catalog.css', 'packages/design-system/loading.css', 'packages/design-system/studio/application.css', 'packages/design-system/studio/adapter.css', 'packages/design-system/studio/control-states.css', 'packages/design-system/studio/feedback.css']) {
+  for (const file of [...consumerFiles, 'packages/design-system/base.css', 'packages/design-system/material.css', 'packages/design-system/controls.css', 'packages/design-system/catalog.css', 'packages/design-system/loading.css', 'packages/design-system/studio/application.css', 'packages/design-system/studio/adapter.css', 'packages/design-system/studio/control-states.css', 'packages/design-system/studio/feedback.css', 'packages/design-system/studio/mcp.css', 'packages/design-system/studio/template-cards.css']) {
     const css = await readFile(new URL(file, root), 'utf8');
     assert.doesNotMatch(css, /#[\da-f]{3,8}\b|\brgba?\(|\bhsla?\(/i, `${file}: UI colors belong in tokens.json.`);
     for (const match of css.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `${file}: undefined ${match[1]}`);

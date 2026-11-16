@@ -1,5 +1,20 @@
 # 公开变更记录
 
+## 2026-11-16: Choose, prepare and retain fonts by text role
+
+- Add 40 curated font families with language, construction, role, conditional brand fit, phone-reading risks, pairing advice and pinned resource/license identities. Fill rounded, slab, stencil, comic, script, pixel and multilingual gaps while preserving the original 20 records.
+- Share typography guidance across creation, template adaptation, recreation and review: preserve identity scope, compare actual copy, distinguish text roles and review at the intended display width and reading window.
+- Expose a compact font index and per-family MCP resources. Prepare selected weights into a verified cache, optionally build an offline actual-copy specimen, and import local fonts/licenses through the existing versioned asset transaction. Retain current media checks, pinned-library hashes, mixed-batch results and history protection. Resolve parsers through the existing locked runtime for extracted plugins and cover their real font/license import plus offline specimen execution.
+- Include a [fixed-scene evaluation and comparison](../reports/typography-evaluation.md). Two independent blinded model reviewers saw a limited local improvement in the final synthesis while all original copy/artwork/animation/audio were retained. This historical 20-family experiment does not establish stable new-Skill superiority or a creative benefit from the additional 20 fonts. Examples and media stay outside runtime distributions.
+
+## 2026-11-15: Keep template browsing on Home and restore project title controls
+
+- Keep one template-library entry in the left application rail below Home, remove the duplicate editor template-library entries, and use the four-circle glyph so the remaining entry is recognizable.
+- Remove the folder glyph from the editable project title, restore a strong focus ring around the title input, and keep rail hover targets square so the navigation controls retain a consistent shape.
+- Simplify the layout menu to a single-choice list of three presets with a visible check mark for the selected preset.
+- Keep the default timeline compact at 224px, enough for the ruler and two standard tracks; deliberate divider resizing can still expand it.
+- Validation: targeted navigation, layout-menu and Dock tests passed, Studio type checking passed, and the production Studio build completed. This is a UI-only change; project/session, template selection and Agent connection behavior remain unchanged.
+
 ## 2026-11-13: Show per-round inline video progress and playback
 
 - Add an MCP App frame for video playback deliverables, with real persisted work/export state, manual playback after verification and independent historical versions.

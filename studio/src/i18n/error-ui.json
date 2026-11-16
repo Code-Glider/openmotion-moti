@@ -45,7 +45,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "没有此元素源文件的访问权限。请检查文件权限后重试。",
     "The source file could not be read. Try again or ask an agent to check the source file.": "暂时无法读取此元素的源文件。请重试；仍失败时，可让 Agent 检查文件。",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "无法连接编辑器，暂时无法编辑。请检查连接后重新选择。",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "暂时无法确认此元素能否编辑。请重新选择，或刷新预览重试。"
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "暂时无法确认此元素能否编辑。请重新选择，或刷新预览重试。",
+    "Interface resources could not be loaded. Reload the editor to try again.": "界面资源加载失败，请重新加载编辑器后再试。"
   },
   "ja": {
     "Reconnecting…": "再接続中…",
@@ -93,7 +94,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "ソースファイルへのアクセスが拒否されました。権限を確認して要素を選択し直してください。",
     "The source file could not be read. Try again or ask an agent to check the source file.": "ソースファイルを読み込めません。再試行するか、エージェントに確認を依頼してください。",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "要素を確認するためにエディターに接続できません。接続を確認して選択し直してください。",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "この要素を編集できるか確認できませんでした。選択し直すか、プレビューを更新してください。"
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "この要素を編集できるか確認できませんでした。選択し直すか、プレビューを更新してください。",
+    "Interface resources could not be loaded. Reload the editor to try again.": "画面のリソースを読み込めませんでした。エディターを再読み込みしてお試しください。"
   },
   "ko": {
     "Reconnecting…": "다시 연결 중…",
@@ -141,7 +143,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "소스 파일에 대한 접근이 거부되었습니다. 파일 권한을 확인한 후 요소를 다시 선택하세요.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "소스 파일을 읽을 수 없습니다. 다시 시도하거나 에이전트에게 파일 확인을 요청하세요.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "요소를 확인하기 위해 편집기에 연결할 수 없습니다. 연결을 확인한 후 다시 선택하세요.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "이 요소의 편집 가능 여부를 확인할 수 없습니다. 다시 선택하거나 미리보기를 새로고침하세요."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "이 요소의 편집 가능 여부를 확인할 수 없습니다. 다시 선택하거나 미리보기를 새로고침하세요.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "인터페이스 리소스를 불러오지 못했습니다. 편집기를 새로고침한 후 다시 시도하세요."
   },
   "de": {
     "Reconnecting…": "Verbindung wird hergestellt…",
@@ -189,7 +192,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "Der Zugriff auf die Quelldatei wurde verweigert. Prüfe die Dateiberechtigungen und wähle das Element erneut aus.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "Die Quelldatei konnte nicht gelesen werden. Versuche es erneut oder bitte einen Agenten, die Datei zu prüfen.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Keine Verbindung zum Editor, um dieses Element zu prüfen. Prüfe die Verbindung und wähle es erneut aus.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Es konnte nicht geprüft werden, ob dieses Element bearbeitbar ist. Wähle es erneut aus oder aktualisiere die Vorschau."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Es konnte nicht geprüft werden, ob dieses Element bearbeitbar ist. Wähle es erneut aus oder aktualisiere die Vorschau.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "Die Oberflächenressourcen konnten nicht geladen werden. Laden Sie den Editor neu und versuchen Sie es erneut."
   },
   "fr": {
     "Reconnecting…": "Reconnexion…",
@@ -237,7 +241,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "L’accès au fichier source a été refusé. Vérifiez les autorisations et sélectionnez à nouveau l’élément.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "Impossible de lire le fichier source. Réessayez ou demandez à un agent de vérifier le fichier.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Impossible de se connecter à l’éditeur pour vérifier cet élément. Vérifiez la connexion et sélectionnez-le à nouveau.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Impossible de vérifier si cet élément est modifiable. Sélectionnez-le à nouveau ou actualisez l’aperçu."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Impossible de vérifier si cet élément est modifiable. Sélectionnez-le à nouveau ou actualisez l’aperçu.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "Impossible de charger les ressources de l’interface. Rechargez l’éditeur pour réessayer."
   },
   "es": {
     "Reconnecting…": "Reconectando…",
@@ -285,7 +290,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "Se denegó el acceso al archivo fuente. Revisa sus permisos y vuelve a seleccionar el elemento.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "No se pudo leer el archivo fuente. Inténtalo de nuevo o pide a un agente que revise el archivo.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "No se puede conectar con el editor para comprobar este elemento. Revisa la conexión y vuelve a seleccionarlo.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "No se pudo comprobar si este elemento se puede editar. Vuelve a seleccionarlo o actualiza la vista previa."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "No se pudo comprobar si este elemento se puede editar. Vuelve a seleccionarlo o actualiza la vista previa.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "No se pudieron cargar los recursos de la interfaz. Recarga el editor para volver a intentarlo."
   },
   "pt-BR": {
     "Reconnecting…": "Reconectando…",
@@ -333,7 +339,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "O acesso ao arquivo-fonte foi negado. Verifique suas permissões e selecione o elemento novamente.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "Não foi possível ler o arquivo-fonte. Tente novamente ou peça a um agente para verificar o arquivo.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Não foi possível conectar ao editor para verificar este elemento. Verifique a conexão e selecione-o novamente.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Não foi possível verificar se este elemento pode ser editado. Selecione-o novamente ou atualize a prévia."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Não foi possível verificar se este elemento pode ser editado. Selecione-o novamente ou atualize a prévia.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "Não foi possível carregar os recursos da interface. Recarregue o editor para tentar novamente."
   },
   "it": {
     "Reconnecting…": "Riconnessione…",
@@ -381,7 +388,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "L’accesso al file sorgente è stato negato. Controlla i permessi e seleziona di nuovo l’elemento.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "Impossibile leggere il file sorgente. Riprova o chiedi a un agente di controllare il file.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Impossibile connettersi all’editor per verificare questo elemento. Controlla la connessione e selezionalo di nuovo.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Impossibile verificare se questo elemento è modificabile. Selezionalo di nuovo o aggiorna l’anteprima."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Impossibile verificare se questo elemento è modificabile. Selezionalo di nuovo o aggiorna l’anteprima.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "Impossibile caricare le risorse dell’interfaccia. Ricarica l’editor per riprovare."
   },
   "ru": {
     "Reconnecting…": "Переподключение…",
@@ -429,7 +437,8 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "Доступ к исходному файлу запрещён. Проверьте права доступа и выберите элемент снова.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "Не удалось прочитать исходный файл. Повторите попытку или попросите агента проверить файл.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Не удалось подключиться к редактору для проверки элемента. Проверьте соединение и выберите элемент снова.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Не удалось проверить, можно ли редактировать элемент. Выберите его снова или обновите предпросмотр."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Не удалось проверить, можно ли редактировать элемент. Выберите его снова или обновите предпросмотр.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "Не удалось загрузить ресурсы интерфейса. Перезагрузите редактор и повторите попытку."
   },
   "tr": {
     "Reconnecting…": "Yeniden bağlanılıyor…",
@@ -477,6 +486,7 @@
     "Access to the source file was denied. Check file permissions and select the element again.": "Kaynak dosyaya erişim reddedildi. Dosya izinlerini kontrol edip öğeyi yeniden seçin.",
     "The source file could not be read. Try again or ask an agent to check the source file.": "Kaynak dosya okunamadı. Yeniden deneyin veya bir ajandan dosyayı kontrol etmesini isteyin.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Bu öğeyi kontrol etmek için düzenleyiciye bağlanılamıyor. Bağlantıyı kontrol edip öğeyi yeniden seçin.",
-    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Bu öğenin düzenlenip düzenlenemeyeceği kontrol edilemedi. Öğeyi yeniden seçin veya önizlemeyi yenileyin."
+    "Could not check whether this element can be edited. Select it again or refresh the preview.": "Bu öğenin düzenlenip düzenlenemeyeceği kontrol edilemedi. Öğeyi yeniden seçin veya önizlemeyi yenileyin.",
+    "Interface resources could not be loaded. Reload the editor to try again.": "Arayüz kaynakları yüklenemedi. Tekrar denemek için düzenleyiciyi yeniden yükleyin."
   }
 }

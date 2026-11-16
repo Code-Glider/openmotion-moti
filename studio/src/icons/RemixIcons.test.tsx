@@ -8,11 +8,13 @@ import * as icons from "./RemixIcons";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-it("bundles a real vector for every exported editor icon and its filled state", () => {
+it("bundles a real vector for every exported Remix editor icon and its filled state", () => {
   const sprite = new DOMParser().parseFromString(readFileSync(path.resolve(import.meta.dirname, "../../../packages/design-system/icons.svg"), "utf8"), "image/svg+xml");
   const host = document.createElement("div");
   const root = createRoot(host);
-  const components = Object.entries(icons).filter(([name]) => name !== "RemixIcon");
+  // Magnet is a deliberately custom stroked SVG rather than a Remix glyph.
+  // Keep it in its own contract below instead of treating it as a sprite entry.
+  const components = Object.entries(icons).filter(([name]) => !["RemixIcon", "Magnet", "MagnetStraight"].includes(name));
   try {
     for (const weight of ["regular", "fill"] as const) {
       act(() => root.render(<>{components.map(([name, Component]) => <Component key={name} weight={weight} />)}</>));
@@ -24,6 +26,20 @@ it("bundles a real vector for every exported editor icon and its filled state", 
         expect(svg.getAttribute('fill')).toBe('currentColor');
       }
     }
+  } finally { act(() => root.unmount()); }
+});
+
+it("keeps the custom snapping magnet as a stroked vector", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    act(() => root.render(<icons.Magnet size={20} />));
+    const svg = host.querySelector("svg");
+    expect(svg).not.toBeNull();
+    expect(svg?.getAttribute("fill")).toBe("none");
+    expect(svg?.getAttribute("stroke")).toBe("currentColor");
+    expect(svg?.querySelectorAll("path")).toHaveLength(2);
+    expect(svg?.dataset.remixIcon).toBeUndefined();
   } finally { act(() => root.unmount()); }
 });
 

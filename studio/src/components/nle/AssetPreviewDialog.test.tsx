@@ -3,11 +3,9 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { AssetPreviewDialog } from "./AssetPreviewDialog";
-import { probeMediaUrl, type MediaProbeResult } from "../../player/lib/mediaProbe";
 import { acquireAudioPreviewAnalyser } from "./audioPreviewAnalyser";
 import { usePlayerStore } from "../../player/store/playerStore";
 
-vi.mock("../../player/lib/mediaProbe", () => ({ probeMediaUrl: vi.fn() }));
 vi.mock("./audioPreviewAnalyser", () => ({ acquireAudioPreviewAnalyser: vi.fn(), AUDIO_PREVIEW_BARS: 81 }));
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
@@ -18,7 +16,6 @@ let nextFrame = 0;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(probeMediaUrl).mockResolvedValue({ hasAudio: true, hasVideo: true, duration: 10 });
   frames.clear();
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++nextFrame, callback); return nextFrame; });
   vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
@@ -39,8 +36,8 @@ async function render(url: string, kind: "audio" | "video" | "image") {
   await act(async () => root.render(<AssetPreviewDialog url={url} kind={kind} name={url} onClose={() => {}} />));
 }
 
-it("uses a compact live visualizer for audio and leaves the composition playhead alone", async () => {
-  await render("/voice.mp3", "audio");
+it.each(["mp3", "wav", "m4a", "aac", "ogg", "flac"])("uses a compact live visualizer for %s audio and leaves the composition playhead alone", async extension => {
+  await render(`/voice.${extension}`, "audio");
   const dialog = document.querySelector('[role="dialog"]')!;
   expect(dialog.getAttribute("data-preview-kind")).toBe("audio");
   expect(dialog.className).toContain("280px");
@@ -54,42 +51,16 @@ it("uses a compact live visualizer for audio and leaves the composition playhead
   expect(usePlayerStore.getState().currentTime).toBe(4);
 });
 
-it("detects audio-only MP4 without replacing or restarting its media element", async () => {
-  let resolve!: (value: MediaProbeResult) => void;
-  vi.mocked(probeMediaUrl).mockReturnValue(new Promise(done => { resolve = done; }));
-  await render("/voice.mp4", "video");
-  const video = document.querySelector("video")!;
-  video.currentTime = 3;
-  await act(async () => resolve({ hasAudio: true, hasVideo: false, duration: 10 }));
-  expect(document.querySelector('[role="dialog"]')!.getAttribute("data-preview-kind")).toBe("audio");
-  expect(document.querySelector("video")).toBe(video);
-  expect(video.currentTime).toBe(3);
-  expect(video.className).toBe("hidden");
-  expect(document.querySelector("svg[role=img]")).not.toBeNull();
-});
-
-it("preserves video and image layouts, including a video whose probe fails", async () => {
+it("preserves video and image layouts", async () => {
   await render("/movie.mp4", "video");
   expect(document.querySelector('[role="dialog"]')!.className).toContain("600px");
   expect(document.querySelector("video")!.className).toContain("object-contain");
   expect(document.querySelector(".motion-player-control-row")!.className).not.toContain("motion-player-control-row-lg");
   expect(acquireAudioPreviewAnalyser).not.toHaveBeenCalled();
-  vi.mocked(probeMediaUrl).mockResolvedValue(null);
-  await render("/unprobed.mp4", "video");
   expect(document.querySelector('[role="dialog"]')!.getAttribute("data-preview-kind")).toBe("video");
   await render("/photo.png", "image");
   expect(document.querySelector('[role="dialog"]')!.className).toContain("600px");
   expect(document.querySelector('img[alt="/photo.png"]')).not.toBeNull();
-  expect(acquireAudioPreviewAnalyser).not.toHaveBeenCalled();
-});
-
-it("ignores a stale audio-only result after switching to a different video", async () => {
-  let resolve!: (value: MediaProbeResult) => void;
-  vi.mocked(probeMediaUrl).mockReturnValueOnce(new Promise(done => { resolve = done; }));
-  await render("/voice.mp4", "video");
-  await render("/movie.mp4", "video");
-  await act(async () => resolve({ hasAudio: true, hasVideo: false, duration: 10 }));
-  expect(document.querySelector('[role="dialog"]')!.getAttribute("data-preview-kind")).toBe("video");
   expect(acquireAudioPreviewAnalyser).not.toHaveBeenCalled();
 });
 

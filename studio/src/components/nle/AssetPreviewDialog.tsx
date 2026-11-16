@@ -7,7 +7,6 @@ import { VolumeControl } from "../../player/components/VolumeControl";
 import { SpeedMenu } from "../../player/components/SpeedMenu";
 import { formatTime } from "../../player/lib/time";
 import { usePlayerStore } from "../../player/store/playerStore";
-import { probeMediaUrl } from "../../player/lib/mediaProbe";
 import { AudioPreviewWaveform } from "./AudioPreviewWaveform";
 import "./audioPreview.css";
 
@@ -35,23 +34,12 @@ export function AssetPreviewDialog({ url, kind, name, onClose, onAdd }: {
       setAdding(false);
     }
   };
-  const [audioOnlyUrl, setAudioOnlyUrl] = useState<string | null>(null);
-  const audioMode = kind === "audio" || (kind === "video" && audioOnlyUrl === url);
-  useEffect(() => {
-    if (kind !== "video") return;
-    let cancelled = false;
-    // Container extensions do not tell us whether a file has a video track.
-    // Reuse the bounded metadata reader; failed probes retain the original view.
-    void probeMediaUrl(url).then(result => {
-      if (!cancelled) setAudioOnlyUrl(result?.hasAudio && !result.hasVideo ? url : null);
-    });
-    return () => { cancelled = true; };
-  }, [url, kind]);
+  const audioMode = kind === "audio";
   return <Dialog.Root open={open} onOpenChange={setOpen} onOpenChangeComplete={next => { if (!next) onClose(); }}>
     <Dialog.Portal>
       <Dialog.Backdrop forceRender className="hf-overlay-backdrop fixed inset-0 z-140 bg-media-preview-scrim" />
       <Dialog.Popup aria-label={t("Preview: {name}", { name })} aria-describedby={undefined}
-        data-preview-kind={audioMode ? "audio" : kind}
+        data-preview-kind={kind}
         className={`fixed top-1/2 left-1/2 z-150 flex ${audioMode ? "motion-asset-audio-preview h-[min(280px,85dvh)] w-[min(640px,90vw)]" : "h-[min(600px,85dvh)] w-[min(800px,90vw)]"} -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface text-text-1 shadow-menu outline-none`}
         onKeyDown={event => event.stopPropagation()}>
         <div className={`${audioMode ? "motion-audio-preview-header " : ""}flex shrink-0 items-center justify-between gap-3 px-3 py-2`}>
@@ -65,13 +53,14 @@ export function AssetPreviewDialog({ url, kind, name, onClose, onAdd }: {
           </div>
         </div>
         {addFailed && <p role="alert" className="shrink-0 px-3 pb-2 text-step-12 text-danger-ink">{t("Failed to add media")}</p>}
-        <DialogMedia key={`${kind}:${url}`} url={url} kind={kind} audioMode={audioMode} name={name} />
+        <DialogMedia key={`${kind}:${url}`} url={url} kind={kind} name={name} />
       </Dialog.Popup>
     </Dialog.Portal>
   </Dialog.Root>;
 }
 
-function DialogMedia({ url, kind, audioMode, name }: { url: string; kind: "video" | "audio" | "image"; audioMode: boolean; name: string }) {
+function DialogMedia({ url, kind, name }: { url: string; kind: "video" | "audio" | "image"; name: string }) {
+  const audioMode = kind === "audio";
   const { t } = useI18n();
   const media = useRef<HTMLMediaElement | null>(null);
   const [time, setTime] = useState(0);
@@ -105,7 +94,7 @@ function DialogMedia({ url, kind, audioMode, name }: { url: string; kind: "video
     <div className={`${audioMode ? "motion-audio-preview-surface " : ""}mx-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-md bg-[var(--motion-inset)]`}>
       {failed ? <p role="alert" className="text-step-12 text-text-2">{t("Preview failed to load")}</p>
         : kind === "image" ? <img src={url} alt={name} onError={() => setFailed(true)} className="h-full w-full object-contain" />
-        : kind === "video" ? <video ref={node => { media.current = node; }} src={url} autoPlay playsInline muted={muted} loop={loop} disablePictureInPicture aria-label={name} className={audioMode ? "hidden" : "h-full w-full object-contain"} {...events} />
+        : kind === "video" ? <video ref={node => { media.current = node; }} src={url} autoPlay playsInline muted={muted} loop={loop} disablePictureInPicture aria-label={name} className="h-full w-full object-contain" {...events} />
         : <audio ref={node => { media.current = node; }} src={url} autoPlay muted={muted} loop={loop} aria-label={name} {...events} />}
       {!failed && audioMode && <AudioPreviewWaveform media={media} playing={playing} />}
     </div>

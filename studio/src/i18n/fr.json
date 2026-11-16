@@ -755,7 +755,7 @@
   "Reading versions…": "Version de lecture...",
   "Changes are recorded automatically. Pin important versions to keep them.": "Les modifications sont enregistrées automatiquement. Épinglez les versions importantes pour les conserver.",
   "No pinned versions yet. Select an entry to pin it.": "Aucune version épinglée pour l'instant. Sélectionnez une entrée pour l’épingler.",
-  "No edits yet. Changes made in the canvas, code, or by an agent will appear here.": "Aucune modification pour l'instant. Les modifications apportées au canevas, au code ou par un agent apparaîtront ici.",
+  "No edits yet": "Aucune modification pour le moment",
   "Manual edit": "Édition manuelle",
   "External change": "Modification externe",
   "Changes in this version": "Cette modification",
@@ -1849,5 +1849,6 @@
   "Unlock track": "Déverrouiller la piste",
   "Delete track": "Supprimer la piste",
   "Unlock the track before deleting it": "Déverrouillez la piste avant de la supprimer",
-  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste"
+  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste",
+  "Screen too small to expand this panel": "L’écran est trop petit pour déployer ce panneau"
 }

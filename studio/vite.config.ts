@@ -17,7 +17,7 @@ export default defineConfig({
         const file = resolveDesignSystemFile(new URL(req.url || '/', 'http://localhost').pathname);
         if (!file) return next();
         try {
-          const types: Record<string, string> = { '.css': 'text/css', '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.txt': 'text/plain' };
+          const types: Record<string, string> = { '.css': 'text/css', '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.txt': 'text/plain' };
           res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
           res.end(await readFile(local('../packages/design-system/' + file)));
         } catch (error) { next(error); }

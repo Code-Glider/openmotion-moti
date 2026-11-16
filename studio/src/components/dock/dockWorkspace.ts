@@ -1,13 +1,18 @@
 import type { DockviewApi } from "dockview-react";
 import { readStudioUiPreferences, writeStudioUiPreferences } from "../../utils/studioUiPreferences";
-import { COMPACT_DOCK_WIDTH, isSideCollapsed } from "./dockLayout";
+import { COMPACT_DOCK_WIDTH, isSideCollapsed, isSideRequestedCollapsed } from "./dockLayout";
 import type { DockController } from "./dockLayoutStore";
 import { previewIsEnabled } from "./dockResponsiveSides";
+
+const DEFAULT_AUTO_TIMELINE_MAX_H = 224;
 
 /** Content-sized by default; a deliberate sash resize keeps a pixel preference. */
 export function fittedTimelineHeight(content: number, host: number, manual: number | null) {
   const available = Math.max(96, host - 108);
-  return Math.round(Math.min(available, manual ?? Math.min(Math.max(160, content), Math.max(160, host * 0.42))));
+  return Math.round(Math.min(
+    available,
+    manual ?? Math.min(Math.max(160, content), DEFAULT_AUTO_TIMELINE_MAX_H, Math.max(160, host * 0.42)),
+  ));
 }
 
 export function installDockWorkspace(api: DockviewApi, controller: DockController, root: HTMLElement, projectId: string | null, storageKey: string | undefined, dockWidth: () => number) {
@@ -34,8 +39,8 @@ export function installDockWorkspace(api: DockviewApi, controller: DockControlle
     const left = api.getPanel("compositions")?.group;
     const right = api.getPanel("design")?.group;
     writeStudioUiPreferences({ workspaceLayout: {
-      left: Boolean(left && !isSideCollapsed(left)),
-      right: Boolean(right && !isSideCollapsed(right)),
+      left: Boolean(left && !isSideRequestedCollapsed(left)),
+      right: Boolean(right && !isSideRequestedCollapsed(right)),
       preview: previewIsEnabled(api),
       timeline: timeline()?.api.isVisible ?? true,
       timelineHeight: manual,
@@ -103,7 +108,7 @@ export function installDockWorkspace(api: DockviewApi, controller: DockControlle
   if (saved) {
     controller.setPreviewVisible?.(saved.preview ?? true);
     timeline()?.api.setVisible(saved.timeline);
-    // Small screens start on the canvas; expanding either rail is always available.
+    // Small screens start on the canvas; rail expansion requires a readable side and preview.
     if (dockWidth() >= COMPACT_DOCK_WIDTH) {
       controller.setGroupCollapsed?.("compositions", !saved.left);
       controller.setGroupCollapsed?.("design", !saved.right);
