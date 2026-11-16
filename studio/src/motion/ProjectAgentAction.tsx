@@ -27,7 +27,7 @@ export function ProjectAgentAction() {
         {t('MCP')}
       </Button>} />
     </Tooltip>
-    <Popover.Portal>
+    <Popover.Portal keepMounted>
       <Popover.Positioner side="bottom" align="end" sideOffset={8} collisionPadding={16} positionMethod="fixed" className="z-150">
         <Popover.Popup finalFocus={trigger} aria-describedby={undefined}
           className="hf-floating-motion flex w-[min(320px,calc(100vw-32px))] max-h-[var(--available-height)] flex-col overflow-y-auto rounded-xl border border-border bg-surface text-text-1 shadow-menu outline-none"
@@ -36,7 +36,7 @@ export function ProjectAgentAction() {
             <Popover.Title className="text-step-14 font-semibold text-text-1">{t('MCP')}</Popover.Title>
             <Popover.Close render={<IconButton aria-label={t('Close')} icon={<RemixIcon name="close-line" size={16} />} />} />
           </div>
-          {open && available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} />}
+          {available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} />}
         </Popover.Popup>
       </Popover.Positioner>
     </Popover.Portal>

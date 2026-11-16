@@ -65,7 +65,7 @@ export function apiDiscoveryCommand(info: IntegrationInfo) {
   return `curl --fail-with-body ${shellQuote(info.previewUrl + '/api/integration')}\ncurl --fail-with-body ${shellQuote(info.previewUrl + '/api/project/status')}`;
 }
 
-export function guideUrl(info: IntegrationInfo, host: IntegrationHost, templateId?: string) { return `${info.previewUrl}/connect/guide?host=${host}${templateId ? '&template=' + encodeURIComponent(templateId) : ''}`; }
+export function guideUrl(info: Pick<IntegrationInfo, 'previewUrl'>, host: IntegrationHost, templateId?: string) { return `${info.previewUrl}/connect/guide?host=${host}${templateId ? '&template=' + encodeURIComponent(templateId) : ''}`; }
 export const setupReadmeUrl = 'https://github.com/nexu-io/openmotion#quick-start';
 export function setupGuideUrl(info: IntegrationInfo | null) {
   if (!info || info.templateSource === 'repository') return 'https://github.com/nexu-io/openmotion/blob/main/install.md';

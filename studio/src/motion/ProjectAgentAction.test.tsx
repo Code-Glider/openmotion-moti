@@ -48,6 +48,20 @@ it('waits for saves and copies the exact project and workspace without credentia
   expect(document.querySelector('.motion-feedback-layer')?.textContent).toContain('Instruction copied');
 });
 
+it('finishes copying when the popover is dismissed during a pending save', async () => {
+  let finish!: () => void;
+  state.save.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await open();
+  await act(async () => button('Copy instruction').click());
+  await act(async () => button('Close').click());
+  expect(button('MCP').getAttribute('aria-expanded')).toBe('false');
+  expect(copy).not.toHaveBeenCalled();
+  await act(async () => finish());
+  expect(copy).toHaveBeenCalledWith(expect.stringContaining('Project ID: project-a'));
+  expect(document.querySelector('.motion-feedback-layer')?.textContent).toContain('Instruction copied');
+});
+
 it('does not copy when saving fails', async () => {
   state.save.mockRejectedValue(new Error('Conflict'));
   const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
