@@ -1,14 +1,14 @@
 # Reverse engineering README artwork
 
-The [English](remix-en.webp), [Chinese](remix-zh.webp) and [Japanese](remix-ja.webp) covers show a talking-head caption effect adapted to another speaker. Watch the [2.4-second comparison](media/presenter-caption-remake.mp4). The timeline pictured below the portraits is from the OpenMotion project used to render the remake.
+The [English](https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg), [Chinese](https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg) and [Japanese](https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg) covers show a talking-head caption effect adapted to another speaker. Each links to the [2.4-second comparison](media/presenter-caption-remake.mp4). The timeline pictured below the portraits is from the OpenMotion project used to render the remake.
 
 The left panel uses 0.83–3.23 seconds from [Dan Martell’s original video](https://www.youtube.com/shorts/mk1zJd9Rm4c). The right panel uses the first 2.4 seconds of [@careerwithriya’s career-skills video](https://www.instagram.com/reel/Ddd57MBszhc/). OpenMotion rebuilt the three caption layers for Riya’s footage. The comparison plays Riya’s original audio. Both creators retain the rights to their footage.
 
 ## Current integration cover
 
-The current cover uses the approved talking-head comparison composition with a continuous paper-and-turquoise background. It displays compact agent and media-model rows, including Antigravity and Kimi Code. The English headline reads “Remix Any Video with Your AI Agent”. The Chinese and Japanese covers use the corresponding official website headlines. Each language uses one responsive image.
+The current cover uses the approved talking-head comparison composition with a continuous paper-and-turquoise background. It displays compact agent and media-model rows, including Antigravity and Kimi Code. The English, Simplified Chinese and Japanese covers keep the same layout and the approved English tagline; supporting labels are localized. Mobile image entries carry the same complete cover.
 
-The updated headline is typeset over a generated paper texture. The original comparison and timeline are preserved. The final covers are encoded as WebP. This is promotional artwork based on the reference/remake and editor imagery, not a newly recorded product session or additional compatibility-test evidence. The linked comparison video remains the actual recreation evidence.
+Method: built-in ImageGen editing of the approved cover, followed by JPEG encoding. This is promotional artwork based on the reference/remake and editor imagery, not a newly recorded product session or additional compatibility-test evidence. The linked comparison video remains the actual recreation evidence.
 
 ## Earlier cover artwork
 

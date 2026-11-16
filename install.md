@@ -1,33 +1,42 @@
 # Install OpenMotion from source
 
-For the local agent reading this guide: install and connect the public repository's `main` branch on this machine, then open its local template library. Use the same checkout for Studio and MCP.
+For an Agent asked to install OpenMotion from this repository, use the source installation below. This is the default repository installation route. Only use npm installation when the user explicitly selects it; follow the [published application guide](docs/install.md) instead of mixing source and package setup. npm remains required to install this checkout's locked dependencies and build Studio.
 
-## Clone and start
+## Codex: automatic source installation
 
-Use Git, npm and Node.js 26.11.1, the version pinned for source validation. Choose a persistent parent directory for the checkout and run:
+Collect OS/CPU, Git, Node.js/npm and the current host once. Source validation uses Node.js 26.11.1. Codex must support `codex plugin add`. Preserve projects, credentials, unrelated plugins and MCP configuration. Configure only the current host.
+
+Before running the installer, including setup from an existing checkout, export `OPENMOTION_ONBOARDING_LANGUAGE` in the same shell. Derive it from the latest user request's language, not the OS or host UI language. Supported codes are `zh`, `en`, `ja`, `ko`, `fr`, `es` and `pt`; normalize locale tags to their lowercase primary code and use `en` for unsupported languages. For a Chinese request, run `export OPENMOTION_ONBOARDING_LANGUAGE=zh` before the commands below so the welcome/cards are prepared in Chinese.
 
 ```sh
-git clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
+curl -fsSL https://raw.githubusercontent.com/nexu-io/openmotion/main/install.sh -o /tmp/openmotion-source-install.sh
+bash /tmp/openmotion-source-install.sh
+```
+
+`OPENMOTION_INSTALL_DIR` selects a persistent empty absolute destination. The script downloads one shallow snapshot, installs locked dependencies, builds Studio once, registers the local plugin, probes MCP and prepares the template library. Do not separately run npm start, install dependencies again or inspect unrelated repositories.
+
+If the intended checkout already exists, inspect its remote, version and local changes first, then run `bash scripts/install-motion.command` from that checkout. Preserve an active or foreign source; never overwrite it or silently switch installations. Preserve an existing `MOTION_DATA_DIR` and use the same workspace for Studio and MCP. Keep projects and credentials outside the checkout. Read the checkout's AGENTS.md before repository changes.
+
+Command-local Git LFS overrides keep optional media as pointers even when global LFS configuration is stale. No global Git configuration is changed. A read-only source check runs before dependency work; unknown inventory or installed-source conflicts stop with a concrete recovery instruction. See [clone size and optional media](docs/repository-storage.md).
+
+The installer saves phase timings and full onboarding details under `.artifacts/install/`. Read the concise result once and complete onboarding in this same installation turn. Prepare and publish the welcome/cards before opening the right-hand library; after one visibility check, immediately stream the returned welcomeMarkdown as normal reply text, followed by the ready cards reference. Never enqueue internal instructions as another user message or end early to await a callback. Download time depends on the network; no fixed installation duration is guaranteed.
+
+## Other local hosts: source and MCP
+
+Use Git, npm and Node.js 26.11.1:
+
+```sh
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
 npm start
 ```
 
-`--depth 1` downloads only the latest snapshot and `--single-branch --branch main` selects main. Optional reference videos and template archives stay excluded by default; download them only when needed. See [clone size and optional media](docs/repository-storage.md).
+Open the actual studioUrl or previewUrl printed at startup. Follow [manual MCP configuration](README.md#manual-mcp) and the [host adapter guide](docs/agent-adapters.md) to connect this checkout's mcp.ts and the same data directory. Source preview/export also need working Chrome/Chromium and FFmpeg/ffprobe; see [runtime setup](docs/usage.md). Merely starting Studio does not register an Agent connection.
 
-If the destination already exists, check its remote and local changes before reusing it, or choose another directory. Preserve existing work. Keep user projects and credentials outside the checkout, and preserve an existing `MOTION_DATA_DIR`. Studio and MCP must use the same data directory. Source preview and export use local Chrome/Chromium and FFmpeg/FFprobe; see [runtime setup](README.md#technical-guide) for requirements.
+## Verify installation and deliver onboarding
 
-Use the actual `studioUrl` or `previewUrl` printed by startup. Keep this checkout in place after registration because the agent connection uses it.
+Discover the installed tools and call openmotion_get_project to verify the expected workspace. Registration or an independent probe alone does not prove this chat loaded the tools. Keep installed files, MCP access and host presentation results distinct.
 
-## Connect the current agent
-
-Read the checkout's `AGENTS.md`, then follow the existing [source plugin setup](README.md#agent-setup) for Codex or [manual MCP configuration](README.md#manual-mcp) for another local stdio client. The [agent connection guide](docs/agent-adapters.md) describes other host integrations. Connect this checkout's `mcp.ts` and the same data directory as Studio; configure only the current host and preserve unrelated MCP servers, Skills and credentials.
-
-Discover the OpenMotion tools and call `openmotion_get_project` to verify the workspace. Registration alone does not prove that this chat is connected; report any actual connection limitation honestly.
-
-## First run
-
-Open the startup URL and choose **Template library**, or call `openmotion_open_preview` with `{"target":"templates"}` when MCP is available.
-
-Follow the [installation-success contract](docs/install.md#installation-success-reply): open the template library in the calling chat's right panel, use native recommendations with `onboarding: true` when available so the component owns the persistent welcome, and otherwise use the library-only welcome copy. That section is the shared first-run contract; the npm setup commands and release placeholders elsewhere in that document apply to published applications. A card button fills an unsent draft; wait for the user's submitted requirements before creating a project.
+Follow the [shared onboarding contract](docs/install-onboarding.md#installation-success-reply) in this turn: finish preparing the welcome and three cards, open the real template library without creating a project, confirm visibility once and immediately stream the welcome as normal reply text followed by the cards-only content reference (or use the supported native fallback). Reuse this installation; do not reinstall to recover presentation. A CLI without a renderer reports that limitation and the real library link. Prepared files, queued host actions and printed URLs do not prove visible delivery. Do not create a video, export or call paid models as part of installation.

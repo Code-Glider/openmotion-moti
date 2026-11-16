@@ -14,12 +14,14 @@ test('README viewing resources and shipped browser dependencies resolve locally 
 
 test('each README language opens the full guide and ships its localized cover', async () => {
   const pages = [
-    ['README.md', 'English', 'en'],
-    ['docs/README.zh-CN.md', '简体中文', 'zh'],
-    ['docs/README.ja.md', '日本語', 'ja'],
+    ['README.md', 'English', ''],
+    ['docs/README.zh-CN.md', '简体中文', '.zh-CN'],
+    ['docs/README.ja.md', '日本語', '.ja'],
   ];
   const shipped = new Set(await distributionFiles('phase1'));
-  for (const [file, language, locale] of [...pages, ['README.zh-CN.md', '简体中文', 'zh']]) {
+  const media = JSON.parse(await readFile('repository-media.json', 'utf8'));
+  assert(shipped.has('docs/readme/openmotion-logo.svg'));
+  for (const [file, language, suffix] of [...pages, ['README.zh-CN.md', '简体中文', '.zh-CN']]) {
     const text = await readFile(file, 'utf8');
     const selector = text.split('\n').find(line => line.includes(`**${language}**`) && line.includes(' · '));
     assert(selector, `Missing language selector in ${file}`);
@@ -30,9 +32,15 @@ test('each README language opens the full guide and ships its localized cover', 
     for (const section of ['agent-wall', 'showcase', 'features', 'technical-guide', 'community']) {
       assert(text.includes(`id="${section}"`), `${file}: missing ${section}`);
     }
-    const cover = `docs/readme/remix-${locale}.webp`;
-    assert(text.includes(`src="${path.posix.relative(path.posix.dirname(file), cover)}"`), `${file}: missing localized cover`);
+    const cover = `docs/readme/capcut-claude-motion-cover${suffix}.webp`;
+    const relativeCover = path.relative(path.dirname(file), cover).split(path.sep).join('/');
+    assert(text.includes(`<source type="image/webp" srcset="${relativeCover}">`), file);
     assert(shipped.has(cover), `Missing from distribution: ${cover}`);
+    for (const asset of [`brand-hero${suffix}.jpg`, `brand-hero.mobile${suffix}.jpg`]) {
+      const transferred = media.files.find((entry: { path: string }) => entry.path === `docs/readme/${asset}`);
+      assert(text.includes(transferred ? transferred.url + '"' : `readme/${asset}"`), `${file}: missing ${asset}`);
+      assert(shipped.has(`docs/readme/${asset}`), `Missing from distribution: ${asset}`);
+    }
   }
 });
 

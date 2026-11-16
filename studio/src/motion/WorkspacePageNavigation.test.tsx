@@ -9,6 +9,7 @@ import { readWorkspacePage, settingsSections } from './workspacePageRouting';
 import { workspaceHistoryIndex, writeWorkspaceHistory } from '../utils/workspaceHistory';
 
 const editor = vi.hoisted(() => ({ mounts: 0, fail: false, wait: async () => {} }));
+vi.mock('./AssetsPage', () => ({ AssetsPage: () => <input aria-label="Asset draft" defaultValue="Asset prompt" /> }));
 vi.mock('./tracking', () => ({ trackMotion: vi.fn() }));
 vi.mock('./ArtifactViewer', () => ({ ArtifactViewer: ({ artifact }: { artifact: { projectId: string } }) => {
   const { registerEditor } = useWorkspaceChrome();
@@ -34,6 +35,8 @@ const page = () => readWorkspacePage(location.search);
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === label || node.textContent?.trim() === label)!;
 const click = async (label: string) => { expect(button(label), label).toBeTruthy(); await act(async () => button(label).click()); };
 const traverse = async (delta: number) => { await act(async () => { history.go(delta); await new Promise(resolve => setTimeout(resolve, 0)); }); };
+const historyButton = (label: string, scope = '.om-app-header') => container.querySelector<HTMLButtonElement>(`${scope} .om-history-navigation button[aria-label="${label}"]`)!;
+const clickHistory = async (label: string, scope?: string) => { await act(async () => { historyButton(label, scope).click(); await new Promise(resolve => setTimeout(resolve, 0)); }); };
 async function mount(key = 0) { await act(async () => root.render(<I18nProvider initialLocale="en"><MotionApp key={key} /></I18nProvider>)); }
 beforeEach(() => {
   localStorage.clear(); history.replaceState(null, '', firstUrl);
@@ -44,7 +47,8 @@ beforeEach(() => {
     if (url.pathname.endsWith('/projects') && !init?.method) return Response.json(catalog);
     if (url.pathname.includes('/sessions/')) return Response.json(catalog.sessions.find(item => url.pathname.endsWith(item.id)));
     if (url.pathname.includes('/projects/') && url.pathname.endsWith('/open')) return Response.json({ projectId: url.pathname.split('/').at(-2), revision: 'r' });
-    if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'language' }], models: [], defaults: {} });
+    // The OpenAI preset carries media kinds, so it stays visible in the provider list.
+    if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'multimodal', kinds: ['text', 'image', 'audio'] }], models: [], defaults: {} });
     if (url.pathname.endsWith('/integration')) return Response.json(info);
     if (url.pathname.endsWith('/template-catalog')) return Response.json({ items: [{ id: 'product-promo', title: 'Product Promo', kind: 'builtin', tags: [] }], next: null, catalogVersion: 'test' });
     return Response.json({ projectId, revision: 'r', version: '1.2.3', agents: [], defaults: {}, state: 'signed-out' });
@@ -134,6 +138,48 @@ it('restores provider details and returns to the providers list through history'
   expect(container.querySelector('.om-provider-settings')?.getAttribute('data-detail')).toBe('false');
 });
 
+it('uses the header controls for visited pages, preserves Forward on reload and drops abandoned destinations', async () => {
+  await mount();
+  expect(historyButton('Back').title).toBe('Back');
+  expect(historyButton('Forward').title).toBe('Forward');
+  expect(historyButton('Back').disabled).toBe(true);
+  expect(historyButton('Forward').disabled).toBe(true);
+  await click('MCP · Connect Agent'); await click('Settings');
+  expect(historyButton('Back').disabled).toBe(false);
+  await clickHistory('Back'); expect(page().settings).toBe('mcp');
+  expect(historyButton('Forward').disabled).toBe(false);
+  await mount(1);
+  expect(historyButton('Forward').disabled).toBe(false);
+  await clickHistory('Forward'); expect(page().settings).toBe('general');
+  expect(historyButton('Forward').disabled).toBe(true);
+  await clickHistory('Back'); await clickHistory('Back');
+  expect(historyButton('Back').disabled).toBe(true);
+  expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
+  await clickHistory('Forward'); expect(page().settings).toBe('mcp');
+  await click('Help'); expect(historyButton('Forward').disabled).toBe(true);
+});
+
+it('keeps gallery history controls while headerless template previews retain browser navigation', async () => {
+  const library = 'dialog[aria-label="Template library"] > div > header';
+  const detail = 'dialog[aria-label="Template preview"]';
+  await mount(); await click('MCP · Connect Agent'); await click('Explore templates');
+  expect(historyButton('Back', library).hasAttribute('title')).toBe(false);
+  await act(async () => { historyButton('Back', library).focus(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('dialog[aria-label="Template library"] [role="tooltip"]')?.textContent).toBe('Back');
+  await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
+  expect(container.querySelector(`${detail} > header`)).toBeNull();
+  expect(container.querySelector(`${detail} .om-history-navigation`)).toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Close template preview"]`)).not.toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Previous template"]`)).not.toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Next template"]`)).not.toBeNull();
+  expect(historyButton('Back').title).toBe('Back');
+  await traverse(-1); expect(page().template).toBeNull();
+  expect(historyButton('Forward', library).disabled).toBe(false);
+  await clickHistory('Forward', library); expect(page().template).toBe('product-promo');
+  await traverse(-1); await clickHistory('Back', library);
+  expect(page()).toMatchObject({ settings: 'mcp', templates: false });
+});
+
 it('restores template details from a copied link and closes back to the originating MCP page', async () => {
   await mount(); await click('MCP · Connect Agent'); await click('Claude Code'); await click('Explore templates');
   expect(page()).toMatchObject({ templates: true, settings: 'mcp' });
@@ -173,7 +219,7 @@ it('restores a rejected project history entry without losing the later Forward d
   await click('Second project');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
   editor.fail = true;
-  await traverse(-1); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  await clickHistory('Back'); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
   expect(new URLSearchParams(location.search).get('project')).toBe(second);
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
   expect(document.querySelector('[data-feedback-layer] [role=alert]')).not.toBeNull();
@@ -213,4 +259,31 @@ it('reports a missing bookmarked template and recovers without changing the reta
   await act(async () => container.querySelector<HTMLButtonElement>('dialog[aria-label="Template library"] [role=alert] button')!.click());
   expect(page()).toMatchObject({ settings: 'mcp', templates: true, template: null });
   expect(container.textContent).not.toContain('This template is no longer available.');
+});
+
+
+it('keeps Assets and editor drafts mounted across page history and restores the Assets deep link', async () => {
+  await mount();
+  const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
+  draft.value = 'Keep editor draft';
+  await click('Workspace assets');
+  expect(page().assets).toBe(true);
+  const assetDraft = container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')!;
+  assetDraft.value = 'Keep asset prompt';
+  await click('Settings');
+  expect(page().assets).toBe(false);
+  expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
+  await traverse(-1);
+  expect(page().assets).toBe(true);
+  expect(container.querySelector('[aria-label="Asset draft"]')).toBe(assetDraft);
+  expect(assetDraft.value).toBe('Keep asset prompt');
+  await click('Back to home');
+  expect(page().assets).toBe(false);
+  expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
+  expect(draft.value).toBe('Keep editor draft');
+  expect(editor.mounts).toBe(1);
+  history.replaceState(null, '', firstUrl.replace('#', '&page=assets#'));
+  await mount(1);
+  expect(page().assets).toBe(true);
+  expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(false);
 });

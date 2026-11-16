@@ -32,15 +32,19 @@ async function verifyBundledTemplates(application: string) {
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
-test('shared Agent instructions keep the release controls synchronized', async () => {
+test('shared Agent instructions keep source-default, optional npm and release controls synchronized', async () => {
   const section = async file => {
     const text = await readFile(new URL(`../${file}`, import.meta.url), 'utf8');
     return text.split('## Candidate and publication controls\n')[1].split('\n## ')[0].trim();
   };
   const shared = await section('AGENTS.md');
-  assert(shared.includes('test` (default, DEV templates)') && shared.includes('stable` (prod templates)'));
+  assert(shared.includes('New repository installations use the source bootstrap in install.md'));
+  assert(shared.includes('Published npm application installation is optional') && shared.includes('explicit user choice'));
+  assert(shared.includes('Never silently substitute npm for source or mix installations'));
   assert(shared.includes('Test publishes under `candidate`') && shared.includes('non-blocking Mac/Windows cold installs'));
   assert(shared.includes('Stable publishes publicly under `stage`') && shared.includes('requires both exact prod cold installs to pass'));
+  assert(shared.includes('separately authorized manual publication/recovery') && shared.includes('Preserve existing installations, projects, credentials'));
+  assert(shared.includes('npm remains the source dependency/build tool'));
   assert.equal(await section('CLAUDE.md'), shared, 'CLAUDE.md must mirror the AGENTS.md release controls');
 });
 
@@ -87,18 +91,18 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
     const readme = await readFile(path.join(installer, 'package/README.md'), 'utf8');
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));
+    const hero = media.get('docs/readme/brand-hero.jpg');
+    const mobileHero = media.get('docs/readme/brand-hero.mobile.jpg');
     const studioCapture = media.get('docs/readme/live-product/studio-in-use.png');
-    assert(studioCapture, 'The Studio capture must retain its registered media identity');
-    assert.match(readme, /^# OpenMotion$/m);
-    assert(readme.includes('<strong>Remix Any Video with Your AI Agent</strong>'));
-    const readmeAssets = `https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme`;
-    assert(readme.includes(`src="${readmeAssets}/openmotion-logo.svg"`));
-    const cover = `${readmeAssets}/remix-en.webp`;
-    assert(readme.includes(`src="${cover}"`));
-    assert(readme.includes(`srcset="${cover}"`));
+    assert(hero && mobileHero && studioCapture, 'Public README previews must retain registered media identities');
+    assert(readme.includes('The open-source Claude Motion &amp; CapCut alternative'));
+    assert(readme.includes(`srcset="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/capcut-claude-motion-cover.webp"`));
+    assert(readme.includes(hero));
+    assert(readme.includes(`src="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/openmotion-logo.svg"`));
     assert(readme.includes(`https://github.com/nexu-io/openmotion/blob/${release.commit}/docs/motion-md.md`));
     assert(readme.includes('](#choose-agent)'));
     assert(readme.includes('href="https://open-design.ai/motion/'));
+    assert(readme.includes(`srcset="${mobileHero}"`));
     assert(readme.includes(`href="https://github.com/nexu-io/openmotion/blob/${release.commit}/LICENSE"`));
     assert(readme.includes(`src="${studioCapture}"`));
     assert(readme.includes('href="https://open-design.ai/templates/notion-custom-agents-motion-design/"'));
@@ -106,8 +110,8 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(!readme.startsWith('# Motion application npm package'));
     const embeddedReadme = await readFile(path.join(application, 'README.md'), 'utf8');
     assert(embeddedReadme.includes('](docs/motion-md.md)'), 'Installed documentation keeps local links to shipped guides');
-    assert(embeddedReadme.includes(`src="${cover}"`));
-    assert(embeddedReadme.includes(`srcset="${cover}"`));
+    assert(embeddedReadme.includes(`srcset="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/capcut-claude-motion-cover.webp"`));
+    assert(embeddedReadme.includes(`srcset="${mobileHero}"`));
     assert(embeddedReadme.includes(`src="${studioCapture}"`));
     await assert.rejects(readdir(path.join(application, 'docs/readme/media')), { code: 'ENOENT' });
     await assert.rejects(readFile(path.join(application, 'scripts/install-library-skill.mjs')), { code: 'ENOENT' });
@@ -124,6 +128,15 @@ test('test npm artifacts contain their application, locked manifest and no bundl
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
     }
     assert.equal((await json(path.join(application, 'package-lock.json'))).packages[''].version, version);
+    const installedLock = await json(path.join(application, 'package-lock.json'));
+    for (const name of ['@phosphor-icons/react', '@base-ui/react', '@codemirror/view', 'dockview-react', 'mediabunny']) {
+      assert.equal(installedLock.packages['node_modules/' + name].dev, true,
+        'Prebuilt Studio must not redownload its build-only dependency at setup: ' + name);
+    }
+    for (const name of ['hyperframes', '@hyperframes/core', '@hyperframes/studio-server', 'gsap', 'puppeteer-core', 'fontkit']) {
+      assert.notEqual(installedLock.packages['node_modules/' + name].dev, true,
+        'Editing/export runtime must remain installable in production: ' + name);
+    }
     assert.equal((await json(path.join(installer, 'package/package.json'))).version, version);
     assert.equal((await json(path.join(installer, 'package/package.json'))).private, false);
     const bundled = path.join(installer, 'package/payload');
@@ -138,13 +151,15 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const cli = path.join(installer, 'package', metadata.bin.openmotion);
     assert.equal((await runFile(process.execPath, [cli, '--version'])).trim(), version);
     const help = await runFile(process.execPath, [cli, 'setup', '--help']);
+    assert(help.includes('--onboarding-output'), 'The prebuilt installer must expose the no-reload presentation route');
     for (const host of ['codex', 'claude', 'deepseek', 'workbuddy']) assert(help.includes(host), host);
     await readFile(path.join(installer, 'package/LICENSE'));
     assert.deepEqual((await readdir(path.join(application, 'skills'))).sort(), [...packagedSkills].sort());
-    assert.equal(release.skills.length, 5);
+    assert.equal(release.skills.length, packagedSkills.length);
     assert(release.skills.every((name: string) => name.startsWith('openmotion-')));
     assert.match(await readFile(path.join(application, 'skills/openmotion-production/agents/openai.yaml'), 'utf8'), /OpenMotion Production/);
-    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
+    assert.match(await readFile(path.join(application, 'skills/openmotion-media/agents/openai.yaml'), 'utf8'), /OpenMotion Media/);
+    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-media/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/typography.md', 'skills/openmotion-production/references/fonts.md', 'skills/openmotion-production/fonts/catalog.json', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
       assert.equal(await readFile(path.join(application, document), 'utf8'), await readFile(document, 'utf8'));
     }
     assert.equal(await sha256(path.join(application, 'package-lock.json')), release.locks.npm);
@@ -152,21 +167,27 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const entries = await runFile('tar', ['-tf', built.application]);
     assert(!/\/(node_modules|runtime)\//.test(entries));
     assert(entries.includes('skills/openmotion-production/SKILL.md'));
-    for (const file of ['gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-production/references/media-providers/fal.md', 'skills/openmotion-production/references/media-providers/opendesign.md', 'skills/openmotion-production/references/media-providers/atlascloud.md', 'skills/openmotion-production/references/media-providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
+    for (const file of ['shared/provider-registry.ts', 'gateway/connections.ts', 'gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-production/references/media-providers/fal.md', 'skills/openmotion-production/references/media-providers/opendesign.md', 'skills/openmotion-production/references/media-providers/atlascloud.md', 'skills/openmotion-production/references/media-providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
-    assert(entries.includes('skills/openmotion-recreate/scripts/measure_frame.mjs'));
-    assert(entries.includes('skills/openmotion-recreate/references/verify.md'));
+    for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py', 'vision-tools.mjs']) {
+      const filename = 'skills/openmotion-recreate/scripts/' + script;
+      assert(entries.includes(filename), 'Missing recreation helper: ' + script);
+      assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
+    }
+    for (const file of ['rebuild.md', 'reconstruction.md', 'verify.md']) assert(entries.includes('skills/openmotion-recreate/references/' + file), 'Missing recreation reference: ' + file);
     assert(entries.includes('studio/build/index.html'));
+    assert(entries.includes('scripts/inline-onboarding.mjs'));
+    assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
     assert(entries.includes('shared/editor-launch.pl'), 'macOS shared editor launcher must ship');
-    for (const script of ['lint-project.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
+    for (const script of ['vision-runtime.mjs', 'lint-project.mjs', 'recover-workspace-lock.ts', 'cleanup-harness-bundles.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
     await readFile(path.join(installer, 'package/scripts/check-installed-mcp.mjs'));
     const diagnosticFile = path.join(directory, 'packaged-diagnostics.zip');
     await runFile(process.execPath, [cli, 'diagnostics', '--home', path.join(directory, 'not-installed'), '--output', diagnosticFile]);
     assert.match(await runFile('unzip', ['-p', diagnosticFile, 'metadata.json']), new RegExp(version.replaceAll('.', '\\.')));
     assert.equal((await json(path.join(application, 'shared/build-info.json'))).commit, release.commit);
-    assert(entries.includes('shared/workflow-entry.js'), 'Workflow discovery must ship with the five Skills');
+    assert(entries.includes('shared/workflow-entry.js'), 'Workflow discovery must ship with the packaged Skills');
     assert(!entries.split('\n').some(file => file.split('/').some(part => part.startsWith('._'))), 'Do not distribute macOS file metadata');
     assert(entries.includes('template-library/NOTICE.md'));
     assert(!entries.includes('studio/build/index.html.map'));
