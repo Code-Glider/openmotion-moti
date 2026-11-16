@@ -1,4 +1,4 @@
-"""Run through motion_tools.mjs python using the managed vision runtime."""
+"""Run through vision-tools.mjs python using the managed vision runtime."""
 
 import importlib.util
 import json

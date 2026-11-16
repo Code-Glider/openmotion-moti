@@ -38,7 +38,7 @@ test('native cold, concurrent, offline and copied-Skill vision paths work withou
   const env = { ...visionEnvironment(), PYTHONHOME: path.join(directory, 'invalid'), PYTHONPATH: path.join(directory, 'poison'), VIRTUAL_ENV: path.join(directory, 'absent'), PYTHON: 'missing-python', UV_PYTHON: 'missing-python' };
   await mkdir(env.PYTHONPATH);
   await writeFile(path.join(env.PYTHONPATH, 'cv2.py'), 'raise RuntimeError("Host Python path was used")');
-  const entry = path.join(application, 'skills/openmotion-recreate/scripts/motion_tools.mjs');
+  const entry = path.join(application, 'skills/openmotion-recreate/scripts/vision-tools.mjs');
   const run = (...args) => runFile(process.execPath, [entry, ...args], { cwd: directory, env });
   const identity = JSON.parse(await run('python', '-c', 'import sys,numpy,cv2,json; print(json.dumps(dict(executable=sys.executable,numpy=numpy.__file__,opencv=cv2.__file__)))'));
   for (const filename of Object.values(identity)) assert(filename.startsWith(first.directory + path.sep));
@@ -58,7 +58,7 @@ test('native cold, concurrent, offline and copied-Skill vision paths work withou
     const destination = path.join(directory, layout, 'skills/openmotion-recreate');
     await cp(path.dirname(path.dirname(entry)), destination, { recursive: true });
     await writeFile(path.join(layout === 'flat' ? destination : path.dirname(path.dirname(destination)), layout === 'flat' ? 'openmotion-install.json' : 'scope.json'), JSON.stringify({ runtimeRoot: application }));
-    const copied = JSON.parse(await runFile(process.execPath, [path.join(destination, 'scripts/motion_tools.mjs'), 'prepare'], { cwd: os.tmpdir(), env }));
+    const copied = JSON.parse(await runFile(process.execPath, [path.join(destination, 'scripts/vision-tools.mjs'), 'prepare'], { cwd: os.tmpdir(), env }));
     assert.equal(copied.python, first.python);
   }
   // A complete ZIP's configured plugin is copied into a host cache. Its scope
@@ -73,7 +73,7 @@ test('native cold, concurrent, offline and copied-Skill vision paths work withou
   await runFile(process.execPath, [path.join(application, 'scripts/configure-plugin.mjs')]);
   const hostCache = path.join(directory, 'complete-plugin-cache');
   await cp(path.join(application, 'plugin'), hostCache, { recursive: true });
-  const complete = JSON.parse(await runFile(process.execPath, [path.join(hostCache, 'skills/openmotion-recreate/scripts/motion_tools.mjs'), 'prepare'], { env }));
+  const complete = JSON.parse(await runFile(process.execPath, [path.join(hostCache, 'skills/openmotion-recreate/scripts/vision-tools.mjs'), 'prepare'], { env }));
   assert.equal(complete.python, first.python);
   // Incomplete installations are retried, with verified downloads reused offline.
   await writeFile(path.join(first.directory, 'ready.json'), '{interrupted');

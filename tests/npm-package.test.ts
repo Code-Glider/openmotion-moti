@@ -164,7 +164,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
-    for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py', 'motion_tools.mjs']) {
+    for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py', 'vision-tools.mjs']) {
       const filename = 'skills/openmotion-recreate/scripts/' + script;
       assert(entries.includes(filename), 'Missing recreation helper: ' + script);
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));

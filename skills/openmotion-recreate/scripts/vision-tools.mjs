@@ -34,7 +34,7 @@ async function runtimeRoot() {
 
 try {
   const [command, ...args] = process.argv.slice(2);
-  assert(['register', 'measure', 'python', 'prepare'].includes(command), 'Usage: node motion_tools.mjs register|measure|python|prepare [arguments]');
+  assert(['register', 'measure', 'python', 'prepare'].includes(command), 'Usage: node vision-tools.mjs register|measure|python|prepare [arguments]');
   const root = await runtimeRoot();
   const { ensureVisionRuntime, visionEnvironment } = await import(pathToFileURL(path.join(root, 'scripts/vision-runtime.mjs')).href);
   const config = await ensureVisionRuntime(root);

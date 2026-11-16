@@ -122,7 +122,7 @@ def main():
         import numpy as np
         import cv2
     except ImportError:
-        parser.exit(2, 'Run this helper through node motion_tools.mjs register or measure to prepare its managed Python dependencies.\n')
+        parser.exit(2, 'Run this helper through node vision-tools.mjs register or measure to prepare its managed Python dependencies.\n')
     if not np.isfinite([args.start, args.end]).all() or args.start < 0 or args.end <= args.start or args.max_width < 64:
         parser.error('Use finite times with 0 <= start < end and --max-width of at least 64.')
     if args.output is None and args.output_roi is not None:
