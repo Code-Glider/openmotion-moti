@@ -13,6 +13,7 @@ import { validateInput, phase1Tools } from '../shared/phase1-tools.ts';
 import { transport } from './http.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from '../shared/asset-limits.ts';
 import { sessionPath } from '../shared/workspace-url.ts';
+import { stampProjectHfIds } from '@hyperframes/studio-server/hf-ids';
 
 function api(store: any) { return new Phase1Service(store, pluginRoot, {
   origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {},
@@ -25,6 +26,78 @@ const edit = (service: Phase1Service, p: any, content: string) => service.call('
   requestId: crypto.randomUUID(), projectId: p.projectId, expectedRevision: p.revision,
   expectedVersionId: p.version.versionId, files: [{ path: 'note.txt', content }],
 });
+
+test('guarded preview accepts native ID stamping and returns its current version on first open and after edits', () => fixture(async store => {
+  const service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async id => stampProjectHfIds(store.projectDirectoryFor(id)),
+    mutation: async task => task(), cancel: async () => {},
+  });
+  let current = await create(service);
+  for (let i = 0; i < 2; i++) {
+    if (i) current = await service.call('openmotion_edit_project', {
+      projectId: current.projectId, requestId: 'add-element', expectedRevision: current.revision, expectedVersionId: current.currentVersionId,
+      files: [{ path: 'index.html', content: current.project.html.replace('</div>', '<div id="new-label">Preview label</div></div>') }],
+    });
+    const versionId = current.currentVersionId ?? current.version.versionId;
+    const opened = await service.call('openmotion_open_preview', { projectId: current.projectId, expectedRevision: current.revision, expectedVersionId: versionId });
+    assert.notEqual(opened.revision, current.revision);
+    assert.equal(opened.currentVersionNumber, current.version.versionNumber + 1);
+    assert.match(opened.project.html, /data-hf-id=/);
+    assert.equal(opened.previewHandoff.revision, opened.revision);
+    assert.equal(opened.previewHandoff.versionId, opened.currentVersionId);
+    await assert.rejects(service.call('openmotion_open_preview', { projectId: current.projectId, expectedRevision: current.revision, expectedVersionId: versionId }), /VERSION_CONFLICT/);
+    current = opened;
+  }
+}, false));
+
+test('guarded preview preserves empty IDs when native stamping adds no attributes in a secondary file', () => fixture(async store => {
+  const service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async id => stampProjectHfIds(store.projectDirectoryFor(id)),
+    mutation: async task => task(), cancel: async () => {},
+  });
+  const created = await create(service);
+  const secondary = '<div data-composition-id="secondary" data-hf-id=""><span data-hf-id="">Secondary</span></div>';
+  const current = await service.call('openmotion_edit_project', {
+    projectId: created.projectId, requestId: 'empty-secondary-ids', expectedRevision: created.revision, expectedVersionId: created.currentVersionId,
+    files: [{ path: 'compositions/secondary.html', content: secondary }],
+  });
+  const opened = await service.call('openmotion_open_preview', { projectId: current.projectId, expectedRevision: current.revision, expectedVersionId: current.version.versionId });
+  assert.notEqual(opened.revision, current.revision);
+  assert.equal(opened.currentVersionNumber, current.version.versionNumber + 1);
+  assert.match(opened.project.html, /data-hf-id=/);
+  assert.equal(await readFile(path.join(store.projectDirectoryFor(current.projectId), 'compositions/secondary.html'), 'utf8'), secondary);
+  const repeated = await service.call('openmotion_open_preview', { projectId: opened.projectId, expectedRevision: opened.revision, expectedVersionId: opened.currentVersionId });
+  assert.equal(repeated.revision, opened.revision);
+  assert.equal(repeated.currentVersionId, opened.currentVersionId);
+}, false));
+
+test('guarded preview rejects real edits and same-content restores made during native opening', () => fixture(async store => {
+  let opening: (id: string) => Promise<void> = async () => {};
+  const service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: id => opening(id),
+    mutation: async task => task(), cancel: async () => {},
+  });
+  let current = await create(service);
+  opening = async id => {
+    stampProjectHfIds(store.projectDirectoryFor(id));
+    await writeFile(path.join(store.projectDirectoryFor(id), 'person.txt'), 'Concurrent edit');
+  };
+  await assert.rejects(service.call('openmotion_open_preview', { projectId: current.projectId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId }), /VERSION_CONFLICT/);
+  assert.equal(await readFile(path.join(store.projectDirectoryFor(current.projectId), 'person.txt'), 'utf8'), 'Concurrent edit');
+  current = await service.call('openmotion_get_project', { projectId: current.projectId });
+  opening = async id => {
+    const versions = service.versions(id);
+    await versions.withHistory(async history => {
+      const target = (await versions.index()).versions.find(version => version.versionId === current.currentVersionId)!;
+      const changed = await versions.transaction(history, current.revision, current.currentVersionId, 'during-open-edit',
+        [{ path: 'person.txt', content: 'Temporary change' }], { label: 'Concurrent edit' });
+      await versions.restore(history, target, changed.revision, changed.version.versionId, 'during-open-restore');
+    });
+  };
+  await assert.rejects(service.call('openmotion_open_preview', { projectId: current.projectId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId }), /VERSION_CONFLICT/);
+}, false));
 
 test('MCP validation failures remain unchanged while local diagnostics record the failure', () => fixture(async store => {
   const service = api(store);

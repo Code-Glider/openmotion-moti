@@ -17,13 +17,21 @@ When selecting, obtaining or replacing media, apply the [shared material policy]
 
 ## Final video delivery
 
-Unchanged-template requests for HTML/project or MP4 files use [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md). Its version-pinned parallel delivery and scoped reading/check sequence take precedence over the authoring work-round flow below; retain the actual final-file checks and separate editor presentation status.
+### Delivery scope
+
+The current request selects the delivery stage. Editor-only, draft, review and existing-link requests do not create an export. Requested HTML/project files need packaging and source/editor checks; an MP4 request also needs the completed export's technical and actual-file playback checks under [verification scope](verification.md#verification-scope).
+
+File-only delivery of already accepted content follows [source pinning](native.md#pin-source-for-independent-deliverables), without creating an authoring work round or loading creative design. Begin a work round only if the discovered final-video presentation Tool requires a workId. The selected creative entry composes these operations; it does not override shared version, verification or display requirements. Actual creation/content editing follows the work-round flow below.
 
 During generation and editing, do not create an inline progress or video component and do not open the right-hand editor for intermediate saves. Begin a business work round silently with `openmotion_open_preview({action:"begin",projectId,requestId,mode:"create"|"modify"})`; retain `inlineWork.id` as `workId` through saves and the final export. This call presents no UI.
 
 Once the final authored video and supporting assets are ready for preview, complete the editable Studio handoff on the right. Do not open an empty carrier or partial draft merely to show activity. Explicit editor-only or show-now requests retain their scope, and an explicit background preference still skips presentation.
 
 For an actual video creation/content-edit turn, render the final version once. Wait for its MP4 export to complete and pass technical verification, then call the discovered `openmotion_show_video({projectId,workId})` once to display the final video in the chat. No intermediate, queued, checking or rendering state creates a chat video frame. The player loads that fixed completed export; earlier final videos retain their own versions. This final playback does not require a separate download request. Hosts without the presentation Tool keep the existing file/player delivery path. Explicit editor-only work, unchanged template opening, reviews and existing-link requests do not start an unwanted render.
+
+Call `openmotion_show_video` in its own host tool call, not in a script/batch with other commands. Bound this final presentation wait to about 60 seconds. If it has not returned, immediately give the already verified MP4's absolute file path and finish, stating that chat presentation is pending. Do not inspect plugin source, build a custom playback page or repeatedly retry presentation. Keep the completed export identity and prior checks; this timeout does not waive actual-file playback checks or prove the player is visible.
+
+Keep editor display evidence separate: only submit `record_display` for a current editor state actually observed under the [shared handoff](native.md#continuing-edits). A presentation timeout cannot turn a pending/hidden/unavailable editor into confirmed delivery. Report the latest observed editor limitation alongside the file; do not start a new presentation recovery loop after this deadline.
 
 The final player and the editable Studio are separate delivery surfaces. Verify the actual final player and the current editor handoff; source save, a Tool success or a completed render does not prove either surface is visible or playable.
 
@@ -48,7 +56,7 @@ If only an independent folder can be produced, state that the editable Studio ha
 
 1. Reuse complete guidance already read. Installed Skills and MCP resources/read provide the same documents; production start only routes a task that lacks a specialist. Changes to existing content use [edit workflow](edit.md). Missing instructions/source reads return to the model before dependent writes.
 2. Reuse the target projectId or explicitly create a new one. Read its current revision and content version. No global most-recent project fallback. Five is a list page size, not a retention policy.
-3. Use returned asset paths and native HTML/CSS/JS. Import and file save are separate operations. For BYOK image, video, speech or music generation, follow [openmotion-media](../../openmotion-media/SKILL.md); pure motion graphics stay native without it. Select sources by content need and tools by matching capability under the [shared material policy](materials.md#tool-selection-and-discovery): prefer OpenMotion when suitable, and use external tools for capability gaps. Missing media capabilities must be stated.
+3. Use returned asset paths and native HTML/CSS/JS. Import and file save are separate operations. Follow the shared [generation boundary](materials.md#generation-boundary) before entering media generation, and the [material policy](materials.md#tool-selection-and-discovery) to select matching sources and capabilities.
 4. Follow the [native loop](native.md), preserve locked content and existing Studio manifests. Inspect actual frames, motion and sound. A saved source file or successful lint is not creative acceptance.
 5. Export for a requested finished video or content-edit delivery; do not export explicit draft, editor-only or review-only work. Reuse an applicable job before submitting another. Save a stable requestId per action: exact retry returns the original outcome; changed input with the same requestId is rejected. Failed request correction uses a new requestId.
 6. Poll the named job through project details. Only completed exposes its real MP4 and technical verification. Inspect [final playback and evidence](verification.md) separately; record unavailable checks as not_run.

@@ -30,7 +30,7 @@ Source builds after the OpenMotion naming change register the plugin/MCP server 
 
 Users provide Node.js 22.18+ with npm and their Agent host. Builds use the Node version pinned in CI. npm installs locked production dependencies with `npm ci --omit=dev --ignore-scripts`. Setup starts FFmpeg, ffprobe and browser preparation in a detached background worker. MCP connection, source editing and ordinary preview do not wait; Studio displays readiness and retry. `prepare` remains an explicit wait/retry command. Node, native binaries, node_modules, user projects and credentials are not bundled in this npm format. It is not an offline package. Complete platform ZIPs remain a backup.
 
-The embedded application uses `scripts/distribution.ts`'s positive file list: MCP/backend, prebuilt Studio, five Skills and references, bundled examples, npm/native locks, licenses and approved documentation. Remote Prism templates are fetched separately. The embedded manifest omits the containing tgz's hash; the external delivery manifest records that hash without a circular self-reference.
+The embedded application uses `scripts/distribution.ts`'s positive file list: MCP/backend, prebuilt Studio, five Skills and references, bundled examples, npm/native locks, licenses and approved documentation. The installed application fetches the latest OpenMotion template catalog from the OpenMotion hosted CDN `main` pointer; the website continues to use its CMS publication. The embedded manifest omits the containing tgz's hash; the external delivery manifest records that hash without a circular self-reference.
 
 The npm page uses the repository's product `README.md`. Packaging resolves its relative documentation and image links against the exact source commit, while the embedded application keeps the original local links. The installation manual remains in the application docs; it is not the npm landing page. Published test.6 contains the earlier installation-manual README; the correction takes effect with the next separately authorized npm version, not by editing GitHub alone.
 
@@ -81,7 +81,7 @@ These are documented commands, not proof of Windows acceptance. Use a directly e
 
 ## Test template data (DEV)
 
-New explicitly versioned test npm packages default to **DEV**; stable packages default to **prod**. Existing published versions retain their original environment (test.6 used prod). To test Prism templates, publish the resource to **DEV**, then download an accepted DEV candidate or build one locally:
+New explicitly versioned test npm packages default to **DEV**; stable packages default to **prod**. Existing published versions retain their original environment (test.6 used prod). New NPM packages read the same hosted main template catalog in both environments. DEV/prod controls workspace defaults and explicit CMS routing. To test a DEV application, download an accepted candidate or build one locally:
 
 ```sh
 npm run package:npm -- dist/npm-dev 0.6.4-test.1 --template-env=dev
@@ -93,7 +93,7 @@ The environment is embedded in `shared/template-config.json`; the resulting `ins
 
 For **source development**, Studio and MCP now default to repository templates when `library/templates/catalog/` exists. Use `MOTION_TEMPLATE_SOURCE=cms MOTION_TEMPLATE_ENV=dev MOTION_DATA_DIR=/absolute/isolated-dev-data npm run mcp` only when testing the DEV CMS publication. The local template startup and plugin paths are documented in [the repository workflow](template-repository.md#run-from-a-local-clone). For an installed package, advanced overrides must be supplied to the actual MCP/Agent process and inherited by the backend. Setting a shell variable only while running setup does not persist it into a later GUI host. Stop the owned old backend and reconnect after changing configuration. Prefer the embedded DEV package over editing installed files or sharing production data.
 
-There is no automatic fallback from prod to DEV and no `switch-env` CLI. This selects the template catalog, not model keys, accounts or every remote service.
+There is no automatic fallback from prod to DEV and no `switch-env` CLI. In explicit CMS mode the environment selects the template catalog; hosted main discovery is independent of it. It does not select model keys, accounts or every remote service.
 
 ## Host adapters and ownership
 

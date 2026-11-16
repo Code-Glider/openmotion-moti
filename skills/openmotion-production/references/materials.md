@@ -2,6 +2,10 @@
 
 需要选择、获取或替换视觉与声音素材时读取；仅查看、预览或导出既有内容不触发本页。各制作入口共用此规则，沿用当前工程与创作决定，不重新选路。
 
+## Generation boundary
+
+Without an explicit request to generate an asset, when native visuals meet the brief and no new narration or music is needed, do not call, suggest or ask about media generation. Native visuals do not mean the soundtrack is already supplied: new speech or music can still require generation. Enter [media generation](../../openmotion-media/SKILL.md) only for an explicit generation request or a real missing visual/audio asset, within the user's existing authorization; obtain spend consent when it is missing. Preserve user-provided media and approved material instead of generating replacements without need.
+
 ## Tool selection and discovery
 
 Choose the material source from its content role before selecting tools, following the source rules below. Real events and identifiable subjects need corresponding original material; original scenes and supporting expression may use generation or native graphics. For a League of Legends champion's award-ceremony photo, search official or original published photos. Image generation is not a matching capability for retrieving that real event.
@@ -32,11 +36,11 @@ If available tools cannot supply the material, report the specific gap and conti
 
 在实际最大取景下检查主体轮廓、细节、结构与文字、光影材质、身份一致性，以及裁切、背景能否支撑构图和所需动作。不合格就更换或修正，再扩建影片。声音素材核对内容、可用时段和用途；实际听感另行试听，未审听如实记录。生成成功、标称分辨率高或文件已导入，都不能替代可用性检查。
 
-复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](../../openmotion-director/references/production-decisions.md)。
+复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](decisions.md)。
 
 ## BYOK provider references
 
-Pure motion graphics stay native in code: do not call, suggest or ask about generation. When a task genuinely needs generated imagery, footage, speech or music, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
+Apply the [generation boundary](#generation-boundary) above. When it selects generation, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
 
 Read only the selected provider's document for model queries, request templates, polling and error interpretation:
 

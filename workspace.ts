@@ -40,10 +40,10 @@ export type ExportJob = { id: string; projectId?: string; versionId?: string; re
   createdAt: number; acceptedAt?: number; deadlineAt?: number; terminalAt?: number; observedOutcome?: 'success' | 'failure' | 'unknown' | 'cancelled'; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
 export class Conflict extends Error { constructor() { super('工程已经被 Studio 或 Agent 更新，请重新读取 revision 后再修改。'); } }
 
-export function projectPath(name: string): string {
+export function projectPath(name: string, includeDependencies = false): string {
   if (studioManifests.includes(name)) return name;
   if (typeof name !== 'string' || !name || name.length > 240 || name.includes('\\') || name.includes(':') || /[\x00-\x1f]/.test(name)
-    || name.split('/').some(part => !part || part.startsWith('.') || ignored.has(part))) throw new Error('工程文件路径无效：' + name);
+    || name.split('/').some((part, index) => !part || part.startsWith('.') || ignored.has(part) && !(includeDependencies && index > 0 && part === 'dist'))) throw new Error('工程文件路径无效：' + name);
   return name;
 }
 function alive(pid?: number) { try { if (!pid) return false; process.kill(pid, 0); return true; } catch { return false; } }
@@ -261,8 +261,8 @@ export class WorkspaceStore {
     return { size: info.size, hash: await cached.hash };
   }
 
-  async safePath(name: string, directory = this.projectDirectory) {
-    projectPath(name);
+  async safePath(name: string, directory = this.projectDirectory, includeDependencies = false) {
+    projectPath(name, includeDependencies);
     let target = directory;
     for (const part of ['', ...name.split('/')]) {
       if (part) target = path.join(target, part);
@@ -271,18 +271,18 @@ export class WorkspaceStore {
     }
     return target;
   }
-  async files(directory = this.projectDirectory): Promise<SourceFile[]> {
+  async files(directory = this.projectDirectory, includeDependencies = false): Promise<SourceFile[]> {
     const files: SourceFile[] = [];
     const collect = async (name: string) => {
-      const filename = await this.safePath(name, directory);
+      const filename = await this.safePath(name, directory, includeDependencies);
       files.push({ path: name, ...await this.fileInfo(filename) });
       if (files.length > 5000) throw new Error('工程文件数超过 5000');
     };
     const walk = async (folder: string) => {
       for (const entry of await readdir(path.join(directory, folder), { withFileTypes: true })) {
-        if (entry.name.startsWith('.') || ignored.has(entry.name)) continue;
+        if (entry.name.startsWith('.') || ignored.has(entry.name) && !(includeDependencies && folder && entry.name === 'dist')) continue;
         const name = folder ? folder + '/' + entry.name : entry.name;
-        projectPath(name);
+        projectPath(name, includeDependencies);
         if (entry.isSymbolicLink()) throw new Error('工程不支持符号链接：' + name);
         if (entry.isDirectory()) await walk(name);
         else if (entry.isFile()) await collect(name);
@@ -428,12 +428,15 @@ export class WorkspaceStore {
       job.outputName = renderFilenameStem(this.projectCatalog().projects.find(project => project.id === this.projectId)?.title) + '.mp4';
       const snapshot = this.snapshotDirectory(job.id);
       try {
-        for (const file of current.project.files) {
-          const source = await this.safePath(file.path);
+        // Native history omits dist trees, but render inputs must retain local vendored libraries.
+        const files = await this.files(this.projectDirectory, true), fingerprint = this.revision(files);
+        for (const file of files) {
+          const source = await this.safePath(file.path, this.projectDirectory, true);
           const destination = path.join(snapshot, file.path);
           await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination, constants.COPYFILE_FICLONE);
         }
-        if (this.revision(await this.files(snapshot)) !== expectedRevision || (await this.get()).revision !== expectedRevision) throw new Conflict();
+        if (this.revision(await this.files(snapshot)) !== expectedRevision || (await this.get()).revision !== expectedRevision
+          || this.revision(await this.files(snapshot, true)) !== fingerprint || this.revision(await this.files(this.projectDirectory, true)) !== fingerprint) throw new Conflict();
         job.expected = await exportExpectation(this.directory, snapshot);
         if (audio) job.expected.audio = audio;
         await atomic(path.join(this.directory, 'jobs', job.id, 'job.json'), JSON.stringify(job));

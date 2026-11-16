@@ -83,7 +83,7 @@ All Agent installation entries share the [installation-success reply rules](inst
 
 用户明确要求 Agent 使用某个模板时，进入 [openmotion-template-to-video](../skills/openmotion-template-to-video/SKILL.md)，沿用准确模板 ID、原生时长和默认内容。未选模板只回复“体验”时先问具体模板；拒绝或暂不体验则停止。不固定推荐模板，不重复追问可选素材，也不静默替换失败模板。
 
-创建后保留原有工作；同一次体验已创建则续用。按[首次体验交付规则](../skills/openmotion-production/references/templates.md#first-run-experience-defaults)打开并检查真实可编辑工程，用户要求视频文件时才导出。
+创建后保留原有工作；同一次体验已创建则续用。按[首次体验交付规则](../skills/openmotion-template-to-video/references/first-use.md#first-run-experience-defaults)打开并检查真实可编辑工程，用户要求视频文件时才导出。
 
 ### 开始创作
 

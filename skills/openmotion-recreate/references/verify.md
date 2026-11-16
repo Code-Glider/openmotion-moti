@@ -10,6 +10,7 @@ Inspect representative frames of the exported file at the delivered size:
 
 - Every requested change is present, and the reference's brand does not remain anywhere it was meant to be replaced.
 - Unchanged parts and the reference's craft (density, camera motion, type) still look like the original.
+- A shot produced as generated media matches the original shot's role, framing, subject type, motion and timing; judge it by those, not by pixel or identity match. Native text, logos and UI above it pass the same checks as everywhere else. Record which shots are generated.
 - Text fits, media crops correctly, and the original's hard cuts stay hard unless a change removed them.
 
 Compare close crops of objects whose shape carries meaning, including any detail the user reported as wrong, at corresponding reference and output times. Check silhouette and orientation as well as size, colour, label placement and motion. Keep these visual results separate from the numerical checks below: the measurer reports brightness, detail, colour and bounds, not whether a pointer, icon or logo has the correct contour. Passing global metrics or equal element heights cannot clear a visibly wrong shape.
@@ -35,6 +36,8 @@ After assembling a dense multi-unit film, use the available, authorized delegati
 Verify the consequence of each meaningful interaction, not only the moving actor. Compare the affected content before, during and after the action in both videos. A drag-to-reorder check must show the dragged module following contact, the displaced module yielding and the expected final ordering persisting after release. Record a missing or incorrect state change as failed even when pointer geometry, trajectory and whole-frame metrics pass.
 
 ## 3. Measure with numbers
+
+For shots produced as generated media, whole-frame brightness, detail and accent values are diagnostic, not pass/fail gates or reasons to regenerate: judge those shots by role, framing, subject type, motion and timing. Keep every numeric gate for native text, logos, UI and other regions meant to match the reference, and all final-file technical checks.
 
 Looking is not enough: complete this step before reporting the recreation as checked. If tools or reference frames remain unavailable after recovery, record the affected check as blocked with its cause; do not omit it or treat it as passed. Measure at least one moment in every segment you found while reading the reference (the parts between cuts and major changes), including the opening, the densest frame and the ending frame (or the end card when there is one). In a segment that moves, such as a zoom, camera move or transition, pick a moment in the middle of the movement, not a hold before or after it. For each moment, view both frames at the delivered size and run the measurer bundled with this Skill (the Skill directory is the one holding this Skill's `SKILL.md`):
 

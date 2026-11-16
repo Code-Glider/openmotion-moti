@@ -81,7 +81,10 @@ function falUrl(raw: unknown): string {
 const fal: ProviderAdapter = {
   async generate(job, ctx) {
     const headers = { Authorization: `Key ${ctx.key}`, 'Content-Type': 'application/json' };
-    const promptField = job.model.mode === 'text-to-speech' && job.model.modelId !== 'fal-ai/kokoro/american-english' ? 'text' : 'prompt';
+    // Sound effects use text too; the input key does not make a model a speech model.
+    const textInput = ['fal-ai/elevenlabs/sound-effects', 'fal-ai/elevenlabs/sound-effects/v2', 'elevenlabs/sound-effects/v3', 'fal-ai/elevenlabs/sound-effects/v3'].includes(job.model.modelId)
+      || job.model.mode === 'text-to-speech' && job.model.modelId !== 'fal-ai/kokoro/american-english';
+    const promptField = textInput ? 'text' : 'prompt';
     const payload = { ...job.model.defaults, ...job.parameters, [promptField]: job.prompt };
     const submitted = await apiJson(ctx.fetcher, `${falOrigin}/${job.model.modelId}`, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctx.signal });
     const statusUrl = falUrl(submitted.status_url), resultUrl = falUrl(submitted.response_url);
