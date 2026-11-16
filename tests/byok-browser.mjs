@@ -162,7 +162,8 @@ try {
   await page.waitForFunction(() => document.querySelector('.om-account-metrics')?.textContent.includes('12.50'));
   await shot('account-connected-light');
   await settings('Model providers');
-  await page.waitForFunction(() => document.querySelectorAll('.om-model-row').length === 5);
+  // The account catalogue holds five media rows (image, video, speech, the plain image model and music) and two language models.
+  await page.waitForFunction(() => document.querySelectorAll('.om-model-row').length === 7);
   await shot('account-models-light');
   await settings('Default Agent & models');
   const chooseImage = async (provider, model) => {

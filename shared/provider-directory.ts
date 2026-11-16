@@ -23,6 +23,8 @@ export type ModelMetadata = {
 export type DirectoryModel = ModelMetadata & {
   id: string; provider: string; modelId: string; label: string; kind: ModelKind;
   enabled: boolean; source: 'builtin' | 'live' | 'custom'; mode?: string;
+  /** Accepts one input image to edit; set only from the provider's own capability data. */
+  supportsImageReference?: boolean;
 };
 export type ProviderDirectory = {
   providers: ProviderConnection[]; models: DirectoryModel[];
