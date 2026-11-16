@@ -27,6 +27,10 @@ test('a negotiated native presentation is discoverable, readable and project-fre
   assert.equal(listed.result.tools.length, 16);
   const definition = listed.result.tools.find((tool: any) => tool.name === name);
   assert.equal(definition.annotations.readOnlyHint, true);
+  assert.match(definition.description, /onboarding=false/);
+  assert.match(definition.description, /welcomeMarkdown.*final reply/);
+  assert.doesNotMatch(definition.description, /set onboarding=true/);
+  assert.match(definition.inputSchema.properties.onboarding.description, /[Ll]egacy/);
   const shown = await call('tools/call', { name, arguments: { templateIds: ids } });
   assert.equal(shown.result.isError, undefined);
   assert.deepEqual(shown.result.structuredContent.cards.map((card: any) => card.templateId), ids);
