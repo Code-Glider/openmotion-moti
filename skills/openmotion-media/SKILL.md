@@ -3,7 +3,7 @@ name: openmotion-media
 description: >-
   Generate, poll and inspect individual image, video, speech or music assets through
   openmotion_media_use (configured Atlas Cloud, fal.ai, WaveSpeedAI or OpenDesign Cloud BYOK
-  providers), either when delegated by an OpenMotion film workflow or for a standalone
+  providers, or a signed-in OpenDesign account), either when delegated by an OpenMotion film workflow or for a standalone
   asset-generation request. Never invoke for pure motion graphics that native HTML/CSS/SVG/Canvas/GSAP/Three.js
   can build directly. Not a whole-film entry point: route original video creation to openmotion-director,
   template adaptation to openmotion-template-to-video, reference-video recreation to openmotion-recreate,
@@ -42,7 +42,7 @@ Run read-only discovery and obtain consent before submitting any paid generation
    - Never silently switch to an unapproved paid provider.
 2. Call `action: "reference"` with the selected provider ID from `inspect` and read only that provider's guide ([Atlas Cloud](../openmotion-production/references/media-providers/atlascloud.md), [fal.ai](../openmotion-production/references/media-providers/fal.md), [WaveSpeedAI](../openmotion-production/references/media-providers/wavespeed.md), [OpenDesign Cloud](../openmotion-production/references/media-providers/opendesign.md), [OpenDesign account](../openmotion-production/references/media-providers/account.md) or [registered compatible APIs](../openmotion-production/references/media-providers/compatible.md)) for endpoint rules, supported modes and parameter schemas.
 3. Call `action: "models", provider, modality, refresh: true` (add `query` to narrow large catalogs). Pick a model whose documented inputs and outputs match the job. Catalog visibility establishes discoverability; live execution establishes account access.
-4. **Confirm key-spend consent before `action: "generate"`**: Unless the user has already explicitly asked to generate these assets with their configured BYOK provider in the current task, state the planned asset list (modality, count or approximate duration, and selected provider/model) and ask whether they agree to consume their configured multimodal API key before calling `action: "generate"`. Batch this consent check with any other upfront task questions rather than asking piecemeal per clip.
+4. **Confirm key-spend consent before `action: "generate"`**: Unless the user has already explicitly asked to generate these assets with their configured BYOK provider or OpenDesign account in the current task, state the planned asset list (modality, count or approximate duration, and selected provider/model) and ask whether they agree to consume their configured multimodal API key (or, for provider `account`, their OpenDesign account credits) before calling `action: "generate"`. Batch this consent check with any other upfront task questions rather than asking piecemeal per clip.
 
 ## 2. Submit, poll and classify failures from evidence
 

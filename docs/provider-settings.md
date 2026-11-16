@@ -12,7 +12,7 @@ The settings directory combines the dedicated media adapters, local Codex, an ac
 | OpenDesign Cloud | Separate workspace key and public HTTPS gateway origin | Existing image/video/speech contract |
 | OpenAI-compatible API | Versioned base URL, Bearer key, `/models` or manual entries | `/images/generations` and binary `/audio/speech`; voice required for speech |
 | Anthropic / Google Gemini API | Provider-specific catalogue auth and pagination | Catalogue/default configuration only; no generic media adapter |
-| OpenDesign account | Browser authorization, subscription/balance, remote language/media catalogues | Connector image/video/speech tasks |
+| OpenDesign account | Browser authorization, subscription/balance, remote language/media catalogues | Connector image/video/speech/music tasks; one-image editing where the account's image model supports edits |
 | Local Codex | Existing CLI installation/login/capability detection | Existing native image capability |
 | Dedicated OAuth, cloud IAM or local-network services | Presets are visible with a dedicated-integration notice | Not implied by a preset; no unimplemented login or local API is presented as working |
 
