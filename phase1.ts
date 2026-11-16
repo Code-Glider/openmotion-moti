@@ -1,4 +1,5 @@
 import { probeLibraryMedia } from './gateway/asset-probe.ts';
+import { isFontFilePath, prepareImportedFont } from './shared/import-font.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
 import { requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { recordDiagnostic } from './scripts/diagnostics.mjs';
@@ -167,7 +168,7 @@ export class Phase1Service {
       }
       throw new Error('REQUEST_STATE_UNKNOWN: 原请求未确认终态，未重复执行；请查询项目或任务状态');
     }
-    if (name === 'motion_import_assets') await requireNativeRuntime(pluginRoot, 'media');
+    if (name === 'motion_import_assets' && !args.items.every((item: any) => isFontFilePath(item.sourcePath))) await requireNativeRuntime(pluginRoot, 'media');
     if (name === 'motion_export_request' && args.action !== 'record_review') await requireNativeRuntime(pluginRoot, 'export');
     const record = { inputHash, name, state: 'pending', projectId: name === 'motion_create_project' ? crypto.randomUUID() : args.projectId,
       sessionId: args.sessionId ?? crypto.randomUUID(), createdAt: Date.now() };
@@ -459,6 +460,15 @@ export class Phase1Service {
             if (!isAssetFileWithinLimit(await stat(staged))) throw new Error('ASSET_TOO_LARGE_OR_NOT_FILE: max 500 MB (500000000 bytes)');
             const sha256 = await fileHash(staged);
             if (item.expectedSha256 && sha256 !== item.expectedSha256) throw new Error('ASSET_CONTENT_CHANGED: library bytes no longer match this version');
+            if (isFontFilePath(item.sourcePath)) {
+              const assetId = crypto.randomUUID();
+              const prepared = await prepareImportedFont(staged, item.licensePath, assetId, staging, this.runtimeRoot);
+              const { changes: fontChanges, ...metadata } = prepared;
+              const asset = { itemId: item.itemId, assetId, inputHash, ...metadata, size: (await stat(staged)).size,
+                sha256: await fileHash(staged), name: item.name ?? path.basename(item.sourcePath) };
+              changes.push(...fontChanges); added.push(asset); items.push({ ...asset, status: 'completed' }); continue;
+            }
+            if (item.licensePath) throw new Error('FONT_LICENSE_REQUIRES_FONT');
             const media = await probeLibraryMedia(staged).catch(error => { throw new Error('INVALID_MEDIA: ' + errorText(error)); });
             const assetId = crypto.randomUUID(), relative = 'assets/imported/' + assetId + '.' + media.extension;
             const asset = { itemId: item.itemId, assetId, inputHash, path: relative, mimeType: media.mimeType, size: media.bytes,

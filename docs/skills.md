@@ -57,7 +57,7 @@ MCP 工具说明和领域执行位于 `mcp-tools.ts`；`mcp.ts` 保留初始化�
 
 | Skill | workflow 短 ID | section |
 | --- | --- | --- |
-| openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials、fal、opendesign、atlascloud、wavespeed |
+| openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials、account、compatible、fal、opendesign、atlascloud、wavespeed、typography、fonts |
 | openmotion-director | director | start、actions、craft、phrases、decisions、sound、review、examples |
 | openmotion-template-to-video | template | start |
 | openmotion-recreate | recreate | start、rebuild、verification |
@@ -111,7 +111,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 - 以 `shared/phase1-tools.ts` 的 Schema 和实际 handler 为准：Skill 规定何时调用及检查结果，不新增 Tool、参数或后台创作 Agent。五个创作入口、支撑 Skill `openmotion-media` 及全部 Markdown 参考都进入公开 Tool 名称回归。
 - 指引通过 resources/read 读取；文件读取与具名任务查询使用 openmotion_get_project；保存使用 openmotion_edit_project；导出使用 openmotion_export_request 并自动技术验证。旧的独立工作流、检查、比较、单素材导入、写文件、导出查询/验证 Tool 不在一期公开契约中。
 - 明确 projectId、requestId、revision 与版本身份；导入和 GUI 保存后读回新版本。创建只建立载体，不分析参考或完成影片。预览会 lint 并选择已有工程，不是纯运行时路径查询。
-- 参考下载/分析、CLI lint/timeline/info、比较视频和 ZIP 打包依赖宿主可用的文件/媒体/执行能力，不能声称由这九个 Tool 提供。独立文件夹使用自己的源文件和固定版本 CLI；托管工程的保存与导入不能绕过版本保护。字体/SVG/PDF/任意二进制不属于本期素材导入格式。
+- 参考下载/分析、CLI lint/timeline/info、比较视频和 ZIP 打包依赖宿主可用的文件/媒体/执行能力，不能声称由这九个 Tool 提供。独立文件夹使用自己的源文件和固定版本 CLI；托管工程的保存与导入不能绕过版本保护。Font files use the existing batch asset import path with real metadata and optional license text; SVG/PDF and arbitrary binary files remain unsupported.
 - 两个模板 Skill 的创作、原样预览复用、源码编辑、参考对照与便携打包规范继续保留。普通复刻交付本次作品；视频转模板交付可反复修改的工程、素材、预览与说明；两者不能仅靠“都有源码”区分。
 
 ## 与通用工程入口方案的融合

@@ -175,7 +175,7 @@ Review the integrated project across joins and repeated appearances, including p
 
 - Images, footage and sound go through `openmotion_import_assets` (PNG, JPEG, WebP, GIF, MP4, WebM, WAV, MP3, OGG, FLAC, AAC, M4A). Import does not place media on the timeline; reference the returned path.
 - SVG logos and vector artwork are text: save them with `openmotion_edit_project`.
-- Font files cannot be imported. Choose type by character (geometric shapes, contrast, x-height, terminals): start with the fonts listed in the authoring guide; when none fits, embed a permitted font as a base64 `@font-face` in a CSS file saved through `openmotion_edit_project`, or name the substitution at delivery.
+- Preserve type character (geometric shapes, contrast, x-height, terminals). Import an available permitted font through `openmotion_import_assets`, retain its license and use the returned actual metadata and relative @font-face CSS. The [curated catalog](../../openmotion-production/references/fonts.md) can supply a candidate when it fits the reference; record any substitution.
 - When replaceable text uses distinctive lettering (pixel, stencil, wide or hand-built wordmark), make any new word settable in that same style: the closest face of the same kind, or lettering built so other words can be set with it. Vectorising only the reference's own word leaves every later edit in a plain fallback font.
 - Keep requested editable wording as addressable text. A calligraphic logo can be an image or vector asset instead.
 
