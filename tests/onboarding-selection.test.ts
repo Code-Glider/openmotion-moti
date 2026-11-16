@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { renderInlineOnboarding } from '../scripts/inline-onboarding.mjs';
 import { loadTemplatePresentation, showTemplateRecommendations } from '../shared/mcp-template-recommendations.ts';
-import { readRecommendation, recreationPrompt } from '../mcp-ui/template-recommendations/app.ts';
+import { mountTemplateCards, readRecommendation, recreationPrompt } from '../mcp-ui/template-recommendations/app.ts';
 import type { TemplateCardsBootstrap } from '../mcp-ui/template-recommendations/types.ts';
 import { onboardingCatalog } from '../scripts/onboarding-catalog.ts';
 import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs';
@@ -46,16 +46,39 @@ test('one preparation freezes a random selection across inline cards and fallbac
   assert(ids.every((id: string) => (onboardingTemplateIds as readonly string[]).includes(id)));
   assert.deepEqual(result.catalog.templates.map((item: any) => item.templateId), ids);
   assert.equal(result.catalog.recommendedTemplateId, ids[0]);
-  const frozen = await readFile(result.inlinePresentation.path, 'utf8');
+  assert.equal(result.inlinePresentation.status, 'native_required');
+  assert.equal(result.inlinePresentation.path, undefined);
+  assert.equal(result.inlinePresentation.presentation.arguments.onboarding, false);
+  assert.match(result.inlinePresentation.welcomeMarkdown, /我是你的开源视频创作搭档/);
+  assert.match(result.inlinePresentation.welcomeMarkdown, /上方卡片/);
+  assert.doesNotMatch(result.inlinePresentation.welcomeMarkdown, /下方|👇/);
+  const presentation = loadTemplatePresentation();
+  const bootstrap = JSON.parse(presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s)![1]);
   const window = new Window(); t.after(() => window.happyDOM.abort());
   window.URL.createObjectURL = () => 'blob:verified'; window.URL.revokeObjectURL = () => {};
-  window.document.body.innerHTML = frozen;
-  for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
+  const root = window.document.createElement('main'); window.document.body.append(root);
+  const ui = mountTemplateCards(root as unknown as HTMLElement, bootstrap, { sendMessage: async () => ({}), getHostCapabilities: () => ({}) });
+  ui.update(showTemplateRecommendations(presentation, result.inlinePresentation.presentation.arguments));
+  assert.equal(window.document.querySelector('.omtc-welcome'), null, 'Welcome must stream as final reply text, outside the native App');
+  t.after(() => ui.destroy());
   const displayed = () => [...window.document.querySelectorAll('.omtc-card')].map(card => card.getAttribute('data-template-id'));
   assert.deepEqual(displayed(), ids);
   (window.document.querySelector('.omtc-cover') as any).click();
   window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   assert.deepEqual(displayed(), ids, 'Detail navigation must not redraw the selection');
+});
+
+test('random selection has all 504 ordered outcomes with equal candidate exposure', () => {
+  const outcomes = new Set<string>(), counts = new Map(onboardingTemplateIds.map(id => [id, [0, 0, 0]]));
+  for (let first = 0; first < 9; first++) for (let second = 0; second < 8; second++) for (let third = 0; third < 7; third++) {
+    const draws = [(first + 0.5) / 9, (second + 0.5) / 8, (third + 0.5) / 7];
+    const result = selectOnboardingTemplateIds(() => draws.shift()!);
+    assert.equal(new Set(result).size, 3);
+    outcomes.add(result.join(','));
+    result.forEach((id, position) => counts.get(id as typeof onboardingTemplateIds[number])![position]++);
+  }
+  assert.equal(outcomes.size, 9 * 8 * 7);
+  for (const positions of counts.values()) assert.deepEqual(positions, [56, 56, 56]);
 });
 
 test('native onboarding rejects builtin shortcuts while ordinary explicit recommendations retain them', () => {

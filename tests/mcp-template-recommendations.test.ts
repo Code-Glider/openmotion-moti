@@ -36,6 +36,8 @@ test('a negotiated native presentation is discoverable, readable and project-fre
     assert.equal(card.createArgs.sessionId, undefined);
   }
   const uri = definition._meta.ui.resourceUri;
+  assert.equal(shown.result._meta.ui.resourceUri, uri, 'The result must bind the resource from this negotiated connection');
+  assert.equal(shown.result._meta['openai/widgetSessionId'], shown.result.structuredContent.recommendationId);
   const resources = (await call('resources/list')).result.resources;
   assert(resources.some((resource: any) => resource.uri === inlineVideoUri), 'Keep the final video component available');
   assert(resources.some((resource: any) => resource.uri === uri), 'The recommendation resource is additive');
