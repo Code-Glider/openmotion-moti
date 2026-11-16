@@ -161,7 +161,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
       if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (hostHandoff?.reason || result.onboardingStatus)
         + '. Installation is registered; welcome/cards delivery remains unverified. '
         + (result.inlinePresentation?.status === 'prepared'
-          ? 'Continue in this same installation turn: publish and validate the verified document in this chat\'s permitted visualization directory before opening the library. Then open preview.previewUrl on the right, confirm visibility once and immediately emit the published contentReference as the final reply. Complete file reads and checks before opening; do not leave the library waiting on card preparation. '
+          ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: open/show preview.previewUrl and mark the tab in one call; loaded library content in its returned initial state is the visibility check, so do not repeat it. Complete mandatory browser bookkeeping next, then immediately emit the published contentReference as the final reply. '
           : 'Open the library and report the required host action. ')
         + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
       if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
