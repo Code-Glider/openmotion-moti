@@ -3,7 +3,7 @@
 <p align="center"><strong>The open-source CapCut &amp; Claude Motion alternative</strong></p>
 
 <p align="center">
-  <img src="docs/readme/capcut-claude-motion-cover.webp" width="100%" alt="OpenMotion — the open-source CapCut and Claude Motion alternative. Dan Martell’s original and an OpenMotion remake with Riya appear beside each other above the editable Studio timeline.">
+  <img src="docs/readme/studio-agents-cover.webp" width="100%" alt="The OpenMotion Studio preview shows Dan Martell’s original beside the remake with Riya, with both clips on the timeline. OpenMotion supports 22 local agents and has 300+ Motion.md guides.">
 </p>
 
 <p align="center">

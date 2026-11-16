@@ -3,7 +3,7 @@
 <p align="center"><strong>Reverse engineering for any video</strong></p>
 
 <p align="center">
-  <a href="docs/readme/media/presenter-caption-remake.mp4"><img src="docs/readme/capcut-claude-motion-cover.webp" width="100%" alt="Dan Martell’s original beside an OpenMotion remake with Riya. A handwritten keyword sits between two lines of bold captions, with the editable Studio timeline below."></a>
+  <a href="docs/readme/media/presenter-caption-remake.mp4"><img src="docs/readme/studio-agents-cover.webp" width="100%" alt="The OpenMotion Studio preview shows Dan Martell’s original beside the remake with Riya, with both clips on the timeline. OpenMotion supports 22 local agents and has 300+ Motion.md guides."></a>
 </p>
 
 <p align="center">

@@ -3,7 +3,7 @@
 <p align="center"><strong>CapCut 与 Claude Motion 的开源替代方案</strong></p>
 
 <p align="center">
-  <img src="readme/capcut-claude-motion-cover.zh-CN.webp" width="100%" alt="Dan Martell 原片与 OpenMotion 复刻并排展示：Riya 出镜，荧光黄手写关键词叠在两行白色粗体字幕之间。下方是 Studio 字幕时间轴。">
+  <img src="readme/studio-agents-cover.zh-CN.webp" width="100%" alt="OpenMotion Studio 中并排播放 Dan Martell 原片和 Riya 出镜的复刻片段，下方时间轴显示两条视频轨。支持 22 个本地 Agent，提供 300 多份 Motion.md 指南。">
 </p>
 
 <p align="center">

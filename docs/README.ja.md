@@ -3,7 +3,7 @@
 <p align="center"><strong>CapCut と Claude Motion に代わるオープンソースの動画スタジオ</strong></p>
 
 <p align="center">
-  <img src="readme/capcut-claude-motion-cover.ja.webp" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。">
+  <img src="readme/studio-agents-cover.ja.webp" width="100%" alt="OpenMotion Studio で Dan Martell の元動画と Riya の再現動画を並べて再生し、下のタイムラインに両方のクリップを表示。22 種類のローカルエージェントに対応し、300 本以上の Motion.md ガイドを用意。">
 </p>
 
 <p align="center">
