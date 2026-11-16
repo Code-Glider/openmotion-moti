@@ -334,7 +334,15 @@
     "Auto save on": "自动保存已开启",
     "Changes could not be saved. Resolve the error before continuing.": "更改未能保存，请先处理错误。",
     "Changes save automatically. Pending edits are checked every 15 seconds.": "更改会自动保存，每 15 秒检查一次待保存的编辑。",
-    "Send this instruction to your Agent. It will check installation, start OpenMotion if needed, and verify the connection.": "将指令发给你的 Agent，它会检查安装状态，按需启动 OpenMotion 并验证连接。"
+    "Send this instruction to your Agent. It will check installation, start OpenMotion if needed, and verify the connection.": "将指令发给你的 Agent，它会检查安装状态，按需启动 OpenMotion 并验证连接。",
+    "Generation limit": "生成次数上限",
+    "New submissions per 24 hours": "每 24 小时新增提交数",
+    "{used} submissions in the last 24 hours": "最近 24 小时已提交 {used} 次",
+    "Failed and cancelled jobs count across this workspace.": "工作区内失败和已取消的任务也计数。",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 表示关闭上限，最大 500。这不是金额上限。",
+    "Generation limit saved": "生成上限已保存",
+    "Save limit": "保存上限",
+    "Could not load generation limit. Save a limit to repair the setting.": "无法读取生成上限。重新保存可修复此设置。"
   },
   "ja": {
     "Local Agents": "ローカル Agent",
@@ -446,7 +454,15 @@
     "Auto saved: {time}": "自動保存：{time}",
     "Auto save on": "自動保存オン",
     "Changes could not be saved. Resolve the error before continuing.": "変更を保存できませんでした。先にエラーを解決してください。",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "変更は自動保存されます。15 秒ごとに未保存の編集を確認します。"
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "変更は自動保存されます。15 秒ごとに未保存の編集を確認します。",
+    "Generation limit": "生成回数の上限",
+    "New submissions per 24 hours": "24時間あたりの新規送信数",
+    "{used} submissions in the last 24 hours": "直近24時間に {used} 回送信",
+    "Failed and cancelled jobs count across this workspace.": "このワークスペースの失敗・キャンセル済みタスクも数えます。",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0で制限なし、最大500。金額の上限ではありません。",
+    "Generation limit saved": "生成上限を保存しました",
+    "Save limit": "上限を保存",
+    "Could not load generation limit. Save a limit to repair the setting.": "生成上限を読み込めません。再保存すると設定を修復できます。"
   },
   "ko": {
     "What's new": "새로운 소식",
@@ -455,7 +471,15 @@
     "Auto saved: {time}": "자동 저장: {time}",
     "Auto save on": "자동 저장 켜짐",
     "Changes could not be saved. Resolve the error before continuing.": "변경 사항을 저장하지 못했습니다. 먼저 오류를 해결하세요.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "변경 사항은 자동으로 저장됩니다. 15초마다 대기 중인 편집을 확인합니다."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "변경 사항은 자동으로 저장됩니다. 15초마다 대기 중인 편집을 확인합니다.",
+    "Generation limit": "생성 횟수 한도",
+    "New submissions per 24 hours": "24시간당 새 제출 수",
+    "{used} submissions in the last 24 hours": "지난 24시간 제출 {used}회",
+    "Failed and cancelled jobs count across this workspace.": "이 작업 공간의 실패 및 취소된 작업도 집계됩니다.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0은 한도 해제, 최대 500입니다. 금액 한도가 아닙니다.",
+    "Generation limit saved": "생성 한도를 저장했습니다",
+    "Save limit": "한도 저장",
+    "Could not load generation limit. Save a limit to repair the setting.": "생성 한도를 읽을 수 없습니다. 다시 저장하여 설정을 복구하세요."
   },
   "de": {
     "What's new": "Neuigkeiten",
@@ -464,7 +488,15 @@
     "Auto saved: {time}": "Automatisch gespeichert: {time}",
     "Auto save on": "Automatisches Speichern aktiv",
     "Changes could not be saved. Resolve the error before continuing.": "Änderungen konnten nicht gespeichert werden. Beheben Sie zuerst den Fehler.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Änderungen werden automatisch gespeichert. Ausstehende Änderungen werden alle 15 Sekunden geprüft."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Änderungen werden automatisch gespeichert. Ausstehende Änderungen werden alle 15 Sekunden geprüft.",
+    "Generation limit": "Generierungslimit",
+    "New submissions per 24 hours": "Neue Aufträge pro 24 Stunden",
+    "{used} submissions in the last 24 hours": "{used} Aufträge in den letzten 24 Stunden",
+    "Failed and cancelled jobs count across this workspace.": "Fehlgeschlagene und abgebrochene Aufträge dieses Arbeitsbereichs zählen mit.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 deaktiviert das Limit; maximal 500. Dies ist kein Ausgabenlimit.",
+    "Generation limit saved": "Generierungslimit gespeichert",
+    "Save limit": "Limit speichern",
+    "Could not load generation limit. Save a limit to repair the setting.": "Generierungslimit nicht lesbar. Erneut speichern, um die Einstellung zu reparieren."
   },
   "fr": {
     "What's new": "Nouveautés",
@@ -473,7 +505,15 @@
     "Auto saved: {time}": "Enregistré automatiquement : {time}",
     "Auto save on": "Enregistrement automatique activé",
     "Changes could not be saved. Resolve the error before continuing.": "Les modifications n’ont pas pu être enregistrées. Résolvez d’abord l’erreur.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Les modifications sont enregistrées automatiquement et vérifiées toutes les 15 secondes."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Les modifications sont enregistrées automatiquement et vérifiées toutes les 15 secondes.",
+    "Generation limit": "Limite de génération",
+    "New submissions per 24 hours": "Nouvelles demandes sur 24 heures",
+    "{used} submissions in the last 24 hours": "{used} demandes au cours des dernières 24 heures",
+    "Failed and cancelled jobs count across this workspace.": "Les tâches échouées et annulées de cet espace sont comptées.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 désactive la limite ; maximum 500. Ce n’est pas un plafond de dépenses.",
+    "Generation limit saved": "Limite de génération enregistrée",
+    "Save limit": "Enregistrer la limite",
+    "Could not load generation limit. Save a limit to repair the setting.": "Impossible de lire la limite. Enregistrez-la à nouveau pour réparer ce réglage."
   },
   "ru": {
     "What's new": "Что нового",
@@ -482,7 +522,15 @@
     "Auto saved: {time}": "Автосохранение: {time}",
     "Auto save on": "Автосохранение включено",
     "Changes could not be saved. Resolve the error before continuing.": "Не удалось сохранить изменения. Сначала устраните ошибку.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Изменения сохраняются автоматически. Проверка несохранённых изменений — каждые 15 секунд."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Изменения сохраняются автоматически. Проверка несохранённых изменений — каждые 15 секунд.",
+    "Generation limit": "Лимит генерации",
+    "New submissions per 24 hours": "Новых запросов за 24 часа",
+    "{used} submissions in the last 24 hours": "{used} запросов за последние 24 часа",
+    "Failed and cancelled jobs count across this workspace.": "Неудачные и отменённые задачи этого пространства тоже учитываются.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 отключает лимит; максимум 500. Это не денежный лимит.",
+    "Generation limit saved": "Лимит генерации сохранён",
+    "Save limit": "Сохранить лимит",
+    "Could not load generation limit. Save a limit to repair the setting.": "Не удалось прочитать лимит. Сохраните его заново, чтобы восстановить настройку."
   },
   "es": {
     "What's new": "Novedades",
@@ -491,7 +539,15 @@
     "Auto saved: {time}": "Guardado automático: {time}",
     "Auto save on": "Guardado automático activado",
     "Changes could not be saved. Resolve the error before continuing.": "No se pudieron guardar los cambios. Resuelve el error antes de continuar.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Los cambios se guardan automáticamente. Se comprueban los cambios pendientes cada 15 segundos."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Los cambios se guardan automáticamente. Se comprueban los cambios pendientes cada 15 segundos.",
+    "Generation limit": "Límite de generación",
+    "New submissions per 24 hours": "Nuevas solicitudes por 24 horas",
+    "{used} submissions in the last 24 hours": "{used} solicitudes en las últimas 24 horas",
+    "Failed and cancelled jobs count across this workspace.": "Se cuentan también las tareas fallidas y canceladas de este espacio.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 desactiva el límite; máximo 500. No es un límite de gasto.",
+    "Generation limit saved": "Límite de generación guardado",
+    "Save limit": "Guardar límite",
+    "Could not load generation limit. Save a limit to repair the setting.": "No se pudo leer el límite. Vuelve a guardarlo para reparar la configuración."
   },
   "pt-BR": {
     "What's new": "Novidades",
@@ -500,7 +556,15 @@
     "Auto saved: {time}": "Salvo automaticamente: {time}",
     "Auto save on": "Salvamento automático ativado",
     "Changes could not be saved. Resolve the error before continuing.": "Não foi possível salvar as alterações. Resolva o erro antes de continuar.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "As alterações são salvas automaticamente. Edições pendentes são verificadas a cada 15 segundos."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "As alterações são salvas automaticamente. Edições pendentes são verificadas a cada 15 segundos.",
+    "Generation limit": "Limite de geração",
+    "New submissions per 24 hours": "Novas solicitações por 24 horas",
+    "{used} submissions in the last 24 hours": "{used} solicitações nas últimas 24 horas",
+    "Failed and cancelled jobs count across this workspace.": "Tarefas com falha e canceladas deste espaço também são contadas.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 desativa o limite; máximo 500. Não é um limite de gastos.",
+    "Generation limit saved": "Limite de geração salvo",
+    "Save limit": "Salvar limite",
+    "Could not load generation limit. Save a limit to repair the setting.": "Não foi possível ler o limite. Salve novamente para reparar a configuração."
   },
   "it": {
     "What's new": "Novità",
@@ -509,7 +573,15 @@
     "Auto saved: {time}": "Salvataggio automatico: {time}",
     "Auto save on": "Salvataggio automatico attivo",
     "Changes could not be saved. Resolve the error before continuing.": "Impossibile salvare le modifiche. Risolvi l’errore prima di continuare.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Le modifiche vengono salvate automaticamente. Quelle in sospeso vengono controllate ogni 15 secondi."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Le modifiche vengono salvate automaticamente. Quelle in sospeso vengono controllate ogni 15 secondi.",
+    "Generation limit": "Limite di generazione",
+    "New submissions per 24 hours": "Nuove richieste in 24 ore",
+    "{used} submissions in the last 24 hours": "{used} richieste nelle ultime 24 ore",
+    "Failed and cancelled jobs count across this workspace.": "Sono conteggiate anche le attività non riuscite e annullate di questo spazio.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 disattiva il limite; massimo 500. Non è un limite di spesa.",
+    "Generation limit saved": "Limite di generazione salvato",
+    "Save limit": "Salva limite",
+    "Could not load generation limit. Save a limit to repair the setting.": "Impossibile leggere il limite. Salvalo di nuovo per ripristinare l’impostazione."
   },
   "tr": {
     "What's new": "Yenilikler",
@@ -518,6 +590,14 @@
     "Auto saved: {time}": "Otomatik kaydedildi: {time}",
     "Auto save on": "Otomatik kayıt açık",
     "Changes could not be saved. Resolve the error before continuing.": "Değişiklikler kaydedilemedi. Devam etmeden önce hatayı giderin.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Değişiklikler otomatik kaydedilir. Bekleyen düzenlemeler her 15 saniyede kontrol edilir."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Değişiklikler otomatik kaydedilir. Bekleyen düzenlemeler her 15 saniyede kontrol edilir.",
+    "Generation limit": "Üretim sınırı",
+    "New submissions per 24 hours": "24 saatte yeni istek sayısı",
+    "{used} submissions in the last 24 hours": "Son 24 saatte {used} istek",
+    "Failed and cancelled jobs count across this workspace.": "Bu çalışma alanındaki başarısız ve iptal edilen işler de sayılır.",
+    "0 disables the limit; maximum 500. This is not a spending limit.": "0 sınırı kapatır; en fazla 500. Bu bir harcama sınırı değildir.",
+    "Generation limit saved": "Üretim sınırı kaydedildi",
+    "Save limit": "Sınırı kaydet",
+    "Could not load generation limit. Save a limit to repair the setting.": "Üretim sınırı okunamadı. Ayarı onarmak için yeniden kaydedin."
   }
 }

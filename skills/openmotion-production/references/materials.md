@@ -2,6 +2,10 @@
 
 需要选择、获取或替换视觉与声音素材时读取；仅查看、预览或导出既有内容不触发本页。各制作入口共用此规则，沿用当前工程与创作决定，不重新选路。
 
+## Generation boundary
+
+Without an explicit request to generate an asset, when native visuals meet the brief and no new narration or music is needed, do not call, suggest or ask about media generation. Native visuals do not mean the soundtrack is already supplied: new speech or music can still require generation. Enter [media generation](../../openmotion-media/SKILL.md) only for an explicit generation request or a real missing visual/audio asset, within the user's existing authorization; obtain spend consent when it is missing. Preserve user-provided media and approved material instead of generating replacements without need.
+
 ## Tool selection and discovery
 
 Choose the material source from its content role before selecting tools, following the source rules below. Real events and identifiable subjects need corresponding original material; original scenes and supporting expression may use generation or native graphics. For a League of Legends champion's award-ceremony photo, search official or original published photos. Image generation is not a matching capability for retrieving that real event.

@@ -96,7 +96,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
-一期公开接口已收敛为 [12 个 openmotion_ Tool](mcp-phase1-tools.md)（9 个工程 Tool、目录获取、模板详情与 media-use）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+一期公开接口已收敛为 [14 个 openmotion_ 注册名](mcp-phase1-tools.md)（13 个领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
 
 ## openmotion-recreate 能力扩展点
 
@@ -186,4 +186,4 @@ MT05 原先同批补读/执行的问题未重现，但读取完整性未全面�
 
 ## BYOK media Skill and provider references
 
-`openmotion-media` ships as an on-demand supporting Skill (`skills/openmotion-media/SKILL.md` and `openmotion://workflow/media/start`) alongside the five unchanged creative entry routes, while supplier-specific wire and schema references live in `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed,account,compatible}`. Pure motion graphics stay 100% native in code without invoking or mentioning `openmotion_media_use`. When image, video, speech or music generation is needed, `openmotion_media_use` reads configured provider credentials or the OpenDesign account inside the service (never exposing `secrets.json`), guides unconfigured users to Studio's **Model providers** settings, confirms user consent before spending configured API keys unless already authorized, and snapshots completed files under `assets/generated/...` via `openmotion_get_project`.
+`openmotion-media` remains the on-demand supporting Skill, with the five creative entry routes unchanged. Its single [generation boundary](../skills/openmotion-production/references/materials.md#generation-boundary) distinguishes native visuals from new speech/music needs. New assets use media_use discovery → assets_use generation/status → fixed-version inspection → explicit import_to_project → project read/edit. Standalone generation needs no carrier project. The old asset name and project-direct media_use jobs remain compatible; they are not a second recommended generation route. Credentials stay in settings, missing capabilities and alternatives are explained before spend, and one quality regeneration per intent is the maximum without further consent. The gateway enforces the workspace submission count described in [Assets](assets.md#workspace-generation-limit), not a monetary cap.

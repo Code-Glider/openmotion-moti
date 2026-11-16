@@ -38,7 +38,7 @@ Read Hyperframes guidance within the [native engine boundary](native.md#engine-g
 | 本次范围 | 必需参考（可复用已读正文） |
 | --- | --- |
 | 需要选择、获取或替换素材，含原创、模板适配、复刻与局部修改 | [素材选择与来源优先级](materials.md)；沿用所选路线的能力和保持项；仅查看、预览或导出既有内容不触发 |
-| 需要通过 BYOK 生成图片、视频、配音或音乐素材，或单独执行素材生成请求 | [openmotion-media](../../openmotion-media/SKILL.md) 及所选供应商参考；纯动态图形（原生 HTML/CSS/SVG/Canvas/3D 可直接实现）不触发、不询问 |
+| 依据 [生成边界](materials.md#generation-boundary) 确认需要生成素材 | 按需读取 [openmotion-media](../../openmotion-media/SKILL.md) |
 | Selecting/replacing fonts, changing text hierarchy, or diagnosing typography | [Typography](typography.md); preserve the selected route and established identity. Local edits cover affected text only; unchanged preview/export and audio-only work do not trigger selection. |
 | 原创新片／大幅重编 | [动作脚本](../../openmotion-director/references/action-script.md)、[动态表现](../../openmotion-director/references/motion-craft.md)、[动作短句](../../openmotion-director/references/motion-phrases.md)、[审片](../../openmotion-director/references/motion-review.md) |
 | 新设计声音叙事或工程音轨调整，含画面锁定 | [声音叙事](../../openmotion-director/references/sound-narrative.md)、[动作脚本的声画锚点](../../openmotion-director/references/action-script.md)、审片；只应用声音相关内容，不启动原创流程 |

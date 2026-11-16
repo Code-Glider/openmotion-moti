@@ -514,6 +514,8 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         const plan = await agents[action === 'open' ? 'open' : 'prepare'](choice, store.projectDirectory, new URL(editorUrl).origin, body.action);
         return json(res, 200, plan);
       }
+      if (url.pathname === '/api/settings/generation-limit' && req.method === 'GET') return json(res, 200, await gateway.generationLimit());
+      if (url.pathname === '/api/settings/generation-limit' && req.method === 'PUT') return json(res, 200, await gateway.setGenerationLimit(await input(req)));
       if (url.pathname === '/api/settings/providers' && req.method === 'GET') return json(res, 200, await providerDirectory(gateway));
       if (url.pathname === '/api/settings/providers' && req.method === 'POST') return json(res, 200, { id: await gateway.connections.configure(null, await input(req)) });
       const provider = url.pathname.match(/^\/api\/settings\/providers\/([a-z0-9-]+)(\/sync|\/models)?$/);
@@ -726,7 +728,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
     return json(res, 404, { error: 'Not found' });
   } catch (error) {
     if (res.headersSent) res.destroy();
-    else json(res, error instanceof Conflict || (error as any).code === 'NATIVE_RUNTIME_NOT_READY' ? 409 : 400, { error: error instanceof Error ? error.message : '操作失败', ...((error as any).code === 'NATIVE_RUNTIME_NOT_READY' ? { code: (error as any).code, applied: false, runtime: (error as any).details } : {}) });
+    else json(res, error instanceof Conflict || (error as any).code === 'NATIVE_RUNTIME_NOT_READY' ? 409 : 400, { error: error instanceof Error ? error.message : '操作失败', ...((error as any).code === 'GENERATION_LIMIT_REACHED' ? { code: 'GENERATION_LIMIT_REACHED', applied: false } : {}), ...((error as any).code === 'NATIVE_RUNTIME_NOT_READY' ? { code: (error as any).code, applied: false, runtime: (error as any).details } : {}) });
   }
 }
 

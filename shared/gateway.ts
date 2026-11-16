@@ -2,6 +2,7 @@ import type { LibraryGeneration } from './asset-library.ts';
 import type { GenerationOptions } from './generation-options.ts';
 /** Public contract shared by the model gateway, MCP and Studio. Never contains credentials. */
 export const modalities = ['image', 'video', 'audio'] as const;
+export type GenerationLimit = { limit: number; used: number; windowHours: 24 };
 export type Modality = typeof modalities[number];
 export { mediaProviders } from './provider-registry.ts';
 /** Built-in media IDs and service-registered compatible connections share one route identity. */

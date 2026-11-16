@@ -45,7 +45,7 @@ Typography: before choosing faces for new text, redesigning text hierarchy or ad
 
 需要选择、获取或替换素材时读取 [共享素材规范](../openmotion-production/references/materials.md)。现有主视觉质感不足，或任务含截图、跨段复现、多段落及展示感问题时，另按需读取 [制作决策与状态延续](references/production-decisions.md)，落实材料与动作、占时及状态复用的关系。
 
-纯动态图形全程用原生代码实现，不调用、不建议也不询问多模态生成；成片确实需要摄影画面、实拍感镜头、合成配音或新配乐时，按 [openmotion-media](../openmotion-media/SKILL.md) 处理。
+按共享的 [生成边界](../openmotion-production/references/materials.md#generation-boundary) 判断是否进入素材生成。
 
 已有成片或审片反馈时，先看实际问题区间，把仍未解决的现象与保留的有效部分作为本次创作输入；不要把用户指出的展示感缩减成几个接点或字号问题。
 
