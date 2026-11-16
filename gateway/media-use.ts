@@ -14,6 +14,7 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
     return { providers: status.providers.filter(p => supported(p.id) && (mediaProviders.includes(p.id as any) || p.configured || p.id === 'account')),
       defaults: status.routes,
       settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
+      settingsHandoff: { tool: 'openmotion_open_preview', arguments: { target: 'providers' } },
       references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }

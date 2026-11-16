@@ -17,7 +17,7 @@ import { getTemplate } from './template-catalog.ts';
 import { execute, inspectProject, pluginRoot } from './hyperframes.ts';
 import { verificationBinaries } from './scripts/verify-export.ts';
 import { validateInstruction } from './shared/conversation.ts';
-import { sessionPath, templateLibraryPreview } from './shared/workspace-url.ts';
+import { sessionPath, templateLibraryPreview, providerSettingsPreview } from './shared/workspace-url.ts';
 import { phase1Tools, validateInput } from './shared/phase1-tools.ts';
 import { atomicJson, cloneFile, fileHash, jsonFile, ProjectVersions, recoverProjectTransactions } from './phase1-versions.ts';
 import type { ContentVersion } from './phase1-versions.ts';
@@ -107,11 +107,11 @@ export class Phase1Service {
     const definition = phase1Tools.find(tool => tool.name === publicToolName(name));
     if (!definition) throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);
     validateInput(definition.inputSchema, args);
-    if (name === 'motion_open_preview' && args.target === 'templates') {
+    if (name === 'motion_open_preview' && (args.target === 'templates' || args.target === 'providers')) {
       if (args.action && args.action !== 'open' || Object.keys(args).some(key => !['target', 'action', 'embedded', 'presentation'].includes(key))) {
-        throw new Error('INVALID_ARGUMENT: template library opening does not accept project, session or version arguments');
+        throw new Error('INVALID_ARGUMENT: workspace page opening does not accept project, session or version arguments');
       }
-      return templateLibraryPreview(this.context.origin(), args);
+      return args.target === 'providers' ? providerSettingsPreview(this.context.origin(), args) : templateLibraryPreview(this.context.origin(), args);
     }
     if (name === 'motion_list_templates') return templateCatalogFor(this.store.directory).index();
     if (name === 'motion_get_template') return templateCatalogFor(this.store.directory).detail(args.templateId);
