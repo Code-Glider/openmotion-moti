@@ -1,6 +1,6 @@
 import type { GalleryTemplate } from "../../../shared/catalog";
 import { brandCatalogFile, brandCoverRevision } from "../../../shared/brand-catalog";
-import { brandKitWebsite } from "../../../shared/brand-kit";
+import { brandKitShowcase, brandKitWebsite } from "../../../shared/brand-kit";
 import type { BrandKit } from "../../../shared/brand-kit";
 import { gatewayRequest } from "./gatewayClient";
 export {
@@ -32,6 +32,7 @@ export const brandStage: Record<BrandKit["state"], string> = {
 
 export function brandCard(kit: BrandKit, subtitle: string): GalleryTemplate {
   const website = brandKitWebsite(kit);
+  const { duration, width, height } = brandKitShowcase;
   return {
     id: kit.id,
     title: kit.name,
@@ -43,9 +44,9 @@ export function brandCard(kit: BrandKit, subtitle: string): GalleryTemplate {
     author: kit.name,
     brand: kit.name,
     sourceUrl: website || kit.url,
-    duration: 12,
-    width: 1280,
-    height: 720,
+    duration,
+    width,
+    height,
     previewUrl: kit.preview ? brandFile(kit, "preview.mp4") : undefined,
     posterUrl: kit.poster ? brandFile(kit, "poster.png") : kit.catalogId ? brandCatalogFile(kit.catalogId, "style-cover.svg") : undefined,
     brandLogoUrl: website ? `/motion-api/brand-kits/${kit.id}/favicon?v=${brandCoverRevision}` : undefined,

@@ -6,7 +6,7 @@ import { templateContributionUrl } from './templateContribution';
 import { Skeleton } from '../components/ui/Skeleton';
 import { brandCatalogFile, type BrandCatalog, type BrandCatalogEntry } from '../../../shared/brand-catalog';
 import type { GalleryTemplate } from '../../../shared/catalog';
-import { brandRequest } from './brandKitClient';
+import { brandKitShowcase, brandRequest } from './brandKitClient';
 import { TemplateGalleryCard } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
 import { GalleryFilterPopover, GallerySortMenu, matchesGalleryFilters, matchesGallerySearch, toggleGalleryFilter, type GalleryFilters } from './GalleryFilters';
@@ -14,7 +14,10 @@ import { GalleryFilterPopover, GallerySortMenu, matchesGalleryFilters, matchesGa
 const sortOptions = [['catalog', 'Collection order'], ['name', 'Name A–Z'], ['reverse', 'Name Z–A']] as const;
 const PAGE_SIZE = 48;
 const entryValues = (entry: BrandCatalogEntry, key: string) => key === 'category' ? [entry.category] : key === 'appearance' ? [entry.appearance] : entry.colors;
-const card = (entry: BrandCatalogEntry): GalleryTemplate => ({ id: entry.id, title: entry.name, author: entry.name, brand: entry.name, sourceUrl: entry.websiteUrl || entry.sourceUrl, brandLogoUrl: entry.websiteUrl ? brandCatalogFile(entry.id, 'favicon') : undefined, posterUrl: brandCatalogFile(entry.id, 'style-cover.svg'), width: 1280, height: 720, duration: 12, subtitle: entry.category, description: entry.description, collection: "reference", kind: "reference", tags: entry.tags });
+const card = (entry: BrandCatalogEntry): GalleryTemplate => {
+  const { duration, width, height } = brandKitShowcase;
+  return { id: entry.id, title: entry.name, author: entry.name, brand: entry.name, sourceUrl: entry.websiteUrl || entry.sourceUrl, brandLogoUrl: entry.websiteUrl ? brandCatalogFile(entry.id, 'favicon') : undefined, posterUrl: brandCatalogFile(entry.id, 'style-cover.svg'), width, height, duration, subtitle: entry.category, description: entry.description, collection: "reference", kind: "reference", tags: entry.tags };
+};
 
 export const BrandCatalogGallery = memo(function BrandCatalogGallery({ onImport, onCreate, busy, previewsEnabled, scrollRoot, query, onQueryChange }: { onImport: (id: string, visible: string[], trigger?: HTMLElement) => Promise<void>; onCreate: () => void; busy: boolean; previewsEnabled: boolean; scrollRoot: RefObject<HTMLElement | null>; query: string; onQueryChange: (value: string) => void }) {
   const { t } = useI18n();

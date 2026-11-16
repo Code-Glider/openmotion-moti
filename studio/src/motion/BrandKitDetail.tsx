@@ -10,7 +10,8 @@ import { TemplateSourceLink } from "./TemplateGalleryCard";
 import { BrandKitInspector } from "./BrandKitInspector";
 import { BrandKitLivePreview } from "./BrandKitLivePreview";
 import { SettingsDialog } from "./settingsPrimitives";
-import { brandCard, brandFile, brandKitInstruction, brandStage, isBrandKitBusy, type BrandKit, type BrandStyle } from "./brandKitClient";
+import { brandCard, brandFile, brandKitInstruction, brandKitShowcase, brandStage, isBrandKitBusy, type BrandKit, type BrandStyle } from "./brandKitClient";
+import { templateRatio } from "./templateDiscovery";
 
 export const BrandKitDetail = memo(function BrandKitDetail({ kit, busy, onAction, onCopy, onDownload, onClose, onNavigate, position, total, refreshFailed, onRefresh, returnFocus, previewsEnabled = true }: {
   kit: BrandKit;
@@ -32,6 +33,7 @@ export const BrandKitDetail = memo(function BrandKitDetail({ kit, busy, onAction
   const [expanded, setExpanded] = useState(false);
   const close = useRef<HTMLButtonElement>(null);
   const processing = isBrandKitBusy(kit), ready = kit.state === "ready";
+  const template = brandCard(kit, t("Style only"));
   const liveCatalog = kit.catalogId && !kit.nameOverride && !Object.keys(kit.styleOverrides || {}).length ? kit.catalogId : undefined;
   const playbackEnabled = previewsEnabled && !editing && !deleting;
   const poster = kit.catalogId && (liveCatalog || !ready || !kit.poster) ? brandCatalogFile(kit.catalogId, "poster.svg")
@@ -66,7 +68,7 @@ export const BrandKitDetail = memo(function BrandKitDetail({ kit, busy, onAction
                     <MenuItem onClick={() => setDeleting(true)}>{t("Delete Brand Kit")}</MenuItem>
                   </Menu>}
                 </header>
-                <TemplateSourceLink template={brandCard(kit, t("Style only"))} className="om-media-detail-creator om-media-detail-website" />
+                <TemplateSourceLink template={template} className="om-media-detail-creator om-media-detail-website" />
                 <div className="om-control-row"><span className="om-badge">{t("Brand Kit")}</span><span className="om-badge">{t("Style only")}</span>{kit.category && <span className="om-badge">{t(kit.category)}</span>}</div>
                 {refreshFailed && <div className="om-card om-card-stack" role="status"><span className="om-muted">{t("Could not refresh Brand Kit status")}</span><button className="om-button" onClick={onRefresh}>{t("Retry")}</button></div>}
                 {processing ? <div className="om-card om-card-stack" role="status">
@@ -85,8 +87,8 @@ export const BrandKitDetail = memo(function BrandKitDetail({ kit, busy, onAction
                     <button className="om-text-link om-media-detail-expand" data-quiet aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{t(expanded ? 'Show less' : 'Show instruction')}<RemixIcon name="arrow-down-s-line" size={14} /></button>
                   </section>
                   <dl className="om-media-detail-metadata">
-                    <div><dt>{t('Duration')}</dt><dd>{t('{value}s', { value: 12 })}</dd></div>
-                    <div><dt>{t('Aspect ratio')}</dt><dd>16:9</dd></div>
+                    <div><dt>{t('Duration')}</dt><dd>{t('{value}s', { value: brandKitShowcase.duration })}</dd></div>
+                    <div><dt>{t('Aspect ratio')}</dt><dd>{templateRatio(template)}</dd></div>
                     <div><dt>{t('Reference')}</dt><dd><span className="om-badge">{t('Style only')}</span></dd></div>
                     {kit.category && <div><dt>{t('Categories')}</dt><dd><span className="om-badge">{t(kit.category)}</span></dd></div>}
                   </dl>
