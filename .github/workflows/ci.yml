@@ -146,7 +146,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-2025]
+        # shortcut: hosted arm64 capacity can abandon queued jobs; restore arm64 when acquisition recovers.
+        os: [macos-15-intel, windows-2025]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     env:
@@ -170,7 +171,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check ownership recovery, read verification and immutable snapshots
         if: steps.scope.outputs.full == 'true'
-        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts tests/capture-retry.test.ts tests/hyperframes-startup.test.ts tests/command-lifecycle.test.ts
+        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts tests/capture-retry.test.ts tests/hyperframes-startup.test.ts tests/command-lifecycle.test.ts tests/windows-install-recovery.test.ts
 
   studio:
     name: Studio regression (${{ matrix.shard }}/2)

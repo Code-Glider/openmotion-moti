@@ -87,9 +87,10 @@ export class Phase1Service {
   versions(projectId: string) { return new ProjectVersions(this.store.forProject(projectId), this.runtimeRoot, this.context.nativeUrl(projectId)); }
   get workRounds() { return new WorkRounds(this.store); }
   async call(name: string, args: any, host?: HostContext) {
+    const requestedName = publicToolName(name);
     name = legacyToolName(name);
     try {
-      const result = await this.invoke(name, args, host);
+      const result = await this.invoke(name, args, host, requestedName);
       if (name === 'motion_restore_version') this.restoreErrors.delete(args.projectId);
       trackPhase1Result(this.context.tracking, name, args, result, undefined, host);
       return publicToolResult(result);
@@ -103,8 +104,8 @@ export class Phase1Service {
       throw error;
     }
   }
-  private async invoke(name: string, args: any, host?: HostContext) {
-    const definition = phase1Tools.find(tool => tool.name === publicToolName(name));
+  private async invoke(name: string, args: any, host?: HostContext, requestedName = publicToolName(name)) {
+    const definition = phase1Tools.find(tool => tool.name === requestedName);
     if (!definition) throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);
     validateInput(definition.inputSchema, args);
     if (name === 'motion_open_preview' && args.target === 'templates') {

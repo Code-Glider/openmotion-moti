@@ -106,7 +106,7 @@ test('a project file conflict preserves generated assets and recovery refuses to
     assert.equal(job.phase, 'save_failed'); assert.match(job.error!, /refusing to overwrite/);
     assert.equal((await readFile(target)).toString(), 'user content'); assert.equal(job.libraryAssets?.length, 1);
     await assert.rejects(api.call('openmotion_media_use', { action: 'retry_save', jobId: job.id, projectId: store.projectId }), /requestId/);
-    await api.call('openmotion_assets', { action: 'retry_save', jobId: job.id, requestId: 'retry-conflict' });
+    await api.call('openmotion_assets_use', { action: 'retry_save', jobId: job.id, requestId: 'retry-conflict' });
     job = await finish(store, job.id); assert.equal(job.phase, 'save_failed');
     assert.equal((await readFile(target)).toString(), 'user content');
     await rm(target);
@@ -145,11 +145,11 @@ test('library edits recover an already-committed version without duplicating it 
     await original.apply(this, args); throw new Error('Job receipt write failed after asset commit');
   });
   try {
-    const { job: queued } = await api.call('openmotion_assets', { action: 'generate', requestId: 'edit-original', model: 'fal:vendor/image', modality: 'image', prompt: 'Edit the lake', assetId: asset.id, parentVersionId: asset.currentVersionId });
+    const { job: queued } = await api.call('openmotion_assets_use', { action: 'generate', requestId: 'edit-original', model: 'fal:vendor/image', modality: 'image', prompt: 'Edit the lake', assetId: asset.id, parentVersionId: asset.currentVersionId });
     let job = await finish(store, queued.id);
     assert.equal(job.savePending, true); assert.equal((await library.get(asset.id)).versions.length, 2);
     failure.mock.restore();
-    await api.call('openmotion_assets', { action: 'retry_save', jobId: job.id, requestId: 'save-edit' });
+    await api.call('openmotion_assets_use', { action: 'retry_save', jobId: job.id, requestId: 'save-edit' });
     job = await finish(store, job.id);
     assert.equal(job.state, 'completed', job.error); assert.equal(job.assets.length, 0); assert.equal(submissions(), 1);
     const edited = await library.get(asset.id);

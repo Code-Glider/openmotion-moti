@@ -1,6 +1,14 @@
 # Native Hyperframes authoring · phase one
 
-Read the pinned engine guide returned as `authoringGuide` by project details, or MCP resource `openmotion://engine/SKILL.md`. Relative engine Markdown references are available below `openmotion://engine/`. Skills are guidance; the host Agent writes the actual native video.
+Apply the engine boundary below before reading the pinned guide returned as `authoringGuide` by project details, or MCP resource `openmotion://engine/SKILL.md`. Relative engine Markdown references are available below `openmotion://engine/`. The host Agent writes the actual native video.
+
+## Engine guidance boundary
+
+Use the pinned Hyperframes guide and its references for HTML/composition structure, timeline and media attributes, seekable animation, supported CLI commands, lint and rendering constraints. This applies equally to direct filesystem reads and MCP engine resources; the upstream files are technical references, not an additional production Skill.
+
+OpenMotion's selected Skill and shared rules own creative decisions, material sourcing, provider selection, authorization, project operations and delivery. Upstream supplier onboarding, account/sign-in requirements and Skill routes such as `/media-use`, `bgm` or HeyGen setup are references, not automatic workflow requirements or evidence of an available tool. Select providers and any external tools through the [shared material policy](materials.md#tool-selection-and-discovery), based on content need and matching available capabilities. Do not import its mandatory story/film workflow, fixed music-by-duration defaults or silence fallback based solely on an upstream provider being unavailable. Sound needs follow the user's brief and OpenMotion's sound decisions.
+
+Read linked engine references only for the technical question at hand. Use a documented command only when the installed runtime exposes it; an upstream slash command or link does not establish a connected host capability. Preserve engine format and rendering requirements without adopting its vendor or creative routing.
 
 ## Project loop
 

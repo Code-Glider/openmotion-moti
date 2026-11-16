@@ -1,5 +1,5 @@
 const id = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
-const object = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
+const object = <T extends Record<string, unknown>>(properties: T, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const reference = object({ assetId: id, versionId: id }, ['assetId', 'versionId']);
 export const assetLibraryTool = {
   name: 'openmotion_assets', title: 'OpenMotion · Asset Library',
@@ -17,4 +17,19 @@ export const assetLibraryTool = {
     changes: object({ name: { type: 'string', minLength: 1, maxLength: 200 }, trashed: { type: 'boolean' }, currentVersionId: id }),
   }, ['action']),
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+};
+
+export const assetUseTool = {
+  ...assetLibraryTool, name: 'openmotion_assets_use', title: 'OpenMotion · Assets Use',
+  description: 'Preferred unified asset tool. ' + assetLibraryTool.description + ' action=read requires assetId and versionId and returns bounded image previews, timestamped video frames or a mono 16 kHz WAV audio clip. get remains metadata-only. Read does not generate, create a project or change asset versions; retained trash is readable. Media interpretation/playback depends on the host.',
+  inputSchema: { ...assetLibraryTool.inputSchema, properties: { ...assetLibraryTool.inputSchema.properties,
+    action: { enum: [...assetLibraryTool.inputSchema.properties.action.enum, 'read'] },
+    timestamps: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'number', minimum: 0 }, description: 'read video only: at most four frame times in seconds. Defaults to the first frame.' },
+    start: { type: 'number', minimum: 0, description: 'read audio only: clip start in seconds, default 0.' },
+    duration: { type: 'number', minimum: 0.1, maximum: 15, description: 'read audio only: clip length in seconds, default 10 (clipped to available audio), maximum 15.' },
+  }, oneOf: Object.entries({ list: [], get: ['assetId'], import: ['requestId', 'sourcePath'], update: ['assetId', 'changes'],
+    generate: ['requestId', 'model', 'modality', 'prompt'], jobs: [], status: ['jobId'], cancel: ['jobId'], retry_save: ['jobId', 'requestId'],
+    import_to_project: ['projectId', 'requestId', 'assetId', 'versionId'], read: ['assetId', 'versionId'] })
+    .map(([action, required]) => ({ type: 'object', properties: { action: { enum: [action] } }, required, additionalProperties: true })),
+  },
 };
