@@ -21,9 +21,11 @@ import { sessionPath, templateLibraryPreview, providerSettingsPreview } from './
 import { phase1Tools, validateInput } from './shared/phase1-tools.ts';
 import { atomicJson, cloneFile, fileHash, jsonFile, ProjectVersions, recoverProjectTransactions } from './phase1-versions.ts';
 import type { ContentVersion } from './phase1-versions.ts';
-import { trackPhase1Result, type OmTracking } from './shared/tracking.ts';
+import { trackPhase1Result, trackingError, type OmTracking } from './shared/tracking.ts';
 import type { HostContext } from './tracking/host.ts';
 import { WorkRounds } from './inline-video.ts';
+import { TaskLedger } from './tracking/task-ledger.ts';
+import { uuid } from './tracking/core.ts';
 
 const metadataPath = 'motion-project.json', assetIndexPath = 'motion-assets.json';
 const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg', '.txt', '.md', '.vtt', '.srt', '.glsl', '.vert', '.frag']);
@@ -83,7 +85,8 @@ export class Phase1Service {
   readonly store: WorkspaceStore;
   readonly runtimeRoot: string;
   readonly context: Phase1Context;
-  constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; }
+  readonly ledger: TaskLedger;
+  constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; this.ledger = new TaskLedger(store.directory); }
   versions(projectId: string) { return new ProjectVersions(this.store.forProject(projectId), this.runtimeRoot, this.context.nativeUrl(projectId)); }
   get workRounds() { return new WorkRounds(this.store); }
   async call(name: string, args: any, host?: HostContext) {
@@ -99,6 +102,10 @@ export class Phase1Service {
         this.restoreErrors.set(args.projectId, { requestId: args.requestId, message: errorText(error) });
       }
       trackPhase1Result(this.context.tracking, name, args, undefined, error, host);
+      if (this.context.tracking && args?.workId && name !== 'motion_export_cancel') {
+        this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: 'modify', error_code: trackingError(error), stage: name });
+        this.context.tracking.track('host_state_changed', { run_id: args.workId, sequence: 2, state: 'failed', phase: name });
+      }
       await recordDiagnostic(this.store.directory, { kind: 'mcp_failure', tool: name, requestId: args?.requestId,
         projectId: args?.projectId, message: errorText(error), stack: error instanceof Error ? error.stack : undefined });
       throw error;
@@ -250,6 +257,18 @@ export class Phase1Service {
         observed.hash.split('?')[0] !== target.hash) throw new Error('PREVIEW_TARGET_MISMATCH');
     const record = { ...display, projectId: detail.projectId, source: 'host_reported', requestId: args.requestId, recordedAt: Date.now() };
     await atomicJson(path.join(this.store.directory, 'phase1', 'preview-displays', detail.projectId + '.json'), record);
+    if (args.workId && this.context.tracking) {
+      this.context.tracking.track('host_preview_observed', { run_id: args.workId, project_id: detail.projectId, revision: detail.revision,
+        version_id: detail.currentVersionId, visibility: display.visibility, content_verified: display.contentVerified, observation_source: 'host_reported' }, undefined, undefined, undefined);
+      const checkId = crypto.randomUUID();
+      this.context.tracking.track('check_required', { check_id: checkId, check_type: 'preview_observed', project_id: detail.projectId,
+        version_id: detail.currentVersionId, subject_id: checkId.slice(0, 32), checklist_version: 'preview-v1', checker_type: 'host', required: true });
+      this.context.tracking.track('check_completed', { check_id: checkId, check_type: 'preview_observed', project_id: detail.projectId,
+        version_id: detail.currentVersionId, subject_id: checkId.slice(0, 32), checklist_version: 'preview-v1', checker_type: 'host',
+        result: display.visibility === 'visible' && display.contentVerified ? 'pass' : 'unreviewed', evidence_ref: checkId.slice(0, 32) });
+      if (display.visibility === 'visible' && display.contentVerified) this.context.tracking.track('host_run_delivered', {
+        run_id: args.workId, delivery_mode: 'preview', project_id: detail.projectId, revision: detail.revision, delivery_evidence_ref: checkId.slice(0, 32) });
+    }
     const current = await this.detail(detail.projectId);
     if (current.revision !== detail.revision || current.currentVersionId !== detail.currentVersionId) throw new Error('VERSION_CONFLICT: content changed during display confirmation');
     return { projectId: detail.projectId, changed: false, previewHandoff: previewHandoff(this.context.origin(), {
@@ -264,7 +283,16 @@ export class Phase1Service {
     const file = path.join(this.store.directory, 'phase1', 'reviews', args.projectId + '.json');
     const reviews = await jsonFile<any[]>(file, []);
     const record = { ...review, projectId: args.projectId, requestId: args.requestId, createdAt: Date.now(), verifiedUserAdoption: false };
-    reviews.push(record); await atomicJson(file, reviews); return { projectId: args.projectId, review: record, changed: false };
+    reviews.push(record); await atomicJson(file, reviews);
+    if (this.context.tracking) {
+      const checkId = crypto.randomUUID(), versionId = review.versionId;
+      this.context.tracking.track('check_required', { check_id: checkId, check_type: 'content_review', project_id: args.projectId,
+        version_id: versionId, subject_id: digest(review.objectId).slice(0, 32), checklist_version: 'review-v1', checker_type: review.source === 'user' ? 'user' : 'agent', required: true });
+      this.context.tracking.track('check_completed', { check_id: checkId, check_type: 'content_review', project_id: args.projectId,
+        version_id: versionId, subject_id: digest(review.objectId).slice(0, 32), checklist_version: 'review-v1', checker_type: review.source === 'user' ? 'user' : 'agent',
+        result: review.conclusion === 'passed' ? 'pass' : review.conclusion === 'failed' ? 'fail' : review.conclusion === 'unable_to_view' ? 'error' : 'unreviewed', evidence_ref: checkId.slice(0, 32) });
+    }
+    return { projectId: args.projectId, review: record, changed: false };
   }
   async dispatch(name: string, args: any, host?: HostContext): Promise<any> {
     if (name === 'motion_assets') return assetOperation(this.store, args, input => this.importAssets(input));
@@ -358,8 +386,12 @@ export class Phase1Service {
         if (!args.projectId || !args.mode) throw new Error('INVALID_ARGUMENT: begin requires projectId and mode');
         return this.writeRequest(name, args, async () => {
           const project = await this.detail(args.projectId);
-          return { projectId: project.projectId, sessionId: project.sessionId, authoringGuide: project.authoringGuide,
-            inlineWork: await this.workRounds.create(project, args.mode) };
+          const inlineWork = await this.workRounds.create(project, args.mode);
+          if (this.context.tracking) {
+            this.context.tracking.track('host_run_started', { run_id: inlineWork.id, entry_type: 'mcp', task_type: args.mode });
+            this.context.tracking.track('host_state_changed', { run_id: inlineWork.id, sequence: 1, state: 'active', phase: 'authoring' });
+          }
+          return { projectId: project.projectId, sessionId: project.sessionId, authoringGuide: project.authoringGuide, inlineWork };
         });
       }
       if (args.action === 'record_review') {
@@ -416,7 +448,15 @@ export class Phase1Service {
       });
     })));
     if (name === 'motion_import_assets') return this.importAssets(args);
-    if (name === 'motion_export_cancel') return this.writeRequest(name, args, async () => ({ projectId: args.projectId, job: await this.context.cancel(args.projectId, args.jobId) }));
+    if (name === 'motion_export_cancel') return this.writeRequest(name, args, async () => {
+      const job = await this.context.cancel(args.projectId, args.jobId) as any;
+      if (job?.state === 'cancelled') {
+        await this.ledger.terminal(args.jobId, 'cancelled', 'unknown').catch(() => {});
+        this.context.tracking?.track('task_terminal', { task_id: args.jobId, task_type: 'export', project_id: args.projectId, outcome: 'cancelled', applied: 'unknown', terminal_at: new Date().toISOString() });
+        if (job.workId) this.context.tracking?.track('host_run_cancelled', { run_id: job.workId, task_type: 'modify', reason_code: 'EXPORT_CANCELLED' });
+      }
+      return { projectId: args.projectId, job };
+    });
     if (name === 'motion_export_request') return this.writeRequest(name, args, async () => {
       if (args.action === 'record_review') {
         if (!args.jobId) throw new Error('INVALID_ARGUMENT: jobId is required');
@@ -428,8 +468,19 @@ export class Phase1Service {
       if (!args.versionId || !args.expectedRevision) throw new Error('INVALID_ARGUMENT: versionId and expectedRevision are required');
       const detail = await this.detail(args.projectId);
       if (detail.currentVersionId !== args.versionId || detail.revision !== args.expectedRevision) throw new Error('VERSION_CONFLICT');
-      const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, audio: args.audio,
+      const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio,
         trackingHost: this.context.tracking?.enabled() ? host : undefined });
+      await this.ledger.accept({ task_id: job.id, task_type: 'export', project_id: args.projectId, ...(args.workId ? { run_id: args.workId } : {}),
+        ...(args.requestId && uuid.test(args.requestId) ? { operation_id: args.requestId } : {}), accepted_at: new Date(job.acceptedAt ?? job.createdAt).toISOString(),
+        deadline_at: new Date(job.deadlineAt ?? job.expiresAt).toISOString() });
+      if (this.context.tracking) {
+        this.context.tracking.track('task_accepted', { task_id: job.id, task_type: 'export', project_id: args.projectId,
+          ...(args.workId ? { run_id: args.workId } : {}), ...(args.requestId && uuid.test(args.requestId) ? { operation_id: args.requestId } : {}),
+          accepted_at: new Date(job.acceptedAt ?? job.createdAt).toISOString(), deadline_at: new Date(job.deadlineAt ?? job.expiresAt).toISOString() });
+        const checkId = job.id;
+        this.context.tracking.track('check_required', { check_id: checkId, check_type: 'technical_export', project_id: args.projectId,
+          version_id: args.versionId, subject_id: job.id, checklist_version: 'export-v1', checker_type: 'automated', required: true });
+      }
       return { projectId: args.projectId, job: { ...job, token: undefined, workerPid: undefined, trackingHost: undefined }, technicalVerification: 'automatic_after_render', contentReview: 'pending' };
     });
     throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);

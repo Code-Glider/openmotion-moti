@@ -211,11 +211,14 @@ test('an interrupted partial save rolls back, but recovery never overwrites fore
 
 test('queued export cancel is project-bound and historical jobs remain addressable', () => fixture(async store => {
   const service = api(store), p = await create(service);
-  const tracking = createTracker({ registry: omEvents, entrypoint: 'mcp', enabled: true, flushIntervalMs: 0, send: async () => 'accepted' });
+  const events: any[] = [], tracking = createTracker({ registry: omEvents, entrypoint: 'mcp', enabled: true, flushIntervalMs: 0, send: async batch => { events.push(...batch); return 'accepted'; } });
   service.context.tracking = tracking;
   const args = { projectId: p.projectId, requestId: 'export', expectedRevision: p.revision, versionId: p.version.versionId, audio: 'silent' };
   const host = { host_agent: 'deepseek', host_agent_source: 'mcp_client_info' } as const;
   const exported = await service.call('openmotion_export_request', args, host);
+  await tracking.flush();
+  assert.equal(events.filter(event => event.event === 'task_accepted').length, 1);
+  assert.equal(events.filter(event => event.event === 'check_required').length, 1);
   const status = await (await transport(store)('/api/project/status')).json();
   assert.equal(status.exportJob.trackingHost, undefined, 'public status omits internal analytics metadata');
   assert.deepEqual((await store.job(exported.job.id))!.trackingHost, host);

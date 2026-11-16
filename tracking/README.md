@@ -67,6 +67,31 @@ confirmed, and never treats a valid opt-out as a retryable failure. Callers can
 inspect local queue/configuration statuses and a content-free status snapshot;
 see [diagnostics and retry semantics](INTEGRATION.md#diagnose-without-logging-event-contents).
 
+## North-star evidence and task ledger
+
+The runtime now records a local export task ledger before returning an accepted
+export request. Each export keeps its task ID, project, optional work-round ID,
+acceptance time, explicit deadline, terminal time and observed outcome. A worker
+terminal result updates the same ledger and emits `task_terminal`; unknown or
+cancelled results remain separate from success. The ledger is installation-local,
+atomic and does not contain prompts, source content or credentials.
+
+Host run boundaries use the existing work-round ID returned by
+`openmotion_open_preview(action=begin)`. The MCP boundary emits
+`host_run_started` and `host_state_changed`; a host-reported visible preview with
+verified content emits `host_preview_observed` and `host_run_delivered`. A verified
+technical export can also close the same run with `host_run_delivered`. A failed or
+cancelled export emits the corresponding host terminal event. These events do not
+claim a run boundary when the host did not provide a work-round ID.
+
+Quality evidence is explicit. Technical export, preview visibility and recorded
+content review each emit `check_required` and `check_completed` with a version,
+checklist, checker type and bounded evidence reference. A technical export check
+does not assert visual or human acceptance. Queue workers emit `queue_snapshot` at
+most once per minute and `worker_heartbeat` with bounded counts. Confirmed
+correctness incidents and recovery evidence use `incident_confirmed` and
+`recovery_recorded`; ordinary task failures are not incidents.
+
 ## Identity, properties and privacy
 
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`

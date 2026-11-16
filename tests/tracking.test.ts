@@ -257,11 +257,13 @@ test('worker reports a real terminal render failure once, separately from queue 
   assert.equal((await store.job(job.id))!.state, 'failed');
   await renderNext(store, pluginRoot, tracking);
   await tracking.flush();
-  assert.equal(events.length, 1); assert.equal(events[0].event, 'export_result');
-  assert.equal(events[0].entrypoint, 'worker'); assert.equal(events[0].properties.job_state, 'failed');
-  assert.deepEqual(events[0].host_context, host);
+  const terminal = events.filter(event => event.event === 'export_result');
+  assert.equal(terminal.length, 1); assert.equal(terminal[0].entrypoint, 'worker'); assert.equal(terminal[0].properties.job_state, 'failed');
+  assert.deepEqual(terminal[0].host_context, host);
+  assert.equal(events.filter(event => event.event === 'task_terminal').length, 1);
+  assert.equal(events.filter(event => event.event === 'check_completed').length, 0, 'legacy exports have no version-bound quality check');
   assert.equal((await store.get()).revision, current.revision);
-  assert.equal(events[0].properties.technical_check, 'unknown'); tracking.close();
+  assert.equal(terminal[0].properties.technical_check, 'unknown'); tracking.close();
 }));
 
 test('template library events: the search keyword is the only free text and stays bounded', () => {

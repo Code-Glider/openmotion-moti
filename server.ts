@@ -40,27 +40,45 @@ import { validHostContext, unknownHost, previewTrackingContext } from './trackin
 import type { HostContext } from './tracking/host.ts';
 import { collectDiagnostics, diagnosticLimits, recordDiagnostic } from './scripts/diagnostics.mjs';
 import { isWorkspaceSettingsPage } from './shared/workspace-url.ts';
+import { TaskLedger } from './tracking/task-ledger.ts';
 
 const sharedStore = new WorkspaceStore();
 export type Service = { trackingHosts?: Map<string, { host: HostContext; createdAt: number }>; diagnostics?: { running: boolean; lastExport: number; events: number; window: number }; studio?: Studio; runtimeRoot?: string; nativeRoot?: string; ffmpeg?: boolean; switching?: boolean; studioPort?: number; browser?: WorkspaceBrowser; editorToken?: string; ensureStudio?: (projectId?: string) => Promise<Studio>; launchStudio?: (directory: string, port: number) => Promise<Studio>; phase1?: Phase1Service; phase1Mutation?: Promise<void>; tracking?: OmTracking };
 const service: Service = {};
 const working = new Set<string>();
 const runningExports = new Map<string, AbortController>();
+const workerInstanceId = crypto.randomUUID();
+const collectorId = crypto.randomUUID();
+let lastQueueTelemetry = 0;
+
+async function emitQueueTelemetry(store: WorkspaceStore, tracking?: OmTracking) {
+  if (!tracking) return;
+  if (Date.now() - lastQueueTelemetry < 60_000) return;
+  lastQueueTelemetry = Date.now();
+  const job = await store.job().catch(() => null);
+  const queued = job?.state === 'pending' ? 1 : 0, running = job && ['running', 'cancelling'].includes(job.state) ? 1 : 0;
+  tracking.track('queue_snapshot', { instance_id: workerInstanceId, task_type: 'export', queued_count: queued, running_count: running, available_slots: running ? 0 : 1, counts_complete: true });
+  tracking.track('worker_heartbeat', { collector_id: collectorId, instance_id: workerInstanceId, active: true, queue_count: queued + running });
+}
 
 export async function cancelExport(store: WorkspaceStore, projectId: string, jobId: string) {
   return store.lock(async () => {
     const job = await store.job(jobId);
     if (!job || job.projectId !== projectId) throw new Error('EXPORT_NOT_FOUND: 任务不属于该项目');
-    if (job.state === 'pending') { job.state = 'cancelled'; job.stage = 'cancelled'; }
+    if (job.state === 'pending') { job.state = 'cancelled'; job.stage = 'cancelled'; job.terminalAt = Date.now(); job.observedOutcome = 'cancelled'; }
     else if (job.state === 'running') job.state = 'cancelling';
     await store.saveJob(job);
-    if (job.state === 'cancelled') await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
+    if (job.state === 'cancelled') {
+      await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
+      await new TaskLedger(store.directory).terminal(job.id, 'cancelled', 'unknown').catch(() => {});
+    }
     if (job.state === 'cancelling') runningExports.get(job.id)?.abort();
     const { token, workerPid, trackingHost, ...safe } = job; return safe;
   });
 }
 
 export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tracking?: OmTracking) {
+  await emitQueueTelemetry(store, tracking);
   const pending = await store.job();
   if (pending?.projectId) store = store.forProject(pending.projectId);
   const key = store.directory;
@@ -110,7 +128,12 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
       message: error instanceof Error ? error.message : 'Render failed' });
     await rm(store.exportPath(job), { force: true });
     const current = await store.job(job.id);
-    if (current && ['running', 'cancelling'].includes(current.state)) await store.finishExport(job.id, job.token!, error instanceof Error ? error.message : '渲染失败');
+    if (current && ['running', 'cancelling'].includes(current.state)) {
+      try { await store.finishExport(job.id, job.token!, error instanceof Error ? error.message : '渲染失败'); }
+      catch {
+        tracking?.track('incident_confirmed', { incident_id: job.id, incident_type: 'other', severity: 'sev1', subject_id: job.id, evidence_ref: 'terminal_persist_failed' }, undefined, 'worker', validHostContext(job.trackingHost) ? job.trackingHost : undefined);
+      }
+    }
   } finally {
     if (job && tracking) {
       const final = await store.job(job.id).catch(() => null);
@@ -120,6 +143,26 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
         technical_check: (final.verification as any)?.status === 'passed' ? 'passed'
           : (final.verification as any)?.status === 'failed' ? 'failed' : 'unknown',
       }, undefined, 'worker', validHostContext(final.trackingHost) ? final.trackingHost : undefined);
+      if (final && ['completed', 'failed', 'cancelled'].includes(final.state)) {
+        const ledger = new TaskLedger(store.directory);
+        const outcome = final.state === 'completed' ? 'success' : final.state === 'cancelled' ? 'cancelled' : final.observedOutcome === 'unknown' ? 'unknown' : 'failure';
+        await ledger.terminal(final.id, outcome, outcome === 'success' ? 'true' : outcome === 'cancelled' ? 'unknown' : 'unknown', outcome === 'failure' ? 'EXPORT_FAILED' : undefined).catch(() => {});
+        const host = validHostContext(final.trackingHost) ? final.trackingHost : undefined;
+        if (tracking) {
+          tracking.track('task_terminal', { task_id: final.id, task_type: 'export', ...(final.projectId ? { project_id: final.projectId } : {}),
+            ...(final.workId ? { run_id: final.workId } : {}), outcome, applied: outcome === 'success' ? 'true' : outcome === 'cancelled' ? 'unknown' : 'unknown',
+            terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(outcome === 'failure' ? { error_code: 'EXPORT_FAILED' } : {}) }, undefined, 'worker', host);
+          if (final.projectId && final.versionId) tracking.track('check_completed', { check_id: final.id, check_type: 'technical_export', project_id: final.projectId,
+            version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
+            result: final.verification && (final.verification as any).status === 'passed' ? 'pass' : final.state === 'failed' ? 'fail' : 'error', evidence_ref: final.id });
+          if (final.workId && final.projectId) {
+            if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {
+              run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
+            else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: 'modify', reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
+            else tracking.track('host_run_failed', { run_id: final.workId, task_type: 'modify', error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
+          }
+        }
+      }
     }
     if (job) runningExports.delete(job.id);
     if (job) await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
