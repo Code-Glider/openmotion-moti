@@ -197,14 +197,6 @@ export class ModelGateway {
     });
     return { providers, agents, routes: config.routes, capabilities };
   }
-  /** Which of the given available providers can make each kind, from built-in, cached and custom catalogs; not an entitlement check. */
-  async mediaCapabilities(providerIds: string[]) {
-    const models = await this.models();
-    const ready = new Set(providerIds);
-    const kindOf = (model: Model) => model.modality !== 'audio' ? model.modality : model.mode === 'text-to-speech' ? 'speech' : 'music';
-    return (['image', 'video', 'speech', 'music'] as const).map(kind => ({ kind,
-      providers: [...new Set(models.filter(model => ready.has(model.provider) && kindOf(model) === kind).map(model => model.provider))] }));
-  }
   async getJob(id: unknown) {
     if (!uuid(id)) throw new Error('Invalid generation job ID');
     const job = await readJson<GenerationJob | null>(path.join(this.root, 'jobs', id + '.json'), null);

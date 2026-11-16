@@ -19,7 +19,7 @@ function predictionData(body: any, provider: string) {
 const atlas: ProviderAdapter = {
   async generate(job, ctx) {
     const auth = { Authorization: `Bearer ${ctx.key}`, 'Content-Type': 'application/json' };
-    const payload = { ...job.model.defaults, ...job.parameters, model: job.model.modelId, [job.model.mode === 'text-to-speech' && !/^suno\/chirp/i.test(job.model.modelId) ? 'text' : 'prompt']: job.prompt };
+    const payload = { ...job.model.defaults, ...job.parameters, model: job.model.modelId, [job.model.mode === 'text-to-speech' ? 'text' : 'prompt']: job.prompt };
     const endpoint = { image: 'generateImage', video: 'generateVideo', audio: 'generateAudio' }[job.modality];
     const data = predictionData(await apiJson(ctx.fetcher, `https://api.atlascloud.ai/api/v1/model/${endpoint}`, {
       method: 'POST', headers: auth, body: JSON.stringify(payload), signal: ctx.signal,
@@ -29,13 +29,12 @@ const atlas: ProviderAdapter = {
     for (;;) {
       await delay(ctx.pollMs ?? (job.modality === 'video' ? 5000 : 2000), undefined, { signal: ctx.signal });
       const result = predictionData(await apiJson(ctx.fetcher, `https://api.atlascloud.ai/api/v1/model/prediction/${data.id}`, { headers: auth, signal: ctx.signal }), 'Atlas');
-      const status = String(result.status ?? '').toLowerCase();
-      if (['completed', 'succeeded'].includes(status)) {
+      if (['completed', 'succeeded'].includes(result.status)) {
         const media = outputs(result, job.modality);
         if (!media.length) throw new Error('Atlas completed without media output');
         return media.map(value => !/^(https:|data:)/.test(value) && job.modality === 'image' && /^[A-Za-z0-9+/=\s]+$/.test(value) ? `data:image/png;base64,${value}` : value);
       }
-      if (['failed', 'error', 'timeout', 'cancelled', 'canceled'].includes(status)) throw new Error(`Atlas generation ${status}`);
+      if (['failed', 'timeout', 'cancelled', 'canceled'].includes(result.status)) throw new Error(`Atlas generation ${result.status}`);
       await ctx.progress('generating');
     }
   },

@@ -4,7 +4,7 @@ Checked against official documentation on 2026-11-13. Sections: discovery, reque
 
 ## Setup and discovery
 
-Save the key in editor **Model providers** (Chinese UI: **模型供应商**). `ATLASCLOUD_API_KEY` is the environment alternative; the saved key wins. The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`; never read credential files or put keys in arguments. Shell examples document the wire protocol for service implementation or user-run diagnostics, using environment placeholders only.
+Save the key in editor **Model providers**. `ATLASCLOUD_API_KEY` is the environment alternative; the saved key wins. The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`; never read credential files or put keys in arguments. Shell examples document the wire protocol for service implementation or user-run diagnostics, using environment placeholders only.
 
 ```json
 {"action":"models","provider":"atlascloud","refresh":true,"modality":"image","query":"nano-banana","limit":20}
@@ -16,11 +16,11 @@ Underlying public catalogue request:
 curl --fail-with-body --silent --show-error 'https://api.atlascloud.ai/api/v1/models'
 ```
 
-Read the response `data` array. Change or omit modality/query for video/audio. The tool returns normalized metadata, not every model's input schema. Confirm the selected model in the current [model library](https://www.atlascloud.ai/models) and read its API schema on the model page before guessing parameter names. Public discovery and cached/built-in examples do not establish key validity, balance or model entitlement. `minimax/lyrics-generation` returns text lyrics rather than an audio file and is excluded from audio normalization.
+Read the response `data` array. Change or omit modality/query for video/audio. The tool returns normalized metadata, not every model's input schema. Confirm the selected model in the current [model library](https://www.atlascloud.ai/models) and read its API schema. Public discovery and cached/built-in examples do not establish key validity, balance or model entitlement.
 
 ## Request templates
 
-These JSON objects are `openmotion_media_use` arguments. Replace the project ID and assign a unique requestId per intended generation. Verify current availability and schema first; generation can incur charges. `openmotion_media_use` accepts optional top-level `mode` values `text-to-image`, `text-to-video`, `text-to-audio` and `text-to-speech`; when calling an `image-edit` or `image-to-video` model (for example `bytedance/seedance-2.0/image-to-video`), omit top-level `mode` and pass reference HTTPS URLs in `parameters` per that model's schema.
+These JSON objects are `openmotion_media_use` arguments. Replace the project ID and assign a unique requestId per intended generation. Verify current availability and schema first; generation can incur charges.
 
 Image — [Nano Banana 2 text-to-image](https://www.atlascloud.ai/models/google/nano-banana-2/text-to-image):
 
@@ -28,25 +28,19 @@ Image — [Nano Banana 2 text-to-image](https://www.atlascloud.ai/models/google/
 {"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-image-01","model":"google/nano-banana-2/text-to-image","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{"aspect_ratio":"1:1","resolution":"1k","output_format":"png"}}
 ```
 
-Video — [Seedance 2.0 text-to-video](https://www.atlascloud.ai/models/bytedance/seedance-2.0/text-to-video) (or fast draft model `ltx/ltx-2.3-fast/text-to-video` at `1080p` / `24` fps; probe audio streams and mute `<video>` in HTML when layering narration or music):
+Video — [Seedance 2.0 text-to-video](https://www.atlascloud.ai/models/bytedance/seedance-2.0/text-to-video):
 
 ```json
 {"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-video-01","model":"bytedance/seedance-2.0/text-to-video","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"duration":5,"resolution":"720p","aspect_ratio":"16:9","generate_audio":false}}
 ```
 
-Speech — [audio input guide](https://www.atlascloud.ai/docs/models/audio) (for Mandarin or multilingual voiceover, `minimax/speech-2.6-turbo` or `minimax/speech-02-hd` supports `voice_id`, `language_boost: "Chinese"`, `format: "mp3"` and `sample_rate: 32000` per its static schema):
+Speech — [audio input guide](https://www.atlascloud.ai/docs/models/audio):
 
 ```json
 {"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-speech-01","model":"bytedance/seed-audio-1.0","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"format":"mp3","sample_rate":24000}}
 ```
 
-Mandarin speech example (`minimax/speech-2.6-turbo`):
-
-```json
-{"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-speech-zh-01","model":"minimax/speech-2.6-turbo","modality":"audio","mode":"text-to-speech","prompt":"真正拉开差距的，不是堆砌参数，而是每一次切换都踩在节奏上。","parameters":{"voice_id":"Chinese (Mandarin)_Reliable_Executive","language_boost":"Chinese","format":"mp3","sample_rate":32000}}
-```
-
-Instrumental music — the same audio guide documents Suno's non-custom prompt input (`suno/chirp*` models always map `prompt` on the wire even though Atlas lists them under a speech category):
+Instrumental music — the same audio guide documents Suno's non-custom prompt input:
 
 ```json
 {"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-music-01","model":"suno/chirp-v5","modality":"audio","mode":"text-to-audio","prompt":"A gentle instrumental piano piece for a quiet morning","parameters":{"instrumental":true}}
@@ -84,7 +78,7 @@ curl --fail-with-body --silent --show-error \
   -H "Authorization: Bearer ${ATLASCLOUD_API_KEY:?Set ATLASCLOUD_API_KEY locally}"
 ```
 
-The adapter normalizes `data.status` case-insensitively (live prediction responses commonly return uppercase `PROCESSING`, `COMPLETED`, `FAILED` or `ERROR`) and waits through nonterminal states; `completed` / `succeeded` imports media from `data.outputs`. `failed`, `error`, `timeout`, `cancelled` or `canceled` ends local processing. Image Base64 output is also recognized. Agent polling uses the local ID, not the remote prediction ID:
+The adapter waits through nonterminal states; `completed` / `succeeded` imports media from `data.outputs`. `failed`, `timeout`, `cancelled` or `canceled` ends local processing. Image Base64 output is also recognized. Agent polling uses the local ID, not the remote prediction ID:
 
 ```json
 {"action":"status","projectId":"project","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}

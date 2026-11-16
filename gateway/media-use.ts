@@ -11,12 +11,9 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
   if (args.provider !== undefined && !supported(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
   if (args.action === 'inspect') {
     const status = await gateway.status();
-    const providers = status.providers.filter(p => supported(p.id) && (mediaProviders.includes(p.id as any) || p.configured || p.id === 'account'));
-    const capabilities = await gateway.mediaCapabilities(providers.filter(p => p.available).map(p => p.id));
-    return { providers, capabilities, setupRequired: !providers.some(p => p.available),
-      capabilityNote: 'speech = narration/dialogue (text-to-speech); music = other audio. Lists come from built-in and cached catalogs: confirm an empty kind with action "models" and refresh: true before telling the user it is unsupported.',
+    return { providers: status.providers.filter(p => supported(p.id) && (mediaProviders.includes(p.id as any) || p.configured || p.id === 'account')),
       defaults: status.routes,
-      settings: 'Open Settings > Model providers (Chinese UI: 设置 > 模型供应商), or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
+      settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
       references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }
