@@ -67,7 +67,7 @@ The shared WebMCP registrar measures all eighteen page tools through the existin
 
 ### openmotion_assets
 
-The additive protocol-1 asset tool manages a workspace library independently of projects. Actions are `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`, `cancel` and `import_to_project`. Import and generation use stable request IDs. Versions preserve bytes, hashes, prompt/model/parameters and pinned references; changing the current version does not rewrite historical files. Trash is reversible. Project import requires explicit projectId and versionId and reuses the ordinary project import/history transaction. Model support and costs remain gateway-owned; local Codex image editing accepts one image reference. See [asset architecture and limits](assets.md).
+The additive protocol-1 asset tool manages a workspace library independently of projects. Actions are `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`, `cancel` and `import_to_project`. Import and generation use stable request IDs. Versions preserve bytes, hashes, prompt/model/parameters and pinned references; changing the current version does not rewrite historical files. Trash is reversible. Project import requires explicit projectId and versionId and reuses the ordinary project import/history transaction. Model support and costs remain gateway-owned; image models that report `supportsImageReference` (local Codex and OpenDesign account models that support editing) accept one image reference. See [asset architecture and limits](assets.md).
 
 ### openmotion_list_templates / openmotion_get_template
 
