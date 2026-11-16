@@ -8,11 +8,15 @@ import { copyTemplate } from '../template-library.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { renderNext } from '../server.ts';
 import { fixture } from './fixtures.ts';
+import { createHash } from 'node:crypto';
 
 test('the unchanged decision-tree template exports a verified 1080p MP4', { timeout: 180_000 }, () => fixture(async store => {
   await copyTemplate('decision-tree', store.projectDirectory, pluginRoot);
   const before = await store.get();
   const job = await store.requestExport(before.revision, { phase1: true, audio: 'silent' });
+  const dependency = 'vendor/gsap-3.14.2/dist/gsap.min.js';
+  const original = await readFile(path.join(store.projectDirectory, dependency));
+  assert.equal(createHash('sha256').update(await readFile(path.join(store.snapshotDirectory(job.id), dependency))).digest('hex'), createHash('sha256').update(original).digest('hex'));
   await renderNext(store, pluginRoot);
   const completed = (await store.job(job.id))!;
   const evidence = process.env.OPENMOTION_DECISION_TREE_EVIDENCE;
@@ -25,6 +29,7 @@ test('the unchanged decision-tree template exports a verified 1080p MP4', { time
   assert.equal(completed.state, 'completed', JSON.stringify(completed));
   assert.deepEqual(completed.expected, { width: 1920, height: 1080, fps: 30, duration: 10, audio: 'silent' });
   assert.equal((completed.verification as any).status, 'passed', JSON.stringify(completed.verification));
+  assert.doesNotMatch(await readFile(path.join(store.directory, 'jobs', job.id, 'render.log'), 'utf8'), /Rewriting missing gsap script|Inlined CDN script:.*gsap@/);
   assert.equal((await store.get()).revision, before.revision, 'export must preserve the template source');
 }, false));
 

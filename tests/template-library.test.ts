@@ -221,3 +221,23 @@ test('metadata and unregistered directories cannot bypass template validation', 
   mkdirSync(path.join(f.catalog, 'unlisted')); writeFileSync(path.join(f.catalog, 'unlisted/guide.md'), 'Unlisted');
   f.stage(); const errors = checkTemplateLibrary(f.root).join('\n'); assert.match(errors, /ID must match/); assert.match(errors, /not registered/);
 });
+
+test('source manifests register arbitrary project formats without changing catalog summaries', async t => {
+  const f = fixture(t);
+  f.stage(); git(['commit', '-qm', 'Initial template'], f.root);
+  const base = git(['rev-parse', 'HEAD'], f.root).toString().trim();
+  for (const [name, bytes] of Object.entries({ '工程.custom': Buffer.from([0, 255, 42]), 'project.motion': Buffer.from('native project'), 'project.zip': Buffer.from([80, 75, 0, 3]), 'LICENSE': Buffer.from('License') })) {
+    writeFileSync(path.join(f.directory, 'source', name), bytes);
+  }
+  const before = await exportCatalog(f.catalog);
+  await refreshManifest(f.id, f.catalog); f.stage();
+  assert.deepEqual(checkTemplateLibrary(f.root), []);
+  assert.deepEqual(await exportCatalog(f.catalog), before);
+  const manifest = JSON.parse(await readFile(path.join(f.directory, 'source/manifest.json'), 'utf8'));
+  assert(manifest.files.some(file => file.path === '工程.custom'));
+  mkdirSync(path.join(f.directory, 'source/assets/lfs'), { recursive: true });
+  writeFileSync(path.join(f.root, '.gitattributes'), `${scope}*/source/assets/lfs/** filter=lfs diff=lfs merge=lfs -text\n`);
+  writeFileSync(path.join(f.directory, 'source/assets/lfs/project.custom'), `version https://git-lfs.github.com/spec/v1\noid sha256:${'b'.repeat(64)}\nsize 2000000\n`);
+  await refreshManifest(f.id, f.catalog); f.stage(); git(['commit', '-qm', 'Add native project files'], f.root);
+  assert.deepEqual(checkTemplateLibrary(f.root, base), []);
+});

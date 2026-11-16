@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { buildTemplatePublication } from '../.github/scripts/publish-template-catalog.mjs';
 import { pathToFileURL } from 'node:url';
 import { checkReleaseLocks, packageNpm } from '../scripts/package-npm.mjs';
 import { extractArchive, runFile, sha256 } from '../scripts/runtime-assets.mjs';
@@ -17,6 +19,60 @@ async function verifyTrackingPolicy(application: string, mode: 'test' | 'stable'
   await symlink(path.resolve('node_modules'), path.join(application, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   const result = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', path.resolve('tests/tracking-package.ts'), application, mode]));
   assert.equal(result.passed, true); assert.equal(result.external_requests, 0);
+}
+
+async function verifyHostedTemplates(application: string, commit: string) {
+  const built = await buildTemplatePublication(path.resolve('.'), commit);
+  const directory = await mkdtemp(path.join(tmpdir(), 'motion-npm-hosted-'));
+  try {
+    const hook = path.join(directory, 'hosted.mjs');
+    const files = built.uploads.map(file => ['https://releases.open-design.ai/' + file.key, file.body]);
+    files.push(['https://releases.open-design.ai/open-motion/templates/main/catalog.json', built.uploads.find(file => file.key.endsWith('/catalog.json'))!.body]);
+    await writeFile(hook, `import {readFile} from 'node:fs/promises';
+const files = new Map(${JSON.stringify(files)}), original = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+ const url = String(input), filename = files.get(url);
+ if (filename) return new Response(await readFile(filename));
+ if (url.startsWith('http://127.0.0.1:')) return original(input, init);
+ throw new Error('Unexpected network request: ' + url);
+};`);
+    const env = { ...process.env, MOTION_DATA_DIR: path.join(directory, 'data'), OPENMOTION_TELEMETRY: '0' };
+    delete env.MOTION_TEMPLATE_SOURCE;
+    const firstId = built.catalog.templateIds[0];
+    const messages = ['openmotion_list_templates', 'openmotion_get_template'].map((name, index) => ({ jsonrpc: '2.0', id: index + 1, method: 'tools/call', params: { name, arguments: index ? { templateId: firstId } : {} } }));
+    const replies = execFileSync(process.execPath, ['--import', hook, path.join(application, 'mcp.ts')], { cwd: directory, env, input: messages.map(value => JSON.stringify(value)).join('\n') + '\n', encoding: 'utf8', timeout: 30_000 }).trim().split('\n').map(line => JSON.parse(line));
+    for (const reply of replies) assert.equal(reply.result.isError, undefined, JSON.stringify(reply));
+    const index = replies[0].result.structuredContent, detail = replies[1].result.structuredContent;
+    assert.equal(index.source, 'hosted');
+    assert.equal(index.total, built.catalog.templateIds.length + 4);
+    const rows = (await readFile(index.indexPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    assert.deepEqual(rows.slice(0, built.catalog.templateIds.length).map(row => row.templateId).sort(), [...built.catalog.templateIds].sort());
+    assert.equal(detail.id, firstId); assert.equal(detail.localSource, undefined);
+    assert.equal(detail.motionDocument.content, await readFile(path.join('library/templates/catalog', firstId, 'source/motion.md'), 'utf8'));
+    const script = path.join(directory, 'http.mjs');
+    const url = file => JSON.stringify(pathToFileURL(path.join(application, file)).href);
+    await writeFile(script, `import {createServer} from 'node:http';
+import {handler} from ${url('server.ts')};
+import {WorkspaceStore} from ${url('workspace.ts')};
+const store = new WorkspaceStore(process.env.MOTION_DATA_DIR);
+const server = createServer((req,res) => handler(req,res,store,{}));
+await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
+try {
+ const origin='http://127.0.0.1:'+server.address().port;
+ const response = await fetch(origin+'/motion-api/template-catalog?category=all&locale=en&limit=60');
+ const page = await response.json();
+ const guide = await fetch(origin+page.items[0].motionGuideUrl);
+ const css = await fetch(origin+'/api/template-source/${firstId}/manifest.json');
+ console.log(JSON.stringify({status:response.status,source:page.source,total:page.catalogTotal,version:page.catalogVersion,guide:guide.status,manifest:css.status}));
+} finally { server.closeAllConnections(); await new Promise(resolve=>server.close(resolve)); }`);
+    const http = JSON.parse(await runFile(process.execPath, ['--import', hook, script], { cwd: directory, env }));
+    assert.equal(http.status, 200); assert.equal(http.source, 'hosted');
+    assert.equal(http.total, index.total); assert.equal(http.version, index.catalogVersion);
+    assert.equal(http.guide, 200); assert.equal(http.manifest, 200);
+  } finally {
+    await rm(built.staging, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
 async function verifyBundledTemplates(application: string) {
@@ -44,7 +100,12 @@ test('shared Agent instructions keep source-default, optional npm and release co
   assert(shared.includes('Never silently substitute npm for source or mix installations'));
   assert(shared.includes('Test publishes under `candidate`') && shared.includes('non-blocking Mac/Windows cold installs'));
   assert(shared.includes('Stable publishes publicly under `stage`') && shared.includes('requires both exact prod cold installs to pass'));
-  assert(shared.includes('separately authorized manual publication/recovery') && shared.includes('Preserve existing installations, projects, credentials'));
+  assert(shared.includes('npm publication and release snapshot recovery require separate manual authorization'));
+  assert(shared.includes('Main-branch template synchronization is explicitly authorized to run automatically'));
+  assert(shared.includes('scoped in the workflow to the final upload step'));
+  assert(shared.includes('These are shared bucket credentials, not template-only credentials'));
+  assert(shared.includes('Consumer jobs receive neither npm OIDC nor R2 credentials'));
+  assert(shared.includes('Preserve existing installations, projects, credentials'));
   assert(shared.includes('npm remains the source dependency/build tool'));
   assert.equal(await section('CLAUDE.md'), shared, 'CLAUDE.md must mirror the AGENTS.md release controls');
 });
@@ -88,7 +149,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     await extractArchive(built.application, application); await extractArchive(built.installer, installer);
     const sourceEnv = { ...process.env }; delete sourceEnv.MOTION_TEMPLATE_SOURCE;
     const sourceMode = await runFile(process.execPath, ['--input-type=module', '-e', `import {templateConfig} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/template-config.ts')).href)}; process.stdout.write(templateConfig().source);`], { env: sourceEnv });
-    assert.equal(sourceMode, 'cms', 'An npm application without repository templates must retain its CMS source');
+    assert.equal(sourceMode, 'hosted', 'An npm application without repository templates must read the latest hosted catalog');
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
     for (const file of onboardingSourceFiles) assert.equal(await sha256(path.join(application, file)), await sha256(file));
     const cards = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e',
@@ -123,6 +184,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     await assert.rejects(readFile(path.join(application, 'scripts/install-library-skill.mjs')), { code: 'ENOENT' });
     assert.equal((await json(path.join(application, 'package.json'))).version, version);
     await verifyTrackingPolicy(application, 'test');
+    await verifyHostedTemplates(application, release.commit);
     await verifyBundledTemplates(application);
     assert.equal((await json(path.join(application, 'shared/template-config.json'))).environment, 'dev');
     assert.equal((await json(path.join(application, '.codex-plugin/plugin.json'))).version, version);
