@@ -100,7 +100,12 @@ test('shared Agent instructions keep source-default, optional npm and release co
   assert(shared.includes('Never silently substitute npm for source or mix installations'));
   assert(shared.includes('Test publishes under `candidate`') && shared.includes('non-blocking Mac/Windows cold installs'));
   assert(shared.includes('Stable publishes publicly under `stage`') && shared.includes('requires both exact prod cold installs to pass'));
-  assert(shared.includes('separately authorized manual publication/recovery') && shared.includes('Preserve existing installations, projects, credentials'));
+  assert(shared.includes('npm publication and release snapshot recovery require separate manual authorization'));
+  assert(shared.includes('Main-branch template synchronization is explicitly authorized to run automatically'));
+  assert(shared.includes('scoped in the workflow to the final upload step'));
+  assert(shared.includes('These are shared bucket credentials, not template-only credentials'));
+  assert(shared.includes('Consumer jobs receive neither npm OIDC nor R2 credentials'));
+  assert(shared.includes('Preserve existing installations, projects, credentials'));
   assert(shared.includes('npm remains the source dependency/build tool'));
   assert.equal(await section('CLAUDE.md'), shared, 'CLAUDE.md must mirror the AGENTS.md release controls');
 });
