@@ -139,8 +139,10 @@ it('restores provider details and returns to the providers list through history'
 
 it('uses the header controls for visited pages, preserves Forward on reload and drops abandoned destinations', async () => {
   await mount();
-  expect(historyButton('Back').title).toBe('Back');
-  expect(historyButton('Forward').title).toBe('Forward');
+  expect(historyButton('Back').getAttribute('aria-label')).toBe('Back');
+  expect(historyButton('Back').hasAttribute('title')).toBe(false);
+  expect(historyButton('Forward').getAttribute('aria-label')).toBe('Forward');
+  expect(historyButton('Forward').hasAttribute('title')).toBe(false);
   expect(historyButton('Back').disabled).toBe(true);
   expect(historyButton('Forward').disabled).toBe(true);
   await click('MCP · Connect Agent'); await click('Settings');
@@ -171,7 +173,8 @@ it('keeps gallery history controls while headerless template previews retain bro
   expect(container.querySelector(`${detail} button[aria-label="Close template preview"]`)).not.toBeNull();
   expect(container.querySelector(`${detail} button[aria-label="Previous template"]`)).not.toBeNull();
   expect(container.querySelector(`${detail} button[aria-label="Next template"]`)).not.toBeNull();
-  expect(historyButton('Back').title).toBe('Back');
+  expect(historyButton('Back').getAttribute('aria-label')).toBe('Back');
+  expect(historyButton('Back').hasAttribute('title')).toBe(false);
   await traverse(-1); expect(page().template).toBeNull();
   expect(historyButton('Forward', library).disabled).toBe(false);
   await clickHistory('Forward', library); expect(page().template).toBe('product-promo');

@@ -59,7 +59,7 @@ async function flush() { await act(async () => { await vi.advanceTimersByTimeAsy
 async function render(active = true) { await act(async () => root.render(<AssetsPage active={active} />)); await flush(); }
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text || node.getAttribute('aria-label') === text)!;
 async function click(text: string) { await act(async () => button(text).click()); await flush(); }
-const previewName = () => container.querySelector('.om-asset-workspace-header > strong')?.textContent;
+const previewName = () => container.querySelector('.om-asset-workspace-header strong')?.textContent;
 const updates = () => vi.mocked(assetRequest).mock.calls.map(([args]) => args).filter(args => args.action === 'update');
 
 it('removes only the selected asset, exits its preview and restores the exact asset with Undo', async () => {
