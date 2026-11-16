@@ -36,7 +36,7 @@ If available tools cannot supply the material, report the specific gap and conti
 
 在实际最大取景下检查主体轮廓、细节、结构与文字、光影材质、身份一致性，以及裁切、背景能否支撑构图和所需动作。不合格就更换或修正，再扩建影片。声音素材核对内容、可用时段和用途；实际听感另行试听，未审听如实记录。生成成功、标称分辨率高或文件已导入，都不能替代可用性检查。
 
-复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](../../openmotion-director/references/production-decisions.md)。
+复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](decisions.md)。
 
 ## BYOK provider references
 

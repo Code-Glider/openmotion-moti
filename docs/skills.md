@@ -86,7 +86,7 @@ Gallery prompts carry the guide URL and exact template ID; the host reads the gu
 
 ## 共享质量与工具边界
 
-When selecting, obtaining or replacing media, all five routes conditionally read the [shared material policy](../skills/openmotion-production/references/materials.md), exposed as `openmotion://workflow/production/materials`. It owns source priorities, acquisition and usability checks; director decisions retain material/motion, timing and state relationships. Viewing, previewing or exporting existing content does not trigger acquisition. User constraints, supported workflow scope and reference fidelity remain authoritative; no new generation or retrieval Tool is introduced.
+When selecting, obtaining or replacing media, all five routes conditionally read the [shared material policy](../skills/openmotion-production/references/materials.md), exposed as `openmotion://workflow/production/materials`. It owns source priorities, acquisition and usability checks; [Production decisions](../skills/openmotion-production/references/decisions.md) own material/motion, timing and state relationships. Shared [review](../skills/openmotion-production/references/review.md) and [sound execution](../skills/openmotion-production/references/sound.md) also live in production; director owns original creative design. Legacy director decisions/review resource URIs return these canonical bodies with their production documentId/contentHash; old local paths forward to them. Viewing, previewing or exporting existing content does not trigger acquisition. User constraints, supported workflow scope and reference fidelity remain authoritative; no new generation or retrieval Tool is introduced.
 
 A prior local trial used only “做一个哈利波特宣传片” in a fresh gpt-6.1-sol/high session, with no supplied media or follow-up sourcing prompt. It retrieved the Warner Bros. trailer and official imagery/wordmark, using ten original excerpts totaling 20.5 seconds in a 32-second 1080p30 MP4. Selected/project hashes and exported frames were checked. That trial used runtime 0.6.1 and director 1.5.5; this PR preserves current main and canonicalizes the shared policy links. The attached sample is historical execution evidence, not a behavioral rerun of this PR head. Harry Potter is already a policy example; no causal, generalization, conflicting-upload or full playback/listening claim follows from this single run.
 
@@ -97,6 +97,10 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
 一期公开接口已收敛为 [14 个 openmotion_ 注册名](mcp-phase1-tools.md)（13 个领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+
+## Shared production reading scope
+
+Common engineering rules live in production; selected creative entries own their sequence and creative design. The context's [scoped reading examples](../skills/openmotion-production/references/context.md#按范围收紧读集的例子) distinguish local wording edits, existing-music replacement and unchanged HTML/MP4 delivery. Registered references expose available documents, not a recursive mandatory read set. Typography/font resources, original action design and sound narrative design are conditional; technical checks, final-file playback and actual display evidence keep their existing requirements. Deterministic document/registry checks establish that these paths are available, not that every host Agent will follow them or that a film improved.
 
 ## openmotion-recreate 能力扩展点
 
