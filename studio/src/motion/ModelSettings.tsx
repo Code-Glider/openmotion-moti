@@ -12,7 +12,6 @@ import { ProviderAvatar, ModelAvatar, SettingsDialog, SettingsError, SettingsLoa
 
 import { ModelEditor, kindLabels, capabilityLabels } from './ModelEditor';
 import { ModelCatalog } from './ModelCatalog';
-import { GenerationLimitSettings } from './GenerationLimitSettings';
 export { kindLabels } from './ModelEditor';
 const categories = [{ id: 'all', label: 'All providers' }, { id: 'configured', label: 'Configured' }, { id: 'multimodal', label: 'Multimodal' }, { id: 'language', label: 'Language' }, { id: 'media', label: 'Media' }, { id: 'local', label: 'Local' }, { id: 'custom', label: 'Custom' }];
 type Change = (action: () => Promise<unknown>, message: string) => Promise<boolean>;
@@ -56,7 +55,6 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
         {item.configured && <RemixIcon name="check-line" size={14} />}
       </button>)}{directory.data && !providers.length && <p className="om-empty om-muted">{t('No matching providers')}</p>}</nav>
       <button className="om-button om-add-provider" onClick={() => setAdding(true)}><RemixIcon name="add-line" size={16} />{t('Add provider')}</button>
-      <GenerationLimitSettings showToast={toast.showToast} />
     </aside>
     <div className="om-provider-detail">
       <button className="om-button om-provider-back" onClick={closeDetail}><RemixIcon name="arrow-left-line" size={16} />{t('Providers')}</button>

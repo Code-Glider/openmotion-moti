@@ -21,7 +21,7 @@ async function mount(providerId?: string) {
 const account = { id: 'account', label: 'OpenDesign', protocol: 'account', category: 'account', kinds: ['text', 'image'], configured: false, enabled: false, available: false };
 it('hides text-only providers across search and direct links while preserving media and unclassified custom connections', async () => {
   const text = { ...account, id: 'text-only', label: 'Text only', protocol: 'openai', category: 'language', kinds: ['text'], configured: true, custom: false };
-  const fetcher = vi.fn(async (url: string) => url.endsWith('/generation-limit') ? Response.json({ limit: 30, used: 0, windowHours: 24 }) : Response.json({ providers: [account, text,
+  const fetcher = vi.fn(async () => Response.json({ providers: [account, text,
     { ...text, id: 'media', label: 'Media models', kinds: ['text', 'image'] },
     { ...text, id: 'discovered-media', label: 'Discovered media' },
     { ...text, id: 'custom-new', label: 'New connection', custom: true },
@@ -36,13 +36,11 @@ it('hides text-only providers across search and direct links while preserving me
   expect(document.body.textContent).toContain('No matching providers');
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Clear filters"]')!.click());
   expect(document.querySelectorAll('.om-provider-item')).toHaveLength(4);
-  expect(fetcher.mock.calls.filter(([url]) => url === '/motion-api/settings/providers')).toHaveLength(1);
-  expect(document.querySelector('[aria-label="New submissions per 24 hours"]')).toBeTruthy();
+  expect(fetcher).toHaveBeenCalledTimes(1);
 });
 for (const [id, label] of [['fal', 'fal.ai'], ['atlascloud', 'Atlas Cloud'], ['wavespeed', 'WaveSpeedAI']]) it(`saves and removes ${label} credentials without revealing the key or making a paid call`, async () => {
   let configured = false; const writes: unknown[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith('/generation-limit')) return Response.json({ limit: 30, used: 0, windowHours: 24 });
     if (init?.method === 'PUT') { expect(url).toBe(`/motion-api/settings/providers/${id}`); const body = JSON.parse(String(init.body)); writes.push(body); configured = !!body.apiKey; return Response.json({}); }
     expect(url).toBe('/motion-api/settings/providers');
     return Response.json({ providers: [account, { id, label, protocol: 'media', category: 'multimodal', kinds: ['image', 'video', 'audio'], baseUrl: 'https://api.example', baseUrlEditable: false, configured, enabled: configured, available: configured, credentialSource: configured ? 'stored' : 'none' }], models: [], defaults: {} });
@@ -51,7 +49,7 @@ for (const [id, label] of [['fal', 'fal.ai'], ['atlascloud', 'Atlas Cloud'], ['w
   expect(document.body.textContent).toContain('One account. Your models, together.');
   await act(async () => document.querySelectorAll<HTMLButtonElement>('.om-provider-item')[1].click());
   await act(async () => type(`${label} API key`, 'synthetic-private-key'));
-  await act(async () => document.querySelector('.om-provider-form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(writes).toEqual([{ apiKey: 'synthetic-private-key' }]);
   expect(document.querySelector<HTMLInputElement>(`[aria-label="${label} API key"]`)!.value).toBe('');
   expect(document.querySelector('[role=switch]')?.getAttribute('aria-checked')).toBe('true');
@@ -63,7 +61,7 @@ for (const [id, label] of [['fal', 'fal.ai'], ['atlascloud', 'Atlas Cloud'], ['w
 
 it('searches providers without mutating credentials and recovers from failed directory loading', async () => {
   let failed = true;
-  const fetcher = vi.fn(async (url: string) => url.endsWith('/generation-limit') ? Response.json({ limit: 30, used: 0, windowHours: 24 }) : failed ? Response.json({ error: 'unavailable' }, { status: 503 }) : Response.json({ providers: [account], models: [], defaults: {} }));
+  const fetcher = vi.fn(async () => failed ? Response.json({ error: 'unavailable' }, { status: 503 }) : Response.json({ providers: [account], models: [], defaults: {} }));
   vi.stubGlobal('fetch', fetcher); await mount();
   expect(document.body.textContent).toContain('Could not load settings');
   failed = false; await act(async () => click('Retry'));
@@ -71,5 +69,5 @@ it('searches providers without mutating credentials and recovers from failed dir
   expect(document.body.textContent).toContain('No matching providers');
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Clear filters"]')!.click());
   expect(document.querySelectorAll('.om-provider-item')).toHaveLength(1);
-  expect(fetcher.mock.calls.filter(([url]) => url === '/motion-api/settings/providers')).toHaveLength(2);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });

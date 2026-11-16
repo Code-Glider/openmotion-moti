@@ -15,7 +15,6 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
     const status = await gateway.status();
     return { providers: status.providers.filter(p => supported(p.id) && (isMediaProvider(p.id) || p.configured || p.id === 'account')),
       defaults: status.routes,
-      generationLimit: await gateway.generationLimit(),
       settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
       settingsHandoff: { tool: 'openmotion_open_preview', arguments: { target: 'providers' } },
       references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),

@@ -24,7 +24,6 @@ test('connection guidance exposes the maintained media workflow without asking f
   assert.doesNotMatch(guide, /不公开生成/);
   assert.match(guide, /Keep credentials in Settings/);
   assert.match(guide, /openmotion_assets_use generate/);
-  assert.match(guide, /GENERATION_LIMIT_REACHED/);
 });
 
 test('media example preserves setup and task continuation across supported languages', async () => {

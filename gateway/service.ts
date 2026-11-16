@@ -4,7 +4,7 @@ import { copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writ
 import path from 'node:path';
 import type { OmTracking } from '../shared/tracking.ts';
 import { WorkspaceStore } from '../workspace.ts';
-import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GenerationLimit, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
+import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
 import { detectAgents, generateCodexImage } from './agents.ts';
 import { downloadMedia, mediaType, publicProviderFetch, ProviderError, type Fetcher } from './network.ts';
@@ -65,27 +65,6 @@ export class ModelGateway {
     this.account = new OpenDesignAccount(store.directory);
   }
   config(): Promise<GatewayConfig> { return this.connections.gatewayConfig(); }
-  async generationLimit(jobs?: GenerationJob[]): Promise<GenerationLimit> {
-    let settings: { limit: number };
-    try {
-      settings = await readJson(path.join(this.root, 'generation-limit.json'), { limit: 30 });
-      if (!settings || !Number.isInteger(settings.limit) || settings.limit < 0 || settings.limit > 500) throw new Error('Invalid limit');
-    } catch {
-      throw new Error('Generation limit could not be read. Open Settings > Model providers > Generation limit and save it again.');
-    }
-    const cutoff = Date.now() - 24 * 60 * 60_000;
-    return { limit: settings.limit, used: (jobs ?? await this.listJobs()).filter(job => job.createdAt > cutoff).length, windowHours: 24 };
-  }
-  async setGenerationLimit(input: unknown): Promise<GenerationLimit> {
-    const invalid = () => new Error('Generation limit must be an integer from 0 to 500');
-    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => key !== 'limit')) throw invalid();
-    const { limit } = input as { limit?: unknown };
-    if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 0 || limit > 500) throw invalid();
-    return this.store.lock(async () => {
-      await atomic(path.join(this.root, 'generation-limit.json'), { limit });
-      return this.generationLimit();
-    });
-  }
   private credential(id: ProviderId) { return this.connections.resolveCredential(id); }
   async configureProvider(id: unknown, input: Record<string, unknown>) {
     if (typeof id !== 'string') throw new Error('Unknown model provider');
@@ -262,9 +241,6 @@ export class ModelGateway {
       if (input.library?.references?.length && (!model.supportsImageReference || input.modality !== 'image' || input.library.references.length !== 1)) throw new Error('This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
       if (input.referenceAsset && (!model.supportsImageReference || input.modality !== 'image')) throw new Error('Selected model does not support reference image editing');
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');
-      const allowance = await this.generationLimit(jobs);
-      if (allowance.limit && allowance.used >= allowance.limit) throw Object.assign(new Error(
-        `GENERATION_LIMIT_REACHED: ${allowance.used} of ${allowance.limit} generation submissions used in the last 24 hours. Change the limit in Settings > Model providers.`), { code: 'GENERATION_LIMIT_REACHED' });
       const job: GenerationJob = { id: randomUUID(), saveToLibrary: true, ...(input.library ? { library: { ...input.library, createNew: !input.library.assetId, assetId: input.library.assetId ?? randomUUID() } } : { projectId }), state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
           : !isGatewayProvider(model.provider) ? { providerOrigin: await this.connections.baseUrl(model.provider) } : {}),
