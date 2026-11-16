@@ -158,14 +158,16 @@ test('Markdown references resolve across workflows, deduplicate canonical paths,
 });
 
 test('Markdown heading anchors follow rendered slugs and every packaged #fragment link resolves', async () => {
-  const anchors = markdownAnchors([
+  const headings = [
     '# Check and deliver', '## 1. Export the inspected version', '## 旁白选角与语气', '### `measure` CLI: probe', '## Notes', '## Notes', '## Closed heading ##',
-    '## _Emphasis_ and <em>tags</em>', '## `a_b` snake_case', '# a', '# a-1', '# a',
+    '## _Emphasis_ and <em>tags</em>', '## `a_b` snake_case', '## _private', '## __init__ hook', '# a', '# a-1', '# a',
     '````markdown', '## Inside a longer fence', '```', '## Still inside', '````', '## After the fence',
     '~~~', '## Unclosed fence hides the rest',
-  ].join('\n'));
+  ];
+  const anchors = markdownAnchors(headings.join('\n'));
+  assert.deepEqual([...markdownAnchors(headings.join('\r\n'))], [...anchors]);
   assert.deepEqual([...anchors], ['check-and-deliver', '1-export-the-inspected-version', '旁白选角与语气', 'measure-cli-probe', 'notes', 'notes-1', 'closed-heading',
-    'emphasis-and-tags', 'a_b-snake_case', 'a', 'a-1', 'a-2', 'after-the-fence']);
+    'emphasis-and-tags', 'a_b-snake_case', '_private', 'init-hook', 'a', 'a-1', 'a-2', 'after-the-fence']);
 
   const documentId = 'skills/openmotion-director/SKILL.md';
   const links = workflowLinkAnchors([

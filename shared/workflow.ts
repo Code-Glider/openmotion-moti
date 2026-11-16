@@ -106,7 +106,7 @@ for (const [workflow, definition] of Object.entries(workflowRegistry)) for (cons
 // A fence closes only on a run of the same character at least as long as its opener; an unclosed fence runs to the end of the document.
 function withoutFences(content: string) {
   let fence: string | undefined;
-  return content.split('\n').filter(line => {
+  return content.split(/\r\n?|\n/).filter(line => {
     if (fence) {
       if (new RegExp(`^ {0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}[ \\t]*$`).test(line)) fence = undefined;
       return false;
@@ -156,7 +156,7 @@ export function markdownAnchors(content: string) {
   const repeats = new Map<string, number>();
   for (const [, heading] of withoutFences(content).matchAll(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/gm)) {
     const visible = heading.split(/(`+[^`]*`+)/).map((part, index) => index % 2 ? part
-      : part.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]+>/g, '').replace(/(^|[^\p{L}\p{N}_])_+|_+(?=$|[^\p{L}\p{N}_])/gu, '$1')).join('');
+      : part.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]+>/g, '').replace(/(^|[^\p{L}\p{N}_])(_+)(?=\S)(.+?)(?<=\S)\2(?=$|[^\p{L}\p{N}_])/gu, '$1$3')).join('');
     const base = visible.trim().toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-');
     let anchor = base;
     while (anchors.has(anchor)) {
