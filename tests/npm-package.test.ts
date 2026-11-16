@@ -92,8 +92,8 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
     for (const file of onboardingSourceFiles) assert.equal(await sha256(path.join(application, file)), await sha256(file));
     const cards = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e',
-      `import {loadTemplatePresentation,showTemplateRecommendations} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/mcp-template-recommendations.ts')).href)}; console.log(JSON.stringify(showTemplateRecommendations(loadTemplatePresentation(),{templateIds:${JSON.stringify(onboardingTemplateIds)}})));`]));
-    assert.deepEqual(cards.cards.map((card: any) => card.templateId), [...onboardingTemplateIds]);
+      `import {loadTemplatePresentation,showTemplateRecommendations} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/mcp-template-recommendations.ts')).href)}; console.log(JSON.stringify(showTemplateRecommendations(loadTemplatePresentation(),{templateIds:${JSON.stringify(onboardingTemplateIds.slice(-3))}})));`]));
+    assert.deepEqual(cards.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(-3));
     assert(cards.cards.every((card: any) => card.templateKind === 'reference' && !card.createArgs));
     const readme = await readFile(path.join(installer, 'package/README.md'), 'utf8');
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));

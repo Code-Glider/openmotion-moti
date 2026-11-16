@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { distributionFiles } from '../scripts/distribution.ts';
 import { prepareInlineOnboarding, publishInlineOnboarding } from '../scripts/inline-onboarding.mjs';
+import { runFile } from '../scripts/runtime-assets.mjs';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -28,7 +29,8 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
   t.after(() => rm(directory, { recursive: true, force: true }));
   const runtimeFiles = new Set(['package.json', 'template-library.ts', 'hyperframes.ts',
     'shared/export-spec.ts', 'shared/mcp-template-recommendations.ts', 'shared/onboarding-templates.ts', ...onboardingSourceFiles,
-    'scripts/inline-onboarding.mjs', 'scripts/runtime-assets.mjs']);
+    'scripts/inline-onboarding.mjs', 'scripts/runtime-assets.mjs', 'scripts/onboarding-catalog.ts',
+    'shared/template-config.ts', 'shared/template-config.json']);
   for (const profile of ['phase1', 'legacy']) {
     const installedRoot = path.join(directory, profile);
     // Select only the renderer's runtime closure from the actual package allowlist.
@@ -42,10 +44,16 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
       await cp(path.join(appRoot, file), target);
     }
     const prepared = await prepareInlineOnboarding({ appRoot: installedRoot,
-      output: path.join(directory, profile + '.html'), language: 'zh' });
+      output: path.join(directory, profile + '.html'), language: 'zh', templateIds: onboardingTemplateIds.slice(-3) });
     assert.equal(prepared.status, 'prepared');
     assert.match(prepared.welcomeMarkdown, /我是你的开源视频创作搭档/);
-    assert.deepEqual(prepared.templateIds, [...onboardingTemplateIds]);
+    assert.deepEqual(prepared.templateIds, onboardingTemplateIds.slice(-3));
+    const catalog = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types',
+      path.join(installedRoot, 'scripts/onboarding-catalog.ts'), '--template-ids', JSON.stringify(prepared.templateIds)], { cwd: directory }));
+    assert.deepEqual(catalog.templates.map((item: any) => item.templateId), prepared.templateIds);
+    assert.equal(catalog.recommendedTemplateId, prepared.templateIds[0]);
+    assert(catalog.templates.every((item: any) => item.kind === 'reference'));
+    assert.match(catalog.selectionGuide, /yes.*named recommendation/i);
     const published = await publishInlineOnboarding({ source: prepared.path,
       expectedSHA256: prepared.sha256, hostDirectory: path.join(directory, 'host') });
     assert.equal(published.status, 'published');

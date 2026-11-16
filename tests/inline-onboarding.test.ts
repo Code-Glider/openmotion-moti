@@ -10,6 +10,11 @@ import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs
 
 import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
+function assertSelection(ids: string[]) {
+  assert.equal(ids.length, 3); assert.equal(new Set(ids).size, 3);
+  assert(ids.every(id => (onboardingTemplateIds as readonly string[]).includes(id)));
+}
+
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 test('onboarding locale tags normalize to a supported language and other languages fall back to English', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-onboarding-language-'));
@@ -18,7 +23,7 @@ test('onboarding locale tags normalize to a supported language and other languag
     const result = await prepareInlineOnboarding({ appRoot, output: path.join(directory, language + '.html'), language });
     assert.equal(result.status, 'prepared');
     assert.equal(result.language, expected);
-    assert.deepEqual(result.templateIds, [...onboardingTemplateIds]);
+    assertSelection(result.templateIds);
   }
 });
 test('default installation prepares all three production cards in its own workspace without presentation flags', async t => {
@@ -26,7 +31,8 @@ test('default installation prepares all three production cards in its own worksp
   t.after(() => rm(directory, { recursive: true, force: true }));
   const result = await prepareInstallationOnboarding({ appRoot, dataDirectory: directory, templateEnvironment: 'prod', language: 'zh' });
   assert.equal(result.inlinePresentation?.status, 'prepared');
-  assert.deepEqual(result.inlinePresentation.templateIds, [...onboardingTemplateIds]);
+  assertSelection(result.inlinePresentation.templateIds);
+  assert.deepEqual(result.catalog.templates.map((item: any) => item.templateId), result.inlinePresentation.templateIds);
   assert.equal(result.inlinePresentation.language, 'zh');
   assert(path.resolve(result.inlinePresentation.path).startsWith(directory + path.sep));
   assert.equal((await stat(result.inlinePresentation.path)).size, result.inlinePresentation.bytes);
@@ -36,9 +42,9 @@ test('the inline renderer returns a streaming welcome separately from three real
   const directory = await mkdtemp(path.join(tmpdir(), 'om-inline-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const output = path.join(directory, 'welcome.html');
-  const result = await renderInlineOnboarding({ appRoot, output, language: 'zh' });
+  const result = await renderInlineOnboarding({ appRoot, output, language: 'zh', templateIds: onboardingTemplateIds.slice(0, 3) });
   assert.equal(result.nativeMcpSessionVerified, false);
-  assert.deepEqual(result.templateIds, [...onboardingTemplateIds]);
+  assertSelection(result.templateIds);
   assert(result.bytes < 1_000_000);
   const fragment = await readFile(output, 'utf8');
   assert.doesNotMatch(fragment, /<!doctype|<html[ >]|<head[ >]|<body[ >]/i);
@@ -64,7 +70,7 @@ test('the inline renderer returns a streaming welcome separately from three real
   assert.match(copied, /openmotion-recreate/);
   assert.match(copied, /我的要求/);
   assert.equal(window.document.querySelector('textarea'), null);
-  await assert.rejects(renderInlineOnboarding({ appRoot, output, language: 'zh' }), /EEXIST/);
+  await assert.rejects(renderInlineOnboarding({ appRoot, output, language: 'zh', templateIds: onboardingTemplateIds.slice(0, 3) }), /EEXIST/);
   assert.equal(await readFile(output, 'utf8'), fragment);
 });
 

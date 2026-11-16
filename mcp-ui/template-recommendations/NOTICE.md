@@ -1,6 +1,6 @@
 # OpenMotion template recommendation previews
 
-First-run onboarding recommends Bolt Skills, A New Era of No-Code and Magic Share in that order. These are reference films, not OpenMotion-generated videos or verified editable projects. Playback and posters use the existing content-addressed public CMS URLs recorded in manifest.json and the repository catalog. An internet connection is required. The original artwork, brands and audio retain their respective rights; OpenMotion does not relicense them. Source/provenance links remain in each selected catalog record.
+First-run onboarding randomly samples three distinct videos from the nine-reference curated pool maintained in shared/onboarding-templates.ts. The prepared selection remains fixed while its cards are viewed. These are reference films, not OpenMotion-generated videos or verified editable projects. Playback and posters use the existing content-addressed public CMS URLs recorded in manifest.json and the repository catalog. An internet connection is required. The original artwork, brands and audio retain their respective rights; OpenMotion does not relicense them. Source/provenance links remain in each selected catalog record.
 
 The preview films and posters are derived from the bundled Product Promo, NYT Graph and Decision Tree examples. The exact full-duration, 960×540 MP4 bytes are integrity-locked by manifest.json. They were encoded from the checked-in native examples; this does not claim ownership of the original example artwork.
 
