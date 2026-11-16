@@ -13,10 +13,14 @@ export function useTextOverflow(text: string) {
     measure();
     const observer = new ResizeObserver(measure);
     if (ref.current) observer.observe(ref.current);
-    document.fonts?.addEventListener("loadingdone", measure);
+    // Browsers re-measure once web fonts finish loading; environments without a
+    // fully implemented font set (such as jsdom) simply keep the initial result.
+    const fonts = document.fonts;
+    const listensToFonts = typeof fonts?.addEventListener === "function";
+    if (listensToFonts) fonts.addEventListener("loadingdone", measure);
     return () => {
       observer.disconnect();
-      document.fonts?.removeEventListener("loadingdone", measure);
+      if (listensToFonts) fonts.removeEventListener("loadingdone", measure);
     };
   }, [text, measure]);
   return { ref, overflowing, measure };
