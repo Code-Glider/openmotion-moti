@@ -11,6 +11,9 @@ import { cloudModels } from './opendesign.ts';
 import { ProviderConnections } from './connections.ts';
 import { compatibleProvider } from './compatible.ts';
 import { OpenDesignAccount } from './account.ts';
+import { AssetLibrary } from './asset-library.ts';
+import { requireLibraryMediaRuntime } from './asset-probe.ts';
+import { generationOptions, validateGenerationOptions } from '../shared/generation-options.ts';
 
 type Config = { version: 1; providers: Partial<Record<ProviderId, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number }>>;
   routes: Partial<Record<Modality, string>>; customModels: Model[] };
@@ -105,7 +108,10 @@ export class ModelGateway {
   private async models(): Promise<Model[]> {
     const cached = await readJson<Model[]>(path.join(this.root, 'catalog.json'), []);
     const overrides = await this.connections.modelOverrides();
-    return [...new Map([...builtinModels, ...cached, ...(await this.config()).customModels, ...await this.connections.mediaModels(), ...await this.account.mediaModels()].map(model => [model.id, model])).values()].map(model => ({ ...model, ...overrides[model.id] }));
+    return [...new Map([...builtinModels, ...cached, ...(await this.config()).customModels, ...await this.connections.mediaModels(), ...await this.account.mediaModels()].map(model => [model.id, model])).values()].map(model => {
+      const merged = { ...model, ...overrides[model.id] };
+      return { ...merged, generationOptions: generationOptions(merged) };
+    });
   }
   async listModels(input: { provider?: unknown; modality?: unknown; query?: unknown; refresh?: unknown; offset?: unknown; limit?: unknown } = {}) {
     if (input.provider !== undefined && input.provider !== 'account' && !providerIds.includes(input.provider as string) && !(await this.connections.list()).some(p => p.id === input.provider)) throw new Error('Unknown model provider');
@@ -197,7 +203,8 @@ export class ModelGateway {
     if (!job) throw new Error('Generation job not found');
     // Jobs preserve their original output paths. Studio can subsequently rename/delete files.
     for (const asset of job.assets) {
-      const target = await this.store.safePath(asset.path, this.store.projectDirectoryFor(job.projectId));
+      const target = job.library ? await this.store.safePath(asset.path, new AssetLibrary(this.store).root)
+        : await this.store.safePath(asset.path, this.store.projectDirectoryFor(job.projectId!));
       asset.available = await lstat(target).then(info => info.isFile() && !info.isSymbolicLink(), () => false);
     }
     return job;
@@ -213,6 +220,9 @@ export class ModelGateway {
     modality(input.modality);
     if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 20_000) throw new Error('Prompt must contain 1–20000 characters');
     const params = parameters(input.parameters);
+    if (input.library && input.projectId) throw new Error('Choose either an asset library or a project destination');
+    const library = new AssetLibrary(this.store);
+    if (input.library) await library.validateGeneration(input.library);
     if (input.referenceAsset !== undefined && (typeof input.referenceAsset !== 'string' || !input.referenceAsset || input.referenceAsset.length > 1024)) throw new Error('Invalid reference image path');
     if (input.idempotencyKey !== undefined && (typeof input.idempotencyKey !== 'string' || !/^[\w-]{1,100}$/.test(input.idempotencyKey))) throw new Error('Invalid idempotency key');
     if (input.usage && (typeof input.usage !== 'object' || Object.entries(input.usage).some(([key, value]) => !['compositionId', 'elementId', 'property'].includes(key) || typeof value !== 'string' || value.length > 240))) throw new Error('Invalid editor usage context');
@@ -230,19 +240,24 @@ export class ModelGateway {
     if (input.mode && input.mode !== `text-to-${input.modality}` && !(input.modality === 'audio' && input.mode === 'text-to-speech')) throw new Error('Generation mode does not match modality');
     if (model && input.mode) model = { ...model, mode: input.mode };
     if (model?.provider === 'opendesign' && input.modality === 'audio' && model.mode !== 'text-to-speech') throw new Error('OpenDesign Cloud currently supports speech audio only');
-    const projectId = input.projectId ?? this.store.projectCatalog().activeId;
-    const requestHash = hash(JSON.stringify({ projectId, model: input.model ?? null, modality: input.modality, prompt: input.prompt, parameters: params, mode: input.mode, usage: input.usage, ...(input.referenceAsset ? { referenceAsset: input.referenceAsset } : {}) }));
+    const projectId = input.library ? undefined : input.projectId ?? this.store.projectCatalog().activeId;
+    const requestHash = hash(JSON.stringify({ projectId, library: input.library, model: input.model ?? null, modality: input.modality, prompt: input.prompt, parameters: params, mode: input.mode, usage: input.usage, ...(input.referenceAsset ? { referenceAsset: input.referenceAsset } : {}) }));
     return this.store.lock(async () => {
-      if (!this.store.projectCatalog().projects.some(p => p.id === projectId)) throw new Error('Project not found');
-      const entry = await this.store.safePath('index.html', this.store.projectDirectoryFor(projectId));
-      await lstat(entry).catch(() => { throw new Error('Open a project before generating media'); });
+      if (!input.library) {
+        if (!this.store.projectCatalog().projects.some(p => p.id === projectId)) throw new Error('Project not found');
+        const entry = await this.store.safePath('index.html', this.store.projectDirectoryFor(projectId!));
+        await lstat(entry).catch(() => { throw new Error('Open a project before generating media'); });
+      }
       const jobs = await this.listJobs();
       const previous = input.idempotencyKey ? jobs.find(j => j.idempotencyKey === input.idempotencyKey && j.projectId === projectId) : undefined;
       if (previous) { if (previous.requestHash !== requestHash) throw new Error('Idempotency key was already used for another request'); return previous; }
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
+      validateGenerationOptions(model, { ...model.defaults, ...params });
+      if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
+      if (input.library?.references?.length && (model.provider !== 'codex' || input.modality !== 'image' || input.library.references.length !== 1)) throw new Error('This model does not support asset references. Choose the local Codex image model or remove the reference.');
       if (input.referenceAsset && (model.provider !== 'codex' || !model.supportsImageReference || input.modality !== 'image')) throw new Error('Selected model does not support reference image editing');
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');
-      const job: GenerationJob = { id: randomUUID(), projectId, state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
+      const job: GenerationJob = { id: randomUUID(), ...(input.library ? { library: { ...input.library, createNew: !input.library.assetId, assetId: input.library.assetId ?? randomUUID() } } : { projectId }), state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
           : !providerIds.includes(model.provider) ? { providerOrigin: (await this.connections.list()).find(p => p.id === model!.provider)?.baseUrl } : {}),
         ...(!providerIds.includes(model.provider) && model.provider !== 'account' ? { providerRevision: await this.connections.identity(model.provider) } : {}),
@@ -250,14 +265,17 @@ export class ModelGateway {
         createdAt: Date.now(), updatedAt: Date.now(), phase: 'queued', assets: [] };
       const work = path.join(this.root, 'work', job.id);
       try {
-        if (input.referenceAsset) {
-          const source = await this.store.safePath(input.referenceAsset, this.store.projectDirectoryFor(projectId));
+        const libraryReference = input.library?.references?.[0];
+        if (input.referenceAsset || libraryReference) {
+          const reference = libraryReference ? await library.resolve(libraryReference) : undefined;
+          const source = reference?.filename ?? await this.store.safePath(input.referenceAsset!, this.store.projectDirectoryFor(projectId!));
           const info = await lstat(source);
           if (!info.isFile() || info.isSymbolicLink() || info.size > 20 * 1024 * 1024) throw new Error('Reference image must be a local file under 20 MB');
           const bytes = await readFile(source), media = mediaType(bytes, 'image');
           if (bytes.length > 20 * 1024 * 1024) throw new Error('Reference image exceeds 20 MB');
           if (!['png', 'jpg', 'webp'].includes(media.extension)) throw new Error('Use a PNG, JPEG or WebP reference image');
-          job.reference = { path: input.referenceAsset, sha256: hash(bytes), mimeType: media.mimeType, bytes: bytes.length };
+          if (reference && hash(bytes) !== reference.version.sha256) throw new Error('Reference asset bytes have changed');
+          job.reference = { path: input.referenceAsset ?? `asset:${libraryReference!.assetId}/${libraryReference!.versionId}`, sha256: hash(bytes), mimeType: media.mimeType, bytes: bytes.length };
           await mkdir(work, { recursive: true, mode: 0o700 });
           await writeFile(path.join(work, 'reference.' + media.extension), bytes, { flag: 'wx', mode: 0o600 });
         }
@@ -328,6 +346,7 @@ export class ModelGateway {
       if (job.model.provider === 'opendesign' && job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the queued task was not submitted');
       if (job.model.provider !== 'account' && !providerIds.includes(job.model.provider) && job.providerOrigin !== (await this.connections.list()).find(p => p.id === job.model.provider)?.baseUrl) throw new Error('Provider API origin changed; the queued task was not submitted');
       if (job.model.provider !== 'account' && !providerIds.includes(job.model.provider) && (job.providerRevision !== await this.connections.identity(job.model.provider) || !(await this.connections.mediaModels()).some(model => model.id === job.model.id))) throw new Error('Provider or model configuration changed; the queued task was not submitted');
+      if (job.library) await requireLibraryMediaRuntime();
       await mkdir(dir, { recursive: true, mode: 0o700 });
       let buffers: Buffer[];
       if (job.model.provider === 'account') {
@@ -345,11 +364,40 @@ export class ModelGateway {
         buffers = [];
         for (const url of urls) buffers.push(Buffer.isBuffer(url) ? url : await (this.options.download ?? downloadMedia)(url, controller.signal));
       }
+      await progress('downloading');
       const files = buffers.map((bytes, i) => { const media = mediaType(bytes, job.modality); return { bytes, mimeType: media.mimeType, path: `assets/generated/${job.id}-${i + 1}.${media.extension}` }; });
       controller.signal.throwIfAborted();
+      if (job.library) {
+        for (const file of files) await writeFile(path.join(dir, path.basename(file.path)), file.bytes, { flag: 'wx', mode: 0o600 });
+        const library = new AssetLibrary(this.store);
+        const prepared: Awaited<ReturnType<AssetLibrary['prepare']>>[] = [];
+        try {
+        for (const file of files) prepared.push(await library.prepare(path.join(dir, path.basename(file.path))));
+        await this.store.lock(async () => {
+          const current = await this.getJob(job.id); if (current.state !== 'running') return;
+          const references = job.library!.references ?? [];
+          const outputs: NonNullable<GenerationJob['libraryAssets']> = [];
+          for (const [index, file] of files.entries()) {
+            const digest = hash(`${job.id}:${index}`);
+            const targetId = index && job.library!.createNew ? `${digest.slice(0, 8)}-${digest.slice(8, 12)}-${digest.slice(12, 16)}-${digest.slice(16, 20)}-${digest.slice(20, 32)}` : job.library!.assetId;
+            const existing = await library.get(targetId).catch(error => { if (error.message !== 'ASSET_NOT_FOUND') throw error; return undefined; });
+            const asset = await library.addLocked(prepared[index], { assetId: existing?.id, createId: targetId,
+              name: job.library!.title || job.prompt.replace(/\s+/g, ' ').trim().slice(0, 80), expectedModality: job.modality,
+              version: { source: 'generated', prompt: job.prompt, model: job.model.id, parameters: job.parameters, references,
+                parentVersionId: job.library!.parentVersionId, jobId: job.id, requestId: `${job.id}-${index}`, conversationId: job.library!.conversationId } });
+            const version = asset.versions.find(v => v.requestId === `${job.id}-${index}`)!;
+            outputs.push({ assetId: asset.id, versionId: version.id });
+          }
+          current.library = job.library; current.libraryAssets = outputs;
+          current.state = 'completed'; current.phase = 'completed'; current.updatedAt = Date.now();
+          await this.saveJob(current);
+        });
+        } finally { await Promise.all(prepared.map(file => rm(file.file, { force: true }))); }
+        return;
+      }
       await this.store.lock(async () => {
         const current = await this.getJob(job.id); if (current.state !== 'running') return;
-        const project = this.store.projectDirectoryFor(job.projectId);
+        const project = this.store.projectDirectoryFor(job.projectId!);
         if (!this.store.projectCatalog().projects.some(p => p.id === job.projectId)) throw new Error('Target project no longer exists');
         const targets: string[] = [];
         try {

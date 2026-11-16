@@ -350,12 +350,13 @@ export function useTimelineProviderState({
     onSeek,
     contentOrigin,
   });
-  const { razorGuideX, updateRazorGuide, clearRazorGuide, splitAllAtPointer } =
+  const { razorGuideRef, updateRazorGuide, clearRazorGuide, splitAllAtPointer } =
     useTimelineRazorInteraction({
       active: activeTool === "razor",
       scrollRef,
       contentOrigin,
       pixelsPerSecond: pps,
+      sessionEpoch,
       onSplitAll: oneShotEdits.onRazorSplitAll,
     });
   const overlaysProps = useTimelineOverlaysState({
@@ -568,7 +569,7 @@ export function useTimelineProviderState({
     contentOrigin, contentGutter,
     zoomMode,
     theme,
-    razor: { razorGuideX, updateRazorGuide, clearRazorGuide, splitAllAtPointer },
+    razor: { razorGuideRef, updateRazorGuide, clearRazorGuide, splitAllAtPointer },
     lastScrollLeftRef,
     recordTimelineScroll,
     syncScrollViewport,

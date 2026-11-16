@@ -244,6 +244,7 @@ export function AssetCard({
             <img
               src={serveUrl}
               alt={name}
+              draggable={false}
               loading="lazy"
               className="w-full h-full object-cover"
               onError={() => setImgError(true)}

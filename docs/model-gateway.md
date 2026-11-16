@@ -8,7 +8,7 @@ Updated: 2026-11-15.
 
 已有 Agent 用户需要在制作视频时知道哪些图片、视频、音乐或语音模型可以调用，并让生成结果继续参与手工编辑。此前只能自行生成文件后导入；Studio 与 MCP 没有共同的生成入口。
 
-当前实现为工作区级 Model Gateway：本地 Agent 检测、供应商 Key、模型目录、默认路由、异步任务和素材落盘共用一个服务。工程格式、时间轴与渲染仍使用 Hyperframes。It does not run a conversational Agent; OpenDesign account authorization and subscription state are integrated through a separate connector.
+当前实现为工作区级 Model Gateway：本地 Agent 检测、供应商 Key、模型目录、默认路由、异步任务和素材落盘共用一个服务。工程格式、时间轴与渲染仍使用 Hyperframes。It does not itself run a conversational Agent; the [Assets conversation service](assets.md) orchestrates local Codex and submits library jobs through this same gateway; OpenDesign account authorization and subscription state are integrated through a separate connector.
 
 在 OpenDesign 通用会话架构中，Gateway 服务于 Motion 产物：会话拥有产物，产物引用原生工程，生成任务固定该工程。模型设置管理工作区配置；The application rail opens a full settings center for providers, models and account connections in standalone and embedded editors.旧时间轴生成浮层保留为内部兼容接口。各入口复用同一 Gateway。创作模式与媒体模态、供应商模型的职责划分见[会话技术架构](session-architecture.md#会话编排与媒体生成的分层)。
 
@@ -36,7 +36,7 @@ Existing local Codex configuration, generation UI and legacy Gateway APIs remain
 | verification verified / rejected | 云供应商生成请求返回过媒体结果，或收到 401/403；更换 Key 重置状态。验证通过不保证后续下载/入库或未来请求成功 |
 | job completed | 文件已下载、类型校验并保存；不是仅收到远端任务 ID |
 
-本地检测包括 Codex、Claude Code、Gemini CLI。当前只有 Codex 注册了本地媒体适配器，其他 Agent 的安装结果不会被当成生图能力。Codex 要求 CLI 支持 `--ephemeral`，`codex login status` 显示已登录，`codex features list` 的 `image_generation` 开启。使用用户已有 CLI 配置和登录，以独立临时工作目录运行 `codex exec`；不读取或复制 OAuth token，不调用私有后端接口。成功与否最终以真实输出文件为准。
+本地检测包括 Codex、Claude Code、Gemini CLI。当前只有 Codex 注册了本地媒体适配器，其他 Agent 的安装结果不会被当成生图能力。Codex 要求 CLI 支持 `--ephemeral`，`codex login status` 显示已登录，`codex features list` 的 `image_generation` 开启。使用用户已有 CLI 配置和登录，以独立临时工作目录运行 `codex exec`；不读取或复制 OAuth token，不调用私有后端接口。Success requires one newly created, regular raster file in the isolated job directory and the existing media-signature validation. The adapter reads bounded JSON completion/error events and relevant image-service diagnostics; it does not persist the raw CLI transcript. Reference files, stale outputs, symlinks and arbitrary paths in model replies are excluded. The CLI inherits the user's active Codex provider, endpoint and authentication configuration. A CLI login check does not establish image-service authorization. A proxy response of `personal engine key required` is reported separately from general authorization failures: verify that Codex `model_provider` selects the intended configured provider and that its endpoint and authentication match. Merely defining a provider does not select it, and signing in again does not supply a proxy key. OpenMotion does not edit Codex configuration or copy credentials. Other authorization failures direct users to inspect the active provider and account session without asserting that the login expired. No automatic retry or provider switch occurs.
 
 请求中的明确模型优先，其次是该模态的默认路由，最后才自动选择可用的文本生成模型（图片优先本地 Codex）。已配置的路由不可用时明确失败，不自动换成另一个付费供应商。
 
@@ -138,3 +138,7 @@ Cloud uses a workspace Bearer key and the supplied media API contract: authentic
 The `/motion-api/settings/` endpoints expose the provider directory, custom connection CRUD, catalogue synchronization, model enablement and capability defaults. Account endpoints expose summary, login, cancel and logout. They share the existing Host/Origin write checks and never return keys. `connections.json` stores API connection metadata, registered models and language/embedding defaults; media defaults remain in gateway routes. Account runtime, CLI-owned credentials, session identity and cached models live under the data directory’s `account/` folder. The [settings guide](provider-settings.md) describes the exact boundary and connector installation.
 
 `tests/provider-settings.test.ts` covers compatible catalogue protocols, key isolation, revision-bound queue execution and subprocess account authorization/media fixtures. `tests/byok-browser.mjs` drives the real editor HTTP server in an isolated Chrome profile. These deterministic checks do not prove live authorization, billing entitlement or paid generation acceptance.
+
+## Model-specific creation controls
+
+See [generation options](generation-options.md) for the shared Studio/MCP parameter profiles, native field types, model defaults, Codex reasoning controls and validation boundaries. Asset navigation and the creator can be resized by dragging or keyboard, with remembered widths.

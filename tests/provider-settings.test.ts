@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, readFile, stat, writeFile } from 'node:fs/promises';
+import { spawn, type SpawnOptions } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -150,6 +151,39 @@ test('cancelling after credentials arrive cannot restore a session through a lat
   assert.equal((await account.summary()).state, 'signed-out');
   assert.equal(await account.identity(), undefined); assert.deepEqual(await account.models(), []);
   assert.deepEqual(JSON.parse(await readFile(path.join(store.directory, 'account', 'models.json'), 'utf8')), []);
+}));
+
+test('account fixture publishes complete credentials while sign-in is being polled', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const started = path.join(store.directory, 'credential-write-started');
+  const release = path.join(store.directory, 'allow-credential-publication');
+  const preload = path.join(store.directory, 'pause-credential-write.mjs');
+  await writeFile(preload, `import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const write = fs.writeFileSync;
+fs.writeFileSync = (file, ...args) => {
+  if (String(file).includes('config.json')) {
+    write(file, '', args[1]);
+    write(${JSON.stringify(started)}, 'ready');
+    const deadline = Date.now() + 5000;
+    while (!fs.existsSync(${JSON.stringify(release)})) {
+      if (Date.now() > deadline) throw new Error('Credential publication fixture timed out');
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
+  return write(file, ...args);
+};
+syncBuiltinESMExports();`);
+  const spawnFixture = ((_command: string, args: readonly string[], options: SpawnOptions) =>
+    spawn(process.execPath, ['--import', preload, binary, ...args], options)) as typeof spawn;
+  const account = new OpenDesignAccount(store.directory, { binary, spawn: spawnFixture });
+  t.after(() => account.close());
+  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+  await writeFile(path.join(account.home, 'authorize'), 'yes');
+  await until(async () => access(started).then(() => true, () => false));
+  try { assert.equal((await account.summary()).state, 'authorizing'); }
+  finally { await writeFile(release, 'continue'); }
+  await until(async () => (await account.summary()).state === 'signed-in');
 }));
 
 test('an in-flight billing refresh cannot report an old account after sign-out', t => fixture(async store => {

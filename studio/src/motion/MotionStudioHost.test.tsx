@@ -9,6 +9,9 @@ import { GITHUB_REPOSITORY } from './githubRepository';
 import { StudioHeader } from '../components/StudioHeader';
 import { useMotionHistoryOperation } from './MotionHistoryState';
 import { trackMotion } from './tracking';
+import { AssetImportMenu } from './AssetLibraryImport';
+import { readFileSync } from 'node:fs';
+vi.mock('./assetClient', () => ({ assetRequest: vi.fn(async () => ({ assets: [], total: 0, nextOffset: null })) }));
 vi.mock('./tracking', () => ({ trackMotion: vi.fn(async () => 'queued') }));
 vi.mock('./AccountSettings', () => ({ useAccountSummary: () => ({ account: null }) }));
 vi.mock('./SettingsCenter', () => ({ SettingsCenter: () => <section data-testid="settings-center">Settings</section> }));
@@ -49,6 +52,7 @@ vi.mock('./ConnectionDialog', () => ({ ConnectionDialog: ({ open, section, busy,
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
 let container: HTMLDivElement;
+let layoutStyle: HTMLStyleElement | undefined;
 const originalWidth = window.innerWidth;
 beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
@@ -64,16 +68,16 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
 });
-afterEach(() => { act(() => root.unmount()); container.remove(); Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth }); history.replaceState(null, '', '/'); });
+afterEach(() => { act(() => root.unmount()); container.remove(); layoutStyle?.remove(); layoutStyle = undefined; Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth }); history.replaceState(null, '', '/'); });
 function HistoryOperationState({ busy }: { busy: boolean }) {
   const { setBusy } = useMotionHistoryOperation();
   React.useEffect(() => setBusy(busy), [busy, setBusy]);
   return null;
 }
-function render(historyBusy = false) {
+function render(historyBusy = false, children?: React.ReactNode) {
   act(() => root.render(<MotionStudioHost><HistoryOperationState busy={historyBusy} /><MotionEditorFrame><StudioHeader captureFrameHref="/frame.png" captureFrameFilename="frame.png"
     handleCaptureFrameClick={vi.fn()} refreshCaptureFrameTime={vi.fn()} inspectorButtonActive={false}
-    inspectorPanelActive={false} onExport={state.export} /></MotionEditorFrame></MotionStudioHost>));
+    inspectorPanelActive={false} onExport={state.export} />{children}</MotionEditorFrame></MotionStudioHost>));
 }
 function openSidebar() {
   act(() => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="首页"]')!.click());
@@ -232,6 +236,41 @@ it('collapses the full desktop navigation in embeds while preserving the editor 
   expect(sidebar.hasAttribute('inert')).toBe(true);
   expect(sidebar.getAttribute('aria-hidden')).toBe('true');
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
+});
+
+it.each([true, false])('preserves the desktop sidebar when opening and dismissing asset import (expanded=%s)', async expanded => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+  layoutStyle = document.createElement('style');
+  layoutStyle.textContent = [
+    '../../../packages/design-system/studio/application.css', './application.css',
+  ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
+  document.head.append(layoutStyle);
+  render(false, <AssetImportMenu projectId="demo" importing={false} onUpload={vi.fn()} onImported={vi.fn()} />);
+  if (!expanded) openSidebar();
+  const sidebar = container.querySelector('.om-project-navigation')!;
+  const editor = container.querySelector('.motion-studio-header');
+  const assertLayout = () => {
+    expect(container.querySelector('.om-project-navigation')).toBe(sidebar);
+    expect(getComputedStyle(sidebar).flexBasis).toBe(expanded ? '200px' : '0px');
+    expect(getComputedStyle(sidebar).visibility).not.toBe(expanded ? 'hidden' : 'visible');
+    expect(sidebar.hasAttribute('inert')).toBe(!expanded);
+    expect(container.querySelector('.motion-studio-header')).toBe(editor);
+  };
+  assertLayout();
+  for (const dismissal of ['close', 'escape']) {
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="导入媒体"]')!.click());
+    await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent?.includes('从资产库导入'))!.click());
+    const dialog = document.querySelector<HTMLElement>('.om-settings-dialog')!;
+    expect(dialog.textContent).toContain('从资产库导入');
+    assertLayout();
+    await act(async () => {
+      if (dismissal === 'close') dialog.querySelector<HTMLButtonElement>('[aria-label="关闭"]')!.click();
+      else dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(document.querySelector('.om-settings-dialog')).toBeNull();
+    expect(sidebar.getAttribute('aria-hidden') === 'true').toBe(!expanded);
+    assertLayout();
+  }
 });
 
 it.each([[1440, '返回首页'], [800, '返回首页'], [1440, '关闭设置'], [800, '关闭设置']] as const)('returns home from settings without replacing the current editor at %ipx via %s', async (width, closeLabel) => {

@@ -92,8 +92,8 @@ test('Cloud discovery uses workspace credentials; origin changes stop queued cal
   const first = await gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-image', modality: 'image', prompt: 'cup' });
   await gateway.configureProvider('opendesign', { baseUrl: 'https://changed.example' });
   assert.match((await finish(store, first.id)).error!, /origin changed/); assert.equal(calls, 1);
-  const speech = await gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-v3', modality: 'audio', prompt: 'hello' });
-  assert.match((await finish(store, speech.id)).error!, /voice ID/); assert.equal(calls, 1);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-v3', modality: 'audio', prompt: 'hello' }), /Voice ID is required/);
+  assert.equal(calls, 1);
   await gateway.configureProvider('opendesign', { apiKey: null });
   assert.equal((await gateway.status()).providers.find(p => p.id === 'opendesign')!.enabled, false);
   await gateway.close();

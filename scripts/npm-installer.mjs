@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { canonical, extractArchive, nativeComponents, obtainAsset, readJSON, relativePath, runFile, withLock, writeAtomic, writeJSON } from './runtime-assets.mjs';
-import { ensureNativeRuntime, startNativePreparation } from './npm-runtime.mjs';
+import { canonical, extractArchive, nativeComponents, obtainAsset, readJSON, relativePath, runFile, sha256, withLock, writeAtomic, writeJSON } from './runtime-assets.mjs';
+import { defaultInstallationHome as defaultHome, nativeCacheDirectory, ensureNativeRuntime, startNativePreparation } from './npm-runtime.mjs';
 import { hosts, hostPlan, skillTargets, obsoleteSkills, checkSkillOwner, copyHostSkills } from './npm-hosts.mjs';
 import { installedTool } from './mcp-client.mjs';
 import { checkTransport, redact } from './check-installed-mcp.mjs';
@@ -16,7 +16,6 @@ import { exportDiagnostics, recordDiagnostic } from './diagnostics.mjs';
 // Keep ownership stable so earlier local installations remain upgradable.
 export const managedBy = '@openmotion/installer';
 const bundledManifest = fileURLToPath(new URL('../payload/release-npm.json', import.meta.url));
-const defaultHome = (environment = 'prod') => path.join(process.platform === 'win32' ? process.env.LOCALAPPDATA || os.homedir() : path.join(os.homedir(), '.local/share'), environment === 'dev' ? 'openmotion-dev' : 'openmotion');
 const contains = (parent, child) => { const rel = path.relative(parent, child); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); };
 const usage = `Usage:
   openmotion setup --host <${hosts.join('|')}> [options]
@@ -38,6 +37,7 @@ Setup options:
   --dsh FILE         Harness executable (macOS Desktop CLI is detected automatically)
   --profile NAME     Harness profile (default: web); use the selected host profile
   --manifest FILE    Explicit release manifest for controlled local installations
+  --onboarding-output FILE  Optional host-readable HTML path override; Codex welcome/cards are prepared by default
 
 Setup starts native preparation in the background; editing does not wait for it.
 Use prepare to wait explicitly for every video component or retry failed preparation.
@@ -75,7 +75,14 @@ export async function localManifest(filename) {
 }
 
 export async function setup(options) {
+  if (options.onboardingOutput) {
+    assert((options.host || 'codex') === 'codex', 'Inline onboarding is selected by the Codex host only');
+    assert(path.isAbsolute(options.onboardingOutput) && options.onboardingOutput.endsWith('.html'), 'Use an absolute .html path readable by the calling host');
+    const present = await lstat(options.onboardingOutput).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+    assert(!present, 'Refusing to overwrite an existing onboarding document');
+  }
   const manifest = await localManifest(options.manifest || bundledManifest);
+  checkBundledDependencyTarget(manifest.bundledDependencies);
   if (!options.manifest) assert.equal(manifest.version, (await readJSON(new URL('../package.json', import.meta.url))).version, 'Bundled application must match the npm package version');
   const templateEnvironment = manifest.templateEnvironment ?? 'prod';
   assert(['dev', 'prod'].includes(templateEnvironment), 'Invalid template environment');
@@ -113,18 +120,23 @@ export async function setup(options) {
         for (const file of ['mcp.ts', 'scripts/npm-runtime.mjs', 'studio/build/index.html', 'skills/openmotion-production/SKILL.md']) await readFile(path.join(temporary, file));
         assert(!contains(temporary, process.execPath), 'Node must remain external to the lightweight application');
         const npm = process.env.npm_execpath || path.join(path.dirname(process.execPath), process.platform === 'win32' ? 'node_modules/npm/bin/npm-cli.js' : '../lib/node_modules/npm/bin/npm-cli.js');
-        console.error('OpenMotion: installing locked npm runtime (no native media/browser download).');
-        await runFile(process.execPath, [npm, 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: temporary });
+        if (manifest.bundledDependencies) {
+          await verifyBundledDependencies(temporary, manifest.bundledDependencies);
+          console.error('OpenMotion: verified prebuilt npm runtime; no dependency download required.');
+        } else {
+          console.error('OpenMotion: installing locked npm runtime (no native media/browser download).');
+          await runFile(process.execPath, [npm, 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: temporary });
+        }
         await writeJSON(path.join(temporary, '.npm-install.json'), { schemaVersion: 1, applicationSHA256: manifest.application.sha256, installHome: home, commit: manifest.commit,
-          cacheDirectory: path.join(home, 'cache/native'), runtime: manifest.runtime, allowLocalAssets: true });
+          cacheDirectory: nativeCacheDirectory(home), runtime: manifest.runtime, allowLocalAssets: true });
         await rename(temporary, appRoot);
       } finally { await rm(temporary, { recursive: true, force: true }); }
     }
     const installed = await readJSON(path.join(appRoot, '.npm-install.json'));
     assert.equal(installed.applicationSHA256, manifest.application.sha256, 'Installed application identity mismatch');
     assert.equal(JSON.stringify(installed.runtime), JSON.stringify(manifest.runtime), 'Native manifest changed for the same application; rebuild the application release');
-    const { prepareInstallationOnboarding, prepareInstallationPreview } = await import(pathToFileURL(path.join(appRoot, 'scripts/install-onboarding.mjs')).href);
-    const onboarding = await prepareInstallationOnboarding({ appRoot, dataDirectory, templateEnvironment });
+    const { prepareInstallationFlow, installationInstructions } = await import(pathToFileURL(path.join(appRoot, 'scripts/install-onboarding.mjs')).href);
+    await installationInstructions(appRoot);
     const targets = await skillTargets(plan, appRoot), directories = [];
     for (const target of targets) directories.push({ target, existed: await checkSkillOwner(target, home, plan.host, plan.layout), movedOld: false, movedNew: false });
     for (const target of await obsoleteSkills(plan, home, targets)) directories.push({ target, existed: true, removeOnly: true, movedOld: false, movedNew: false });
@@ -150,13 +162,16 @@ export async function setup(options) {
       await plan.register();
       for (const item of directories) await rm(item.backup, { recursive: true, force: true }).catch(error => console.error('Old instruction backup retained: ' + error.message));
       await startNativePreparation(appRoot).catch(error => console.error('OpenMotion: background preparation could not start; retry in Studio or run prepare. ' + error.message));
-      if (plan.host === 'codex') {
-        const { prepareCodexHostHandoff } = await import(pathToFileURL(path.join(appRoot, 'scripts/codex-host-handoff.mjs')).href);
-        onboarding.hostHandoff = await prepareCodexHostHandoff({ dataDirectory, expectedVersion: manifest.version, codex: options.codex });
-        onboarding.hostSessionVerified = onboarding.hostHandoff.hostSessionVerified;
+      const onboarding = await prepareInstallationFlow({ appRoot, dataDirectory, templateEnvironment,
+        host: plan.host, onboardingOutput: options.onboardingOutput, codex: options.codex, expectedVersion: manifest.version });
+      onboarding.directAccess = directAccess(home, plan.host, appRoot, options);
+      if (plan.host === 'codex' && onboarding.inlinePresentation?.status === 'prepared' && onboarding.preview.status === 'ready') {
+        const { scheduleInstallationOnboarding } = await import(pathToFileURL(path.join(appRoot, 'scripts/onboarding-callback.mjs')).href);
+        onboarding.callback = await scheduleInstallationOnboarding({ appRoot, dataDirectory, version: manifest.version,
+          onboarding, entry: 'npm', codex: options.codex });
+        if (onboarding.callback.status === 'queued') onboarding.onboardingStatus = 'callback_queued';
       }
-      onboarding.preview = await prepareInstallationPreview({ appRoot, dataDirectory });
-      return { ...state, host: plan.host, hostInstallation: plan.metadata, nativeDependencies: 'background-preparation; status and retry available in Studio', onboarding: { ...onboarding, directAccess: directAccess(home, plan.host, appRoot, options) } };
+      return { ...state, host: plan.host, hostInstallation: plan.metadata, nativeDependencies: 'background-preparation; status and retry available in Studio', onboarding };
     } catch (error) {
       if (wroteLauncher && !previous) await rm(launcher, { force: true });
       if (wroteState) { if (previous) await writeJSON(stateFile, previous); else await rm(stateFile, { force: true }); }
@@ -170,11 +185,30 @@ export async function setup(options) {
   });
 }
 
+export function checkBundledDependencyTarget(info) {
+  if (!info) return;
+  assert(info.platform === process.platform && info.arch === process.arch,
+    'Prebuilt npm runtime targets ' + info.platform + '/' + info.arch + '; select the package for this machine');
+  assert(/^[a-f0-9]{64}$/.test(info.lockSHA256), 'Prebuilt npm runtime requires its dependency lock SHA256');
+}
+
+export async function verifyBundledDependencies(directory, info) {
+  checkBundledDependencyTarget(info);
+  assert.deepEqual(await readJSON(path.join(directory, '.bundled-dependencies.json')), info, 'Prebuilt npm runtime identity mismatch');
+  assert.equal(await sha256(path.join(directory, 'package-lock.json')), info.lockSHA256, 'Prebuilt npm runtime dependency lock mismatch');
+  const pkg = await readJSON(path.join(directory, 'package.json'));
+  for (const [name, version] of Object.entries(pkg.dependencies || {})) {
+    assert.equal((await readJSON(path.join(directory, 'node_modules', name, 'package.json')))?.version, version,
+      'Prebuilt npm runtime is incomplete or stale: ' + name);
+  }
+}
+
 export function directAccess(home, host, appRoot, options = {}) {
   const flags = ['--home', home, '--host', host];
   for (const key of ['codex', 'claude', 'dsh', 'profile']) if (options[key]) flags.push('--' + key, options[key]);
   const cli = path.join(appRoot, 'scripts/npm-installer.mjs');
   return { command: process.execPath, toolsArgs: [cli, 'tools', ...flags],
+    ...(host === 'codex' && process.env.CODEX_HOME ? { environment: { CODEX_HOME: process.env.CODEX_HOME } } : {}),
     callArgs: [cli, 'call', 'TOOL', '--args-file', 'FILE.json', ...flags],
     instructions: 'Use working native tools for this installation first. Otherwise execute toolsArgs with command in this same chat, read the returned inputSchema, then execute callArgs after replacing TOOL and FILE.json. Write arguments as a JSON object in a local file, without shell interpolation. Reuse the chosen template, project and request IDs; revision/version guards still apply. This is direct installed MCP access, not native host discovery or reconnection. Do not ask the user to restart or open a new chat to use it. Do not bypass disabled tools, permission denials or host policy. If shell execution is unavailable, use supported host recovery; ask for user action only when no permitted path works.' };
 }
@@ -221,7 +255,7 @@ export async function diagnose(options) {
 async function main() {
   const { positionals, values } = parseArgs({ allowPositionals: true, options: {
     manifest: { type: 'string' }, home: { type: 'string' }, 'data-dir': { type: 'string' }, 'skills-dir': { type: 'string' }, host: { type: 'string' }, codex: { type: 'string' }, claude: { type: 'string' }, dsh: { type: 'string' }, profile: { type: 'string' },
-    help: { type: 'boolean', short: 'h' }, version: { type: 'boolean' }, output: { type: 'string' }, 'args-file': { type: 'string' },
+    help: { type: 'boolean', short: 'h' }, version: { type: 'boolean' }, output: { type: 'string' }, 'args-file': { type: 'string' }, 'onboarding-output': { type: 'string' },
   } });
   if (values.help) { console.log(usage); return; }
   if (values.version) { console.log((await readJSON(new URL('../package.json', import.meta.url))).version); return; }
@@ -229,7 +263,7 @@ async function main() {
   assert(positionals.length === (command === 'call' ? 2 : 1), usage);
   if (command === 'setup') {
     try {
-      console.log(JSON.stringify(await setup({ manifest: values.manifest, home: values.home, dataDirectory: values['data-dir'], skillsDirectory: values['skills-dir'], host: values.host, codex: values.codex, claude: values.claude, dsh: values.dsh, profile: values.profile }), null, 2));
+      console.log(JSON.stringify(await setup({ manifest: values.manifest, home: values.home, dataDirectory: values['data-dir'], skillsDirectory: values['skills-dir'], host: values.host, codex: values.codex, claude: values.claude, dsh: values.dsh, profile: values.profile, onboardingOutput: values['onboarding-output'] }), null, 2));
     } catch (error) {
       const environment = (await readJSON(bundledManifest).catch(() => null))?.templateEnvironment;
       await recordDiagnostic(values.home || defaultHome(environment), { kind: 'installation_failed', message: error.message });

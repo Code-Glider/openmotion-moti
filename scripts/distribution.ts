@@ -498,14 +498,14 @@ const localReadmeResourceFiles = [
 
 export const distributionDocuments = [
   ...motionPackageFiles,
-  ...designSystemDocuments, 'cloud.md',
+  ...designSystemDocuments,
   ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
   'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'CONTRIBUTING.zh-CN.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'repository-media.json',
   'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md',
   'tracking/README.md', 'tracking/INTEGRATION.md', 'tracking/posthog-geoip.hog',
   'docs/agent-adapters.md', 'docs/browser-runtime.md', 'docs/design-system.md', 'docs/editor-fork.md',
-  'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/provider-settings.md', 'docs/local-agents.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
+  'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/assets.md', 'docs/generation-options.md', 'docs/provider-settings.md', 'docs/local-agents.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
   'docs/motion-extension-scope.md', 'docs/npm-installation.md', 'docs/install.md', 'docs/release-guide.md', 'docs/release-workflows.md', 'docs/templates/release-record.md', 'docs/project-workspace.md',
   'docs/repository-migration.md', 'docs/session-architecture.md', 'docs/shared-editor.md',
   'docs/README.zh-CN.md', 'docs/README.ja.md',
@@ -555,7 +555,7 @@ export const distributionDocuments = [
   'docs/skills.md', 'docs/template-catalog.md', 'docs/template-repository.md', 'docs/repository-storage.md', 'docs/test-packages.md', 'docs/templates/requirement.md',
 ];
 
-export async function distributionFiles(profile: string): Promise<string[]> {
+export async function distributionFiles(profile: string, include: (file: string) => boolean = () => true): Promise<string[]> {
   if (!['phase1', 'legacy'].includes(profile)) throw new Error('Unknown distribution profile: ' + profile);
   const files = [
     ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file),
@@ -566,14 +566,14 @@ export async function distributionFiles(profile: string): Promise<string[]> {
     'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts',
     'scripts/runtime-assets.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
-    'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
+    'scripts/install-onboarding.mjs', 'scripts/inline-onboarding.mjs', 'scripts/onboarding-callback.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
     'scripts/diagnostics.mjs', 'scripts/diagnostic-redaction.mjs', 'scripts/zip.mjs',
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',
     'scripts/repository-media.ts', 'scripts/build-template-cards.mjs',
     'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
-    'mcp-ui/template-recommendations/manifest.json',
+    'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
     'mcp-ui/template-recommendations/LICENSE', 'mcp-ui/template-recommendations/NOTICE.md',
     'mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css',
     'mcp-ui/template-recommendations/build/identity.json',
@@ -600,14 +600,17 @@ export async function distributionFiles(profile: string): Promise<string[]> {
   for (const skill of packagedSkills) await walk('skills/' + skill, /\.(?:md|mjs|ts|py|json|ya?ml)$/);
   await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
   await walk('studio/public', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
-  for (const file of files) {
+  // A lightweight application must not require optional showcase bytes that its
+  // caller intentionally excludes. Full bundles still validate the whole list.
+  const selected = [...new Set(files)].filter(include).sort();
+  for (const file of selected) {
     const info = await lstat(path.join(root, file)).catch(error => {
       if (error.code === 'ENOENT' && /\.(?:mp4|motion|gif|png|jpe?g|webp)$/i.test(file)) throw new Error(`Optional media is missing: ${file}. Run npm run media:pull for transferred files, or the scoped LFS pull in docs/repository-storage.md.`);
       throw error;
     });
     if (!info.isFile()) throw new Error('Distribution requires a regular file: ' + file);
   }
-  return [...new Set(files)].sort();
+  return selected;
 }
 
 // Complete bundles must never turn unresolved LFS pointers into installed media.

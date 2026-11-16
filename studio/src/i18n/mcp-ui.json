@@ -194,6 +194,61 @@
     "Can I continue with another Agent?": "可以换一个 Agent 继续做吗？",
     "Yes. Connect a compatible Agent to the same workspace and ask it to read the saved project before editing. Projects and assets can be reused; provide any conversation context it needs separately.": "可以。将兼容的 Agent 接入同一工作区，让它读取已保存的工程再继续编辑。工程和素材可以复用，需要的聊天上下文请另行提供。",
     "Copy this instruction to your Agent to install and connect OpenMotion.": "复制指令发给 Agent，让它帮你安装并接入 OpenMotion。",
-    "Tell your Agent what you want to make. Start with an idea, your material or a template.": "告诉 Agent 想做什么，从想法、素材或模板开始。"
+    "Tell your Agent what you want to make. Start with an idea, your material or a template.": "告诉 Agent 想做什么，从想法、素材或模板开始。",
+    "Clients that negotiate MCP Apps can discover optional template cards and the final-video player. Codex installation callbacks can also show the welcome and three video cards through a supported inline renderer while opening the template library. This does not verify native MCP discovery. Other clients use the local library, editor and video links; host support varies.": "协商 MCP Apps 的客户端可发现可选模板卡片和成片播放器。Codex 安装回调也可通过宿主支持的内联渲染器展示欢迎与三张视频卡片，同时打开模板库。这不代表原生 MCP 工具已被发现。其他客户端使用本地模板库、编辑器和视频链接；具体取决于宿主支持。",
+    "Codex inline onboarding or MCP Apps; final video requires MCP Apps": "Codex 内联欢迎流程或 MCP Apps；成片播放器需要 MCP Apps",
+    "Available models come from your configured providers and account. Image, video, music and speech support depends on the selected model. Studio and MCP share model-specific parameters; available controls follow the selected model. A connected provider does not guarantee quota or generation success.": "模型来自已配置的供应商与账户。图片、视频、音乐与语音支持以所选模型为准；连接成功不代表一定有额度或本次生成一定成功。",
+    "Create and reuse assets": "创建与复用资产",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "在资产页上传或生成图片、视频、音频。可直接调用模型、使用页面内 Codex 对话，或通过外部 MCP Agent 创作。引用指定版本并导入影片。",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "列出我的 OpenMotion 资产库。帮我生成新资产或编辑已有版本，保留原始内容，再将选定版本导入我的工程。",
+    "Why can Codex chat work while image generation fails?": "为什么 Codex 能对话却无法生图？",
+    "Codex login and image-service access are separate checks. For authorization errors, check the active Codex provider, endpoint and credentials. A proxy reporting a missing personal engine key needs its configured provider authentication; signing in again alone does not fix that configuration. Failed tasks preserve the original assets and are never retried automatically.": "Codex 登录与生图服务权限是两项独立检查。授权失败时，请检查 Codex 当前供应商、服务地址和凭据。若代理提示缺少 personal engine key，需要使用该代理已配置的供应商认证；仅重新登录无法修复这种配置错配。失败任务会保留原始资产，不会自动重试。",
+    "How do I restore an asset version?": "如何恢复资产的旧版本？",
+    "Open the asset, select a version in the right inspector and choose Make current version. Later versions remain available. Studio and MCP use the same asset update operation; references and downloads keep their exact version identity.": "打开资产，在右侧选择版本并点击“设为当前版本”，后续版本仍会保留。界面和 MCP 共用资产更新操作，引用与下载始终对应指定版本。"
+  },
+  "ja": {
+    "Create and reuse assets": "アセットを作成して再利用",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "アセットで画像・動画・音声をアップロードまたは生成します。モデルを直接使うか、アプリ内の Codex 対話、外部 MCP Agent で作成できます。特定のバージョンを参照し、作品に取り込めます。",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "OpenMotion のアセットライブラリを一覧表示してください。新しいアセットの生成または既存バージョンの編集を手伝い、元の内容を残して、選んだバージョンをプロジェクトに取り込んでください。"
+  },
+  "ko": {
+    "Create and reuse assets": "에셋 생성 및 재사용",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "에셋에서 이미지, 동영상, 오디오를 업로드하거나 생성하세요. 모델 직접 호출, 앱 내 Codex 대화, 외부 MCP Agent를 사용할 수 있습니다. 특정 버전을 참조하고 작품으로 가져오세요.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "내 OpenMotion 에셋 라이브러리를 보여 주세요. 새 에셋을 생성하거나 기존 버전을 편집하되 원본을 보존하고, 선택한 버전을 프로젝트로 가져오도록 도와주세요."
+  },
+  "de": {
+    "Create and reuse assets": "Assets erstellen und wiederverwenden",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Laden Sie Bilder, Videos und Audio unter Assets hoch oder erzeugen Sie sie. Nutzen Sie Modelle direkt, Codex-Chats in der App oder externe MCP-Agents. Referenzieren Sie bestimmte Versionen und importieren Sie sie in Ihre Filme.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "Zeige meine OpenMotion-Assetbibliothek. Hilf mir, ein neues Asset zu erzeugen oder eine vorhandene Version zu bearbeiten, das Original zu behalten und die gewählte Version in mein Projekt zu importieren."
+  },
+  "fr": {
+    "Create and reuse assets": "Créer et réutiliser des ressources",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Importez ou générez des images, vidéos et fichiers audio dans Ressources. Utilisez directement les modèles, les conversations Codex intégrées ou des Agents MCP externes. Référencez des versions précises et importez-les dans vos films.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "Affiche ma bibliothèque de ressources OpenMotion. Aide-moi à générer une ressource ou à modifier une version existante en conservant l’original, puis à importer la version choisie dans mon projet."
+  },
+  "ru": {
+    "Create and reuse assets": "Создавайте и используйте ресурсы повторно",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Загружайте или создавайте изображения, видео и аудио в разделе ресурсов. Используйте модели напрямую, чат Codex в приложении или внешние MCP-агенты. Ссылайтесь на точные версии и импортируйте их в фильмы.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "Покажи мою библиотеку ресурсов OpenMotion. Помоги создать ресурс или изменить существующую версию, сохрани оригинал, затем импортируй выбранную версию в мой проект."
+  },
+  "es": {
+    "Create and reuse assets": "Crear y reutilizar recursos",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Sube o genera imágenes, vídeo y audio en Recursos. Usa modelos directamente, conversaciones de Codex integradas o Agents MCP externos. Referencia versiones concretas e impórtalas en tus películas.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "Muestra mi biblioteca de recursos de OpenMotion. Ayúdame a generar un recurso o editar una versión existente, conserva el original e importa la versión elegida en mi proyecto."
+  },
+  "pt-BR": {
+    "Create and reuse assets": "Crie e reutilize recursos",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Envie ou gere imagens, vídeos e áudio em Recursos. Use modelos diretamente, conversas Codex no aplicativo ou Agents MCP externos. Referencie versões específicas e importe-as para seus filmes.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "Liste minha biblioteca de recursos do OpenMotion. Ajude-me a gerar um recurso ou editar uma versão existente, preserve o original e importe a versão escolhida para meu projeto."
+  },
+  "it": {
+    "Create and reuse assets": "Crea e riutilizza risorse",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Carica o genera immagini, video e audio in Risorse. Usa i modelli direttamente, le conversazioni Codex integrate o Agent MCP esterni. Fai riferimento a versioni precise e importale nei tuoi filmati.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "Mostra la mia libreria di risorse OpenMotion. Aiutami a generare una risorsa o modificare una versione esistente, conserva l’originale e importa la versione scelta nel progetto."
+  },
+  "tr": {
+    "Create and reuse assets": "Varlık oluşturun ve yeniden kullanın",
+    "Upload or generate images, video and audio in Assets. Use direct models, in-app Codex conversations or external MCP Agents. Reference exact versions and import them into your films.": "Varlıklar bölümünde görsel, video ve ses yükleyin veya üretin. Modelleri doğrudan, uygulama içi Codex sohbetlerini veya harici MCP Agent’larını kullanın. Belirli sürümlere referans verin ve filmlerinize aktarın.",
+    "List my OpenMotion asset library. Help me generate a new asset or edit an existing version, keep the original, then import the chosen version into my project.": "OpenMotion varlık kitaplığımı listele. Yeni bir varlık üretmeme veya mevcut sürümü düzenlememe yardım et, orijinali koru ve seçilen sürümü projeme aktar."
   }
 }

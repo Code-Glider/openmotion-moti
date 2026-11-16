@@ -18,7 +18,7 @@ export function SettingsDialog({ title, onClose, children, returnFocus }: { titl
   const { t } = useI18n();
   return <Dialog.Root open onOpenChange={open => { if (!open) onClose(); }}><Dialog.Portal>
     <Dialog.Backdrop className="hf-overlay-backdrop om-settings-backdrop" />
-    <Dialog.Popup className="om-dialog om-settings-dialog" finalFocus={returnFocus ? () => returnFocus : undefined} onKeyDown={event => event.stopPropagation()}>
+    <Dialog.Popup data-feedback-modal className="om-dialog om-settings-dialog" finalFocus={returnFocus ? () => returnFocus : undefined} onKeyDown={event => event.stopPropagation()}>
       <header className="om-settings-row"><Dialog.Title className="om-subtitle">{title}</Dialog.Title><Dialog.Close className="motion-icon-button" aria-label={t('Close')}><RemixIcon name="close-line" size={20} /></Dialog.Close></header>
       {children}
     </Dialog.Popup>
