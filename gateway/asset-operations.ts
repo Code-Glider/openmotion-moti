@@ -4,10 +4,12 @@ import { AssetLibrary } from './asset-library.ts';
 import { gatewayFor } from './service.ts';
 import { requireNativeRuntime } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
+import { readLibraryAsset } from './asset-read.ts';
 
 export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any) => Promise<any>) {
   const library = new AssetLibrary(store), gateway = gatewayFor(store);
   if (args.action === 'list') return library.list(args);
+  if (args.action === 'read') return readLibraryAsset(library, args);
   if (args.action === 'get') {
     const asset = await library.get(args.assetId);
     return { asset, ...(args.versionId ? { version: (await library.resolve({ assetId: args.assetId, versionId: args.versionId }, true)).version } : {}) };

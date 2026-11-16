@@ -46,7 +46,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('docs/release-guide.md'), 'The public test/stable manual must ship');
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
     assert(![...files].some(file => file.startsWith('library/templates/catalog/') || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
-    for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
+    for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'gateway/asset-read.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
     for (const file of ['scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/import-font.ts', 'skills/openmotion-production/fonts/catalog.json']) assert(files.has(file), 'Missing font dependency: ' + file);
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
     assert(files.has('shared/hyperframes-capture-fix.mjs'), 'The capture recovery preload must ship with every runtime');
@@ -67,6 +67,9 @@ test('every distribution preserves public workflow dependencies and licenses whi
       }
     }
     assert(files.has('skills/openmotion-video-to-template/SKILL.md'));
+    for (const file of ['references/unchanged-export.md', 'scripts/delivery.mjs', 'scripts/playback.mjs']) {
+      assert(files.has('skills/openmotion-template-to-video/' + file), 'Missing unchanged-delivery dependency: ' + file);
+    }
   }
   await assert.rejects(distributionFiles('unknown'), /Unknown distribution/);
 });
@@ -91,5 +94,20 @@ test('source and distribution expose only canonical Skill folders', async () => 
     const roots = [...new Set(files.filter(file => /^(?:library\/)?skills\//.test(file)).map(file => file.split('/').at(file.startsWith('library/') ? 2 : 1)))];
     assert(roots.length >= 8);
     assert(roots.every(name => name?.startsWith('openmotion-')), roots.join(', '));
+  }
+});
+
+// Source snapshots intentionally omit optional showcase media. This checks the
+// same positive distribution inventory for both profiles without fetching it.
+test('unchanged export guidance and helpers survive lightweight distribution', async () => {
+  for (const profile of ['phase1', 'legacy']) {
+    const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|ts|json|ya?ml)$/.test(file)));
+    for (const file of ['references/unchanged-export.md', 'scripts/delivery.mjs', 'scripts/playback.mjs']) {
+      assert(files.has('skills/openmotion-template-to-video/' + file), 'Missing delivery dependency: ' + file);
+    }
+    const route = await getWorkflow('unchanged', 'template');
+    assert.equal(route.documentId, 'skills/openmotion-template-to-video/references/unchanged-export.md');
+    assert(files.has(route.documentId));
+    for (const reference of route.references) assert(files.has(reference.documentId));
   }
 });
