@@ -9,7 +9,9 @@ import { workspaceLayout } from "./layout.js";
 import { Studio } from "./studio.js";
 import { Archives } from "./workspace/archives.js";
 import { Creation } from "./workspace/create.js";
+import { Library } from "./workspace/library.js";
 import { Navigation } from "./workspace/navigation.js";
+import { Pages } from "./workspace/pages.js";
 import { WorkspaceSync } from "./workspace/sync.js";
 export function workspace(root: HTMLElement, editor: Editor, client: Client, entry?: string) {
   const document = root.ownerDocument,
@@ -35,8 +37,14 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     file = "index.html",
     activity = 0,
     operations = 0,
+    initialEntry = entry,
+    seenEntry = entry ?? document.defaultView?.location.hash ?? "",
     requestedEntry: string | undefined,
     flight = Promise.resolve();
+  const pages = new Pages(document, () => showPage()),
+    library = new Library(document, client);
+  shell.rail.append(pages.element);
+  shell.body.append(library.element);
   const run = (action: () => Promise<void>, next?: () => Promise<void>, recordAddress = true) => {
     if (busy || disposed) return;
     const focused = document.activeElement,
@@ -51,14 +59,13 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
           const project = editor.project,
             window = document.defaultView;
           if (recordAddress && entry !== undefined && requestedEntry === undefined && project && window) {
-            const address = new URL(window.location.href);
-            address.hash = entryFragment({
+            seenEntry = entryFragment({
               sessionId: project.sessionId,
               artifactId: project.artifactId,
               revision: project.revision,
               historyVersion: project.history.version,
             });
-            window.history.replaceState(null, "", address);
+            pages.acknowledge(seenEntry);
           }
           retry = undefined;
           busy = false;
@@ -82,7 +89,13 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
           focused.isConnected
         )
           focused.focus();
-        if (!disposed && requestedEntry !== undefined && !editor.unconfirmed && !creation.pending) {
+        if (
+          !disposed &&
+          pages.page === "editor" &&
+          requestedEntry !== undefined &&
+          !editor.unconfirmed &&
+          !creation.pending
+        ) {
           const target = requestedEntry;
           requestedEntry = undefined;
           run(() => editor.load(target || undefined), undefined, false);
@@ -91,8 +104,11 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     return flight;
   };
   const onEntry = () => {
-    requestedEntry = document.defaultView?.location.hash ?? "";
-    if (!busy && !editor.unconfirmed && !creation.pending) {
+    const fragment = document.defaultView?.location.hash ?? "";
+    if (fragment === seenEntry) return;
+    seenEntry = fragment;
+    requestedEntry = fragment;
+    if (pages.page === "editor" && !busy && !editor.unconfirmed && !creation.pending) {
       const target = requestedEntry;
       requestedEntry = undefined;
       run(() => editor.load(target || undefined), undefined, false);
@@ -102,7 +118,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   const synchronization = new WorkspaceSync(document, editor, run, () => void observer.retry());
   shell.editor.prepend(synchronization.element);
   const observer = observeWorkspace(editor, {
-    available: () => !busy && !disposed && !creation.pending,
+    available: () => pages.page === "editor" && !busy && !disposed && !creation.pending,
     generation: () => operations,
     changed: () => render(message),
     status: (value, state) => synchronization.status(value, state),
@@ -220,6 +236,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   shell.element.addEventListener("pointerdown", interacted);
   shell.element.addEventListener("keydown", interacted);
   shell.element.addEventListener("keydown", (event) => {
+    if (pages.page !== "editor") return;
     if (!(event.metaKey || event.ctrlKey) || event.altKey || event.isComposing) return;
     if (event.key.toLowerCase() === "s") {
       event.preventDefault();
@@ -284,8 +301,30 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     studio.sync(editor.project, blocked);
     exports.update(editor.project, blocked);
   }
-  render("加载中");
-  run(() => editor.load(entry || undefined), undefined, false);
+  function showPage() {
+    const showing = pages.page === "editor",
+      hidden = showing ? library.element : shell.editor;
+    if (hidden.contains(document.activeElement)) pages.focus();
+    shell.editor.hidden = !showing;
+    shell.editor.inert = !showing;
+    shell.header.hidden = !showing;
+    library.activate(!showing);
+    if (!showing) studio.pause();
+    if (
+      showing &&
+      !busy &&
+      !editor.unconfirmed &&
+      !creation.pending &&
+      (!editor.initialized || requestedEntry !== undefined)
+    ) {
+      const target = requestedEntry ?? initialEntry;
+      initialEntry = undefined;
+      requestedEntry = undefined;
+      run(() => editor.load(target || undefined), undefined, false);
+    }
+  }
+  render("就绪");
+  showPage();
   let disposal: Promise<void> | undefined;
   return {
     dispose(): Promise<void> {
@@ -298,6 +337,8 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
         await exports.dispose();
         await creation.dispose();
         await navigation.dispose();
+        await library.dispose();
+        pages.dispose();
         await studio.dispose();
         archives.dispose();
         for (const hint of hints) hint.dispose();
