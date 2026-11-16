@@ -39,7 +39,7 @@ export function AssetPreviewDialog({ url, kind, name, onClose, onAdd }: {
         className="fixed top-1/2 left-1/2 z-150 flex h-[min(600px,85dvh)] w-[min(800px,90vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface text-text-1 shadow-menu outline-none"
         onKeyDown={event => event.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-2">
-          <Dialog.Title className="min-w-0 truncate text-step-14 font-semibold" title={name}>{name}</Dialog.Title>
+          <Tooltip label={name} wrap><Dialog.Title className="min-w-0 truncate text-step-14 font-semibold">{name}</Dialog.Title></Tooltip>
           <div className="flex shrink-0 items-center gap-2">
             {onAdd && <Button type="button" variant="primary" loading={adding} onClick={add}>
               {t(adding ? "Adding…" : "Use")}

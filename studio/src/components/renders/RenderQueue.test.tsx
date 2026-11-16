@@ -412,3 +412,20 @@ describe("RenderQueue history", () => {
   act(() => button.click());
   expect(start).not.toHaveBeenCalled();
 });
+
+
+it("shows complete format guidance in the shared tooltip without starting an export", async () => {
+  const start = vi.fn<StartRenderHandler>();
+  const host = mountRenderQueue(start);
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="About video formats"]')!;
+  act(() => trigger.focus());
+  await settle();
+  const tip = document.querySelector('[role="tooltip"]')!;
+  expect(tip.classList.contains("studio-tooltip")).toBe(true);
+  for (const name of ["MP4", "MOV · ProRes", "WebM", "GIF"]) expect(tip.textContent).toContain(name);
+  expect(trigger.getAttribute("aria-describedby")).toBe(tip.id);
+  fire(trigger, "keydown", "Escape");
+  await settle();
+  expect(document.querySelector('[role="tooltip"]')).toBeNull();
+  expect(start).not.toHaveBeenCalled();
+});

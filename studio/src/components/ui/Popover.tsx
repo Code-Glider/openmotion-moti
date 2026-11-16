@@ -6,6 +6,7 @@
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import type { ComponentPropsWithoutRef, ReactElement, ReactNode } from "react";
 import { cn } from "./cn";
+import { Tooltip } from "./Tooltip";
 import {
   POPUP_LAYER,
   popupSurface,
@@ -30,6 +31,8 @@ const arrowPlace = cn(
 interface PopoverProps extends Omit<ComponentPropsWithoutRef<typeof BasePopover.Root>, "children"> {
   /** A single element. It becomes the trigger; no wrapper is added around it. */
   trigger: ReactElement;
+  /** Standard hover/focus hint for the popover trigger. */
+  tooltip?: string;
   /** Arbitrary content. The popover owns none of its keys. */
   children: ReactNode;
   side?: "top" | "bottom" | "left" | "right";
@@ -56,6 +59,7 @@ interface PopoverProps extends Omit<ComponentPropsWithoutRef<typeof BasePopover.
 
 export function Popover({
   trigger,
+  tooltip,
   children,
   side = "bottom",
   align = "center",
@@ -73,7 +77,9 @@ export function Popover({
   const inline = useInlinePortal(container);
   return (
     <BasePopover.Root {...root}>
-      <BasePopover.Trigger render={trigger} aria-describedby={describedBy} />
+      {tooltip === undefined ? <BasePopover.Trigger render={trigger} aria-describedby={describedBy} /> : (
+        <Tooltip label={tooltip} wrap><BasePopover.Trigger render={trigger} aria-describedby={describedBy} /></Tooltip>
+      )}
       {inline.host}
       <BasePopover.Portal {...inline.portal}>
         <BasePopover.Positioner
