@@ -11,9 +11,11 @@ const regular = await readFile(new URL('Geist-Regular.ttf', fontRoot));
 const bold = await readFile(new URL('Geist-Bold.ttf', fontRoot));
 
 test('prepared font responses retain exact bytes and actual metadata', async () => {
-  const font = prepareFont(regular, create);
+  const padded = Buffer.alloc(regular.length + 32); regular.copy(padded, 16);
+  const font = prepareFont(padded.subarray(16, 16 + regular.length), create);
   const response = preparedFontResponse(font);
-  assert.deepEqual(Buffer.from(await response.arrayBuffer()), font.data);
+  const expected = Buffer.from(font.data); font.data.fill(0);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected);
   assert.equal(response.headers.get('content-type'), `font/${font.format}`);
   assert.equal(response.headers.get('content-length'), String(font.data.length));
   assert.equal(JSON.parse(decodeURIComponent(response.headers.get('x-font-metadata')!)).family, font.family);

@@ -137,7 +137,8 @@ export function createFontCatalog(paths: string[], parse: FontParser) {
 }
 
 export function preparedFontResponse(font: ReturnType<typeof prepareFont>): Response {
-  return new Response(new Blob([new Uint8Array(font.data)]), { headers: { 'Content-Type': `font/${font.format}`,
+  const bytes = new Uint8Array(font.data.buffer as ArrayBuffer, font.data.byteOffset, font.data.byteLength);
+  return new Response(new Blob([bytes]), { headers: { 'Content-Type': `font/${font.format}`,
     'Content-Length': String(font.data.length),
     'X-Font-Metadata': encodeURIComponent(JSON.stringify({ family: font.family, weight: font.weight, style: font.style, postscriptName: font.postscriptName })) } });
 }
