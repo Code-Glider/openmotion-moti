@@ -5,14 +5,54 @@ import { chmod, lstat, mkdir, readFile, rm } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { AccountSummary, DirectoryModel } from '../shared/provider-directory.ts';
+import type { AccountAttempt, AccountErrorCode, AccountSummary, DirectoryModel } from '../shared/provider-directory.ts';
 import type { GenerationJob, Model } from '../shared/gateway.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
 
 const execute = promisify(execFile);
 const consoleUrl = 'https://open-design.ai/cloud';
-type Profile = { runtimeKey?: string; pendingLogin?: unknown; user?: { name?: string; email?: string } };
-type AccountOptions = { pollMs?: number; binary?: string; run?: (args: string[], signal?: AbortSignal) => Promise<string>; spawn?: typeof spawn };
+type Profile = { controlKey?: string; controlKeyId?: string; runtimeKey?: string; pendingLogin?: unknown; user?: { id?: string; name?: string; email?: string } };
+type AccountOptions = {
+  pollMs?: number; binary?: string; authorizationMs?: number; log?: (line: string) => void;
+  run?: (args: string[], signal?: AbortSignal) => Promise<string>; spawn?: typeof spawn;
+};
+
+// Connector stdout contract for `login --completion-receipt=stdin-v1` with `jsonl-v1` stage lines.
+const stagePrefix = 'OPEN_DESIGN_AMR_AUTH_STAGE\t', completionPrefix = 'OPEN_DESIGN_AMR_AUTH_COMPLETION\t';
+const stageNames = ['attempt_started', 'device_auth_create_result', 'activation_ready', 'browser_open_result', 'device_authorization_result', 'token_exchange_result', 'credential_persist_result'];
+const failureMessages: Record<AccountErrorCode, string> = {
+  setup_failed: "Can't connect to OpenDesign right now. Check your network and try again.",
+  authorization_expired: 'Browser authorization expired or was cancelled. Sign in again.',
+  credentials_rejected: 'Account credentials could not be verified. Sign in again, and contact us if this keeps happening.',
+};
+// Billing, media and sign-out use the control key; models use the runtime key. Accept only a complete pair.
+const hasCredentials = (profile?: Profile) => Boolean(profile?.controlKey && profile.controlKeyId && profile.runtimeKey && profile.user?.id);
+const signedInProfile = (profile?: Profile) => hasCredentials(profile) && !profile!.pendingLogin;
+
+/** Connector request failure. Keeps only the HTTP status and service error code; CLI stderr can contain account data. */
+export class AccountRequestError extends Error {
+  readonly status?: number;
+  readonly code?: string;
+  constructor(stderr: string) {
+    super('OpenDesign account request failed. Check your connection and sign in again if needed.');
+    const match = /API request failed with status (\d{3})(?:: ([a-z0-9_]{1,64})(?=\s|$))?/.exec(stderr);
+    if (match) { this.status = Number(match[1]); this.code = match[2]; }
+  }
+}
+class SignInFailure extends Error {
+  readonly code: AccountErrorCode;
+  constructor(code: AccountErrorCode) { super(failureMessages[code]); this.code = code; }
+}
+/** Classifies an attempt by the furthest point it reached. Credentials that reached disk are never a setup failure. */
+function failureCode(attempt: AccountAttempt, cancelled: boolean): AccountErrorCode {
+  if (attempt.persisted) return 'credentials_rejected';
+  const [stage, , errorKind] = attempt.stages.findLast(entry => entry.split(':')[1] === 'failed' && !entry.startsWith('browser_open_result'))?.split(':') ?? [];
+  if (stage === 'token_exchange_result' || stage === 'credential_persist_result') return 'credentials_rejected';
+  if (cancelled || (stage === 'device_authorization_result' && errorKind !== 'network_error')) return 'authorization_expired';
+  // Approved in the browser, then stopped before reporting a later stage (for example incomplete issued credentials).
+  if (!stage && attempt.stages.includes('device_authorization_result:success')) return 'credentials_rejected';
+  return 'setup_failed';
+}
 
 /** OpenDesign's versioned CLI owns device authorization, credentials and billing. */
 export class OpenDesignAccount {
@@ -25,8 +65,13 @@ export class OpenDesignAccount {
   private authorizationUrl?: string;
   private userCode?: string;
   private error?: string;
+  private errorCode?: AccountErrorCode;
+  private attempt?: AccountAttempt;
   private billing?: { plan?: string; balance: string | null };
   private billingUnavailable = false;
+  private billingError?: { status: number; code?: string };
+  /** Control key the account service rejected; cleared by a successful read or a new sign-in. */
+  private rejectedKeyId?: string;
   private cachedModels: DirectoryModel[] = [];
   private runtime?: string;
   readonly directory: string;
@@ -67,36 +112,60 @@ export class OpenDesignAccount {
   async run(args: string[], signal?: AbortSignal) {
     if (this.options.run) return this.options.run(args, signal);
     try { const { stdout } = await execute(await this.resolveRuntime(), args, { env: this.env(), timeout: 60_000, signal, maxBuffer: 2 * 1024 * 1024 }); return stdout; }
-    catch { throw new Error('OpenDesign account request failed. Check your connection and sign in again if needed.'); }
+    catch (error) { throw new AccountRequestError(String((error as { stderr?: unknown }).stderr ?? '')); }
   }
   async summary(refresh = false): Promise<AccountSummary> {
     const generation = this.generation;
     const profile = await this.profile();
-    const signedIn = Boolean(profile?.runtimeKey && !profile.pendingLogin && await this.identity());
-    if (refresh && signedIn && !this.connecting) {
-      try {
-        const data = JSON.parse(await this.run(['billing', 'summary', '--format', 'json']));
-        if (generation === this.generation) { this.billing = { plan: typeof data.membershipTier === 'string' ? data.membershipTier : undefined, balance: typeof data.balanceUsd === 'string' ? data.balanceUsd : typeof data.totalAvailableCreditsUsd === 'string' ? data.totalAvailableCreditsUsd : null }; this.billingUnavailable = false; }
-      } catch { if (generation === this.generation) this.billingUnavailable = true; }
-    }
+    const signedIn = signedInProfile(profile) && Boolean(await this.identity());
+    if (refresh && signedIn && !this.connecting) await this.readBilling(generation, profile!);
     if (generation !== this.generation) return this.summary();
-    return { state: this.connecting ? 'authorizing' : signedIn ? 'signed-in' : 'signed-out',
-      ...(signedIn ? { user: { name: profile?.user?.name, email: profile?.user?.email }, ...this.billing, billingUnavailable: this.billingUnavailable } : {}),
-      ...(this.connecting ? { authorizationUrl: this.authorizationUrl, userCode: this.userCode } : {}), error: this.error, consoleUrl };
+    const rejected = signedIn && this.rejectedKeyId === profile!.controlKeyId;
+    return { state: this.connecting ? 'authorizing' : rejected ? 'reauth-required' : signedIn ? 'signed-in' : 'signed-out',
+      ...(signedIn ? { user: { name: profile?.user?.name, email: profile?.user?.email }, ...(rejected ? {} : this.billing), billingUnavailable: this.billingUnavailable, ...(this.billingError ? { billingError: { ...this.billingError } } : {}) } : {}),
+      ...(this.connecting ? { authorizationUrl: this.authorizationUrl, userCode: this.userCode } : {}),
+      ...(this.attempt ? { attempt: { ...this.attempt, stages: [...this.attempt.stages] } } : {}),
+      error: this.error, errorCode: this.errorCode, consoleUrl };
+  }
+  private async readBilling(generation: number, profile: Profile) {
+    try {
+      const data = JSON.parse(await this.run(['billing', 'summary', '--format', 'json']));
+      if (generation !== this.generation) return;
+      // The account service leaves the tier empty for accounts without a subscription.
+      const tier = typeof data.membershipTier === 'string' ? data.membershipTier.trim() : '';
+      this.billing = { plan: tier || 'free', balance: typeof data.balanceUsd === 'string' ? data.balanceUsd : typeof data.totalAvailableCreditsUsd === 'string' ? data.totalAvailableCreditsUsd : null };
+      this.billingUnavailable = false; this.billingError = undefined; this.rejectedKeyId = undefined;
+    } catch (error) {
+      if (generation !== this.generation) return;
+      const { status, code } = error instanceof AccountRequestError ? error : {};
+      // 401 means the control key itself is no longer accepted. Other 4xx responses come after authentication, so they
+      // clear that judgement; timeouts, rate limits, 5xx and failures without a response leave it unchanged.
+      if (status === 401) this.rejectedKeyId = profile.controlKeyId;
+      else if (status && status < 500 && status !== 408 && status !== 429) this.rejectedKeyId = undefined;
+      this.billing = undefined;
+      this.billingUnavailable = status !== 401;
+      this.billingError = status ? { status, ...(code ? { code } : {}) } : undefined;
+    }
   }
   async login() {
     const current = await this.summary();
     if (this.signingOut) throw new Error('Wait for sign-out to finish before connecting an account');
     if (this.connecting || current.state === 'signed-in') return this.summary();
-    this.connecting = true; this.error = undefined; this.billing = undefined; this.cachedModels = [];
+    this.connecting = true; this.error = undefined; this.errorCode = undefined; this.cachedModels = [];
+    this.billing = undefined; this.billingUnavailable = false; this.billingError = undefined; this.rejectedKeyId = undefined;
     this.authorizationUrl = undefined; this.userCode = undefined;
-    const generation = ++this.generation;
-    void this.authorize(generation).catch(() => {
-      if (this.generation === generation) { this.connecting = false; this.error = 'Could not connect to OpenDesign. Retry sign-in.'; }
+    const generation = ++this.generation, attempt: AccountAttempt = this.attempt = { id: randomUUID(), stages: [], persisted: false };
+    void this.authorize(generation, attempt).catch(error => {
+      if (this.generation !== generation) return;
+      this.connecting = false; this.child = undefined; this.authorizationUrl = undefined; this.userCode = undefined;
+      this.errorCode = error instanceof SignInFailure ? error.code : failureCode(attempt, false);
+      this.error = failureMessages[this.errorCode];
+      // Diagnostics for support: attempt progress only, never URLs, codes, identities or credentials.
+      (this.options.log ?? console.error)('OpenDesign sign-in failed ' + JSON.stringify({ errorCode: this.errorCode, ...attempt }));
     });
     return this.summary();
   }
-  private async authorize(generation: number) {
+  private async authorize(generation: number, attempt: AccountAttempt) {
     await mkdir(this.home, { recursive: true, mode: 0o700 });
     if (generation !== this.generation) return;
     await this.commit(generation, async () => {
@@ -105,38 +174,57 @@ export class OpenDesignAccount {
     });
     const binary = await this.resolveRuntime(true);
     if (generation !== this.generation) return;
-    const child = (this.options.spawn ?? spawn)(binary, ['login', '--completion-receipt=stdin-v1'], { env: this.env(), stdio: ['pipe', 'pipe', 'pipe'] });
+    const env = { ...this.env(), OPEN_DESIGN_AMR_AUTH_STAGE_FORMAT: 'jsonl-v1', OPEN_DESIGN_AMR_AUTH_ATTEMPT_ID: attempt.id };
+    const child = (this.options.spawn ?? spawn)(binary, ['login', '--completion-receipt=stdin-v1'], { env, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child = child;
-    let output = '', protocol = false, accepting = false;
+    let output = '', partial = '', protocol = false, cancelled = false;
+    const record = (line: string) => {
+      if (line.startsWith(stagePrefix)) {
+        try {
+          const entry = JSON.parse(line.slice(stagePrefix.length));
+          if (entry.auth_attempt_id !== attempt.id || !stageNames.includes(entry.stage) || !['started', 'success', 'failed'].includes(entry.result) || attempt.stages.length >= 20) return;
+          attempt.stages.push([entry.stage, entry.result, ...(typeof entry.error_kind === 'string' && /^[a-z_]{1,40}$/.test(entry.error_kind) ? [entry.error_kind] : [])].join(':'));
+        } catch { /* Malformed diagnostics never decide the session. */ }
+      } else if (line === completionPrefix + 'stdin-v1') protocol = true;
+      else if (line === completionPrefix + 'cancelled') cancelled = true;
+      else if (line === completionPrefix + 'credentials_persisted' && protocol && !attempt.persisted) {
+        attempt.persisted = true;
+        void this.profile().then(async profile => {
+          if (generation !== this.generation) return;
+          await chmod(path.join(this.home, 'config.json'), 0o600);
+          attempt.receipt = hasCredentials(profile) ? 'accepted' : 'rejected';
+          child.stdin?.write(`credentials_${attempt.receipt}\n`);
+        }).catch(() => child.kill());
+      }
+    };
     const capture = (chunk: Buffer) => {
       if (generation !== this.generation) return;
-      output = (output + chunk.toString()).slice(-32_768);
-      protocol ||= output.includes('OPEN_DESIGN_AMR_AUTH_COMPLETION\tstdin-v1');
+      const text = chunk.toString();
+      output = (output + text).slice(-32_768);
+      const lines = (partial + text).split(/\r?\n/);
+      partial = lines.pop()!.slice(-8192);
+      for (const line of lines) record(line);
       const match = /Open this URL to continue:\s*\r?\n\s*(\S+)/i.exec(output);
       if (match) {
         try { const url = new URL(match[1]); if (url.protocol === 'https:' && !url.username && !url.password && (url.hostname === 'open-design.ai' || url.hostname.endsWith('.open-design.ai'))) this.authorizationUrl = url.href; } catch { /* Do not expose malformed or untrusted activation links. */ }
       }
       this.userCode = /^[^\S\r\n]*Code:\s*([A-Z0-9-]{3,40})/im.exec(output)?.[1];
-      if (protocol && !accepting && output.includes('OPEN_DESIGN_AMR_AUTH_COMPLETION\tcredentials_persisted')) {
-        accepting = true;
-        void this.profile().then(async profile => {
-          if (generation !== this.generation) return;
-          await chmod(path.join(this.home, 'config.json'), 0o600);
-          child.stdin?.write(profile?.runtimeKey ? 'credentials_accepted\n' : 'credentials_rejected\n');
-        }).catch(() => child.kill());
-      }
     };
     child.stdout?.on('data', capture);
+    // A receipt written while the connector exits fails with EPIPE; the exit itself decides the attempt.
+    child.stdin?.on('error', () => {});
     // CLI stderr is private: it can include account details and request bodies.
     child.stderr?.on('data', () => {});
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => { child.kill(); reject(new Error('Account authorization expired')); }, 10 * 60_000);
-      child.once('error', error => { clearTimeout(timer); reject(error); });
-      child.once('close', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error('Account authorization failed')); });
+    attempt.exitCode = await new Promise<number | null>((resolve, reject) => {
+      const timer = setTimeout(() => { child.kill(); reject(new SignInFailure(attempt.persisted ? 'credentials_rejected' : 'authorization_expired')); }, this.options.authorizationMs ?? 10 * 60_000);
+      child.once('error', () => { clearTimeout(timer); reject(new SignInFailure(failureCode(attempt, cancelled))); });
+      child.once('close', code => { clearTimeout(timer); resolve(code); });
     });
     if (generation !== this.generation) return;
+    if (partial) record(partial);
     this.child = undefined; this.authorizationUrl = undefined; this.userCode = undefined;
-    if (!(await this.profile())?.runtimeKey) throw new Error('Account authorization did not complete');
+    if (attempt.exitCode !== 0) throw new SignInFailure(failureCode(attempt, cancelled));
+    if (!signedInProfile(await this.profile())) throw new SignInFailure('credentials_rejected');
     if (generation !== this.generation) return;
     await this.commit(generation, () => writeSettings(path.join(this.directory, 'account', 'session.json'), { id: randomUUID() }));
     if (generation !== this.generation) return;
@@ -164,7 +252,8 @@ export class OpenDesignAccount {
     this.signingOut = true;
     try {
       await this.cancel();
-      this.billing = undefined; this.cachedModels = []; this.error = undefined;
+      this.billing = undefined; this.cachedModels = []; this.error = undefined; this.errorCode = undefined; this.attempt = undefined;
+      this.billingUnavailable = false; this.billingError = undefined; this.rejectedKeyId = undefined;
       await this.commit(this.generation, async () => {
         await writeSettings(path.join(this.directory, 'account', 'session.json'), {});
         await writeSettings(path.join(this.directory, 'account', 'models.json'), []);

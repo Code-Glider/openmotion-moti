@@ -28,9 +28,18 @@ export type ProviderDirectory = {
   providers: ProviderConnection[]; models: DirectoryModel[];
   defaults: Partial<Record<ModelKind, string>>;
 };
+/** Why the latest sign-in attempt ended without an account session. */
+export type AccountErrorCode = 'setup_failed' | 'authorization_expired' | 'credentials_rejected';
+/** Non-secret progress of one connector sign-in: stages are `stage:result[:errorKind]`. */
+export type AccountAttempt = {
+  id: string; stages: string[]; persisted: boolean; receipt?: 'accepted' | 'rejected'; exitCode?: number | null;
+};
 export type AccountSummary = {
-  state: 'signed-out' | 'authorizing' | 'signed-in' | 'unavailable';
+  state: 'signed-out' | 'authorizing' | 'signed-in' | 'reauth-required' | 'unavailable';
   user?: { name?: string; email?: string }; authorizationUrl?: string; userCode?: string;
-  plan?: string; balance?: string | null; billingUnavailable?: boolean; error?: string;
+  plan?: string; balance?: string | null; billingUnavailable?: boolean;
+  /** Service rejection behind `billingUnavailable`, when the connector reported one. */
+  billingError?: { status: number; code?: string };
+  error?: string; errorCode?: AccountErrorCode; attempt?: AccountAttempt;
   consoleUrl: string;
 };
