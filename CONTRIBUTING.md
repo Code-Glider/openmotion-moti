@@ -45,17 +45,19 @@ not upload media or create a pull request by themselves.
 
 Work from the repository root; read [AGENTS.md](AGENTS.md) and the [architecture](docs/product/architecture.md). Use the pinned CI Node version. Keep `package-lock.json` and `scripts/runtime-lock.json` in sync with any intentional dependency change.
 
+Create a separate branch from the latest `origin/main` and target `main` in your PR. Do not push directly to `main` or use `feature/motion` or `legacy` for new development. See the [repository migration guide](docs/repository-migration.md) for historical branches and the public repository boundary.
+
 Before opening a PR, follow the [local validation guidance](AGENTS.md#local-validation) and report the checks you actually ran. Studio unit tests use `npm run test:studio`. Model creation and visual acceptance require separate evidence. Do not overwrite real user data or host configuration to test an installer.
 
 Keep PRs focused and describe the user-visible behavior and actual validation. Discuss substantial changes in an existing issue, requirement or PR description; a separate issue is not required when the work is already defined. Review the entire product architecture for each change and update it only when needed, following the [shared guidance](AGENTS.md#product-architecture-review); documentation edits are not required in every PR. Preserve existing Git history and push follow-up commits during review; do not force-push a shared branch.
 
-For an agent contribution: read the entry and sources, make the requested change, update the affected guide and [change record](docs/product/changes.md), run the applicable checks, and report the exact result and remaining gaps. Do not treat successful installation, technical rendering and human content acceptance as interchangeable.
+For an agent contribution: read the entry and sources, make the requested change, update affected guidance when behavior changes, run the applicable checks, and report the exact result and remaining gaps. Architecture and change-record updates are needed only when the existing documentation becomes incomplete or inaccurate; follow [AGENTS.md](AGENTS.md#product-architecture-review). Do not treat successful installation, technical rendering and human content acceptance as interchangeable.
 
 Use the PR Actions summary to review new duplicate fragments and unused code or dependencies. The report is advisory. When a confirmed issue needs a separate change, link its source PR from a GitHub issue labeled `maintainability`, describe the impact, and assign an owner. Review open follow-ups in the existing engineering review. Promote repeat findings to a required check only after the rule is explicit and historical PRs show that the check detects it reliably.
 
 Only deliberately public documentation belongs here. Do not commit credentials, internal links, private plans, workstation paths or user projects. Distribution uses the positive list in `scripts/distribution.ts`; newly shipped files require an explicit decision. Preserve all upstream attribution and license notices. Do not add telemetry or publish a package without a separate decision.
 
-Contributions are licensed under the repository's [Apache-2.0 license](LICENSE); vendored components retain their own terms. This migration branch is for review only and must not be merged or published automatically.
+Contributions are licensed under the repository's [Apache-2.0 license](LICENSE); vendored components retain their own terms. Merging a PR and publishing packages or other artifacts require separate explicit authorization.
 
 ## Repository media and size
 

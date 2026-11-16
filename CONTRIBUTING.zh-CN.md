@@ -21,12 +21,14 @@
 
 从仓库根目录开发，先读 [AGENTS.md](AGENTS.md)、[产品架构](docs/product/architecture.md) 和相关专题。使用 CI 固定的 Node 版本；依赖变更需同步维护 `package-lock.json` 与 `scripts/runtime-lock.json`。
 
+每次修改从最新 `origin/main` 创建独立分支，PR 目标选择 `main`。不要直接推送到 `main`，不要从 `feature/motion` 或 `legacy` 开始新开发。历史分支与公开仓库边界见[仓库迁移指南](docs/repository-migration.md)。
+
 提交 PR 前按[本地验证指引](AGENTS.md#local-validation)选择检查，并说明实际运行的检查。Studio 单测用 `npm run test:studio`。模型创作与人工视觉验收单独记录，不覆盖真实工程或日常宿主配置。
 
 PR 聚焦一个问题，说明实际变化和验证结果。较大改动可在已有 issue、需求单或 PR 描述中讨论；工作范围已明确时，无需另建 issue。每次变更整体审视产品架构，按[共同准则](AGENTS.md#product-architecture-review)判断是否需要更新，不要求每个 PR 修改文档。保留历史，用后续提交响应评审，不强推共享分支。
 
-Agent 贡献也遵循同一路径：读取条目与来源，完成本次修改，同步专题和[变更记录](docs/product/changes.md)，执行适用检查，说明实际结果与缺口。安装成功、技术导出与人工内容验收分别记录。
+Agent 贡献也遵循同一路径：读取条目与来源，完成本次修改，行为变化时同步相关指引，执行适用检查，说明实际结果与缺口。仅当现有文档变得不完整或不准确时，才更新架构或变更记录，遵循 [AGENTS.md](AGENTS.md#product-architecture-review)。安装成功、技术导出与人工内容验收分别记录。
 
 不提交凭据、内部链接、私有计划、机器路径或用户工程。打包只使用 `scripts/distribution.ts` 的正向清单；新增分发文件需明确批准。保留上游许可与署名，不自行增加遥测或发布包。
 
-贡献遵循仓库 [Apache-2.0 许可](LICENSE)，上游组件保留各自条款。当前迁移分支仅供评审，不自动合并或发布。
+贡献遵循仓库 [Apache-2.0 许可](LICENSE)，上游组件保留各自条款。合并 PR 与发布包或其他制品分别需要明确授权。
