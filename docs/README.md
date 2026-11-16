@@ -27,6 +27,7 @@
 - [editor-fork.md](editor-fork.md)
 - [hyperframes.md](hyperframes.md)
 - [mcp-phase1-tools.md](mcp-phase1-tools.md)
+- [Project import quick start, offline sharing and ZIP format](project-archives.md)
 - [Workspace assets, versions and Agent creation](assets.md)
 - [Curated fonts and on-demand import](fonts.md)
 - [Typography evaluation and fixed-scene comparison](reports/typography-evaluation.md)

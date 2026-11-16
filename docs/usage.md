@@ -233,3 +233,7 @@ The plugin name, install script, data directory and Studio ports are the team ba
 ## Preview after continued edits
 
 Each saved content edit or restore requests the latest preview in the calling chat. The default preserves your current chat: show the right panel here, or queue it while you are elsewhere and open it when you return. Only an explicit show-now request permits switching back for that turn. Background requests skip presentation. A queued acknowledgment, saved source or hidden screenshot does not prove you saw the latest result; the Agent checks live content and visibility separately. See the [shared handoff](../skills/openmotion-production/references/native.md#continuing-edits) for host capabilities and receipt limits.
+
+## Share editable projects offline
+
+Open the project sidebar and choose **All projects** to search and open saved projects, export one project, or **Export all projects**. The project action menu also provides **Export project**. **Import projects** accepts an OpenMotion ZIP or a native project ZIP, validates it and creates independent copies. Existing projects and the active selection remain unchanged. To reuse an existing HyperFrames project, follow the [import quick start](project-archives.md#import-from-hyperframes). See [Project archives](project-archives.md) for the package format and limits.

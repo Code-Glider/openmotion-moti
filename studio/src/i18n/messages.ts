@@ -7,6 +7,7 @@ import settingsUi from './settings-ui.json';
 import mcpUi from './mcp-ui.json';
 import assetsUi from './assets-ui.json';
 import skillsUi from './skills-ui.json';
+import projectUi from './project-ui.json';
 import ja from './ja.json';
 import ko from './ko.json';
 import de from './de.json';
@@ -36,8 +37,9 @@ export const isLocale = (value: unknown): value is Locale => languages.some(lang
 // Phase-one UI additions and terminology corrections are localized in every
 // supported language. Retained, unexposed advanced-editor strings still fall back.
 export const mvpMessages: Partial<Record<Locale, Record<string, Message>>> = { 'zh-CN': mvpZhCN, ...mvpUi };
+const projectMessages: Partial<Record<Locale, Record<string, Message>>> = projectUi;
 const effectiveDictionaries: Record<string, Record<string, Message>> = Object.fromEntries(Object.entries(dictionaries).map(([locale, messages]) =>
-  [locale, { ...messages, ...mvpMessages[locale as Locale], ...errorUi[locale as keyof typeof errorUi], ...templateUi[locale as keyof typeof templateUi], ...settingsUi[locale as keyof typeof settingsUi], ...mcpUi[locale as keyof typeof mcpUi], ...assetsUi[locale as keyof typeof assetsUi], ...(skillsUi as Record<string, Record<string, string>>)[locale] }],
+  [locale, { ...messages, ...mvpMessages[locale as Locale], ...errorUi[locale as keyof typeof errorUi], ...templateUi[locale as keyof typeof templateUi], ...settingsUi[locale as keyof typeof settingsUi], ...mcpUi[locale as keyof typeof mcpUi], ...assetsUi[locale as keyof typeof assetsUi], ...(skillsUi as Record<string, Record<string, string>>)[locale], ...projectMessages[locale as Locale] }],
 ));
 const reverse = Object.fromEntries(Object.entries(effectiveDictionaries).map(([locale, messages]) => [locale,
   new Map(Object.entries(messages).flatMap(([source, value]) => (typeof value === 'string' ? [value] : Object.values(value)).map(text => [text, source]))),

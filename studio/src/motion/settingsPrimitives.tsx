@@ -15,11 +15,11 @@ export function SettingsError({ retry }: { retry: () => void }) {
   const { t } = useI18n();
   return <div className="om-empty" role="alert"><RemixIcon name="error-warning-line" size={28} /><h2 className="om-subtitle">{t('Could not load settings')}</h2><p className="om-muted">{t('Check your connection and try again.')}</p><button className="om-button" onClick={retry}>{t('Retry')}</button></div>;
 }
-export function SettingsDialog({ title, onClose, children, returnFocus }: { title: string; onClose: () => void; children: ReactNode; returnFocus?: HTMLElement | null }) {
+export function SettingsDialog({ title, onClose, children, returnFocus, className = '' }: { title: string; onClose: () => void; children: ReactNode; returnFocus?: HTMLElement | null; className?: string }) {
   const { t } = useI18n();
   return <Dialog.Root open onOpenChange={open => { if (!open) onClose(); }}><Dialog.Portal>
     <Dialog.Backdrop className="hf-overlay-backdrop om-settings-backdrop" />
-    <Dialog.Popup data-feedback-modal className="om-dialog om-settings-dialog" finalFocus={returnFocus ? () => returnFocus : undefined} onKeyDown={event => event.stopPropagation()}>
+    <Dialog.Popup data-feedback-modal className={`om-dialog om-settings-dialog ${className}`} finalFocus={returnFocus ? () => returnFocus : undefined} onKeyDown={event => event.stopPropagation()}>
       <header className="om-settings-row"><Dialog.Title className="om-subtitle">{title}</Dialog.Title><Dialog.Close className="motion-icon-button" aria-label={t('Close')}><RemixIcon name="close-line" size={20} /></Dialog.Close></header>
       {children}
     </Dialog.Popup>

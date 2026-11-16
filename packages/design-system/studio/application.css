@@ -23,6 +23,22 @@
 [data-motion-studio] .om-nav-item:is([aria-current="page"], [aria-pressed="true"]) { color: var(--motion-strong); background: var(--motion-hover); }
 [data-motion-studio] .om-nav-item[aria-current="page"] { font-weight: var(--motion-weight-medium); }
 [data-motion-studio] .om-nav-item:disabled { color: var(--motion-control-disabled); cursor: default; background: transparent; }
+/* Navigation rows with a separate trailing action share one continuous surface. */
+[data-motion-studio] .om-nav-row { border-radius: var(--motion-radius-md); color: var(--motion-muted); transition: background-color var(--motion-duration-fast), color var(--motion-duration-fast); }
+[data-motion-studio] .om-nav-row:is(:hover, :has(> [data-popup-open])) { color: var(--motion-strong); background: var(--motion-nav-hover); }
+[data-motion-studio] .om-nav-row[data-active="true"] { color: var(--motion-strong); background: var(--motion-chrome-active); }
+[data-motion-studio] .om-nav-row .om-nav-row-link { color: inherit; background: transparent; }
+[data-motion-studio] .om-nav-row > .om-nav-row-action { flex: 0 0 var(--motion-control-sm); background: transparent; }
+[data-motion-studio] .om-nav-row > .om-nav-row-action:is(:hover, [data-popup-open]) { color: var(--motion-strong); }
+[data-motion-studio] .om-checkbox { width: var(--motion-control-sm); height: var(--motion-control-sm); display: inline-grid; place-items: center; flex: none; border-radius: var(--motion-radius-sm); cursor: pointer; }
+[data-motion-studio] .om-checkbox::before { content: ""; grid-area: 1 / 1; width: var(--motion-space-16); height: var(--motion-space-16); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-sm); background: var(--motion-bg); }
+[data-motion-studio] .om-checkbox > span { grid-area: 1 / 1; z-index: 0; }
+[data-motion-studio] .om-checkbox:is([data-checked], [data-indeterminate]) { color: var(--motion-on-action); }
+[data-motion-studio] .om-checkbox:is([data-checked], [data-indeterminate])::before { border-color: var(--motion-action); background: var(--motion-action); }
+[data-motion-studio] .om-checkbox:focus-visible { outline: 2px solid var(--motion-selected); outline-offset: 2px; }
+[data-motion-studio] .om-checkbox[data-disabled] { opacity: .5; cursor: default; }
+[data-motion-studio] .om-nav-row:has(.om-nav-row-link:focus-visible) { outline: 2px solid var(--motion-selected); outline-offset: 2px; }
+[data-motion-studio] .om-nav-row .om-nav-row-link:focus-visible { outline: none; box-shadow: none; }
 [data-motion-studio] .om-button { display: inline-flex; justify-content: center; align-items: center; gap: var(--motion-space-8); min-height: var(--motion-control); padding: var(--motion-space-4) var(--motion-space-10); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-md); color: var(--motion-text); background: var(--motion-bg); font-size: var(--motion-text-md); text-decoration: none; white-space: nowrap; cursor: pointer; }
 [data-motion-studio] .om-button:hover { background: var(--motion-hover); color: var(--motion-strong); }
 [data-motion-studio] .om-button[data-primary] { background: var(--motion-action); color: var(--motion-on-action); border-color: var(--motion-action); }
@@ -94,7 +110,7 @@
 [data-motion-studio] .motion-sidebar-drawer { transition: transform var(--motion-duration-normal) var(--motion-ease-out); }
 [data-motion-studio] .motion-sidebar-drawer:is([data-starting-style], [data-ending-style]) { transform: translateX(-100%); }
 @media (prefers-reduced-motion: reduce) {
-  [data-motion-studio] :is(.om-application, .om-collapsible, .om-application > .motion-workspace, .om-nav-item, .om-inline-input, .motion-sidebar-drawer),
+  [data-motion-studio] :is(.om-application, .om-collapsible, .om-application > .motion-workspace, .om-nav-item, .om-nav-row, .om-inline-input, .motion-sidebar-drawer),
   [data-motion-studio] .om-switch::after { transition: none; }
 }
 
@@ -156,7 +172,6 @@
 /* Opaque selection panels stay legible over authored media in either theme. */
 [data-motion-studio] .om-selection-panel.hf-od-floating-surface { --motion-floating-surface: var(--motion-bg); --motion-floating-backdrop: none; background: var(--motion-bg); background-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: var(--motion-border-subtle); border-radius: var(--motion-radius-lg); box-shadow: var(--motion-shadow-lg); }
 [data-motion-studio] .om-project-flyout.hf-od-floating-surface { background: var(--motion-workspace); background-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: var(--motion-radius-step-10); box-shadow: var(--motion-shadow-md); }
-[data-motion-studio] :is(.om-project-flyout, .motion-sidebar-drawer) .motion-session[aria-current="page"] { color: var(--motion-strong); background: var(--motion-hover); }
 [data-motion-studio] .om-menu-panel { padding: var(--motion-space-4); max-height: var(--available-height); overflow-y: auto; overscroll-behavior: contain; }
 [data-motion-studio] .om-menu-panel :is([role="menuitem"], [role="menuitemradio"]) { min-height: var(--motion-control); padding: var(--motion-space-6) var(--motion-space-10); gap: var(--motion-space-12); border-radius: var(--motion-radius-md); font-size: var(--motion-text-md); text-decoration: none; }
 [data-motion-studio] .om-menu-panel [role="menuitem"] > .truncate { flex: 1; }

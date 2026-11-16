@@ -61,3 +61,11 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     assert.equal(await readFile(published.path, 'utf8'), await readFile(prepared.path, 'utf8'));
   }
 });
+
+
+test('both distribution profiles include the complete project archive entry points', async () => {
+  const required = ['project-management.ts', 'shared/project-management.ts', 'project-archive.ts', 'shared/project-archive.ts', 'shared/project-zip.ts', 'gateway/project-archive-http.ts', 'scripts/zip.mjs', 'docs/project-archives.md'];
+  for (const profile of ['phase1', 'legacy']) {
+    assert.deepEqual(await distributionFiles(profile, file => required.includes(file)), [...required].sort());
+  }
+});

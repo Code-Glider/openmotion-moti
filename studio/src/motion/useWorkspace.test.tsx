@@ -31,6 +31,23 @@ async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: 
 }
 const writes = () => fetcher.mock.calls.filter(call => call[1]?.method === 'POST');
 
+it('preserves the saved catalog order when project metadata changes', async () => {
+  let projects = [
+    { id: second, title: 'Second', createdAt: 200, openedAt: 200 },
+    { id: first, title: 'First', createdAt: 200, openedAt: 100 },
+    { id: 'project', title: 'Legacy project', openedAt: 9999 },
+  ];
+  fetcher.mockImplementation(async (url: string) => Response.json(url.endsWith('/projects') ? { projects } : status));
+  await mount(async () => {}, first);
+  expect(workspace.projects.map(project => project.id)).toEqual([second, first, 'project']);
+  projects = projects.map(project => ({ ...project, title: 'Renamed ' + project.title, openedAt: project.id === first ? 20000 : 1 }));
+  await act(async () => workspace.retryConnection());
+  expect(workspace.projects.map(project => project.id)).toEqual([second, first, 'project']);
+  projects.unshift({ id: 'new', title: 'Newest', createdAt: 300, openedAt: 0 });
+  await act(async () => workspace.retryConnection());
+  expect(workspace.projects.map(project => project.id)).toEqual(['new', second, first, 'project']);
+});
+
 it('switches the default project label in all interface languages without saving or translating custom names', async () => {
   let locale: ReturnType<typeof useI18n>;
   let custom = false;

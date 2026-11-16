@@ -1,3 +1,4 @@
+import { projectArchiveHttp } from './gateway/project-archive-http.ts';
 import { modelMetadata } from './gateway/model-metadata.ts';
 import { assetConversations } from './gateway/asset-chat.ts';
 import { assetHttp } from './gateway/asset-http.ts';
@@ -229,7 +230,9 @@ async function openProject(store: WorkspaceStore, context: Service, origin: stri
       const creating = Boolean(template) || 'title' in target;
       const id = creating ? crypto.randomUUID() : (target as { projectId: string }).projectId;
       const entry = creating ? { id, title: template?.title ?? (target as { title: string }).title, templateId: template?.id, createdAt: Date.now() } : undefined;
-      if (!entry && !store.projectCatalog().projects.some(item => item.id === id)) throw new Error('工程不存在');
+      const savedProject = !entry ? store.projectCatalog().projects.find(item => item.id === id) : undefined;
+      if (!entry && !savedProject) throw new Error('工程不存在');
+      if (!entry && savedProject?.trashedAt) throw new Error('PROJECT_TRASHED: 工程已在回收站');
       if (sessionTarget?.sessionId && !store.projectCatalog().sessions!.some(item => item.id === sessionTarget.sessionId)) throw new Error('会话不存在');
       if (!entry && id === 'project') await store.forProject(id).initializeLocked(runtimeRoot);
       if (!entry && store.projectCatalog().activeId === id) {
@@ -330,7 +333,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
     if (context.ensureStudio && !isWorkspaceSettingsPage(url.search) && (url.pathname === '/' || url.pathname.startsWith('/sessions/'))) {
       const projectId = url.searchParams.get('project'), sessionId = url.searchParams.get('session');
       if (projectId !== null) {
-        if (store.projectCatalog().projects.some(project => project.id === projectId)) await context.ensureStudio(projectId);
+        if (store.projectCatalog().projects.some(project => project.id === projectId && !project.trashedAt)) await context.ensureStudio(projectId);
       } else if (sessionId) {
         const session = store.projectCatalog().sessions!.find(session => session.id === sessionId);
         const artifact = session?.artifacts.find(artifact => artifact.id === session.activeArtifactId) ?? session?.artifacts.at(-1);
@@ -357,6 +360,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
       return json(res, 405, { error: 'Unsupported conversation request' });
     }
+    if (motionRequest && url.pathname.startsWith('/api/project-archives/') && await projectArchiveHttp(req, res, url, store.workspaceStore ?? store, context.runtimeRoot)) return;
     if (motionRequest && url.pathname.startsWith('/api/assets/') && await assetHttp(req, res, url, store)) return;
     const editorUrl = `http://${host || 'localhost'}/#project/${store.projectId}`;
     if (motionRequest && ['/api/diagnostics', '/api/diagnostics/events'].includes(url.pathname)) {
