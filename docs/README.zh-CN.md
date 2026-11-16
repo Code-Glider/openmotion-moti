@@ -512,7 +512,7 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 <a id="local-agent-connection"></a>
 
-**连接其他本地 Agent** · 按照官方安装指南在客户端完成接入。支持 stdio MCP 的客户端可以使用下方配置。对于通过终端工作的 Agent，打开工程目录，用[本机引擎 CLI](../skills/openmotion-production/references/native.md) 预览和渲染 HTML 场景。
+**连接其他本地 Agent** · 按照官方安装指南在客户端完成接入。支持 stdio MCP 的客户端可以使用下方配置。对于通过终端工作的 Agent，打开工程目录，用[本机引擎 CLI](../skills/openmotion-production/references/native.md) 预览和渲染 HTML 场景。 使用 npm 发布版时，运行 `openmotion setup --host <Agent 名称>`（例如 `opencode`）。setup 会安装应用和 Skills，并返回需要添加的启动器配置。[其他本地 Agent](npm-installation.md#other-local-agents)
 
 <a id="manual-mcp"></a>
 

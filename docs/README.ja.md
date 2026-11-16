@@ -512,7 +512,7 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 <a id="local-agent-connection"></a>
 
-**そのほかのローカルエージェントを接続する** · 公式インストールガイドに従い、クライアントに接続します。stdio MCP 対応のクライアントには下記の設定を使えます。ターミナルを使うエージェントでは、プロジェクトのディレクトリを開き、[ローカルエンジンの CLI](../skills/openmotion-production/references/native.md) で HTML シーンをプレビュー・レンダリングできます。
+**そのほかのローカルエージェントを接続する** · 公式インストールガイドに従い、クライアントに接続します。stdio MCP 対応のクライアントには下記の設定を使えます。ターミナルを使うエージェントでは、プロジェクトのディレクトリを開き、[ローカルエンジンの CLI](../skills/openmotion-production/references/native.md) で HTML シーンをプレビュー・レンダリングできます。 npm 公開版では `openmotion setup --host <エージェント名>`（例: `opencode`）を実行します。setup がアプリと Skills をインストールし、追加すべきランチャー設定を返します。[そのほかのローカルエージェント](npm-installation.md#other-local-agents)
 
 <a id="manual-mcp"></a>
 

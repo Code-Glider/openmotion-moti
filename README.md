@@ -524,7 +524,7 @@ This copies instructions; it does not install the runtime or register MCP. Keep 
 
 <a id="local-agent-connection"></a>
 
-**Connect a local agent** · Follow the installation guide for your client. Use the configuration below in clients with local stdio MCP support. In a shell-based agent, open the project directory and use the [local engine CLI](skills/openmotion-production/references/native.md) to preview and render the HTML scenes.
+**Connect a local agent** · Follow the installation guide for your client. Use the configuration below in clients with local stdio MCP support. In a shell-based agent, open the project directory and use the [local engine CLI](skills/openmotion-production/references/native.md) to preview and render the HTML scenes. For the published npm application, run `openmotion setup --host <agent-name>` (for example `opencode`); setup installs the app and Skills and returns the exact launcher entry to add. [Other local Agents](docs/npm-installation.md#other-local-agents)
 
 <a id="manual-mcp"></a>
 
