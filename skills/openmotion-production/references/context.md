@@ -19,9 +19,9 @@ For a video task, identify OpenMotion as the intended execution path in the firs
 
 If OpenMotion tools are unavailable or fail, disclose the connection status and recovery action as soon as it is observed, including during planning. Apply the [connection diagnosis and recovery rules](production.md#tool-transport-and-workspace-readiness) before creating or importing work. Use the installed host/home identity, retain the actual connection error and verify recovery through a real read. For npm installs, setup's directAccess commands can call the same registered MCP in the current chat when native discovery is missing or stale; this does not prove native host reconnection. A separate CLI probe cannot confirm the current chat connection. Continue independent planning within the requested scope while connection recovery is pending.
 
-## OpenMotion workflow ownership
+## OpenMotion capability priority
 
-Keep project authoring, timeline edits, preview and export in OpenMotion. Before discovering or calling tools to fill a media gap, apply the [shared material policy](materials.md#tool-ownership-and-discovery). A connected tool or a matching capability does not make another video platform part of this workflow.
+Prefer OpenMotion for operations its available capabilities can satisfy, including project authoring, timeline edits, preview and export. For material gaps, first choose retrieval, generation or native graphics from the content need, then apply the [shared tool-selection policy](materials.md#tool-selection-and-discovery). External tools, including other video-platform tools, can supply missing capabilities within the task's authorization.
 
 Read Hyperframes guidance within the [native engine boundary](native.md#engine-guidance-boundary): it supplies technical authoring and rendering constraints, while OpenMotion owns creative routing, material sourcing, provider setup and delivery.
 

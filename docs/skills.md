@@ -8,7 +8,7 @@ Renaming does not change schemas, defaults, engine versions, permissions or proj
 
 ## Media tools and upstream guidance
 
-All production entries share the [material tool policy](../skills/openmotion-production/references/materials.md#tool-ownership-and-discovery): project work stays in OpenMotion, while existing assets, general-purpose retrieval/generation and configured OpenMotion media providers can fill material gaps. ChatCut and other video-platform tools, including stock search, are excluded by default unless the user explicitly requests that platform for the operation. Tool discovery must consider ownership as well as capability.
+All production entries share the [material tool policy](../skills/openmotion-production/references/materials.md#tool-selection-and-discovery): choose sources by content need, then prefer OpenMotion when its available capabilities match the operation. Retrieval of original material is distinct from generation. External tools, including other video platforms' stock search, can fill capability gaps within existing authorization without requiring the user to name a platform. Keep supported project operations in OpenMotion and external contributions scoped to the needed operation.
 
 The [native engine boundary](../skills/openmotion-production/references/native.md#engine-guidance-boundary) applies to both filesystem guides and MCP engine resources. Hyperframes supplies technical constraints, not supplier onboarding, creative routes, mandatory soundtrack defaults or delivery policy. These are Agent instructions, not host-level tool isolation; refreshed Skills must be loaded before evaluating model behavior.
 

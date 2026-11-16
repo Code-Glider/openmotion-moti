@@ -188,7 +188,7 @@
     "How long does a video take?": "制作一条视频需要多久？",
     "It depends on the film, the Agent, the selected models and your computer. Generation queues and rendering have separate progress. Keep following the existing job instead of submitting the same request again.": "取决于视频内容、Agent、所选模型和电脑性能。素材生成与成片渲染各自显示进度；持续查询原任务即可，无需重复提交。",
     "Will my Agent use another video platform?": "Agent 会调用其他视频平台吗？",
-    "OpenMotion Skills keep project creation, editing, preview and export in OpenMotion. Existing assets, general-purpose search and generation tools can fill material gaps. Using another video platform requires your explicit request for that operation.": "OpenMotion 的制作流程默认在自身工程中完成创建、编辑、预览和导出。素材可通过已有文件、通用检索或生成工具补齐；只有你明确指定某项操作使用其他视频平台时，才会调用该平台。",
+    "Your Agent chooses material sources to fit the content: real events call for original material; original visuals may use generation. It prefers OpenMotion when its available capabilities fit the operation, and can use other tools, including video platforms, to fill capability gaps. Your existing permissions and source preferences still apply.": "Agent 按内容需要选择素材来源：真实事件应检索对应原始素材，原创画面可按需生成。可用能力满足当前操作时优先使用 OpenMotion；能力有缺口时，可使用其他工具，包括其他视频平台的工具。仍遵守已有授权和来源偏好。",
     "Can a team work on the same project?": "团队可以一起使用吗？",
     "You can share editable project files and exported videos with a team. This local installation does not provide a hosted collaborative workspace. Coordinate edits to the same source files; provider credentials are not part of the project.": "可以向团队分享可编辑工程和导出视频。当前本地安装尚不提供托管的多人协作工作区，修改同一源文件时需要协调；供应商密钥不会随工程分享。",
     "Who makes OpenMotion?": "OpenMotion 是谁开发的？",
