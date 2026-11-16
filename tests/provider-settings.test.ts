@@ -157,7 +157,14 @@ test('sign-in failures are classified by the stage reached and logged without ac
   assert.equal(unconfirmed.attempt?.stages.at(-1), 'credential_persist_result:success');
   const approved = await attempt('login-missing-key-id');
   assert.equal(approved.errorCode, 'credentials_rejected'); assert.equal(approved.attempt?.stages.at(-1), 'device_authorization_result:success');
-  assert.equal(logs.length, 7);
+  // Nothing was accepted or stored, so a transient exchange or local write failure stays retryable.
+  const exchange = await attempt('login-exchange-failure');
+  assert.equal(exchange.errorCode, 'setup_failed'); assert.equal(exchange.attempt?.stages.at(-1), 'token_exchange_result:failed:network_error');
+  assert.equal(exchange.attempt?.persisted, false);
+  const persisted = await attempt('login-persist-failure');
+  assert.equal(persisted.errorCode, 'setup_failed'); assert.equal(persisted.attempt?.stages.at(-1), 'credential_persist_result:failed:credential_persist_error');
+  assert.equal(persisted.attempt?.persisted, false);
+  assert.equal(logs.length, 9);
   assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id|private upstream/);
 }));
 

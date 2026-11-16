@@ -58,7 +58,10 @@ class SignInFailure extends Error {
 function failureCode(attempt: AccountAttempt, cancelled: boolean): AccountErrorCode {
   if (attempt.persisted) return 'credentials_rejected';
   const [stage, , errorKind] = attempt.stages.findLast(entry => entry.split(':')[1] === 'failed' && !entry.startsWith('browser_open_result'))?.split(':') ?? [];
-  if (stage === 'token_exchange_result' || stage === 'credential_persist_result') return 'credentials_rejected';
+  // Exchanging or storing the authorization rejected nothing when the service was unreachable or the credentials could
+  // not be written locally: nothing was accepted or persisted, so the attempt is retryable instead of a rejection.
+  const unreachable = errorKind === 'network_error' || errorKind === 'credential_persist_error';
+  if ((stage === 'token_exchange_result' || stage === 'credential_persist_result') && !unreachable) return 'credentials_rejected';
   if (cancelled || (stage === 'device_authorization_result' && errorKind !== 'network_error')) return 'authorization_expired';
   // Approved in the browser, then stopped before reporting a later stage (for example incomplete issued credentials).
   if (!stage && attempt.stages.includes('device_authorization_result:success')) return 'credentials_rejected';

@@ -83,7 +83,19 @@ if (args[0] === 'login') {
       stage('device_authorization_result', 'success');
       // The connector returns without another stage when issued credentials lack their revocation ID.
       if (scenario === 'login-missing-key-id') process.exit(1);
+      // A transient service failure while exchanging the approved authorization stores nothing.
+      if (scenario === 'login-exchange-failure') {
+        stage('token_exchange_result', 'failed', 'network_error');
+        console.error('Error: exchange authorization code: private upstream data');
+        process.exit(1);
+      }
       stage('token_exchange_result', 'success');
+      // A local write failure leaves no credentials behind either.
+      if (scenario === 'login-persist-failure') {
+        stage('credential_persist_result', 'failed', 'credential_persist_error');
+        console.error('Error: write credentials: private local path');
+        process.exit(1);
+      }
       const profile = { controlKey: 'synthetic-private-control-key', controlKeyId: 'fixture-control-key-id', runtimeKey: 'synthetic-private-account-key',
         user: { id: 'fixture-user-id', name: 'Fixture user', email: 'fixture@example.test' } };
       if (scenario === 'login-incomplete') delete profile.controlKey;
