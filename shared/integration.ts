@@ -1,4 +1,4 @@
-import { templatePrompts, repositoryTemplatePrompts } from './template-prompts.ts';
+import { templatePrompts } from './template-prompts.ts';
 import { catalogLocale } from './template-locale.ts';
 import { workflowEntryGuide } from './workflow-entry.js';
 
@@ -97,14 +97,9 @@ Follow the installation guide: ${setupGuideUrl(info)}
 3. 在当前 Agent 中发现 OpenMotion 工具，调用 openmotion_get_project 验证工作区。仅写入配置不代表连接成功；遇到阻碍请说明。
 4. ${host === 'codex' ? '在本轮完成引导：先准备好欢迎语和视频卡片，再打开模板库并立即展示已就绪的内容，不把内部指令发成新的用户消息。' : '接入后打开模板库，'}等我给出创作要求后再创建或修改工程。`;
 }
-export function templatePrompt(info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
-  if (info.templateSource === 'repository') {
-    const message = repositoryTemplatePrompts[catalogLocale(Object.keys(repositoryTemplatePrompts), locale, 'en')];
-    return message.replace(/\{(name|id)\}/g, (_, key: 'name' | 'id') => template[key === 'name' ? 'title' : 'id']);
-  }
-  const installUrl = setupGuideUrl(info);
+export function templatePrompt(_info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
   const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
-  const values = { installUrl, name: template.title, id: template.id };
+  const values = { installUrl: 'https://github.com/nexu-io/openmotion', name: template.title, id: template.id };
   return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);
 }
 

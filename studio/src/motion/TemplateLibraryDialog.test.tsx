@@ -29,8 +29,8 @@ class Observer {
   emit(ratio = 1, subset = this.elements) { this.callback(subset.map(target => ({ target, isIntersecting: ratio > 0, intersectionRatio: ratio }) as IntersectionObserverEntry), this as unknown as IntersectionObserver); }
 }
 let motionPreference: EventTarget & { matches: boolean };
-function fetchItems(data = items) {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
+function fetchItems(data = items, templateSource?: 'repository' | 'cms') {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
 }
 beforeEach(() => {
   window.happyDOM.settings.enableIframePageLoading = false;
@@ -182,7 +182,7 @@ it('tries the bundled brand logo after a published logo fails, then falls back t
   expect(label.querySelector('img')).toBeNull();
   expect(label.textContent).toBe('NNotion');
 });
-it('copies the exact DEV prompt, retains guides and gates editable-project opening', async () => {
+it('copies the shared brief, retains guides and gates editable-project opening', async () => {
   const onOpen = await mount('zh-CN');
   await act(async () => button('预览模板 First', host.querySelector('main')!).click());
   expect(host.querySelector('iframe[title=动效说明]')).toBeNull();
@@ -191,11 +191,28 @@ it('copies the exact DEV prompt, retains guides and gates editable-project openi
   await act(async () => button('复刻模板').click());
   expect(host.querySelector('dialog[aria-label=复刻模板]')).toBeNull();
   expect(document.querySelector('[data-feedback-layer]')?.textContent).toContain('已复制，发给 Agent 即可。');
-  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('使用说明：请使用 OpenMotion 插件。如未安装，请按 https://releases.open-design.ai/open-motion/dev/install.md 安装并接入后继续。\n指定模板：First（one）\n创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。\n我的要求：\n');
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。\n指定模板：First（one）\n创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。\n我的要求：\n');
   await act(async () => button('打开并编辑').click());
   expect(onOpen).toHaveBeenCalledWith('one');
   await act(async () => button('预览模板 Second', host.querySelector('main')!).click());
   expect(button('打开并编辑')).toBeUndefined();
+});
+it.each(['repository', 'cms'] as const)('updates the displayed and copied title and ID when navigating %s templates', async templateSource => {
+  fetchItems(items.slice(0, 2), templateSource);
+  await mount('zh-CN');
+  await act(async () => button('预览模板 First', host.querySelector('main')!).click());
+  for (const [title, id] of [['First', 'one'], ['Second', 'two']]) {
+    const expected = [
+      '使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。',
+      `指定模板：${title}（${id}）`,
+      '创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。',
+      '我的要求：\n',
+    ].join('\n');
+    expect(host.querySelector('section[aria-label="模板复刻指令"] p')?.textContent).toBe(expected);
+    await act(async () => button('复刻模板').click());
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expected);
+    if (id === 'one') await act(async () => button('下一个模板').click());
+  }
 });
 it('random discovery honors filters, avoids consecutive repeats and handles a singleton', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(0);
