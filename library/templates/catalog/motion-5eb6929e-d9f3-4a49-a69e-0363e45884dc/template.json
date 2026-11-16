@@ -29,15 +29,72 @@
     },
     "folderPath": "motion-template/P0-20261111/",
     "folderId": "6acca2cc-3a31-45f4-b931-6d6a59e36044",
-    "indexUrl": null,
+    "indexUrl": "https://r.open-design.ai/files/97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074",
     "jsUrl": null,
     "cssUrl": null,
-    "files": [],
+    "files": [
+      {
+        "path": "assets/as-code.js",
+        "mimeType": "text/javascript",
+        "bytes": 4013,
+        "sha256": "adda652f67e7a9408147d1fac56e0501f2c08cd5c5af7ee759627c2ae8222fa8",
+        "url": "https://r.open-design.ai/files/adda652f67e7a9408147d1fac56e0501f2c08cd5c5af7ee759627c2ae8222fa8"
+      },
+      {
+        "path": "assets/fonts/Inter-400.woff2",
+        "mimeType": "font/woff2",
+        "bytes": 23664,
+        "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc",
+        "url": "https://r.open-design.ai/files/8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+      },
+      {
+        "path": "assets/fonts/Inter-700.woff2",
+        "mimeType": "font/woff2",
+        "bytes": 24356,
+        "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491",
+        "url": "https://r.open-design.ai/files/6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+      },
+      {
+        "path": "assets/gsap.min.js",
+        "mimeType": "text/javascript",
+        "bytes": 72927,
+        "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb",
+        "url": "https://r.open-design.ai/files/92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+      },
+      {
+        "path": "assets/lfs/original-audio.m4a",
+        "mimeType": "audio/mp4",
+        "bytes": 795092,
+        "sha256": "ebd38afb0a6e4a510a5d088591774068a547b2b03385472027dda395d4e19780",
+        "url": "https://r.open-design.ai/files/ebd38afb0a6e4a510a5d088591774068a547b2b03385472027dda395d4e19780"
+      },
+      {
+        "path": "assets/styles.css",
+        "mimeType": "text/css",
+        "bytes": 10156,
+        "sha256": "881e2c4a984de99f882c2b5bb8fd840dd9211bf1681a26da3420468d24a7746e",
+        "url": "https://r.open-design.ai/files/881e2c4a984de99f882c2b5bb8fd840dd9211bf1681a26da3420468d24a7746e"
+      },
+      {
+        "path": "index.html",
+        "mimeType": "text/html",
+        "bytes": 6608,
+        "sha256": "97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074",
+        "url": "https://r.open-design.ai/files/97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074"
+      },
+      {
+        "path": "assets/fonts/OFL-inter.txt",
+        "mimeType": "text/plain",
+        "bytes": 4477,
+        "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345",
+        "url": "https://r.open-design.ai/files/3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+      }
+    ],
     "previewUrl": "https://r.open-design.ai/files/befcf97dbe47e47f5ad26d4c0f085526182f26ead85bb2eb88a2d205337d3b04",
     "coverUrl": "https://r.open-design.ai/files/06a5c90348b264b8cb1aa3462da2f74e8cd53f755faa0be428eb9cfd16252b57",
     "motionDocumentUrl": "https://r.open-design.ai/files/5faf0044d2c001ef705a4a8785f18eff39057d856d1239dec7204cfa36c17824",
     "motionGuideUrl": "https://r.open-design.ai/files/2a3f6d4a8ccbb1b92ef8de4856fa2ce1de0bee05f1d53ef02bdeb269912360ba",
-    "projectFileUrl": null,
+    "projectFileUrl": "https://r.open-design.ai/files/a8539895969bffc9d44e166254d436e11b1721e97f6646b25561a42d384121f1",
     "brand": "Google",
     "colors": [
       "purple",

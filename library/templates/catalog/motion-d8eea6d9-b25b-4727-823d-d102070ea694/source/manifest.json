@@ -89,6 +89,41 @@
   },
   "files": [
     {
+      "path": "assets/DEPENDENCIES.md",
+      "bytes": 737,
+      "sha256": "41428c863af597ce057297036414d539b13b998682e93f86a0ecc10eeaa10c41"
+    },
+    {
+      "path": "assets/fonts/Inter-variable-latin.woff2",
+      "bytes": 31388,
+      "sha256": "a7578810fc5ca3ccdb1c56ce077b47f7db921c1860dfb054408d95eb5f9016f9"
+    },
+    {
+      "path": "assets/fonts/OFL-inter.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/hyper-ui.js",
+      "bytes": 18693,
+      "sha256": "a33a4e91d762ce319aa41c24531e01de7cef34f4873a4cb85ba98cebb4bee14f"
+    },
+    {
+      "path": "assets/hyper-world.js",
+      "bytes": 18609,
+      "sha256": "726daba900c7c6e2d097e5dd0e815f81378e81ed3a1fd91b5dce81512dcb62b8"
+    },
+    {
+      "path": "assets/lfs/original-soundtrack.m4a",
+      "bytes": 784810,
+      "sha256": "e8ae067d3008d0e8e2f30abc2c1133d4f2499a99740cf8db9ac8153b41436238"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 14690,
       "sha256": "bf0ded97de16cf0edcf55dee66470aabd883eeb93d1406582acba99e94f93573"
@@ -119,6 +154,11 @@
       "sha256": "6a0c866137ee83eafb7015be1509b9068d1ceaf5deb6effa3d128f8b98d69d99"
     },
     {
+      "path": "compositions/hyper-world.html",
+      "bytes": 731,
+      "sha256": "1c6bf35426d410545ebc7ba397dba1cf1e1f3de67375ec90721650ecb598ca21"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -147,6 +187,16 @@
       "path": "demos/sequence.html",
       "bytes": 547,
       "sha256": "48994c3b538a65a6eddef75cc5509541345f553c6e5af48e3bf3ebb728200b99"
+    },
+    {
+      "path": "hyperframes.json",
+      "bytes": 50,
+      "sha256": "4aff3ac1beab4550746b14a055efe9275372593b5c6b70464dd900233564206f"
+    },
+    {
+      "path": "index.html",
+      "bytes": 2311,
+      "sha256": "719cc2f46fb0efd83ff3822b17ea31ebe82189945d7d5c5edbd77c79fb998aa0"
     },
     {
       "path": "motion.md",

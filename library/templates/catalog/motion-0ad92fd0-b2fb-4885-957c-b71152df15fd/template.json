@@ -5,15 +5,93 @@
     "sortOrder": 208,
     "folderPath": "motion-template/P0-20261111/",
     "folderId": "6acca2cc-3a31-45f4-b931-6d6a59e36044",
-    "indexUrl": null,
+    "indexUrl": "https://r.open-design.ai/files/24a3a2676a823759245aad9b7c31c8a3551913eec204acf6435b3164eb60f212",
     "jsUrl": null,
     "cssUrl": null,
     "previewUrl": "https://r.open-design.ai/files/ee7a7dacc9ed4fdb4f14b4537a015b896a02d7d585cb2dc5a020c43654ee7218",
     "coverUrl": "https://r.open-design.ai/files/cc56b969aef17d042e0ab427243aa496d843bd76b6f5e8082c0cf8f1f40fc7a8",
     "motionDocumentUrl": "https://r.open-design.ai/files/3669fa3f67e44e40309b92f4f3137cbd7edf1cd6ad69c62cf8b3b7fc579567c4",
     "motionGuideUrl": "https://r.open-design.ai/files/d2bc194b982fce81bc0b9d2c7a1a830e65476389d807cbafdda614720c586516",
-    "projectFileUrl": null,
-    "files": [],
+    "projectFileUrl": "https://r.open-design.ai/files/2404d6b4ef81ab742ffe8923d9e2b4f960a3ba4f94ec0e40cde445e388437edb",
+    "files": [
+      {
+        "path": "assets/as-code.js",
+        "mimeType": "text/javascript",
+        "bytes": 18078,
+        "sha256": "b0139217498c0a7e3c038708b9a4dcc6c34941c02b5c290025536ec6b15d3319",
+        "url": "https://r.open-design.ai/files/b0139217498c0a7e3c038708b9a4dcc6c34941c02b5c290025536ec6b15d3319"
+      },
+      {
+        "path": "assets/fonts/EBGaramond-400.woff2",
+        "mimeType": "font/woff2",
+        "bytes": 21704,
+        "sha256": "b63448e2680a0dbde70ebb2f3de78f6c515122835491f938e8a8595b46f29210",
+        "url": "https://r.open-design.ai/files/b63448e2680a0dbde70ebb2f3de78f6c515122835491f938e8a8595b46f29210"
+      },
+      {
+        "path": "assets/fonts/Inter-400.woff2",
+        "mimeType": "font/woff2",
+        "bytes": 23664,
+        "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc",
+        "url": "https://r.open-design.ai/files/8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+      },
+      {
+        "path": "assets/fonts/Inter-700.woff2",
+        "mimeType": "font/woff2",
+        "bytes": 24356,
+        "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491",
+        "url": "https://r.open-design.ai/files/6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+      },
+      {
+        "path": "assets/fonts/OFL-eb-garamond.txt",
+        "mimeType": "text/plain",
+        "bytes": 4519,
+        "sha256": "f03c8eda63076cd52317dcd40aa04db8472d4cb592dfaafa385129dfdafc7f9c",
+        "url": "https://r.open-design.ai/files/f03c8eda63076cd52317dcd40aa04db8472d4cb592dfaafa385129dfdafc7f9c"
+      },
+      {
+        "path": "assets/fonts/OFL-inter.txt",
+        "mimeType": "text/plain",
+        "bytes": 4477,
+        "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345",
+        "url": "https://r.open-design.ai/files/3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+      },
+      {
+        "path": "assets/gsap.min.js",
+        "mimeType": "text/javascript",
+        "bytes": 72927,
+        "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb",
+        "url": "https://r.open-design.ai/files/92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+      },
+      {
+        "path": "assets/lfs/original-audio.m4a",
+        "mimeType": "audio/mp4",
+        "bytes": 390215,
+        "sha256": "49c9b09c5f44acfc3da59759f6da7988a80d2550779fb81fa947a6a50abd39ad",
+        "url": "https://r.open-design.ai/files/49c9b09c5f44acfc3da59759f6da7988a80d2550779fb81fa947a6a50abd39ad"
+      },
+      {
+        "path": "assets/styles.css",
+        "mimeType": "text/css",
+        "bytes": 6992,
+        "sha256": "f8daba331ac30f60b797c78e798c14de2b9d76221913031a245b764730ba18fe",
+        "url": "https://r.open-design.ai/files/f8daba331ac30f60b797c78e798c14de2b9d76221913031a245b764730ba18fe"
+      },
+      {
+        "path": "assets/wallpaper.jpg",
+        "mimeType": "image/jpeg",
+        "bytes": 48361,
+        "sha256": "8d86851992b9e01f3a8e8e9a5ea7fdb8e9d0b6cfe2a6c54efc2446f734bee47b",
+        "url": "https://r.open-design.ai/files/8d86851992b9e01f3a8e8e9a5ea7fdb8e9d0b6cfe2a6c54efc2446f734bee47b"
+      },
+      {
+        "path": "index.html",
+        "mimeType": "text/html",
+        "bytes": 6444,
+        "sha256": "24a3a2676a823759245aad9b7c31c8a3551913eec204acf6435b3164eb60f212",
+        "url": "https://r.open-design.ai/files/24a3a2676a823759245aad9b7c31c8a3551913eec204acf6435b3164eb60f212"
+      }
+    ],
     "verification": {
       "render": "not_run",
       "portableFiles": "not_run",

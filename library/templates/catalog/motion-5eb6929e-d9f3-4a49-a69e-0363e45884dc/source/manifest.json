@@ -88,6 +88,36 @@
   },
   "files": [
     {
+      "path": "assets/as-code.js",
+      "bytes": 4013,
+      "sha256": "adda652f67e7a9408147d1fac56e0501f2c08cd5c5af7ee759627c2ae8222fa8"
+    },
+    {
+      "path": "assets/fonts/Inter-400.woff2",
+      "bytes": 23664,
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+      "path": "assets/fonts/Inter-700.woff2",
+      "bytes": 24356,
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+      "path": "assets/fonts/OFL-inter.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/lfs/original-audio.m4a",
+      "bytes": 795092,
+      "sha256": "ebd38afb0a6e4a510a5d088591774068a547b2b03385472027dda395d4e19780"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 594,
       "sha256": "63966852ef09876be2056392fcceef461882e0c88ec0a283a0f02fb0d5cc173b"
@@ -118,6 +148,11 @@
       "sha256": "1e13fa77eb3f52f77f9fad1427d032fd208b8f561d6ecb8ccaaa3f680827728f"
     },
     {
+      "path": "assets/styles.css",
+      "bytes": 10156,
+      "sha256": "881e2c4a984de99f882c2b5bb8fd840dd9211bf1681a26da3420468d24a7746e"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -146,6 +181,11 @@
       "path": "demos/sequence.html",
       "bytes": 546,
       "sha256": "726575d2479fe0fe176584bd0f554bb5e6a1da006fdf12c8fa65e102e63d0b2d"
+    },
+    {
+      "path": "index.html",
+      "bytes": 6608,
+      "sha256": "97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074"
     },
     {
       "path": "motion.md",

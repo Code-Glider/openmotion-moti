@@ -87,6 +87,46 @@
   },
   "files": [
     {
+      "path": "assets/ASSETS.txt",
+      "bytes": 551,
+      "sha256": "4f5a6e5b8ddb31be8714f9bc0dc65cdcf9eff703b72550c2fe9a56359801589a"
+    },
+    {
+      "path": "assets/fonts/Inter-400.woff2",
+      "bytes": 23664,
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+      "path": "assets/fonts/Inter-700.woff2",
+      "bytes": 24356,
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+      "path": "assets/fonts/Inter-OFL.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
+      "path": "assets/GSAP-LICENSE.txt",
+      "bytes": 4538,
+      "sha256": "1c777aec2ecd4eba9d81c00c881aaed3108f2e11a4f7971c09c5191997734e7c"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/lfs/original-audio.m4a",
+      "bytes": 888059,
+      "sha256": "4899fbb7f08c9aad917f0aa25724422a2deede78eae08aac3a21f9ae635003d0"
+    },
+    {
+      "path": "assets/magic-share.js",
+      "bytes": 38983,
+      "sha256": "30d5d81a4b6a04c91529b8b352f6621b268ceda203a173b321eb4de8a7caf790"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 9144,
       "sha256": "ffd88319314a8a307fe01797d1c30a4d37d44c6093607ef172402c45b3b49fe4"
@@ -115,6 +155,26 @@
       "path": "assets/reference-6.webp",
       "bytes": 3998,
       "sha256": "5119cf228fd9a35871a23dbaa70e720ef811408defbe5c6738a7760ef888bbe7"
+    },
+    {
+      "path": "assets/ui.js",
+      "bytes": 13746,
+      "sha256": "b9f041dfe5b10830a96c9d932cd3ff56343c8842b4bf48d954165a82dccbd8f6"
+    },
+    {
+      "path": "assets/vendor/THREE-LICENSE.txt",
+      "bytes": 1081,
+      "sha256": "bfe119ea4fd413f5f7ca3fcd63adb0c4a073ed39daa2fe7d3e6b769e21272601"
+    },
+    {
+      "path": "assets/vendor/three.core.js",
+      "bytes": 381421,
+      "sha256": "74e1fcb5a20ad8da0f4d4db6e427fb411de669c0ca782544e6ac27efbf185583"
+    },
+    {
+      "path": "assets/vendor/three.module.js",
+      "bytes": 603113,
+      "sha256": "c8211c69345d2e9949dc7a8ac969380497aa0600a5a8ac6a459c8cd02dd9cb8a"
     },
     {
       "path": "demos/bridge.js",
@@ -150,6 +210,16 @@
       "path": "demos/sequence.html",
       "bytes": 530,
       "sha256": "b3b4f9664c8ec1fdcdfeb1e9b0c8475b34a6775e11360b02e4625cda19c91d56"
+    },
+    {
+      "path": "hyperframes.json",
+      "bytes": 69,
+      "sha256": "b8ea4fad1e3681ba66e121d8a033e7194a6e9ea345f3f5122fe8a9824e8f9d04"
+    },
+    {
+      "path": "index.html",
+      "bytes": 6277,
+      "sha256": "6b083bcf5f7e49d1a073ed1e75d50488a062024fc38069ee970b7b6a62628b9c"
     },
     {
       "path": "motion.md",

@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { zip } from '../scripts/package.ts';
+import { lfsPointer } from '../shared/repository-template-catalog.ts';
 import { checkTemplateLibrary, git, scope } from '../scripts/check-template-library.ts';
 import { catalogRoot, cmsUrl, digest, exportCatalog, importCatalog, refreshManifest, safePath, unzip, validateRecord } from '../scripts/template-library.ts';
 
@@ -43,7 +44,7 @@ async function inspectCatalogAssets(root: string, ids: string[]) {
   return { images, remoteImages };
 }
 
-test('imported templates preserve IDs, eleven locales, filtering data and reference-only status', async () => {
+test('imported templates preserve IDs, eleven locales and filtering data while distinguishing editable projects', async () => {
   const manifest = JSON.parse(await readFile(path.join(catalogRoot, 'catalog.json'), 'utf8'));
   const publication = await exportCatalog();
   assert(manifest.templateIds.length >= 286); assert.equal(Object.keys(publication.content).length, 11);
@@ -51,11 +52,46 @@ test('imported templates preserve IDs, eleven locales, filtering data and refere
     const { templates, ...facets } = publication.content[locale];
     assert.deepEqual(facets, manifest.localeContent[locale]); assert(facets.brands.length > 0);
     assert.deepEqual(templates.map(item => item.templateId), manifest.templateIds);
-    assert(templates.filter(item => item.files.length === 0 && item.projectFileUrl === null && item.conversionStatus === 'pending').length >= 286);
+    for (const item of templates) {
+      if (item.files.length === 0) {
+        assert.equal(item.projectFileUrl, null);
+        assert.equal(item.conversionStatus, 'pending');
+      } else {
+        const entry = item.files.find(file => file.path === 'index.html');
+        assert(entry, `${item.templateId}: editable projects need a root HTML entry`);
+        assert.equal(item.indexUrl, entry.url);
+      }
+    }
   }
   const { images, remoteImages } = await inspectCatalogAssets(catalogRoot, manifest.templateIds);
   assert(images >= 1419 && remoteImages >= 236, 'Small images are local; large originals have CMS rendition links');
 });
+test('editable catalog project locks match checked-in source and optional LFS media', async () => {
+  const publication = await exportCatalog();
+  const entries = publication.content[publication.defaultLocale].templates.filter(item => item.files.length > 0);
+  assert(entries.length > 0, 'The catalog includes editable project contributions');
+  for (const entry of entries) {
+    const directory = path.join(catalogRoot, entry.templateId, 'source');
+    const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+    assert.equal(new Set(entry.files.map(file => file.path)).size, entry.files.length);
+    for (const file of entry.files) {
+      safePath(file.path);
+      const source = await readFile(path.join(directory, file.path));
+      const identity = lfsPointer(source) ?? { bytes: source.length, sha256: digest(source) };
+      assert.deepEqual(identity, { bytes: file.bytes, sha256: file.sha256 }, `${entry.templateId}/${file.path}`);
+      assert.equal(file.url, `https://r.open-design.ai/files/${file.sha256}`);
+      const lock = manifest.files.find((item: { path: string }) => item.path === file.path);
+      assert.deepEqual(lock, { path: file.path, ...identity });
+    }
+    for (const { templates } of Object.values(publication.content)) {
+      const localized = templates.find(item => item.templateId === entry.templateId)!;
+      assert.deepEqual(localized.files, entry.files, 'Project identity must agree across locales');
+      assert.equal(localized.indexUrl, entry.indexUrl);
+      assert.equal(localized.projectFileUrl, entry.projectFileUrl);
+    }
+  }
+});
+
 test('import unpacks verified source and original images without fetching a video or keeping duplicate archives', async t => {
   const f = fixture(t); const publication = await exportCatalog(f.catalog);
   const input = path.join(f.root, 'publication.json'); writeFileSync(input, JSON.stringify(publication));

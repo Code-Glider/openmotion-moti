@@ -87,6 +87,46 @@
   },
   "files": [
     {
+      "path": "assets/as-code.js",
+      "bytes": 18078,
+      "sha256": "b0139217498c0a7e3c038708b9a4dcc6c34941c02b5c290025536ec6b15d3319"
+    },
+    {
+      "path": "assets/fonts/EBGaramond-400.woff2",
+      "bytes": 21704,
+      "sha256": "b63448e2680a0dbde70ebb2f3de78f6c515122835491f938e8a8595b46f29210"
+    },
+    {
+      "path": "assets/fonts/Inter-400.woff2",
+      "bytes": 23664,
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+      "path": "assets/fonts/Inter-700.woff2",
+      "bytes": 24356,
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+      "path": "assets/fonts/OFL-eb-garamond.txt",
+      "bytes": 4519,
+      "sha256": "f03c8eda63076cd52317dcd40aa04db8472d4cb592dfaafa385129dfdafc7f9c"
+    },
+    {
+      "path": "assets/fonts/OFL-inter.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/lfs/original-audio.m4a",
+      "bytes": 390215,
+      "sha256": "49c9b09c5f44acfc3da59759f6da7988a80d2550779fb81fa947a6a50abd39ad"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 21010,
       "sha256": "a99735eec682dc8814cf71bc0454f58d726c0e910953b3af6d0247a7a0409a97"
@@ -117,6 +157,16 @@
       "sha256": "e8562622bdf72537db72e513e06c6f16df235dc1c2c6de9057a6c28b64c5c7ca"
     },
     {
+      "path": "assets/styles.css",
+      "bytes": 6992,
+      "sha256": "f8daba331ac30f60b797c78e798c14de2b9d76221913031a245b764730ba18fe"
+    },
+    {
+      "path": "assets/wallpaper.jpg",
+      "bytes": 48361,
+      "sha256": "8d86851992b9e01f3a8e8e9a5ea7fdb8e9d0b6cfe2a6c54efc2446f734bee47b"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -145,6 +195,11 @@
       "path": "demos/sequence.html",
       "bytes": 543,
       "sha256": "757a0f49217f0c2783fc809ee7cc24879f1fabfcfa334224e513290092d8bb37"
+    },
+    {
+      "path": "index.html",
+      "bytes": 6444,
+      "sha256": "24a3a2676a823759245aad9b7c31c8a3551913eec204acf6435b3164eb60f212"
     },
     {
       "path": "motion.md",
