@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -8,6 +9,49 @@ import puppeteer from 'puppeteer-core';
 import { browserExecutable } from '../browser.ts';
 import { writeBrandProject } from '../gateway/brand-package.ts';
 import { catalogCapture, readBrandCatalog } from '../gateway/brand-catalog.ts';
+import { brandKitHttp } from '../gateway/brand-http.ts';
+
+test('the served sandboxed catalogue showcases run GSAP and honor player commands', async t => {
+  const executablePath = await browserExecutable().catch(() => undefined);
+  if (!executablePath) return t.skip('Chrome is required to exercise the sandbox');
+  const directory = await mkdtemp(path.join(tmpdir(), 'brand-showcase-http-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const server = createServer((req, res) => {
+    if (req.url === '/') {
+      res.setHeader('Content-Type', 'text/html');
+      res.end(`<!doctype html><script>
+        addEventListener('message', event => {
+          if (event.source === document.getElementById('detail')?.contentWindow
+            && event.data?.type === 'openmotion:brand-preview-ready') document.body.dataset.readyOrigin = event.origin;
+        });
+        </script>
+        <iframe id="hover" sandbox="allow-scripts" src="/motion-api/brand-kits/catalog/agentic/showcase"></iframe>
+        <iframe id="detail" sandbox="allow-scripts" src="/motion-api/brand-kits/catalog/agentic/showcase?detail=1"></iframe>`);
+      return;
+    }
+    const url = new URL(req.url || '/', 'http://localhost');
+    url.pathname = url.pathname.replace(/^\/motion-api\//, '/api/');
+    void brandKitHttp(req, res, url, directory, async () => { throw new Error('Unexpected request body'); })
+      .then(handled => { if (!handled) { res.writeHead(404); res.end(); } });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise<void>(resolve => server.close(() => resolve())));
+  const browser = await puppeteer.launch({ executablePath, headless: true });
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  await page.goto('http://127.0.0.1:' + (server.address() as { port: number }).port);
+  await page.waitForFunction(() => document.body.dataset.readyOrigin === 'null', { timeout: 5000 });
+  const hover = await (await page.waitForSelector('#hover'))!.contentFrame();
+  const detail = await (await page.waitForSelector('#detail'))!.contentFrame();
+  await hover.waitForFunction(() => (window as any).__timelines?.main?.time() > .1, { timeout: 5000 });
+  assert.equal(await detail.evaluate(() => (window as any).__timelines.main.paused()), true);
+  const setPlaying = (playing: boolean) => page.$eval('#detail', (iframe: HTMLIFrameElement, playing) =>
+    iframe.contentWindow!.postMessage({ type: 'openmotion:brand-playback', playing }, '*'), playing);
+  await setPlaying(true);
+  await detail.waitForFunction(() => (window as any).__timelines?.main?.time() > .1, { timeout: 5000 });
+  await setPlaying(false);
+  await detail.waitForFunction(() => (window as any).__timelines.main.paused(), { timeout: 5000 });
+});
 
 test('brand showcase keeps content centered and palette labels clear across fonts and corner shapes', async t => {
   const executablePath = await browserExecutable().catch(() => undefined);

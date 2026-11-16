@@ -1,4 +1,5 @@
 import { createReadStream } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -50,8 +51,12 @@ export async function brandKitHttp(
         const cover = entry.websiteUrl ? await brandCoversFor(directory).get(entry.websiteUrl, undefined, entry.coverPage) : undefined;
         return cover ? sendCover(cover.body, cover.mime) : sendCover(catalogStyleCover(entry), 'image/svg+xml', entry.websiteUrl ? 60 : 3600);
       }
-      res.writeHead(200, { 'Content-Type': action === 'showcase' ? 'text/html; charset=utf-8' : 'image/svg+xml', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'" });
-      res.end(action === 'showcase' ? catalogShowcase(entry, url.searchParams.get('detail') === '1') : catalogPoster(entry)); return true;
+      if (action !== 'showcase') return sendCover(catalogPoster(entry), 'image/svg+xml');
+      // The viewer remains opaque-origin. Authorize only the scripts generated here.
+      const nonce = randomBytes(18).toString('base64');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': `sandbox allow-scripts; default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'` });
+      res.end(catalogShowcase(entry, url.searchParams.get('detail') === '1', nonce));
+      return true;
     }
     if (url.pathname === "/api/brand-kits") {
       if (req.method === "GET")

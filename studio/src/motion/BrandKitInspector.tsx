@@ -11,7 +11,8 @@ function appearance(values: CSSProperties): CSSProperties {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => typeof value === 'string' && value.length < 2000 && !/[;{}<>\\]|url\s*\(|image\s*\(|var\s*\(/i.test(value)));
 }
 const sections = ['Context', 'Logos', 'Colors', 'Text styles', 'Backgrounds', 'Shapes and spacing', 'Components', 'Rules and sources'] as const;
-export function BrandKitInspector({ kit, busy, save }: { kit: BrandKit; busy: boolean; save: (body: unknown) => Promise<void> }) {
+type SaveContext = (body: unknown, expectedUpdatedAt?: string) => Promise<BrandKit | undefined>;
+export function BrandKitInspector({ kit, busy, save }: { kit: BrandKit; busy: boolean; save: SaveContext }) {
   const { t } = useI18n(), sample = kit.sample!;
   const [section, setSection] = useState<string>('Context');
   const context = kit.context || { rules: [], files: [] };
@@ -55,7 +56,7 @@ function BrandComponents({ sample }: { sample: BrandSample }) {
     {!sample.components.length && !sample.design?.statCells?.length && <span className="om-muted">{t('None detected')}</span>}
   </div>;
 }
-function BrandContextEditor({ kit, busy, save }: { kit: BrandKit; busy: boolean; save: (body: unknown) => Promise<void> }) {
+function BrandContextEditor({ kit, busy, save }: { kit: BrandKit; busy: boolean; save: SaveContext }) {
   const { t } = useI18n(), toast = useToast(), filesInput = useRef<HTMLInputElement>(null), folderInput = useRef<HTMLInputElement>(null);
   const context = kit.context || { files: [], rules: [] };
   const [rule, setRule] = useState(''), [writing, setWriting] = useState(false), [uploading, setUploading] = useState(false), [editingRule, setEditingRule] = useState<number | null>(null);
@@ -64,10 +65,13 @@ function BrandContextEditor({ kit, busy, save }: { kit: BrandKit; busy: boolean;
     if (!files.length) return;
     setUploading(true);
     try {
+      let revision = kit.updatedAt;
       for (const file of files) {
         if (file.size > 8 * 1024 * 1024) throw new Error('Brand files must be under 8 MB');
         const data = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = () => reject(new Error('Could not read brand file')); reader.readAsDataURL(file); });
-        await save({ file: { name: file.webkitRelativePath || file.name, data } });
+        const saved = await save({ file: { name: file.webkitRelativePath || file.name, data } }, revision);
+        if (!saved) break;
+        revision = saved.updatedAt;
       }
     } catch (error) { toast.showToast(t((error as Error).message), 'error', 'feedback'); }
     finally { setUploading(false); }

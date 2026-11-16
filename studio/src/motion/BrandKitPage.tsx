@@ -62,7 +62,8 @@ export function BrandKitPage({
   const [sort, setSort] = useState("newest");
   const detailReturnFocus = useRef<HTMLElement | null>(null);
   const pendingExtraction = useRef<{ url: string; requestId: string } | null>(null);
-  const catalogOrder = useRef<string[]>([]), lastRandom = useRef<string | null>(null);
+  const [catalogOrder, setCatalogOrder] = useState<string[]>([]);
+  const lastRandom = useRef<string | null>(null);
   const root = useRef<HTMLDivElement>(null),
     [priority, setPriority] = useState<string | null>(null);
   useEffect(() => { if (collectionRoute) setDetailCollection(collectionRoute); }, [collectionRoute]);
@@ -120,12 +121,13 @@ export function BrandKitPage({
   const back = useCallback(() => onSelect(collection === "official" ? null : "mine"), [onSelect, collection]);
   const notify = useCallback((message: string, failure = false) =>
     toast.showToast(t(message), failure ? "error" : "info", "feedback"), [t, toast.showToast]);
-  const run = useCallback(async (action: () => Promise<void>) => {
+  const run = useCallback(async <T,>(action: () => Promise<T>) => {
     if (busy) return;
     setBusy(true);
     try {
-      await action();
+      const result = await action();
       setRevision((n) => n + 1);
+      return result;
     } catch (error) {
       notify(
         error instanceof Error ? error.message : "Brand Kit operation failed",
@@ -150,26 +152,25 @@ export function BrandKitPage({
       notify("Brand extraction started");
     }), [notify, onSelect, run]);
   const importCatalog = useCallback((id: string, visible?: string[], trigger?: HTMLElement) => run(async () => {
+    if (visible) {
+      detailReturnFocus.current = trigger ?? document.activeElement as HTMLElement;
+      setCatalogOrder(visible);
+    }
+    setDetailCollection("official");
     const existing = kits?.find(kit => kit.catalogId === id);
     if (existing) {
-      if (visible) detailReturnFocus.current = trigger ?? document.activeElement as HTMLElement;
-      if (visible) catalogOrder.current = visible;
-      setDetailCollection("official");
       onSelect(existing.id);
       return;
     }
-    if (visible) detailReturnFocus.current = trigger ?? document.activeElement as HTMLElement;
-    if (visible) catalogOrder.current = visible;
-    setDetailCollection("official");
-    const alreadyImported = kits?.some(kit => kit.catalogId === id);
     const { kit } = await brandRequest<{ kit: BrandKit }>(`/catalog/${encodeURIComponent(id)}/import`, "POST");
     setKits(previous => [kit, ...(previous || []).filter(item => item.id !== kit.id)]);
     onSelect(kit.id);
-    if (!alreadyImported) notify("Brand Kit added to your library");
+    notify("Brand Kit added to your library");
   }), [kits, notify, onSelect, run]);
   const action = useCallback((
     operation: "cancel" | "retry" | "delete" | "edit" | "context" | "rescan",
     body?: unknown,
+    expectedUpdatedAt?: string,
   ) => run(async () => {
       if (!selected) return;
       const response = await brandRequest<{ kit?: BrandKit }>(
@@ -179,7 +180,7 @@ export function BrandKitPage({
           : ["edit", "context"].includes(operation)
             ? "PUT"
             : "POST",
-        operation === "cancel" ? body : { ...(body && typeof body === 'object' ? body : {}), expectedUpdatedAt: selected.updatedAt },
+        operation === "cancel" ? body : { ...(body && typeof body === 'object' ? body : {}), expectedUpdatedAt: expectedUpdatedAt ?? selected.updatedAt },
       );
       if (operation === "delete") {
         setKits((previous) =>
@@ -196,6 +197,7 @@ export function BrandKitPage({
         if (operation === "context") notify("Brand context saved");
         if (operation === "rescan") notify("Brand extraction started");
       }
+      return response.kit;
     }), [back, notify, run, selected]);
   const copy = useCallback(() => {
     if (!selected) return;
@@ -233,14 +235,15 @@ export function BrandKitPage({
     const kit = pool[Math.floor(Math.random() * pool.length)];
     if (kit) { lastRandom.current = kit.id; openKit(kit.id); }
   }, [filtered, openKit]);
-  const detailOrder = useMemo(() => collection === "official" && catalogOrder.current.length ? catalogOrder.current : filtered.map(kit => kit.id), [collection, filtered]);
+  const officialOrder = collection === "official" && catalogOrder.length > 0;
+  const detailOrder = useMemo(() => officialOrder ? catalogOrder : filtered.map(kit => kit.id), [officialOrder, catalogOrder, filtered]);
   const detailPosition = selected ? detailOrder.indexOf(collection === "official" ? selected.catalogId || selected.id : selected.id) : -1;
   const navigate = useCallback((direction: number) => {
     if (busy || !detailOrder.length) return;
     const id = detailOrder[(Math.max(detailPosition, 0) + direction + detailOrder.length) % detailOrder.length];
-    if (collection === "official" && catalogOrder.current.length) void importCatalog(id).catch(() => {});
+    if (officialOrder) void importCatalog(id).catch(() => {});
     else onSelect(id);
-  }, [busy, collection, detailOrder, detailPosition, importCatalog, onSelect]);
+  }, [busy, officialOrder, detailOrder, detailPosition, importCatalog, onSelect]);
   const refreshStatus = useCallback(() => setRevision(value => value + 1), []);
   const openCreate = useCallback(() => onSelect('new'), [onSelect]);
   const listSuspended = Boolean(selected || (detailId && kits));

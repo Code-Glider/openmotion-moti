@@ -21,5 +21,6 @@ export type BrandCatalog = {
   entries: BrandCatalogEntry[];
 };
 export const brandCoverRevision = 4;
+const brandCatalogShowcaseRevision = 3;
 export const brandCatalogFile = (id: string, file: 'poster.svg' | 'style-cover.svg' | 'showcase' | 'cover' | 'favicon') =>
-  `/motion-api/brand-kits/catalog/${encodeURIComponent(id)}/${file}?v=${file === 'cover' || file === 'style-cover.svg' || file === 'favicon' ? brandCoverRevision : brandKitShowcase.revision}`;
+  `/motion-api/brand-kits/catalog/${encodeURIComponent(id)}/${file}?v=${file === 'showcase' ? brandCatalogShowcaseRevision : file === 'poster.svg' ? brandKitShowcase.revision : brandCoverRevision}`;

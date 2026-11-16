@@ -74,8 +74,8 @@ export function catalogPoster(entry: BrandCatalogEntry) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="${s.background}"/><g fill="${s.foreground}" font-family="${xml(s.bodyFont)}"><text x="64" y="95" font-size="22" font-weight="600">${xml(entry.name)}</text><text x="1216" y="94" text-anchor="end" font-size="16">01 / 04</text><text x="640" y="258" text-anchor="middle" font-size="15" letter-spacing="3">A BRAND IN MOTION</text><g font-family="${xml(s.headingFont)}" font-size="90" font-weight="700" letter-spacing="-3" text-anchor="middle"><text x="640" y="365">One identity.</text><text x="640" y="462">Every expression.</text></g></g><rect x="64" y="654" width="1152" height="2" fill="${s.foreground}" opacity=".2"/><rect x="1085" y="525" width="260" height="260" rx="${s.radius === '50%' ? 130 : parseFloat(s.radius)}" fill="${s.primary}" transform="rotate(-18 1215 655)"/></svg>`;
 }
 /** Only OpenMotion-authored HTML/JS executes; upstream files are inert package references. */
-export function catalogShowcase(entry: BrandCatalogEntry, controlled = false) {
-  return brandShowcase(catalogCapture(entry))
+export function catalogShowcase(entry: BrandCatalogEntry, controlled = false, scriptNonce?: string) {
+  const html = brandShowcase(catalogCapture(entry))
     .replace('src="assets/gsap.min.js"', 'src="/motion-api/brand-kits/catalog/assets/gsap.min.js"')
     .replace('</body>', `<script>
 const composition=document.getElementById('main');composition.style.transformOrigin='top left';
@@ -93,4 +93,5 @@ ${controlled ? `addEventListener('message',event=>{
 parent.postMessage({type:'openmotion:brand-preview-ready'},'*');` : "if(preference.matches)tl.pause(1.5);"}
 preference.addEventListener('change',playback);document.addEventListener('visibilitychange',playback);playback();
 </script></body>`);
+  return scriptNonce ? html.replace(/<script(?=[\s>])/g, `<script nonce="${xml(scriptNonce)}"`) : html;
 }

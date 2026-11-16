@@ -15,7 +15,7 @@ import { brandCard, brandFile, brandKitInstruction, brandStage, isBrandKitBusy, 
 export const BrandKitDetail = memo(function BrandKitDetail({ kit, busy, onAction, onCopy, onDownload, onClose, onNavigate, position, total, refreshFailed, onRefresh, returnFocus, previewsEnabled = true }: {
   kit: BrandKit;
   busy: boolean;
-  onAction: (action: "cancel" | "retry" | "delete" | "edit" | "context" | "rescan", body?: unknown) => Promise<void>;
+  onAction: (action: "cancel" | "retry" | "delete" | "edit" | "context" | "rescan", body?: unknown, expectedUpdatedAt?: string) => Promise<BrandKit | undefined>;
   onCopy: () => void;
   onDownload: () => void;
   onClose: () => void;
@@ -91,7 +91,7 @@ export const BrandKitDetail = memo(function BrandKitDetail({ kit, busy, onAction
                     {kit.category && <div><dt>{t('Categories')}</dt><dd><span className="om-badge">{t(kit.category)}</span></dd></div>}
                   </dl>
                 </>}
-                {kit.sample && <BrandKitInspector kit={kit} busy={busy || !ready} save={body => onAction("context", body)} />}
+                {kit.sample && <BrandKitInspector kit={kit} busy={busy || !ready} save={(body, revision) => onAction("context", body, revision)} />}
               </div>
             </aside>
           </div>

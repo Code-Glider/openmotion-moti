@@ -236,6 +236,23 @@ it('imports a catalogue style into the local detail and hands original design re
   expect(copy.mock.calls[0][0]).toContain('source/tokens.css');
   expect(copy.mock.calls[0][0]).toContain('STYLE-ONLY');
 });
+it('navigates in catalogue order when the first opened entry was saved in a previous session', async () => {
+  serveCatalog();
+  records = [
+    { ...kit, catalogId: 'azure', name: 'Azure' },
+    { ...kit, id: '22222222-2222-2222-2222-222222222222', catalogId: 'amber', name: 'Amber' },
+  ];
+  await act(async () => root.render(<Harness selected="official" />));
+  await click('Preview Brand Kit Azure');
+  expect(detail().querySelector('h1')?.textContent).toBe('Azure');
+  expect(detail().querySelector('.om-media-detail-nav .om-result-count')?.textContent).toBe('1 / 3');
+  await click('Next Brand Kit');
+  expect(detail().querySelector('h1')?.textContent).toBe('Amber');
+  expect(detail().querySelector('.om-media-detail-nav .om-result-count')?.textContent).toBe('2 / 3');
+  await click('Previous Brand Kit');
+  expect(detail().querySelector('h1')?.textContent).toBe('Azure');
+  expect(requests.mock.calls.some(([, request]) => request?.method === 'POST')).toBe(false);
+});
 it('recovers catalogue loading separately from the personal library', async () => {
   requests.mockImplementation(async (url: string) => {
     if (url.endsWith('/catalog')) throw new Error('Unavailable');
@@ -275,6 +292,35 @@ it('saves brand rules through context, keeps source sections accessible and repo
   await act(async () => contextTab.dispatchEvent(new KeyboardEvent('keydown', { key:'End', bubbles:true })));
   expect(detail().querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Rules and sources');
   expect(detail().querySelector('[role="tabpanel"]')?.textContent).toContain('Keep the wordmark intact.');
+});
+
+it('uses each saved revision when attaching several files from one folder selection', async () => {
+  records = [structuredClone(kit)];
+  const revisions: string[] = [];
+  requests.mockImplementation(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/context') && init?.method === 'PUT') {
+      const { expectedUpdatedAt, file } = JSON.parse(String(init.body));
+      const old = records[0];
+      if (expectedUpdatedAt !== old.updatedAt) return Response.json({ error: 'BRAND_KIT_CHANGED' }, { status: 409 });
+      revisions.push(expectedUpdatedAt);
+      const saved = { id: crypto.randomUUID(), name: file.name, path: 'context/file.txt', size: 12, sha256: 'fixture' };
+      records = [{ ...old, updatedAt: `2026-11-15T00:00:0${revisions.length}.000Z`, context: { rules: [], files: [...(old.context?.files || []), saved] } }];
+      return Response.json({ kit: records[0] });
+    }
+    return Response.json({ kits: records });
+  });
+  await act(async () => root.render(<Harness selected={kit.id} />));
+  const input = detail().querySelector<HTMLInputElement>('input[webkitdirectory]')!;
+  const files = ['logo.txt', 'color.txt'].map(name =>
+    Object.defineProperty(new File(['brand detail'], name), 'webkitRelativePath', { value: `Guide/${name}` }));
+  Object.defineProperty(input, 'files', { configurable: true, value: files });
+  await act(async () => {
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(revisions).toHaveLength(2));
+  });
+  expect(revisions).toEqual([kit.updatedAt, '2026-11-15T00:00:01.000Z']);
+  expect(detail().textContent).toContain('Guide/logo.txt');
+  expect(detail().textContent).toContain('Guide/color.txt');
 });
 
 it('keeps measured styles accessible while rendering and replaces progress with the completed package without reload', async () => {
