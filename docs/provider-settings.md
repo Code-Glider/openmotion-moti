@@ -8,6 +8,8 @@ The application shell keeps navigation in the top bar, editor/project controls i
 
 The settings directory combines the dedicated media adapters, local Codex, an account connection and 68 provider presets. It supports provider search, configured/custom/local/multimodal/media/language filters, masked saved keys, editable API base URLs, enablement, custom providers, remote catalogue sync, exact-ID manual models, model search, combined type/capability/input/status/source filters, sorting, collapsible groups and defaults. Provider status and protocol filters combine with category and search. Filter selections have immediate results, removable chips and clear-all. OpenAI-compatible, Anthropic and Google Gemini catalogue protocols retain their respective authentication and pagination. A provider can expose multiple capabilities; classification uses explicit catalogue output metadata, not guesses from model names. A model without output metadata is classified as language until the user adds a documented capability explicitly.
 
+The provider management list hides connections whose declared capabilities and saved models are exclusively text, including search results and direct provider links. Their registry entries, saved keys, models and defaults remain intact and available to existing APIs. New custom connections stay visible before models are configured; a saved non-text model also keeps its provider visible. A link to a hidden provider opens the account detail instead.
+
 | Connection | Configuration and discovery | Executable media |
 | --- | --- | --- |
 | fal.ai, Atlas Cloud, WaveSpeedAI | Existing keys, model catalogues and references | Their existing image/video/audio adapters |

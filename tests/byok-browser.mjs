@@ -111,7 +111,12 @@ try {
   await page.waitForSelector('.om-settings-center'); await settings('Model providers');
   await page.waitForFunction(() => document.querySelector('[data-studio-control="playback"]')?.getAttribute('aria-label') === 'Play');
   await page.waitForSelector('.om-provider-item');
-  assert(await page.$$eval('.om-provider-item', nodes => nodes.length) >= 70);
+  const listedProviders = await page.evaluate(async () => {
+    const { providers } = await (await fetch('/motion-api/settings/providers')).json();
+    return providers.filter(provider => provider.kinds.some(kind => kind !== 'text')).map(provider => provider.id);
+  });
+  assert.equal(await page.$$eval('.om-provider-item', nodes => nodes.length), listedProviders.length);
+  assert(listedProviders.includes('fal') && !listedProviders.includes('deepseek'));
   await directoryRecovery('light');
   await page.click('[aria-label="Filter providers"]'); await page.waitForSelector('[role=menu]');
   await shot('provider-filter-light'); await clickText('[role=menuitemradio]', 'Multimodal');
