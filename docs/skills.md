@@ -104,15 +104,15 @@ Common engineering rules live in production; selected creative entries own their
 
 ## openmotion-recreate 能力扩展点
 
-复刻目前只支持动态图形。下表是目前已发现的、写死当前能力的位置，不保证穷举。接入 TTS、图片或视频生成模型，或支持实拍/口播/AI 视频时，先按此表修改，再全文检索 `generation Tool`、`phase-one`、`motion graphics` 等字样补漏，并按新能力重新跑评测；新增的能力限制也应写进这些位置，不散落到其他段落。
+复刻用原生代码重建动态图形；肖像、产品照、实拍或 AI 镜头、旁白和音乐通过 openmotion-media 生成后放进同一个可编辑工程，没有可用供应商时说明缺口并完成其余部分。下表是目前已发现的、写死当前能力的位置，不保证穷举。接入 TTS、图片或视频生成模型，或支持实拍/口播/AI 视频时，先按此表修改，再全文检索 `generation Tool`、`phase-one`、`motion graphics` 等字样补漏，并按新能力重新跑评测；新增的能力限制也应写进这些位置，不散落到其他段落。
 
 | 位置 | 当前规则 | 接入新能力后 |
 | --- | --- | --- |
-| [SKILL.md](../skills/openmotion-recreate/SKILL.md) frontmatter description | 触发范围按动态图形复刻描述 | 支持新视频类型后同步触发范围，并重跑选路测试 |
-| SKILL.md Role and goal 第二段 | 只支持动态图形；实拍、口播、AI 视频说明不支持，不暗示给素材就能复刻，只提出动态图形版 | 放宽支持范围，缩小拒绝条件 |
-| SKILL.md §3 素材缺口（“Read the selected provider reference for the public media-use Tool”） | Within supported media scope, use shared materials guidance for missing assets; ask only for unresolved inputs or access/capability limits. The BYOK extension routes configured generation to openmotion-media; creative workflow scope remains unchanged | 本包公开生成 Tool 时改写此句，补调用、采用结果和失败处理规则 |
-| [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 一期 MCP 包不提供生成 Tool，生成交给宿主或 Studio | 与上一行同步修改 |
-| SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；删去念出原品牌的旁白 | 有 TTS 后可改为重新配音，不只删除 |
+| [SKILL.md](../skills/openmotion-recreate/SKILL.md) frontmatter description | 触发范围含带肖像、实拍/AI 镜头、旁白或音乐的参考片 | 新增视频类型时同步触发范围，并重跑选路测试 |
+| SKILL.md Role and goal 第二段 | 原生重建动态图形；原生做不了的镜头和声音走生成素材，镜头按作用、构图、动作和时间对齐，不追求像素或真人身份一致；无供应商时说明缺口、完成其余部分并给出选择 | 支持更多画面类型时同步 |
+| SKILL.md §3 素材缺口 | 需要生成的镜头、旁白、音乐在这一步规划，扣费确认问题并入同一批唯一提问；生成按 openmotion-media | 新增素材类型时同步 |
+| [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 生成前先按共享生成边界判断，再进入 openmotion-media | 与上一行同步修改 |
+| SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；念出原品牌的旁白在可生成且已同意时换成用户的台词，否则删除并说明 | — |
 | SKILL.md §5 原片作底层（用户自有成片只改几处细节） | 仅此情况可把原片放在时间线上并打补丁 | 支持实拍局部修改或分镜混排时扩展适用条件 |
 | [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[reconstruction.md](../skills/openmotion-recreate/references/reconstruction.md) 难画面分段重建、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
 

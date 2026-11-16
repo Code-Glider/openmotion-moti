@@ -10,6 +10,7 @@ Inspect representative frames of the exported file at the delivered size:
 
 - Every requested change is present, and the reference's brand does not remain anywhere it was meant to be replaced.
 - Unchanged parts and the reference's craft (density, camera motion, type) still look like the original.
+- A shot produced as generated media matches the original shot's role, framing, subject type, motion and timing; judge it by those, not by pixel or identity match. Native text, logos and UI above it pass the same checks as everywhere else. Record which shots are generated.
 - Text fits, media crops correctly, and the original's hard cuts stay hard unless a change removed them.
 
 Compare close crops of objects whose shape carries meaning, including any detail the user reported as wrong, at corresponding reference and output times. Check silhouette and orientation as well as size, colour, label placement and motion. Keep these visual results separate from the numerical checks below: the measurer reports brightness, detail, colour and bounds, not whether a pointer, icon or logo has the correct contour. Passing global metrics or equal element heights cannot clear a visibly wrong shape.
