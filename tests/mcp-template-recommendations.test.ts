@@ -43,7 +43,7 @@ test('a negotiated native presentation is discoverable, readable and project-fre
   const resource = await call('resources/read', { uri });
   const content = resource.result.contents[0];
   assert.equal(content.mimeType, 'text/html;profile=mcp-app');
-  assert.deepEqual(content._meta.ui.csp.resourceDomains, ['blob:']);
+  assert.deepEqual(content._meta.ui.csp.resourceDomains, ['blob:', 'https://r.open-design.ai']);
   assert.match(content.text, /__OPENMOTION_TEMPLATE_CARDS__/);
   assert.ok(Buffer.byteLength(JSON.stringify(resource)) < 1.5 * 1024 * 1024);
   assert.deepEqual(await store.get(), before);

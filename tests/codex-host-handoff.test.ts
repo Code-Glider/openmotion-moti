@@ -1,3 +1,4 @@
+import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, readFile, rm, copyFile } from 'node:fs/promises';
@@ -37,7 +38,7 @@ test('CLI handoff refreshes the existing host and verifies this chat before nati
   assert.equal(calls[2].params.threadId, threadId);
   assert.equal(calls[3].params.threadId, threadId);
   assert.equal(calls[3].params.tool, 'openmotion_get_project');
-  assert.deepEqual(result.presentation.arguments, { templateIds: ['product-promo', 'nyt-graph', 'decision-tree'],
+  assert.deepEqual(result.presentation.arguments, { templateIds: [...onboardingTemplateIds],
     onboarding: true, language: 'zh' });
 });
 

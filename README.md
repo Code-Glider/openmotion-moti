@@ -62,7 +62,7 @@ Copy this instruction into your local agent to set up OpenMotion from source:
 Read https://github.com/nexu-io/openmotion/blob/main/install.md and follow the instructions to install and connect OpenMotion in the current agent.
 ```
 
-After setup, the agent opens the local template library and suggests a template. Confirm the choice before creating a project. [Source installation guide](install.md)
+After setup, the agent opens the local template library and presents three selected reference-video cards. Preview one, then choose **Recreate template** and send your brief to start creating. Cards show their video purpose at the top left of each preview. Reference previews require internet access. [Source installation guide](install.md) · [Onboarding selection](docs/install-onboarding.md#maintained-recommendation-selection)
 
 ### Install the published npm app (optional)
 

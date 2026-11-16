@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { runFile } from './runtime-assets.mjs';
+import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 // A current host can render this read-only production view without loading a
 // new MCP tool. Domain work continues through the installation's existing CLI.
@@ -26,7 +27,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en' 
   assert(match, 'Verified production bootstrap is missing');
   const bootstrap = JSON.parse(match[1]);
   const recommendation = showTemplateRecommendations(presentation, {
-    templateIds: ['product-promo', 'nyt-graph', 'decision-tree'], language,
+    templateIds: [...onboardingTemplateIds], language,
   });
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');
