@@ -18,6 +18,8 @@ const catalogue = [
   { model: 'gen-only', kind: 'image', capabilities: {} },
   { model: 'i2v', kind: 'video', capabilities: { max_input_images: 1, durations: { values: [5, 10], default: 5 } } },
   { model: 't2v-only', kind: 'video', capabilities: {} },
+  { model: 'wide-edit', kind: 'image', capabilities: { edits: true, max_input_images: 16 } },
+  { model: 'multi-input-video', kind: 'video', capabilities: { max_input_images: 2 } },
 ];
 function service(store: any) { return new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
   openProject: async () => {}, mutation: async task => task(), cancel: async () => {} }); }
@@ -33,7 +35,7 @@ async function libraryRef(store: any, name: string, color: string) {
 }
 
 /** Records Cloud calls; uploads return ma_<n>, storage PUTs must not carry credentials. */
-function cloud(gateway: any, onSubmit: (pathname: string, body: any) => void, task: Record<string, unknown> = {}) {
+function cloud(gateway: any, onSubmit: (pathname: string, body: any) => void, task: Record<string, unknown> = {}, putStatus = 200) {
   const calls: string[] = []; let uploads = 0;
   gateway.options.fetcher = (async (url, init = {}) => {
     const target = new URL(String(url)), method = init.method ?? 'GET';
@@ -42,7 +44,7 @@ function cloud(gateway: any, onSubmit: (pathname: string, body: any) => void, ta
       assert.equal(method, 'PUT'); assert.equal(new Headers(init.headers).get('Authorization'), null);
       assert.equal(new Headers(init.headers).get('Content-Type'), 'image/png');
       assert.equal(Number(new Headers(init.headers).get('Content-Length')), (init.body as Buffer).length);
-      return new Response(null, { status: 200 });
+      return new Response(null, { status: putStatus });
     }
     assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer cloud-key');
     if (target.pathname.endsWith('/models')) return Response.json({ models: catalogue });
@@ -159,3 +161,67 @@ test('a rejected Cloud poll is not retried', () => fixture(async store => {
   assert.equal(job.state, 'failed'); assert.match(job.error!, /401/); assert.equal(polls, 1);
   await gateway.close();
 }));
+
+test('video input stays at one first frame even when the provider advertises more', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  let submitted = 0; cloud(gateway, () => submitted++);
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  const video = (await gateway.listModels({ provider: 'opendesign', refresh: true })).models.find(m => m.modelId === 'multi-input-video')!;
+  assert.deepEqual([video.maxInputImages, (video.nativeOptions as any).max_input_images], [1, 2]);
+  const a = await libraryRef(store, 'a.png', 'red'), b = await libraryRef(store, 'b.png', 'blue');
+  await assert.rejects(gateway.submit({ library: { references: [a, b] }, model: 'opendesign:multi-input-video', modality: 'video', prompt: 'x' }), /at most 1 input image$/);
+  assert.equal(submitted, 0);
+  await gateway.close();
+}));
+
+test('more than eight references reach a model that publishes a larger maximum', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  gateway.options.download = async () => (await import('node:fs/promises')).readFile(await image(store.directory, 'out.png', 'green'));
+  const submits: [string, any][] = []; cloud(gateway, (p, body) => submits.push([p, body]));
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  const colors = ['red', 'blue', 'green', 'yellow', 'white', 'black', 'gray', 'orange', 'purple', 'pink'];
+  const refs = []; for (const [i, c] of colors.entries()) refs.push(await libraryRef(store, `r${i}.png`, c));
+  const job = await finish(store, (await gateway.submit({ library: { references: refs }, model: 'opendesign:wide-edit', modality: 'image', prompt: 'combine' })).id);
+  assert.equal(job.state, 'completed', job.error);
+  assert.deepEqual(submits[0][1].images, refs.map((_, i) => `ma_${i}`));
+  await assert.rejects(gateway.submit({ library: { references: refs.slice(0, 2) }, model: 'opendesign:one-ref', modality: 'image', prompt: 'x' }), /at most 1 input image$/);
+  await gateway.close();
+}));
+
+test('a storage upload rejection fails the job without rejecting the Cloud API key', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  let submitted = 0; cloud(gateway, () => submitted++, {}, 403);
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  const a = await libraryRef(store, 'a.png', 'red');
+  const job = await finish(store, (await gateway.submit({ library: { references: [a] }, model: 'opendesign:edit-image', modality: 'image', prompt: 'x' })).id);
+  assert.equal(job.state, 'failed'); assert.match(job.error!, /storage HTTP 403/); assert.equal(submitted, 0);
+  const provider = (await gateway.status()).providers.find(p => p.id === 'opendesign')!;
+  assert.equal(provider.available, true); assert.notEqual(provider.verification, 'rejected');
+  await gateway.close();
+}));
+
+test('a permanent download rejection is not retried; a server error is', async () => {
+  for (const [status, expected, downloadsExpected] of [[404, 'failed', 1], [503, 'completed', 2]] as const) await fixture(async store => {
+    const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+    let downloads = 0;
+    gateway.options.download = async () => { if (++downloads === 1) throw Object.assign(new Error(`Media download HTTP ${status}`), { status }); return audio; };
+    cloud(gateway, () => {});
+    await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+    const job = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:elevenlabs-music-v2', modality: 'audio', prompt: `calm piano ${status}` })).id);
+    assert.equal(job.state, expected, `${status}: ${job.error ?? ''}`); assert.equal(downloads, downloadsExpected, `${status} downloads`);
+    assert.notEqual((await gateway.status()).providers.find(p => p.id === 'opendesign')!.verification, 'rejected');
+    await gateway.close();
+  });
+});
+
+test('MCP initialization and the connection guide describe per-model references and first-frame video', async () => {
+  const { readFile } = await import('node:fs/promises');
+  for (const file of ['../shared/mcp-profiles.json', '../shared/integration.ts']) {
+    const text = await readFile(new URL(file, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /library-reference image-to-video is unavailable|one fixed image version/, file);
+    assert.match(text, /up to their maxInputImages/, file);
+    assert.match(text, /take one image as the first frame/, file);
+  }
+});

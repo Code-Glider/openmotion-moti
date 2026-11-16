@@ -60,7 +60,7 @@ export class AssetLibrary {
       const asset = await this.get(input.assetId);
       if (asset.trashedAt || input.parentVersionId && !assetVersion(asset, input.parentVersionId)) throw new Error('ASSET_VERSION_UNAVAILABLE');
     }
-    if (input.references !== undefined && (!Array.isArray(input.references) || input.references.length > 8)) throw new Error('Use at most eight asset references');
+    if (input.references !== undefined && (!Array.isArray(input.references) || input.references.length > 16)) throw new Error('Use at most sixteen asset references; the selected model may accept fewer');
     for (const reference of input.references ?? []) await this.resolve(reference);
   }
   /** Snapshot untrusted local input before decoding, hashing or taking the metadata lock. */

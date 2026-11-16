@@ -22,7 +22,8 @@ function inputImages(row: any): Partial<Model> {
   if (!capabilities) return {};
   const max = Number.isInteger(capabilities.max_input_images) && (capabilities.max_input_images as number) > 0 ? capabilities.max_input_images as number : undefined;
   if (row.kind === 'image' && capabilities.edits === true) return { nativeOptions: capabilities, supportsImageReference: true, maxInputImages: max ?? 1 };
-  if (row.kind === 'video' && max) return { nativeOptions: capabilities, maxInputImages: max };
+  // Only the first-frame role is implemented; the provider maximum stays visible in nativeOptions.
+  if (row.kind === 'video' && max) return { nativeOptions: capabilities, maxInputImages: 1 };
   return { nativeOptions: capabilities };
 }
 
@@ -37,7 +38,8 @@ async function uploadInputs(fetcher: Fetcher, api: string, headers: Record<strin
       body: JSON.stringify({ size_bytes: bytes.length, mime_type: input.mimeType }), signal: ctx.signal });
     if (typeof created.asset_id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(created.asset_id) || typeof created.upload_url !== 'string' || !created.upload_url.startsWith('https://')) throw new Error('OpenDesign Cloud did not return an upload target');
     const put = await fetcher(created.upload_url, { method: 'PUT', headers: { 'Content-Type': input.mimeType, 'Content-Length': String(bytes.length) }, body: bytes, redirect: 'error', signal: ctx.signal });
-    if (!put.ok) throw new ProviderError(`OpenDesign Cloud upload HTTP ${put.status}`, put.status);
+    // Storage, not the API key, rejected this presigned PUT; do not report it as a credential failure.
+    if (!put.ok) throw new Error(`OpenDesign Cloud reference upload storage HTTP ${put.status}; the job was not submitted`);
     const committed = await apiJson(fetcher, api + `/uploads/${created.asset_id}/commit`, { method: 'POST', headers: { ...headers, 'Idempotency-Key': `${jobId}-commit-${index}` }, body: '{}', signal: ctx.signal });
     if (committed.status !== 'ready') throw new Error('OpenDesign Cloud did not accept the reference image');
     ids.push(created.asset_id);
