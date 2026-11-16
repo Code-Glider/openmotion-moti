@@ -154,13 +154,17 @@ it('shows the brand while opening and exposes failures instead of leaving the sp
 it('keeps chrome, sidebar search and geometry mounted while replacing only the project viewer', async () => {
   const second = '22222222-2222-2222-2222-222222222222';
   const artifacts = [id, second].map((projectId, index) => ({ id: projectId, kind: 'motion-project', projectId, title: `Project ${index + 1}` }));
-  const catalog = { activeId: id, projects: artifacts.map(item => ({ id: item.projectId, title: item.title })), sessions: artifacts.map(item => ({ id: item.id, artifacts: [item] })) };
+  const catalog = { activeId: id, projects: artifacts.map((item, index) => ({ id: item.projectId, title: item.title, createdAt: 200 - index * 100, openedAt: 200 - index * 100 })), sessions: artifacts.map(item => ({ id: item.id, artifacts: [item] })) };
   let finishOpening!: () => void;
   const opening = new Promise<void>(resolve => { finishOpening = resolve; });
   history.replaceState(null, '', `/?project=${id}&embed=1&tracking_context=33333333-3333-3333-3333-333333333333#project/${id}`);
   const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     const projectId = new URL(url, location.origin).searchParams.get('projectId') ?? id;
+    if (init?.method === 'POST' && url.includes('/projects/') && url.split('?')[0].endsWith('/open')) {
+      const opened = new URL(url, location.origin).pathname.split('/').at(-2)!;
+      catalog.projects.find(project => project.id === opened)!.openedAt = Date.now();
+    }
     if ((url.includes('/preview/open') || url.includes('/project/status')) && projectId === second) await opening;
     return Response.json(url.endsWith('/projects') && !init?.method ? catalog
       : url.includes('/design-api/sessions/') ? catalog.sessions.find(item => url.includes(item.id))
@@ -182,8 +186,9 @@ it('keeps chrome, sidebar search and geometry mounted while replacing only the p
       setter.call(search, 'Project');
       search.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    const rows = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')];
-    const row = rows.find(button => button.textContent === 'Project 2')!;
+    const row = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.textContent === 'Project 2')!;
+    const originalRows = [...sidebar!.querySelectorAll('.motion-session')];
+    expect(originalRows.map(item => item.textContent)).toEqual(['Project 1', 'Project 2']);
     await act(async () => row.click());
     expect(assign).not.toHaveBeenCalled();
     expect(container.querySelector('.om-app-header')).toBe(header);
@@ -193,13 +198,17 @@ it('keeps chrome, sidebar search and geometry mounted while replacing only the p
     expect(search.value).toBe('Project');
     expect(sidebar?.querySelector('[data-testid="project-list-skeleton"]')).toBeNull();
     expect(sidebar?.querySelector('.motion-session-empty')).toBeNull();
-    expect([...sidebar!.querySelectorAll('.motion-session')]).toEqual(rows);
+    expect([...sidebar!.querySelectorAll('.motion-session')]).toEqual(originalRows);
     expect(firstViewer?.isConnected).toBe(false);
     expect(content?.querySelectorAll('.motion-loading')).toHaveLength(1);
     expect(row.disabled).toBe(true);
     await act(async () => finishOpening());
     expect(content?.querySelector('[data-viewer-project]')?.getAttribute('data-viewer-project')).toBe(second);
     expect(content?.querySelector('.motion-loading')).toBeNull();
+    expect([...sidebar!.querySelectorAll('.motion-session')]).toEqual(originalRows);
+    expect(row.getAttribute('aria-current')).toBe('page');
+    expect(row.closest('.om-project-sidebar-row')?.getAttribute('data-active')).toBe('true');
+    expect(row.closest('.om-project-sidebar-row')?.querySelector('[aria-label="Actions for Project 2"]')).not.toBeNull();
     expect(location.search).toContain('embed=1');
     expect(location.search).toContain('tracking_context=33333333-3333-3333-3333-333333333333');
     const firstRow = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.textContent === 'Project 1')!;
@@ -207,6 +216,9 @@ it('keeps chrome, sidebar search and geometry mounted while replacing only the p
     await act(async () => firstRow.click());
     expect(content?.querySelector('[data-viewer-project]')?.getAttribute('data-viewer-project')).toBe(id);
     expect(container.querySelector('.motion-sidebar')).toBe(sidebar);
+    expect([...sidebar!.querySelectorAll('.motion-session')]).toEqual(originalRows);
+    expect(firstRow.closest('.om-project-sidebar-row')?.getAttribute('data-active')).toBe('true');
+    expect(row.closest('.om-project-sidebar-row')?.getAttribute('data-active')).toBe('false');
   } finally {
     act(() => root.unmount()); container.remove(); assign.mockRestore(); history.replaceState(null, '', '/');
   }

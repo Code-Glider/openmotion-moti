@@ -22,6 +22,8 @@ export const builtinModels: Model[] = [
   builtin('fal', 'fal-ai/kokoro/american-english', 'Kokoro', 'audio', 'text-to-speech'),
   builtin('opendesign', 'elevenlabs-v3', 'ElevenLabs Voice', 'audio', 'text-to-speech'),
   builtin('opendesign', 'byteplus-tts-2', 'BytePlus Voice', 'audio', 'text-to-speech'),
+  // The Cloud catalogue does not list its music model yet, so discovery would otherwise show no music.
+  builtin('opendesign', 'elevenlabs-music-v2', 'ElevenLabs Music', 'audio', 'text-to-audio'),
 ];
 /** Prefer explicit output/task metadata; never infer image output from image input. */
 export function classifyModel(category: string, output?: string): { modality: Modality; mode: string } | null {

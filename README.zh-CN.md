@@ -89,6 +89,12 @@ npm start
 打开启动时打印的实际 `studioUrl` 或 `previewUrl`，进入 **模板库**。Studio 和 MCP 读取此仓库中的模板。要让 Agent 连接同一份源码，请参阅 [源码接入与 MCP 配置](#agent-setup)。[仓库大小与可选素材](docs/repository-storage.md)
 
 
+### 从已有项目快速开始
+
+可以将 **HyperFrames 项目 ZIP 直接导入 OpenMotion**，继续编辑已有动效和本地素材。将项目文件夹压缩为 ZIP，在 **全部项目 → 导入项目** 中选择文件，再打开导入的副本，即可通过 Studio 或 Agent 继续修改。导入会创建独立副本，项目需符合支持的原生工程结构。
+
+[查看导入步骤、文件要求与兼容范围](docs/project-archives.md#import-from-hyperframes)
+
 <a id="agent-wall"></a>
 
 **22 个本地 Agent** · [选择你的 Agent](#choose-agent)

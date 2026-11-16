@@ -50,6 +50,8 @@ beforeEach(() => {
     // The OpenAI preset carries media kinds, so it stays visible in the provider list.
     if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'multimodal', kinds: ['text', 'image', 'audio'] }], models: [], defaults: {} });
     if (url.pathname.endsWith('/integration')) return Response.json(info);
+    if (url.pathname.endsWith('/brand-kits')) return Response.json({ kits: [] });
+    if (url.pathname.endsWith('/brand-kits/catalog')) return Response.json({ schemaVersion: 1, entries: [] });
     if (url.pathname.endsWith('/template-catalog')) return Response.json({ items: [{ id: 'product-promo', title: 'Product Promo', kind: 'builtin', tags: [] }], next: null, catalogVersion: 'test' });
     return Response.json({ projectId, revision: 'r', version: '1.2.3', agents: [], defaults: {}, state: 'signed-out' });
   });
@@ -68,9 +70,26 @@ it.each(settingsSections)('restores a copied %s page on a fresh mount', async se
       expect(container.querySelector('#mcp-title')?.textContent).toContain('Claude Code');
       expect(container.querySelector('[role=tab][data-state=active]') || container.querySelector('a[download]')).toBeTruthy();
       expect(container.querySelector('a[download]')?.getAttribute('href')).toBe('/connect/config?host=claude');
-    } else expect(container.querySelector('.om-settings-sections [aria-current=page]')?.textContent).toBeTruthy();
+    } else if (section === 'brand-kit') expect(document.querySelector('.om-gallery-collection-tabs [aria-current=page]')?.textContent).toContain('Official collection');
+    else expect(container.querySelector('.om-settings-sections [aria-current=page]')?.textContent).toBeTruthy();
     expect(location.hash).toContain('t=12');
   }
+});
+
+it('keeps the Brand Kit collection in browser history and copied URLs', async () => {
+  history.replaceState(null, '', firstUrl.replace('#', '&page=brand-kit#'));
+  const activeTab = () => document.querySelector('.om-gallery-collection-tabs [aria-current=page]')?.textContent;
+  await mount();
+  expect(activeTab()).toBe('Official collection');
+  await click('My brand kits');
+  expect(page().brandKit).toBe('mine');
+  expect(activeTab()).toBe('My brand kits');
+  await traverse(-1);
+  expect(activeTab()).toBe('Official collection');
+  await traverse(1);
+  expect(activeTab()).toBe('My brand kits');
+  await mount(1);
+  expect(activeTab()).toBe('My brand kits');
 });
 
 it('navigates settings, MCP tabs and history without remounting or flushing the editor', async () => {
@@ -313,6 +332,18 @@ it('keeps Assets and editor drafts mounted across page history and restores the 
   expect(page().assets).toBe(true);
   const assetDraft = container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')!;
   assetDraft.value = 'Keep asset prompt';
+  await click('Brand Kit');
+  expect(page()).toMatchObject({ assets: false, settings: 'brand-kit' });
+  expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
+  await click('New Brand Kit');
+  expect(page().brandKit).toBe('new');
+  await click('Template library');
+  await click('Close template library');
+  expect(page()).toMatchObject({ settings: 'brand-kit', brandKit: 'new', templates: false });
+  await click('Workspace assets');
+  expect(page()).toMatchObject({ assets: true, settings: null, brandKit: null });
+  expect(container.querySelector('[aria-label="Asset draft"]')).toBe(assetDraft);
+  expect(assetDraft.value).toBe('Keep asset prompt');
   await click('Settings');
   expect(page().assets).toBe(false);
   expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);

@@ -6,7 +6,6 @@ import { StudioToastViewport } from '../components/StudioToastViewport';
 import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, skillShortcut, type MotionSkill, type SkillCategory, type SkillMotif, type SkillParameters } from './skillCatalog';
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import { MotionIcon } from './icons';
-import styles from './TemplateLibraryDialog.module.css';
 import { motionApi } from './useWorkspace';
 import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration';
 import { Popover } from '../components/ui/Popover';
@@ -69,27 +68,26 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       setManualCopy({ text, surface }); toast.showToast(t(surface === 'command' ? 'Copy failed. Select and copy the command below.' : 'Copy failed. Select and copy the instruction below.'), 'error', 'feedback');
     }
   }
-  return <div className={`${styles.library} om-skills-page om-skills-library`} data-detail={Boolean(selected)}>
+  return <div className="om-gallery-surface om-skills-page om-skills-library" data-detail={Boolean(selected)}>
     <StudioToastViewport {...toast} />
     <div className="om-skills-main">
-      <div className={styles.stickyHeader}>
-        <div className={`${styles.toolbar} om-skills-toolbar`}>
-          <div className={styles.categories} role="group" aria-label={t('Skill category')}>
+      <div className="om-gallery-sticky-header">
+        <div className="om-gallery-toolbar om-skills-toolbar">
+          <div className="om-gallery-categories" role="group" aria-label={t('Skill category')}>
             <button aria-pressed={!category} onClick={() => setCategory(null)}>{t('All')}</button>
             {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => setCategory(value)}>{t(value)}</button>)}
           </div>
-          <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd>⌘ K</kbd></label>
+          <label className="om-field om-search-field"><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd aria-hidden="true">⌘ K</kbd></label>
         </div>
       </div>
-      <main className={styles.results}>
-        <section className={`${styles.intro} om-skills-intro`}><span className={styles.eyebrow}>{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
-          {/* Same as the template library's Submit video: open the contribution guide, whose Agent brief does the packaging and the pull request. */}
-          <div className={styles.introActions}><a className={styles.submitVideo} href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer">{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
+      <main className="om-gallery-results">
+        <section className="om-gallery-intro om-skills-intro"><span className="om-gallery-eyebrow">{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
+          <div className="om-gallery-intro-actions"><a className="om-gallery-submit" href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer">{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
         </section>
-        <div className={`${styles.grid} om-skills-grid`}>
+        <div className="om-gallery-masonry om-skills-grid">
           {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
-        {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
+        {!visible.length && <div className="om-empty"><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button className="om-button" onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
       </main>
     </div>
     {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>

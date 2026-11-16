@@ -1,3 +1,5 @@
+import { projectArchive } from './project-archive.ts';
+import { manageProject } from './project-management.ts';
 import { probeLibraryMedia } from './gateway/asset-probe.ts';
 import { isFontFilePath, prepareImportedFont } from './shared/import-font.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
@@ -5,6 +7,8 @@ import { requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { recordDiagnostic } from './scripts/diagnostics.mjs';
 import { mediaUse } from './gateway/media-use.ts';
 import { assetOperation } from './gateway/asset-operations.ts';
+import { brandKitOperation } from './gateway/brand-kit-operation.ts';
+import { brandKitsFor } from './gateway/brand-kits.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from './shared/asset-limits.ts';
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -303,19 +307,28 @@ export class Phase1Service {
     return { projectId: args.projectId, review: record, changed: false };
   }
   async dispatch(name: string, args: any, host?: HostContext): Promise<any> {
-    if (name === 'motion_assets') return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
+    if (name === 'motion_manage_project') return manageProject(this.store, args, this.runtimeRoot);
+    if (name === 'motion_project_archive') {
+      const result = await projectArchive(this.store, args, this.runtimeRoot);
+      return 'downloadUrl' in result ? { ...result, downloadUrl: new URL(result.downloadUrl, this.context.origin()).href } : result;
+    }
+    if (name === 'motion_assets') {
+      if (args.action === 'brand_kit') return brandKitOperation(brandKitsFor(this.store.directory), args.brandKit, this.context.origin());
+      return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
+    }
     if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);
     if (name === 'motion_get_project' && !args.projectId) {
       if (args.file || args.exportJobId || args.expectedRevision || args.workId || args.includeVideo) throw new Error('INVALID_ARGUMENT: projectId is required for details');
-      const scope = args.sessionId ?? 'workspace';
+      const scope = (args.trashed ? 'trash:' : '') + (args.sessionId ?? 'workspace');
       const page = parseCursor(args.cursor, 'projects', scope);
       const catalog = this.store.projectCatalog();
       if (args.sessionId && !catalog.sessions!.some(session => session.id === args.sessionId)) throw new Error('SESSION_NOT_FOUND');
       const ids = args.sessionId ? new Set(catalog.sessions!.find(session => session.id === args.sessionId)!.artifacts.map(artifact => artifact.projectId)) : null;
       const all = [];
       for (const item of catalog.projects) {
+        if (Boolean(item.trashedAt) !== Boolean(args.trashed)) continue;
         if (ids && !ids.has(item.id)) continue;
-        if (await stat(path.join(this.store.projectDirectoryFor(item.id), 'index.html')).catch(() => null)) all.push(item);
+        if (args.trashed || await stat(path.join(this.store.projectDirectoryFor(item.id), 'index.html')).catch(() => null)) all.push(item);
       }
       all.sort((a, b) => -tupleCompare([a.createdAt ?? 0, a.id], [b.createdAt ?? 0, b.id]));
       const visible = all.filter(item => !page || tupleCompare([item.createdAt ?? 0, item.id], page.after) < 0);
@@ -325,7 +338,7 @@ export class Phase1Service {
       return { dataDirectory: this.store.directory, projects, pageSize: 5, hasMore: visible.length > 5, nextCursor: visible.length > 5 ? cursor({ kind: 'projects', scope, after: [last!.createdAt ?? 0, last!.id] }) : null };
     }
     if (name === 'motion_get_project') {
-      if (args.cursor) throw new Error('INVALID_ARGUMENT: cursor is for project lists');
+      if (args.cursor || args.trashed !== undefined) throw new Error('INVALID_ARGUMENT: cursor and trashed are for project lists');
       if (args.sessionId && !this.store.projectCatalog().sessions!.some(session => session.id === args.sessionId && session.artifacts.some(artifact => artifact.projectId === args.projectId))) throw new Error('PROJECT_SESSION_MISMATCH');
       if (args.workId) {
         if (args.file || args.exportJobId || args.expectedRevision) throw new Error('INVALID_ARGUMENT: workId cannot combine file or export queries');

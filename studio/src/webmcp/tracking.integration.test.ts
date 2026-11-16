@@ -22,7 +22,7 @@ async function registerTools() {
   return { registered, execute, reply };
 }
 
-it('delivers all 19 tools through the actual browser sender and never queues more events after opt-out', async () => {
+it('delivers all registered tools through the actual browser sender and never queues more events after opt-out', async () => {
   const packets: any[] = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (init?.method === 'POST') packets.push(...JSON.parse(String(init.body)).events);
@@ -36,9 +36,9 @@ it('delivers all 19 tools through the actual browser sender and never queues mor
   await vi.dynamicImportSettled();
   for (let i = 0; i < 10 && tracking.getMotionTrackingStatus().pending; i++) await tracking.flushMotionTracking();
   expect(tracking.getMotionTrackingStatus().pending).toBe(0);
-  expect(packets.filter(packet => packet.event === 'webmcp_registration_result')).toHaveLength(19);
-  expect(packets.filter(packet => packet.event === 'webmcp_tool_started')).toHaveLength(19);
-  expect(packets.filter(packet => packet.event === 'webmcp_tool_finished')).toHaveLength(19);
+  expect(packets.filter(packet => packet.event === 'webmcp_registration_result')).toHaveLength(registered.length);
+  expect(packets.filter(packet => packet.event === 'webmcp_tool_started')).toHaveLength(registered.length);
+  expect(packets.filter(packet => packet.event === 'webmcp_tool_finished')).toHaveLength(registered.length);
   expect(packets.every(packet => packet.entrypoint === 'studio' && packet.properties.transport === 'webmcp')).toBe(true);
   expect(packets.filter(packet => packet.properties.action === 'read').map(packet => packet.event)).toEqual(['webmcp_tool_started', 'webmcp_tool_finished']);
   expect(packets.filter(packet => packet.properties.action === 'get')).toHaveLength(2);

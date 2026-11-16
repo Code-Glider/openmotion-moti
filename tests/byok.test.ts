@@ -87,6 +87,25 @@ for (const kind of ['image', 'video', 'audio', 'music'] as const) test(`Cloud ${
   await gateway.close();
 }));
 
+test('Cloud built-in music model is discoverable without a catalogue entry and submits to the music endpoint', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1; gateway.options.download = async () => audio;
+  const posts: [string, any][] = [];
+  gateway.options.fetcher = (async (url, init = {}) => {
+    const target = new URL(String(url)).pathname;
+    if (target.endsWith('/models')) return Response.json({ models: [{ model: 'workspace-image', kind: 'image' }] });
+    if (init.method === 'POST') { posts.push([target, JSON.parse(String(init.body))]); return Response.json({ task_id: 'music-task' }, { status: 202 }); }
+    return Response.json({ status: 'succeeded', assets: [{ url: 'https://cdn.example/output' }] });
+  }) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  const music = (await gateway.listModels({ provider: 'opendesign', refresh: true })).models.find(m => m.modelId === 'elevenlabs-music-v2');
+  assert.deepEqual([music?.modality, music?.mode, music?.source], ['audio', 'text-to-audio', 'builtin']);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-music-v2', modality: 'audio', mode: 'text-to-speech', prompt: 'calm music' }), /does not match the selected Cloud model/);
+  const job = await finish(store, (await gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-music-v2', modality: 'audio', prompt: 'calm piano', parameters: { music_length_ms: 10000 } })).id);
+  assert.equal(job.state, 'completed', job.error);
+  assert.deepEqual(posts, [['/api/v1/media/audio/music', { model: 'elevenlabs-music-v2', parameters: { music_length_ms: 10000, prompt: 'calm piano' } }]]);
+  await gateway.close();
+}));
+
 test('Cloud discovery uses workspace credentials; origin changes stop queued calls and missing voice fails before charging', () => fixture(async store => {
   const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
   let calls = 0;
