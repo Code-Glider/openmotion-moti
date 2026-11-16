@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { TemplateCatalog } from '../prism-templates.ts';
 
@@ -24,7 +25,7 @@ function response(value: unknown, status = 200) {
 }
 
 test('GitHub catalog reads latest main and serves repository source files', async t => {
-  const work = await mkdtemp(path.join('/tmp', 'openmotion-github-catalog-'));
+  const work = await mkdtemp(path.join(tmpdir(), 'openmotion-github-catalog-'));
   t.after(() => rm(work, { recursive: true, force: true }));
   const request = async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -45,4 +46,16 @@ test('GitHub catalog reads latest main and serves repository source files', asyn
   assert.equal(detail.instructions, '# GitHub instructions\n');
   assert.equal(detail.motionDocument.content, '# GitHub motion\n');
   assert.equal((await catalog.sourceFile(id, 'motion.md')).toString(), '# GitHub motion\n');
+});
+
+test('built-in template detail stays local when the GitHub catalog is unreachable', async t => {
+  const work = await mkdtemp(path.join(tmpdir(), 'openmotion-github-builtin-'));
+  t.after(() => rm(work, { recursive: true, force: true }));
+  const request = async (input: RequestInfo | URL) => { throw new Error('GitHub is unavailable: ' + String(input)); };
+  const catalog = new TemplateCatalog(work, { source: 'github', locale: 'en', fetch: request });
+  const detail = await catalog.detail('product-promo');
+  assert.equal(detail.id, 'product-promo');
+  assert.equal(detail.kind, 'builtin');
+  assert.match(detail.instructions, /product-promo/);
+  assert.deepEqual(detail.workflowGuide, { workflow: 'template', section: 'start', status: 'ready' });
 });
