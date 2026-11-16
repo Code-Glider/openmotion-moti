@@ -79,7 +79,7 @@ async function downloadAttempt(asset, filename, progress, attempt, maxAttempts) 
 export async function runFile(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const { timeout = 300_000, killSignal = 'SIGTERM', ...spawnOptions } = options;
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, ...spawnOptions });
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, killSignal, ...spawnOptions });
     let stdout = '', stderr = '', settled = false;
     const finish = (error, output) => {
       if (settled) return;
