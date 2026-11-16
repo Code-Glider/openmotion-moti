@@ -95,6 +95,18 @@ try{
  assert.equal(fromLibrary.items[0].sha256,wavSha256);
  const preview=await tool('openmotion_open_preview',{projectId:p.projectId});assert.equal((await fetch(preview.previewUrl)).status,200);
  const current=await tool('openmotion_get_project',{projectId:p.projectId});
+ const projectZip=await tool('openmotion_project_archive',{action:'export',projectIds:[p.projectId],requestId:'project-zip',expectedRevisions:{[p.projectId]:current.revision}});
+ assert.equal(createHash('sha256').update(await readFile(projectZip.archivePath)).digest('hex'),projectZip.sha256);
+ const projectZipImport=await tool('openmotion_project_archive',{action:'import',sourcePath:projectZip.archivePath,requestId:'reimport-project-zip'});
+ const archivedProject=projectZipImport.projects[0];
+ assert.notEqual(archivedProject.projectId,p.projectId);
+ const archivedLocation=await tool('openmotion_manage_project',{action:'info',projectId:archivedProject.projectId});
+ assert.deepEqual(await readFile(path.join(archivedLocation.path,'index.html'),'utf8'),html);
+ assert.equal(createHash('sha256').update(await readFile(path.join(archivedLocation.path,imported.items[0].path))).digest('hex'),wavSha256);
+ const archivedCopy=await tool('openmotion_manage_project',{action:'duplicate',projectId:archivedProject.projectId,requestId:'duplicate-archive-project'});
+ assert.notEqual(archivedCopy.projectId,archivedProject.projectId);
+ await tool('openmotion_manage_project',{action:'trash',projectId:archivedCopy.projectId,requestId:'trash-archive-project'});
+ assert.equal((await tool('openmotion_manage_project',{action:'restore',projectId:archivedCopy.projectId,requestId:'restore-archive-project'})).trashed,false);
  const frame=await tool('openmotion_open_preview',{action:'begin',mode:'modify',projectId:p.projectId,requestId:'inline-round'});
  const exported=await tool('openmotion_export_request',{projectId:p.projectId,workId:frame.inlineWork.id,requestId:'export',expectedRevision:current.revision,versionId:current.currentVersionId,audio:'required'});
  const completed=await waitJob(p.projectId,exported.job.id,j=>j.state==='completed');assert.equal(completed.verification.status,'passed',JSON.stringify(completed.verification));
