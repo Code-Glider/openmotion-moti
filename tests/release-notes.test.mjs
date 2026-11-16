@@ -16,8 +16,7 @@ async function fixture(t, version = '0.6.8') {
     const route = new URL(url).pathname.split('/openmotion')[1], data = init.body && JSON.parse(init.body);
     if (init.method !== 'GET') writes.push({ route, method: init.method, data });
     if (route.startsWith('/git/ref/')) return tagSource ? Response.json({ object: { type: 'commit', sha: tagSource } }) : new Response('', { status: 404 });
-    if (route.startsWith('/releases/tags/')) return release ? Response.json(release) : new Response('', { status: 404 });
-    if (route === '/releases' && init.method === 'GET') return Response.json([{ draft: false, prerelease: false, tag_name: 'v0.6.7' }]);
+    if (route === '/releases' && init.method === 'GET') return Response.json([...(release ? [release] : []), { draft: false, prerelease: false, tag_name: 'v0.6.7' }]);
     if (route === '/releases/generate-notes') return Response.json({ body: '## Changes\n\n* Fix installation (#1)' });
     if (route === '/releases' && init.method === 'POST') { release = { ...data, id: 7, html_url: 'https://github.com/nexu-io/openmotion/releases/tag/v' + version }; return Response.json(release); }
     if (route === '/releases/7' && init.method === 'PATCH') { release = { ...release, ...data }; tagSource = f.candidate.sourceCommit; return Response.json(release); }

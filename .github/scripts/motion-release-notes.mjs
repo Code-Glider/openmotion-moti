@@ -34,10 +34,17 @@ export async function publishReleaseNotes(directory, { env = process.env, fetche
     for (let depth = 0; object.type === 'tag' && depth < 5; depth++) object = (await api(`/git/tags/${object.sha}`)).object;
     assert.equal(object.type, 'commit'); assert.equal(object.sha, candidate.sourceCommit, 'Release tag already identifies another source');
   }
-  let release = await api(`/releases/tags/${tag}`, 'GET', undefined, true);
+  // Listing with write access includes drafts; the by-tag endpoint documents published releases only.
+  const releases = [];
+  for (let page = 1; ; page++) {
+    assert(page <= 100, 'GitHub release history exceeds the bounded lookup');
+    const batch = await api(`/releases?per_page=100&page=${page}`);
+    assert(Array.isArray(batch), 'Invalid GitHub release list');
+    releases.push(...batch);
+    if (batch.length < 100) break;
+  }
+  let release = releases.find(r => r.tag_name === tag);
   if (!release) {
-    const releases = await api('/releases?per_page=100');
-    assert(Array.isArray(releases), 'Invalid GitHub release list');
     const previous = releases.filter(r => !r.draft && r.prerelease === prerelease && /^v\d+\.\d+\.\d+(?:-test\.[1-9]\d*(?:\.[1-9]\d*)*)?$/.test(r.tag_name))
       .filter(r => compareReleaseVersions(r.tag_name.slice(1), candidate.version) < 0)
       .sort((a, b) => compareReleaseVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
