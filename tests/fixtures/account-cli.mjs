@@ -126,7 +126,7 @@ else if (args[0] === 'media') json({ models: [...['image', 'video', 'audio'].map
   { model: 'fixture-image-basic', kind: 'image', capabilities: { edits: false, max_input_images: 0 } }, { model: 'fixture-music', kind: 'audio_music', capabilities: {} }] });
 else if (args[1] === 'get') {
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
-  const bytes = args[0] === 'image' ? png : args[0] === 'audio' ? Buffer.concat([Buffer.from('ID3'), Buffer.alloc(40)]) : Buffer.concat([Buffer.from('00000018667479706d703432000000006d703432', 'hex'), Buffer.alloc(32)]);
+  const bytes = args[0] === 'image' ? png : readFileSync(path.join(home, `fixture-${args[0]}`));
   writeFileSync(args[args.indexOf('--output') + 1], bytes);
   // A succeeded `image get` prints the downloaded asset instead of the task.
   json(args[0] === 'image' ? { asset_id: 'fixture-asset', status: 'ready', kind: 'image', mime_type: 'image/png', size_bytes: bytes.length } : { task_id: args[2], status: 'succeeded' });

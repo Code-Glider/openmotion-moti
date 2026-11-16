@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { execFile, spawn, type SpawnOptions } from 'node:child_process';
@@ -94,6 +95,8 @@ test('account device authorization, billing, remote models and all media outputs
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
   t.after(() => gateway.close());
+  await mkdir(account.home, { recursive: true });
+  await Promise.all((['video', 'audio'] as const).map(async kind => writeFile(path.join(account.home, `fixture-${kind}`), await mediaBytes(kind))));
   assert.equal((await account.summary()).state, 'signed-out');
   await signIn(account);
   const summary = await account.summary(true);
@@ -128,6 +131,7 @@ test('account music and one-image editing run the matching connector commands', 
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
   t.after(() => gateway.close());
   await signIn(account); await account.models(true);
+  await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
   const models = (await providerDirectory(gateway)).models;
   assert.equal(models.find(m => m.modelId === 'fixture-image')?.supportsImageReference, true);
   assert.equal(models.find(m => m.modelId === 'fixture-image-basic')?.supportsImageReference, undefined);

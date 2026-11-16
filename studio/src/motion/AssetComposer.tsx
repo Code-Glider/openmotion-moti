@@ -17,13 +17,13 @@ import { ModelAvatar } from './settingsPrimitives';
 import { GenerationParameters, emptyParameters, requestParameters, type ParameterDraft } from './GenerationParameters';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 export interface AssetDraft { modality: Modality; prompt: string; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
-export function AssetComposer({ active, draft, setDraft, agentReferences, setAgentReferences, jobs, mode, onMode, taskIds, history, selectingTask, onNew, onChatChanged, onChatStarted, onCancel, onView, onReference, onCreated, onError, onClose }: {
+export function AssetComposer({ active, draft, setDraft, agentReferences, setAgentReferences, jobs, mode, onMode, taskIds, history, selectingTask, onNew, onChatChanged, onChatStarted, onCancel, onView, onRetrySave, onReference, onCreated, onError, onClose }: {
   active: boolean; draft: AssetDraft; setDraft: Dispatch<SetStateAction<AssetDraft>>; jobs: GenerationJob[];
   agentReferences: AssetDraft['references']; setAgentReferences: (references: AssetDraft['references']) => void;
   mode: AssetTaskMode; onMode: (mode: AssetTaskMode) => void; taskIds: { direct?: string; agent?: string };
   history: Omit<ComponentProps<typeof AssetTaskHistory>, 'trigger'>; selectingTask: boolean; onNew: () => void;
   onChatChanged: (chat: AssetChatSummary) => void; onChatStarted: (id: string) => void;
-  onCancel: (job: GenerationJob) => void; onView: (job: GenerationJob) => void; onReference: () => void;
+  onCancel: (job: GenerationJob) => void; onView: (job: GenerationJob) => void; onRetrySave?: (job: GenerationJob) => Promise<void>; onReference: () => void;
   onCreated: (job: GenerationJob) => void; onError: (message: string) => void; onClose: () => void;
 }) {
   const { t } = useI18n(), { openModelSettings } = useWorkspaceChrome();
@@ -67,8 +67,8 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
       <Tooltip label={t('New task')} wrap><IconButton aria-label={t('New task')} icon={<RemixIcon name="add-line" size={17} />} disabled={switching} onClick={onNew} /></Tooltip>
       <Tooltip label={t('Close creator')} wrap><IconButton aria-label={t('Close creator')} icon={<RemixIcon name="close-line" size={17} />} onClick={onClose} /></Tooltip>
     </header>
-    <div className="om-asset-chat-panel" hidden={mode !== 'agent'}><AssetConversation conversationId={taskIds.agent} onChanged={onChatChanged} onStarted={onChatStarted} onSending={setAgentSending} active={active && mode === 'agent'} references={agentReferences.map(r => r.reference)} referenceControls={referenceControls(agentReferences, setAgentReferences)} jobs={jobs} onCancel={onCancel} onView={onView} onError={onError} /></div>{mode === 'direct' && <>
-      {latest && <div className="om-asset-current-job"><AssetGenerationCard job={latest} onCancel={onCancel} onView={onView} /></div>}
+    <div className="om-asset-chat-panel" hidden={mode !== 'agent'}><AssetConversation conversationId={taskIds.agent} onChanged={onChatChanged} onStarted={onChatStarted} onSending={setAgentSending} active={active && mode === 'agent'} references={agentReferences.map(r => r.reference)} referenceControls={referenceControls(agentReferences, setAgentReferences)} jobs={jobs} onCancel={onCancel} onView={onView} onRetrySave={onRetrySave} onError={onError} /></div>{mode === 'direct' && <>
+      {latest && <div className="om-asset-current-job"><AssetGenerationCard job={latest} onCancel={onCancel} onView={onView} onRetrySave={onRetrySave} /></div>}
       <div className="om-asset-direct">
       {draft.target && <div className="om-card om-asset-edit-target"><span><RemixIcon name="history-line" size={16} />{draft.target.asset.name} · V{draft.target.asset.versions.findIndex(v => v.id === draft.target!.versionId) + 1}</span><button className="om-nav-item" onClick={() => setDraft({ ...draft, target: undefined })}>{t('Create separately')}</button></div>}
       <div className="om-creation-types" role="group" aria-label={t('Media type')}>{creationKinds.map(item => <button key={item.id} className="om-creation-type" data-tone={item.id} aria-pressed={draft.modality === item.id} disabled={Boolean(draft.target) && item.id !== draft.modality} onClick={() => setDraft({ ...draft, modality: item.id, model: undefined })}><span className="om-creation-icon" data-tone={item.id}><RemixIcon name={item.icon} size={20} /></span><span>{t(item.label)}</span>{draft.modality === item.id && <RemixIcon name="check-line" size={13} />}</button>)}</div>
