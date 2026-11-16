@@ -64,7 +64,7 @@ test('real per-round MCP playback keeps first and edited exports separate, reope
     await truncate(await exportFile(first.work.jobId), 33 * 1024 * 1024);
     const oversized = await view(p.projectId, first.work.id, true);
     assert.equal(oversized.structuredContent.inlineWork.state, 'unavailable');
-    assert.match(oversized.structuredContent.inlineWork.error, /已校验版本不一致/);
+    assert.match(oversized.structuredContent.inlineWork.error, /32 MiB/);
     assert.equal(oversized._meta.inlineVideo.video, undefined);
     await writeFile(await exportFile(first.work.jobId), one);
     await writeFile(await exportFile(first.work.jobId), Buffer.concat([one, Buffer.from('changed')]));
