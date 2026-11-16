@@ -5,7 +5,7 @@ description: Welcome the user after OpenMotion plugin setup and open its templat
 
 # OpenMotion onboarding
 
-Read [the installation-success contract](../../docs/install.md#installation-success-reply) and follow it in this conversation. Reuse the installed connection and data directory; setup is already complete, so do not reinstall.
+Read [the installation-success contract](../../docs/install-onboarding.md#installation-success-reply) and follow it in this conversation. Reuse the installed connection and data directory; setup is already complete, so do not reinstall.
 
 For an automatic installation callback, read its exact event file, verify that its thread matches this chat, and use `event.onboarding` directly. Preserve `event.appRoot` and `event.dataDirectory`. Never rerun setup or schedule another callback. The queue acknowledgment is not a displayed welcome; this turn must perform and verify the actual presentation below.
 

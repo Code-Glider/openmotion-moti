@@ -1,5 +1,7 @@
 # Motion releases: build, test, publish
 
+> Archived npm distribution documentation. New installations use the [source guide](../install.md). Candidate builds, npm publication and snapshot recovery are disabled. Existing published versions, projects and diagnostics are preserved; the commands below document historical behavior and are not a new installation route.
+
 Use two manual Actions entries: **Motion candidate build**, then **Motion npm publication**, in `nexu-io/openmotion` on `main`. The daily flow is **build → optional local testing → manual publish**. Neither entry runs on pushes, PR merges, tags or a schedule. Merging a workflow change does not publish a package or configure npm permissions. Daily development branches from the latest `origin/main` and PRs target `main`.
 
 | Operator step | Automated work |
@@ -20,7 +22,9 @@ Keep these control files together:
 
 - `.github/workflows/motion-candidate.yml`, `motion-publish-test.yml`, `motion-publication-recovery.yml` and `motion-install-check.yml` (read-only manual rechecks).
 - `.github/scripts/motion-release.mjs`, `motion-scan.mjs`, `motion-registry.mjs`, `motion-registry-smoke.mjs`, `publish-install-guide.mjs` and `.github/gitleaks.toml`.
-- `scripts/runtime-assets.mjs`, `release-version.mjs`, `install-guide.mjs`, `docs/install.md`, `docs/templates/release-record.md` and `docs/templates/candidate-install.md`.
+- `scripts/runtime-assets.mjs`, `release-version.mjs`, `install-guide.mjs`, `docs/install-onboarding.md`, `docs/templates/npm-install.md`, `docs/templates/release-record.md` and `docs/templates/candidate-install.md`.
+
+The generator's two documentation inputs are `docs/templates/npm-install.md` (the published guide template) and `docs/install-onboarding.md` (inlined as the installation-success contract). The short `docs/install.md` in the source repository is only an archived pointer to the source guide; editing it does not change a generated guide.
 
 Protect changes to the trusted control files and `main`; keep default-branch registration aligned. There is no `motion-test-publish` GitHub Environment prerequisite or Review deployments step in this version.
 

@@ -25,7 +25,7 @@ test('plugin onboarding entry and its shared contract resolve inside every distr
   const reference = skill.match(/\]\(([^)]+#installation-success-reply)\)/)?.[1];
   assert(reference, 'Onboarding must reach the canonical installation-success contract');
   const contract = path.posix.normalize(path.posix.join(path.posix.dirname(entry), reference.split('#')[0]));
-  assert.equal(contract, 'docs/install.md');
+  assert.equal(contract, 'docs/install-onboarding.md');
   for (const profile of ['phase1', 'legacy']) {
     const files = new Set(await distributionFiles(profile));
     assert(files.has(entry), 'The declared onboarding entry must ship');
