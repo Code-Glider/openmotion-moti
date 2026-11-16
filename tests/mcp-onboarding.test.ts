@@ -47,5 +47,8 @@ test('media example preserves setup and task continuation across supported langu
   assert.ok(setupLink, 'Media entry must expose provider setup');
   const setup = readFileSync(new URL(setupLink[1], new URL('../skills/openmotion-media/SKILL.md', import.meta.url)), 'utf8');
   assert.match(setup, /target: "providers"/);
-  assert.match(skill, /handbook/);
+  assert.match(setup, /## Media handbook handoff/);
+  assert.match(setup, /MCP handbook media-generation example/);
+  assert.match(setup, /read-only `inspect`/);
+  assert.match(skill, /MCP handbook example \| \[Discovery and setup\]/);
 });

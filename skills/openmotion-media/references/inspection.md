@@ -13,7 +13,7 @@ Only `state: "completed"` and real `libraryAssets` confirm saved library candida
    - **Video**: inspect sampled frames across the usable motion window for identity stability, unintended scene cuts, crop safety and embedded audio tracks. When a generated video includes native or ambient audio, explicitly mute (`muted` / `volume = 0`) or mix that track in the composition so it does not collide with narration or music.
    - **Speech and music**: verify spoken words, pronunciation, pacing and clean phrase endings; use `ffprobe` for container duration and `ffmpeg -af silencedetect` (or waveform inspection) to measure leading/trailing silence and actual spoken phrase end so composition cues, cuts and captions align to real speech rather than clipped endings or unintended black frames. If direct listening or visual inspection is unavailable in the host, record that check as unverified rather than passed.
 
-## 4. Hand back to the calling workflow
+## Hand back to the calling workflow
 
 In the delivery reply, name every part that is not generated as planned (for example local TTS, code-synthesized music or user/retrieved media) so the user knows what they received. For a standalone asset request, report the pinned asset/version identity and available file location, provider/model/job identity, measured dimensions or duration, and any quality or review limitations.
 
