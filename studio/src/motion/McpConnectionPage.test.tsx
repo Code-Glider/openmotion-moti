@@ -18,10 +18,10 @@ let root: Root | undefined;
 afterEach(() => { act(() => root?.unmount()); root = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const button = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => (node.getAttribute('aria-label') || node.textContent?.trim()) === name)!;
 const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === name)!;
-async function mount() {
+async function mount(locale: 'en' | 'zh-CN' = 'en') {
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   const openLibrary = vi.fn(), openProviders = vi.fn();
-  await act(async () => root!.render(<I18nProvider initialLocale="en"><McpConnectionPage openLibrary={openLibrary} openProviders={openProviders} /></I18nProvider>));
+  await act(async () => root!.render(<I18nProvider initialLocale={locale}><McpConnectionPage openLibrary={openLibrary} openProviders={openProviders} /></I18nProvider>));
   return { openLibrary, openProviders };
 }
 
@@ -128,4 +128,19 @@ it('filters the full catalogue, autoplays only visible cards and hands off the e
   await act(async () => PreviewObserver.latest.emit(0));
   expect(document.querySelectorAll('video[src]')).toHaveLength(0);
   expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+});
+
+it.each(['en', 'zh-CN'] as const)('copies the complete media onboarding flow in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const card = [...document.querySelectorAll('article')].find(node => node.querySelector('h3')?.textContent === (locale === 'en' ? 'Generate images, video, music and voice' : '生成图片、视频、音乐与配音'))!;
+  await act(async () => card.querySelector('button')!.click());
+  const instruction = copy.mock.calls[0][0];
+  expect(instruction).toContain('target=providers');
+  expect(instruction).not.toContain('install.md');
+  expect(instruction).not.toContain('quick-start');
+  expect(instruction).toContain(locale === 'en' ? 'inspect again' : '再次检查配置');
+  expect(instruction).toContain(locale === 'en' ? 'original request' : '原来的需求');
+  expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toContain(locale === 'en' ? 'Copied to clipboard' : '已复制');
 });

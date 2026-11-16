@@ -490,3 +490,19 @@ test('model overrides survive catalogue sync and reach generation with per-reque
   await gateway.connections.updateModel(id, null); assert.equal((await gateway.connections.modelOverrides())[id], undefined);
   await gateway.close();
 }));
+
+test('media setup discovery rechecks saved and removed keys without executing a model', () => fixture(async store => {
+  const gateway = gatewayFor(store);
+  gateway.options.detect = async () => [];
+  gateway.options.fetcher = async () => { throw new Error('Setup must not call a paid model'); };
+  const inspect = () => mediaUse(store, { action: 'inspect' });
+  const before = await inspect();
+  assert.deepEqual(before.settingsHandoff, { tool: 'openmotion_open_preview', arguments: { target: 'providers' } });
+  assert.equal(before.providers.some(provider => provider.available), false);
+  await gateway.configureProvider('atlascloud', { apiKey: 'synthetic-onboarding-key' });
+  const saved = await inspect();
+  assert.equal(saved.providers.find(provider => provider.id === 'atlascloud')?.available, true);
+  assert.doesNotMatch(JSON.stringify(saved), /synthetic-onboarding-key/);
+  await gateway.configureProvider('atlascloud', { apiKey: null });
+  assert.equal((await inspect()).providers.find(provider => provider.id === 'atlascloud')?.available, false);
+}));
