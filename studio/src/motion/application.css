@@ -17,6 +17,12 @@
 .motion-studio-header.motion-studio-header-compact > .motion-header-leading { gap: var(--motion-space-12); }
 .motion-studio-header.motion-studio-header-compact > .motion-header-trailing { justify-self: end; gap: var(--motion-space-12); margin-left: 0; }
 .motion-header-project { display: flex; justify-content: center; }
+.motion-header-project-actions { display: grid; grid-template-columns: repeat(2, 1fr); width: max-content; align-items: center; gap: var(--motion-space-4); flex-shrink: 0; }
+.motion-header-project-actions :is(.motion-project-agent-trigger, .motion-header-export) { width: auto; min-width: 0; justify-self: stretch; justify-content: center; }
+.motion-project-handoff-actions .motion-project-handoff-button { flex: 1 1 0; justify-content: center; min-width: 0; font-weight: var(--motion-weight-semibold); }
+@container (max-width: 420px) {
+  .motion-studio-header.motion-studio-header-compact { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; }
+}
 .motion-header-project .om-app-project-title { position: relative; display: inline-grid; flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .motion-project-name-measure { visibility: hidden; overflow: hidden; white-space: pre; min-width: var(--motion-space-64); }
 .om-app-project-title .motion-project-name-input { position: absolute; inset: 0; width: 100%; min-width: 0; text-align: center; text-overflow: ellipsis; }

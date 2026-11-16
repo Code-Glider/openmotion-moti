@@ -1,5 +1,12 @@
 {
   "zh-CN": {
+    "Handoff": "交接",
+    "Copy the instruction, paste it into another conversation, and continue editing this project.": "复制指令，粘贴到其他会话中，继续编辑这个项目。",
+    "Connection help": "接入帮助",
+    "Copy instruction": "复制指令",
+    "Handoff details": "交接信息",
+    "Instruction copied. Return to the conversation to continue.": "指令已复制，粘贴到新会话中继续",
+    "Could not save the project. Resolve pending edits and try again.": "工程保存未完成，请处理待保存的修改后重试。",
     "MCP · Connect Agent": "MCP · 接入 Agent",
     "Create in {agent}": "在你的 {agent} 里",
     "Make it move with OpenMotion.": "用 OpenMotion 做视频",
