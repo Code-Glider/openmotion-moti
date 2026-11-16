@@ -47,7 +47,7 @@ async function scene(name: string) {
   await click("应用更改");
   await page.getByLabel("预览状态", { exact: true }).filter({ hasText: "预览就绪" }).waitFor();
   await page.waitForFunction(() => {
-    const text = document.querySelector<HTMLInputElement>('[aria-label="文本内容"]');
+    const text = document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]');
     return text?.value === "Motion baseline" && !text.readOnly && !text.disabled;
   });
 }
@@ -356,6 +356,17 @@ describe.sequential("persistent Studio view and native browser controls", () => 
     const page = driver.page;
     await page.getByText("关键帧动画", { exact: true }).click();
     await page.getByLabel("动画属性", { exact: true }).selectOption("x");
+    for (const label of ["文本对齐", "文本装饰"]) {
+      expect(await page.getByLabel(label, { exact: true }).isVisible()).toBe(true);
+      expect(await page.getByLabel(label, { exact: true }).isDisabled()).toBe(true);
+    }
+    await page.getByRole("button", { name: "放弃动画草稿", exact: true }).click();
+    for (const label of ["文本对齐", "文本装饰"]) {
+      expect(await page.getByLabel(label, { exact: true }).isVisible()).toBe(true);
+      expect(await page.getByLabel(label, { exact: true }).isEnabled()).toBe(true);
+    }
+    (report.cases as string[]).push("animation-draft-text-control-visibility");
+    await page.getByLabel("动画属性", { exact: true }).selectOption("x");
     await click("保存动画");
     await page.waitForFunction(
       () =>
@@ -429,14 +440,14 @@ describe.sequential("persistent Studio view and native browser controls", () => 
     await page.keyboard.press("ControlOrMeta+s");
     await ready();
     await click("预览");
-    await page.waitForFunction(() => !document.querySelector<HTMLInputElement>('[aria-label="文本内容"]')?.readOnly);
+    await page.waitForFunction(() => !document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]')?.readOnly);
     await page.getByLabel("预览状态", { exact: true }).filter({ hasText: "预览就绪" }).waitFor();
     await page.getByLabel("文本内容", { exact: true }).fill("Relative typography");
     await click("应用更改");
     await page.waitForFunction(
       () =>
-        document.querySelector<HTMLInputElement>('[aria-label="文本内容"]')?.value === "Relative typography" &&
-        !document.querySelector<HTMLInputElement>('[aria-label="文本内容"]')?.readOnly,
+        document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]')?.value === "Relative typography" &&
+        !document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]')?.readOnly,
     );
     expect(await page.getByLabel("字号", { exact: true }).inputValue()).toBe("");
     await page.getByLabel("预览状态", { exact: true }).filter({ hasText: "预览就绪" }).waitFor();
