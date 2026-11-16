@@ -30,7 +30,7 @@ Protect changes to the trusted control files and `main`; keep default-branch reg
 
 For `@openmotion/app`, open npm **Settings → Trusted publishing → Add trusted publisher → GitHub Actions**. After the repository rename, verify or update npm's external trusted-publisher configuration; source changes do not update it automatically. Set owner **`nexu-io`**, repository **`openmotion`**, workflow filename **`motion-publish-test.yml`** (no directory), **leave Environment blank**, and allow **npm publish** plus **Allow npm dist-tag**. The latter is separately required to advance `test` or `latest` after registry propagation; enabling publish alone is insufficient. If an older entry names an environment, it must be updated to match this workflow before publication. GitHub-hosted runners use Node 26.11.1; credentialed npm jobs explicitly install npm 11.21.2 for OIDC dist-tag support and `id-token: write`; no stored npm token is needed. The recovery caller never calls npm publish or dist-tag. npm does not support a dist-tag dry-run; do not test that command against the real registry without channel-write authorization. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
 
-Reuse the existing R2 settings. Only the final snapshot step receives the storage credentials:
+Reuse the existing R2 settings. Manual release workflows pass credentials only to the final snapshot step; automatic main template synchronization passes them only to its final upload step:
 
 | Setting | Role |
 | --- | --- |
@@ -38,6 +38,12 @@ Reuse the existing R2 settings. Only the final snapshot step receives the storag
 | Variable `CLOUDFLARE_R2_RELEASES_BUCKET` | `open-design-releases` |
 | Variable `CLOUDFLARE_R2_RELEASES_URL` | Approved R2 S3 HTTPS origin |
 | Variable `CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN` | `https://releases.open-design.ai` |
+
+## Automatic template synchronization
+
+Merging template catalog/source or publisher changes into `main` automatically runs **Publish hosted template catalog**. It uploads template resources and snapshot metadata, then updates `https://releases.open-design.ai/open-motion/templates/main/catalog.json`. NPM users receive catalog updates independently of application releases. A manual rerun on `main` is also available; the website continues using CMS.
+
+This automatic workflow is an explicitly authorized exception to the manual release boundary in [AGENTS.md](../AGENTS.md#candidate-and-publication-controls). It reuses the existing R2 configuration, with credentials present only in the final upload step. The credentials have shared release-bucket access: there is no storage-enforced template-only isolation. Changes to the publisher and workflow therefore require the same trusted main review as other release control files. The script writes template objects, snapshots and the main catalog pointer; it does not publish npm, move tags or update installation guides. Versioned release catalogs continue to use the manual release/snapshot workflows.
 
 ## 1. Build
 
