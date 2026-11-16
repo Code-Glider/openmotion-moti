@@ -131,6 +131,7 @@ test('account music and one-image editing run the matching connector commands', 
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
   t.after(() => gateway.close());
   await signIn(account); await account.models(true);
+  await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
   const models = (await providerDirectory(gateway)).models;
   assert.equal(models.find(m => m.modelId === 'fixture-image')?.supportsImageReference, true);
   assert.equal(models.find(m => m.modelId === 'fixture-image-basic')?.supportsImageReference, undefined);
