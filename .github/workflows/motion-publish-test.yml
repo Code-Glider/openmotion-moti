@@ -170,7 +170,9 @@ jobs:
         if: always()
         with:
           name: registry-darwin-arm64-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/candidate/registry-darwin-arm64.json
+          path: |
+            ${{ runner.temp }}/candidate/registry-darwin-arm64.json
+            ${{ runner.temp }}/candidate/template-runtime-darwin-arm64/
           retention-days: 30
           if-no-files-found: warn
 
@@ -214,7 +216,9 @@ jobs:
         if: always()
         with:
           name: registry-win32-x64-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/candidate/registry-win32-x64.json
+          path: |
+            ${{ runner.temp }}/candidate/registry-win32-x64.json
+            ${{ runner.temp }}/candidate/template-runtime-win32-x64/
           retention-days: 30
           if-no-files-found: warn
 

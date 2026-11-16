@@ -9,7 +9,7 @@ import { libraryTemplates, templateRecipe } from './template-catalog.ts';
 import { copyTemplate } from './template-library.ts';
 import { loadRepositoryCatalog, lfsPointer, maxLfsAssetBytes, maxTemplateAssetBytes, readRepositoryFile, repositoryCatalogRoot } from './shared/repository-template-catalog.ts';
 import { loadHostedCatalog, restoreHostedCatalog, serializeHostedCatalog, type HostedRepositoryCatalog, type HostedSourceManifest } from './shared/hosted-template-catalog.ts';
-import { downloadMedia, validateMediaLock } from './shared/repository-media.ts';
+import { boundedMediaBody, downloadMedia, validateMediaLock } from './shared/repository-media.ts';
 
 type TemplateFile = { path: string; url?: string; bytes: number; sha256: string };
 type PrismTemplate = {
@@ -283,8 +283,18 @@ export class TemplateCatalog {
       return downloadMedia(lock, this.request);
     }
     const bytes = await readRepositoryFile(this.repositoryRoot, id + '/source/' + name, maxTemplateAssetBytes);
-    if (lfsPointer(bytes)) throw Object.assign(new Error(`Template media is not downloaded. Run git lfs pull --include="library/templates/catalog/${id}/source/assets/lfs/**" --exclude="" from the checkout.`), { code: 'TEMPLATE_LFS_NOT_FETCHED' });
     const expected = manifest.files.find((file: { path: string }) => file.path === name);
+    const pointer = lfsPointer(bytes);
+    if (pointer) {
+      const published = record.entry?.files?.find((file: TemplateFile) => file.path === name) as TemplateFile | undefined;
+      if (published?.url) {
+        assert(pointer.bytes <= maxLfsAssetBytes && expected?.bytes === pointer.bytes && expected.sha256 === pointer.sha256 &&
+          published.bytes === pointer.bytes && published.sha256 === pointer.sha256, 'Template LFS pointer does not match its metadata');
+        assert.equal(published.url, `https://r.open-design.ai/files/${pointer.sha256}`, 'Template LFS download URL must match its SHA-256');
+        return this.downloadPublishedFile(published);
+      }
+      throw Object.assign(new Error(`Template media is not downloaded. Run git lfs pull --include="library/templates/catalog/${id}/source/assets/lfs/**" --exclude="" from the checkout.`), { code: 'TEMPLATE_LFS_NOT_FETCHED' });
+    }
     if (expected?.bytes !== undefined && (expected.bytes !== bytes.length || expected.sha256 !== hash(bytes))) throw new Error('Template source file does not match its source manifest');
     return bytes;
   }
@@ -295,7 +305,11 @@ export class TemplateCatalog {
       assert(bytes.length === file.bytes && hash(bytes) === file.sha256, 'Template project file does not match its metadata');
       return bytes;
     }
-    assert(file.url, 'CMS template file has no download URL');
+    return this.downloadPublishedFile(file);
+  }
+
+  private async downloadPublishedFile(file: TemplateFile): Promise<Buffer> {
+    assert(file.url, 'Template file has no download URL');
     const url = new URL(file.url);
     if (url.protocol !== 'https:' || url.hostname !== 'r.open-design.ai' || !url.pathname.startsWith('/files/')) throw new Error('模板文件地址无效');
     const cachedPath = path.join(this.directory, 'files', hash(file.url));
@@ -308,7 +322,7 @@ export class TemplateCatalog {
     }
     const response = await this.request(url, { redirect: 'error', signal: AbortSignal.timeout(30_000) });
     if (!response.ok) throw new Error(`模板文件下载失败：${file.path}（HTTP ${response.status}）`);
-    const bytes = Buffer.from(await response.arrayBuffer());
+    const bytes = await boundedMediaBody(response, file.bytes);
     if (!matches(bytes)) throw new Error(`模板文件校验失败：${file.path}`);
     await atomicWrite(cachedPath, bytes);
     return bytes;
