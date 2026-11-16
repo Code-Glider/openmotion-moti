@@ -399,3 +399,37 @@ test('twenty references pass the public schema, while model count rejection prec
   assert.equal((await finish(store, queued.id)).state, 'completed'); assert.equal(submits[0].images.length, 20);
   await gateway.close();
 }));
+
+test('a failed save-only retry keeps a cancelled Cloud job cancelled and not resumable', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  let posts = 0;
+  gateway.options.fetcher = (async (_url, init = {}) => { if (init.method === 'POST') { posts++; return Response.json({ task_id: 'original-task' }); } return new Response(null, { status: 400 }); }) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  const failed = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id);
+  await writeFile(path.join(gateway.root, 'jobs', failed.id + '.json'), JSON.stringify({ ...failed, state: 'cancelled', phase: 'cancelled' }));
+  await assert.rejects(api.call('openmotion_assets_use', { action: 'retry_save', jobId: failed.id, requestId: 'save' }), /SAVE_NOT_AVAILABLE/);
+  const after = await gateway.getJob(failed.id);
+  assert.equal(after.state, 'cancelled'); assert.equal(resumableJob(after), false);
+  await assert.rejects(api.call('openmotion_assets_use', { action: 'resume', jobId: failed.id, requestId: 'resume' }), /cannot be resumed/);
+  assert.equal(posts, 1); assert.equal(gateway.active.size, 0);
+  await gateway.close();
+}));
+
+test('jobs from the earlier adapter keep confirmed remote failures non-resumable', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  gateway.options.fetcher = (async (_url, init = {}) => init.method === 'POST' ? Response.json({ task_id: 'original-task' }) : new Response(null, { status: 400 })) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  const failed = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id);
+  const file = path.join(gateway.root, 'jobs', failed.id + '.json');
+  for (const status of ['failed', 'cancelled']) {
+    const legacy = { ...failed, error: `OpenDesign Cloud task ${status}; inspect the original task before retrying` };
+    delete (legacy as any).remoteTerminal;
+    await writeFile(file, JSON.stringify(legacy));
+    assert.equal(resumableJob(await gateway.getJob(failed.id)), false);
+    await assert.rejects(gateway.resume(failed.id, 'resume'), /cannot be resumed/);
+  }
+  const transient = { ...failed, error: 'Provider HTTP 502' }; delete (transient as any).remoteTerminal;
+  await writeFile(file, JSON.stringify(transient));
+  assert.equal(resumableJob(await gateway.getJob(failed.id)), true);
+  await gateway.close();
+}));

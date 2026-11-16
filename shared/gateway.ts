@@ -63,5 +63,7 @@ export function modelReferenceLimit(model: Model): number {
 /** Local eligibility; the service additionally rechecks project, origin and credentials. */
 export function resumableJob(job: GenerationJob): boolean {
   return job.model.provider === 'opendesign' && typeof job.remoteId === 'string' && /^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)
-    && job.state === 'failed' && !job.savePending && !job.remoteTerminal;
+    && job.state === 'failed' && !job.savePending && !job.remoteTerminal
+    // Earlier adapters recorded a Cloud-confirmed failure/cancellation only in this message.
+    && !/^OpenDesign Cloud task (failed|cancelled)\b/.test(job.error ?? '');
 }

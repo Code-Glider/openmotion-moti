@@ -346,6 +346,8 @@ export class ModelGateway {
       return this.store.lock(async () => {
         const job = await this.getJob(id);
         if (['completed', 'queued', 'running'].includes(job.state)) return job;
+        // Cancellation is final for this route: report that nothing was saved, but keep the job cancelled.
+        if (job.state === 'cancelled') throw error;
         const alreadyFailed = job.state === 'failed';
         job.state = 'failed'; job.phase = 'save_unavailable'; job.savePending = false; job.error = error.message; job.updatedAt = Date.now();
         if (alreadyFailed) await this.saveJob(job);
