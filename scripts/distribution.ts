@@ -574,6 +574,8 @@ export async function distributionFiles(profile: string, include: (file: string)
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
+    // The inline Node renderer streams the welcome from this shared translation source.
+    'mcp-ui/template-recommendations/i18n.ts', 'mcp-ui/template-recommendations/types.ts',
     'mcp-ui/template-recommendations/LICENSE', 'mcp-ui/template-recommendations/NOTICE.md',
     'mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css',
     'mcp-ui/template-recommendations/build/identity.json',
