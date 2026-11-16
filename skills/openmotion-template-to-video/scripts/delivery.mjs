@@ -18,8 +18,17 @@ async function owningRuntime(explicit) {
 }
 
 const sha256 = data => createHash('sha256').update(data).digest('hex');
-const excluded = relative => relative.split('/').some(part => ['node_modules', '.git', '.cache', '.thumbnails', '.history', '.artifacts'].includes(part))
-  || /^\.hyperframes\/(?:preview(?:\/|$)|video-state(?:\.json|-lock(?:\/|$)))/.test(relative);
+// Mirrors WorkspaceStore: node_modules/renders/dist/output plus tool caches are not project source.
+const nonSourceDirectories = new Set(['node_modules', 'renders', 'dist', 'output', '.git', '.cache', '.thumbnails', '.history', '.artifacts']);
+// The only .hyperframes entries the workspace treats as source, plus the native history identity.
+const nativeFiles = new Set(['.hyperframes/history-id', '.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json']);
+const excluded = relative => {
+  const parts = relative.split('/');
+  if (parts.some(part => nonSourceDirectories.has(part))) return true;
+  if (parts[0] !== '.hyperframes') return false;
+  // The .hyperframes directory itself stays traversable; only its pinned entries are packaged.
+  return relative !== '.hyperframes' && !nativeFiles.has(relative);
+};
 function safeRelative(value) {
   assert(typeof value === 'string' && value && !value.includes('\\') && !path.posix.isAbsolute(value)
     && !value.split('/').some(part => part === '..' || part === '' || part === '.'), 'UNSAFE_PROJECT_PATH');

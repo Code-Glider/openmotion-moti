@@ -14,12 +14,15 @@ const hash = data => createHash('sha256').update(data).digest('hex');
 async function fixture() {
   const directory = await mkdtemp(path.join(tmpdir(), 'openmotion-template-delivery-'));
   const project = path.join(directory, 'project'); await mkdir(project);
-  const contents = { 'index.html': '<html><script src="vendor/gsap/dist/gsap.min.js"></script><main data-composition-src="compositions/scene.html"></main></html>',
-    'compositions/scene.html': '<template><p>Original</p></template>', 'vendor/gsap/dist/gsap.min.js': 'window.gsap={};',
-    '.hyperframes/history-id': 'history', '.hyperframes/video-state.json': '{}', '.thumbnails/cache.png': 'cache' };
+  const contents = { 'index.html': '<html><script src="vendor/gsap/gsap.min.js"></script><main data-composition-src="compositions/scene.html"></main></html>',
+    'compositions/scene.html': '<template><p>Original</p></template>', 'vendor/gsap/gsap.min.js': 'window.gsap={};',
+    '.hyperframes/history-id': 'history', '.hyperframes/video-state.json': '{}', '.hyperframes/preview/frame.png': 'frame',
+    '.hyperframes/session.json': '{}', '.hyperframes/studio-motion.json': '{"motion":true}', '.thumbnails/cache.png': 'cache',
+    'renders/old-export.mp4': 'render', 'dist/bundle.js': 'bundle', 'output/export.mp4': 'output' };
   for (const [name, data] of Object.entries(contents)) { await mkdir(path.dirname(path.join(project, name)), { recursive: true }); await writeFile(path.join(project, name), data); }
   const detail = { projectId: '11111111-1111-1111-1111-111111111111', revision: 'a'.repeat(64), currentVersionId: 'version-1',
-    project: { directory: project, entry: 'index.html', files: Object.entries(contents).filter(([name]) => !name.startsWith('.')).map(([name, data]) => ({ path: name, hash: hash(data) })) } };
+    project: { directory: project, entry: 'index.html', files: Object.entries(contents).filter(([name]) => !name.startsWith('.')
+      && !name.split('/').some(part => ['node_modules', 'renders', 'dist', 'output'].includes(part))).map(([name, data]) => ({ path: name, hash: hash(data) })) } };
   return { directory, project, detail };
 }
 
@@ -29,12 +32,19 @@ test('packages the pinned original files, hidden history identity and local depe
     const receipt = await packageProject(f.detail, path.join(f.directory, 'delivery'));
     assert.equal(receipt.versionId, 'version-1'); assert.equal(receipt.sourceUnchanged, true);
     assert.equal(await readFile(path.join(f.directory, 'delivery/HTML/.hyperframes/history-id'), 'utf8'), 'history');
-    assert.equal(await readFile(path.join(f.directory, 'delivery/HTML/vendor/gsap/dist/gsap.min.js'), 'utf8'), 'window.gsap={};');
+    assert.equal(await readFile(path.join(f.directory, 'delivery/HTML/vendor/gsap/gsap.min.js'), 'utf8'), 'window.gsap={};');
+    assert.equal(await readFile(path.join(f.directory, 'delivery/HTML/.hyperframes/studio-motion.json'), 'utf8'), '{"motion":true}', 'Native Studio manifest stays packaged');
     assert.ok(!receipt.files.some(file => file.path.includes('.thumbnails') || file.path.includes('video-state')));
+    assert.deepEqual(receipt.files.map(file => file.path), ['HTML/.hyperframes/history-id', 'HTML/.hyperframes/studio-motion.json', 'HTML/compositions/scene.html', 'HTML/index.html', 'HTML/vendor/gsap/gsap.min.js'], 'Package holds exactly the pinned source and native identity');
+    const written = (await readdir(path.join(f.directory, 'delivery/HTML'), { recursive: true })).map(name => String(name).split(path.sep).join('/'));
+    for (const nonSource of ['renders', 'dist', 'output', '.hyperframes/preview', '.hyperframes/session.json']) {
+      assert.ok(!written.some(name => name === nonSource || name.startsWith(nonSource + '/')), 'Render output and cache stays out of the package: ' + nonSource);
+    }
     const archive = await readFile(receipt.archive); assert.equal(hash(archive), receipt.archiveSHA256);
     const integrity = spawnSync('unzip', ['-t', receipt.archive], { encoding: 'utf8' }); assert.equal(integrity.status, 0, integrity.stderr);
     const listing = spawnSync('unzip', ['-Z1', receipt.archive], { encoding: 'utf8' }); assert.equal(listing.status, 0);
-    assert.ok(listing.stdout.includes('HTML/index.html') && listing.stdout.includes('HTML/vendor/gsap/dist/gsap.min.js'));
+    assert.ok(listing.stdout.includes('HTML/index.html') && listing.stdout.includes('HTML/vendor/gsap/gsap.min.js'));
+    assert.deepEqual(listing.stdout.split('\n').filter(Boolean).sort(), receipt.files.map(file => file.path).sort(), 'Archive contains only pinned source');
     await assert.rejects(packageProject(f.detail, path.join(f.directory, 'delivery')), /EEXIST/);
   } finally { await rm(f.directory, { recursive: true, force: true }); }
 });
@@ -66,7 +76,7 @@ test('thin exported helper resolves scope metadata instead of assuming a reposit
     await writeFile(path.join(f.directory, 'thin/scope.json'), JSON.stringify({ runtimeRoot: root }));
     const detail = path.join(f.directory, 'detail.json'); await writeFile(detail, JSON.stringify(f.detail));
     const child = spawnSync(process.execPath, [path.join(thin, 'delivery.mjs'), 'package', '--project-json', detail, '--output', path.join(f.directory, 'thin-output')], { encoding: 'utf8' });
-    assert.equal(child.status, 0, child.stderr); assert.equal(JSON.parse(child.stdout).files, 4);
+    assert.equal(child.status, 0, child.stderr); assert.equal(JSON.parse(child.stdout).files, 5);
   } finally { await rm(f.directory, { recursive: true, force: true }); }
 });
 
