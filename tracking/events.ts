@@ -5,8 +5,14 @@ export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_temp
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
-const tool = { tool_name: toolNames, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
-export const webMcpToolNames = ['openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
+export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'import_to_project', 'read'] as const;
+export function assetToolAction(tool: string, input: unknown): typeof assetActions[number] | undefined {
+  if (!['openmotion_assets_use', 'openmotion_assets', 'motion_assets_use', 'motion_assets'].includes(tool)) return;
+  const action = input && typeof input === 'object' && 'action' in input ? input.action : undefined;
+  return assetActions.find(value => value === action);
+}
+const tool = { tool_name: toolNames, action: assetActions, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
+export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
   'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
   'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
   'openmotion_export_cancel', 'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
@@ -29,9 +35,9 @@ export const accountErrorKinds = ['network_error', 'browser_open_error', 'oauth_
 
 export const omEvents = {
   ...studioUsageEvents,
-  webmcp_tool_started: { producers: ['studio'], fields: { ...webMcp, call_id: 'uuid' },
+  webmcp_tool_started: { producers: ['studio'], fields: { ...webMcp, action: assetActions, call_id: 'uuid' },
     required: ['tool_name', 'transport', 'call_id'] },
-  webmcp_tool_finished: { producers: ['studio'], fields: { ...webMcp, call_id: 'uuid', outcome, duration_ms: 'integer' },
+  webmcp_tool_finished: { producers: ['studio'], fields: { ...webMcp, action: assetActions, call_id: 'uuid', outcome, duration_ms: 'integer' },
     required: ['tool_name', 'transport', 'call_id', 'outcome', 'duration_ms'] },
   webmcp_registration_result: { producers: ['studio'], fields: { ...webMcp, outcome: ['success', 'failure', 'cancelled'], duration_ms: 'integer' },
     required: ['tool_name', 'transport', 'outcome', 'duration_ms'] },

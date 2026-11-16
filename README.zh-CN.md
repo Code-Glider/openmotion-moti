@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>CapCut 与 Claude Motion 的开源替代方案</strong></p>
+<p align="center"><strong>Claude Motion 与 CapCut 的开源替代方案</strong></p>
 
 <p align="center">
   <picture>
@@ -37,7 +37,7 @@
 
 # OpenMotion
 
-OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **CapCut 与 Claude Motion 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
+OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **Claude Motion 与 CapCut 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
 
 - 🎬 **全栈视频复刻。** Agent 拆解参考片，用 HTML 重建镜头和转场，并生成缺少的素材。你可以在同一工程里用 Studio 调整剪辑节奏，再渲染导出 MP4。
 - 🔑 **BYOA（自带 Agent）与 BYOK（自带 API 密钥）。** OpenMotion 开源免费。直接在[常用的本地 Agent](#agent-wall) 里复刻视频，每一层都能用自己的 API 密钥。
@@ -63,6 +63,16 @@ OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也�
 ```
 
 安装完成后，Agent 会打开本地模板库并推荐一个模板，确认选择后再创建工程。[源码安装指南](install.md)
+
+### 安装已发布的 npm 应用（可选）
+
+上方源码安装仍是仓库安装的默认方式。如需明确选择包含预构建 Studio 及已配置在线模板库的已发布应用，请复制下面的指令，发给你的本地 Agent：
+
+```text
+阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前的 Agent 中安装并连接已发布的 npm 应用。
+```
+
+[已发布应用的安装与版本通道选择](docs/install.md)。已发布的版本可能落后于当前检出的源码。
 
 ### 克隆仓库并在本地启动
 
@@ -413,7 +423,7 @@ Brand Kit 章节记录品牌身份、语气和已确认的产品信息；Design 
 
 | 视频所需素材 | 内置模型目录示例 | 如何用于影片 |
 | --- | --- | --- |
-| **🖼️ 图片** | Codex Image；Atlas Cloud 的 Nano Banana 2；fal.ai 的 FLUX Schnell | 品牌视觉、场景美术、辅助图片；受支持的 Codex 图片路径可基于参考图编辑 |
+| **🖼️ 图片** | Codex Image；Atlas Cloud 的 Nano Banana 2；fal.ai 的 FLUX Schnell | 品牌视觉、场景美术、辅助图片；Codex Image 或支持编辑的 OpenDesign 账号图片模型可基于参考图编辑 |
 | **🎬 视频** | Atlas Cloud 的 Seedance 2.0；fal.ai 的 Wan 2.2 | 生成镜头和 B-roll，与实拍及动效组合 |
 | **🎵 音乐** | Atlas Cloud 的 Suno v4 | 根据情绪和创作简报生成配乐 |
 | **🎙️ TTS / 旁白** | fal.ai 的 Kokoro | 根据已确认脚本生成旁白，编排到画面和音乐中 |

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { execFile, spawn, type SpawnOptions } from 'node:child_process';
@@ -15,6 +16,9 @@ import { validProperties } from '../tracking/core.ts';
 import { omEvents } from '../tracking/events.ts';
 import { providerDirectory, setDefaultModel } from '../gateway/settings.ts';
 import { mediaUse } from '../gateway/media-use.ts';
+import { AssetLibrary } from '../gateway/asset-library.ts';
+import { Phase1Service } from '../phase1.ts';
+import { pluginRoot } from '../hyperframes.ts';
 import type { Fetcher } from '../gateway/network.ts';
 import { providerRegistry, mediaProviders, registeredProvider } from '../shared/provider-registry.ts';
 import { providerAdapters } from '../gateway/providers.ts';
@@ -198,6 +202,8 @@ test('account device authorization, billing, remote models and all media outputs
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
   t.after(() => gateway.close());
+  await mkdir(account.home, { recursive: true });
+  await Promise.all((['video', 'audio'] as const).map(async kind => writeFile(path.join(account.home, `fixture-${kind}`), await mediaBytes(kind))));
   assert.equal((await account.summary()).state, 'signed-out');
   await signIn(account);
   const summary = await account.summary(true);
@@ -208,7 +214,7 @@ test('account device authorization, billing, remote models and all media outputs
   assert.equal((await stat(path.join(account.home, 'config.json'))).mode & 0o777, 0o600);
   const directory = await providerDirectory(gateway);
   assert(directory.providers.find(p => p.id === 'account')?.available); assert.equal(directory.models.find(m => m.modelId === 'disabled-one')?.enabled, false);
-  assert.equal(directory.models.find(m => m.modelId === 'fixture-audio')?.kind, 'audio'); assert.equal(directory.models.some(m => m.modelId === 'fixture-music'), false);
+  assert.equal(directory.models.find(m => m.modelId === 'fixture-audio')?.kind, 'audio'); assert.equal(directory.models.find(m => m.modelId === 'fixture-music')?.mode, 'text-to-audio');
   for (const kind of ['image', 'video', 'audio'] as const) {
     const args = { action: 'generate', provider: 'account', model: `fixture-${kind}`, projectId: store.projectId, modality: kind, prompt: 'hello', parameters: kind === 'audio' ? { voice: 'test-voice' } : {}, requestId: 'account-' + kind };
     const queued = await mediaUse(store, args); const completed = await finish(store, queued.job.id);
@@ -224,6 +230,61 @@ test('account device authorization, billing, remote models and all media outputs
   assert.equal((await finish(store, queued.id)).state, 'failed');
   assert.equal(JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')).length, 3);
   await gateway.close();
+}));
+
+test('account music and one-image editing run the matching connector commands', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
+  t.after(() => gateway.close());
+  await signIn(account); await account.models(true);
+  await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
+  const models = (await providerDirectory(gateway)).models;
+  assert.equal(models.find(m => m.modelId === 'fixture-image')?.supportsImageReference, true);
+  assert.equal(models.find(m => m.modelId === 'fixture-image-basic')?.supportsImageReference, undefined);
+  const submissions = async () => JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')) as string[][];
+
+  const music = { action: 'generate', provider: 'account', model: 'fixture-music', projectId: store.projectId, modality: 'audio', mode: 'text-to-audio', prompt: 'calm piano', parameters: { duration: 12 }, requestId: 'account-music' };
+  const queuedMusic = await mediaUse(store, music);
+  assert.equal((await finish(store, queuedMusic.job.id)).state, 'completed');
+  assert.deepEqual((await submissions()).at(-1)?.slice(0, 2), ['audio', 'music']);
+  assert.deepEqual((await submissions()).at(-1)?.slice(-4), ['--no-wait', '--json', '--duration', '12']);
+  await assert.rejects(mediaUse(store, { ...music, parameters: { duration: 1.5 }, requestId: 'account-music-fraction' }), /Invalid Duration/);
+  // A speech-only parameter fails the music job locally, before any connector submission.
+  const voiced = await mediaUse(store, { ...music, parameters: { voice: 'narrator' }, requestId: 'account-music-voice' });
+  assert.equal((await finish(store, voiced.job.id)).state, 'failed');
+  // A caller mode cannot switch an account model to another connector command.
+  await assert.rejects(mediaUse(store, { ...music, mode: 'text-to-speech', parameters: { voice: 'narrator' }, requestId: 'account-music-as-speech' }), /does not match the selected account model/);
+  assert.equal((await submissions()).length, 1);
+
+  await writeFile(path.join(store.projectDirectoryFor(store.projectId), 'cup.png'), png);
+  await assert.rejects(gateway.submit({ model: 'account:fixture-image-basic', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' }), /does not support reference image editing/);
+  const edit = await gateway.submit({ model: 'account:fixture-image', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' });
+  const edited = await finish(store, edit.id);
+  assert.equal(edited.state, 'completed', edited.error); assert.equal(edited.reference?.path, 'cup.png');
+  const call = (await submissions()).at(-1)!;
+  assert.deepEqual(call.slice(0, 2), ['image', 'edit']);
+  assert.match(call[call.indexOf('--image') + 1], /reference\.png$/);
+  assert.equal((await submissions()).length, 2);
+
+  // The public asset tool edits a pinned library version through the same connector command.
+  const source = path.join(store.directory, 'cup-source.png'); await writeFile(source, png);
+  const cup = await new AssetLibrary(store).importFile(source, { requestId: 'account-cup', name: 'Cup' });
+  const reference = { assetId: cup.id, versionId: cup.currentVersionId };
+  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
+  const editInput = { action: 'generate', requestId: 'account-library-edit', model: 'account:fixture-image', modality: 'image', mode: 'text-to-image', prompt: 'make it blue', assetId: cup.id, parentVersionId: cup.currentVersionId, references: [reference] };
+  const queued = await api.call('openmotion_assets_use', editInput);
+  assert.equal((await api.call('openmotion_assets', editInput)).job.id, queued.job.id, 'Compatibility replay must not submit another account edit');
+  await finish(store, queued.job.id);
+  const status = await api.call('openmotion_assets_use', { action: 'status', jobId: queued.job.id });
+  assert.equal(status.job.state, 'completed', status.job.error);
+  const versions = (await new AssetLibrary(store).get(cup.id)).versions;
+  assert.equal(versions.length, 2); assert.deepEqual(versions[1].references, [reference]);
+  const libraryCall = (await submissions()).at(-1)!;
+  assert.deepEqual(libraryCall.slice(0, 2), ['image', 'edit']);
+  assert.match(libraryCall[libraryCall.indexOf('--image') + 1], /reference\.png$/);
+  assert.equal((await submissions()).length, 3, 'The replay submits no additional paid operation');
 }));
 
 test('source installations use the connector locked with their dependencies instead of installing one at runtime', async t => {
@@ -359,7 +420,7 @@ test('each finished sign-in attempt gives telemetry one record the tracker accep
   assert.equal((await account.summary()).syncing, undefined);
   await account.logout(); await rm(file('authorize'));
   // Two clients cancelling the same attempt still count it once.
-  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl)); await Promise.all([account.cancel(), account.cancel()]);
+  await account.login(); await until(async () => (await account.summary()).browserOpened === true); await Promise.all([account.cancel(), account.cancel()]);
   await writeFile(file('fixture-mode'), 'login-denied');
   await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
   await writeFile(file('authorize'), 'yes'); await until(async () => (await account.summary()).state !== 'authorizing');
@@ -595,4 +656,20 @@ test('model overrides survive catalogue sync and reach generation with per-reque
   for (const invalid of [{ contextWindow: -1 }, { contextWindow: 128000, maxInputTokens: 200000 }, { inputs: ['unknown'] }, { defaults: { authorization: 'secret' } }, { defaults: [] }]) await assert.rejects(gateway.connections.updateMetadata(id, invalid));
   await gateway.connections.updateModel(id, null); assert.equal((await gateway.connections.modelOverrides())[id], undefined);
   await gateway.close();
+}));
+
+test('media setup discovery rechecks saved and removed keys without executing a model', () => fixture(async store => {
+  const gateway = gatewayFor(store);
+  gateway.options.detect = async () => [];
+  gateway.options.fetcher = async () => { throw new Error('Setup must not call a paid model'); };
+  const inspect = () => mediaUse(store, { action: 'inspect' });
+  const before = await inspect();
+  assert.deepEqual(before.settingsHandoff, { tool: 'openmotion_open_preview', arguments: { target: 'providers' } });
+  assert.equal(before.providers.some(provider => provider.available), false);
+  await gateway.configureProvider('atlascloud', { apiKey: 'synthetic-onboarding-key' });
+  const saved = await inspect();
+  assert.equal(saved.providers.find(provider => provider.id === 'atlascloud')?.available, true);
+  assert.doesNotMatch(JSON.stringify(saved), /synthetic-onboarding-key/);
+  await gateway.configureProvider('atlascloud', { apiKey: null });
+  assert.equal((await inspect()).providers.find(provider => provider.id === 'atlascloud')?.available, false);
 }));

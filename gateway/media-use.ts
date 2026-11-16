@@ -15,6 +15,7 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
     return { providers: status.providers.filter(p => supported(p.id) && (isMediaProvider(p.id) || p.configured || p.id === 'account')),
       defaults: status.routes,
       settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
+      settingsHandoff: { tool: 'openmotion_open_preview', arguments: { target: 'providers' } },
       references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }
@@ -34,11 +35,11 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
       prompt: args.prompt, parameters: args.parameters, mode: args.mode, idempotencyKey: args.requestId } as GenerateInput);
     return { projectId: job.projectId, job, next: { action: 'status', projectId: job.projectId, jobId: job.id } };
   }
-  if (args.action === 'status' || args.action === 'cancel') {
+  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {
     const job = await gateway.getJob(args.jobId);
     if (job.projectId !== args.projectId || job.model.provider === 'codex') throw new Error('GENERATION_NOT_FOUND: job does not belong to this project');
-    if (args.action === 'cancel' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
-    return { projectId: job.projectId, job: args.action === 'cancel' ? await gateway.cancel(job.id) : job };
+    if (args.action !== 'status' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
+    return { projectId: job.projectId, job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
   throw new Error('INVALID_ARGUMENT: unsupported media action');
 }

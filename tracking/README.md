@@ -176,7 +176,7 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
 
 - All registered phase-one stdio tools: accepted start and observed finish, including
   early-return catalog tools, input rejection, partial import and idempotent replay.
-- All eighteen page WebMCP tools: `webmcp_tool_started` and
+- All nineteen page WebMCP tools: `webmcp_tool_started` and
   `webmcp_tool_finished`, correlated by a fresh `call_id` per invocation, with
   the public `tool_name`, `transport=webmcp`, observed `outcome` and bounded
   `duration_ms`. These are browser-call measurements, separate from stdio MCP
@@ -187,6 +187,25 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
   reply into a cancelled operation. Arguments, results, handles, paths and raw errors are
   excluded. Host Agent fields retain their existing page-handoff meaning; the
   transport marker does not identify the calling browser agent.
+- Asset call action: `mcp_tool_started/finished` and
+  `webmcp_tool_started/finished` include an optional closed `action` category for
+  asset tools: `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`,
+  `cancel`, `import_to_project`, `read`. The shared extractor ignores other tools,
+  missing/malformed actions and unknown values; no raw arguments or media are sent.
+  The action is captured once at invocation start and retained on finish, including
+  failure and input rejection. Stdio keeps `tool_name=motion_assets` for both public
+  asset names; WebMCP keeps their public names. Historical events without action
+  remain valid and cannot be backfilled. Registration has no action.
+  To measure `read`, filter `product=openmotion`, exclude `env=test`, select the
+  appropriate `*_tool_finished` event and `action=read`: count distinct `call_id`
+  for observed calls, divide successful calls (`outcome=success`) by all observed
+  calls for success rate, and aggregate `duration_ms` (e.g. median/p95) for latency.
+  Stdio rejected inputs have `accepted=false` and no start event; use finished
+  events for the denominator, or filter `accepted=true` explicitly when measuring
+  accepted executions only. Each invocation, including replay, is a new call.
+  Browser and stdio are separate transports; do not sum starts and finishes or add
+  domain-result events to call counts. This measures observed call outcomes, not
+  paid generation completion, human media acceptance or guaranteed billing usage.
 - WebMCP registration: `webmcp_registration_result` records one result per
   attempted tool registration (`success`, `failure` or `cancelled`), including
   validation/duplicate refusals and teardown cancellation. Use this event for
