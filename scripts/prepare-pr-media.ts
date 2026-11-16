@@ -253,7 +253,7 @@ export async function commitCleanup(plan: CleanupPlan, git: GitRunner, directory
       await git(['update-index', '--add', '--cacheinfo', mode, oid, change.path]);
     }
   }
-  const errors = [...checkTemplateLibrary(directory), ...checkRepositoryStorage(directory).errors];
+  const errors = [...checkTemplateLibrary(directory), ...checkRepositoryStorage(directory, plan.sourceSHA, { finalTreeOnly: true }).errors];
   assert.deepEqual(errors, [], 'Sanitized PR failed final-tree validation: ' + errors.join('\n'));
   const tree = await git(['write-tree']);
   assert(/^[\w-]+$/.test(identity.login) && Number.isSafeInteger(identity.id) && identity.id > 0, 'Invalid maintainer identity');

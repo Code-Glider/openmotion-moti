@@ -10,10 +10,11 @@ import { pullMedia } from '../scripts/repository-media.ts';
 import { downloadMedia, mediaDigest, mediaKey, mediaOrigin, validateMediaManifest, type MediaLock } from '../shared/repository-media.ts';
 import { refreshManifest } from '../scripts/template-library.ts';
 import { mergePreparedPullRequest, preparedMergeStatus } from '../scripts/merge-prepared-pr.ts';
+import { checkRepositoryStorage } from '../scripts/check-repository-storage.ts';
 
 const sourceSHA = 'a'.repeat(40), prefix = 'library/templates/catalog/motion-demo/';
-function fixture() {
-  const bytes = Buffer.alloc(128, 42), video = prefix + 'source/assets/reference.mp4';
+function fixture(mediaBytes = 128) {
+  const bytes = Buffer.alloc(mediaBytes, 42), video = prefix + 'source/assets/reference.mp4';
   const record = { templateId: 'motion-demo', entry: { templateId: 'motion-demo', original: { templateName: 'Demo' }, files: [] }, locales: { en: {} }, localMedia: { preview: 'assets/reference.mp4' } };
   const contents = new Map<string, Buffer>([
     [video, bytes],
@@ -143,20 +144,32 @@ test('optional media pulls restore exact bytes, reuse valid files and reject cor
   await assert.rejects(pullMedia(directory, undefined, fetcher), /symlinks/);
 });
 
-test('a real cleanup commit passes final-tree policy and Squash keeps raw contribution blobs out of main', async t => {
-  const directory = await isolated(t), f = fixture();
+for (const oversized of [false, true]) test(`a real cleanup commit passes policy and Squash excludes raw media (over-budget base: ${oversized})`, async t => {
+  const directory = await isolated(t), f = fixture(16 * 1024);
   git(directory, ['-c', 'init.templateDir=', 'init', '-b', 'main']);
   git(directory, ['config', 'user.name', 'Contributor']); git(directory, ['config', 'user.email', 'contributor@example.invalid']);
   const write = async (name: string, bytes: Buffer) => { await mkdir(path.dirname(path.join(directory, name)), { recursive: true }); await writeFile(path.join(directory, name), bytes); };
   // The base already has the template; the contributor adds its final media in the PR.
   for (const [name, bytes] of f.contents) if (name !== f.video) await write(name, bytes);
-  git(directory, ['add', '.']); git(directory, ['commit', '-qm', 'Template source']);
+  git(directory, ['add', '.']);
+  if (oversized) {
+    await write('obsolete.txt', Buffer.alloc(16 * 1024, 43)); git(directory, ['add', 'obsolete.txt']);
+    await write('shared.bin', Buffer.alloc(1024 * 1024, 42)); git(directory, ['add', 'shared.bin']);
+    const oid = git(directory, ['rev-parse', ':shared.bin']);
+    for (let index = 0; index < 128; index++)
+      git(directory, ['update-index', '--add', '--cacheinfo', '100644', oid, `copy-${index}.bin`]);
+  }
+  git(directory, ['commit', '-qm', 'Template source']);
   const base = git(directory, ['rev-parse', 'HEAD']);
   git(directory, ['checkout', '-qb', 'contribution']);
-  await write(f.video, f.bytes); git(directory, ['add', '.']); git(directory, ['commit', '-qm', 'Add reviewed reference']);
+  if (oversized) git(directory, ['rm', 'obsolete.txt']);
+  await write(f.video, f.bytes); git(directory, ['add', f.video]); git(directory, ['commit', '-qm', 'Add reviewed reference']);
   const original = git(directory, ['rev-parse', 'HEAD']), rawOID = git(directory, ['rev-parse', 'HEAD:' + f.video]);
   const plan = await prepareMediaCleanup({ ...f.inputs(), sourceSHA: original }, f.read);
   const commit = await commitCleanup(plan, async (args, input) => git(directory, args, input), directory, { login: 'Maintainer', id: 123 });
+  const storage = checkRepositoryStorage(directory, base, { finalTreeOnly: true });
+  assert.deepEqual(storage.errors, []);
+  if (oversized) assert(storage.gitBytes > 128 * 1024 * 1024);
   assert.equal(git(directory, ['rev-parse', commit + '^']), original);
   git(directory, ['update-ref', 'refs/heads/contribution', commit]);
   git(directory, ['reset', '--hard', commit]);

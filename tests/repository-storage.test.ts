@@ -72,6 +72,31 @@ test('checkout budget counts every path even when Git deduplicates their blobs',
   const result = checkRepositoryStorage(f.root);
   assert(result.gitBytes > 128 * 1024 * 1024);
   assert.match(result.errors.join('\n'), /checkout exceeds 128 MiB/);
+  assert.match(checkRepositoryStorage(f.root, f.base, { finalTreeOnly: true }).errors.join('\n'), /checkout exceeds 128 MiB/, 'A smaller base cannot excuse crossing the budget');
+});
+
+test('an over-budget base permits unchanged or smaller final trees but rejects further growth', t => {
+  const f = fixture(t);
+  f.write('shared.bin', Buffer.alloc(1024 * 1024, 42)); f.stage();
+  const oid = git(f.root, ['rev-parse', ':shared.bin']);
+  for (let index = 0; index < 129; index++)
+    git(f.root, ['update-index', '--add', '--cacheinfo', '100644', oid, `copy-${index}.bin`]);
+  git(f.root, ['commit', '-qm', 'Existing oversized checkout']);
+  const base = git(f.root, ['rev-parse', 'HEAD']);
+  const check = () => checkRepositoryStorage(f.root, base, { finalTreeOnly: true });
+  assert.deepEqual(check().errors, [], 'Unchanged pre-existing excess must not block a PR');
+  git(f.root, ['update-index', '--force-remove', '--', 'copy-0.bin']);
+  const reduced = check();
+  assert(reduced.gitBytes > 128 * 1024 * 1024, 'Cleanup need not fix the entire existing excess');
+  assert.deepEqual(reduced.errors, []);
+  git(f.root, ['update-index', '--add', '--cacheinfo', '100644', oid, 'copy-0.bin']);
+  f.write('new.txt', 'Extra bytes'); git(f.root, ['add', 'new.txt']);
+  assert.match(check().errors.join('\n'), /checkout exceeds 128 MiB/);
+  assert.match(checkRepositoryStorage(f.root).errors.join('\n'), /checkout exceeds 128 MiB/, 'No baseline retains the absolute budget');
+  git(f.root, ['update-index', '--force-remove', '--', 'copy-0.bin']);
+  f.write('large.bin', Buffer.alloc(1024 * 1024 + 1)); git(f.root, ['add', 'large.bin']);
+  git(f.root, ['update-index', '--force-remove', '--', 'copy-1.bin']);
+  assert.match(check().errors.join('\n'), /staged ordinary Git file exceeds/, 'Net savings never exempt a new oversized file');
 });
 
 test('repository LFS defaults keep a normal clone small and a scoped pull restores exact media', {
