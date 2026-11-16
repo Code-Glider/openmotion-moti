@@ -136,7 +136,13 @@ async function uploadBatch(uploads, upload) {
   if (failed) throw failed.reason;
 }
 
-export async function publishTemplateCatalog(root, { mode = 'main', version, commit = process.env.GITHUB_SHA, endpoint, bucket, origin = publicOrigin, run = runFile, fetcher = fetch } = {}) {
+export function releaseCatalogPromotion(version, publication) {
+  assert.equal(publication.version, version, 'Template publication must match the verified release');
+  assert(['verified', 'version-verified', 'superseded'].includes(publication.phase), 'Require completed release archival');
+  return publication.phase === 'verified';
+}
+
+export async function publishTemplateCatalog(root, { mode = 'main', version, commit = process.env.GITHUB_SHA, endpoint, bucket, origin = publicOrigin, promote = true, run = runFile, fetcher = fetch } = {}) {
   assert(mode === 'main' || mode === 'release', 'Unknown template publication mode');
   if (mode === 'release') assert(versionPattern.test(version || ''), 'Invalid release version');
   const storage = validateStorageConfig({ endpoint, bucket, origin });
@@ -154,13 +160,16 @@ export async function publishTemplateCatalog(root, { mode = 'main', version, com
       await putObject(run, storage, upload, { immutable: true }); uploaded++;
     });
     const catalogBytes = jsonBytes(publication.catalog);
-    const pointerKey = mode === 'main' ? `${catalogRoot}/main/catalog.json` : `${catalogRoot}/releases/${version}/catalog.json`;
-    const pointerPath = path.join(publication.staging, mode + '-pointer.json');
-    await writeFile(pointerPath, catalogBytes);
-    await putObject(run, storage, { key: pointerKey, body: pointerPath, contentType: 'application/json; charset=utf-8', cache: mode === 'main' ? 'public, max-age=60, must-revalidate' : 'public, max-age=31536000, immutable' }, { immutable: mode === 'release' });
+    const updatePointer = mode === 'main' || promote;
+    const pointerKey = updatePointer ? `${catalogRoot}/${mode === 'main' ? 'main' : 'releases'}/catalog.json` : `${snapshotKey}/catalog.json`;
+    if (updatePointer) {
+      const pointerPath = path.join(publication.staging, mode + '-pointer.json');
+      await writeFile(pointerPath, catalogBytes);
+      await putObject(run, storage, { key: pointerKey, body: pointerPath, contentType: 'application/json; charset=utf-8', cache: 'public, max-age=60, must-revalidate' });
+    }
     const pointerUrl = `${storage.origin}/${pointerKey}`;
     await verifyPublic(fetcher, pointerUrl, catalogBytes);
-    return { mode, version: version || null, commit, pointerKey, pointerUrl, snapshotKey, uploaded, reused, templateCount: publication.catalog.templateIds.length };
+    return { mode, version: version || null, commit, pointerKey, pointerUrl, snapshotKey, promoted: updatePointer, uploaded, reused, templateCount: publication.catalog.templateIds.length };
   } finally { await rm(publication.staging, { recursive: true, force: true }); }
 }
 
@@ -168,19 +177,20 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const [mode = 'main', version, candidateDirectory] = process.argv.slice(2);
   for (const name of ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']) assert(process.env[name], `Missing publication credential: ${name}`);
   const root = process.cwd();
-  let source = root, commit = process.env.GITHUB_SHA, work;
+  let source = root, commit = process.env.GITHUB_SHA, work, promote = true;
   try {
     if (mode === 'release') {
       assert(candidateDirectory, 'Release publication requires the verified candidate directory');
       const candidate = JSON.parse(await readFile(path.join(candidateDirectory, 'candidate.json'), 'utf8'));
       assert(candidate.version === version && commitPattern.test(candidate.sourceCommit), 'Release template source must match the verified candidate');
+      promote = releaseCatalogPromotion(version, JSON.parse(await readFile(path.join(candidateDirectory, 'publication.json'), 'utf8')));
       commit = candidate.sourceCommit;
       work = await mkdtemp(path.join(os.tmpdir(), 'openmotion-template-release-'));
       source = path.join(work, 'source');
       await runFile('git', ['worktree', 'add', '--detach', source, commit], { cwd: root, env: { ...process.env, GIT_LFS_SKIP_SMUDGE: '1' } });
       await runFile('git', ['lfs', 'pull', '--include=library/templates/catalog/**', '--exclude='], { cwd: source });
     }
-    console.log(JSON.stringify(await publishTemplateCatalog(source, { mode, version, commit, endpoint: process.env.MOTION_R2_ENDPOINT, bucket: process.env.MOTION_R2_BUCKET, origin: process.env.MOTION_INSTALL_PUBLIC_ORIGIN }), null, 2));
+    console.log(JSON.stringify(await publishTemplateCatalog(source, { mode, version, commit, promote, endpoint: process.env.MOTION_R2_ENDPOINT, bucket: process.env.MOTION_R2_BUCKET, origin: process.env.MOTION_INSTALL_PUBLIC_ORIGIN }), null, 2));
   } finally {
     if (work) {
       await runFile('git', ['worktree', 'remove', '--force', source], { cwd: root }).catch(() => {});

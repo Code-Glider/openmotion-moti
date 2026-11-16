@@ -83,7 +83,7 @@ Merging template changes into `main` runs `publish-template-catalog.yml`. It fet
 
 The publisher preserves `template.json` and `source/manifest.json` bytes and generates a separate `hosted-files.json` for logical-path-to-object lookup. It does not rewrite contributed files or existing CMS media URLs. Newly added source files are registered by `npm run templates:manifest -- <id>`; the same file manifest supports local and hosted reads. Editable project files in `template.json.entry.files` retain their path, size and hash fields; a download URL is optional for repository/hosted entries, which read the registered source file. CMS entries still require their CMS download URL.
 
-The release workflow also publishes `https://releases.open-design.ai/open-motion/templates/releases/<version>/catalog.json`, using the verified candidate's source commit. This archival link does not move the main pointer or pin NPM runtime discovery to that release. See [release workflow](release-workflows.md#versions-and-records).
+The release workflow also updates the fixed URL `https://releases.open-design.ai/open-motion/templates/releases/catalog.json`, using the verified candidate's source commit. Successful test and stable publications share this moving entry; snapshot-only recovery and superseded releases preserve it. It does not move the main pointer or pin NPM runtime discovery to a software version. See [release workflow](release-workflows.md#versions-and-records).
 
 ## Reproducible import
 

@@ -317,7 +317,7 @@ jobs:
           MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
           MOTION_INSTALL_PUBLIC_ORIGIN: ${{ vars.CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN }}
         run: node .github/scripts/motion-release.mjs archive "$RUNNER_TEMP/candidate"
-      - name: Publish the immutable template snapshot for this release
+      - name: Publish template sources and advance the shared release catalog when promoted
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_RELEASES_AK }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_RELEASES_SK }}
@@ -470,7 +470,7 @@ jobs:
           MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
           MOTION_INSTALL_PUBLIC_ORIGIN: ${{ vars.CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN }}
         run: node .github/scripts/motion-release.mjs archive "$RUNNER_TEMP/candidate"
-      - name: Publish the immutable template snapshot for this release
+      - name: Publish template sources and advance the shared release catalog when promoted
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_RELEASES_AK }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_RELEASES_SK }}

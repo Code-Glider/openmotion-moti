@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { buildTemplatePublication, publishTemplateCatalog } from '../.github/scripts/publish-template-catalog.mjs';
+import { buildTemplatePublication, publishTemplateCatalog, releaseCatalogPromotion } from '../.github/scripts/publish-template-catalog.mjs';
 
 const commit = 'a'.repeat(40);
 
@@ -59,15 +59,16 @@ test('template publication rejects symlinks without restricting ordinary extensi
 test('release publication uses its source snapshot and never changes the moving main pointer', async t => {
   const root = await fixture(t), uploads = new Map();
   const version = '0.7.0-test.1';
-  const pointerKey = `open-motion/templates/releases/${version}/catalog.json`;
+  const pointerKey = 'open-motion/templates/releases/catalog.json';
   let active = 0, maximumActive = 0;
   const result = await publishTemplateCatalog(root, { mode: 'release', version, commit,
     endpoint: 'https://abc123.r2.cloudflarestorage.com', bucket: 'open-design-releases',
     run: async (_, args) => {
       if (args.includes('list-objects-v2')) return '{}';
       const key = args[args.indexOf('--key') + 1];
-      assert(args.includes('--if-none-match'), 'Release objects must be immutable');
+      assert.equal(args.includes('--if-none-match'), key !== pointerKey, 'Only the shared release pointer may change');
       if (key === pointerKey) {
+        assert.equal(args[args.indexOf('--cache-control') + 1], 'public, max-age=60, must-revalidate');
         assert.equal(active, 0, 'All snapshot uploads must finish before the pointer');
         assert(uploads.has(`open-motion/templates/snapshots/${commit}/catalog.json`));
       }
@@ -85,6 +86,41 @@ test('release publication uses its source snapshot and never changes the moving 
   assert.equal(JSON.parse(uploads.get(pointerKey)).commit, commit);
   assert(!uploads.has('open-motion/templates/main/catalog.json'));
   assert(maximumActive > 1 && maximumActive <= 12);
+});
+
+test('successive software releases update the same catalog URL while recovery and superseded releases preserve it', async t => {
+  const root = await fixture(t), objects = new Map(), writes = [];
+  const pointerKey = 'open-motion/templates/releases/catalog.json';
+  const publish = (version, sourceCommit, phase = 'verified') => publishTemplateCatalog(root, {
+    mode: 'release', version, commit: sourceCommit,
+    promote: releaseCatalogPromotion(version, { version, phase }),
+    endpoint: 'https://abc123.r2.cloudflarestorage.com', bucket: 'open-design-releases',
+    run: async (_, args) => {
+      if (args.includes('list-objects-v2')) return '{}';
+      const key = args[args.indexOf('--key') + 1];
+      writes.push(key);
+      objects.set(key, await readFile(args[args.indexOf('--body') + 1]));
+      return '{}';
+    },
+    fetcher: async url => new Response(objects.get(new URL(url).pathname.slice(1))),
+  });
+  const first = await publish('0.7.0-test.1', commit);
+  const nextCommit = 'b'.repeat(40);
+  const second = await publish('0.7.0', nextCommit);
+  assert.equal(first.pointerUrl, 'https://releases.open-design.ai/' + pointerKey);
+  assert.equal(second.pointerUrl, first.pointerUrl);
+  assert.equal(JSON.parse(objects.get(pointerKey)).commit, nextCommit);
+  const expected = objects.get(pointerKey);
+  for (const phase of ['version-verified', 'superseded']) {
+    const result = await publish('0.7.0-test.1', commit, phase);
+    assert.equal(result.promoted, false);
+    assert.equal(result.pointerKey, `open-motion/templates/snapshots/${commit}/catalog.json`);
+    assert(objects.get(pointerKey).equals(expected));
+  }
+  assert.equal(writes.filter(key => key === pointerKey).length, 2);
+  assert(!writes.some(key => key === 'open-motion/templates/main/catalog.json' || /\/releases\/[^/]+\//.test(key)));
+  assert.throws(() => releaseCatalogPromotion('0.7.0', { version: '0.7.1', phase: 'verified' }), /match/);
+  assert.throws(() => releaseCatalogPromotion('0.7.0', { version: '0.7.0', phase: 'fixed-write-attempted' }), /completed/);
 });
 
 test('failed snapshot uploads leave the main pointer untouched and remove staging after uploads settle', async t => {
