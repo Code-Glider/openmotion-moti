@@ -11,7 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
 import { gatewayFor, ModelGateway } from '../gateway/service.ts';
 import { ProviderConnections, connectionBaseUrl } from '../gateway/connections.ts';
-import { OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
+import { AccountRequestError, OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
 import { validProperties } from '../tracking/core.ts';
 import { omEvents } from '../tracking/events.ts';
 import { providerDirectory, setDefaultModel } from '../gateway/settings.ts';
@@ -285,6 +285,35 @@ test('account music and one-image editing run the matching connector commands', 
   assert.deepEqual(libraryCall.slice(0, 2), ['image', 'edit']);
   assert.match(libraryCall[libraryCall.indexOf('--image') + 1], /reference\.png$/);
   assert.equal((await submissions()).length, 3, 'The replay submits no additional paid operation');
+}));
+
+test('account media failures report the service reason without connector output', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
+  t.after(() => gateway.close());
+  await signIn(account); await account.models(true);
+  const cases: [string, RegExp][] = [
+    ['media-invalid', /^OpenDesign rejected this request for the selected model\./],
+    ['media-plan', /^Your OpenDesign plan does not include this model\./],
+    ['media-401', /^Your OpenDesign sign-in is no longer accepted\. Sign out/],
+    ['media-unknown-code', /^OpenDesign could not complete this request\. Try again later/],
+    ['media-empty-code', /^OpenDesign could not complete this request\. Try again later/],
+    // The task was accepted; a failed download must not suggest choosing another model and paying again.
+    ['media-get-502', /^OpenDesign accepted this task, but its result could not be read\./],
+  ];
+  for (const [scenario, expected] of cases) {
+    await writeFile(path.join(account.home, 'fixture-mode'), scenario);
+    const failed = await finish(store, (await gateway.submit({ model: 'account:fixture-video', modality: 'video', prompt: scenario })).id);
+    assert.equal(failed.state, 'failed', scenario); assert.match(failed.error!, expected, scenario);
+    assert.doesNotMatch(failed.error!, /private|fixture-user-id|HTTP/, scenario);
+  }
+  // Generic API errors keep their status and code; a bodiless media response keeps only its status.
+  const generic = new AccountRequestError('Error: fetch billing summary: API request failed with status 401: invalid_api_key');
+  assert.deepEqual([generic.status, generic.code], [401, 'invalid_api_key']); assert.match(generic.message, /Sign out, then sign in again/);
+  const bodiless = new AccountRequestError('Error: media API request failed (, HTTP 504)');
+  assert.deepEqual([bodiless.status, bodiless.code], [504, undefined]);
+  assert.equal(new AccountRequestError('spawn failed').status, undefined);
 }));
 
 test('source installations use the connector locked with their dependencies instead of installing one at runtime', async t => {
