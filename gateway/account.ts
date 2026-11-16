@@ -150,7 +150,8 @@ export class OpenDesignAccount {
   }
   private async resolveRuntime(install = false) {
     if (this.options.binary || process.env.OPENMOTION_ACCOUNT_CLI) return this.options.binary || process.env.OPENMOTION_ACCOUNT_CLI!;
-    if (this.runtime) return this.runtime;
+    // A sign-in retry must rediscover a connector replaced since startup.
+    if (!install && this.runtime) return this.runtime;
     const resolve = async (from: string) => {
       const binary = createRequire(from)('@powerformer/vela-cli').resolveVelaCliBin({ strict: true }) as string;
       const { stdout } = await execute(binary, ['--version'], { timeout: 5000 });

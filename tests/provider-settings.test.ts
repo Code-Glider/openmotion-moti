@@ -128,6 +128,8 @@ test('source installations use the connector locked with their dependencies inst
     const account = new OpenDesignAccount(store.directory); t.after(() => account.close());
     // Preparation may install; it must pick the checkout's binary before `vela` on PATH or the private installation.
     assert.equal(await account['prepare'](), packaged);
+    account['runtime'] = path.join(store.directory, 'removed-vela');
+    assert.equal(await account['prepare'](), packaged);
     await assert.rejects(stat(path.join(store.directory, 'account', 'runtime')), { code: 'ENOENT' });
   });
 });
