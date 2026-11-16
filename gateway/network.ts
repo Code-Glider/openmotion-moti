@@ -8,6 +8,21 @@ export class ProviderError extends Error {
   constructor(message: string, status?: number) { super(message); this.status = status; }
 }
 export type Fetcher = typeof fetch;
+/** Repeat a read-only request (task polling or media download) after transient failures; never used for paid submissions. */
+export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, attempts = 5): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try { return await read(); }
+    catch (error) {
+      const status = (error as ProviderError).status;
+      const transient = status === undefined ? !(error instanceof SyntaxError) && !/invalid JSON|exceeds|non-public|public HTTPS/.test(String((error as Error).message)) : status === 429 || status >= 500;
+      if (signal.aborted || !transient || attempt >= attempts) throw error;
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(resolve, Math.min(2000 * attempt, 10_000));
+        signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+      });
+    }
+  }
+}
 export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}) {
   const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(15_000) });
   // Do not forward provider response text: it may echo a key or user input.

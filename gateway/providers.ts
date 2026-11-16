@@ -11,6 +11,10 @@ const waveSpeedOrigin = registeredProvider('wavespeed')!.baseUrl;
 
 export type ProviderContext = { key: string; fetcher: Fetcher; signal: AbortSignal;
   baseUrl?: string;
+  /** Snapshotted input images, in the caller's order. */
+  references?: { file: string; mimeType: string; bytes: number }[];
+  /** Keeps provider result metadata (for example speech timestamps) with the job. */
+  result?: (data: Record<string, unknown>) => Promise<void>;
   progress: (phase: string, remoteId?: string) => Promise<void>; pollMs?: number };
 export interface ProviderAdapter { generate(job: GenerationJob, context: ProviderContext): Promise<(string | Buffer)[]> }
 function outputs(body: any, modality: string): string[] {

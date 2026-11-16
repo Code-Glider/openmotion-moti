@@ -7,7 +7,7 @@ import { WorkspaceStore } from '../workspace.ts';
 import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
 import { detectAgents, generateCodexImage } from './agents.ts';
-import { downloadMedia, mediaType, publicProviderFetch, ProviderError, type Fetcher } from './network.ts';
+import { downloadMedia, mediaType, publicProviderFetch, ProviderError, retryRead, type Fetcher } from './network.ts';
 import { providerAdapters, waveSpeedModels } from './providers.ts';
 import { cloudModels } from './opendesign.ts';
 import { ProviderConnections, type GatewayConfig } from './connections.ts';
@@ -18,6 +18,9 @@ import { AssetLibrary } from './asset-library.ts';
 import { requireLibraryMediaRuntime } from './asset-probe.ts';
 import { generationOptions, validateGenerationOptions } from '../shared/generation-options.ts';
 import { MAX_ASSET_BYTES } from '../shared/asset-limits.ts';
+
+/** Queued input-image snapshot; the first keeps its historical name for older jobs. */
+const referenceFile = (index: number, mimeType: string) => (index ? `reference-${index}.` : 'reference.') + (mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]);
 
 type Options = { tracking?: OmTracking; fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
 type SavedOutput = { path: string; mimeType: string; bytes: number; sha256: string };
@@ -237,8 +240,11 @@ export class ModelGateway {
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
       validateGenerationOptions(model, { ...model.defaults, ...params });
       if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
-      if (input.library?.references?.length && (!model.supportsImageReference || input.modality !== 'image' || input.library.references.length !== 1)) throw new Error('This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
-      if (input.referenceAsset && (!model.supportsImageReference || input.modality !== 'image')) throw new Error('Selected model does not support reference image editing');
+      const referenceCount = (input.library?.references?.length ?? 0) + (input.referenceAsset ? 1 : 0);
+      const referenceLimit = input.modality === 'image' ? model.supportsImageReference ? model.maxInputImages ?? 1 : 0 : input.modality === 'video' ? model.maxInputImages ?? 0 : 0;
+      if (referenceCount && !referenceLimit) throw new Error(input.modality === 'video' ? 'This video model does not accept an input image. Choose a video model with maxInputImages, or remove the reference.'
+        : input.referenceAsset ? 'Selected model does not support reference image editing' : 'This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
+      if (referenceCount > referenceLimit) throw new Error(`This model accepts at most ${referenceLimit} input image${referenceLimit === 1 ? '' : 's'}`);
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');
       const job: GenerationJob = { id: randomUUID(), saveToLibrary: true, ...(input.library ? { library: { ...input.library, createNew: !input.library.assetId, assetId: input.library.assetId ?? randomUUID() } } : { projectId }), state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
@@ -248,19 +254,21 @@ export class ModelGateway {
         createdAt: Date.now(), updatedAt: Date.now(), phase: 'queued', assets: [] };
       const work = path.join(this.root, 'work', job.id);
       try {
-        const libraryReference = input.library?.references?.[0];
-        if (input.referenceAsset || libraryReference) {
-          const reference = libraryReference ? await library.resolve(libraryReference) : undefined;
-          const source = reference?.filename ?? await this.store.safePath(input.referenceAsset!, this.store.projectDirectoryFor(projectId!));
+        const sources: { asset?: { assetId: string; versionId: string }; projectPath?: string }[] = input.referenceAsset ? [{ projectPath: input.referenceAsset }]
+          : (input.library?.references ?? []).map(asset => ({ asset }));
+        for (const [index, item] of sources.entries()) {
+          const reference = item.asset ? await library.resolve(item.asset) : undefined;
+          const source = reference?.filename ?? await this.store.safePath(item.projectPath!, this.store.projectDirectoryFor(projectId!));
           const info = await lstat(source);
           if (!info.isFile() || info.isSymbolicLink() || info.size > 20 * 1024 * 1024) throw new Error('Reference image must be a local file under 20 MB');
           const bytes = await readFile(source), media = mediaType(bytes, 'image');
           if (bytes.length > 20 * 1024 * 1024) throw new Error('Reference image exceeds 20 MB');
           if (!['png', 'jpg', 'webp'].includes(media.extension)) throw new Error('Use a PNG, JPEG or WebP reference image');
           if (reference && hash(bytes) !== reference.version.sha256) throw new Error('Reference asset bytes have changed');
-          job.reference = { path: input.referenceAsset ?? `asset:${libraryReference!.assetId}/${libraryReference!.versionId}`, sha256: hash(bytes), mimeType: media.mimeType, bytes: bytes.length };
+          const snapshot = { path: item.projectPath ?? `asset:${item.asset!.assetId}/${item.asset!.versionId}`, sha256: hash(bytes), mimeType: media.mimeType, bytes: bytes.length };
+          (job.references ??= []).push(snapshot); job.reference ??= snapshot;
           await mkdir(work, { recursive: true, mode: 0o700 });
-          await writeFile(path.join(work, 'reference.' + media.extension), bytes, { flag: 'wx', mode: 0o600 });
+          await writeFile(path.join(work, referenceFile(index, media.mimeType)), bytes, { flag: 'wx', mode: 0o600 });
         }
         await this.saveJob(job);
         this.options.tracking?.track('media_generation_submitted', { modality: job.modality, job_id: job.id }, undefined, 'worker');
@@ -364,7 +372,7 @@ export class ModelGateway {
     const dir = path.join(this.root, 'work', job.id);
     let key = '';
     let retained = !!job.savePending;
-    const timeout = setTimeout(() => controller.abort(new Error('Generation timed out')), 15 * 60_000);
+    const timeout = setTimeout(() => controller.abort(new Error('Generation timed out')), (job.modality === 'video' ? 30 : 15) * 60_000);
     let checking = false;
     const cancelPoll = setInterval(() => {
       if (checking) return; checking = true;
@@ -387,7 +395,8 @@ export class ModelGateway {
         await requireLibraryMediaRuntime();
         await mkdir(dir, { recursive: true, mode: 0o700 });
         let buffers: Buffer[];
-        const reference = job.reference ? path.join(dir, 'reference.' + (job.reference.mimeType === 'image/jpeg' ? 'jpg' : job.reference.mimeType.split('/')[1])) : undefined;
+        const inputs = (job.references ?? (job.reference ? [job.reference] : [])).map((item, index) => ({ file: path.join(dir, referenceFile(index, item.mimeType)), mimeType: item.mimeType, bytes: item.bytes }));
+        const reference = inputs[0]?.file;
         if (job.model.provider === 'account') {
           buffers = await this.account.generate(job, dir, controller.signal, progress, reference);
         } else if (job.model.provider === 'codex') {
@@ -396,11 +405,14 @@ export class ModelGateway {
           buffers = [await (this.options.codex ?? generateCodexImage)(job.prompt + (Object.keys(imageOptions).length ? '\nImage options: ' + JSON.stringify(imageOptions) : ''), dir, controller.signal, reference)];
         } else {
           const adapter = isMediaProvider(job.model.provider) ? providerAdapters[job.model.provider] : compatibleProvider;
-          const urls = await adapter.generate(job, { key, baseUrl: job.providerOrigin, fetcher: this.options.fetcher ?? fetch, signal: controller.signal, progress, pollMs: this.options.pollMs });
+          const keepResult = async (data: Record<string, unknown>) => {
+            await this.store.lock(async () => { const current = await this.getJob(job.id); if (current.state !== 'running') return; current.result = data; current.updatedAt = Date.now(); await this.saveJob(current); });
+          };
+          const urls = await adapter.generate(job, { key, baseUrl: job.providerOrigin, fetcher: this.options.fetcher ?? fetch, signal: controller.signal, progress, pollMs: this.options.pollMs, references: inputs, result: keepResult });
           await this.connections.verifyKey(job.model.provider, key, 'verified', job.providerOrigin);
           await progress('downloading');
           buffers = [];
-          for (const url of urls) buffers.push(Buffer.isBuffer(url) ? url : await (this.options.download ?? downloadMedia)(url, controller.signal));
+          for (const url of urls) buffers.push(Buffer.isBuffer(url) ? url : await retryRead(() => (this.options.download ?? downloadMedia)(url, controller.signal), controller.signal));
         }
         await progress('downloading');
         files = [];

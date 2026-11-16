@@ -1,7 +1,8 @@
+import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Model } from '../shared/gateway.ts';
-import { apiJson, publicProviderFetch, ProviderError, type Fetcher } from './network.ts';
-import type { ProviderAdapter } from './providers.ts';
+import { apiJson, publicProviderFetch, ProviderError, retryRead, type Fetcher } from './network.ts';
+import type { ProviderAdapter, ProviderContext } from './providers.ts';
 
 export async function cloudModels(baseUrl: string, key: string, fetcher: Fetcher = publicProviderFetch): Promise<Model[]> {
   const body = await apiJson(fetcher, baseUrl + '/api/v1/media/models', { headers: { Authorization: `Bearer ${key}` } });
@@ -11,7 +12,37 @@ export async function cloudModels(baseUrl: string, key: string, fetcher: Fetcher
     id: 'opendesign:' + row.model, provider: 'opendesign', modelId: row.model, label: row.model,
     modality: row.kind.startsWith('audio') ? 'audio' : row.kind,
     mode: row.kind === 'audio_music' ? 'text-to-audio' : row.kind.startsWith('audio') ? 'text-to-speech' : 'text-to-' + row.kind, source: 'live',
+    ...inputImages(row),
   }));
+}
+
+/** Edit-capable image models accept references; video models with input images accept a first frame. */
+function inputImages(row: any): Partial<Model> {
+  const capabilities = row.capabilities && typeof row.capabilities === 'object' && !Array.isArray(row.capabilities) ? row.capabilities as Record<string, unknown> : undefined;
+  if (!capabilities) return {};
+  const max = Number.isInteger(capabilities.max_input_images) && (capabilities.max_input_images as number) > 0 ? capabilities.max_input_images as number : undefined;
+  if (row.kind === 'image' && capabilities.edits === true) return { nativeOptions: capabilities, supportsImageReference: true, maxInputImages: max ?? 1 };
+  if (row.kind === 'video' && max) return { nativeOptions: capabilities, maxInputImages: max };
+  return { nativeOptions: capabilities };
+}
+
+/** Three-step Cloud upload: create, PUT the bytes without credentials, then commit. */
+async function uploadInputs(fetcher: Fetcher, api: string, headers: Record<string, string>, jobId: string, ctx: ProviderContext): Promise<string[]> {
+  const ids: string[] = [];
+  for (const [index, input] of (ctx.references ?? []).entries()) {
+    const bytes = await readFile(input.file);
+    if (bytes.length !== input.bytes) throw new Error('Reference image changed after it was queued');
+    await ctx.progress('uploading');
+    const created = await apiJson(fetcher, api + '/uploads', { method: 'POST', headers: { ...headers, 'Idempotency-Key': `${jobId}-upload-${index}` },
+      body: JSON.stringify({ size_bytes: bytes.length, mime_type: input.mimeType }), signal: ctx.signal });
+    if (typeof created.asset_id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(created.asset_id) || typeof created.upload_url !== 'string' || !created.upload_url.startsWith('https://')) throw new Error('OpenDesign Cloud did not return an upload target');
+    const put = await fetcher(created.upload_url, { method: 'PUT', headers: { 'Content-Type': input.mimeType, 'Content-Length': String(bytes.length) }, body: bytes, redirect: 'error', signal: ctx.signal });
+    if (!put.ok) throw new ProviderError(`OpenDesign Cloud upload HTTP ${put.status}`, put.status);
+    const committed = await apiJson(fetcher, api + `/uploads/${created.asset_id}/commit`, { method: 'POST', headers: { ...headers, 'Idempotency-Key': `${jobId}-commit-${index}` }, body: '{}', signal: ctx.signal });
+    if (committed.status !== 'ready') throw new Error('OpenDesign Cloud did not accept the reference image');
+    ids.push(created.asset_id);
+  }
+  return ids;
 }
 
 export const opendesign: ProviderAdapter = {
@@ -26,22 +57,29 @@ export const opendesign: ProviderAdapter = {
     const { voice, ...speechOptions } = parameters;
     if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
     const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };
+    const inputs = audio ? [] : await uploadInputs(fetcher, api, headers, job.id, ctx);
+    const images = inputs.length ? { images: job.modality === 'video' ? inputs.map(asset_id => ({ asset_id, role: 'first_frame' })) : inputs } : {};
     const payload = audio ? { model: job.model.modelId, ...audioBody }
-      : { ...parameters, model: job.model.modelId, prompt: job.prompt };
-    const endpoint = audio ? speech ? '/audio/speech' : '/audio/music' : job.modality === 'image' ? '/images/generations' : '/videos/tasks';
+      : { ...parameters, model: job.model.modelId, prompt: job.prompt, ...images };
+    const endpoint = audio ? speech ? '/audio/speech' : '/audio/music' : job.modality === 'image' ? inputs.length ? '/images/edits' : '/images/generations' : '/videos/tasks';
     const submitted = await apiJson(fetcher, api + endpoint, { method: 'POST', headers: { ...headers, 'Idempotency-Key': job.id }, body: JSON.stringify(payload), signal: ctx.signal });
     if (typeof submitted.task_id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(submitted.task_id)) throw new Error('OpenDesign Cloud did not return a task ID');
     await ctx.progress('submitted', submitted.task_id);
     const taskUrl = api + `/${audio ? 'audio' : job.modality === 'image' ? 'images' : 'videos'}/tasks/${submitted.task_id}`;
     for (;;) {
       await delay(ctx.pollMs ?? 2000, undefined, { signal: ctx.signal });
-      const result = await apiJson(fetcher, taskUrl, { headers, signal: ctx.signal });
+      // The task is already paid for: a dropped poll connection must not discard its result.
+      const result = await retryRead(() => apiJson(fetcher, taskUrl, { headers, signal: ctx.signal }), ctx.signal);
       if (result.status === 'succeeded') {
+        // Speech timestamps (character alignment or word timings) arrive beside the file.
+        if (result.result && typeof result.result === 'object' && !Array.isArray(result.result) && JSON.stringify(result.result).length <= 2_000_000) await ctx.result?.(result.result);
         if (job.modality === 'video') {
-          const response = await fetcher(taskUrl + '/content', { headers, redirect: 'error', signal: ctx.signal });
-          if ([301, 302, 303, 307, 308].includes(response.status) && response.headers.get('location')) return [new URL(response.headers.get('location')!, taskUrl).href];
-          if (!response.ok) throw new ProviderError(`OpenDesign Cloud content HTTP ${response.status}`, response.status);
-          return [Buffer.from(await response.arrayBuffer())];
+          return [await retryRead(async () => {
+            const response = await fetcher(taskUrl + '/content', { headers, redirect: 'error', signal: ctx.signal });
+            if ([301, 302, 303, 307, 308].includes(response.status) && response.headers.get('location')) return new URL(response.headers.get('location')!, taskUrl).href;
+            if (!response.ok) throw new ProviderError(`OpenDesign Cloud content HTTP ${response.status}`, response.status);
+            return Buffer.from(await response.arrayBuffer());
+          }, ctx.signal)];
         }
         const urls = result.assets?.map((asset: any) => asset.url).filter((url: unknown) => typeof url === 'string');
         if (!urls?.length) throw new Error('OpenDesign Cloud completed without media output');

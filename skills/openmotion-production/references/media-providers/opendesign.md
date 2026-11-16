@@ -48,6 +48,20 @@ Speech:
 
 A contract alternative is model `byteplus-tts-2` with voice `zh_female_vv_uranus_bigtts`; choose a voice belonging to the selected model. Neither example proves workspace access.
 
+Image edit and image-to-video take workspace library references through `openmotion_assets_use` (`references: [{assetId, versionId}]`), not provider asset IDs; OpenMotion uploads them. Check `supportsImageReference`, `maxInputImages` and `nativeOptions` from discovery first. For example, edit with two references:
+
+```json
+{"action":"generate","requestId":"cloud-edit-01","model":"opendesign:gpt-image-2.6-flare","modality":"image","prompt":"Keep the banana from the first image; light it like the second","references":[{"assetId":"A","versionId":"A1"},{"assetId":"B","versionId":"B1"}],"parameters":{"quality":"low"}}
+```
+
+Image-to-video with one first frame:
+
+```json
+{"action":"generate","requestId":"cloud-i2v-01","model":"opendesign:wan-2.7","modality":"video","prompt":"The camera slowly moves closer","references":[{"assetId":"A","versionId":"A1"}],"parameters":{"duration":5,"resolution":"720p","ratio":"16:9"}}
+```
+
+Native speech options pass through `parameters` unchanged, such as ElevenLabs `voice_settings.speed` or BytePlus `audio_params.speech_rate`. Seedream 5.5 and both video models currently accept one input image; first-and-last-frame video is rejected by the service.
+
 Music:
 
 ```json
@@ -120,4 +134,4 @@ Current OpenMotion non-2xx handling does not expose raw Cloud error bodies/heade
 
 The contract supplied for this integration is the source for the paths and examples above; no public per-endpoint specification is asserted. Use the [Cloud dashboard](https://open-design.ai/cloud/dashboard) for current API origin, workspace models and access instructions. Verify changed test-stage behavior against the current contract before adapting requests.
 
-Cloud speech and music use distinct submit endpoints and share audio task polling and asset retrieval. Local-reference upload, image edits and signed-upload/commit are not implemented in this adapter. Cancellation stops local work without promising a remote cancellation or refund; polling errors/timeouts never trigger automatic paid resubmission.
+Cloud speech and music use distinct submit endpoints and share audio task polling and asset retrieval. Reference images are snapshotted when queued, then uploaded with the three-step upload (create, credential-free PUT, commit). Image models whose catalogue publishes `edits` submit the returned asset IDs as `images` to `/api/v1/media/images/edits`, up to their `max_input_images`; video models that publish `max_input_images` receive one as `images:[{asset_id, role:"first_frame"}]` on `/api/v1/media/videos/tasks`. Speech result metadata (ElevenLabs character `alignment`, BytePlus `sentences` with word timings) is kept as `job.result` and returned by `status`. Cancellation stops local work without promising a remote cancellation or refund; polling errors/timeouts never trigger automatic paid resubmission.

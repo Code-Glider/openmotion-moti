@@ -11,6 +11,10 @@ export type Model = {
   source: 'builtin' | 'live' | 'custom'; mode: string;
   defaults?: Record<string, unknown>; description?: string;
   supportsImageReference?: boolean;
+  /** Most input images the provider accepts: edit references for images, a first frame for video. */
+  maxInputImages?: number;
+  /** Provider-published native options (durations, resolutions, ratios, quality, sizes) shown during discovery. */
+  nativeOptions?: Record<string, unknown>;
   /** Maintained, provider-native controls, shared by Studio and MCP discovery. */
   generationOptions?: GenerationOptions;
 };
@@ -42,5 +46,9 @@ export type GenerationJob = { id: string; projectId?: string; library?: LibraryG
   modality: Modality; prompt: string; model: Model; parameters: Record<string, unknown>;
   usage?: GenerateInput['usage']; idempotencyKey?: string; requestHash: string;
   reference?: { path: string; sha256: string; mimeType: string; bytes: number };
+  /** Every snapshotted input image in submission order; `reference` remains the first one for older readers. */
+  references?: { path: string; sha256: string; mimeType: string; bytes: number }[];
+  /** Provider result metadata kept with the job, such as speech timestamps. */
+  result?: Record<string, unknown>;
   createdAt: number; updatedAt: number; startedAt?: number; workerPid?: number;
   phase: string; error?: string; remoteId?: string; assets: GeneratedAsset[] };
