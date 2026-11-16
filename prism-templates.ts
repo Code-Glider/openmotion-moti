@@ -7,12 +7,11 @@ import { catalogLocale } from './shared/template-locale.ts';
 import { templateConfig } from './shared/template-config.ts';
 import { libraryTemplates, templateRecipe } from './template-catalog.ts';
 import { copyTemplate } from './template-library.ts';
-import { loadRepositoryCatalog, lfsPointer, maxLfsAssetBytes, readRepositoryFile, repositoryCatalogRoot, repositoryMediaFile } from './shared/repository-template-catalog.ts';
-import { loadGithubCatalog, restoreGithubCatalog, serializeGithubCatalog, type GithubRepositoryCatalog } from './shared/github-template-catalog.ts';
+import { loadRepositoryCatalog, lfsPointer, maxLfsAssetBytes, maxTemplateAssetBytes, readRepositoryFile, repositoryCatalogRoot } from './shared/repository-template-catalog.ts';
+import { loadHostedCatalog, restoreHostedCatalog, serializeHostedCatalog, type HostedRepositoryCatalog, type HostedSourceManifest } from './shared/hosted-template-catalog.ts';
 import { downloadMedia, validateMediaLock } from './shared/repository-media.ts';
 
-type TemplateFile = { path: string; url: string; bytes: number; sha256: string };
-type GithubSourceManifest = { files: { path: string; bytes?: number; sha256?: string }[] };
+type TemplateFile = { path: string; url?: string; bytes: number; sha256: string };
 type PrismTemplate = {
   templateId: string; sortOrder: number; original: Record<string, string>;
   indexUrl: string; previewUrl: string; coverUrl: string; files: TemplateFile[];
@@ -25,7 +24,7 @@ type Publication = {
   resourceId: string; environment: string; channel: string; publicationId: string;
   defaultLocale: string; content: Record<string, { templates: PrismTemplate[]; brands?: { name: string; logoUrl: string }[] }>;
 };
-type Snapshot = { etag: string | null; publication: Publication; repository?: Awaited<ReturnType<typeof loadRepositoryCatalog>>; github?: GithubRepositoryCatalog };
+type Snapshot = { etag: string | null; publication: Publication; repository?: Awaited<ReturnType<typeof loadRepositoryCatalog>>; hosted?: HostedRepositoryCatalog };
 export type EditableTemplate = GalleryTemplate & { files?: TemplateFile[]; catalogVersion?: string; conversionStatus?: string; conversionNotes?: string };
 const splitTags = (value = '') => value.split(/[,，]/).map(tag => tag.trim()).filter(Boolean);
 const builtinTemplates = libraryTemplates.filter(template => template.kind === 'builtin');
@@ -49,11 +48,11 @@ export class TemplateCatalog {
   readonly locale: string;
   readonly url: string;
   readonly directory: string;
-  readonly source: 'repository' | 'github' | 'cms';
+  readonly source: 'repository' | 'hosted' | 'cms';
   readonly repositoryRoot: string;
   private readonly request: typeof fetch;
 
-  constructor(dataDirectory: string, options: { environment?: string; resourceId?: string; locale?: string; fetch?: typeof fetch; source?: 'repository' | 'github' | 'cms'; repositoryRoot?: string } = {}) {
+  constructor(dataDirectory: string, options: { environment?: string; resourceId?: string; locale?: string; fetch?: typeof fetch; source?: 'repository' | 'hosted' | 'cms'; repositoryRoot?: string } = {}) {
     const config = templateConfig();
     this.environment = options.environment ?? config.environment;
     if (!['dev', 'prod'].includes(this.environment)) throw new Error('MOTION_TEMPLATE_ENV must be dev or prod');
@@ -86,27 +85,32 @@ export class TemplateCatalog {
         .finally(() => { this.pending = undefined; });
       return this.pending;
     }
-    if (this.source === 'github') {
+    if (this.source === 'hosted') {
       if (this.snapshot && Date.now() - this.checkedAt < 300_000) return this.snapshot;
       this.pending = (async () => {
         if (!this.snapshot) {
           try {
-            const cached = restoreGithubCatalog(JSON.parse(await readFile(path.join(this.directory, 'github-snapshot.json'), 'utf8')), this.request);
-            this.snapshot = { publication: cached.publication as Publication, etag: null, github: cached };
+            const cached = restoreHostedCatalog(JSON.parse(await readFile(path.join(this.directory, 'hosted-snapshot.json'), 'utf8')), this.request);
+            this.snapshot = { publication: cached.publication as Publication, etag: null, hosted: cached };
             this.warning = cached.warning;
           } catch {}
         }
         try {
-          const github = await loadGithubCatalog(this.request);
-          const snapshot = { publication: github.publication as Publication, etag: null, github };
-          await atomicWrite(path.join(this.directory, 'github-snapshot.json'), serializeGithubCatalog(github));
+          const hosted = await loadHostedCatalog(this.request);
+          const snapshot = { publication: hosted.publication as Publication, etag: null, hosted };
+          await atomicWrite(path.join(this.directory, 'hosted-snapshot.json'), serializeHostedCatalog(hosted));
           this.snapshot = snapshot;
-          this.warning = github.warning;
+          this.warning = hosted.warning;
           this.checkedAt = Date.now();
           return snapshot;
         } catch (error) {
-          if (!this.snapshot) throw error;
-          this.warning = `GitHub 模板更新失败，使用上次目录：${(error as Error).message}`;
+          if (!this.snapshot) {
+            this.snapshot = { etag: null, publication: { resourceId: 'hosted', environment: this.environment, channel: 'default', publicationId: 'hosted-builtin-fallback', defaultLocale: 'en', content: { en: { templates: [] } } } };
+            this.warning = `Hosted 模板目录不可用，使用内置模板：${(error as Error).message}`;
+            this.checkedAt = Date.now();
+            return this.snapshot;
+          }
+          this.warning = `Hosted 模板更新失败，使用上次目录：${(error as Error).message}`;
           this.checkedAt = Date.now();
           return this.snapshot;
         }
@@ -159,7 +163,7 @@ export class TemplateCatalog {
       ...(snapshot.publication.content[locale]?.brands ?? []),
     ].map(brand => [brand.name, brand.logoUrl]));
     const remote: EditableTemplate[] = [...this.entries(snapshot.publication, requested)].sort((a, b) => a.sortOrder - b.sortOrder).map(item => {
-      const record = snapshot.repository?.records.get(item.templateId) ?? snapshot.github?.records.get(item.templateId);
+      const record = snapshot.repository?.records.get(item.templateId) ?? snapshot.hosted?.records.get(item.templateId);
       const localMedia = record?.localMedia;
       const localUrl = (name: string) => {
         const remote = record.remoteAssets?.find((asset: { source: { path: string } }) => asset.source.path === name);
@@ -174,10 +178,10 @@ export class TemplateCatalog {
         author: item.original.author || item.original.attributionNickname || '',
         sourceUrl: item.original.sourceUrl, previewUrl: localMedia?.preview ? localUrl(localMedia.preview) : item.previewUrl,
         posterUrl: localMedia?.poster ? localUrl(localMedia.poster) : item.coverUrl,
-        files: item.files, catalogVersion: snapshot.repository?.version ?? snapshot.github?.version ?? snapshot.publication.publicationId,
+        files: item.files, catalogVersion: snapshot.repository?.version ?? snapshot.hosted?.version ?? snapshot.publication.publicationId,
         conversionStatus: item.conversionStatus, conversionNotes: item.conversionNotes,
-        motionDocumentUrl: snapshot.repository || snapshot.github ? `/api/template-source/${item.templateId}/motion.md` : item.motionDocumentUrl,
-        motionGuideUrl: snapshot.repository || snapshot.github ? `/api/template-source/${item.templateId}/preview.html` : item.motionGuideUrl,
+        motionDocumentUrl: snapshot.repository || snapshot.hosted ? `/api/template-source/${item.templateId}/motion.md` : item.motionDocumentUrl,
+        motionGuideUrl: snapshot.repository || snapshot.hosted ? `/api/template-source/${item.templateId}/preview.html` : item.motionGuideUrl,
         ...(snapshot.repository ? { localSource: snapshot.repository.sources.get(item.templateId) } : {}),
         projectFileUrl: item.projectFileUrl, authorAvatarUrl: item.authorAvatarUrl,
         styleDescription: item.original.styleDescription, reviewFocus: item.original.reviewFocus,
@@ -193,7 +197,7 @@ export class TemplateCatalog {
   async index() {
     const snapshot = await this.refresh();
     const items = this.templates(snapshot);
-    const catalogVersion = snapshot.repository?.version ?? snapshot.github?.version ?? snapshot.publication.publicationId;
+    const catalogVersion = snapshot.repository?.version ?? snapshot.hosted?.version ?? snapshot.publication.publicationId;
     const indexPath = path.join(this.directory, `templates.${hash(catalogVersion).slice(0, 16)}.index.jsonl`);
     const lines = items.map(item => JSON.stringify({ templateId: item.id, name: item.title, summary: item.description,
       category: item.subtitle, tags: item.tags, durationSeconds: item.duration, kind: item.kind, localSource: item.localSource })).join('\n') + '\n';
@@ -205,7 +209,7 @@ export class TemplateCatalog {
     const snapshot = await this.refresh();
     const items = this.templates(snapshot, options.locale).map(({ files: _files, ...item }) => item);
     const visible = options.covered ? items.filter(item => item.posterUrl) : items;
-    return { ...templatePage(visible, options), catalogTotal: items.length, catalogVersion: snapshot.repository?.version ?? snapshot.github?.version ?? snapshot.publication.publicationId, source: this.source, warning: this.warning };
+    return { ...templatePage(visible, options), catalogTotal: items.length, catalogVersion: snapshot.repository?.version ?? snapshot.hosted?.version ?? snapshot.publication.publicationId, source: this.source, warning: this.warning };
   }
 
   async get(id: string): Promise<EditableTemplate> {
@@ -230,9 +234,9 @@ export class TemplateCatalog {
       return { ...template, instructions, motionDocument: { path: template.localSource.motionPath, content }, source: this.source,
         workflowGuide: { workflow: template.hasHtmlProject ? 'template' : 'production', section: 'start', status: 'ready' } };
     }
-    if (snapshot.github && template.kind !== 'builtin') {
-      const instructions = (await this.githubFile(snapshot, id, 'TEMPLATE.md')).toString('utf8');
-      const content = (await this.githubFile(snapshot, id, 'source/motion.md')).toString('utf8');
+    if (snapshot.hosted && template.kind !== 'builtin') {
+      const instructions = (await this.hostedFile(snapshot, id, 'TEMPLATE.md')).toString('utf8');
+      const content = (await this.sourceFile(id, 'motion.md')).toString('utf8');
       return { ...template, instructions, motionDocument: { path: `/api/template-source/${id}/motion.md`, content }, source: this.source,
         workflowGuide: { workflow: template.hasHtmlProject ? 'template' : 'production', section: 'start', status: 'ready' }, warning: this.warning };
     }
@@ -242,28 +246,27 @@ export class TemplateCatalog {
   }
 
   async sourceFile(id: string, name: string): Promise<Buffer> {
-    if (this.source === 'github') {
+    if (this.source === 'hosted') {
       const snapshot = await this.refresh();
-      const record = snapshot.github?.records.get(id);
-      if (!record) throw new Error('GitHub template not found');
-      const { manifest, bytes: manifestBytes } = await this.githubManifest(snapshot, id);
+      const record = snapshot.hosted?.records.get(id);
+      if (!record) throw new Error('hosted template not found');
+      const { manifest, bytes: manifestBytes } = await this.hostedManifest(snapshot, id);
       if (name === 'manifest.json') return manifestBytes;
       const expected = manifest.files.find(file => file.path === name);
-      if (!expected) throw new Error('GitHub template source file not found');
+      if (!expected) throw new Error('hosted template source file not found');
       const remote = record.remoteAssets?.find((asset: { source: { path: string } }) => asset.source.path === name);
       if (remote) {
         const lock = { path: name, ...remote };
         if (expected.bytes !== lock.bytes || expected.sha256 !== lock.sha256) throw new Error('Transferred media does not match its source manifest');
-        return this.githubFile(snapshot, id, name, maxLfsAssetBytes, bytes => {
+        return this.hostedFile(snapshot, id, name, maxLfsAssetBytes, bytes => {
           if (bytes.length !== lock.bytes || hash(bytes) !== lock.sha256) throw new Error('Transferred media does not match its source manifest');
         }, async () => downloadMedia(lock, this.request));
       }
-      const media = name.startsWith('assets/') && repositoryMediaFile.test(name);
-      const bytes = await this.githubFile(snapshot, id, 'source/' + name, media ? maxLfsAssetBytes : 1024 * 1024, value => {
+      const bytes = await this.hostedFile(snapshot, id, 'source/' + name, maxTemplateAssetBytes, value => {
+        if (lfsPointer(value)) return;
         if (expected.bytes !== undefined && (expected.bytes !== value.length || expected.sha256 !== hash(value))) throw new Error('Template media does not match its source manifest');
       });
       if (lfsPointer(bytes)) throw Object.assign(new Error(`Template media is not downloaded. Fetch the Git LFS asset for ${id}.`), { code: 'TEMPLATE_LFS_NOT_FETCHED' });
-      if (media && expected.bytes === undefined) throw new Error('Template media is missing its source manifest lock');
       return bytes;
     }
     if (this.source !== 'repository') throw new Error('Repository template source is unavailable');
@@ -279,18 +282,20 @@ export class TemplateCatalog {
       if (expected.bytes !== lock.bytes || expected.sha256 !== lock.sha256) throw new Error('Transferred media does not match its source manifest');
       return downloadMedia(lock, this.request);
     }
-    const media = name.startsWith('assets/') && repositoryMediaFile.test(name);
-    const bytes = await readRepositoryFile(this.repositoryRoot, id + '/source/' + name, media ? maxLfsAssetBytes : 1024 * 1024);
+    const bytes = await readRepositoryFile(this.repositoryRoot, id + '/source/' + name, maxTemplateAssetBytes);
     if (lfsPointer(bytes)) throw Object.assign(new Error(`Template media is not downloaded. Run git lfs pull --include="library/templates/catalog/${id}/source/assets/lfs/**" --exclude="" from the checkout.`), { code: 'TEMPLATE_LFS_NOT_FETCHED' });
-    if (media) {
-      const expected = manifest.files.find((file: { path: string }) => file.path === name);
-      if (expected.bytes !== bytes.length || expected.sha256 !== hash(bytes)) throw new Error('Template media does not match its source manifest');
-    }
+    const expected = manifest.files.find((file: { path: string }) => file.path === name);
+    if (expected?.bytes !== undefined && (expected.bytes !== bytes.length || expected.sha256 !== hash(bytes))) throw new Error('Template source file does not match its source manifest');
     return bytes;
   }
 
   private async downloadFile(templateId: string, file: TemplateFile): Promise<Buffer> {
-    if (this.source === 'github') return this.sourceFile(templateId, file.path);
+    if (this.source === 'hosted' || this.source === 'repository') {
+      const bytes = await this.sourceFile(templateId, file.path);
+      assert(bytes.length === file.bytes && hash(bytes) === file.sha256, 'Template project file does not match its metadata');
+      return bytes;
+    }
+    assert(file.url, 'CMS template file has no download URL');
     const url = new URL(file.url);
     if (url.protocol !== 'https:' || url.hostname !== 'r.open-design.ai' || !url.pathname.startsWith('/files/')) throw new Error('模板文件地址无效');
     const cachedPath = path.join(this.directory, 'files', hash(file.url));
@@ -309,35 +314,36 @@ export class TemplateCatalog {
     return bytes;
   }
 
-  private githubCachePath(snapshot: Snapshot, templateId: string, name: string): string {
-    return path.join(this.directory, 'github-files', hash(`${snapshot.github!.commit}:${templateId}:${name}`));
+  private hostedCachePath(snapshot: Snapshot, templateId: string, name: string): string {
+    return path.join(this.directory, 'hosted-files', hash(`${snapshot.hosted!.commit}:${templateId}:${name}`));
   }
 
-  private async githubFile(snapshot: Snapshot, templateId: string, name: string, limit = 1024 * 1024, validate?: (bytes: Buffer) => void, download?: () => Promise<Buffer>): Promise<Buffer> {
-    const filename = this.githubCachePath(snapshot, templateId, name);
+  private async hostedFile(snapshot: Snapshot, templateId: string, name: string, limit = 1024 * 1024, validate?: (bytes: Buffer) => void, download?: () => Promise<Buffer>): Promise<Buffer> {
+    const filename = this.hostedCachePath(snapshot, templateId, name);
     try {
       const cached = await readFile(filename);
       try {
+        assert(cached.length <= limit, 'hosted template file exceeds its size limit');
         validate?.(cached);
         return cached;
       } catch {}
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
-    const bytes = download ? await download() : await snapshot.github!.fetchFile(templateId, name, limit);
-    assert(bytes.length <= limit, 'GitHub template file exceeds its size limit');
+    const bytes = download ? await download() : await snapshot.hosted!.fetchFile(templateId, name, limit);
+    assert(bytes.length <= limit, 'hosted template file exceeds its size limit');
     validate?.(bytes);
     await atomicWrite(filename, bytes);
     return bytes;
   }
 
-  private async githubManifest(snapshot: Snapshot, templateId: string): Promise<{ manifest: GithubSourceManifest; bytes: Buffer }> {
-    const bytes = await this.githubFile(snapshot, templateId, 'source/manifest.json', 1024 * 1024, value => {
-      const manifest = JSON.parse(value.toString('utf8')) as GithubSourceManifest;
-      assert(Array.isArray(manifest.files), 'Invalid GitHub template source manifest');
+  private async hostedManifest(snapshot: Snapshot, templateId: string): Promise<{ manifest: HostedSourceManifest; bytes: Buffer }> {
+    const bytes = await this.hostedFile(snapshot, templateId, 'source/manifest.json', 1024 * 1024, value => {
+      const manifest = JSON.parse(value.toString('utf8')) as HostedSourceManifest;
+      assert(Array.isArray(manifest.files), 'Invalid hosted template source manifest');
     });
-    const manifest = JSON.parse(bytes.toString('utf8')) as GithubSourceManifest;
-    assert(Array.isArray(manifest.files), 'Invalid GitHub template source manifest');
+    const manifest = JSON.parse(bytes.toString('utf8')) as HostedSourceManifest;
+    assert(Array.isArray(manifest.files), 'Invalid hosted template source manifest');
     return { manifest, bytes };
   }
 

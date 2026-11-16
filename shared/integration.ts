@@ -13,7 +13,7 @@ export const hostDescriptions: Record<IntegrationHost, string> = {
   mcp: '连接你喜欢的 MCP 客户端，也可以从终端和脚本开始。',
 };
 export type IntegrationInfo = {
-  templateSource?: 'repository' | 'github' | 'cms';
+  templateSource?: 'repository' | 'hosted' | 'cms';
   templateEnvironment?: 'dev' | 'prod';
   name: string; version: string; previewUrl: string; dataDirectory: string;
   transport: { type: 'stdio'; command: string; args: string[]; cwd: string; env: Record<string, string> };

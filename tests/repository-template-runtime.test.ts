@@ -155,3 +155,20 @@ test('the real stdio MCP resolves the loaded checkout from a different cwd witho
   assert.equal(detail.localSource.directory, path.join(repositoryCatalogRoot, firstId));
   assert.equal(detail.motionDocument.content, await readFile(detail.localSource.motionPath, 'utf8'));
 });
+
+test('registered project files with arbitrary extensions copy locally without CMS URLs', async t => {
+  const f = await fixture(t);
+  const contents = { 'index.html': Buffer.from('<html>Editable project</html>'), '工程.custom': Buffer.alloc(1024 * 1024 + 1, 37), 'manifest.json': Buffer.from(JSON.stringify({ files: [] })) };
+  const files = Object.entries(contents).filter(([name]) => name !== 'manifest.json').map(([name, bytes]) => ({ path: name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }));
+  Object.assign(f.record.entry, { files });
+  await f.save(f.id + '/template.json', f.record);
+  await f.save(f.id + '/source/manifest.json', { files });
+  for (const [name, bytes] of Object.entries(contents)) if (name !== 'manifest.json') await writeFile(path.join(f.folder, 'source', name), bytes);
+  assert.equal((await f.catalog.detail(f.id)).hasHtmlProject, true);
+  const output = path.join(f.work, 'editable');
+  await f.catalog.copy(await f.catalog.get(f.id), output, appRoot);
+  assert.deepEqual(await readFile(path.join(output, '工程.custom')), contents['工程.custom']);
+  assert.deepEqual(await f.catalog.sourceFile(f.id, 'manifest.json'), Buffer.from(JSON.stringify({ files })));
+  await writeFile(path.join(f.folder, 'source/工程.custom'), Buffer.alloc(contents['工程.custom'].length));
+  await assert.rejects(f.catalog.sourceFile(f.id, '工程.custom'), /does not match/);
+});

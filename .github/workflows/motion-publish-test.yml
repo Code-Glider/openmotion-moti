@@ -278,6 +278,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
@@ -310,6 +311,16 @@ jobs:
           MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
           MOTION_INSTALL_PUBLIC_ORIGIN: ${{ vars.CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN }}
         run: node .github/scripts/motion-release.mjs archive "$RUNNER_TEMP/candidate"
+      - name: Publish the immutable template snapshot for this release
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_RELEASES_AK }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_RELEASES_SK }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+          AWS_PAGER: ''
+          MOTION_R2_ENDPOINT: ${{ vars.CLOUDFLARE_R2_RELEASES_URL }}
+          MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
+          MOTION_INSTALL_PUBLIC_ORIGIN: ${{ vars.CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN }}
+        run: node .github/scripts/publish-template-catalog.mjs release "$MOTION_VERSION" "$RUNNER_TEMP/candidate"
       - name: Retain the attempt, immutable release identity and previous default guide
         if: always()
         uses: actions/upload-artifact@v7.0.2
@@ -405,6 +416,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
@@ -449,6 +461,16 @@ jobs:
           MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
           MOTION_INSTALL_PUBLIC_ORIGIN: ${{ vars.CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN }}
         run: node .github/scripts/motion-release.mjs archive "$RUNNER_TEMP/candidate"
+      - name: Publish the immutable template snapshot for this release
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_RELEASES_AK }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_RELEASES_SK }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+          AWS_PAGER: ''
+          MOTION_R2_ENDPOINT: ${{ vars.CLOUDFLARE_R2_RELEASES_URL }}
+          MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
+          MOTION_INSTALL_PUBLIC_ORIGIN: ${{ vars.CLOUDFLARE_R2_RELEASES_PUBLIC_ORIGIN }}
+        run: node .github/scripts/publish-template-catalog.mjs release "$MOTION_VERSION" "$RUNNER_TEMP/candidate"
       - name: Retain the attempt, immutable release identity and previous default guide
         if: always()
         uses: actions/upload-artifact@v7.0.2
