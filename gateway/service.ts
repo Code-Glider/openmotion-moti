@@ -4,7 +4,7 @@ import { copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writ
 import path from 'node:path';
 import type { OmTracking } from '../shared/tracking.ts';
 import { WorkspaceStore } from '../workspace.ts';
-import { modelReferenceLimit, resumableJob, mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
+import { legacyRemoteTerminal, modelReferenceLimit, resumableJob, mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
 import { detectAgents, generateCodexImage } from './agents.ts';
 import { downloadMedia, mediaType, publicProviderFetch, ProviderError, retryRead, type Fetcher } from './network.ts';
@@ -349,6 +349,8 @@ export class ModelGateway {
         // Cancellation is final for this route: report that nothing was saved, but keep the job cancelled.
         if (job.state === 'cancelled') throw error;
         const alreadyFailed = job.state === 'failed';
+        // Keep Cloud-terminal provenance before the error text is replaced.
+        if (legacyRemoteTerminal(job)) job.remoteTerminal = true;
         job.state = 'failed'; job.phase = 'save_unavailable'; job.savePending = false; job.error = error.message; job.updatedAt = Date.now();
         if (alreadyFailed) await this.saveJob(job);
         else await this.saveResult(job);

@@ -433,3 +433,23 @@ test('jobs from the earlier adapter keep confirmed remote failures non-resumable
   assert.equal(resumableJob(await gateway.getJob(failed.id)), true);
   await gateway.close();
 }));
+
+test('a failed save-only retry keeps an earlier Cloud-terminal job non-resumable', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  let posts = 0;
+  gateway.options.fetcher = (async (_url, init = {}) => { if (init.method === 'POST') { posts++; return Response.json({ task_id: 'original-task' }); } return new Response(null, { status: 400 }); }) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  const failed = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id);
+  const file = path.join(gateway.root, 'jobs', failed.id + '.json');
+  for (const status of ['failed', 'cancelled']) {
+    const legacy = { ...failed, error: `OpenDesign Cloud task ${status}; inspect the original task before retrying` };
+    delete (legacy as any).remoteTerminal;
+    await writeFile(file, JSON.stringify(legacy));
+    await assert.rejects(api.call('openmotion_assets_use', { action: 'retry_save', jobId: failed.id, requestId: `save-${status}` }), /SAVE_NOT_AVAILABLE/);
+    const after = await gateway.getJob(failed.id);
+    assert.equal(after.remoteTerminal, true); assert.equal(resumableJob(after), false);
+    await assert.rejects(gateway.resume(failed.id, 'resume'), /cannot be resumed/);
+  }
+  assert.equal(posts, 1); assert.equal(gateway.active.size, 0);
+  await gateway.close();
+}));
