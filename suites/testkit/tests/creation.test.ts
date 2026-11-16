@@ -222,7 +222,14 @@ it("hands a verified remote template from guidance and Web creation to manual ed
     await expect.poll(() => panel.getByLabel("模板项目标题", { exact: true }).inputValue()).toBe("Prism handoff");
     const priorHash = remote.contentHash;
     publicationVersion = 2;
+    const refreshResponse = page.waitForResponse(
+      (response) => response.url().endsWith("/api/template_list") && response.request().method() === "POST",
+      { timeout: 15000 }, // The remote publication fetch has a ten-second product deadline.
+    );
     await panel.getByRole("button", { name: "刷新模板", exact: true }).click();
+    const refreshedCatalog = await (await refreshResponse).json();
+    report.refreshedPublication = refreshedCatalog.catalog?.publicationId;
+    expect(refreshedCatalog.catalog?.publicationId).toBe("creation-acceptance-2");
     await expect.poll(() => panel.getByLabel("模板目录状态").textContent()).toContain("creation-acceptance-2");
     await expect.poll(() => panel.getByRole("button", { name: "创建模板项目", exact: true }).isDisabled()).toBe(true);
     await expect
