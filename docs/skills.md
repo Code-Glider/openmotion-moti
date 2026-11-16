@@ -30,7 +30,7 @@ The current five-route contract with fourteen registered Tool names (one compati
 
 ## Reference reconstruction guidance
 
-The recreate route carries a shot/action-unit process with concrete worker briefs, source ownership, time/coordinate mapping and inspected-source handoffs. Reference observations become timed controls consumed by the renderer, with conditional methods for camera transforms, relative part motion, changing shapes, mark-based materials, text and exposure. Local iteration compares observed and intermediate states, repairs the responsible mechanism, and rechecks shared assets, overlap and the complete layer stack after integration. One Agent can execute the same units sequentially. Observation density and implementation remain scene-dependent. The guidance is based on segment-production retrospectives that include reused implementations and directed corrections. Reliability across fresh sessions and different references still requires evaluation. See [the reconstruction reference](../skills/openmotion-recreate/references/rebuild.md#establish-a-difficult-visual-system).
+The recreate route carries a shot/action-unit process with concrete worker briefs, source ownership, time/coordinate mapping and inspected-source handoffs. Reference observations become timed controls consumed by the renderer, with conditional methods for camera transforms, relative part motion, changing shapes, mark-based materials, text and exposure. Local iteration compares observed and intermediate states, repairs the responsible mechanism, and rechecks shared assets, overlap and the complete layer stack after integration. One Agent can execute the same units sequentially. Observation density and implementation remain scene-dependent. The guidance is based on segment-production retrospectives that include reused implementations and directed corrections. Reliability across fresh sessions and different references still requires evaluation. See [the reconstruction reference](../skills/openmotion-recreate/references/reconstruction.md).
 
 Before material grouping, the recreation guidance distinguishes object motion, internal content changes and exposure. Timed comparisons cover the defining changes and stationary anchors, including the handoff from intact content into fragments during breakup or assembly. An optional host-Python registration helper measures planar camera observations with explicit coordinate and fit evidence. The visible-motion helper records source travel before authoring and compares local movement in the actual export. Material review includes the reassembled background and occlusion. The maker chooses the representation from observed behavior and checks its source controls in the actual output.
 
@@ -68,7 +68,7 @@ MCP 工具说明和领域执行位于 `mcp-tools.ts`；`mcp.ts` 保留初始化�
 | openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials、account、compatible、fal、opendesign、atlascloud、wavespeed、typography、fonts |
 | openmotion-director | director | start、actions、craft、phrases、decisions、sound、review、examples |
 | openmotion-template-to-video | template | start、unchanged |
-| openmotion-recreate | recreate | start、rebuild、verification |
+| openmotion-recreate | recreate | start、rebuild、reconstruction、verification |
 | openmotion-video-to-template | video-to-template | start、measure、rebuild、project、verification、sources |
 | openmotion-media | media（辅助素材生成，非成片主入口） | start |
 
@@ -110,7 +110,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 | [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 一期 MCP 包不提供生成 Tool，生成交给宿主或 Studio | 与上一行同步修改 |
 | SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；删去念出原品牌的旁白 | 有 TTS 后可改为重新配音，不只删除 |
 | SKILL.md §5 原片作底层（用户自有成片只改几处细节） | 仅此情况可把原片放在时间线上并打补丁 | 支持实拍局部修改或分镜混排时扩展适用条件 |
-| [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
+| [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[reconstruction.md](../skills/openmotion-recreate/references/reconstruction.md) 难画面分段重建、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
 
 以下是交付底线，不随能力扩展放开：不得把整条原片、整帧序列或烘焙进背景的可编辑内容冒充重建（rebuild.md）；不交付在工程外修改的 MP4（SKILL.md §5）。
 
