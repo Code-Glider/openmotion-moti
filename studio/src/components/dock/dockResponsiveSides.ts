@@ -17,6 +17,8 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
   let priority: Side = "right";
   let reflowing = false;
   let dragging = false;
+  let draggedSide: Side | undefined;
+  let resizedSide: Side | undefined;
   let responsiveFit = false;
   const sideGroups = () => ({ left: api.getPanel("compositions")?.group, right: api.getPanel("design")?.group });
   for (const zone of zones) if (savedWidths[zone] !== undefined) widths.set(zone, savedWidths[zone]);
@@ -62,7 +64,7 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
       const minima = { left: minimum("left"), right: minimum("right") };
       preview.api.setConstraints({ minimumWidth: previewMinimumWidth(width, true, minima.left + minima.right) });
       previewWidth ??= Math.max(MIN_PREVIEW_W, width - targets.left - targets.right);
-      let fitted = fitPreviewFirstSides(width, enabled ? previewWidth : 0, targets, minima);
+      let fitted = fitPreviewFirstSides(width, enabled ? previewWidth : 0, targets, minima, resizedSide);
       if (!enabled) {
         const available = width - (Number(collapsed.left) + Number(collapsed.right)) * COLLAPSED_SIDE_WIDTH;
         const total = (collapsed.left ? 0 : targets.left) + (collapsed.right ? 0 : targets.right);
@@ -87,32 +89,42 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
   };
   // Dockview lays itself out before ResizeObserver runs. Do not mistake that resize
   // for a user sash adjustment, which would overwrite the preview being preserved.
-  const rememberSizes = () => {
+  const rememberSizes = (side?: Side) => {
     const groups = sideGroups();
-    if (reflowing || !lastFitted || dockWidth() - DOCK_GAPS !== lastWidth || api.width !== dockWidth() || api.hasMaximizedGroup() || !previewIsEnabled(api)) return;
+    if (reflowing || dragging || !lastFitted || dockWidth() - DOCK_GAPS !== lastWidth || api.width !== dockWidth() || api.hasMaximizedGroup() || !previewIsEnabled(api)) return;
     if (zones.some(zone => !groups[zone] || motion.has(groups[zone]!.element))) return;
-    if (zones.every(zone => Math.abs(groups[zone]!.width - lastFitted![zone]) < 1)) return;
-    for (const zone of zones) if (!isSideCollapsed(groups[zone]!)) widths.set(zone, groups[zone]!.width);
+    const changed = zones.filter(zone => (!side || zone === side) && !isSideCollapsed(groups[zone]!) && Math.abs(groups[zone]!.width - lastFitted![zone]) >= 1);
+    if (changed.length === 0) return;
+    for (const zone of changed) widths.set(zone, groups[zone]!.width);
+    if (side) resizedSide = side;
     lastFitted = { left: groups.left!.width, right: groups.right!.width };
     previewWidth = api.getPanel("preview")!.group.width;
-    responsiveFit = false;
+    responsiveFit = zones.some(zone => !isSideCollapsed(groups[zone]!) && Math.abs(groups[zone]!.width - (widths.get(zone) ?? preferredSideWidths()[zone])) > 1);
   };
-  const sizeSubscription = api.onDidLayoutChange(rememberSizes);
+  const sizeSubscription = api.onDidLayoutChange(() => rememberSizes());
   // Dockview reports a sash layout after release, while ResizeObserver can run
   // between pointer moves. Until release, the live sash owns the geometry;
   // fitting the last remembered sizes here would snap it back under the cursor.
   const root = api.getPanel("preview")?.group.element.closest<HTMLElement>(".hf-dock");
   const doc = root?.ownerDocument;
   const startDrag = (event: PointerEvent) => {
-    if (event.button !== 0 || !(event.target instanceof Element) || !event.target.closest('.dv-sash[aria-orientation="vertical"]')) return;
+    if (event.button !== 0 || !(event.target instanceof Element)) return;
+    const selector = '.dv-sash[aria-orientation="vertical"]';
+    const sash = event.target.closest(selector);
+    if (!sash) return;
+    // Fixed MVP columns are library / preview / inspector, with two vertical sashes.
+    const index = Array.from(root?.querySelectorAll(selector) ?? []).indexOf(sash);
+    if (index < 0 || index > 1) return;
     motion.finishAll();
     rememberSizes();
+    draggedSide = zones[index];
     dragging = true;
   };
   const endDrag = () => {
     if (!dragging) return;
     dragging = false;
-    rememberSizes();
+    rememberSizes(draggedSide);
+    draggedSide = undefined;
     reflow();
   };
   if (fixedLayout) root?.addEventListener("pointerdown", startDrag, true);
@@ -163,5 +175,5 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
     doc?.removeEventListener("pointercancel", endDrag);
     doc?.removeEventListener("contextmenu", endDrag);
   },
-    resetWidths: () => { widths.clear(); previewWidth = undefined; lastWidth = 0; reflow(); } };
+    resetWidths: () => { widths.clear(); resizedSide = undefined; previewWidth = undefined; lastWidth = 0; reflow(); } };
 }

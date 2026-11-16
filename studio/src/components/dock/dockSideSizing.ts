@@ -4,11 +4,21 @@ import { COLLAPSED_SIDE_WIDTH } from "./dockLayout";
 export type SideWidths = { left: number; right: number };
 
 /** Spend the sides' shrinkable space before reducing the remembered preview width. */
-export function fitPreviewFirstSides(width: number, preview: number, preferred: SideWidths, minimum: SideWidths): SideWidths {
+export function fitPreviewFirstSides(width: number, preview: number, preferred: SideWidths, minimum: SideWidths, resizedSide?: keyof SideWidths): SideWidths {
   const left = Math.max(minimum.left, preferred.left);
   const right = Math.max(minimum.right, preferred.right);
   const capacity = left + right - minimum.left - minimum.right;
   const shrink = Math.min(capacity, Math.max(0, left + right + preview - width));
+  if (resizedSide) {
+    // Keep the last deliberate sash position while the untouched side recovers
+    // from temporary compression. Neither side's preference is rewritten.
+    const fitted = { left, right };
+    const other = resizedSide === "left" ? "right" : "left";
+    const otherShrink = Math.min(shrink, fitted[other] - minimum[other]);
+    fitted[other] -= otherShrink;
+    fitted[resizedSide] -= shrink - otherShrink;
+    return fitted;
+  }
   const fraction = capacity > 0 ? shrink / capacity : 0;
   return {
     left: left - (left - minimum.left) * fraction,

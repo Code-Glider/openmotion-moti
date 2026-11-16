@@ -1245,6 +1245,56 @@ it.each([
   expect(side.width).toBe(initial + 40);
 });
 
+it.each([
+  [0, 1100, 24], [1, 1100, 24],
+  [0, 1250, 600], [1, 1250, 600],
+  [0, 1100, 0], [1, 1100, 0],
+])("preserves the untouched preference after dragging divider %i at %ipx by %ipx", async (index, narrowWidth, delta) => {
+  let width = 1400;
+  const host = mount("compressed-drag-preferences", {}, { panels: MVP_PANEL_IDS, fixedLayout: true, dockWidth: () => width });
+  const api = dockApi!;
+  const controller = useDockLayoutStore.getState().controller!;
+  const sides = [api.getPanel("compositions")!.group, api.getPanel("design")!.group];
+  await act(async () => {
+    resizeDock(api, width);
+    sides[0].api.setSize({ width: 310 });
+    sides[1].api.setSize({ width: 330 });
+    await Promise.resolve();
+  });
+  act(() => {
+    width = narrowWidth;
+    resizeDock(api, width);
+  });
+  const before = sides.map(side => side.width);
+  expect(before[0]).toBeLessThan(310);
+  expect(before[1]).toBeLessThan(330);
+  const sash = host.querySelectorAll<HTMLElement>('.dv-sash[aria-orientation="vertical"]')[index];
+  act(() => {
+    sash.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 0, button: 0 }));
+    document.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: index === 0 ? delta : -delta }));
+    vi.advanceTimersByTime(32);
+  });
+  const live = sides.map(side => side.width);
+  if (delta === 24) expect(live[index]).toBe(before[index] + delta);
+  if (delta === 600) expect(live[1 - index]).toBeLessThan(before[1 - index]);
+  await act(async () => {
+    document.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+    await Promise.resolve();
+    resizeDock(api, width);
+  });
+  expect(sides.map(side => side.width)).toEqual(live);
+  const expected = delta === 0 ? (index === 0 ? 310 : 330) : live[index];
+  act(() => { width = 1400; resizeDock(api, width); });
+  expect(sides[index].width).toBe(expected);
+  expect(sides[1 - index].width).toBe(index === 0 ? 330 : 310);
+  const id = index === 0 ? "compositions" : "design";
+  act(() => { controller.setGroupCollapsed!(id, true); controller.setGroupCollapsed!(id, false); });
+  // Reopening reserves the default preview width; make room even for a very wide manual side.
+  act(() => { width = 1800; resizeDock(api, width); });
+  expect(sides[index].width).toBe(expected);
+  expect(sides[1 - index].width).toBe(index === 0 ? 330 : 310);
+});
+
 it.each([648, 703, 720])("keeps both column dividers draggable after repeated resizing at %ipx", (compactWidth) => {
   let width = 1400;
   const host = mount("repeat-column-drag", {}, { panels: MVP_PANEL_IDS, fixedLayout: true, dockWidth: () => width });
