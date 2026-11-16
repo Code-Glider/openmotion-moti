@@ -220,11 +220,12 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
   `navigation` (previous/next). `detail_view_id`, `copy_attempt_id`,
   `download_attempt_id` and `search_id` are random UUIDs that tie a click to its
   result. Recreate and Recreate-and-submit report `start_use` with
-  `template_action`; the instruction panel's Copy reports `copy_instruction`;
-  every copy reports `template_instruction_copy_result`, and only
-  `clipboard_written` is a successful copy. `host_product` and `target_agent`
-  name the instruction variant that was copied (the library builds the Codex
-  one), not the client the user later pastes it into. A category or filter option is sent
+  `template_action` and copy that same instruction; the instruction panel has no
+  Copy control of its own, so no separate copy click is reported. Every copy
+  reports `template_instruction_copy_result`, and only `clipboard_written` is a
+  successful copy. `host_product` names the instruction variant that was copied
+  (the library builds the Codex one), not the client the user later pastes it
+  into. A category or filter option is sent
   as a lowercase slug of the stable catalogue value and omitted when it cannot be
   reduced to one. `template_search_result.search_keyword` is the one free-text
   field in the registry: the settled search-box value, trimmed and capped at 100

@@ -461,7 +461,6 @@ it('reports the library funnel with registered fields: library, card open, detai
   expect(events('ui_click', { element: 'start_use' })).toEqual([expect.objectContaining({ template_action: 'recreate', template_id: 'one', detail_view_id: shown.detail_view_id })]);
   expect(events('ui_click', { element: 'select_template' })).toHaveLength(0);
   expect(events('ui_click', { element: 'copy_template' })).toHaveLength(0);
-  expect(events('ui_click', { element: 'copy_instruction' })).toHaveLength(0);
   expect(events('template_instruction_copy_result')).toEqual([expect.objectContaining({ copy_status: 'clipboard_written', host_product: 'codex', instruction_kind: 'template_use', template_id: 'one' })]);
   await act(async () => button('Recreate and submit', detail).click());
   expect(events('ui_click', { element: 'start_use', template_action: 'recreate_submit' })).toHaveLength(1);
