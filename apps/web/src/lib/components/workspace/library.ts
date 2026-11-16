@@ -84,6 +84,8 @@ export class Library {
     this.element.hidden = !active;
     this.element.inert = !active;
     if (!active) {
+      if (this.flight)
+        this.status.textContent = this.catalog ? "刷新已暂停 · 保留上次目录，可刷新重试" : "目录读取已暂停";
       this.epoch++;
       this.controller?.abort();
       this.flight = undefined;
