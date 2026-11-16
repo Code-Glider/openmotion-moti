@@ -63,3 +63,30 @@ test('final presentation timeout preserves file verification and pending editor 
   assert.match(verification.content, /Replay from the beginning/);
   assert.match(native.content, /only a visible preview with the latest content actually inspected can be `confirmed`/);
 });
+
+test('cold-start scoped examples expose only the shared methods needed by each request', async () => {
+  const context = await getWorkflow('context');
+  const cases = [
+    { request: '局部改字', sections: ['edit', 'production', 'native', 'review'] },
+    { request: '换已选现成音乐', sections: ['edit', 'materials', 'production', 'sound', 'review', 'native'] },
+    { request: '原样模板，明确要 HTML／工程文件', sections: ['production', 'native', 'verification'] },
+    { request: '原样模板，明确要 MP4', sections: ['verification'] },
+  ];
+  for (const { request, sections } of cases) {
+    const row = context.content.split('\n').find(line => line.startsWith(`| ${request}`));
+    assert.ok(row, request);
+    const references = workflowReferences(row, context.documentId);
+    assert.deepEqual(references.map(reference => reference.section), sections, request);
+    for (const reference of references) {
+      assert.equal(reference.workflow, 'production');
+      const response = JSON.parse((await readWorkflowResource(`openmotion://workflow/${reference.workflow}/${reference.section}`, '/unused')).text);
+      assert.equal(response.documentId, reference.documentId);
+      assert.ok(!response.references.some(target => target.workflow === 'director'), request);
+    }
+  }
+  const unchanged = await getWorkflow('unchanged', 'template');
+  assert.deepEqual(unchanged.references.map(reference => reference.section), ['production', 'verification', 'native']);
+  assert.match(unchanged.content, /HTML\/project-only requests finish[\s\S]*without an export or MP4 playback task/);
+  assert.match(unchanged.content, /Read the engine authoring guide, creative review, material selection and edit references when the task actually needs authoring or a detected defect/);
+  assert.match(context.content, /`references` 是发现索引，不代表每个目标都必读/);
+});

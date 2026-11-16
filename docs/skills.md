@@ -98,6 +98,10 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 一期公开接口已收敛为 [12 个 openmotion_ Tool](mcp-phase1-tools.md)（9 个工程 Tool、目录获取、模板详情与 media-use）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
 
+## Shared production reading scope
+
+Common engineering rules live in production; selected creative entries own their sequence and creative design. The context's [scoped reading examples](../skills/openmotion-production/references/context.md#按范围收紧读集的例子) distinguish local wording edits, existing-music replacement and unchanged HTML/MP4 delivery. Registered references expose available documents, not a recursive mandatory read set. Typography/font resources, original action design and sound narrative design are conditional; technical checks, final-file playback and actual display evidence keep their existing requirements. Deterministic document/registry checks establish that these paths are available, not that every host Agent will follow them or that a film improved.
+
 ## openmotion-recreate 能力扩展点
 
 复刻目前只支持动态图形。下表是目前已发现的、写死当前能力的位置，不保证穷举。接入 TTS、图片或视频生成模型，或支持实拍/口播/AI 视频时，先按此表修改，再全文检索 `generation Tool`、`phase-one`、`motion graphics` 等字样补漏，并按新能力重新跑评测；新增的能力限制也应写进这些位置，不散落到其他段落。

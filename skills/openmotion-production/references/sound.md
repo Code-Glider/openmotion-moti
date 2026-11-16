@@ -1,6 +1,6 @@
-# Sound execution and audiovisual checks
+# 声音执行与声画核对
 
-Use for implementing established sound decisions, audio-track edits and checking actual audiovisual timing. Preserve the selected workflow, locked picture and existing intent; this page does not initiate sound narrative redesign.
+用于落实既定声音决定、工程音轨调整和实际声画时序核对。沿用所选流程、锁定画面与既有意图，不因本页重启声音叙事设计。
 
 ## 制作与受限修改
 

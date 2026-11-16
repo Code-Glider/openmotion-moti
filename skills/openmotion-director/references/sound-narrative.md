@@ -33,11 +33,11 @@
 
 ## 制作与受限修改
 
-Apply [shared sound execution](../../openmotion-production/references/sound.md) for locked picture, stems, timing anchors, loudness comparison and evidence. Reuse its actual audio/picture version records.
+画面锁定、分轨、时间锚点、响度比较与证据统一应用 [共享声音执行](../../openmotion-production/references/sound.md)，复用实际声音／画面版本记录。
 
 ## 审听与比较
 
-Use the same [shared listening and comparison checks](../../openmotion-production/references/sound.md#审听与比较); this section retains the old anchor without maintaining a second contract.
+统一使用 [共享审听与比较规范](../../openmotion-production/references/sound.md#审听与比较)；本节保留旧锚点，不维护第二份正文。
 
 ## 正反例：理由可复用，音色和结构不可照搬
 

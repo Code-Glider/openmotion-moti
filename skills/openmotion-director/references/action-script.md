@@ -114,7 +114,7 @@ When visual language is selected or changed, record the subject-specific materia
 
 #### 声画锚点：有声音职责时使用
 
-Use [shared sound execution and actual timing anchors](../../openmotion-production/references/sound.md#声画锚点有声音职责时使用). Record the selected relation in this script rather than duplicating the anchor contract.
+应用 [共享声音执行与实际时间锚点](../../openmotion-production/references/sound.md#声画锚点有声音职责时使用)，在本脚本记录选定关系，不另抄一套锚点规范。
 
 ### F. 实现交接
 
