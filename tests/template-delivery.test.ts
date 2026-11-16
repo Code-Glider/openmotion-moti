@@ -11,6 +11,16 @@ import { playbackServer, byteRange } from '../skills/openmotion-template-to-vide
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = data => createHash('sha256').update(data).digest('hex');
+// Mirrors WorkspaceStore.files: dotted caches and render outputs are absent, the native manifests are present.
+const revisionBearing = name => ['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json'].includes(name)
+  || !name.split('/').some(part => part.startsWith('.') || ['node_modules', 'renders', 'dist', 'output'].includes(part));
+async function setSource(detail, project, name, data) {
+  await mkdir(path.dirname(path.join(project, name)), { recursive: true });
+  await writeFile(path.join(project, name), data);
+  const entry = { path: name, hash: hash(data) };
+  const index = detail.project.files.findIndex(file => file.path === name);
+  if (index === -1) detail.project.files.push(entry); else detail.project.files[index] = entry;
+}
 async function fixture() {
   const directory = await mkdtemp(path.join(tmpdir(), 'openmotion-template-delivery-'));
   const project = path.join(directory, 'project'); await mkdir(project);
@@ -21,8 +31,7 @@ async function fixture() {
     'renders/old-export.mp4': 'render', 'dist/bundle.js': 'bundle', 'output/export.mp4': 'output' };
   for (const [name, data] of Object.entries(contents)) { await mkdir(path.dirname(path.join(project, name)), { recursive: true }); await writeFile(path.join(project, name), data); }
   const detail = { projectId: '11111111-1111-1111-1111-111111111111', revision: 'a'.repeat(64), currentVersionId: 'version-1',
-    project: { directory: project, entry: 'index.html', files: Object.entries(contents).filter(([name]) => !name.startsWith('.')
-      && !name.split('/').some(part => ['node_modules', 'renders', 'dist', 'output'].includes(part))).map(([name, data]) => ({ path: name, hash: hash(data) })) } };
+    project: { directory: project, entry: 'index.html', files: Object.entries(contents).filter(([name]) => revisionBearing(name)).map(([name, data]) => ({ path: name, hash: hash(data) })) } };
   return { directory, project, detail };
 }
 
@@ -65,6 +74,40 @@ test('refuses source drift, unsafe inventory paths, missing dependencies and for
     await symlink(path.join(f.directory, 'foreign'), path.join(f.project, 'foreign-link'));
     await assert.rejects(packageProject(f.detail, output), /PROJECT_SYMLINK/);
     assert.ok(!(await readdir(f.directory)).includes('delivery'));
+  } finally { await rm(f.directory, { recursive: true, force: true }); }
+});
+
+test('refuses source additions outside the pinned inventory', async () => {
+  const f = await fixture();
+  try {
+    const output = path.join(f.directory, 'delivery');
+    // Studio writes the manifest after the project-detail read, so it is absent from the pinned inventory.
+    await mkdir(path.join(f.project, '.hyperframes'), { recursive: true });
+    await writeFile(path.join(f.project, '.hyperframes/studio-manual-edits.json'), '{"edits":true}');
+    await assert.rejects(packageProject(f.detail, output), /SOURCE_DRIFT: unpinned source file \.hyperframes\/studio-manual-edits\.json/, 'Native manifest added after the project read changes the revision');
+    f.detail.project.files.push({ path: '.hyperframes/studio-manual-edits.json', hash: hash('{"edits":true}') });
+    await writeFile(path.join(f.project, 'compositions/added.html'), '<template><p>Added</p></template>');
+    await assert.rejects(packageProject(f.detail, output), /SOURCE_DRIFT: unpinned source file compositions\/added\.html/, 'Ordinary source added after the project read');
+    assert.ok(!(await readdir(f.directory)).includes('delivery'), 'A refused package leaves no partial output');
+  } finally { await rm(f.directory, { recursive: true, force: true }); }
+});
+
+test('validates quoted CSS imports before declaring dependencies local', async () => {
+  const f = await fixture();
+  try {
+    const output = path.join(f.directory, 'delivery');
+    const page = style => '<html><style>' + style + '</style><script src="vendor/gsap/gsap.min.js"></script></html>';
+    await setSource(f.detail, f.project, 'index.html', page('@import "vendor/missing.css";'));
+    await assert.rejects(packageProject(f.detail, output), /MISSING_DEPENDENCY: index\.html -> vendor\/missing\.css/);
+    await setSource(f.detail, f.project, 'index.html', page('@import "https://cdn.example/sheet.css";'));
+    await assert.rejects(packageProject(f.detail, output), /REMOTE_DEPENDENCY/);
+    await setSource(f.detail, f.project, 'vendor/gsap/theme.css', '@import "base.css";');
+    await setSource(f.detail, f.project, 'index.html', page('@import "vendor/gsap/theme.css";'));
+    await assert.rejects(packageProject(f.detail, output), /MISSING_DEPENDENCY: vendor\/gsap\/theme\.css -> base\.css/, 'Imports resolve relative to the importing stylesheet');
+    await setSource(f.detail, f.project, 'vendor/gsap/base.css', 'body{}');
+    const receipt = await packageProject(f.detail, output);
+    assert.equal(receipt.dependencies, 'local');
+    assert.ok(receipt.files.some(file => file.path === 'HTML/vendor/gsap/base.css'));
   } finally { await rm(f.directory, { recursive: true, force: true }); }
 });
 

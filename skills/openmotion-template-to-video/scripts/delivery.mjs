@@ -20,14 +20,17 @@ async function owningRuntime(explicit) {
 const sha256 = data => createHash('sha256').update(data).digest('hex');
 // Mirrors WorkspaceStore: node_modules/renders/dist/output plus tool caches are not project source.
 const nonSourceDirectories = new Set(['node_modules', 'renders', 'dist', 'output', '.git', '.cache', '.thumbnails', '.history', '.artifacts']);
-// The only .hyperframes entries the workspace treats as source, plus the native history identity.
-const nativeFiles = new Set(['.hyperframes/history-id', '.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json']);
+// The native Studio manifests are the only revision-bearing .hyperframes entries; history-id is editor metadata.
+const nativeManifests = new Set(['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json']);
+const editorMetadata = new Set(['.hyperframes/history-id']);
 const excluded = relative => {
   const parts = relative.split('/');
   if (parts.some(part => nonSourceDirectories.has(part))) return true;
-  if (parts[0] !== '.hyperframes') return false;
-  // The .hyperframes directory itself stays traversable; only its pinned entries are packaged.
-  return relative !== '.hyperframes' && !nativeFiles.has(relative);
+  // Mirrors WorkspaceStore.walk: dotted entries are caches, except the .hyperframes entries handled below.
+  if (parts[0] !== '.hyperframes') return parts.some(part => part.startsWith('.'));
+  // The .hyperframes directory itself stays traversable; only its identity and manifests are packaged.
+  if (relative === '.hyperframes') return false;
+  return !nativeManifests.has(relative) && !editorMetadata.has(relative);
 };
 function safeRelative(value) {
   assert(typeof value === 'string' && value && !value.includes('\\') && !path.posix.isAbsolute(value)
@@ -55,6 +58,9 @@ function validateInventory(detail, files) {
     assert(/^[a-f0-9]{64}$/.test(item.hash), 'INVALID_FILE_HASH: ' + name);
     assert(files.has(name) && sha256(files.get(name)) === item.hash, 'SOURCE_DRIFT: ' + name);
   }
+  // The pinned inventory is the complete revision-bearing file set; a file the workspace added after the
+  // project read changes the revision, so packaging it under the old revision would misreport the source.
+  for (const name of files.keys()) assert(seen.has(name) || editorMetadata.has(name), 'SOURCE_DRIFT: unpinned source file ' + name);
   assert(files.has('index.html'), 'MISSING_HTML_ENTRY');
 }
 function checkDependencies(files) {
@@ -69,6 +75,8 @@ function checkDependencies(files) {
       refs.push(...[...text.matchAll(/\sdata-composition-src\s*=\s*["']([^"']+)["']/gi)].map(match => match[1]));
     }
     refs.push(...[...text.matchAll(/url\(\s*["']?([^\s"')]+)["']?\s*\)/gi)].map(match => match[1]));
+    // CSS also allows quoted @import targets without url(), including inside an HTML <style> block.
+    refs.push(...[...text.matchAll(/@import\s+["']([^"']+)["']/gi)].map(match => match[1]));
     for (const ref of refs) {
       if (/^(?:data:|blob:|#)/i.test(ref)) continue;
       assert(!/^(?:[a-z][\w+.-]*:|\/\/)/i.test(ref), 'REMOTE_DEPENDENCY: ' + name + ' -> ' + ref);
