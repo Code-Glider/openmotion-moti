@@ -427,6 +427,8 @@ export class Phase1Service {
           if (digest(source) !== file.hash) throw new Error('VERSION_CONFLICT');
           if (!/data-composition-id\s*=/.test(source)) return file;
           const stamped = stampHfIdsInPlace(source);
+          // The pinned native stamper writes only when the ID attribute count increases.
+          if ((stamped.match(/\bdata-hf-id=/g) ?? []).length <= (source.match(/\bdata-hf-id=/g) ?? []).length) return file;
           return { ...file, hash: digest(stamped), size: Buffer.byteLength(stamped) };
         }));
         stampedRevision = scoped.revision(files);

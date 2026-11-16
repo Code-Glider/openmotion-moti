@@ -51,6 +51,28 @@ test('guarded preview accepts native ID stamping and returns its current version
   }
 }, false));
 
+test('guarded preview preserves empty IDs when native stamping adds no attributes in a secondary file', () => fixture(async store => {
+  const service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async id => stampProjectHfIds(store.projectDirectoryFor(id)),
+    mutation: async task => task(), cancel: async () => {},
+  });
+  const created = await create(service);
+  const secondary = '<div data-composition-id="secondary" data-hf-id=""><span data-hf-id="">Secondary</span></div>';
+  const current = await service.call('openmotion_edit_project', {
+    projectId: created.projectId, requestId: 'empty-secondary-ids', expectedRevision: created.revision, expectedVersionId: created.currentVersionId,
+    files: [{ path: 'compositions/secondary.html', content: secondary }],
+  });
+  const opened = await service.call('openmotion_open_preview', { projectId: current.projectId, expectedRevision: current.revision, expectedVersionId: current.version.versionId });
+  assert.notEqual(opened.revision, current.revision);
+  assert.equal(opened.currentVersionNumber, current.version.versionNumber + 1);
+  assert.match(opened.project.html, /data-hf-id=/);
+  assert.equal(await readFile(path.join(store.projectDirectoryFor(current.projectId), 'compositions/secondary.html'), 'utf8'), secondary);
+  const repeated = await service.call('openmotion_open_preview', { projectId: opened.projectId, expectedRevision: opened.revision, expectedVersionId: opened.currentVersionId });
+  assert.equal(repeated.revision, opened.revision);
+  assert.equal(repeated.currentVersionId, opened.currentVersionId);
+}, false));
+
 test('guarded preview rejects real edits and same-content restores made during native opening', () => fixture(async store => {
   let opening: (id: string) => Promise<void> = async () => {};
   const service = new Phase1Service(store, pluginRoot, {
