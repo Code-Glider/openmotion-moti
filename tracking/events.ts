@@ -48,7 +48,7 @@ export const omEvents = {
   ui_click: { producers: ['studio'], fields: { page_name: ['home', 'studio'],
     area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
-      'open_detail', 'start_use', 'copy_instruction', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
+      'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source'],
     interaction_method: ['pointer', 'keyboard'], ...template,

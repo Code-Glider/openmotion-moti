@@ -27,6 +27,10 @@ interface TooltipProps {
   side?: "top" | "bottom" | "left" | "right";
   /** Wraps a long label at a reading width and cuts it at this many lines with an ellipsis. Unset, one line. */
   lines?: number;
+  /** Wrap the complete label without clamping it. */
+  wrap?: boolean;
+  /** Keep this tooltip in its trigger's native dialog top layer. Opt-in for modal consumers. */
+  withinDialog?: boolean;
 }
 
 /** Matches the old bubble's gap from its trigger, and its viewport margin. */
@@ -41,6 +45,8 @@ export function Tooltip({
   side = "top",
   disabled = false,
   lines,
+  wrap = false,
+  withinDialog = false,
 }: TooltipProps) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLSpanElement>(null);
@@ -53,7 +59,8 @@ export function Tooltip({
           "aria-describedby": open && !disabled ? tooltipId : children.props["aria-describedby"],
         })}
       </BaseTooltip.Trigger>
-      <BaseTooltip.Portal>
+      {/* Native modal dialogs make body portals inert and paint above them. */}
+      <BaseTooltip.Portal container={withinDialog ? boxRef.current?.closest("dialog") ?? undefined : undefined}>
         <BaseTooltip.Positioner
           anchor={() => boxRef.current?.firstElementChild ?? null}
           side={side}
@@ -66,7 +73,7 @@ export function Tooltip({
             role="tooltip"
             className={cn(
               "studio-tooltip pointer-events-none rounded-md border border-border-input bg-surface px-2 py-1 text-step-10 font-medium text-text-1 shadow-menu",
-              lines || description ? "max-w-[300px] whitespace-normal break-words" : "whitespace-nowrap",
+              lines || description || wrap ? "max-w-[300px] whitespace-normal break-words" : "whitespace-nowrap",
               description && "px-3 py-2",
               floatingMotion("duration-tooltip"),
             )}

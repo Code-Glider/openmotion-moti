@@ -26,6 +26,13 @@ test('setup works before local discovery and never copies machine-local details'
   assert.match(prompt, /service is stopped/);
   assert.match(prompt, /Configuration alone does not prove connection/);
   assert.match(prompt, /Wait for my creative brief/);
+  assert.match(prompt, /same turn/);
+  assert.match(prompt, /prepare the welcome and video cards first/);
+  assert.match(setupPrompt(null, 'codex', 'zh-CN'), /在本轮完成引导/);
+  for (const host of ['claude', 'deepseek', 'mcp'] as const) {
+    assert.doesNotMatch(setupPrompt(null, host, 'en'), /welcome and video cards/);
+    assert.doesNotMatch(setupPrompt(null, host, 'zh-CN'), /视频卡片/);
+  }
 });
 
 test('public setup retains repository and published catalog environments', () => {
