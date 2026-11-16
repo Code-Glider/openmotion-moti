@@ -314,6 +314,10 @@ it("previews verified source without a project, creates independently with exact
   expect((await client.execute("project_read", second)).files).toEqual(project.files);
   expect((await client.execute("project_read", owner)).files.find((f) => f.path === "index.html")?.content).toBe(draft);
   const fragment = new URL(page.url()).hash;
+  await page.getByLabel("预览状态", { exact: true }).filter({ hasText: "预览就绪" }).waitFor();
+  // Drain the actual document before cold-stopping its resource authority.
+  // Workspace readiness acknowledges creation; it does not acknowledge native frame startup.
+  await page.goto("about:blank");
   await manager.close();
   await start();
   const restarted = (await (await fetch(new URL("/bootstrap.json", url))).json()) as Config,
