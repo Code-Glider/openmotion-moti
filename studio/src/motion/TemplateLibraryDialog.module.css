@@ -77,11 +77,7 @@
 .empty button { text-decoration: underline; }
 .detail { position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; background: var(--library-bg); color: var(--library-fg); overflow: hidden; }
 .detail::backdrop { background: var(--motion-overlay); backdrop-filter: blur(12px); }
-.detailGrid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; height: 100%; }
-.detail[data-history-navigation="true"][open] { display: flex; flex-direction: column; }
-.detail[data-history-navigation="true"] .detailGrid { position: relative; flex: 1; min-height: 0; height: auto; }
-.historyHeader { display: flex; align-items: center; gap: var(--motion-space-8); min-height: var(--motion-space-40); padding: var(--motion-space-4) var(--motion-space-8); flex-shrink: 0; }
-.historyHeader :global(.motion-brand-lockup) { height: var(--motion-space-16); }
+.detailGrid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 360px; height: 100%; }
 .stage { --stage-media-height: calc(100dvh - 100px); position: relative; display: flex; align-items: center; justify-content: center; padding: 24px; min-width: 0; overflow: hidden; background: var(--color-template-preview-bg); isolation: isolate; }
 .ambient { position: absolute; inset: -10%; width: 120%; height: 120%; object-fit: cover; filter: blur(55px); opacity: .55; z-index: -2; pointer-events: none; }
 .stageGlass { position: absolute; inset: 0; background: var(--motion-gallery-stage-wash); backdrop-filter: blur(22px) saturate(.8); z-index: -1; }

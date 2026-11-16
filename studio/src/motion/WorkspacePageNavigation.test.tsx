@@ -158,19 +158,24 @@ it('uses the header controls for visited pages, preserves Forward on reload and 
   await click('Help'); expect(historyButton('Forward').disabled).toBe(true);
 });
 
-it('keeps history controls inside the active template dialogs', async () => {
+it('keeps gallery history controls while headerless template previews retain browser navigation', async () => {
   const library = 'dialog[aria-label="Template library"] > div > header';
-  const detail = 'dialog[aria-label="Template preview"] > header';
+  const detail = 'dialog[aria-label="Template preview"]';
   await mount(); await click('MCP · Connect Agent'); await click('Explore templates');
+  expect(historyButton('Back', library).hasAttribute('title')).toBe(false);
+  await act(async () => { historyButton('Back', library).focus(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('dialog[aria-label="Template library"] [role="tooltip"]')?.textContent).toBe('Back');
   await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
-  expect(historyButton('Back', detail).hasAttribute('title')).toBe(false);
+  expect(container.querySelector(`${detail} > header`)).toBeNull();
+  expect(container.querySelector(`${detail} .om-history-navigation`)).toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Close template preview"]`)).not.toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Previous template"]`)).not.toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Next template"]`)).not.toBeNull();
   expect(historyButton('Back').title).toBe('Back');
-  await act(async () => { historyButton('Back', detail).focus(); await new Promise(resolve => setTimeout(resolve, 0)); });
-  expect(container.querySelector('dialog[aria-label="Template preview"] [role="tooltip"]')?.textContent).toBe('Back');
-  await clickHistory('Back', detail); expect(page().template).toBeNull();
+  await traverse(-1); expect(page().template).toBeNull();
   expect(historyButton('Forward', library).disabled).toBe(false);
   await clickHistory('Forward', library); expect(page().template).toBe('product-promo');
-  await clickHistory('Back', detail); await clickHistory('Back', library);
+  await traverse(-1); await clickHistory('Back', library);
   expect(page()).toMatchObject({ settings: 'mcp', templates: false });
 });
 
