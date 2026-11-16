@@ -232,7 +232,7 @@ test('account device authorization, billing, remote models and all media outputs
   await gateway.close();
 }));
 
-test('account music and one-image editing run the matching connector commands', t => fixture(async store => {
+test('account music, default-voice speech and one-image editing run the matching connector commands', t => fixture(async store => {
   await chmod(binary, 0o755);
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
@@ -290,6 +290,11 @@ test('account music and one-image editing run the matching connector commands', 
   assert.deepEqual(libraryCall.slice(0, 2), ['image', 'edit']);
   assert.match(libraryCall[libraryCall.indexOf('--image') + 1], /reference\.png$/);
   assert.equal((await submissions()).length, 3, 'The replay submits no additional paid operation');
+
+  // A checked account speech model falls back to its first voice when the caller names none.
+  const speech = await mediaUse(store, { ...music, model: 'elevenlabs-v3', mode: 'text-to-speech', prompt: 'Welcome', parameters: {}, requestId: 'account-default-voice' });
+  assert.equal((await finish(store, speech.job.id)).state, 'completed');
+  assert.deepEqual((await submissions()).at(-1)?.slice(-2), ['--voice', '21m00Tcm4TlvDq8ikWAM']);
 }));
 
 test('account media failures report the service reason without connector output', t => fixture(async store => {

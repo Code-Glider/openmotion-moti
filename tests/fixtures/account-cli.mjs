@@ -123,7 +123,7 @@ if (args[0] === 'login') {
 // The connector reports speech and music models as `audio_speech` / `audio_music`.
 // Only `fixture-image` publishes `edits`; `fixture-image-basic` generates without input images.
 else if (args[0] === 'media') json({ models: [...['image', 'video', 'audio'].map(kind => ({ model: `fixture-${kind}`, kind: kind === 'audio' ? 'audio_speech' : kind, enabled: true, capabilities: kind === 'image' ? { edits: true, max_input_images: 4 } : {} })),
-  { model: 'fixture-image-basic', kind: 'image', capabilities: { edits: false, max_input_images: 0 } }, { model: 'fixture-music', kind: 'audio_music', capabilities: {} }] });
+  { model: 'fixture-image-basic', kind: 'image', capabilities: { edits: false, max_input_images: 0 } }, { model: 'fixture-music', kind: 'audio_music', capabilities: {} }, { model: 'elevenlabs-v3', kind: 'audio_speech', capabilities: {} }] });
 else if (args[1] === 'get') {
   // A failed result download after the task was accepted.
   if (mode() === 'media-get-502') { console.error('Error: media download failed after 3 attempts: private detail (provider_error, HTTP 502)'); process.exit(1); }

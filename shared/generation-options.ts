@@ -12,6 +12,23 @@ const number = (key: string, label: string, value?: number, min?: number, max?: 
 const toggle = (key: string, label: string, value = false): GenerationOption => ({ key, label, kind: 'boolean', default: value });
 const text = (key: string, label: string, required = false): GenerationOption => ({ key, label, kind: 'text', required });
 
+/** OpenDesign speech voices that produced audio through the media API on 2026-11-16; the first is the default.
+ * Seed TTS 2.0 accepts only its 2.0 (`*_uranus_bigtts`) speakers: 1.0 speakers fail with a resource mismatch. */
+const cloudSpeechVoices: Record<string, { value: string; label: string }[]> = {
+  'byteplus-tts-2': [{ value: 'zh_female_vv_uranus_bigtts', label: 'Vivi · Chinese female' }],
+  'elevenlabs-v3': [
+    ['21m00Tcm4TlvDq8ikWAM', 'Rachel · Female'], ['JBFqnCBsd6RMkjVDRZzb', 'George · Male'], ['EXAVITQu4vr4xnSDxMaL', 'Sarah · Female'],
+    ['pNInz6obpgDQGcFmaJgB', 'Adam · Male'], ['nPczCjzI2devNBz1zQrb', 'Brian · Male'], ['pFZP5JQG7iQjIQuC4Bku', 'Lily · Female'],
+  ].map(([value, label]) => ({ value, label })),
+};
+const cloudSpeech = (model: Model) => ['opendesign', 'account'].includes(model.provider) && model.mode === 'text-to-speech';
+/** Parameters a request starts from: the model's saved defaults, and for OpenDesign speech its first checked voice.
+ * The voice stays out of `model.defaults`, so Settings never shows or saves it as a user override. */
+export function modelDefaults(model: Model): Record<string, unknown> {
+  const voice = cloudSpeech(model) ? cloudSpeechVoices[model.modelId]?.[0].value : undefined;
+  return voice ? { voice, ...model.defaults } : { ...model.defaults };
+}
+
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
  * An unknown catalogue model deliberately gets no guessed schema. */
 export function generationOptions(model: Model): GenerationOptions | undefined {
@@ -48,7 +65,8 @@ export function generationOptions(model: Model): GenerationOptions | undefined {
     choice('voice', 'Speech voice', ['af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa'], 'af_heart'),
     number('speed', 'Speech speed', 1, undefined, undefined, 0.1),
   ];
-  if (['opendesign', 'account'].includes(model.provider) && model.mode === 'text-to-speech') fields = [text('voice', 'Voice ID', true)];
+  // Speech models without checked voices keep a free voice ID: the API publishes no voice list.
+  if (cloudSpeech(model)) { const voices = cloudSpeechVoices[model.modelId]; fields = [voices ? { key: 'voice', label: 'Speech voice', kind: 'choice', choices: voices, default: voices[0].value } : text('voice', 'Voice ID', true)]; }
   // The connector's `audio music --duration` takes whole seconds; music models publish no duration range.
   if (model.provider === 'account' && model.modality === 'audio' && model.mode === 'text-to-audio') fields = [number('duration', 'Duration (seconds)', undefined, 1)];
   return fields ? { delivery: 'provider', fields } : undefined;
