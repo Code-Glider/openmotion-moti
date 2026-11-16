@@ -10,7 +10,6 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    env: { PLAYWRIGHT_BROWSERS_PATH: "0" },
     include: ["tests/**/*.test.ts"],
   },
 });

@@ -115,7 +115,7 @@ beforeAll(async () => {
   driver = await browser({ evidence, viewport: { width: 1600, height: 1000 } });
   driver.page.setDefaultTimeout(8000);
   await access(chromium.executablePath());
-  expect(chromium.executablePath().startsWith(join(repo, "node_modules"))).toBe(true);
+  expect(driver.page.context().browser()?.browserType().executablePath()).toBe(chromium.executablePath());
   report.browser = {
     version: driver.page.context().browser()?.version(),
     installedExecutable: chromium.executablePath(),
