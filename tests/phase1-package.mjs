@@ -93,7 +93,8 @@ try{
  const fromLibrary=await tool('openmotion_assets',{action:'import_to_project',projectId:p.projectId,requestId:'asset-project-import',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId});
  assert.equal(fromLibrary.status,'completed');assert.ok(fromLibrary.revision!==restored.revision);
  assert.equal(fromLibrary.items[0].sha256,wavSha256);
- const preview=await tool('openmotion_open_preview',{projectId:p.projectId});assert.equal((await fetch(preview.previewUrl)).status,200);
+ const beforePreview=await tool('openmotion_get_project',{projectId:p.projectId});
+ const preview=await tool('openmotion_open_preview',{projectId:p.projectId,expectedRevision:beforePreview.revision,expectedVersionId:beforePreview.currentVersionId});assert.equal((await fetch(preview.previewUrl)).status,200);assert.equal(preview.previewHandoff.versionId,preview.currentVersionId);
  const current=await tool('openmotion_get_project',{projectId:p.projectId});
  const frame=await tool('openmotion_open_preview',{action:'begin',mode:'modify',projectId:p.projectId,requestId:'inline-round'});
  const exported=await tool('openmotion_export_request',{projectId:p.projectId,workId:frame.inlineWork.id,requestId:'export',expectedRevision:current.revision,versionId:current.currentVersionId,audio:'required'});
