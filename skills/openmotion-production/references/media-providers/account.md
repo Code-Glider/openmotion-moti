@@ -10,7 +10,7 @@ Call `openmotion_media_use` with `action=inspect`, then `action=reference, provi
 {"action":"generate","provider":"account","projectId":"PROJECT_ID","requestId":"account-image-one","model":"CATALOGUE_MODEL_ID","modality":"image","prompt":"A ceramic cup","parameters":{}}
 ```
 
-Image parameters supported by the connector boundary: `aspect_ratio`, `resolution`, `quality`, `size`. Video uses `modality=video`, and accepts `ratio`, `resolution`, `duration`, `generate_audio`. Speech uses `modality=audio`, `mode=text-to-speech`, and requires `parameters.voice`; other audio operations are not claimed. Unsupported parameters fail before submission.
+Image parameters supported by the connector boundary: `aspect_ratio`, `resolution`, `quality`, `size`. `aspect_ratio` and `resolution` must be given together as a pair the model publishes, `size` cannot be combined with them, and `quality` must be one of the model's values; the connector rejects other combinations before submission. Omit them to use the model default. Video uses `modality=video`, and accepts `ratio`, `resolution`, `duration`, `generate_audio`. Speech uses `modality=audio`, `mode=text-to-speech`, and requires `parameters.voice`; other audio operations are not claimed. Unsupported parameters fail before submission.
 
 The service executes one `image gen`, `video gen` or `audio speech` command with `--model`, `--prompt`, `--no-wait`, `--json`. It saves the returned task_id, polls only that task through the corresponding `get`, and validates the downloaded file before importing it into the original project. Poll local `action=status` with the original projectId/jobId; do not submit another task to check progress. Local requestId replay returns the original job.
 

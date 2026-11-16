@@ -275,8 +275,10 @@ export class OpenDesignAccount {
     const media = JSON.parse(await this.run(['media', 'models', '--json']));
     if (!Array.isArray(media.models)) throw new Error('OpenDesign media catalogue is unavailable');
     for (const row of media.models) {
-      if (typeof row.model !== 'string' || !/^[\w./:-]{1,180}$/.test(row.model) || !['image', 'video', 'audio'].includes(row.kind)) continue;
-      models.push({ id: 'account:' + row.model, provider: 'account', modelId: row.model, label: row.model, kind: row.kind, enabled: row.enabled !== false, source: 'live', mode: row.kind === 'audio' ? 'text-to-speech' : `text-to-${row.kind}` });
+      // The connector reports speech models as `audio_speech`; music models are not supported here.
+      const kind = ({ image: 'image', video: 'video', audio_speech: 'audio' } as const)[row.kind as 'image' | 'video' | 'audio_speech'];
+      if (typeof row.model !== 'string' || !/^[\w./:-]{1,180}$/.test(row.model) || !kind) continue;
+      models.push({ id: 'account:' + row.model, provider: 'account', modelId: row.model, label: row.model, kind, enabled: row.enabled !== false, source: 'live', mode: kind === 'audio' ? 'text-to-speech' : `text-to-${kind}` });
     }
     if (generation !== this.generation) return [];
     await this.commit(generation, async () => {
@@ -310,8 +312,10 @@ export class OpenDesignAccount {
       await delay(this.options.pollMs ?? 2000, undefined, { signal });
       if (job.providerOrigin !== await this.identity()) throw new Error('Account changed; check the original task before retrying');
       const task = JSON.parse(await this.run([kind, 'get', taskId, '--output', output, '--json'], signal));
-      if (task.task_id !== taskId) throw new Error('Account provider returned an unexpected task');
-      if (task.status === 'succeeded') {
+      // `image get` prints the task while it runs, then the downloaded asset (no task ID) once it has succeeded.
+      const imageReady = kind === 'image' && task.task_id === undefined && typeof task.asset_id === 'string' && task.status === 'ready';
+      if (task.task_id !== taskId && !imageReady) throw new Error('Account provider returned an unexpected task');
+      if (task.status === 'succeeded' || imageReady) {
         const info = await lstat(output);
         if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024 * 1024) throw new Error('Invalid account media output');
         return [await readFile(output)];

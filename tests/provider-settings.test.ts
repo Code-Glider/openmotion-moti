@@ -98,6 +98,7 @@ test('account device authorization, billing, remote models and all media outputs
   assert.equal((await stat(path.join(account.home, 'config.json'))).mode & 0o777, 0o600);
   const directory = await providerDirectory(gateway);
   assert(directory.providers.find(p => p.id === 'account')?.available); assert.equal(directory.models.find(m => m.modelId === 'disabled-one')?.enabled, false);
+  assert.equal(directory.models.find(m => m.modelId === 'fixture-audio')?.kind, 'audio'); assert.equal(directory.models.some(m => m.modelId === 'fixture-music'), false);
   for (const kind of ['image', 'video', 'audio'] as const) {
     const args = { action: 'generate', provider: 'account', model: `fixture-${kind}`, projectId: store.projectId, modality: kind, prompt: 'hello', parameters: kind === 'audio' ? { voice: 'test-voice' } : {}, requestId: 'account-' + kind };
     const queued = await mediaUse(store, args); const completed = await finish(store, queued.job.id);
