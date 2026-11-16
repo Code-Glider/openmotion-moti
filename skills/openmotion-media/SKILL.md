@@ -37,8 +37,8 @@ Choose the modality from what must physically change on screen or in the mix:
 
 - **Still image (`modality: "image"`)**: photographic settings, hero product frames, cutouts or backdrop plates where native HTML/CSS/GSAP camera and layer motion carry the choreography.
 - **Video (`modality: "video"`)**: continuous subject or environmental footage that native graphics cannot represent directly. Keep text, UI, charts, logos and captions as native editable HTML/SVG overlays above the video plate rather than baking copy into generated video pixels.
-- **Speech (`modality: "audio"`)**: spoken narration or dialogue. Set top-level `mode` (`"text-to-speech"` or `"text-to-audio"`) according to the selected provider guide and model input schema (for example `"text-to-speech"` when the model expects `text`, or `"text-to-audio"` when a speech model such as `fal-ai/kokoro/*` expects `prompt`). When captions, visual beats or scene cuts synchronize to individual lines, generate one audio file per sentence or beat within the target duration budget rather than estimating cue timestamps from one monolithic file.
-- **Music / sound (`modality: "audio"`)**: background beds, stings or ambient audio where supported by the enabled provider.
+- **Speech (`modality: "audio"`)**: spoken narration or dialogue. Use the discovered speech model mode (`"text-to-speech"`) and its native options. The adapter maps the prompt to the model’s actual input field; an input named `text` does not by itself mean speech (some sound-effect models also use it). When captions, visual beats or scene cuts synchronize to individual lines, generate one audio file per sentence or beat within the target duration budget rather than estimating cue timestamps from one monolithic file.
+- **Music / sound (`modality: "audio"`)**: background beds, stings or ambient audio where supported by the enabled provider. Use a music or sound-effect model with `mode: "text-to-audio"`. BGM is a use of music, not a separate generation mode. Do not switch to a speech model or require a voice for music/SFX; use the selected model’s native duration, looping and instrumental parameters.
 
 Run read-only discovery and obtain consent before submitting any paid generation request:
 
@@ -66,6 +66,10 @@ Classify failures from the actual status, error code and stage before deciding t
 - **Unexposed route vs missing resource (`404`)**: distinguish a gateway origin where `/api/v1/media/*` is not deployed on that environment from an unknown model slug or expired remote task ID.
 - **Timeouts and interrupted polling**: distinguish submit timeout, status-poll timeout and media-download timeout. After an unknown outcome, query `action: "status"` on the original `jobId` (or replay the exact `requestId` with identical inputs) before proposing any new billable submission. Changing prompt, model or parameters requires a new `requestId`.
 - **Tell the user the next step in plain language**: a `401` / `403` marks the saved key rejected, so ask them to replace it in **Model providers** / **模型供应商**; an error whose text names balance, credit, quota or insufficient funds means topping up in that provider's own console; for any other failure, relay the provider's message briefly without guessing a cause. Keep assets that already finished and offer the same choices as for a missing kind for the failed part.
+
+## Reference-image editing
+
+For a project image model with `supportsImageReference: true`, import the reference with `openmotion_import_assets` if it is not already in the project. Pass its project-relative path as top-level `referenceAsset` to `openmotion_media_use` with `action: "generate"`, `modality: "image"` and the editable model. This accepts one PNG/JPEG/WebP under 20 MB and snapshots its bytes when queued; later source changes do not change the task. The source image is never overwritten. A model without implemented editing support fails before a provider submission. The `action: "reference"` operation reads provider guidance; it does not supply a picture. Workspace-library references and local Codex image editing remain available through `openmotion_assets_use`, with pinned asset/version IDs.
 
 ## 3. Sync project state, probe specifications and inspect outputs
 

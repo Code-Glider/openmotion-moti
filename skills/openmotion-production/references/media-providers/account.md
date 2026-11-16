@@ -17,3 +17,13 @@ Image editing: an image model returned with `supportsImageReference: true` (its 
 The service executes one `image gen`, `image edit` (with `--image` set to the snapshotted reference), `video gen`, `audio speech` or `audio music` command with `--model`, `--prompt`, `--no-wait`, `--json`. It saves the returned task_id, polls only that task through the corresponding `get`, and validates the downloaded file before importing it into the original project, or, for an `openmotion_assets` job, before adding it as a new library asset version. Poll with the tool that queued the job: `openmotion_media_use action=status` with the original projectId/jobId, or `openmotion_assets action=status` with the jobId; then place a library result with `openmotion_assets action=import_to_project`. Do not submit another task to check progress. Local requestId replay returns the original job.
 
 Account session identity is captured when queuing. Signing out or switching identity prevents an old queued task from submitting under a new account. If `inspect` reports the `account` provider unavailable because the OpenDesign sign-in expired, ask the user to sign in again under **Settings → Account**. Account tasks queued before that fail without submission; resubmit them after the new sign-in. Failed CLI calls omit private stderr and cannot establish the exact remote error. Check account connectivity, available credits and original task history before retrying. Cancellation stops local work; it does not prove a remote cancellation or refund. Interrupted/uncertain paid requests are never automatically resubmitted or routed to another provider.
+
+## Project reference-image calls
+
+`openmotion_media_use` also exposes the existing account image-edit operation. Discover an image model with `supportsImageReference: true`, import a reference into the explicit project, then generate with its project-relative path:
+
+```json
+{"action":"generate","provider":"account","projectId":"project","requestId":"account-reference-01","model":"YOUR_EDITABLE_MODEL_ID","modality":"image","prompt":"Keep the cup shape and make it blue","referenceAsset":"assets/cup.png","parameters":{}}
+```
+
+The service snapshots one PNG/JPEG/WebP under 20 MB and invokes the connector’s image-edit command with that copy. The original stays unchanged. Unsupported models, unsafe paths and invalid media fail locally; repeating the same request returns the original job. Account speech/music modes follow the discovered model operation; generic provider audio endpoints additionally support model-specific sound effects where documented.

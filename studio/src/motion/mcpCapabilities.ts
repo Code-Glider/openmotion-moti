@@ -19,6 +19,8 @@ export const mcpBenefits = [
 ] as const;
 
 export const mcpFaq = [
+  ['Can I generate from a reference image?', 'Yes, with an image model that supports editing. Import the picture into the project and ask the Agent to use its project path as referenceAsset. One PNG, JPEG or WebP under 20 MB is supported; the original stays unchanged.'],
+  ['Which audio can I generate?', 'Speech, music and sound effects depend on the selected model and provider. BGM uses a music model. Use the discovered model mode and native parameters; an audio connection does not imply support for every audio operation.'],
   ['Can I continue with another Agent?', 'Yes. Connect a compatible Agent to the same workspace and ask it to read the saved project before editing. Projects and assets can be reused; provide any conversation context it needs separately.'],
   ['Which Agents are supported?', 'Use Codex, Claude Code, Cursor, DeepSeek Harness or a desktop client that supports local stdio MCP. Choose your client above for the configuration for this installation. A configured server still needs to be verified inside the Agent.'],
   ['How do I start from a template?', 'Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.'],
