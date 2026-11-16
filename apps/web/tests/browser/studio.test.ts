@@ -356,6 +356,17 @@ describe.sequential("persistent Studio view and native browser controls", () => 
     const page = driver.page;
     await page.getByText("关键帧动画", { exact: true }).click();
     await page.getByLabel("动画属性", { exact: true }).selectOption("x");
+    for (const label of ["文本对齐", "文本装饰"]) {
+      expect(await page.getByLabel(label, { exact: true }).isVisible()).toBe(true);
+      expect(await page.getByLabel(label, { exact: true }).isDisabled()).toBe(true);
+    }
+    await page.getByRole("button", { name: "放弃动画草稿", exact: true }).click();
+    for (const label of ["文本对齐", "文本装饰"]) {
+      expect(await page.getByLabel(label, { exact: true }).isVisible()).toBe(true);
+      expect(await page.getByLabel(label, { exact: true }).isEnabled()).toBe(true);
+    }
+    (report.cases as string[]).push("animation-draft-text-control-visibility");
+    await page.getByLabel("动画属性", { exact: true }).selectOption("x");
     await click("保存动画");
     await page.waitForFunction(
       () =>

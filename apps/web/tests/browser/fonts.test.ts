@@ -315,8 +315,7 @@ it("edits multiline text and visible text styles through unknown saves, inherita
         await ready();
       },
       read = () => client.execute("project_read", owner),
-      editable = () =>
-        page.waitForFunction(() => !document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]')?.readOnly),
+      editable = () => expect.poll(() => page.getByLabel("文本内容", { exact: true }).isEditable()).toBe(true),
       facts = async () => {
         await page.getByLabel("预览状态", { exact: true }).filter({ hasText: "预览就绪" }).waitFor();
         return page
@@ -424,6 +423,11 @@ it("edits multiline text and visible text styles through unknown saves, inherita
     expect(await read()).toEqual(reset);
     await page.reload();
     await ready();
+    await page.getByLabel("图层选择", { exact: true }).selectOption("title");
+    await ready();
+    await editable();
+    expect(await field.isEnabled()).toBe(true);
+    expect(await field.inputValue()).toBe(multiline);
     expect(await read()).toEqual(reset);
     expect(await facts()).toMatchObject({ text: multiline, align: "end", decoration: "none" });
     await driver.capture("reopened-text-inheritance");
@@ -437,6 +441,7 @@ it("edits multiline text and visible text styles through unknown saves, inherita
       untouchedTypography: true,
       stableTextField: true,
       reload: true,
+      reopenedTextEditable: true,
     });
   } catch (error) {
     report.failure = String(error);
