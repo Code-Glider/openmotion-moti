@@ -14,7 +14,7 @@ Model Gateway keeps the existing credentials, providers, OpenDesign account conn
 
 ## APIs
 
-`openmotion_assets_use` is the preferred public protocol-1 tool; `openmotion_assets` retains its original nine-action schema and shares the same records, operation implementations and request receipts. The preferred name adds `read`. Both names are shared by stdio MCP, WebMCP and Studio's `/motion-api/phase1/call` authority:
+`openmotion_assets_use` is the preferred public protocol-1 tool; `openmotion_assets` retains its original operations, adds save-only recovery and shares the same records, operation implementations and request receipts. The preferred name adds `read`. Both names are shared by stdio MCP, WebMCP and Studio's `/motion-api/phase1/call` authority:
 
 | Action | Boundary |
 | --- | --- |

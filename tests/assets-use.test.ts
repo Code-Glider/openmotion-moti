@@ -21,21 +21,24 @@ async function media(directory: string, filename: string, input: string[], outpu
 }
 const image = (dir: string, color: string) => media(dir, color + '.png', ['-f', 'lavfi', '-i', `color=c=${color}:s=32x24`], ['-frames:v', '1']);
 
-test('preferred and compatible asset tools are discovered with ten actions and action-specific validation', () => {
+test('preferred and compatible asset tools are discover save recovery and retain action-specific validation', () => {
   assert.equal(phase1TransportTool({ mcp: phase1McpCapabilities }, 'openmotion_assets_use'), 'openmotion_assets_use');
   assert.equal(phase1TransportTool({ mcp: { protocol: 1, tools: ['openmotion_assets', 'motion_assets'] } }, 'openmotion_assets_use'), undefined);
   const compatible = phase1Tools.find(tool => tool.name === 'openmotion_assets')!;
-  assert.equal(compatible.inputSchema.properties.action.enum.length, 9);
+  assert.equal(compatible.inputSchema.properties.action.enum.length, 10);
   assert.ok(!('timestamps' in compatible.inputSchema.properties));
   for (const name of ['openmotion_assets_use']) {
     const tool = phase1Tools.find(tool => tool.name === name);
     assert.ok(tool, name);
     assert.equal(tool.annotations.readOnlyHint, false);
-    assert.equal(tool.inputSchema.properties.action.enum.length, 10);
+    assert.equal(tool.inputSchema.properties.action.enum.length, 11);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID() }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), timestamps: [Infinity] }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), timestamps: [0, 1, 2, 3, 4] }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'generate', requestId: 'missing-model' }), /INVALID_ARGUMENT/);
+    assert.throws(() => validateInput(tool.inputSchema, { action: 'retry_save', jobId: crypto.randomUUID() }), /INVALID_ARGUMENT/);
+    assert.throws(() => validateInput(tool.inputSchema, { action: 'retry_save', requestId: 'save-only' }), /INVALID_ARGUMENT/);
+    validateInput(tool.inputSchema, { action: 'retry_save', jobId: crypto.randomUUID(), requestId: 'save-only' });
   }
 });
 
