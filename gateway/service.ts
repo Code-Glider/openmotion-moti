@@ -189,7 +189,7 @@ export class ModelGateway {
     }));
     providers.push(...await this.connections.states());
     const account = await this.account.summary();
-    providers.push({ id: 'account', label: 'OpenDesign', enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', reason: account.state === 'signed-in' ? 'Included with your account' : 'Sign in to use your account models' });
+    providers.push({ id: 'account', label: 'OpenDesign', enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', reason: account.state === 'signed-in' ? 'Included with your account' : account.state === 'reauth-required' ? 'OpenDesign sign-in expired; sign in again to use your account models' : 'Sign in to use your account models' });
     const capabilities = modalities.map(kind => {
       const available = models.filter(model => model.modality === kind && providers.find(p => p.id === model.provider)?.available);
       const selected = config.routes[kind] ? available.find(m => m.id === config.routes[kind]) : available.find(m => m.mode.startsWith('text-to-'));
