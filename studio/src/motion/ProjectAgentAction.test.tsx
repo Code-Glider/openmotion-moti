@@ -62,6 +62,21 @@ it('finishes copying when the popover is dismissed during a pending save', async
   expect(document.querySelector('.motion-feedback-layer')?.textContent).toContain('Instruction copied');
 });
 
+it('reopens the dismissed panel when copying fails so the fallback is visible', async () => {
+  let finish!: () => void;
+  state.save.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+  vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Denied'));
+  await open();
+  await act(async () => button('Copy instruction').click());
+  await act(async () => button('Close').click());
+  expect(button('MCP').getAttribute('aria-expanded')).toBe('false');
+  await act(async () => finish());
+  expect(button('MCP').getAttribute('aria-expanded')).toBe('true');
+  const fallback = document.querySelector('textarea')!;
+  expect(fallback.value).toContain('Project ID: project-a');
+  expect(fallback.closest('[hidden], [aria-hidden="true"]')).toBeNull();
+});
+
 it('does not copy when saving fails', async () => {
   state.save.mockRejectedValue(new Error('Conflict'));
   const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();

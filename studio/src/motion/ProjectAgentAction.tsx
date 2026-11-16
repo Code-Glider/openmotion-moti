@@ -40,14 +40,14 @@ export function ProjectAgentAction() {
             <Popover.Title className="text-step-14 font-semibold text-text-1">{t('MCP')}</Popover.Title>
             <Popover.Close render={<IconButton aria-label={t('Close')} icon={<RemixIcon name="close-line" size={16} />} />} />
           </div>
-          {hasOpened && available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} />}
+          {hasOpened && available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} onCopyFailure={() => setOpen(true)} />}
         </Popover.Popup>
       </Popover.Positioner>
     </Popover.Portal>
   </Popover.Root>;
 }
 
-function ProjectAgentContent({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+function ProjectAgentContent({ projectId, onClose, onCopyFailure }: { projectId: string; onClose: () => void; onCopyFailure: () => void }) {
   const { t, locale } = useI18n();
   const { workspace, beforeViewChange, openConnections } = useWorkspaceChrome();
   const { info, failed, retry } = useIntegrationInfo();
@@ -72,6 +72,7 @@ function ProjectAgentContent({ projectId, onClose }: { projectId: string; onClos
       } catch {
         if (!alive.current) return;
         setManualCopy(prompt);
+        onCopyFailure();
         toast.showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback');
       }
     } catch {
