@@ -23,7 +23,7 @@ import { atomicJson, cloneFile, fileHash, jsonFile, ProjectVersions, recoverProj
 import type { ContentVersion } from './phase1-versions.ts';
 import { trackPhase1Result, trackingError, type OmTracking } from './shared/tracking.ts';
 import type { HostContext } from './tracking/host.ts';
-import { WorkRounds } from './inline-video.ts';
+import { WorkRounds, workRoundMode } from './inline-video.ts';
 import { TaskLedger } from './tracking/task-ledger.ts';
 import { uuid } from './tracking/core.ts';
 
@@ -103,8 +103,10 @@ export class Phase1Service {
       }
       trackPhase1Result(this.context.tracking, name, args, undefined, error, host);
       if (this.context.tracking && args?.workId && name !== 'motion_export_cancel') {
-        this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: 'modify', error_code: trackingError(error), stage: name });
-        this.context.tracking.track('host_state_changed', { run_id: args.workId, sequence: 2, state: 'failed', phase: name });
+        const round = args.projectId ? await this.workRounds.get(args.projectId, args.workId).catch(() => null) : null;
+        this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: round?.mode ?? 'modify', error_code: trackingError(error), stage: name });
+        // Only a work round that this failure actually closed is reported as a failed run state.
+        if (round?.state === 'failed') this.context.tracking.track('host_state_changed', { run_id: args.workId, sequence: 2, state: 'failed', phase: name });
       }
       await recordDiagnostic(this.store.directory, { kind: 'mcp_failure', tool: name, requestId: args?.requestId,
         projectId: args?.projectId, message: errorText(error), stack: error instanceof Error ? error.stack : undefined });
@@ -453,7 +455,7 @@ export class Phase1Service {
       if (job?.state === 'cancelled') {
         await this.ledger.terminal(args.jobId, 'cancelled', 'unknown').catch(() => {});
         this.context.tracking?.track('task_terminal', { task_id: args.jobId, task_type: 'export', project_id: args.projectId, outcome: 'cancelled', applied: 'unknown', terminal_at: new Date().toISOString() });
-        if (job.workId) this.context.tracking?.track('host_run_cancelled', { run_id: job.workId, task_type: 'modify', reason_code: 'EXPORT_CANCELLED' });
+        if (job.workId) this.context.tracking?.track('host_run_cancelled', { run_id: job.workId, task_type: await workRoundMode(this.store, args.projectId, job.workId) ?? 'modify', reason_code: 'EXPORT_CANCELLED' });
       }
       return { projectId: args.projectId, job };
     });
@@ -470,9 +472,6 @@ export class Phase1Service {
       if (detail.currentVersionId !== args.versionId || detail.revision !== args.expectedRevision) throw new Error('VERSION_CONFLICT');
       const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio,
         trackingHost: this.context.tracking?.enabled() ? host : undefined });
-      await this.ledger.accept({ task_id: job.id, task_type: 'export', project_id: args.projectId, ...(args.workId ? { run_id: args.workId } : {}),
-        ...(args.requestId && uuid.test(args.requestId) ? { operation_id: args.requestId } : {}), accepted_at: new Date(job.acceptedAt ?? job.createdAt).toISOString(),
-        deadline_at: new Date(job.deadlineAt ?? job.expiresAt).toISOString() });
       if (this.context.tracking) {
         this.context.tracking.track('task_accepted', { task_id: job.id, task_type: 'export', project_id: args.projectId,
           ...(args.workId ? { run_id: args.workId } : {}), ...(args.requestId && uuid.test(args.requestId) ? { operation_id: args.requestId } : {}),

@@ -41,6 +41,7 @@ import type { HostContext } from './tracking/host.ts';
 import { collectDiagnostics, diagnosticLimits, recordDiagnostic } from './scripts/diagnostics.mjs';
 import { isWorkspaceSettingsPage } from './shared/workspace-url.ts';
 import { TaskLedger } from './tracking/task-ledger.ts';
+import { workRoundMode } from './inline-video.ts';
 
 const sharedStore = new WorkspaceStore();
 export type Service = { trackingHosts?: Map<string, { host: HostContext; createdAt: number }>; diagnostics?: { running: boolean; lastExport: number; events: number; window: number }; studio?: Studio; runtimeRoot?: string; nativeRoot?: string; ffmpeg?: boolean; switching?: boolean; studioPort?: number; browser?: WorkspaceBrowser; editorToken?: string; ensureStudio?: (projectId?: string) => Promise<Studio>; launchStudio?: (directory: string, port: number) => Promise<Studio>; phase1?: Phase1Service; phase1Mutation?: Promise<void>; tracking?: OmTracking };
@@ -57,8 +58,8 @@ async function emitQueueTelemetry(store: WorkspaceStore, tracking?: OmTracking) 
   lastQueueTelemetry = Date.now();
   const job = await store.job().catch(() => null);
   const queued = job?.state === 'pending' ? 1 : 0, running = job && ['running', 'cancelling'].includes(job.state) ? 1 : 0;
-  tracking.track('queue_snapshot', { instance_id: workerInstanceId, task_type: 'export', queued_count: queued, running_count: running, available_slots: running ? 0 : 1, counts_complete: true });
-  tracking.track('worker_heartbeat', { collector_id: collectorId, instance_id: workerInstanceId, active: true, queue_count: queued + running });
+  tracking.track('queue_snapshot', { instance_id: workerInstanceId, task_type: 'export', queued_count: queued, running_count: running, available_slots: running ? 0 : 1, counts_complete: true }, undefined, 'worker');
+  tracking.track('worker_heartbeat', { collector_id: collectorId, instance_id: workerInstanceId, active: true, queue_count: queued + running }, undefined, 'worker');
 }
 
 export async function cancelExport(store: WorkspaceStore, projectId: string, jobId: string) {
@@ -154,12 +155,13 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
             terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(outcome === 'failure' ? { error_code: 'EXPORT_FAILED' } : {}) }, undefined, 'worker', host);
           if (final.projectId && final.versionId) tracking.track('check_completed', { check_id: final.id, check_type: 'technical_export', project_id: final.projectId,
             version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
-            result: final.verification && (final.verification as any).status === 'passed' ? 'pass' : final.state === 'failed' ? 'fail' : 'error', evidence_ref: final.id });
+            result: final.verification && (final.verification as any).status === 'passed' ? 'pass' : final.state === 'failed' ? 'fail' : 'error', evidence_ref: final.id }, undefined, 'worker', host);
           if (final.workId && final.projectId) {
+            const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
             if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {
               run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
-            else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: 'modify', reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
-            else tracking.track('host_run_failed', { run_id: final.workId, task_type: 'modify', error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
+            else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
+            else tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
           }
         }
       }

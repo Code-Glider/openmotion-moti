@@ -1,4 +1,7 @@
 import type { HostContext } from './tracking/host.ts';
+import { TaskLedger } from './tracking/task-ledger.ts';
+import { uuid } from './tracking/core.ts';
+import { recordDiagnostic } from './scripts/diagnostics.mjs';
 import { renderFilenameStem } from './shared/render-name.ts';
 import { createHash } from 'node:crypto';
 import { withProcessLock } from './shared/process-lock.ts';
@@ -429,9 +432,22 @@ export class WorkspaceStore {
         if (audio) job.expected.audio = audio;
         await atomic(path.join(this.directory, 'jobs', job.id, 'job.json'), JSON.stringify(job));
         await atomic(this.jobFilename, JSON.stringify(job));
-        return job;
       } catch (error) { await rm(path.dirname(snapshot), { recursive: true, force: true }); throw error; }
+      await this.acceptTask(job);
+      return job;
     });
+  }
+  // Every accepted export is ledgered here so the shared worker can close the same record.
+  // Auxiliary evidence must never turn an already-created export into a failed request.
+  private async acceptTask(job: ExportJob) {
+    try {
+      await new TaskLedger(this.directory).accept({ task_id: job.id, task_type: 'export', project_id: this.projectId,
+        ...(job.workId ? { run_id: job.workId } : {}), ...(job.requestId && uuid.test(job.requestId) ? { operation_id: job.requestId } : {}),
+        accepted_at: new Date(job.acceptedAt ?? job.createdAt).toISOString(), deadline_at: new Date(job.deadlineAt ?? job.expiresAt).toISOString() });
+    } catch (error) {
+      await recordDiagnostic(this.directory, { kind: 'task_ledger_failed', jobId: job.id, projectId: this.projectId,
+        message: error instanceof Error ? error.message : 'task ledger write failed' }).catch(() => {});
+    }
   }
   async claimExport() {
     const pending = await this.job();

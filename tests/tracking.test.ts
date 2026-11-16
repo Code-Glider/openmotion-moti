@@ -261,6 +261,10 @@ test('worker reports a real terminal render failure once, separately from queue 
   assert.equal(terminal.length, 1); assert.equal(terminal[0].entrypoint, 'worker'); assert.equal(terminal[0].properties.job_state, 'failed');
   assert.deepEqual(terminal[0].host_context, host);
   assert.equal(events.filter(event => event.event === 'task_terminal').length, 1);
+  const queue = events.filter(event => ['queue_snapshot', 'worker_heartbeat'].includes(event.event));
+  assert.deepEqual(queue.map(event => event.event), ['queue_snapshot', 'worker_heartbeat']);
+  assert.deepEqual(queue.map(event => event.entrypoint), ['worker', 'worker'], 'queue evidence is worker-attributed, not MCP-attributed');
+  assert.equal(queue[0].properties.queued_count, 1);
   assert.equal(events.filter(event => event.event === 'check_completed').length, 0, 'legacy exports have no version-bound quality check');
   assert.equal((await store.get()).revision, current.revision);
   assert.equal(terminal[0].properties.technical_check, 'unknown'); tracking.close();

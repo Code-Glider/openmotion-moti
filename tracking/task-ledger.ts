@@ -19,13 +19,15 @@ export type LedgerTask = {
 };
 
 const id = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// Project directories accept the built-in project and any UUID, so the ledger does too.
+const projectIdPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const iso = (value: string) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value));
 function validTask(value: unknown): value is LedgerTask {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const task = value as LedgerTask;
   return id.test(task.task_id) && ['asset_import', 'edit', 'export'].includes(task.task_type)
     && iso(task.accepted_at) && iso(task.deadline_at)
-    && (task.project_id === undefined || task.project_id === 'project' || id.test(task.project_id))
+    && (task.project_id === undefined || task.project_id === 'project' || projectIdPattern.test(task.project_id))
     && (task.run_id === undefined || id.test(task.run_id))
     && (task.operation_id === undefined || id.test(task.operation_id))
     && (task.terminal_at === undefined || iso(task.terminal_at))
@@ -73,7 +75,11 @@ export class TaskLedger {
     if (!id.test(taskId)) throw new Error('TASK_LEDGER_INVALID');
     return withProcessLock(path.join(this.folder, 'tasks.lock'), async () => {
       const tasks = await this.read(), task = tasks[taskId]; if (!task) throw new Error('TASK_LEDGER_NOT_FOUND');
-      if (task.outcome && (task.outcome !== outcome || task.applied !== applied)) throw new Error('TASK_LEDGER_CONFLICT');
+      if (task.outcome) {
+        if (task.outcome !== outcome || task.applied !== applied) throw new Error('TASK_LEDGER_CONFLICT');
+        // Repeating the same observed result never moves the recorded terminal time.
+        return task;
+      }
       task.outcome = outcome; task.applied = applied; task.terminal_at = new Date().toISOString();
       if (errorCode) task.error_code = errorCode; await this.write(tasks); return task;
     });
