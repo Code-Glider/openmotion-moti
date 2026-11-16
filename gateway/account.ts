@@ -21,6 +21,7 @@ type AccountOptions = {
 const stagePrefix = 'OPEN_DESIGN_AMR_AUTH_STAGE\t', completionPrefix = 'OPEN_DESIGN_AMR_AUTH_COMPLETION\t';
 const stageNames = ['attempt_started', 'device_auth_create_result', 'activation_ready', 'browser_open_result', 'device_authorization_result', 'token_exchange_result', 'credential_persist_result'];
 const failureMessages: Record<AccountErrorCode, string> = {
+  connector_unavailable: 'OpenDesign sign-in requires the Vela connector. Install @powerformer/vela-cli@0.1.10, then try signing in again.',
   setup_failed: "Can't connect to OpenDesign right now. Check your network and try again.",
   authorization_expired: 'Browser authorization expired or was cancelled. Sign in again.',
   credentials_rejected: 'Account credentials could not be verified. Sign in again, and contact us if this keeps happening.',
@@ -172,7 +173,7 @@ export class OpenDesignAccount {
       await writeSettings(path.join(this.directory, 'account', 'session.json'), {});
       await writeSettings(path.join(this.directory, 'account', 'models.json'), []);
     });
-    const binary = await this.resolveRuntime(true);
+    const binary = await this.resolveRuntime(true).catch(() => { throw new SignInFailure('connector_unavailable'); });
     if (generation !== this.generation) return;
     const env = { ...this.env(), OPEN_DESIGN_AMR_AUTH_STAGE_FORMAT: 'jsonl-v1', OPEN_DESIGN_AMR_AUTH_ATTEMPT_ID: attempt.id };
     const child = (this.options.spawn ?? spawn)(binary, ['login', '--completion-receipt=stdin-v1'], { env, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -217,7 +218,7 @@ export class OpenDesignAccount {
     child.stderr?.on('data', () => {});
     attempt.exitCode = await new Promise<number | null>((resolve, reject) => {
       const timer = setTimeout(() => { child.kill(); reject(new SignInFailure(attempt.persisted ? 'credentials_rejected' : 'authorization_expired')); }, this.options.authorizationMs ?? 10 * 60_000);
-      child.once('error', () => { clearTimeout(timer); reject(new SignInFailure(failureCode(attempt, cancelled))); });
+      child.once('error', () => { clearTimeout(timer); reject(new SignInFailure(child.pid === undefined ? 'connector_unavailable' : failureCode(attempt, cancelled))); });
       child.once('close', code => { clearTimeout(timer); resolve(code); });
     });
     if (generation !== this.generation) return;

@@ -171,6 +171,7 @@
     "API key required": "需要 API 密钥",
     "Included with your account": "来自你的账户",
     "Sign in to use your account models": "登录后使用账户模型",
+    "OpenDesign sign-in requires the Vela connector. Install @powerformer/vela-cli@0.1.10, then try signing in again.": "登录 OpenDesign 需要 Vela 登录组件。请先安装 @powerformer/vela-cli@0.1.10，再点击登录。",
     "Can't connect to OpenDesign right now. Check your network and try again.": "暂时无法连接 OpenDesign，请检查网络后重试。",
     "Browser authorization expired or was cancelled. Sign in again.": "浏览器授权已过期或被取消，请重新登录。",
     "Account credentials could not be verified. Sign in again, and contact us if this keeps happening.": "账号凭证校验失败，请重新登录；多次失败请联系我们。",
