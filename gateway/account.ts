@@ -10,9 +10,10 @@ import type { GenerationJob, Model } from '../shared/gateway.ts';
 import type { EventFields } from '../tracking/core.ts';
 import { accountErrorKinds, accountStages, type omEvents } from '../tracking/events.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
+import { registeredProvider } from '../shared/provider-registry.ts';
 
 const execute = promisify(execFile);
-const consoleUrl = 'https://open-design.ai/cloud';
+const consoleUrl = registeredProvider('account')!.website!;
 const connectorVersion = '0.1.10';
 export type SignInRecord = EventFields<typeof omEvents['account_sign_in_result']>;
 type Profile = { apiUrl?: string; controlKey?: string; controlKeyId?: string; runtimeKey?: string; pendingLogin?: unknown; user?: { id?: string; name?: string; email?: string } };

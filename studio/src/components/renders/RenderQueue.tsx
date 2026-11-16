@@ -12,6 +12,7 @@ import { Button } from "../ui/Button";
 import { IconButton } from "../ui/IconButton";
 import { Select, type SelectOption } from "../ui/Select";
 import { Tooltip } from "../ui/Tooltip";
+import { Popover } from "../ui/Popover";
 import type { RenderJob, ResolutionPreset } from "./useRenderQueue";
 import {
   FORMAT_INFO,
@@ -149,19 +150,23 @@ function scaleOptionLabel(
   return base;
 }
 
-/** Format guidance uses the same accessible surface as every other hint. */
+/** Rich help keeps disclosure interactions while sharing the tooltip's appearance. */
 function FormatInfoTooltip() {
   const { t } = useI18n();
   const description = (["mp4", "mov", "webm", "gif"] as const).map(format => {
     const name = format === "webm" ? "WebM" : format === "mov" ? "MOV · ProRes" : format.toUpperCase();
     return `${name} · ${t(FORMAT_INFO[format].desc)}`;
   }).join("\n\n");
-  return <Tooltip label={t("About video formats")} description={description}>
-    <button type="button" aria-label={t("About video formats")}
+  return <Popover openOnHover modal={false} container={null} side="top" initialFocus={false}
+    aria-label={t("About video formats")}
+    className="studio-tooltip rounded-md px-3 py-2 shadow-menu max-w-[min(300px,calc(100vw-16px))] whitespace-normal break-words"
+    trigger={<button type="button" aria-label={t("About video formats")}
       className="flex items-center justify-center p-0.5 -m-0.5 rounded-sm text-text-5 hover:text-text-3 transition-colors cursor-help outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-accent">
       <RemixIcon name="question-line" size={14} />
-    </button>
-  </Tooltip>;
+    </button>}>
+    <span className="block font-semibold">{t("About video formats")}</span>
+    <span className="mt-1 block whitespace-pre-line font-normal leading-normal">{description}</span>
+  </Popover>;
 }
 
 const FORMAT_OPTIONS: SelectOption[] = [

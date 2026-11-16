@@ -3,12 +3,13 @@ import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { execFile, spawn, type SpawnOptions } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
-import { gatewayFor } from '../gateway/service.ts';
+import { gatewayFor, ModelGateway } from '../gateway/service.ts';
 import { ProviderConnections, connectionBaseUrl } from '../gateway/connections.ts';
 import { OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
 import { validProperties } from '../tracking/core.ts';
@@ -19,6 +20,10 @@ import { AssetLibrary } from '../gateway/asset-library.ts';
 import { Phase1Service } from '../phase1.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import type { Fetcher } from '../gateway/network.ts';
+import { providerRegistry, mediaProviders, registeredProvider } from '../shared/provider-registry.ts';
+import { providerAdapters } from '../gateway/providers.ts';
+import { transport } from './http.ts';
+import { callTool } from '../mcp.ts';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
 const binary = fileURLToPath(new URL('./fixtures/account-cli.mjs', import.meta.url));
@@ -29,6 +34,108 @@ async function signIn(account: OpenDesignAccount) {
   await writeFile(path.join(account.home, 'authorize'), 'yes');
   await until(async () => (await account.summary()).state === 'signed-in');
 }
+
+test('one registry supplies the settings directory and every dedicated media adapter', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  assert.equal(new Set(providerRegistry.map(provider => provider.id)).size, providerRegistry.length);
+  assert.deepEqual(Object.keys(providerAdapters).sort(), [...mediaProviders].sort());
+  const directory = await providerDirectory(gateway);
+  assert.deepEqual(directory.providers.map(provider => provider.id).sort(), providerRegistry.map(provider => provider.id).sort());
+  for (const provider of directory.providers) {
+    const definition = registeredProvider(provider.id)!;
+    assert.equal(provider.label, definition.label);
+    assert.equal(provider.baseUrlEditable, definition.baseUrlEditable);
+    assert.equal(provider.website, definition.website);
+    if (definition.integration === 'media') assert.equal(provider.docs, `/motion-api/models/providers/${provider.id}/reference`);
+  }
+  await gateway.close();
+}));
+
+test('legacy files retain credentials, models and defaults across shared HTTP, MCP and configuration writes', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const root = gateway.root, custom = 'custom-existing';
+  const model = { id: 'openai:picture', provider: 'openai', modelId: 'picture', label: 'Saved picture', kind: 'image', enabled: true, source: 'custom' };
+  const files = {
+    'config.json': { version: 1, providers: { codex: { enabled: false }, fal: { enabled: true, verification: 'verified', keyHash: createHash('sha256').update('legacy-fal-key').digest('hex'), checkedAt: 123 }, opendesign: { baseUrl: 'https://cloud.example', enabled: true } },
+      routes: { image: 'openai:picture' }, customModels: [{ id: 'fal:saved-model', provider: 'fal', modelId: 'saved-model', label: 'Saved media', modality: 'video', mode: 'text-to-video', source: 'custom' }] },
+    'secrets.json': { fal: 'legacy-fal-key', opendesign: 'legacy-cloud-key' },
+    'connections.json': { providers: { openai: { enabled: true }, [custom]: { custom: true, label: 'Saved endpoint', protocol: 'openai', baseUrl: 'https://saved.example/v1', enabled: true, revision: 'saved-revision' } },
+      models: [model, { id: custom + ':language', provider: custom, modelId: 'language', label: 'Saved language', kind: 'text', enabled: true, source: 'custom' }],
+      defaults: { text: custom + ':language' }, modelOverrides: { 'fal:saved-model': { group: 'Saved group', defaults: { duration: 5 } } } },
+    'connection-secrets.json': { openai: 'legacy-openai-key', [custom]: 'legacy-custom-key' },
+  };
+  await mkdir(root, { recursive: true });
+  for (const [file, content] of Object.entries(files)) await writeFile(path.join(root, file), JSON.stringify(content), { mode: 0o600 });
+  const before = await Promise.all(Object.keys(files).map(file => readFile(path.join(root, file), 'utf8')));
+  const previous = process.env.FAL_KEY; process.env.FAL_KEY = 'environment-fal-key';
+  try {
+    const request = transport(store), directory = await (await request('/motion-api/settings/providers')).json();
+    assert.equal(directory.defaults.image, model.id); assert.equal(directory.defaults.text, custom + ':language');
+    assert.equal(directory.models.find((row: any) => row.id === 'fal:saved-model').group, 'Saved group');
+    assert.equal(directory.providers.find((row: any) => row.id === 'opendesign').baseUrl, 'https://cloud.example');
+    assert.equal((await gateway.status()).providers.find(provider => provider.id === 'fal')!.verification, 'verified');
+    assert.equal(await gateway.connections.credential('fal'), 'legacy-fal-key');
+    assert.equal(await gateway.connections.credential(custom), 'legacy-custom-key');
+    assert.equal(await gateway.connections.identity(custom), 'saved-revision');
+    assert.deepEqual(await Promise.all(Object.keys(files).map(file => readFile(path.join(root, file), 'utf8'))), before, 'Reading old configuration must not rewrite it');
+    assert.doesNotMatch(JSON.stringify(directory), /legacy-.*-key|environment-fal-key/);
+    const publicFields = new Set(['id', 'label', 'protocol', 'baseUrl', 'kinds', 'category', 'website', 'docs', 'setupRequired', 'baseUrlEditable', 'configured', 'enabled', 'available', 'custom', 'credentialSource', 'reason']);
+    for (const provider of [...directory.providers, ...await gateway.connections.list()]) {
+      assert.deepEqual(Object.keys(provider).filter(key => !publicFields.has(key)), [], `${provider.id} must contain only public connection fields`);
+    }
+
+    const update = await request('/motion-api/settings/providers/fal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: 'replacement-fal-key' }) });
+    assert.equal(update.status, 200); assert.doesNotMatch(await update.text(), /replacement-fal-key/);
+    assert.equal(await gateway.connections.credential('fal'), 'replacement-fal-key');
+    assert.equal((await gateway.status()).providers.find(provider => provider.id === 'fal')!.verification, 'unverified');
+    await callTool('openmotion_configure_provider', { provider: 'openai', apiKey: 'replacement-openai-key' }, store);
+    assert.equal(await gateway.connections.credential('openai'), 'replacement-openai-key');
+    const cleared = await request('/motion-api/models/providers/fal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: null }) });
+    assert.equal(cleared.status, 200);
+    assert.equal((await gateway.status()).providers.find(provider => provider.id === 'fal')!.credentialSource, 'environment');
+    assert.equal(await gateway.connections.credential('fal'), 'environment-fal-key');
+    await gateway.connections.setDefault('image', model.id);
+    await gateway.connections.setDefault('text', custom + ':language');
+    const restarted = new ModelGateway(store, { detect: async () => [] });
+    assert.equal((await restarted.status()).routes.image, model.id);
+    assert.deepEqual(await restarted.connections.defaults(), { image: model.id, text: custom + ':language' });
+    assert.equal((await restarted.config()).customModels[0].id, 'fal:saved-model');
+    assert.equal(await restarted.connections.credential('opendesign'), 'legacy-cloud-key');
+    assert.equal(await restarted.connections.credential(custom), 'legacy-custom-key');
+    assert.equal((await stat(path.join(root, 'secrets.json'))).mode & 0o777, 0o600);
+    assert.equal((await stat(path.join(root, 'connection-secrets.json'))).mode & 0o777, 0o600);
+    await assert.rejects(restarted.connections.configure('codex', { apiKey: 'must-not-save' }), /own local login/);
+    await assert.rejects(restarted.connections.configure('account', { apiKey: 'must-not-save' }), /account sign-in/);
+    await assert.rejects(restarted.connections.configure('fal', { baseUrl: 'https://other.example' }), /built-in API origin/);
+    await restarted.close();
+  } finally {
+    if (previous === undefined) delete process.env.FAL_KEY; else process.env.FAL_KEY = previous;
+    await gateway.close();
+  }
+}));
+
+test('a queued legacy media job uses its existing credential and adapter after restart', () => fixture(async store => {
+  const root = path.join(store.directory, 'model-gateway'), id = randomUUID();
+  await mkdir(path.join(root, 'jobs'), { recursive: true });
+  await writeFile(path.join(root, 'config.json'), JSON.stringify({ version: 1, providers: { fal: { enabled: true } }, routes: {}, customModels: [] }));
+  await writeFile(path.join(root, 'secrets.json'), JSON.stringify({ fal: 'queued-legacy-key' }));
+  await writeFile(path.join(root, 'jobs', id + '.json'), JSON.stringify({ id, projectId: store.projectId, state: 'queued', modality: 'image', prompt: 'saved request',
+    model: { id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell', modality: 'image', mode: 'text-to-image', source: 'builtin' },
+    parameters: {}, requestHash: 'existing-hash', createdAt: 1, updatedAt: 1, phase: 'queued', assets: [] }));
+  let submissions = 0;
+  const gateway = new ModelGateway(store, { detect: async () => [], pollMs: 1, download: async () => png, fetcher: async (url, init = {}) => {
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Key queued-legacy-key');
+    if (init.method === 'POST') { submissions++; return Response.json({ request_id: 'existing-task', status_url: 'https://queue.fal.run/task/status', response_url: 'https://queue.fal.run/task/result' }); }
+    return Response.json(String(url).endsWith('status') ? { status: 'COMPLETED' } : { images: [{ url: 'https://cdn.example/image.png' }] });
+  } });
+  try {
+    await gateway.tick(); await Promise.all([...gateway.active.values()].map(task => task.done));
+    const job = await gateway.getJob(id);
+    assert.equal(job.state, 'completed', job.error); assert.equal(submissions, 1);
+    assert.deepEqual(await readFile(path.join(store.projectDirectory, job.assets[0].path)), png);
+    await gateway.tick(); assert.equal(submissions, 1);
+  } finally { await gateway.close(); }
+}));
 
 test('provider registry is searchable configuration; custom keys stay private and media routes execute once', () => fixture(async store => {
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
@@ -431,6 +538,8 @@ test('billing reads an empty tier as Free, keeps the session on refusal and asks
   const rejected = await account.summary(true);
   assert.equal(rejected.state, 'reauth-required'); assert.equal(rejected.billingUnavailable, false); assert.equal(rejected.plan, undefined);
   assert.equal((await provider()).available, false); assert.match((await provider()).reason, /sign-in expired/);
+  const gatewayAccount = (await gateway.status()).providers.find(p => p.id === 'account')!;
+  assert.equal(gatewayAccount.available, false); assert.match(gatewayAccount.reason, /sign-in expired/);
   assert.equal((await account.summary()).state, 'reauth-required');
   for (const scenario of ['billing-failure', 'billing-502']) {
     await mode(scenario); assert.equal((await account.summary(true)).state, 'reauth-required', scenario);

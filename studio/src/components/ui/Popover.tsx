@@ -33,6 +33,8 @@ interface PopoverProps extends Omit<ComponentPropsWithoutRef<typeof BasePopover.
   trigger: ReactElement;
   /** Standard hover/focus hint for the popover trigger. */
   tooltip?: string;
+  /** Also reveal a hoverable help panel; activation still pins it open. */
+  openOnHover?: boolean;
   /** Arbitrary content. The popover owns none of its keys. */
   children: ReactNode;
   side?: "top" | "bottom" | "left" | "right";
@@ -60,6 +62,7 @@ interface PopoverProps extends Omit<ComponentPropsWithoutRef<typeof BasePopover.
 export function Popover({
   trigger,
   tooltip,
+  openOnHover = false,
   children,
   side = "bottom",
   align = "center",
@@ -77,8 +80,8 @@ export function Popover({
   const inline = useInlinePortal(container);
   return (
     <BasePopover.Root {...root}>
-      {tooltip === undefined ? <BasePopover.Trigger render={trigger} aria-describedby={describedBy} /> : (
-        <Tooltip label={tooltip} wrap><BasePopover.Trigger render={trigger} aria-describedby={describedBy} /></Tooltip>
+      {tooltip === undefined ? <BasePopover.Trigger render={trigger} openOnHover={openOnHover} aria-describedby={describedBy} /> : (
+        <Tooltip label={tooltip} wrap><BasePopover.Trigger render={trigger} openOnHover={openOnHover} aria-describedby={describedBy} /></Tooltip>
       )}
       {inline.host}
       <BasePopover.Portal {...inline.portal}>

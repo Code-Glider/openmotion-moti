@@ -1,15 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { chmod, copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { WorkspaceStore } from '../workspace.ts';
 import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
 import { detectAgents, generateCodexImage } from './agents.ts';
-import { downloadMedia, mediaType, providerOrigin, publicProviderFetch, ProviderError, type Fetcher } from './network.ts';
+import { downloadMedia, mediaType, publicProviderFetch, ProviderError, type Fetcher } from './network.ts';
 import { providerAdapters, waveSpeedModels } from './providers.ts';
 import { cloudModels } from './opendesign.ts';
-import { ProviderConnections } from './connections.ts';
+import { ProviderConnections, type GatewayConfig } from './connections.ts';
+import { isGatewayProvider, isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import { compatibleProvider } from './compatible.ts';
 import { OpenDesignAccount } from './account.ts';
 import { AssetLibrary } from './asset-library.ts';
@@ -17,8 +18,6 @@ import { requireLibraryMediaRuntime } from './asset-probe.ts';
 import { generationOptions, validateGenerationOptions } from '../shared/generation-options.ts';
 import { MAX_ASSET_BYTES } from '../shared/asset-limits.ts';
 
-type Config = { version: 1; providers: Partial<Record<ProviderId, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number }>>;
-  routes: Partial<Record<Modality, string>>; customModels: Model[] };
 type Options = { fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
 type SavedOutput = { path: string; mimeType: string; bytes: number; sha256: string };
 const saveUnavailable = 'SAVE_NOT_AVAILABLE: retained outputs are missing, changed or unreadable; no model request was made';
@@ -64,46 +63,14 @@ export class ModelGateway {
     this.connections = new ProviderConnections(store, options.fetcher ?? publicProviderFetch);
     this.account = new OpenDesignAccount(store.directory);
   }
-  async config(): Promise<Config> {
-    return readJson(path.join(this.root, 'config.json'), { version: 1, providers: {}, routes: {}, customModels: [] });
-  }
-  private async credentials() { return readJson<Partial<Record<ProviderId, string>>>(path.join(this.root, 'secrets.json'), {}); }
-  private async credential(id: ProviderId) {
-    if (!providerIds.includes(id)) { const key = await this.connections.credential(id); return { key, source: key ? 'stored' as const : 'none' as const }; }
-    const saved = (await this.credentials())[id];
-    const env = id === 'atlascloud' ? process.env.ATLASCLOUD_API_KEY : id === 'fal' ? process.env.FAL_KEY : id === 'opendesign' ? process.env.OPENDESIGN_API_KEY : id === 'wavespeed' ? process.env.WAVESPEED_API_KEY : undefined;
-    return { key: saved || env || '', source: saved ? 'stored' as const : env ? 'environment' as const : 'none' as const };
-  }
-  async configureProvider(id: unknown, input: { apiKey?: unknown; enabled?: unknown; baseUrl?: unknown }) {
-    if (typeof id === 'string' && !providerIds.includes(id)) { await this.connections.configure(id, input); return this.status(); }
-    providerId(id);
-    if (!input || typeof input !== 'object') throw new Error('Provider settings required');
-    if (input.enabled !== undefined && typeof input.enabled !== 'boolean') throw new Error('enabled must be boolean');
-    if (input.apiKey !== undefined && input.apiKey !== null && (typeof input.apiKey !== 'string' || !input.apiKey.trim() || input.apiKey.length > 4096 || /[\x00-\x1f]/.test(input.apiKey))) throw new Error('Invalid API key');
-    if (id === 'codex' && input.apiKey !== undefined) throw new Error('Codex uses its own local login; no API key is stored here');
-    const baseUrl = input.baseUrl === undefined ? undefined : providerOrigin(input.baseUrl);
-    if (baseUrl && id !== 'opendesign') throw new Error('This provider uses its built-in API origin');
-    await this.store.lock(async () => {
-      const config = await this.config(); const state = config.providers[id] ?? {};
-      if (baseUrl) { state.baseUrl = baseUrl; delete state.verification; delete state.keyHash; delete state.checkedAt; }
-      if (input.apiKey !== undefined) {
-        const keys = await this.credentials();
-        if (input.apiKey === null) delete keys[id]; else keys[id] = (input.apiKey as string).trim();
-        await atomic(path.join(this.root, 'secrets.json'), keys);
-        await chmod(this.root, 0o700);
-        delete state.verification; delete state.keyHash; delete state.checkedAt;
-      }
-      if (input.apiKey && mediaProviders.some(provider => provider === id)) state.enabled = true;
-      if (input.enabled !== undefined) state.enabled = input.enabled as boolean;
-      config.providers[id] = state;
-      await atomic(path.join(this.root, 'config.json'), config);
-    });
+  config(): Promise<GatewayConfig> { return this.connections.gatewayConfig(); }
+  private credential(id: ProviderId) { return this.connections.resolveCredential(id); }
+  async configureProvider(id: unknown, input: Record<string, unknown>) {
+    if (typeof id !== 'string') throw new Error('Unknown model provider');
+    await this.connections.configure(id, input);
     return this.status();
   }
-  private async cloudOrigin() {
-    const value = (await this.config()).providers.opendesign?.baseUrl || process.env.OPENDESIGN_MEDIA_ORIGIN;
-    return value ? providerOrigin(value) : undefined;
-  }
+  private cloudOrigin() { return this.connections.baseUrl('opendesign'); }
   async agents(refresh = false) {
     if (!refresh && this.agentCache && Date.now() - this.agentCache.time < 30_000) return this.agentCache.agents;
     if (!this.detecting) this.detecting = (this.options.detect ?? detectAgents)().then(agents => { this.agentCache = { time: Date.now(), agents }; return agents; }).finally(() => { this.detecting = undefined; });
@@ -163,13 +130,13 @@ export class ModelGateway {
     if (typeof input.mode !== 'string' || !/^[a-z-]{3,60}$/.test(input.mode)) throw new Error('A generation mode is required');
     const model: Model = { id: modelKey(input.provider, input.modelId), provider: input.provider, modelId: input.modelId, label: input.label.trim(),
       modality: input.modality, mode: input.mode, source: 'custom', defaults: parameters(input.defaults) };
-    await this.store.lock(async () => { const config = await this.config(); config.customModels = [...config.customModels.filter(m => m.id !== model.id), model]; await atomic(path.join(this.root, 'config.json'), config); });
+    await this.connections.saveMediaModel(model);
     return { model };
   }
   async setRoute(kind: unknown, modelId: unknown) {
     modality(kind);
     if (modelId !== null && !(await this.models()).some(m => m.id === modelId && m.modality === kind)) throw new Error('Route must select a model of the same modality');
-    await this.store.lock(async () => { const config = await this.config(); if (modelId === null) delete config.routes[kind]; else config.routes[kind] = modelId as string; await atomic(path.join(this.root, 'config.json'), config); });
+    await this.connections.setDefault(kind, modelId as string | null);
     return this.status();
   }
   async status(refreshAgents = false): Promise<GatewayStatus> {
@@ -183,17 +150,18 @@ export class ModelGateway {
           credentialSource: 'local-agent', verification: 'unverified', reason: !enabled ? 'Disabled' : agent?.reason ?? 'Not detected' };
       }
       const credentials = await this.credential(id);
-      const baseUrl = id === 'opendesign' ? await this.cloudOrigin() : undefined;
+      const definition = registeredProvider(id)!;
+      const baseUrl = definition.baseUrlEditable ? await this.connections.baseUrl(id) : undefined;
       const active = !!credentials.key;
       const verification = credentials.key && saved.keyHash === hash(credentials.key) ? saved.verification ?? 'unverified' : 'unverified';
-      return { id, label: providerLabels[id], enabled: active && enabled, configured: !!credentials.key, available: active && enabled && (id !== 'opendesign' || !!baseUrl) && verification !== 'rejected',
-        ...(id === 'opendesign' ? { baseUrl: baseUrl ?? '' } : {}),
+      return { id, label: providerLabels[id], enabled: active && enabled, configured: !!credentials.key, available: active && enabled && (!definition.baseUrlEditable || !!baseUrl) && verification !== 'rejected',
+        ...(definition.baseUrlEditable ? { baseUrl: baseUrl ?? '' } : {}),
         credentialSource: credentials.source, verification, checkedAt: saved.checkedAt,
-        reason: !active ? 'API key required' : !enabled ? 'Disabled' : id === 'opendesign' && !baseUrl ? 'OpenDesign Cloud API origin required' : verification === 'rejected' ? 'Credentials or permissions rejected; update the key' : verification === 'verified' ? 'A generation request succeeded with this key' : 'Configured; availability and quota are checked when generating' };
+        reason: !active ? 'API key required' : !enabled ? 'Disabled' : definition.baseUrlEditable && !baseUrl ? `${definition.label} API origin required` : verification === 'rejected' ? 'Credentials or permissions rejected; update the key' : verification === 'verified' ? 'A generation request succeeded with this key' : 'Configured; availability and quota are checked when generating' };
     }));
     providers.push(...await this.connections.states());
     const account = await this.account.summary();
-    providers.push({ id: 'account', label: 'OpenDesign', enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', reason: account.state === 'signed-in' ? 'Included with your account' : account.state === 'reauth-required' ? 'OpenDesign sign-in expired; sign in again to use your account models' : 'Sign in to use your account models' });
+    providers.push({ id: 'account', label: registeredProvider('account')!.label, enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', reason: account.state === 'signed-in' ? 'Included with your account' : account.state === 'reauth-required' ? 'OpenDesign sign-in expired; sign in again to use your account models' : 'Sign in to use your account models' });
     const capabilities = modalities.map(kind => {
       const available = models.filter(model => model.modality === kind && providers.find(p => p.id === model.provider)?.available);
       const selected = config.routes[kind] ? available.find(m => m.id === config.routes[kind]) : available.find(m => m.mode.startsWith('text-to-'));
@@ -265,8 +233,8 @@ export class ModelGateway {
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');
       const job: GenerationJob = { id: randomUUID(), saveToLibrary: true, ...(input.library ? { library: { ...input.library, createNew: !input.library.assetId, assetId: input.library.assetId ?? randomUUID() } } : { projectId }), state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
-          : !providerIds.includes(model.provider) ? { providerOrigin: (await this.connections.list()).find(p => p.id === model!.provider)?.baseUrl } : {}),
-        ...(!providerIds.includes(model.provider) && model.provider !== 'account' ? { providerRevision: await this.connections.identity(model.provider) } : {}),
+          : !isGatewayProvider(model.provider) ? { providerOrigin: await this.connections.baseUrl(model.provider) } : {}),
+        ...(!isGatewayProvider(model.provider) && model.provider !== 'account' ? { providerRevision: await this.connections.identity(model.provider) } : {}),
         parameters: params, usage: input.usage, idempotencyKey: input.idempotencyKey, requestHash,
         createdAt: Date.now(), updatedAt: Date.now(), phase: 'queued', assets: [] };
       const work = path.join(this.root, 'work', job.id);
@@ -351,14 +319,6 @@ export class ModelGateway {
       await this.saveJob(job); return job;
     });
   }
-  private async verifyKey(id: ProviderId, key: string, verification: 'verified' | 'rejected', origin?: string) {
-    if (!providerIds.includes(id) || id === 'codex' || !key) return;
-    await this.store.lock(async () => {
-      if ((await this.credential(id)).key !== key || id === 'opendesign' && origin !== await this.cloudOrigin()) return;
-      const config = await this.config(); config.providers[id] = { ...config.providers[id], verification, keyHash: hash(key), checkedAt: Date.now() };
-      await atomic(path.join(this.root, 'config.json'), config);
-    });
-  }
   async tick() {
     if (this.ticking || this.closed) return;
     this.ticking = true;
@@ -408,8 +368,8 @@ export class ModelGateway {
         const provider = (await this.status()).providers.find(p => p.id === job.model.provider);
         if (!provider?.available) throw new Error('Provider is no longer available');
         if (job.model.provider === 'opendesign' && job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the queued task was not submitted');
-        if (job.model.provider !== 'account' && !providerIds.includes(job.model.provider) && job.providerOrigin !== (await this.connections.list()).find(p => p.id === job.model.provider)?.baseUrl) throw new Error('Provider API origin changed; the queued task was not submitted');
-        if (job.model.provider !== 'account' && !providerIds.includes(job.model.provider) && (job.providerRevision !== await this.connections.identity(job.model.provider) || !(await this.connections.mediaModels()).some(model => model.id === job.model.id))) throw new Error('Provider or model configuration changed; the queued task was not submitted');
+        if (job.model.provider !== 'account' && !isGatewayProvider(job.model.provider) && job.providerOrigin !== await this.connections.baseUrl(job.model.provider)) throw new Error('Provider API origin changed; the queued task was not submitted');
+        if (job.model.provider !== 'account' && !isGatewayProvider(job.model.provider) && (job.providerRevision !== await this.connections.identity(job.model.provider) || !(await this.connections.mediaModels()).some(model => model.id === job.model.id))) throw new Error('Provider or model configuration changed; the queued task was not submitted');
         await requireLibraryMediaRuntime();
         await mkdir(dir, { recursive: true, mode: 0o700 });
         let buffers: Buffer[];
@@ -421,9 +381,9 @@ export class ModelGateway {
           const imageOptions = { ...job.model.defaults, ...job.parameters };
           buffers = [await (this.options.codex ?? generateCodexImage)(job.prompt + (Object.keys(imageOptions).length ? '\nImage options: ' + JSON.stringify(imageOptions) : ''), dir, controller.signal, reference)];
         } else {
-          const adapter = providerAdapters[job.model.provider] ?? compatibleProvider;
+          const adapter = isMediaProvider(job.model.provider) ? providerAdapters[job.model.provider] : compatibleProvider;
           const urls = await adapter.generate(job, { key, baseUrl: job.providerOrigin, fetcher: this.options.fetcher ?? fetch, signal: controller.signal, progress, pollMs: this.options.pollMs });
-          await this.verifyKey(job.model.provider, key, 'verified', job.providerOrigin);
+          await this.connections.verifyKey(job.model.provider, key, 'verified', job.providerOrigin);
           await progress('downloading');
           buffers = [];
           for (const url of urls) buffers.push(Buffer.isBuffer(url) ? url : await (this.options.download ?? downloadMedia)(url, controller.signal));
@@ -494,7 +454,7 @@ export class ModelGateway {
         });
       } finally { await Promise.all(prepared.map(file => rm(file.file, { force: true }))); }
     } catch (error) {
-      if (error instanceof ProviderError && (error.status === 401 || error.status === 403)) await this.verifyKey(job.model.provider, key, 'rejected', job.providerOrigin);
+      if (error instanceof ProviderError && (error.status === 401 || error.status === 403)) await this.connections.verifyKey(job.model.provider, key, 'rejected', job.providerOrigin);
       await this.store.lock(async () => {
         const current = await this.getJob(job.id); if (current.state !== 'running') return;
         const unavailable = error instanceof Error && error.message.startsWith('SAVE_NOT_AVAILABLE:');

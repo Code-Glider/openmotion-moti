@@ -2,7 +2,9 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../i18n/I18n';
+import englishReadme from '../../../README.md?raw';
+import chineseReadme from '../../../README.zh-CN.md?raw';
+import { I18nProvider, type Locale } from '../i18n/I18n';
 import { McpConnectionPage } from './McpConnectionPage';
 
 vi.mock('./useWorkspace', () => ({ motionApi: async (path: string, options: RequestInit) => {
@@ -18,12 +20,25 @@ let root: Root | undefined;
 afterEach(() => { act(() => root?.unmount()); root = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const button = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => (node.getAttribute('aria-label') || node.textContent?.trim()) === name)!;
 const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === name)!;
-async function mount(locale: 'en' | 'zh-CN' = 'en') {
+async function mount(locale: Locale = 'en') {
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   const openLibrary = vi.fn(), openProviders = vi.fn();
   await act(async () => root!.render(<I18nProvider initialLocale={locale}><McpConnectionPage openLibrary={openLibrary} openProviders={openProviders} /></I18nProvider>));
   return { openLibrary, openProviders };
 }
+
+it.each(['zh-CN', 'en', 'ja'] as const)('links the FAQ and footer to the README community for %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [template] } : info)));
+  await mount(locale);
+  const readme = locale === 'zh-CN' ? chineseReadme : englishReadme;
+  const channel = locale === 'zh-CN' ? '飞书群' : 'Discord';
+  for (const selector of ['.om-mcp-contact', '.om-mcp-footer-intro']) {
+    const link = Array.from(document.querySelectorAll<HTMLAnchorElement>(`${selector} a`)).find(item => item.textContent?.includes(channel));
+    expect(link).toBeDefined();
+    expect(readme).toContain(`[${channel}](${link!.href})`);
+    expect(link!.target).toBe('_blank');
+  }
+});
 
 it('switches client-specific setup, copies exact template instructions and performs no mutations', async () => {
   const fetcher = vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [template] } : info));

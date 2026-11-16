@@ -7,12 +7,20 @@ export type ProviderDefinition = {
   id: string; label: string; protocol: ProviderProtocol; baseUrl: string;
   kinds: ModelKind[]; category: ProviderCategory; website?: string; docs?: string;
   setupRequired?: boolean;
+  baseUrlEditable?: boolean;
 };
 export type ProviderConnection = ProviderDefinition & {
   configured: boolean; enabled: boolean; available: boolean; custom: boolean;
   credentialSource: 'stored' | 'environment' | 'local-agent' | 'account' | 'none';
   reason: string;
 };
+/** Keep registry internals and saved revisions outside the public connection payload. */
+export function publicProviderConnection(provider: ProviderConnection): ProviderConnection {
+  const { id, label, protocol, baseUrl, kinds, category, website, docs, setupRequired, baseUrlEditable,
+    configured, enabled, available, custom, credentialSource, reason } = provider;
+  return { id, label, protocol, baseUrl, kinds, category, website, docs, setupRequired, baseUrlEditable,
+    configured, enabled, available, custom, credentialSource, reason };
+}
 export const modelCapabilities = ['reasoning', 'tools'] as const;
 export const inputModalities = ['vision', 'audio', 'video'] as const;
 export type ModelMetadata = {
