@@ -5,6 +5,8 @@
 - [Final video playback and editor delivery](inline-video.md)
 ## 阅读入口
 
+- [Changelog and stable release descriptions](https://github.com/nexu-io/openmotion/blob/main/CHANGELOG.md)
+
 - [English](../README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
 - [使用与首次体验](usage.md)
 - [All-in-One Studio 产品蓝图与 Super Motion Video Agent](product/studio-vision.md)

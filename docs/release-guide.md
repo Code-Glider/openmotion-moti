@@ -4,6 +4,8 @@
 
 This is the maintainer and tester manual for the application npm format. It defines required checks, not a claim that all platforms or a published registry version have passed. [Installation](npm-installation.md) supplies macOS/PowerShell commands, DEV template setup, host adapters and recovery boundaries. Ordinary CI retains candidate installation instructions for review; npm, R2 and Release publication remain separate controlled actions.
 
+Stable release owners prepare the exact-version English/Chinese descriptions using the [changelog authoring guide](https://github.com/nexu-io/openmotion/blob/main/docs/CHANGELOG/README.md) before candidate construction. Unreleased copy is a draft; only descriptions at the frozen source SHA for that exact version enter authored stable Notes. Inspect the sealed Notes with the package and record actual acceptance privately. Existing candidates keep their original copy.
+
 ## One record per candidate
 
 Record package name/exact version, full source SHA, CI run/attempt, tgz SHA256 and npm integrity when available, application/manifest and both lock hashes, template environment/Resource/locale/catalog version, OS/CPU/Node/npm/Agent versions, installation paths, results and evidence links, known problems, acceptance owner and prior usable version. Keep internal logs, credentials and user material outside public packages.
