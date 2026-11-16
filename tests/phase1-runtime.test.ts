@@ -45,7 +45,9 @@ test('real phase1 MCP, active Studio history, confirmed running cancellation and
   try {
     let p = await call('openmotion_create_project', { requestId: 'create', projectType: 'natural_language', title: 'Runtime smoke', requirements: '静音小方块原生动画' });
     let saved = await call('openmotion_edit_project', { projectId: p.projectId, requestId: 'long', expectedRevision: p.revision, expectedVersionId: p.version.versionId, files: [{ path: 'index.html', content: film(90) }] });
-    p = await call('openmotion_open_preview', { projectId: p.projectId });
+    p = await call('openmotion_open_preview', { projectId: p.projectId, expectedRevision: saved.revision, expectedVersionId: saved.version.versionId });
+    assert.notEqual(p.revision, saved.revision, 'first preview returns the stamped source version without a retry');
+    assert.equal(p.previewHandoff.versionId, p.currentVersionId);
     assert.equal((await fetch(p.previewUrl)).status, 200);
     assert.equal((await call('openmotion_open_preview')).projectId, p.projectId, 'same MCP client binds only its own session');
     const activeSave = await call('openmotion_edit_project', { projectId: p.projectId, requestId: 'active-edit', expectedRevision: p.revision, expectedVersionId: p.version.versionId, files: [{ path: 'note.txt', content: 'Studio owns history' }] });
@@ -59,6 +61,7 @@ test('real phase1 MCP, active Studio history, confirmed running cancellation and
     assert.equal(stopped.state, 'cancelled');
     await assert.rejects(access(store.exportPath(long.job)));
     saved = await call('openmotion_edit_project', { projectId: p.projectId, requestId: 'short', expectedRevision: p.revision, expectedVersionId: p.version.versionId, files: [{ path: 'index.html', content: film() }] });
+    saved = await call('openmotion_open_preview', { projectId: p.projectId, expectedRevision: saved.revision, expectedVersionId: saved.version.versionId });
     const exportArgs = { projectId: p.projectId, requestId: 'short-export', expectedRevision: saved.revision, versionId: saved.version.versionId, audio: 'silent' };
     const requested = await call('openmotion_export_request', exportArgs);
     const legacyReplay = await call('motion_export_request', exportArgs);

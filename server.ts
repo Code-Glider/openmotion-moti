@@ -585,8 +585,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
     if (templateSource && req.method === 'GET') {
       const name = decodeURIComponent(templateSource[2]);
       const mime: Record<string, string> = { '.html': 'text/html', '.md': 'text/plain', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.otf': 'font/otf', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.m4v': 'video/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.flac': 'audio/flac' };
-      const type = mime[path.extname(name).toLowerCase()];
-      if (!type) return json(res, 404, { error: 'Unknown template source file' });
+      const type = mime[path.extname(name).toLowerCase()] || 'application/octet-stream';
       try {
         const bytes = await templateCatalogFor(store.directory).sourceFile(templateSource[1], name);
         res.writeHead(200, { 'Content-Type': type, 'Content-Length': bytes.length }); res.end(bytes); return;

@@ -8,6 +8,9 @@ import { WorkspaceStore } from '../workspace.ts';
 import { callTool } from '../mcp.ts';
 import { catalogUrl, contents, mockPrism } from './prism-fixture.ts';
 
+// This suite exercises the published CMS flow with a mocked Prism response.
+process.env.MOTION_TEMPLATE_SOURCE = 'cms';
+
 test('legacy projects and conversation files become sessions without changing project sources', () => fixture(async store => {
   const before = (await store.get()).revision;
   await mkdir(path.join(store.directory, 'sessions'), { recursive: true });

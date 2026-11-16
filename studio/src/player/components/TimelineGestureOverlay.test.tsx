@@ -35,14 +35,20 @@ const drag: DraggedClipState = {
 afterEach(() => document.body.replaceChildren());
 
 describe("TimelineGestureOverlay", () => {
-  it("shows a cut clip at its collision-resolved drop position rather than under the pointer", () => {
+  it.each([
+    { name: "magnetic main track", magnet: true, secondary: false, start: 6.9, insertRow: null },
+    { name: "secondary track", magnet: true, secondary: true, start: 9.87, insertRow: 1 },
+    { name: "nonmagnetic main track", magnet: false, secondary: false, start: 9.87, insertRow: 1 },
+  ])("shares the actor and committed collision landing on $name", ({ magnet, secondary, start, insertRow }) => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
     const geometry = createTimelineRowGeometry([0, 1, 2], [48, 48, 48]);
-    const cut = { id: "title-cut", tag: "div", start: 7.87, duration: 3.1, track: 0 };
-    const neighbour = { id: "next-scene", tag: "div", start: 10, duration: 4, track: 1 };
-    const elements = [cut, neighbour];
+    const cut = { id: "title-cut", domId: "title-cut", tag: "div", start: 7.87, duration: 3.1, track: 0 };
+    const neighbour = { id: "next-scene", domId: "next-scene", tag: "div", start: 10, duration: 4, track: 1 };
+    const anchor = { id: "earlier-cut", domId: "earlier-cut", tag: "div", start: 0, duration: 5, track: 0 };
+    const elements = [anchor, cut, neighbour, ...(secondary
+      ? [{ id: "main", domId: "main", tag: "div", start: 0, duration: 20, track: 2 }] : [])];
     const scroll = {
       scrollLeft: 0, scrollTop: 0, scrollWidth: 5000,
       getBoundingClientRect: () => ({ left: 0, top: 0 }),
@@ -52,9 +58,10 @@ describe("TimelineGestureOverlay", () => {
       originScrollLeft: 0, originScrollTop: 0, pointerOffsetX: 20, pointerOffsetY: 20,
     }, 1000, 104, {
       scroll, pps: 100, duration: 40, trackOrder: [0, 1, 2], rowGeometry: geometry,
-      elements, selectedKeys: new Set(), buildSnapTargets: () => [],
+      elements, selectedKeys: new Set(), buildSnapTargets: () => [], rippleEditEnabled: magnet,
     });
-    expect(preview.previewStart).toBe(6.9);
+    expect(preview.previewStart).toBe(start);
+    expect(preview.insertRow).toBe(insertRow);
     expect(preview.previewTrack).toBe(1);
     act(() => root.render(<TimelineGestureOverlay
       drag={preview} scrollRef={{ current: scroll }} pixelsPerSecond={100}

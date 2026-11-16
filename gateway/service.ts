@@ -220,10 +220,9 @@ export class ModelGateway {
     }
     if (input.mode !== undefined && !['text-to-image', 'text-to-video', 'text-to-audio', 'text-to-speech'].includes(input.mode)) throw new Error('Unsupported generation mode');
     if (input.mode && input.mode !== `text-to-${input.modality}` && !(input.modality === 'audio' && input.mode === 'text-to-speech')) throw new Error('Generation mode does not match modality');
-    // An account model runs one connector command, so its catalogue mode is fixed (speech and music share `audio`).
-    if (model?.provider === 'account' && input.mode && input.mode !== model.mode) throw new Error('Generation mode does not match the selected account model');
+    // Account and Cloud catalogues select distinct operations for speech and other audio.
+    if (model && ['account', 'opendesign'].includes(model.provider) && input.mode && input.mode !== model.mode) throw new Error(`Generation mode does not match the selected ${model.provider === 'account' ? 'account' : 'Cloud'} model`);
     if (model && input.mode) model = { ...model, mode: input.mode };
-    if (model?.provider === 'opendesign' && input.modality === 'audio' && model.mode !== 'text-to-speech') throw new Error('OpenDesign Cloud currently supports speech audio only');
     const projectId = input.library ? undefined : input.projectId ?? this.store.projectCatalog().activeId;
     const requestHash = hash(JSON.stringify({ projectId, library: input.library, model: input.model ?? null, modality: input.modality, prompt: input.prompt, parameters: params, mode: input.mode, usage: input.usage, ...(input.referenceAsset ? { referenceAsset: input.referenceAsset } : {}) }));
     return this.store.lock(async () => {

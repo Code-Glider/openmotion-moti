@@ -7,9 +7,10 @@ export async function cloudModels(baseUrl: string, key: string, fetcher: Fetcher
   const body = await apiJson(fetcher, baseUrl + '/api/v1/media/models', { headers: { Authorization: `Bearer ${key}` } });
   if (!Array.isArray(body.models)) throw new Error('OpenDesign Cloud catalogue format changed');
   return body.models.filter((row: any) => typeof row.model === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,179}$/.test(row.model)
-    && ['image', 'video', 'audio'].includes(row.kind)).map((row: any) => ({
+    && ['image', 'video', 'audio', 'audio_speech', 'audio_music'].includes(row.kind)).map((row: any) => ({
     id: 'opendesign:' + row.model, provider: 'opendesign', modelId: row.model, label: row.model,
-    modality: row.kind, mode: row.kind === 'audio' ? 'text-to-speech' : 'text-to-' + row.kind, source: 'live',
+    modality: row.kind.startsWith('audio') ? 'audio' : row.kind,
+    mode: row.kind === 'audio_music' ? 'text-to-audio' : row.kind.startsWith('audio') ? 'text-to-speech' : 'text-to-' + row.kind, source: 'live',
   }));
 }
 
@@ -20,12 +21,14 @@ export const opendesign: ProviderAdapter = {
     const headers = { Authorization: `Bearer ${ctx.key}`, 'Content-Type': 'application/json' };
     const api = ctx.baseUrl + '/api/v1/media';
     const audio = job.modality === 'audio';
-    if (audio && job.model.mode !== 'text-to-speech') throw new Error('OpenDesign Cloud currently supports speech audio only');
-    const { voice, ...parameters } = { ...job.model.defaults, ...job.parameters };
-    if (audio && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
-    const payload = audio ? { model: job.model.modelId, voice, parameters: { ...parameters, text: job.prompt } }
+    const speech = audio && job.model.mode === 'text-to-speech';
+    const parameters = { ...job.model.defaults, ...job.parameters };
+    const { voice, ...speechOptions } = parameters;
+    if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
+    const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };
+    const payload = audio ? { model: job.model.modelId, ...audioBody }
       : { ...parameters, model: job.model.modelId, prompt: job.prompt };
-    const endpoint = audio ? '/audio/speech' : job.modality === 'image' ? '/images/generations' : '/videos/tasks';
+    const endpoint = audio ? speech ? '/audio/speech' : '/audio/music' : job.modality === 'image' ? '/images/generations' : '/videos/tasks';
     const submitted = await apiJson(fetcher, api + endpoint, { method: 'POST', headers: { ...headers, 'Idempotency-Key': job.id }, body: JSON.stringify(payload), signal: ctx.signal });
     if (typeof submitted.task_id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(submitted.task_id)) throw new Error('OpenDesign Cloud did not return a task ID');
     await ctx.progress('submitted', submitted.task_id);
