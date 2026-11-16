@@ -77,6 +77,13 @@ test('v5 to v3 creates v6, retains v4/v5, rejects stale writes and recovers afte
     assert.match(error.message, /openmotion_get_project/);
     return true;
   });
+  // v4 content differs from the current v6, so its revision is distinguishable from the live one.
+  assert.notEqual(versions[3].revision, restored.revision);
+  await assert.rejects(edit(service, versions[3], 'stale different hash'), (error: Error) => {
+    assert.ok(error.message.includes(restored.revision), 'The conflict reports the current revision, not the stale one');
+    assert.ok(!error.message.includes(versions[3].revision));
+    return true;
+  });
   const list = await service.call('openmotion_list_versions', { projectId: p.projectId });
   assert.deepEqual(list.versions.map((v: any) => v.versionNumber), [6, 5, 4, 3, 2]);
   assert.equal((await service.call('openmotion_list_versions', { projectId: p.projectId, cursor: list.nextCursor })).versions[0].versionId, original.version.versionId);
