@@ -77,9 +77,19 @@ test('browser ZIP upload/download and MCP use the same archive format and reques
   const response = await upload(); assert.equal(response.status, 200, await response.clone().text());
   const imported = await response.json();
   assert.deepEqual((await (await upload()).json()).projects, imported.projects);
-  const exportedResponse = await http('/motion-api/phase1/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'openmotion_project_archive', arguments: { action: 'export', requestId: 'http-export', projectIds: [imported.projects[0].projectId] } }) });
+  const id = imported.projects[0].projectId, { revision } = await store.forProject(id).get();
+  const exportAtRevision = (revision: string) => http('/motion-api/phase1/call', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'openmotion_project_archive', arguments: { action: 'export', requestId: 'http-export', projectIds: [id], expectedRevisions: { [id]: revision } } }) });
+  const badRevision = await exportAtRevision('invalid');
+  assert.equal(badRevision.status, 400);
+  assert.match((await badRevision.json()).error, /INVALID_ARGUMENT: arguments\.expectedRevisions/);
+  const stale = await exportAtRevision('0'.repeat(64));
+  assert.equal(stale.status, 400);
+  assert.match((await stale.json()).error, /revision/i);
+  const exportedResponse = await exportAtRevision(revision);
   assert.equal(exportedResponse.status, 200, await exportedResponse.clone().text());
   const exported = await exportedResponse.json();
+  assert.deepEqual(exported.projects, [{ projectId: id, revision }]);
   const downloaded = await http(new URL(exported.downloadUrl).pathname);
   assert.equal(downloaded.headers.get('content-type'), 'application/zip');
   assert.match(downloaded.headers.get('content-disposition')!, /attachment/);

@@ -83,6 +83,10 @@ export function validateInput(schema: any, value: any, field = 'arguments'): voi
     for (const [key, child] of Object.entries(value)) {
       if (!Object.hasOwn(schema.properties ?? {}, key)) {
         if (schema.additionalProperties === true) continue;
+        if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+          validateInput(schema.additionalProperties, child, field + '.' + key);
+          continue;
+        }
         throw new Error('INVALID_ARGUMENT: unknown ' + field + '.' + key);
       }
       validateInput(schema.properties[key], child, field + '.' + key);
