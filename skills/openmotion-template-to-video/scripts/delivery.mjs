@@ -75,8 +75,12 @@ function checkDependencies(files) {
       refs.push(...[...text.matchAll(/\sdata-composition-src\s*=\s*["']([^"']+)["']/gi)].map(match => match[1]));
     }
     refs.push(...[...text.matchAll(/url\(\s*["']?([^\s"')]+)["']?\s*\)/gi)].map(match => match[1]));
-    // CSS also allows quoted @import targets without url(), including inside an HTML <style> block.
-    refs.push(...[...text.matchAll(/@import\s+["']([^"']+)["']/gi)].map(match => match[1]));
+    // Quoted imports are CSS dependencies; commented examples and script strings are not.
+    const styles = name.endsWith('.css') ? [text] : [...text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)].map(match => match[1]);
+    for (const css of styles) {
+      const uncommented = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      refs.push(...[...uncommented.matchAll(/@import\s+(["'])([^"']+)\1/gi)].map(match => match[2]));
+    }
     for (const ref of refs) {
       if (/^(?:data:|blob:|#)/i.test(ref)) continue;
       assert(!/^(?:[a-z][\w+.-]*:|\/\/)/i.test(ref), 'REMOTE_DEPENDENCY: ' + name + ' -> ' + ref);

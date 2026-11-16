@@ -8,12 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { packageProject } from '../skills/openmotion-template-to-video/scripts/delivery.mjs';
 import { playbackServer, byteRange } from '../skills/openmotion-template-to-video/scripts/playback.mjs';
+import { WorkspaceStore } from '../workspace.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = data => createHash('sha256').update(data).digest('hex');
-// Mirrors WorkspaceStore.files: dotted caches and render outputs are absent, the native manifests are present.
-const revisionBearing = name => ['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json'].includes(name)
-  || !name.split('/').some(part => part.startsWith('.') || ['node_modules', 'renders', 'dist', 'output'].includes(part));
 async function setSource(detail, project, name, data) {
   await mkdir(path.dirname(path.join(project, name)), { recursive: true });
   await writeFile(path.join(project, name), data);
@@ -30,8 +28,8 @@ async function fixture() {
     '.hyperframes/session.json': '{}', '.hyperframes/studio-motion.json': '{"motion":true}', '.thumbnails/cache.png': 'cache',
     'renders/old-export.mp4': 'render', 'dist/bundle.js': 'bundle', 'output/export.mp4': 'output' };
   for (const [name, data] of Object.entries(contents)) { await mkdir(path.dirname(path.join(project, name)), { recursive: true }); await writeFile(path.join(project, name), data); }
-  const detail = { projectId: '11111111-1111-1111-1111-111111111111', revision: 'a'.repeat(64), currentVersionId: 'version-1',
-    project: { directory: project, entry: 'index.html', files: Object.entries(contents).filter(([name]) => revisionBearing(name)).map(([name, data]) => ({ path: name, hash: hash(data) })) } };
+  const detail = { projectId: '11111111-1111-1111-1111-111111111111', currentVersionId: 'version-1',
+    ...await new WorkspaceStore(directory).get() };
   return { directory, project, detail };
 }
 
@@ -69,7 +67,7 @@ test('refuses source drift, unsafe inventory paths, missing dependencies and for
     const changed = structuredClone(f.detail); changed.project.files[0].path = '../outside';
     await assert.rejects(packageProject(changed, output), /UNSAFE_PROJECT_PATH/);
     const original = '<html><script src="missing.js"></script></html>';
-    await writeFile(path.join(f.project, 'index.html'), original); f.detail.project.files[0].hash = hash(original);
+    await writeFile(path.join(f.project, 'index.html'), original); f.detail.project.files.find(file => file.path === 'index.html').hash = hash(original);
     await assert.rejects(packageProject(f.detail, output), /MISSING_DEPENDENCY/);
     await symlink(path.join(f.directory, 'foreign'), path.join(f.project, 'foreign-link'));
     await assert.rejects(packageProject(f.detail, output), /PROJECT_SYMLINK/);
@@ -84,11 +82,19 @@ test('refuses source additions outside the pinned inventory', async () => {
     // Studio writes the manifest after the project-detail read, so it is absent from the pinned inventory.
     await mkdir(path.join(f.project, '.hyperframes'), { recursive: true });
     await writeFile(path.join(f.project, '.hyperframes/studio-manual-edits.json'), '{"edits":true}');
+    assert.notEqual((await new WorkspaceStore(f.directory).get()).revision, f.detail.revision);
     await assert.rejects(packageProject(f.detail, output), /SOURCE_DRIFT: unpinned source file \.hyperframes\/studio-manual-edits\.json/, 'Native manifest added after the project read changes the revision');
     f.detail.project.files.push({ path: '.hyperframes/studio-manual-edits.json', hash: hash('{"edits":true}') });
     await writeFile(path.join(f.project, 'compositions/added.html'), '<template><p>Added</p></template>');
     await assert.rejects(packageProject(f.detail, output), /SOURCE_DRIFT: unpinned source file compositions\/added\.html/, 'Ordinary source added after the project read');
     assert.ok(!(await readdir(f.directory)).includes('delivery'), 'A refused package leaves no partial output');
+    Object.assign(f.detail, await new WorkspaceStore(f.directory).get());
+    await writeFile(path.join(f.project, '.hyperframes/history-id'), 'updated history');
+    await writeFile(path.join(f.project, '.DS_Store'), 'desktop metadata');
+    assert.equal((await new WorkspaceStore(f.directory).get()).revision, f.detail.revision, 'History and hidden metadata do not change the revision');
+    const receipt = await packageProject(f.detail, output);
+    assert.ok(!receipt.files.some(file => file.path.endsWith('.DS_Store')));
+    assert.equal(await readFile(path.join(output, 'HTML/.hyperframes/history-id'), 'utf8'), 'updated history');
   } finally { await rm(f.directory, { recursive: true, force: true }); }
 });
 
@@ -104,10 +110,24 @@ test('validates quoted CSS imports before declaring dependencies local', async (
     await setSource(f.detail, f.project, 'vendor/gsap/theme.css', '@import "base.css";');
     await setSource(f.detail, f.project, 'index.html', page('@import "vendor/gsap/theme.css";'));
     await assert.rejects(packageProject(f.detail, output), /MISSING_DEPENDENCY: vendor\/gsap\/theme\.css -> base\.css/, 'Imports resolve relative to the importing stylesheet');
+    await setSource(f.detail, f.project, 'vendor/gsap/theme.css', "@import '//cdn.example/base.css';");
+    await assert.rejects(packageProject(f.detail, output), /REMOTE_DEPENDENCY/, 'Protocol-relative and single-quoted imports stay remote');
+    await setSource(f.detail, f.project, 'vendor/gsap/theme.css', "@import 'https://cdn.example/base.css';");
+    await assert.rejects(packageProject(f.detail, output), /REMOTE_DEPENDENCY/, 'Standalone quoted remote imports are rejected');
+    await setSource(f.detail, f.project, 'vendor/gsap/theme.css', "@import 'base.css';");
     await setSource(f.detail, f.project, 'vendor/gsap/base.css', 'body{}');
     const receipt = await packageProject(f.detail, output);
     assert.equal(receipt.dependencies, 'local');
     assert.ok(receipt.files.some(file => file.path === 'HTML/vendor/gsap/base.css'));
+  } finally { await rm(f.directory, { recursive: true, force: true }); }
+});
+
+test('ignores quoted import examples in CSS comments and HTML scripts', async () => {
+  const f = await fixture();
+  try {
+    await setSource(f.detail, f.project, 'index.html', `<style>/* @import "missing.css"; */</style><script>const example = '@import "script-example.css"';</script>`);
+    await setSource(f.detail, f.project, 'styles/example.css', '/* @import "https://cdn.example/commented.css"; */ body {}');
+    assert.equal((await packageProject(f.detail, path.join(f.directory, 'delivery'))).dependencies, 'local');
   } finally { await rm(f.directory, { recursive: true, force: true }); }
 });
 
