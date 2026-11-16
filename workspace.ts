@@ -45,6 +45,10 @@ export function projectPath(name: string): string {
   return name;
 }
 function alive(pid?: number) { try { if (!pid) return false; process.kill(pid, 0); return true; } catch { return false; } }
+// A queued job expires at its deadline; a claimed job also needs a live worker.
+export function interruptedExport(job: ExportJob) {
+  return ['pending', 'running', 'cancelling'].includes(job.state) && (job.expiresAt < Date.now() || (job.state !== 'pending' && !alive(job.workerPid)));
+}
 async function atomic(filename: string, content: string | Buffer) {
   await mkdir(path.dirname(filename), { recursive: true });
   const temporary = path.join(path.dirname(filename), '.motion-write-' + crypto.randomUUID());
@@ -394,10 +398,7 @@ export class WorkspaceStore {
     const current = await this.get();
     let job = await this.job(jobId);
     if (this.selectedProjectId !== undefined && job?.projectId && job.projectId !== this.projectId) job = null;
-    if (job && ['pending', 'running', 'cancelling'].includes(job.state) && (job.expiresAt < Date.now() || (job.state !== 'pending' && !alive(job.workerPid)))) {
-      job.state = 'failed'; job.error = '后台渲染已中断或超时，请重新导出'; job.terminalAt = Date.now(); job.observedOutcome = 'unknown';
-      await this.saveJob(job);
-    }
+    if (job && interruptedExport(job)) job = (await this.reconcileInterruptedExport(job)).job;
     if (job?.state === 'completed') {
       try { if (!(await stat(this.exportPath(job))).size) throw new Error('empty'); }
       catch { job.state = 'failed'; job.error = '导出文件已不存在，请重新导出'; delete job.file; await this.saveJob(job); }
@@ -447,6 +448,27 @@ export class WorkspaceStore {
     } catch (error) {
       await recordDiagnostic(this.directory, { kind: 'task_ledger_failed', jobId: job.id, projectId: this.projectId,
         message: error instanceof Error ? error.message : 'task ledger write failed' }).catch(() => {});
+    }
+  }
+  /** Close an export whose worker vanished or whose deadline passed; exactly one caller owns the transition. */
+  async reconcileInterruptedExport(seen: ExportJob): Promise<{ job: ExportJob | null; reconciled: boolean }> {
+    return this.lock(async () => {
+      const job = await this.job(seen.id);
+      if (!job || !interruptedExport(job)) return { job, reconciled: false };
+      job.state = 'failed'; job.error = '后台渲染已中断或超时，请重新导出'; job.terminalAt = Date.now(); job.observedOutcome = 'unknown';
+      await this.saveJob(job);
+      await this.reconcileTask(job);
+      return { job, reconciled: true };
+    });
+  }
+  // An interrupted export is reconciled here, so its accepted task still gets a terminal outcome.
+  private async reconcileTask(job: ExportJob) {
+    try { await new TaskLedger(this.directory).terminal(job.id, 'unknown', 'unknown'); }
+    catch (error) {
+      // A degraded acceptance leaves no record to close, which is not an error of its own.
+      if (error instanceof Error && error.message === 'TASK_LEDGER_NOT_FOUND') return;
+      await recordDiagnostic(this.directory, { kind: 'task_ledger_failed', jobId: job.id, projectId: job.projectId,
+        message: error instanceof Error ? error.message : 'task ledger reconcile failed' }).catch(() => {});
     }
   }
   async claimExport() {

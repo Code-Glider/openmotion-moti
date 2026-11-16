@@ -8,7 +8,8 @@ import { createReadStream } from 'node:fs';
 import { access, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { WorkspaceStore, Conflict, createBlankProject, validateProjectTitle } from './workspace.ts';
+import { WorkspaceStore, Conflict, createBlankProject, validateProjectTitle, interruptedExport } from './workspace.ts';
+import type { ExportJob } from './workspace.ts';
 import { cliPath, ensureRuntime, execute, HYPERFRAMES_VERSION, inspectProject, pluginRoot, runHyperframes, startStudio, stopCommands } from './hyperframes.ts';
 import type { Studio } from './hyperframes.ts';
 import { VERSION } from './preview.ts';
@@ -78,10 +79,27 @@ export async function cancelExport(store: WorkspaceStore, projectId: string, job
   });
 }
 
+/** A cancellation or unfinished job is not a technical-check error; only a completed job without a report is. */
+export function technicalCheckResult(job: Pick<ExportJob, 'state' | 'verification'>) {
+  const status = (job.verification as { status?: string } | undefined)?.status;
+  return status === 'passed' ? 'pass' as const : status === 'failed' ? 'fail' as const : job.state === 'completed' ? 'error' as const : 'unreviewed' as const;
+}
+
+// The worker tick owns the terminal evidence of an export no worker claimed or finished.
+async function trackInterruptedExport(store: WorkspaceStore, seen: ExportJob, tracking?: OmTracking) {
+  const { job, reconciled } = await store.reconcileInterruptedExport(seen);
+  if (!reconciled || !job || !tracking) return;
+  const host = validHostContext(job.trackingHost) ? job.trackingHost : undefined;
+  tracking.track('task_terminal', { task_id: job.id, task_type: 'export', ...(job.projectId ? { project_id: job.projectId } : {}),
+    ...(job.workId ? { run_id: job.workId } : {}), outcome: 'unknown', applied: 'unknown',
+    terminal_at: new Date(job.terminalAt ?? Date.now()).toISOString() }, undefined, 'worker', host);
+}
+
 export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tracking?: OmTracking) {
   await emitQueueTelemetry(store, tracking);
   const pending = await store.job();
   if (pending?.projectId) store = store.forProject(pending.projectId);
+  if (pending && interruptedExport(pending)) await trackInterruptedExport(store, pending, tracking);
   const key = store.directory;
   if (working.has(key)) return;
   working.add(key);
@@ -155,7 +173,7 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
             terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(outcome === 'failure' ? { error_code: 'EXPORT_FAILED' } : {}) }, undefined, 'worker', host);
           if (final.projectId && final.versionId) tracking.track('check_completed', { check_id: final.id, check_type: 'technical_export', project_id: final.projectId,
             version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
-            result: final.verification && (final.verification as any).status === 'passed' ? 'pass' : final.state === 'failed' ? 'fail' : 'error', evidence_ref: final.id }, undefined, 'worker', host);
+            result: technicalCheckResult(final), evidence_ref: final.id }, undefined, 'worker', host);
           if (final.workId && final.projectId) {
             const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
             if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {

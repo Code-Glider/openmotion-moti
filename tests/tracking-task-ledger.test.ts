@@ -54,6 +54,20 @@ test('the shared export entry accepts the task before the worker closes it', () 
   await assert.doesNotReject(new TaskLedger(store.directory).terminal(job.id, 'cancelled', 'unknown'));
 }));
 
+test('an interrupted export is reconciled with a terminal ledger outcome', () => fixture(async store => {
+  const current = await store.get();
+  const job = await store.requestExport(current.revision);
+  const stale = (await store.job(job.id))!;
+  // A crashed worker leaves the job past its deadline with an open accepted task.
+  await store.saveJob({ ...stale, expiresAt: Date.now() - 1 });
+  const status = await store.status(job.id);
+  assert.equal(status.exportJob!.state, 'failed');
+  const task = (await new TaskLedger(store.directory).snapshot())[job.id];
+  assert.equal(task.outcome, 'unknown');
+  assert.equal(task.applied, 'unknown');
+  assert.ok(task.terminal_at);
+}));
+
 test('an unreadable task ledger never fails an accepted export', () => fixture(async store => {
   await mkdir(path.join(store.directory, 'tracking'), { recursive: true });
   await writeFile(path.join(store.directory, 'tracking', 'tasks.json'), 'corrupted');
@@ -62,6 +76,9 @@ test('an unreadable task ledger never fails an accepted export', () => fixture(a
   assert.equal(job.state, 'pending');
   assert.equal((await store.job(job.id))!.state, 'pending');
   await assert.rejects(new TaskLedger(store.directory).snapshot(), /TASK_LEDGER_UNREADABLE/);
+  // Reconciling an interrupted export keeps the degraded ledger from failing the read path.
+  await store.saveJob({ ...(await store.job(job.id))!, expiresAt: Date.now() - 1 });
+  assert.equal((await store.status(job.id)).exportJob!.state, 'failed');
 }));
 
 test('north-star evidence events keep closed, content-free schemas', () => {

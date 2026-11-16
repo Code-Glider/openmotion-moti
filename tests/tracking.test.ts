@@ -9,7 +9,8 @@ import { createNodeTracking, createPosthogSender, loadIdentity } from '../tracki
 import { assetActions, assetToolAction, omEvents, studioEvents } from '../tracking/events.ts';
 import { closeTracking, createAppTracking, saveTrackingPreference, trackingError } from '../shared/tracking.ts';
 import { Phase1Service } from '../phase1.ts';
-import { renderNext } from '../server.ts';
+import { renderNext, technicalCheckResult } from '../server.ts';
+import { TaskLedger } from '../tracking/task-ledger.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { fixture } from './fixtures.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
@@ -247,6 +248,16 @@ test('default configuration reports without opt-in; saved opt-out covers runtime
   }
 }, false));
 
+test('cancelled and unfinished exports are unreviewed technical checks, not errors', () => {
+  const base = { id: crypto.randomUUID(), revision: 'a'.repeat(64), createdAt: 0, expiresAt: 0 };
+  assert.equal(technicalCheckResult({ ...base, state: 'cancelled' }), 'unreviewed');
+  assert.equal(technicalCheckResult({ ...base, state: 'pending' }), 'unreviewed');
+  assert.equal(technicalCheckResult({ ...base, state: 'failed' }), 'unreviewed', 'a render failure without a report is not a technical-check error');
+  assert.equal(technicalCheckResult({ ...base, state: 'failed', verification: { status: 'failed' } }), 'fail');
+  assert.equal(technicalCheckResult({ ...base, state: 'completed' }), 'error', 'a completed job without a report is unexpected');
+  assert.equal(technicalCheckResult({ ...base, state: 'completed', verification: { status: 'passed' } }), 'pass');
+});
+
 test('worker reports a real terminal render failure once, separately from queue acceptance', () => fixture(async store => {
   const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
   const host = identifyHost({ name: 'dsh-mcp-client', version: '0.0.1' });
@@ -268,6 +279,24 @@ test('worker reports a real terminal render failure once, separately from queue 
   assert.equal(events.filter(event => event.event === 'check_completed').length, 0, 'legacy exports have no version-bound quality check');
   assert.equal((await store.get()).revision, current.revision);
   assert.equal(terminal[0].properties.technical_check, 'unknown'); tracking.close();
+}));
+
+test('an interrupted export is closed by the worker tick with one unknown terminal outcome', () => fixture(async store => {
+  const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
+  const current = await store.get(), job = await store.requestExport(current.revision);
+  await store.saveJob({ ...(await store.job(job.id))!, expiresAt: Date.now() - 1 });
+  await renderNext(store, pluginRoot, tracking);
+  await renderNext(store, pluginRoot, tracking);
+  await tracking.flush();
+  const terminal = events.filter(event => event.event === 'task_terminal');
+  assert.equal(terminal.length, 1, 'a second tick does not claim the same outcome again');
+  assert.equal(terminal[0].entrypoint, 'worker');
+  assert.equal(terminal[0].properties.outcome, 'unknown');
+  assert.equal(terminal[0].properties.applied, 'unknown');
+  assert.ok(terminal[0].properties.terminal_at);
+  assert.equal((await store.job(job.id))!.state, 'failed');
+  assert.equal((await new TaskLedger(store.directory).snapshot())[job.id].outcome, 'unknown');
+  tracking.close();
 }));
 
 test('template library events: the search keyword is the only free text and stays bounded', () => {

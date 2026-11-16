@@ -73,8 +73,11 @@ The runtime now records a local export task ledger before returning an accepted
 export request. Each export keeps its task ID, project, optional work-round ID,
 acceptance time, explicit deadline, terminal time and observed outcome. A worker
 terminal result updates the same ledger and emits `task_terminal`; unknown or
-cancelled results remain separate from success. The ledger is installation-local,
-atomic and does not contain prompts, source content or credentials.
+cancelled results remain separate from success. An export whose worker vanished or
+whose deadline passed is reconciled once by the worker tick with outcome `unknown`,
+so its accepted entry also gets a terminal time and the same event. The ledger is
+installation-local, atomic and does not contain prompts, source content or
+credentials.
 
 Host run boundaries use the existing work-round ID returned by
 `openmotion_open_preview(action=begin)`. The MCP boundary emits

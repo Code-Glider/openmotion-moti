@@ -260,7 +260,11 @@ export class Phase1Service {
         observed.hash.split('?')[0] !== target.hash) throw new Error('PREVIEW_TARGET_MISMATCH');
     const record = { ...display, projectId: detail.projectId, source: 'host_reported', requestId: args.requestId, recordedAt: Date.now() };
     await atomicJson(path.join(this.store.directory, 'phase1', 'preview-displays', detail.projectId + '.json'), record);
+    const current = await this.detail(detail.projectId);
+    if (current.revision !== detail.revision || current.currentVersionId !== detail.currentVersionId) throw new Error('VERSION_CONFLICT: content changed during display confirmation');
+    // Evidence follows confirmation: a rejected display observed nothing, and delivery also needs the round's fixed version.
     if (args.workId && this.context.tracking) {
+      const round = await this.workRounds.get(detail.projectId, args.workId).catch(() => null);
       this.context.tracking.track('host_preview_observed', { run_id: args.workId, project_id: detail.projectId, revision: detail.revision,
         version_id: detail.currentVersionId, visibility: display.visibility, content_verified: display.contentVerified, observation_source: 'host_reported' }, undefined, undefined, undefined);
       const checkId = crypto.randomUUID();
@@ -269,11 +273,10 @@ export class Phase1Service {
       this.context.tracking.track('check_completed', { check_id: checkId, check_type: 'preview_observed', project_id: detail.projectId,
         version_id: detail.currentVersionId, subject_id: checkId.slice(0, 32), checklist_version: 'preview-v1', checker_type: 'host',
         result: display.visibility === 'visible' && display.contentVerified ? 'pass' : 'unreviewed', evidence_ref: checkId.slice(0, 32) });
-      if (display.visibility === 'visible' && display.contentVerified) this.context.tracking.track('host_run_delivered', {
+      if (display.visibility === 'visible' && display.contentVerified && display.versionId === detail.currentVersionId
+        && round?.versionId === detail.currentVersionId) this.context.tracking.track('host_run_delivered', {
         run_id: args.workId, delivery_mode: 'preview', project_id: detail.projectId, revision: detail.revision, delivery_evidence_ref: checkId.slice(0, 32) });
     }
-    const current = await this.detail(detail.projectId);
-    if (current.revision !== detail.revision || current.currentVersionId !== detail.currentVersionId) throw new Error('VERSION_CONFLICT: content changed during display confirmation');
     return { projectId: detail.projectId, changed: false, previewHandoff: previewHandoff(this.context.origin(), {
       projectId: detail.projectId, sessionId: detail.sessionId, revision: detail.revision, versionId: detail.currentVersionId }, args.presentation, record, true, display.previewUrl, record.hostTabId), display: record };
   }

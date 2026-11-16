@@ -12,6 +12,7 @@ import { atomicJson, fileHash, recoverProjectTransactions } from '../phase1-vers
 import { validateInput, phase1Tools } from '../shared/phase1-tools.ts';
 import { transport } from './http.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from '../shared/asset-limits.ts';
+import { sessionPath } from '../shared/workspace-url.ts';
 
 function api(store: any) { return new Phase1Service(store, pluginRoot, {
   origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {},
@@ -249,6 +250,40 @@ test('a failed work round reports its recorded mode and only observed state chan
   assert.deepEqual(events.filter(event => event.event === 'host_run_started').map(event => event.properties.task_type), ['create']);
   assert.deepEqual(events.filter(event => event.event === 'host_run_failed').map(event => event.properties.task_type), ['create', 'create'], 'a creation round is never reported as a modification');
   assert.deepEqual(events.filter(event => event.event === 'host_state_changed').map(event => event.properties.state), ['active', 'failed'], 'an open round failure claims no terminal state');
+}, false));
+
+test('preview delivery evidence needs the confirmed version and the round version', () => fixture(async store => {
+  const service = api(store), events: any[] = [], tracking = createTracker({ registry: omEvents, entrypoint: 'mcp', enabled: true, flushIntervalMs: 0, send: async batch => { events.push(...batch); return 'accepted'; } });
+  service.context.tracking = tracking;
+  const p = await create(service);
+  const previewUrl = 'http://127.0.0.1:4173' + sessionPath(p.sessionId, p.projectId, { embedded: true });
+  const { inlineWork: work } = await service.call('openmotion_open_preview', { action: 'begin', projectId: p.projectId, requestId: 'begin', mode: 'create' });
+  const record = (revision: string, versionId: string) => service.call('openmotion_open_preview', { action: 'record_display',
+    projectId: p.projectId, requestId: crypto.randomUUID(), workId: work.id,
+    display: { revision, versionId, previewUrl, visibility: 'visible', contentVerified: true, evidence: 'Host reported a visible panel' } });
+  // A round still bound to the confirmed version delivers its observed preview.
+  await record(p.revision, p.version.versionId);
+  await tracking.flush();
+  assert.deepEqual(events.filter(event => event.event === 'host_run_delivered').map(event => event.properties.delivery_mode), ['preview']);
+  // A save the round never observed keeps the observation but does not claim delivery.
+  const saved = await service.call('openmotion_edit_project', { requestId: 'foreign', projectId: p.projectId,
+    expectedRevision: p.revision, expectedVersionId: p.version.versionId, files: [{ path: 'note.txt', content: 'saved outside the round' }] });
+  await record(saved.revision, saved.version.versionId);
+  await tracking.flush();
+  assert.equal(events.filter(event => event.event === 'host_run_delivered').length, 1);
+  assert.deepEqual(events.filter(event => event.event === 'check_completed' && event.properties.check_type === 'preview_observed').map(event => event.properties.result), ['pass', 'pass']);
+  // A display rejected by the version guard observed nothing, so it records no preview evidence.
+  const observed = events.length, realDetail = service.detail.bind(service), scoped = store.forProject(p.projectId);
+  let reads = 0;
+  service.detail = async (...args: any[]) => {
+    if (++reads === 2) await writeFile(path.join(scoped.projectDirectory, 'note.txt'), 'changed during display confirmation');
+    return realDetail(...args);
+  };
+  try { await assert.rejects(record(saved.revision, saved.version.versionId), /VERSION_CONFLICT/); }
+  finally { service.detail = realDetail; }
+  await tracking.flush();
+  const evidence = ['host_preview_observed', 'host_run_delivered', 'check_required', 'check_completed'];
+  assert.deepEqual(events.slice(observed).map(event => event.event).filter(name => evidence.includes(name)), []);
 }, false));
 
 test('creation supports actual builtin templates and reference carriers, and requirements-only edits are versioned', () => fixture(async store => {
