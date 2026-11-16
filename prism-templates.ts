@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,10 +8,11 @@ import { templateConfig } from './shared/template-config.ts';
 import { libraryTemplates, templateRecipe } from './template-catalog.ts';
 import { copyTemplate } from './template-library.ts';
 import { loadRepositoryCatalog, lfsPointer, maxLfsAssetBytes, readRepositoryFile, repositoryCatalogRoot, repositoryMediaFile } from './shared/repository-template-catalog.ts';
-import { loadGithubCatalog, type GithubRepositoryCatalog } from './shared/github-template-catalog.ts';
+import { loadGithubCatalog, restoreGithubCatalog, serializeGithubCatalog, type GithubRepositoryCatalog } from './shared/github-template-catalog.ts';
 import { downloadMedia, validateMediaLock } from './shared/repository-media.ts';
 
 type TemplateFile = { path: string; url: string; bytes: number; sha256: string };
+type GithubSourceManifest = { files: { path: string; bytes?: number; sha256?: string }[] };
 type PrismTemplate = {
   templateId: string; sortOrder: number; original: Record<string, string>;
   indexUrl: string; previewUrl: string; coverUrl: string; files: TemplateFile[];
@@ -86,18 +88,29 @@ export class TemplateCatalog {
     }
     if (this.source === 'github') {
       if (this.snapshot && Date.now() - this.checkedAt < 300_000) return this.snapshot;
-      this.pending = loadGithubCatalog(this.request).then(github => {
-        const snapshot = { publication: github.publication as Publication, etag: null, github };
-        this.snapshot = snapshot;
-        this.warning = undefined;
-        this.checkedAt = Date.now();
-        return snapshot;
-      }).catch(error => {
-        if (!this.snapshot) throw error;
-        this.warning = `GitHub 模板更新失败，使用上次目录：${(error as Error).message}`;
-        this.checkedAt = Date.now();
-        return this.snapshot;
-      }).finally(() => { this.pending = undefined; });
+      this.pending = (async () => {
+        if (!this.snapshot) {
+          try {
+            const cached = restoreGithubCatalog(JSON.parse(await readFile(path.join(this.directory, 'github-snapshot.json'), 'utf8')), this.request);
+            this.snapshot = { publication: cached.publication as Publication, etag: null, github: cached };
+            this.warning = cached.warning;
+          } catch {}
+        }
+        try {
+          const github = await loadGithubCatalog(this.request);
+          const snapshot = { publication: github.publication as Publication, etag: null, github };
+          await atomicWrite(path.join(this.directory, 'github-snapshot.json'), serializeGithubCatalog(github));
+          this.snapshot = snapshot;
+          this.warning = github.warning;
+          this.checkedAt = Date.now();
+          return snapshot;
+        } catch (error) {
+          if (!this.snapshot) throw error;
+          this.warning = `GitHub 模板更新失败，使用上次目录：${(error as Error).message}`;
+          this.checkedAt = Date.now();
+          return this.snapshot;
+        }
+      })().finally(() => { this.pending = undefined; });
       return this.pending;
     }
     const interval = this.environment === 'dev' ? 2_000 : 60_000;
@@ -206,7 +219,8 @@ export class TemplateCatalog {
 
   async detail(id: string) {
     const builtin = builtinTemplates.find(item => item.id === id);
-    if (builtin) return { ...builtin, instructions: templateRecipe(builtin), workflowGuide: { workflow: 'template', section: 'start', status: 'ready' }, warning: this.warning };
+    if (builtin) return { ...builtin, instructions: templateRecipe(builtin), source: this.source,
+      workflowGuide: { workflow: 'template', section: 'start', status: 'ready' }, warning: this.warning };
     const snapshot = await this.refresh();
     const template: EditableTemplate | undefined = this.templates(snapshot).find(item => item.id === id);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');
@@ -217,8 +231,8 @@ export class TemplateCatalog {
         workflowGuide: { workflow: template.hasHtmlProject ? 'template' : 'production', section: 'start', status: 'ready' } };
     }
     if (snapshot.github && template.kind !== 'builtin') {
-      const instructions = (await snapshot.github.fetchFile(id, 'TEMPLATE.md')).toString('utf8');
-      const content = (await snapshot.github.fetchFile(id, 'source/motion.md')).toString('utf8');
+      const instructions = (await this.githubFile(snapshot, id, 'TEMPLATE.md')).toString('utf8');
+      const content = (await this.githubFile(snapshot, id, 'source/motion.md')).toString('utf8');
       return { ...template, instructions, motionDocument: { path: `/api/template-source/${id}/motion.md`, content }, source: this.source,
         workflowGuide: { workflow: template.hasHtmlProject ? 'template' : 'production', section: 'start', status: 'ready' }, warning: this.warning };
     }
@@ -232,22 +246,24 @@ export class TemplateCatalog {
       const snapshot = await this.refresh();
       const record = snapshot.github?.records.get(id);
       if (!record) throw new Error('GitHub template not found');
-      const manifest = JSON.parse((await snapshot.github!.fetchFile(id, 'source/manifest.json')).toString('utf8'));
-      if (name !== 'manifest.json' && !manifest.files.some((file: { path: string }) => file.path === name)) throw new Error('GitHub template source file not found');
+      const { manifest, bytes: manifestBytes } = await this.githubManifest(snapshot, id);
+      if (name === 'manifest.json') return manifestBytes;
+      const expected = manifest.files.find(file => file.path === name);
+      if (!expected) throw new Error('GitHub template source file not found');
       const remote = record.remoteAssets?.find((asset: { source: { path: string } }) => asset.source.path === name);
       if (remote) {
         const lock = { path: name, ...remote };
-        const expected = manifest.files.find((file: { path: string }) => file.path === name);
         if (expected.bytes !== lock.bytes || expected.sha256 !== lock.sha256) throw new Error('Transferred media does not match its source manifest');
-        return downloadMedia(lock, this.request);
+        return this.githubFile(snapshot, id, name, maxLfsAssetBytes, bytes => {
+          if (bytes.length !== lock.bytes || hash(bytes) !== lock.sha256) throw new Error('Transferred media does not match its source manifest');
+        }, async () => downloadMedia(lock, this.request));
       }
       const media = name.startsWith('assets/') && repositoryMediaFile.test(name);
-      const bytes = await snapshot.github.fetchFile(id, 'source/' + name, media ? maxLfsAssetBytes : 1024 * 1024);
+      const bytes = await this.githubFile(snapshot, id, 'source/' + name, media ? maxLfsAssetBytes : 1024 * 1024, value => {
+        if (expected.bytes !== undefined && (expected.bytes !== value.length || expected.sha256 !== hash(value))) throw new Error('Template media does not match its source manifest');
+      });
       if (lfsPointer(bytes)) throw Object.assign(new Error(`Template media is not downloaded. Fetch the Git LFS asset for ${id}.`), { code: 'TEMPLATE_LFS_NOT_FETCHED' });
-      if (media) {
-        const expected = manifest.files.find((file: { path: string }) => file.path === name);
-        if (expected.bytes !== bytes.length || expected.sha256 !== hash(bytes)) throw new Error('Template media does not match its source manifest');
-      }
+      if (media && expected.bytes === undefined) throw new Error('Template media is missing its source manifest lock');
       return bytes;
     }
     if (this.source !== 'repository') throw new Error('Repository template source is unavailable');
@@ -291,6 +307,38 @@ export class TemplateCatalog {
     if (!matches(bytes)) throw new Error(`模板文件校验失败：${file.path}`);
     await atomicWrite(cachedPath, bytes);
     return bytes;
+  }
+
+  private githubCachePath(snapshot: Snapshot, templateId: string, name: string): string {
+    return path.join(this.directory, 'github-files', hash(`${snapshot.github!.commit}:${templateId}:${name}`));
+  }
+
+  private async githubFile(snapshot: Snapshot, templateId: string, name: string, limit = 1024 * 1024, validate?: (bytes: Buffer) => void, download?: () => Promise<Buffer>): Promise<Buffer> {
+    const filename = this.githubCachePath(snapshot, templateId, name);
+    try {
+      const cached = await readFile(filename);
+      try {
+        validate?.(cached);
+        return cached;
+      } catch {}
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+    const bytes = download ? await download() : await snapshot.github!.fetchFile(templateId, name, limit);
+    assert(bytes.length <= limit, 'GitHub template file exceeds its size limit');
+    validate?.(bytes);
+    await atomicWrite(filename, bytes);
+    return bytes;
+  }
+
+  private async githubManifest(snapshot: Snapshot, templateId: string): Promise<{ manifest: GithubSourceManifest; bytes: Buffer }> {
+    const bytes = await this.githubFile(snapshot, templateId, 'source/manifest.json', 1024 * 1024, value => {
+      const manifest = JSON.parse(value.toString('utf8')) as GithubSourceManifest;
+      assert(Array.isArray(manifest.files), 'Invalid GitHub template source manifest');
+    });
+    const manifest = JSON.parse(bytes.toString('utf8')) as GithubSourceManifest;
+    assert(Array.isArray(manifest.files), 'Invalid GitHub template source manifest');
+    return { manifest, bytes };
   }
 
   async copy(template: EditableTemplate, directory: string, runtimeRoot: string): Promise<void> {

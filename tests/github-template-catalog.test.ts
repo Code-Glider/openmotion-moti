@@ -18,7 +18,7 @@ const record = {
   entry: { templateId: id, sortOrder: 1, original: { templateName: 'GitHub fixture', summary: 'Latest main template' }, files: [] },
   locales: { en: {} },
 };
-const sourceManifest = { files: [{ path: 'motion.md', bytes: Buffer.byteLength('# GitHub motion\n'), sha256: '8f78b8b3d9e4e6cde5cb8d5ccf9ef8bc5e8c8b6f6e8a4a5a4f5e5e2e8ad2c5aa' }] };
+const sourceManifest = { files: [{ path: 'motion.md', bytes: Buffer.byteLength('# GitHub motion\n'), sha256: '73417adee4bd42997389776443c3df7097c3515bc67030ea4d04f2b0fd341dbc' }] };
 
 function response(value: unknown, status = 200) {
   return new Response(typeof value === 'string' ? value : JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
@@ -27,8 +27,12 @@ function response(value: unknown, status = 200) {
 test('GitHub catalog reads latest main and serves repository source files', async t => {
   const work = await mkdtemp(path.join(tmpdir(), 'openmotion-github-catalog-'));
   t.after(() => rm(work, { recursive: true, force: true }));
+  const calls: string[] = [];
+  let offline = false;
   const request = async (input: RequestInfo | URL) => {
     const url = String(input);
+    calls.push(url);
+    if (offline) throw new Error('offline');
     if (url === 'https://api.github.com/repos/nexu-io/openmotion/commits/main') return response({ sha: commit });
     if (url.endsWith('/catalog.json')) return response(manifest);
     if (url.endsWith(`/${id}/template.json`)) return response(record);
@@ -46,6 +50,12 @@ test('GitHub catalog reads latest main and serves repository source files', asyn
   assert.equal(detail.instructions, '# GitHub instructions\n');
   assert.equal(detail.motionDocument.content, '# GitHub motion\n');
   assert.equal((await catalog.sourceFile(id, 'motion.md')).toString(), '# GitHub motion\n');
+  const afterFirstSourceRead = calls.length;
+  assert.equal((await catalog.sourceFile(id, 'motion.md')).toString(), '# GitHub motion\n');
+  assert.equal(calls.length, afterFirstSourceRead, 'verified GitHub source files are reused from the cache');
+  offline = true;
+  const reopened = new TemplateCatalog(work, { source: 'github', locale: 'en', fetch: request });
+  assert.equal((await reopened.sourceFile(id, 'motion.md')).toString(), '# GitHub motion\n');
 });
 
 test('built-in template detail stays local when the GitHub catalog is unreachable', async t => {
