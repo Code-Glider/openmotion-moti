@@ -35,6 +35,10 @@ test('task ledger rejects malformed or conflicting terminal transitions', async 
     await assert.rejects(ledger.accept({ task_id: 'bad', task_type: 'export', accepted_at: now, deadline_at: now }), /TASK_LEDGER_INVALID/);
     await ledger.accept({ task_id: taskId, task_type: 'export', accepted_at: now, deadline_at: now });
     await ledger.terminal(taskId, 'failure', 'unknown', 'EXPORT_FAILED');
+    const terminal = await ledger.snapshot();
+    await new Promise(resolve => setTimeout(resolve, 2));
+    const repeated = await ledger.terminal(taskId, 'failure', 'unknown', 'EXPORT_FAILED');
+    assert.equal(repeated.terminal_at, terminal[taskId].terminal_at);
     await assert.rejects(ledger.terminal(taskId, 'success', 'true'), /TASK_LEDGER_CONFLICT/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
@@ -72,4 +76,5 @@ test('north-star evidence events keep closed, content-free schemas', () => {
   assert.equal(validProperties(omEvents, 'queue_snapshot', { instance_id: instanceId, task_type: 'export', queued_count: 0, running_count: 1, available_slots: 0, counts_complete: true }), true);
   assert.equal(validProperties(omEvents, 'incident_confirmed', { incident_id: crypto.randomUUID(), incident_type: 'false_success', severity: 'sev2', subject_id: checkId.slice(0, 32) }), true);
   assert.equal(validProperties(omEvents, 'host_preview_observed', { run_id: runId, project_id: 'project', revision: 'private/path', version_id: versionId, visibility: 'visible', content_verified: true, observation_source: 'host_reported' }), false);
+  assert.equal(validProperties(omEvents, 'check_completed', { check_id: checkId, check_type: 'technical_export', project_id: projectId, version_id: 'native-history-id', subject_id: checkId.slice(0, 32), checklist_version: 'export-v1', checker_type: 'automated', result: 'pass' }), true);
 });

@@ -103,10 +103,11 @@ export class Phase1Service {
       }
       trackPhase1Result(this.context.tracking, name, args, undefined, error, host);
       if (this.context.tracking && args?.workId && name !== 'motion_export_cancel') {
-        const round = args.projectId ? await this.workRounds.get(args.projectId, args.workId).catch(() => null) : null;
-        this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: round?.mode ?? 'modify', error_code: trackingError(error), stage: name });
-        // Only a work round that this failure actually closed is reported as a failed run state.
-        if (round?.state === 'failed') this.context.tracking.track('host_state_changed', { run_id: args.workId, sequence: 2, state: 'failed', phase: name });
+        const work = await this.workRounds.get(args.projectId, args.workId).catch(() => null);
+        if (work?.state === 'failed' && !work.jobId) {
+          this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: work.mode, error_code: trackingError(error), stage: name }, undefined, undefined, host);
+          this.context.tracking.track('host_state_changed', { run_id: args.workId, sequence: 2, state: 'failed', phase: name }, undefined, undefined, host);
+        }
       }
       await recordDiagnostic(this.store.directory, { kind: 'mcp_failure', tool: name, requestId: args?.requestId,
         projectId: args?.projectId, message: errorText(error), stack: error instanceof Error ? error.stack : undefined });

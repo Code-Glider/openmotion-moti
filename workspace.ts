@@ -20,6 +20,8 @@ import { validateInstruction, type ProjectConversation, type ProjectMessage } fr
 import { creationMode, type CreativeSession, type SessionDetail } from './shared/session.ts';
 import { templateConfig } from './shared/template-config.ts';
 import { copyTemplate, welcomeTemplateId } from './template-library.ts';
+import { uuid } from './tracking/core.ts';
+import { TaskLedger } from './tracking/task-ledger.ts';
 
 const legacyDataDir = fileURLToPath(new URL('.motion-data/', import.meta.url));
 const productionDataDir = process.platform === 'darwin' && !existsSync(legacyDataDir)

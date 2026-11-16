@@ -162,6 +162,9 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
               run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
             else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
             else tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
+            tracking.track('host_state_changed', { run_id: final.workId, sequence: 2,
+              state: final.state === 'completed' && final.verification && (final.verification as any).status === 'passed' ? 'delivered' : final.state === 'cancelled' ? 'cancelled' : 'failed',
+              phase: 'technical_export', state_reason: final.state === 'completed' ? 'EXPORT_VERIFIED' : final.state === 'cancelled' ? 'EXPORT_CANCELLED' : 'EXPORT_FAILED' }, undefined, 'worker', host);
           }
         }
       }
@@ -663,7 +666,10 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (!context.runtimeRoot) return json(res, 503, { error: 'Hyperframes 服务尚未就绪' });
       await requireNativeRuntime(context.nativeRoot ?? pluginRoot, 'export');
       const data = await input(req); revision(data.expectedRevision);
-      return json(res, 202, { job: await store.requestExport(data.expectedRevision) });
+      const job = await store.requestExport(data.expectedRevision);
+      context.tracking?.track('task_accepted', { task_id: job.id, task_type: 'export', ...(job.projectId ? { project_id: job.projectId } : {}),
+        accepted_at: new Date(job.acceptedAt ?? job.createdAt).toISOString(), deadline_at: new Date(job.deadlineAt ?? job.expiresAt).toISOString() });
+      return json(res, 202, { job });
     }
     const download = url.pathname.match(/^\/api\/exports\/([a-f0-9-]{36})\/file$/);
     if (download && req.method === 'GET') {
