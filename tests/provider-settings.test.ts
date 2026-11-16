@@ -252,7 +252,7 @@ test('each finished sign-in attempt gives telemetry one record the tracker accep
   assert.equal((await account.summary()).syncing, undefined);
   await account.logout(); await rm(file('authorize'));
   // Two clients cancelling the same attempt still count it once.
-  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl)); await Promise.all([account.cancel(), account.cancel()]);
+  await account.login(); await until(async () => (await account.summary()).browserOpened === true); await Promise.all([account.cancel(), account.cancel()]);
   await writeFile(file('fixture-mode'), 'login-denied');
   await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
   await writeFile(file('authorize'), 'yes'); await until(async () => (await account.summary()).state !== 'authorizing');
