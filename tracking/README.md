@@ -69,10 +69,46 @@ see [diagnostics and retry semantics](INTEGRATION.md#diagnose-without-logging-ev
 
 ## Identity, properties and privacy
 
-One random UUID is persisted atomically in `tracking/identity.json` under the owned
-data directory, outside projects and versioned application caches. `device_id`,
-`installation_id` and PostHog `distinct_id` share that UUID. Different data directories
-are separate installations. No hardware ID or fingerprint is used. The package can
+One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
+under each owned data directory, outside projects and versioned application caches.
+Different data directories remain separate installations.
+
+Device-level analytics uses an OS-provided stable identifier: IOPlatformUUID on macOS,
+the 64-bit MachineGuid registry value on Windows, and machine-id on Linux. A bounded,
+lazy read runs only when enabled tracking sends a batch. The identifier is never
+persisted, logged or transmitted: HMAC-SHA256 uses it as the key with the fixed
+OpenMotion-specific `openmotion:device:v1` namespace and platform. Only the resulting
+`omd_` hash is sent as `device_id`, with `device_id_source=platform`. It is independent
+of project, data directory, app version and host. MCP, Studio and worker events on
+one OS device share this device hash. PostHog `distinct_id` continues to use the
+persisted `installation_id`, preserving each installation's historical analytics
+identity across upgrade. Different data directories remain separate analytics
+identities even when their device hash is the same. No identify/alias or person-profile
+migration is performed.
+
+Unreadable, invalid or unsupported platform identifiers produce `device_id=unknown`
+and `device_id_source=unavailable`, never an installation UUID presented as a device.
+Device counts must filter `device_id_source=platform` and count distinct `device_id`,
+not `distinct_id` or person IDs. Unknown events are a separate coverage measure,
+not one device. Historical events without this marker used directory UUIDs in the
+device field; this change does not backfill them as measured devices.
+
+Native PostHog unique-user charts and person-based funnels/retention continue to
+measure installations. Filtering by device source alone does not turn them into
+device-level analyses; those need explicit aggregation by `device_id`. For example:
+
+```sql
+SELECT uniqExact(properties.device_id) AS active_devices
+FROM events
+WHERE timestamp >= now() - INTERVAL 2 DAY
+  AND properties.product = 'openmotion'
+  AND properties.device_id_source = 'platform'
+```
+
+This measures OS-device identities, not people or immutable physical hardware. Shared
+machines count once, a person on two machines counts twice, cloned OS identifiers can
+collide, and an OS reinstall can change Windows/Linux identifiers. No account identity,
+MAC address, raw platform identifier or probabilistic fingerprint is sent. The package can
 initialize an identity with a validated source label; existing identities retain
 their first source. Landing-page attribution and installer `--source` plumbing are
 a separate change. Unknown source remains null.
@@ -140,6 +176,24 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
 
 - All registered phase-one stdio tools: accepted start and observed finish, including
   early-return catalog tools, input rejection, partial import and idempotent replay.
+- All eighteen page WebMCP tools: `webmcp_tool_started` and
+  `webmcp_tool_finished`, correlated by a fresh `call_id` per invocation, with
+  the public `tool_name`, `transport=webmcp`, observed `outcome` and bounded
+  `duration_ms`. These are browser-call measurements, separate from stdio MCP
+  events and committed business results; a replayed call is still a call.
+  Structured error replies and thrown failures count as failed calls, even when
+  their applied effect is uncertain. Explicit aborts count as `cancelled`; missing
+  or malformed replies count as `unknown`. A late abort does not turn a successful
+  reply into a cancelled operation. Arguments, results, handles, paths and raw errors are
+  excluded. Host Agent fields retain their existing page-handoff meaning; the
+  transport marker does not identify the calling browser agent.
+- WebMCP registration: `webmcp_registration_result` records one result per
+  attempted tool registration (`success`, `failure` or `cancelled`), including
+  validation/duplicate refusals and teardown cancellation. Use this event for
+  registration counts; existing native/polyfill and registration-error events
+  remain diagnostic signals. A disabled tool preference or absent modelContext
+  makes no tool-registration attempt. The existing consent, Do Not Track,
+  configuration retry and best-effort delivery policies apply to all three events.
 - Domain results: create/open/edit/import/restore and export request/cancel. Replayed
   operations do not manufacture additional domain completions. Preview returned by
   a tool does not imply the host opened it.

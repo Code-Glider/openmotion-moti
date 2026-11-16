@@ -18,8 +18,10 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
   const activatePanel = useDockLayoutStore(state => state.activatePanel);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const previous = useRef(collapsed);
+  const restoreFocus = useRef(false);
   useEffect(() => {
-    if (previous.current !== collapsed) buttonRef.current?.focus({ preventScroll: true });
+    if (previous.current !== collapsed && restoreFocus.current) buttonRef.current?.focus({ preventScroll: true });
+    restoreFocus.current = false;
     previous.current = collapsed;
   }, [collapsed]);
   if (!isPanelId(first) || zone === "center") return null;
@@ -30,13 +32,13 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
     <Tooltip label={t(collapsed ? "Expand" : "Collapse")} side={collapsed ? zone === "left" ? "right" : "left" : "bottom"}>
       <IconButton ref={buttonRef} size={collapsed ? "lg" : "sm"} aria-label={label}
         aria-expanded={!collapsed} icon={<RemixIcon name="arrow-right-s-line" size={16} mirrored={zone === "left" ? !collapsed : collapsed} />}
-        onClick={event => controller?.setGroupCollapsed?.(first, !collapsed, event.detail > 0)} />
+        onClick={event => { restoreFocus.current = true; controller?.setGroupCollapsed?.(first, !collapsed, event.detail > 0); controller?.rememberWorkspace?.(); }} />
     </Tooltip>
   );
   if (!collapsed) return <div className="hf-dock-side-actions">{toggle}</div>;
   return createPortal(
     <nav className="hf-dock-side-rail" aria-label={t(zone === "left" ? "Left panels" : "Right panels")}>
-      {toggle}
+      <div className="hf-dock-side-rail-header">{toggle}</div>
       <div className="hf-dock-side-rail-divider" role="separator" />
       <div className="hf-dock-side-rail-items">
         {panels.map(panel => {
@@ -47,8 +49,10 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
           return <Tooltip key={id} label={title} side={zone === "left" ? "right" : "left"}>
             <IconButton size="lg" aria-label={title} aria-expanded={false}
               icon={<Icon size={16} />} onClick={event => {
+                restoreFocus.current = true;
                 controller?.setGroupCollapsed?.(id, false, event.detail > 0);
                 activatePanel(id);
+                controller?.rememberWorkspace?.();
               }} />
           </Tooltip>;
         })}

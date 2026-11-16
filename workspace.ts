@@ -1,13 +1,14 @@
 import type { HostContext } from './tracking/host.ts';
 import { renderFilenameStem } from './shared/render-name.ts';
 import { createHash } from 'node:crypto';
+import { withProcessLock } from './shared/process-lock.ts';
 import { isAssetFileWithinLimit } from './shared/asset-limits.ts';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { constants, createReadStream, existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
-import { copyFile, cp, lstat, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, cp, lstat, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { delay, nativeProjectConfig, pluginRoot } from './hyperframes.ts';
+import { nativeProjectConfig, pluginRoot } from './hyperframes.ts';
 import { validateProject, duration } from './shared/legacy.ts';
 import type { Project as LegacyProject } from './shared/legacy.ts';
 import { exportExpectation } from './shared/export-expectation.ts';
@@ -15,6 +16,7 @@ import type { ExportExpectation } from './shared/export-spec.ts';
 import { validateInstruction, type ProjectConversation, type ProjectMessage } from './shared/conversation.ts';
 import { creationMode, type CreativeSession, type SessionDetail } from './shared/session.ts';
 import { templateConfig } from './shared/template-config.ts';
+import { copyTemplate, welcomeTemplateId } from './template-library.ts';
 
 const legacyDataDir = fileURLToPath(new URL('.motion-data/', import.meta.url));
 const productionDataDir = process.platform === 'darwin' && !existsSync(legacyDataDir)
@@ -27,7 +29,7 @@ const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg',
 const studioManifests = ['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json'];
 export type SourceFile = { path: string; size: number; hash: string };
 export type FileEdit = { path: string; content: string };
-export type SavedProject = { id: string; title: string; templateId?: string; createdAt?: number; openedAt?: number };
+export type SavedProject = { id: string; title: string; titleKey?: 'OpenMotion Sample Video' | null; templateId?: string; createdAt?: number; openedAt?: number };
 export type ProjectCatalog = { activeId: string; projects: SavedProject[]; sessions?: CreativeSession[]; activeSessionId?: string };
 export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; phase1?: boolean; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
   createdAt: number; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
@@ -49,7 +51,7 @@ async function atomic(filename: string, content: string | Buffer) {
 
 export class WorkspaceStore {
   directory: string;
-  hashes = new Map<string, { signature: string; hash: string }>();
+  hashes = new Map<string, { signature: string; hash: Promise<string> }>();
   selectedProjectId?: string;
   workspaceStore?: WorkspaceStore;
   constructor(directory = defaultDataDir, projectId?: string) { this.directory = path.resolve(directory); this.selectedProjectId = projectId; }
@@ -58,6 +60,7 @@ export class WorkspaceStore {
     if (!this.projectCatalog().projects.some(project => project.id === id)) throw new Error('PROJECT_NOT_FOUND: 工程不存在');
     this.projectDirectoryFor(id);
     const scoped = new WorkspaceStore(this.directory, id);
+    scoped.hashes = this.hashes;
     scoped.workspaceStore = this.workspaceStore ?? this;
     return scoped;
   }
@@ -70,11 +73,18 @@ export class WorkspaceStore {
     let catalog: ProjectCatalog;
     try { catalog = JSON.parse(readFileSync(path.join(this.directory, 'projects.json'), 'utf8')); }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') catalog = { activeId: 'project', projects: [{ id: 'project', title: '初始工程' }] };
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') catalog = { activeId: 'project', projects: [{ id: 'project', title: 'OpenMotion 示例短片', titleKey: 'OpenMotion Sample Video' }] };
       else throw error;
     }
     if (!Array.isArray(catalog.projects) || !catalog.projects.some(item => item.id === catalog.activeId)) throw new Error('工程目录记录损坏');
     for (const item of catalog.projects) { this.projectDirectoryFor(item.id); if (typeof item.title !== 'string') throw new Error('工程名称无效'); }
+    // Older workspaces did not distinguish the built-in label from a saved name.
+    // An explicit rename records null so even a matching title remains user-owned.
+    const initial = catalog.projects.find(item => item.id === 'project');
+    if (initial && initial.titleKey === undefined && ['初始工程', 'OpenMotion 示例短片'].includes(initial.title)) {
+      initial.title = 'OpenMotion 示例短片';
+      initial.titleKey = 'OpenMotion Sample Video';
+    }
     // Legacy conversations keep their IDs and files; all new sessions own artifact IDs.
     catalog.sessions ??= catalog.projects.map(project => ({ ...project, mode: 'motion', artifacts: [{ id: project.id, kind: 'motion-project', projectId: project.id, title: project.title, templateId: project.templateId }] }));
     catalog.activeSessionId ??= catalog.sessions.find(session => session.artifacts.some(artifact => artifact.projectId === catalog.activeId))?.id;
@@ -209,6 +219,7 @@ export class WorkspaceStore {
       const project = catalog.projects.find(item => item.id === id);
       if (!project) throw new Error('工程不存在');
       project.title = title;
+      project.titleKey = null;
       await atomic(path.join(this.directory, 'projects.json'), JSON.stringify(catalog));
       return catalog;
     });
@@ -216,19 +227,26 @@ export class WorkspaceStore {
   get jobFilename() { return path.join(this.directory, 'export.json'); }
 
   async lock<T>(change: () => Promise<T>): Promise<T> {
-    await mkdir(this.directory, { recursive: true });
-    const lockPath = path.join(this.directory, 'workspace.lock');
-    let lock; const end = Date.now() + 30_000;
-    while (!lock) {
-      try { lock = await open(lockPath, 'wx', 0o600); }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-        if (Date.now() > end) throw new Error('工程正在被另一进程使用，请检查 workspace.lock');
-        await delay(25);
-      }
+    return withProcessLock(path.join(this.directory, 'workspace.lock'), change);
+  }
+  async fileInfo(filename: string) {
+    const info = await stat(filename);
+    if (!info.isFile()) throw new Error('工程源文件类型无效：' + filename);
+    const signature = `${info.dev}:${info.ino}:${info.mtimeMs}:${info.ctimeMs}:${info.size}:${info.mode}`;
+    let cached = this.hashes.get(filename);
+    if (!cached || cached.signature !== signature) {
+      const hash = (async () => {
+        const hash = createHash('sha256');
+        for await (const chunk of createReadStream(filename)) hash.update(chunk);
+        const after = await stat(filename);
+        if (`${after.dev}:${after.ino}:${after.mtimeMs}:${after.ctimeMs}:${after.size}:${after.mode}` !== signature) throw new Conflict();
+        return hash.digest('hex');
+      })();
+      cached = { signature, hash }; this.hashes.set(filename, cached);
+      if (this.hashes.size > 10_000) this.hashes.delete(this.hashes.keys().next().value!);
+      void hash.catch(() => { if (this.hashes.get(filename)?.hash === hash) this.hashes.delete(filename); });
     }
-    try { return await change(); }
-    finally { await lock.close(); await rm(lockPath, { force: true }); }
+    return { size: info.size, hash: await cached.hash };
   }
 
   async safePath(name: string, directory = this.projectDirectory) {
@@ -244,16 +262,8 @@ export class WorkspaceStore {
   async files(directory = this.projectDirectory): Promise<SourceFile[]> {
     const files: SourceFile[] = [];
     const collect = async (name: string) => {
-      const filename = await this.safePath(name, directory), info = await stat(filename);
-      if (!info.isFile()) throw new Error('工程源文件类型无效：' + name);
-      const signature = `${info.ino}:${info.mtimeMs}:${info.ctimeMs}:${info.size}`;
-      let cached = this.hashes.get(filename);
-      if (!cached || cached.signature !== signature) {
-        const hash = createHash('sha256');
-        for await (const chunk of createReadStream(filename)) hash.update(chunk);
-        cached = { signature, hash: hash.digest('hex') }; this.hashes.set(filename, cached);
-      }
-      files.push({ path: name, size: info.size, hash: cached.hash });
+      const filename = await this.safePath(name, directory);
+      files.push({ path: name, ...await this.fileInfo(filename) });
       if (files.length > 5000) throw new Error('工程文件数超过 5000');
     };
     const walk = async (folder: string) => {
@@ -351,7 +361,7 @@ export class WorkspaceStore {
         if (old.project) legacy = validateProject(old.project);
       } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
       if (legacy) await migrateLegacy(legacy, staging);
-      else await cp(path.join(pluginRoot, 'templates'), staging, { recursive: true });
+      else await copyTemplate(welcomeTemplateId, staging, runtimeRoot);
       await copyFile(path.join(runtimeRoot, 'node_modules/gsap/dist/gsap.min.js'), path.join(staging, 'assets/gsap.min.js'));
       await writeFile(path.join(staging, 'hyperframes.json'), JSON.stringify(nativeProjectConfig, null, 2));
       // The legacy workspace.json remains untouched. Never replace an existing native entry.
@@ -411,7 +421,7 @@ export class WorkspaceStore {
         for (const file of current.project.files) {
           const source = await this.safePath(file.path);
           const destination = path.join(snapshot, file.path);
-          await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination);
+          await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination, constants.COPYFILE_FICLONE);
         }
         if (this.revision(await this.files(snapshot)) !== expectedRevision || (await this.get()).revision !== expectedRevision) throw new Conflict();
         job.expected = await exportExpectation(this.directory, snapshot);
@@ -423,6 +433,8 @@ export class WorkspaceStore {
     });
   }
   async claimExport() {
+    const pending = await this.job();
+    if (!pending || pending.state !== 'pending' || pending.expiresAt < Date.now()) return null;
     return this.lock(async () => {
       const job = await this.job();
       if (!job || job.state !== 'pending' || job.expiresAt < Date.now()) return null;

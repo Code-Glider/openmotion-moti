@@ -28,7 +28,7 @@ export async function check() {
   const manifest = JSON.parse(await readFile(path.join(root, '.codex-plugin/plugin.json'), 'utf8'));
   const marketplace = JSON.parse(await readFile(path.join(root, 'marketplace.example.json'), 'utf8'));
   assert.equal(manifest.name, marketplace.plugins[0].name);
-  assert.equal(manifest.skills, './skills/');
+  assert.deepEqual(manifest.skills, ['./skills/', './.codex-plugin/onboarding/']);
   const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const lock = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'utf8'));
   assert.equal(pkg.version, manifest.version);

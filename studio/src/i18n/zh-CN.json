@@ -755,7 +755,7 @@
   "Reading versions…": "正在读取版本…",
   "Changes are recorded automatically. Pin important versions to keep them.": "编辑自动记录，重要版本可长期保留",
   "No pinned versions yet. Select an entry to pin it.": "尚未保留版本。选择一条记录即可保留。",
-  "No edits yet. Changes made in the canvas, code, or by an agent will appear here.": "还没有修改记录。编辑画面、代码或由 Agent 修改后，会自动记录在这里。",
+  "No edits yet": "暂无修改记录",
   "Manual edit": "手动编辑",
   "External change": "外部修改",
   "Changes in this version": "本次修改",
@@ -1805,5 +1805,13 @@
   "Usage guide": "使用说明",
   "API origin": "API 地址",
   "Use the gateway address shown on your Cloud API key page.": "请填写 Cloud 控制台 API 密钥页显示的网关地址。",
-  "Save settings": "保存配置"
+  "Save settings": "保存配置",
+  "Fit timeline to content": "时间轴适应内容",
+  "Resize track controls": "调整轨道控制区宽度",
+  "Track {number}": "轨道 {number}",
+  "Lock track": "锁定轨道",
+  "Unlock track": "解锁轨道",
+  "Delete track": "删除轨道",
+  "Unlock the track before deleting it": "请先解锁轨道再删除",
+  "Open the composition to delete this track": "请进入对应合成后删除此轨道"
 }

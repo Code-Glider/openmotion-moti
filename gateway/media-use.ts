@@ -5,23 +5,27 @@ import { getWorkflow } from '../shared/workflow.ts';
 
 export async function mediaUse(store: WorkspaceStore, args: any) {
   const gateway = gatewayFor(store);
-  if (args.provider !== undefined && !mediaProviders.includes(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
+  const connections = await gateway.connections.list();
+  const supported = (id: string) => mediaProviders.includes(id as typeof mediaProviders[number]) || id === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
+  const referenceSection = (id: string) => mediaProviders.includes(id as typeof mediaProviders[number]) ? id : id === 'account' ? 'account' : 'compatible';
+  if (args.provider !== undefined && !supported(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
   if (args.action === 'inspect') {
     const status = await gateway.status();
-    const capabilities = await gateway.mediaCapabilities();
-    const providers = status.providers.filter(p => mediaProviders.includes(p.id as any));
+    const providers = status.providers.filter(p => supported(p.id) && (mediaProviders.includes(p.id as any) || p.configured || p.id === 'account'));
+    const capabilities = await gateway.mediaCapabilities(providers.filter(p => p.available).map(p => p.id));
     return { providers, capabilities, setupRequired: !providers.some(p => p.available),
       capabilityNote: 'speech = narration/dialogue (text-to-speech); music = other audio. Lists come from built-in and cached catalogs: confirm an empty kind with action "models" and refresh: true before telling the user it is unsupported.',
-      settings: 'Open Media providers (多模态供应商) at the bottom of the Studio left project drawer. Saving a key enables the provider.',
-      references: mediaProviders.map(provider => ({ provider, uri: `openmotion://workflow/production/${provider}` })),
+      defaults: status.routes,
+      settings: 'Open Settings > Model providers (Chinese UI: 设置 > 模型供应商), or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
+      references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }
   if (args.action === 'reference') {
     if (!args.provider) throw new Error('INVALID_ARGUMENT: provider is required');
-    return getWorkflow(args.provider, 'production');
+    return getWorkflow(referenceSection(args.provider), 'production');
   }
   if (args.action === 'models') {
-    const providers = (await gateway.status()).providers.filter(p => mediaProviders.includes(p.id as any) && (!args.provider || p.id === args.provider) && p.enabled);
+    const providers = (await gateway.status()).providers.filter(p => supported(p.id) && (!args.provider || p.id === args.provider) && p.enabled);
     const pages = await Promise.all(providers.map(provider => gateway.listModels({ provider: provider.id, modality: args.modality, refresh: args.refresh, query: args.query, offset: args.offset, limit: args.limit })));
     return { providers: providers.map(p => p.id), catalogs: pages, setupRequired: !providers.length };
   }
@@ -34,7 +38,7 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
   }
   if (args.action === 'status' || args.action === 'cancel') {
     const job = await gateway.getJob(args.jobId);
-    if (job.projectId !== args.projectId || !mediaProviders.includes(job.model.provider as any)) throw new Error('GENERATION_NOT_FOUND: job does not belong to this project');
+    if (job.projectId !== args.projectId || job.model.provider === 'codex') throw new Error('GENERATION_NOT_FOUND: job does not belong to this project');
     if (args.action === 'cancel' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
     return { projectId: job.projectId, job: args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }

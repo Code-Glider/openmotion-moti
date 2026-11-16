@@ -61,6 +61,14 @@ try{
  const catalog=await tool('openmotion_list_templates',{});assert.ok(path.isAbsolute(catalog.indexPath));assert.equal('items' in catalog,false);assert.match(await readFile(catalog.indexPath,'utf8'),/test-motion-1/);
  const template=await tool('openmotion_get_template',{templateId:'test-motion-1'});assert.equal(template.catalogVersion,catalog.catalogVersion);assert.equal(template.instructions,contents['TEMPLATE.md']);
  const wav=path.join(work,'tone.wav');assert.equal(spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','sine=duration=1',wav]).status,0);
+ const wavSha256=createHash('sha256').update(await readFile(wav)).digest('hex');
+ const assetInput={action:'import',requestId:'asset-import',sourcePath:wav,name:'Packaged tone'};
+ const libraryAsset=(await tool('openmotion_assets',assetInput)).asset;
+ assert.equal((await tool('openmotion_assets',assetInput)).asset.id,libraryAsset.id);
+ assert.equal(libraryAsset.modality,'audio');assert.equal(libraryAsset.versions.length,1);assert.equal(libraryAsset.versions[0].sha256,wavSha256);
+ assert.ok(libraryAsset.currentVersionId===libraryAsset.versions[0].id);
+ assert.equal((await tool('openmotion_assets',{action:'get',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId})).version.sha256,wavSha256);
+ assert.ok((await tool('openmotion_assets',{action:'list',modality:'audio'})).assets.some(asset=>asset.id===libraryAsset.id));
  const imported=await tool('openmotion_import_assets',{projectId:p.projectId,requestId:'import',items:[{itemId:'audio',sourcePath:wav}]});assert.equal(imported.status,'completed');
  const html=`<!doctype html><html><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}#main{position:relative;width:320px;height:180px;overflow:hidden;background:#d3e7ae}#box{position:absolute;top:60px;left:20px;width:40px;height:40px;background:#203021}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="320" data-height="180" data-fps="10"><div id="box"></div><audio id="tone" class="clip" src="${imported.items[0].path}" data-start="0" data-duration="1" data-track-index="1" data-volume="0.3"></audio></div><script>const tl=gsap.timeline({paused:true});tl.fromTo('#box',{x:0},{x:200,duration:1,ease:'none'},0);window.__timelines={main:tl};</script></body></html>`;
  const original=await tool('openmotion_edit_project',{projectId:p.projectId,requestId:'film',expectedRevision:imported.revision,expectedVersionId:imported.version.versionId,files:[{path:'index.html',content:html}]});
@@ -68,6 +76,9 @@ try{
  const restored=await tool('openmotion_restore_version',{projectId:p.projectId,requestId:'restore',versionId:original.version.versionId,expectedRevision:later.revision,expectedVersionId:later.version.versionId});
  assert.equal(restored.revision,original.revision);assert.ok(restored.version.versionNumber>later.version.versionNumber);
  assert.ok((await tool('openmotion_list_versions',{projectId:p.projectId})).versions.some(v=>v.versionId===later.version.versionId));
+ const fromLibrary=await tool('openmotion_assets',{action:'import_to_project',projectId:p.projectId,requestId:'asset-project-import',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId});
+ assert.equal(fromLibrary.status,'completed');assert.ok(fromLibrary.revision!==restored.revision);
+ assert.equal(fromLibrary.items[0].sha256,wavSha256);
  const preview=await tool('openmotion_open_preview',{projectId:p.projectId});assert.equal((await fetch(preview.previewUrl)).status,200);
  const current=await tool('openmotion_get_project',{projectId:p.projectId});
  const frame=await tool('openmotion_open_preview',{action:'begin',mode:'modify',projectId:p.projectId,requestId:'inline-round'});
@@ -81,7 +92,7 @@ try{
  assert.equal((await tool('openmotion_get_project',{projectId:p.projectId,exportJobId:completed.id})).exportJob.state,'completed');
  assert.deepEqual([...calledTools].sort(),[...expected].sort(),'E2E must successfully call every public Tool');
  await copyFile(completed.path,path.join(evidence,'export.mp4'));
- report={status:'passed',executionEnvironment:process.env.CI?'ci':'local',version:init.serverInfo.version,archive,archiveSHA256:createHash('sha256').update(await readFile(archive)).digest('hex'),work,root,data,tools:names,skills:(await readdir(path.join(root,'skills'))).sort(),checks:{inlineUiPackaged:true,inlineMediaVersionAndHash:true,mediaOmittedFromModelText:true,isolatedExtraction:true,noWorktreeNodeModules:true,freshLockedRuntimeInstall:true,allPublicToolsCalled:true,hiddenCallsRejected:true,pinnedGuideResource:true,creationReplay:true,realAttachment:true,restoreRetainsLaterVersions:true,studioPreview:true,verifiedAudioMP4:true,actualMotionFrames:true,cancelledExport:true,historicalCompletedResult:true},export:{id:completed.id,path:completed.path,downloadUrl:completed.downloadUrl,verification:completed.verification},notRun:['independent_player_audio_review','four_hosts_model_turn','other_platforms','publish']};
+ report={status:'passed',executionEnvironment:process.env.CI?'ci':'local',version:init.serverInfo.version,archive,archiveSHA256:createHash('sha256').update(await readFile(archive)).digest('hex'),work,root,data,tools:names,skills:(await readdir(path.join(root,'skills'))).sort(),checks:{inlineUiPackaged:true,inlineMediaVersionAndHash:true,mediaOmittedFromModelText:true,isolatedExtraction:true,noWorktreeNodeModules:true,freshLockedRuntimeInstall:true,allPublicToolsCalled:true,hiddenCallsRejected:true,pinnedGuideResource:true,creationReplay:true,libraryImportReplay:true,pinnedLibraryProjectImport:true,realAttachment:true,restoreRetainsLaterVersions:true,studioPreview:true,verifiedAudioMP4:true,actualMotionFrames:true,cancelledExport:true,historicalCompletedResult:true},export:{id:completed.id,path:completed.path,downloadUrl:completed.downloadUrl,verification:completed.verification},notRun:['independent_player_audio_review','four_hosts_model_turn','other_platforms','publish']};
  await writeFile(path.join(evidence,'packaged-smoke-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({status:report.status,version:report.version,tools:names.length,skills:report.skills.length,archiveSHA256:report.archiveSHA256,work}));
 }catch(error){await writeFile(path.join(evidence,'packaged-smoke-failure.log'),String(error.stack)+'\n'+stderr);throw error;}
 finally{

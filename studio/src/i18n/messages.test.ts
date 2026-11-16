@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { dictionaries, languages, translate, mvpMessages, isKnownMessage, sourceMessage } from './messages';
 import mvpUi from './mvp-ui.json';
 import errorUi from './error-ui.json';
+import settingsUi from './settings-ui.json';
+import templateUi from './template-ui.json';
 import { errorNoticeMessage } from '../components/ui/errorNoticeMessage';
 import { historyEntryLabel } from './historyMessages';
 
@@ -55,7 +57,8 @@ it('keeps Chinese additions interpolated and preserves fallback for unexposed ad
     const values = Object.fromEntries([...source.matchAll(/\{(\w+)\}/g)].map(match => [match[1], 'sample']));
     expect(translate('zh-CN', source, values)).not.toMatch(/\{\w+\}/);
     for (const { locale } of languages.filter(language => language.locale !== 'zh-CN')) {
-      if (!mvpMessages[locale]?.[source] && (locale === 'en' || !dictionaries[locale]?.[source])) expect(translate(locale, source, values)).toBe(translate('en', source, values));
+      const additions: Record<string, string> = { ...errorUi[locale as keyof typeof errorUi], ...templateUi[locale as keyof typeof templateUi], ...settingsUi[locale as keyof typeof settingsUi] };
+      if (!additions[source] && !mvpMessages[locale]?.[source] && (locale === 'en' || !dictionaries[locale]?.[source])) expect(translate(locale, source, values)).toBe(translate('en', source, values));
     }
   }
 });

@@ -13,7 +13,7 @@ import { groupAutomationLanes } from "./automationLaneData";
 import { groupAutomationElement } from "./groupAutomationElement";
 import { TimelineAutomationLaneSlot } from "./TimelineAutomationLaneSlot";
 import { TimelineGroupLaneLabels } from "./TimelineGroupLaneLabels";
-import { LABEL_COL_W, MVP_LABEL_COL_W, TRACK_H } from "./timelineLayout";
+import { LABEL_COL_W, TRACK_H } from "./timelineLayout";
 import type { UseAutomationLanesResult } from "./useAutomationLanes";
 import { useDomEditSelectionContextOptional } from "../../contexts/DomEditContext";
 import { useTimelineEditContextOptional } from "../../contexts/TimelineEditContext";
@@ -76,7 +76,7 @@ export function TimelineGroupRow({
   trackContentWidth,
 }: TimelineGroupRowProps) {
   const mvp = useMvpEditor();
-  const labelColumnWidth = mvp ? MVP_LABEL_COL_W : LABEL_COL_W;
+  const labelColumnWidth = mvp ? contentOrigin : LABEL_COL_W;
   // From the group, NOT from `tracks`: a collapsed group emits no member rows
   // into the display list, and every one of these reads silently degraded to
   // empty in that (default) state — the lane count

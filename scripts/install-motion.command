@@ -12,6 +12,21 @@ node -e 'const [major,minor]=process.versions.node.split(".").map(Number);if(maj
 codex plugin add --help >/dev/null || { echo '当前 Codex CLI 不支持插件安装，请升级后重试。'; exit 1; }
 
 mkdir -p "$openmotion_root/.agents/plugins" "$openmotion_logs"
+openmotion_started=$SECONDS
+openmotion_run_id="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+if [[ "${OPENMOTION_SOURCE_DOWNLOAD_SECONDS:-}" =~ ^[0-9]+$ ]]; then
+  printf '{"runId":"%s","phase":"source-download","seconds":%s,"exitCode":0}\n' "$openmotion_run_id" "$OPENMOTION_SOURCE_DOWNLOAD_SECONDS" >> "$openmotion_logs/timings.jsonl"
+fi
+openmotion_stage() {
+  local phase="$1" started=$SECONDS
+  shift
+  local stage_status=0
+  "$@" || stage_status=$?
+  local elapsed=$((SECONDS - started))
+  printf '{"runId":"%s","phase":"%s","seconds":%s,"exitCode":%s}\n' "$openmotion_run_id" "$phase" "$elapsed" "$stage_status" >> "$openmotion_logs/timings.jsonl"
+  printf '[OpenMotion] %s: %s seconds (exit %s)\n' "$phase" "$elapsed" "$stage_status"
+  return "$stage_status"
+}
 openmotion_catalog="$openmotion_root/.agents/plugins/marketplace.json"
 if [ -e "$openmotion_catalog" ]; then
   node --input-type=module - "$openmotion_catalog" <<'JS'
@@ -25,13 +40,16 @@ else
   cp "$openmotion_root/marketplace.example.json" "$openmotion_catalog"
 fi
 
+# Read only: detect an active/foreign source conflict before downloading dependencies.
+openmotion_stage source-preflight node "$openmotion_root/scripts/source-marketplace.mjs" "$openmotion_root" --check
+
 # Git checkouts omit studio/build; release ZIPs already contain the editor.
 if [ ! -f "$openmotion_root/studio/build/index.html" ]; then
   echo '首次从源码安装：下载锁定依赖并构建编辑器。'
   (
     cd "$openmotion_root"
-    npm ci --include=dev
-    npm run build:studio
+    openmotion_stage dependencies npm ci --include=dev
+    openmotion_stage studio-build npm run build:studio
   )
 fi
 
@@ -39,10 +57,10 @@ fi
 node --experimental-strip-types "$openmotion_root/scripts/install-onboarding.mjs" "$openmotion_root" --check-contract
 
 echo '只注册 openmotion-local 并安装 OpenMotion，不升级或移除其他插件。'
-codex plugin marketplace add "$openmotion_root"
-codex plugin add openmotion@openmotion-local
+openmotion_stage marketplace node "$openmotion_root/scripts/source-marketplace.mjs" "$openmotion_root"
+openmotion_stage plugin codex plugin add openmotion@openmotion-local
 codex plugin list --marketplace openmotion-local
-node "$openmotion_root/scripts/check-installed-mcp.mjs"
+openmotion_stage mcp-preflight node "$openmotion_root/scripts/check-installed-mcp.mjs"
 
-openmotion_onboarding="$(node --experimental-strip-types "$openmotion_root/scripts/install-onboarding.mjs" "$openmotion_root")"
-printf '%s\n' 'OpenMotion registration and independent MCP preflight succeeded. Check hostHandoff before reporting current-chat connection or onboarding success.' "$openmotion_onboarding"
+openmotion_stage onboarding node --experimental-strip-types "$openmotion_root/scripts/install-onboarding.mjs" "$openmotion_root" --summary
+printf '[OpenMotion] local-install-total: %s seconds (source download: %s seconds)\n' "$((SECONDS - openmotion_started))" "${OPENMOTION_SOURCE_DOWNLOAD_SECONDS:-not-measured}"

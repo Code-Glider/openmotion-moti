@@ -33,6 +33,7 @@ import { groupMoveFloor, resolveGroupMovers } from "./timelineMultiDragPreview";
 import type { DraggedClipState, ResizingClipState } from "./timelineClipDragTypes";
 import { useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
 import { heldAudioShiftRange, heldPartnerVideoBounds } from "./audioClipLink";
+import { isPendingTimelineRow } from "./timelinePendingRows";
 
 /** Snap-target builder closure supplied by the hook (closes over refs + store). */
 type BuildSnapTargets = (
@@ -157,6 +158,9 @@ function resolveDropPlacement(
   group: GroupDrag,
 ): { track: number; insertRow: number | null; start: number } {
   const { trackOrder, elements } = ctx;
+  if (isPendingTimelineRow(desiredTrack, elements)) {
+    return { track: drag.element.track, start: drag.element.start, insertRow: null };
+  }
   const dragKey = drag.element.key ?? drag.element.id;
   const audioTracks =
     ctx.audioTracks ?? new Set(elements.filter(isAudioTimelineElement).map((e) => e.track));
@@ -183,6 +187,23 @@ interface GroupDrag {
   /** Lowest start the grabbed clip may take (see groupMoveFloor). */
   floor: number;
   moving: ReadonlySet<string>;
+}
+
+const groupCache = new WeakMap<readonly TimelineElement[], WeakMap<ReadonlySet<string>, Map<TimelineElement, GroupDrag & { shift: ReturnType<typeof heldAudioShiftRange> }>>>();
+
+/** Selection and source snapshots are fixed for a gesture; only its landing changes. */
+function preparedGroup(drag: DraggedClipState, ctx: DragPreviewContext) {
+  let selections = groupCache.get(ctx.elements);
+  if (!selections) { selections = new WeakMap(); groupCache.set(ctx.elements, selections); }
+  let groups = selections.get(ctx.selectedKeys);
+  if (!groups) { groups = new Map(); selections.set(ctx.selectedKeys, groups); }
+  const cached = groups.get(drag.element);
+  if (cached) return cached;
+  const group = resolveGroupDrag(drag, ctx);
+  const movers = ctx.elements.filter(element => group.moving.has(element.key ?? element.id));
+  const prepared = { ...group, shift: heldAudioShiftRange(movers, ctx.elements, group.moving) };
+  groups.set(drag.element, prepared);
+  return prepared;
 }
 
 function resolveGroupDrag(drag: DraggedClipState, ctx: DragPreviewContext): GroupDrag {
@@ -261,13 +282,8 @@ export function computeDragPreview(
     target !== null && !guideIfSaved(drag.element, { start: snapped.start }, target, pps);
   const snap = missed ? { start: nextMove.start, snapTime: null, snapType: null } : snapped;
   // A group moves rigidly: the grabbed clip stops where any mover would cross its host's start.
-  const group = resolveGroupDrag(drag, ctx);
-  const dragKey = drag.element.key ?? drag.element.id;
-  const passengers = ctx.elements.filter(
-    (el) => (el.key ?? el.id) !== dragKey && group.moving.has(el.key ?? el.id),
-  );
-  const movers = [drag.element, ...passengers];
-  const shift = heldAudioShiftRange(movers, ctx.elements, group.moving);
+  const group = preparedGroup(drag, ctx);
+  const shift = group.shift;
   const origin = drag.element.start;
   const floored = Math.max(snap.start, group.floor);
   const previewStart = origin + Math.max(shift.min, Math.min(floored - origin, shift.max));

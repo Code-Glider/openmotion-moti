@@ -1,3 +1,6 @@
+import { modelMetadata } from './gateway/model-metadata.ts';
+import { assetConversations } from './gateway/asset-chat.ts';
+import { assetHttp } from './gateway/asset-http.ts';
 import { getWorkflow } from './shared/workflow.ts';
 import { isMain } from './shared/entry.ts';
 import { createServer } from 'node:http';
@@ -21,6 +24,8 @@ import { agentGuide, integrationConfig, integrationHost, type IntegrationInfo } 
 import { validateInstruction } from './shared/conversation.ts';
 import { creationMode, creationModes, artifactViewers, type CreativeSession, type CreationMode } from './shared/session.ts';
 import { gatewayFor } from './gateway/service.ts';
+import { providerDirectory, setDefaultModel, syncProvider } from './gateway/settings.ts';
+import { localAgentsFor } from './gateway/local-agents.ts';
 import { WorkspaceBrowser } from './browser.ts';
 import { Phase1Service } from './phase1.ts';
 import { phase1McpCapabilities } from './shared/phase1-tools.ts';
@@ -28,12 +33,13 @@ import { recoverProjectTransactions } from './phase1-versions.ts';
 import { verifyExport } from './scripts/verify-export.ts';
 import { createAppTracking, closeTracking, saveTrackingPreference, trackingPreference, trackingLockReason, type OmTracking } from './shared/tracking.ts';
 import { studioEvents } from './tracking/events.ts';
-import { nativeRuntimeStatus, startNativePreparation, requireNativeRuntime } from './scripts/npm-runtime.mjs';
+import { configureNativeEnvironment, nativeRuntimeStatus, startNativePreparation, requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { nativeRouteCapability } from './shared/native-runtime.ts';
 import { validPending, uuid } from './tracking/core.ts';
 import { validHostContext, unknownHost, previewTrackingContext } from './tracking/host.ts';
 import type { HostContext } from './tracking/host.ts';
 import { collectDiagnostics, diagnosticLimits, recordDiagnostic } from './scripts/diagnostics.mjs';
+import { isWorkspaceSettingsPage } from './shared/workspace-url.ts';
 
 const sharedStore = new WorkspaceStore();
 export type Service = { trackingHosts?: Map<string, { host: HostContext; createdAt: number }>; diagnostics?: { running: boolean; lastExport: number; events: number; window: number }; studio?: Studio; runtimeRoot?: string; nativeRoot?: string; ffmpeg?: boolean; switching?: boolean; studioPort?: number; browser?: WorkspaceBrowser; editorToken?: string; ensureStudio?: (projectId?: string) => Promise<Studio>; launchStudio?: (directory: string, port: number) => Promise<Studio>; phase1?: Phase1Service; phase1Mutation?: Promise<void>; tracking?: OmTracking };
@@ -249,7 +255,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (projectHeader !== undefined && projectHeader !== id) return json(res, 400, { error: 'PROJECT_SCOPE_MISMATCH' });
       store = store.forProject(id);
     }
-    if (context.ensureStudio && (url.pathname === '/' || url.pathname.startsWith('/sessions/'))) {
+    if (context.ensureStudio && !isWorkspaceSettingsPage(url.search) && (url.pathname === '/' || url.pathname.startsWith('/sessions/'))) {
       const projectId = url.searchParams.get('project'), sessionId = url.searchParams.get('session');
       if (projectId !== null) {
         if (store.projectCatalog().projects.some(project => project.id === projectId)) await context.ensureStudio(projectId);
@@ -260,6 +266,26 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
     }
     if (motionRequest) url.pathname = url.pathname.replace(/^\/(?:motion|design)-api\//, '/api/');
+    if (motionRequest && url.pathname.startsWith('/api/assets/conversations')) {
+      const chats = assetConversations(store);
+      if (url.pathname === '/api/assets/conversations') {
+        if (req.method === 'GET') return json(res, 200, { conversations: await chats.list() });
+        if (req.method === 'POST') return json(res, 200, { conversation: await chats.create() });
+      }
+      const chatRoute = url.pathname.match(/^\/api\/assets\/conversations\/([^/]+)(?:\/(turn|stop|approve))?$/);
+      if (chatRoute) {
+        const [, id, action] = chatRoute;
+        if (!action && req.method === 'GET') return json(res, 200, { conversation: await chats.get(id) });
+        if (req.method === 'POST') {
+          const data = await input(req, 128 * 1024);
+          if (action === 'turn') return json(res, 200, { conversation: await chats.start(id, data) });
+          if (action === 'stop') return json(res, 200, { conversation: await chats.stop(id) });
+          if (action === 'approve') return json(res, 200, { conversation: await chats.answer(id, data.approvalId, data.accepted) });
+        }
+      }
+      return json(res, 405, { error: 'Unsupported conversation request' });
+    }
+    if (motionRequest && url.pathname.startsWith('/api/assets/') && await assetHttp(req, res, url, store)) return;
     const editorUrl = `http://${host || 'localhost'}/#project/${store.projectId}`;
     if (motionRequest && ['/api/diagnostics', '/api/diagnostics/events'].includes(url.pathname)) {
       // Downloads are POST-only: cross-origin links must not trigger a collection.
@@ -400,6 +426,60 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (!context.studio?.alive()) return json(res, 503, { error: 'Hyperframes Studio 尚未就绪，请重新打开预览并检查 studio.log' });
       return json(res, 200, { url: editorUrl, projectDirectory: store.projectDirectory, projectId: store.projectCatalog().activeId });
     }
+    if (motionRequest && url.pathname.startsWith('/api/settings/')) {
+      const gateway = gatewayFor(store);
+      const agents = localAgentsFor(store.directory);
+      if (url.pathname === '/api/settings/agents' && req.method === 'GET') return json(res, 200, await agents.list());
+      if (url.pathname === '/api/settings/default-agent' && req.method === 'PUT') { const body = await input(req); await agents.choose(body.choice); return json(res, 200, { ok: true }); }
+      const agentAction = url.pathname.match(/^\/api\/settings\/agents\/([a-z0-9-]+)\/(inspect|models|prepare|open)$/);
+      if (agentAction && req.method === 'POST') {
+        const [, id, action] = agentAction;
+        if (action === 'inspect') return json(res, 200, await agents.inspect(id));
+        const body = await input(req);
+        if (action === 'models') { await agents.addModel(id, body.model); return json(res, 200, { ok: true }); }
+        if (!['login', 'launch'].includes(body.action)) throw new Error('Invalid Agent action');
+        const choice = { agent: id, model: body.model ?? 'default', ...(body.reasoning ? { reasoning: body.reasoning } : {}) };
+        const plan = await agents[action === 'open' ? 'open' : 'prepare'](choice, store.projectDirectory, new URL(editorUrl).origin, body.action);
+        return json(res, 200, plan);
+      }
+      if (url.pathname === '/api/settings/providers' && req.method === 'GET') return json(res, 200, await providerDirectory(gateway));
+      if (url.pathname === '/api/settings/providers' && req.method === 'POST') return json(res, 200, { id: await gateway.connections.configure(null, await input(req)) });
+      const provider = url.pathname.match(/^\/api\/settings\/providers\/([a-z0-9-]+)(\/sync|\/models)?$/);
+      if (provider) {
+        const id = provider[1];
+        if (!provider[2] && req.method === 'PUT') return json(res, 200, await gateway.configureProvider(id, await input(req)));
+        if (!provider[2] && req.method === 'DELETE') { await gateway.connections.remove(id); return json(res, 200, { ok: true }); }
+        if (provider[2] === '/sync' && req.method === 'POST') { await syncProvider(gateway, id); return json(res, 200, { ok: true }); }
+        if (provider[2] === '/models' && req.method === 'POST') {
+          const body = await input(req);
+          if (['fal', 'opendesign', 'atlascloud', 'wavespeed'].includes(id)) {
+            modelMetadata(body);
+            const model = await gateway.registerModel({ ...body, provider: id, modality: body.kind, mode: body.kind === 'audio' ? 'text-to-speech' : `text-to-${body.kind}` });
+            await gateway.connections.updateMetadata(model.model.id, body);
+            return json(res, 200, model);
+          }
+          return json(res, 200, await gateway.connections.saveModel(id, body));
+        }
+      }
+      if (url.pathname === '/api/settings/models' && req.method === 'PUT') {
+        const body = await input(req);
+        if (typeof body.id !== 'string' || body.enabled !== null && typeof body.enabled !== 'boolean') throw new Error('Invalid model update');
+        await gateway.connections.updateModel(body.id, body.enabled); return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/settings/models' && req.method === 'PATCH') {
+        const body = await input(req), directory = await providerDirectory(gateway);
+        if (typeof body.id !== 'string' || !directory.models.some(model => model.id === body.id)) throw new Error('Model not found');
+        await gateway.connections.updateMetadata(body.id, body); return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/settings/default-model' && req.method === 'PUT') {
+        const body = await input(req); await setDefaultModel(gateway, body.kind, body.model); return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/settings/account' && req.method === 'GET') return json(res, 200, await gateway.account.summary(url.searchParams.get('refresh') === 'true'));
+      if (url.pathname === '/api/settings/account/login' && req.method === 'POST') return json(res, 200, await gateway.account.login());
+      if (url.pathname === '/api/settings/account/cancel' && req.method === 'POST') return json(res, 200, await gateway.account.cancel());
+      if (url.pathname === '/api/settings/account/logout' && req.method === 'POST') return json(res, 200, await gateway.account.logout());
+      return json(res, 404, { error: 'Settings endpoint not found' });
+    }
     if (motionRequest && (url.pathname.startsWith('/api/models') || url.pathname.startsWith('/api/generations'))) {
       const gateway = gatewayFor(store);
       if (url.pathname === '/api/models/capabilities' && req.method === 'GET') return json(res, 200, await gateway.status(url.searchParams.get('refresh') === 'true'));
@@ -408,7 +488,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         query: url.searchParams.get('query') ?? '', refresh: url.searchParams.get('refresh') === 'true',
         offset: Number(url.searchParams.get('offset') ?? 0), limit: Number(url.searchParams.get('limit') ?? 100),
       }));
-      const reference = url.pathname.match(/^\/api\/models\/providers\/(fal|opendesign|atlascloud|wavespeed)\/reference$/);
+      const reference = url.pathname.match(/^\/api\/models\/providers\/(fal|opendesign|atlascloud|wavespeed|account|compatible)\/reference$/);
       if (reference && req.method === 'GET') {
         const guide = await getWorkflow(reference[1], 'production');
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(guide.content);
@@ -578,6 +658,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
 export async function startServer(store = sharedStore, port = Number(process.env.PORT || 4173), options: { editor?: boolean; fallbackIfPortBusy?: boolean; editorToken?: string; privateHandler?: (req: IncomingMessage, res: ServerResponse) => Promise<boolean> } = { editor: process.env.MOTION_HEADLESS !== '1' }) {
   await access(path.join(pluginRoot, 'studio/build/index.html')).catch(() => { throw new Error('编辑器尚未构建，请先运行 npm run build:studio。'); });
   const runtimeRoot = await ensureRuntime(store.directory, false);
+  await configureNativeEnvironment(pluginRoot);
   void startNativePreparation(pluginRoot).catch(error => console.error('Native preparation could not start: ' + error.message));
   await recoverProjectTransactions(store, runtimeRoot);
   const ffmpeg = await execute(process.env.HYPERFRAMES_FFMPEG_PATH || process.env.FFMPEG_PATH || 'ffmpeg', ['-version'], pluginRoot, 5000).then(r => r.code === 0, () => false);
@@ -628,9 +709,9 @@ export async function startServer(store = sharedStore, port = Number(process.env
     void gateway.tick().catch(() => console.error('Model gateway queue could not be processed'));
   };
   const timer = setInterval(tick, 500); tick();
-  return { server, get activeToolCalls() { return context.phase1?.pending ?? 0; }, openProject: async (projectId: string) => openProject(store, context, origin, (await store.get()).revision, { projectId }, store.projectId), get studio() { return context.studio!; }, ensureStudio: context.ensureStudio,
+  return { server, get activeToolCalls() { return (context.phase1?.pending ?? 0) + assetConversations(store).pending; }, openProject: async (projectId: string) => openProject(store, context, origin, (await store.get()).revision, { projectId }, store.projectId), get studio() { return context.studio!; }, ensureStudio: context.ensureStudio,
     info: async () => ({ previewUrl: origin, studioUrl: context.studio?.alive() ? `${origin}/#project/${store.projectId}` : undefined, engine: 'hyperframes', ready: true, editorReady: Boolean(context.studio?.alive()), ffmpeg, revision: (await store.get()).revision, dataDirectory: store.directory, browserOpened: false, nativeRuntime: await nativeRuntimeStatus(pluginRoot), authoringGuide: path.join(runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'), hyperframesCli: cliPath(runtimeRoot) }),
-    close: async () => { clearInterval(timer); await context.browser?.close(); await gateway.close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
+    close: async () => { clearInterval(timer); await context.browser?.close(); await gateway.close(); await assetConversations(store).close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
 }
 if (isMain(import.meta.url)) {
   try {

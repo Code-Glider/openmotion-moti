@@ -1,6 +1,6 @@
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
-import type { DragEventHandler } from "react";
+import type { DragEventHandler, Ref } from "react";
 import { CLIP_Y, GUTTER, MVP_LABEL_COL_W, RULER_H, TRACK_H, TRACKS_TOP_PAD } from "./timelineLayout";
 import { useMediaGateway } from "../../motion/MediaGatewayContext";
 import { usePlayerStore } from "../store/playerStore";
@@ -15,6 +15,8 @@ function EmptyGenerationRange() {
 
 interface TimelineEmptyStateProps {
   isDragOver: boolean;
+  viewportRef?: Ref<HTMLDivElement>;
+  pixelsPerSecond?: number;
   contentOrigin?: number;
   trackTopPadding?: number;
   onFileDrop?: boolean;
@@ -25,6 +27,8 @@ interface TimelineEmptyStateProps {
 
 export function TimelineEmptyState({
   isDragOver,
+  viewportRef,
+  pixelsPerSecond = 14,
   contentOrigin,
   trackTopPadding = TRACKS_TOP_PAD,
   onFileDrop,
@@ -35,10 +39,11 @@ export function TimelineEmptyState({
   const { t } = useI18n();
   const mvp = useMvpEditor();
   const gateway = useMediaGateway();
-  const emptyOrigin = mvp ? (contentOrigin ?? MVP_LABEL_COL_W + GUTTER) : GUTTER;
+  const emptyOrigin = mvp ? (contentOrigin ?? MVP_LABEL_COL_W) : GUTTER;
   const hideGuide = !!gateway?.generationOpen && !isDragOver;
   return (
     <div
+      ref={viewportRef}
       className={`${mvp ? "motion-timeline-empty" : ""} relative h-full border-t bg-[var(--timeline-shell-bg)] flex flex-col select-none transition-colors duration-150 ${
         isDragOver ? "border-studio-accent/50 bg-studio-accent/3" : "border-neutral-800/50"
       }`}
@@ -48,7 +53,7 @@ export function TimelineEmptyState({
     >
       <TimelinePendingAssetDrops
         contentOrigin={emptyOrigin}
-        pixelsPerSecond={14}
+        pixelsPerSecond={pixelsPerSecond}
         trackOrder={[]}
         rowTop={() => RULER_H + trackTopPadding}
       />
@@ -61,7 +66,7 @@ export function TimelineEmptyState({
           <div
             key={s}
             className="flex flex-col items-center"
-            style={{ position: "absolute", left: emptyOrigin + s * 14, transform: mvp ? "translateX(-50%)" : undefined }}
+            style={{ position: "absolute", left: emptyOrigin + s * pixelsPerSecond, transform: mvp ? "translateX(-50%)" : undefined }}
           >
             <span className="text-[9px] text-neutral-600 font-mono tabular-nums leading-none mb-0.5">
               {`${Math.floor(s / 60)
@@ -80,7 +85,7 @@ export function TimelineEmptyState({
           style={{ top: trackTopPadding, height: TRACK_H }}
           aria-hidden={!isDragOver}
         >
-          <span className="motion-empty-timeline-label" style={{ width: MVP_LABEL_COL_W }}>A-roll</span>
+          <span className="motion-empty-timeline-label" style={{ width: emptyOrigin }}>V1</span>
           <div className="motion-empty-timeline-lane" style={{ left: emptyOrigin, top: CLIP_Y, bottom: CLIP_Y }}>{isDragOver && <span>{t("Drop media files to import")}</span>}</div>
         </div> : <div
           data-motion-empty-media

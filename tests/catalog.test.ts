@@ -32,7 +32,7 @@ test('the complete source snapshot, every original ID and matched poster survive
   assert.equal(snapshot.entries.length, 891); assert.equal(provenance.entries, 891);
   const counts = Object.fromEntries(['reference', 'moment', 'block', 'component', 'example'].map(collection => [collection, snapshot.entries.filter(entry => entry.collection === collection).length]));
   assert.deepEqual(counts, { reference: 42, moment: 393, block: 210, component: 238, example: 8 });
-  assert.equal(libraryTemplates.length, 894);
+  assert.equal(libraryTemplates.length, 895);
   for (const entry of snapshot.entries) {
     const template = getTemplate(entry.id);
     assert.equal(template.title, entry.title); assert.equal(template.sourceUrl, entry.sourceUrl);
@@ -64,10 +64,10 @@ test('pagination and grouped variants expose every template without omitting IDs
     ids.push(...page.items.map(item => item.id)); offset = page.next;
   }
   assert.deepEqual(new Set(ids), new Set(libraryTemplates.map(item => item.id)));
-  assert.equal(ids.length, 894);
+  assert.equal(ids.length, 895);
   const variants = groupTemplates(libraryTemplates).flatMap(item => item.variants || [item]);
-  assert.equal(variants.length, 894); assert.equal(new Set(variants.map(item => item.id)).size, 894);
-  assert.equal(listTemplates({ category: 'builtin' }).total, 3);
+  assert.equal(variants.length, 895); assert.equal(new Set(variants.map(item => item.id)).size, 895);
+  assert.equal(listTemplates({ category: 'builtin' }).total, 4);
   assert.ok(listTemplates({ category: 'script' }).items.every(item => item.tags.includes('口播') || item.role === 'a-roll'));
   assert.equal(listTemplates({ query: 'hf-component-agent-cursor' }).items[0].id, 'hf-component-agent-cursor');
   assert.equal(listTemplates({ query: '@lovable_dev' }).items[0].id, 'hf-reference-jake-lovable');
@@ -84,7 +84,7 @@ test('HTTP catalog, local posters and copied guides resolve the exact selected t
   try {
     const store = new WorkspaceStore(directory), request = transport(store), before = await store.get();
     const page = await (await request('/motion-api/template-catalog?grouped=true&limit=6')).json();
-    assert.equal(page.items[0].id, 'test-motion-1'); assert.equal(page.catalogTotal, 4);
+    assert.equal(page.items[0].id, 'test-motion-1'); assert.equal(page.catalogTotal, 5);
     assert.equal((await request('/motion-api/template-catalog?offset=-1')).status, 400);
     assert.equal((await request('/motion-api/template-catalog?limit=999')).status, 400);
     for (const template of libraryTemplates.filter(item => item.posterUrl?.startsWith('/web/'))) {
@@ -162,7 +162,7 @@ test('the visual gallery only includes verified local covers and keeps coverless
     assert.ok(bytes.length > 500);
   }
   const page = listTemplates({ covered: true, limit: 60 });
-  assert.equal(page.catalogTotal, 894); assert.equal(page.galleryTotal, covers.entries.length + 3);
+  assert.equal(page.catalogTotal, 895); assert.equal(page.galleryTotal, covers.entries.length + 4);
   assert.ok(page.items.every(item => item.posterUrl?.startsWith('/')));
   assert.equal(listTemplates({ covered: true, query: 'hf-component-agent-cursor' }).total, 0);
   assert.equal(listTemplates({ query: 'hf-component-agent-cursor' }).total, 1);

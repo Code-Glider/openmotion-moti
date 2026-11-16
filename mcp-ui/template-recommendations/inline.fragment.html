@@ -1,0 +1,23 @@
+<style>/*__OPENMOTION_INLINE_STYLE__*/</style>
+<div id="__OPENMOTION_INLINE_ROOT__"></div>
+<script>/*__OPENMOTION_INLINE_APP__*/</script>
+<script>
+(() => {
+  const root = document.getElementById('__OPENMOTION_INLINE_ROOT__');
+  const bootstrap = /*__OPENMOTION_INLINE_BOOTSTRAP__*/;
+  const recommendation = /*__OPENMOTION_INLINE_RECOMMENDATION__*/;
+  // This host has an inline document renderer, not a negotiated MCP message
+  // extension. The production component therefore offers its existing copyable
+  // brief fallback and never sends a task or pretends MCP is connected.
+  const host = {
+    getHostContext: () => ({locale: recommendation.language}),
+    getHostCapabilities: () => ({}),
+    sendMessage: async () => { throw new Error('No negotiated composer bridge'); },
+  };
+  const ui = OpenMotionTemplateCards.mountTemplateCards(root, bootstrap, host);
+  ui.setConnected(true);
+  ui.update(recommendation);
+  root.dataset.presentationMode = 'inline-document';
+  window.addEventListener('pagehide', () => ui.destroy(), {once: true});
+})();
+</script>

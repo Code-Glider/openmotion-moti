@@ -53,7 +53,8 @@ the agent can determine file paths and existing helpers from code.
 
 | Signal | Existing location | Extension rule |
 | --- | --- | --- |
-| Accepted MCP start and observed finish | `mcp.ts`, `toolNames` in `tracking/events.ts` | All eleven tools already use the wrapper. Do not add another start/finish pair inside a handler. Reconcile the tool contract and this list if adding a tool. |
+| Accepted MCP start and observed finish | `mcp.ts`, `toolNames` in `tracking/events.ts` | All thirteen tools already use the wrapper. Do not add another start/finish pair inside a handler. Reconcile the tool contract and this list if adding a tool. |
+| WebMCP callback and registration result | `studio/src/webmcp/registrar.ts` and its tracking wrapper | All eighteen registered page tools share one reporting boundary. Keep `transport=webmcp`, correlate start/finish by `call_id`, and preserve callback results, cancellation and errors. Update the closed tool-name list and its descriptor-alignment test when the public set changes. |
 | Committed phase-one business result | `phase1.ts` and `trackPhase1Result` in `shared/tracking.ts` | Use the shared domain completion. Replayed operations skip new domain completions. A successful call need not have made a useful edit. |
 | Render/export terminal state | `renderNext` in `server.ts` | Emit from the worker's observed terminal state. A queued job is not a completed video. |
 | Studio interaction or readiness | Components under `studio/src/motion/`, using `tracking.ts` there | Track an intentional handler or a guarded readiness/completion callback. Avoid unguarded render/effect reporting. |
@@ -154,8 +155,18 @@ Business callers provide only registered semantic properties. The package/server
 adds event UUID/time, schema and app version, environment, entrypoint/runtime,
 installation/device identity, saved attribution, platform, locale and timezone.
 Do not place common fields inside an event's properties or copy a browser identity
-into Node. `device_id`, `installation_id` and `distinct_id` currently share one random
-installation UUID; they are not a hardware fingerprint or a unique-person count.
+into Node. `installation_id` is a random UUID per data directory. `device_id` is an
+OpenMotion-scoped HMAC of a validated OS device identifier, independent of directories,
+versions and hosts; raw OS identifiers are never stored or sent. `distinct_id`
+continues to equal `installation_id`, including for existing installations after
+upgrade, so the new device field does not create another analytics identity.
+Unavailable devices use `device_id=unknown`, not a substitute device ID.
+Device counts must filter `device_id_source=platform` and explicitly deduplicate
+`device_id`. Native unique-user charts and person-based funnels/retention remain
+installation-level; device-level analyses need their own device aggregation.
+Historical events without the source marker were not measured by this device scheme;
+this change does not backfill them or merge person profiles.
+Neither measure is a count of people. See [identity limits](README.md#identity-properties-and-privacy).
 Host Agent properties also belong to this trusted common context. Capture the
 declared MCP client on its connection/request and pass that immutable context to
 the domain operation and worker. An editor uses only its opening-link context;

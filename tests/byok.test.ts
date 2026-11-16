@@ -28,7 +28,7 @@ test('public media tool reads guides, generates fal media once and binds job que
   await gateway.configureProvider('fal', { apiKey: 'test-fal-private' });
   assert.equal((await stat(path.join(gateway.root, 'secrets.json'))).mode & 0o777, 0o600);
   const inspect = await api.call('openmotion_media_use', { action: 'inspect' });
-  assert.deepEqual(inspect.providers.map((p: any) => [p.id, p.enabled]), [['atlascloud', false], ['fal', true], ['opendesign', false], ['wavespeed', false]]);
+  assert.deepEqual(inspect.providers.map((p: any) => [p.id, p.enabled]), [['atlascloud', false], ['fal', true], ['opendesign', false], ['wavespeed', false], ['account', false]]);
   assert.equal(inspect.setupRequired, false);
   assert.deepEqual(inspect.capabilities.map((c: any) => [c.kind, c.providers]), [['image', ['fal']], ['video', ['fal']], ['speech', ['fal']], ['music', []]]);
   assert.doesNotMatch(JSON.stringify(inspect), /test-fal-private/);
@@ -94,8 +94,8 @@ test('Cloud discovery uses workspace credentials; origin changes stop queued cal
   const first = await gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-image', modality: 'image', prompt: 'cup' });
   await gateway.configureProvider('opendesign', { baseUrl: 'https://changed.example' });
   assert.match((await finish(store, first.id)).error!, /origin changed/); assert.equal(calls, 1);
-  const speech = await gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-v3', modality: 'audio', prompt: 'hello' });
-  assert.match((await finish(store, speech.id)).error!, /voice ID/); assert.equal(calls, 1);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-v3', modality: 'audio', prompt: 'hello' }), /Voice ID is required/);
+  assert.equal(calls, 1);
   await gateway.configureProvider('opendesign', { apiKey: null });
   assert.equal((await gateway.status()).providers.find(p => p.id === 'opendesign')!.enabled, false);
   await gateway.close();

@@ -1,4 +1,4 @@
-import { spansOverlap } from "@hyperframes/core/clip-facts";
+import { timelineSpansOverlap } from "./timelineTimeBounds";
 import type { TimelineElement } from "../store/playerStore";
 import { isAudioTimelineElement } from "../../utils/timelineInspector";
 import { isTransitionPair } from "./timelineTransitionSeams";
@@ -26,7 +26,7 @@ const keyOf = (el: TimelineElement) => el.key ?? el.id;
 
 /** Two clips overlap when their half-open [start, end) intervals intersect. */
 function overlaps(a: TimelineElement, b: TimelineElement): boolean {
-  return spansOverlap(a.start, a.start + a.duration, b.start, b.start + b.duration);
+  return timelineSpansOverlap(a.start, a.start + a.duration, b.start, b.start + b.duration);
 }
 
 /** Deterministic order on the stable clip id (never the mutated lane/track). */
@@ -62,6 +62,18 @@ function packTrackLanes(
   base: number,
   laneOf: Map<string, number>,
 ): number {
+  // Ordinary edited tracks are sequential. Avoid comparing every pair after
+  // each cut/reload; keep stable-id first-fit below for genuinely overlapping files.
+  const byTime = [...clips].sort((a, b) => a.start - b.start);
+  let furthest: TimelineElement | undefined;
+  if (byTime.every((clip) => {
+    const clear = !furthest || !overlaps(furthest, clip);
+    if (!furthest || clip.start + clip.duration > furthest.start + furthest.duration) furthest = clip;
+    return clear;
+  })) {
+    for (const clip of clips) laneOf.set(keyOf(clip), base);
+    return 1;
+  }
   const ordered = [...clips].sort(byStableId);
   const lanes: TimelineElement[][] = [];
   for (const el of ordered) {

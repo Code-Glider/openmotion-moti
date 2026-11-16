@@ -39,7 +39,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.MOTION_GIT_LOG, JSON.stringify(args) + '\\n');
-if (args[0] === 'clone') {
+if (args.includes('clone')) {
   const scripts = path.join(args.at(-1), 'scripts');
   fs.mkdirSync(scripts, { recursive: true });
   fs.writeFileSync(path.join(scripts, 'install-motion.command'), '#!/bin/sh\\necho nested-motion-installer\\n');
@@ -53,7 +53,7 @@ if (args[0] === 'clone') {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /nested-motion-installer/);
     const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-    assert.deepEqual(calls[0], ['clone', '--depth', '1', '--branch', ref || 'main', '--', 'https://github.com/nexu-io/openmotion.git', destination]);
+    assert.deepEqual(calls[0], ['-c', 'filter.lfs.process=', '-c', 'filter.lfs.smudge=', '-c', 'filter.lfs.required=false', 'clone', '--depth', '1', '--single-branch', '--branch', ref || 'main', '--', 'https://github.com/nexu-io/openmotion.git', destination]);
     assert.equal(calls.length, 1);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

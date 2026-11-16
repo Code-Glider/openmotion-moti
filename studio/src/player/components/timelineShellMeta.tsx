@@ -1,4 +1,4 @@
-import type { MutableRefObject, PointerEvent } from "react";
+import type { MutableRefObject, PointerEvent, RefObject } from "react";
 import type {
   TimelineContainerProps,
   TimelineMeta,
@@ -32,10 +32,11 @@ export interface TimelineShellMetaInputs {
   shiftHeld: boolean;
   labelMode: boolean;
   contentOrigin: number;
+  contentGutter?: number;
   zoomMode: "fit" | "manual";
   theme: Pick<TimelineTheme, "shellBackground" | "shellBorder">;
   razor: {
-    razorGuideX: number | null;
+    razorGuideRef: RefObject<HTMLDivElement | null>;
     updateRazorGuide: TimelineContainerProps["onMouseMove"];
     clearRazorGuide: () => void;
     splitAllAtPointer: (event: PointerEvent<HTMLDivElement>) => boolean;
@@ -91,10 +92,10 @@ export function buildTimelineShellMeta(input: TimelineShellMetaInputs): Timeline
       onLostPointerCapture: pointer.onPointerCancel,
     },
     elementCount: input.elementCount,
-    labelColumnWidth: input.labelMode ? input.contentOrigin - GUTTER : 0,
+    labelColumnWidth: input.labelMode ? input.contentOrigin - (input.contentGutter ?? GUTTER) : 0,
     razorGuide:
-      activeTool === "razor" && razor.razorGuideX !== null ? (
-        <TimelineRazorGuideOverlay x={razor.razorGuideX} />
+      activeTool === "razor" ? (
+        <TimelineRazorGuideOverlay guideRef={razor.razorGuideRef} />
       ) : null,
   });
 }

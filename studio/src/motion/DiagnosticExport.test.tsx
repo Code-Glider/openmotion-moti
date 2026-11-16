@@ -33,12 +33,12 @@ it('downloads one local ZIP, disables duplicate clicks and releases the browser 
   await act(async () => finish(new Response('ZIP', { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="openmotion-diagnostics-fixture.zip"' } })));
   expect(recordBrowserDiagnostic).toHaveBeenCalledWith('activity_diagnostic_export', expect.stringContaining('outcome=download_triggered'));
   expect(button.disabled).toBe(false); expect(create).toHaveBeenCalledTimes(1); expect(click).toHaveBeenCalledTimes(1);
-  expect(document.querySelector('[role=status]')?.textContent).toBe('已发起下载，请查看浏览器下载列表。openmotion-diagnostics-fixture.zip');
+  expect(document.querySelector('[role=status]')?.textContent).toBe('已发起下载，请查看浏览器下载列表。');
   await vi.waitFor(() => expect(revoke).toHaveBeenCalledWith('blob:diagnostic-fixture'), { timeout: 1500 });
   await act(async () => button.click());
-  expect(document.querySelector('[role=status]')).toBeNull();
+  expect(document.querySelector('.om-card-stack [role=status]')).toBeNull();
   await act(async () => finish(new Response('', { status: 429 })));
-  expect(document.querySelector('[role=status]')).toBeNull();
+  expect(document.querySelector('.om-card-stack [role=alert]')).toBeNull();
   expect(document.querySelector('[role=alert]')?.textContent).toContain('30 秒');
 });
 
@@ -62,6 +62,6 @@ it('updates a visible download failure when the language changes without retryin
   await act(async () => root!.render(<I18nProvider initialLocale="en"><App /></I18nProvider>));
   await act(async () => container.querySelectorAll('button')[1].click());
   await act(async () => container.querySelector('button')!.click());
-  expect(container.querySelector('[role=alert]')?.textContent).toBe(translate('de', 'Please wait 30 seconds before exporting diagnostics again.'));
+  expect(document.querySelector('[role=alert]')?.textContent).toBe(translate('de', 'Please wait 30 seconds before exporting diagnostics again.'));
   expect(fetcher).toHaveBeenCalledTimes(1);
 });

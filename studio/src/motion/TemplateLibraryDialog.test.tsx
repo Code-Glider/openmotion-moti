@@ -76,11 +76,15 @@ it('uses one ordered gallery without a duplicate featured section and combines c
   await act(async () => button('Clear filters').click());
   expect(cards()).toHaveLength(3);
   await act(async () => button('Filters').click());
-  const checkbox = [...host.querySelectorAll<HTMLElement>('[role=menuitemcheckbox]')].find(el => el.textContent?.includes('Figma'))!;
-  await act(async () => checkbox.click());
-  expect(cards()).toEqual(['one']);
-  expect(host.querySelector('[role=menu][aria-label=Filters]')).not.toBeNull();
+  await act(async () => button('Reference brands').click());
+  await act(async () => button('Figma').click());
+  expect(cards()).toHaveLength(3);
+  expect(events('ui_click', { element: 'filter_option' })).toHaveLength(0);
+  expect(host.querySelector('[role=dialog][aria-label=Filters]')).not.toBeNull();
   expect(host.querySelectorAll('dialog[open]')).toHaveLength(1);
+  await act(async () => button('Apply filters').click());
+  expect(cards()).toEqual(['one']);
+  expect(events('template_filter_result').at(-1)).toMatchObject({ action: 'filter_apply', result_count: 1 });
   await act(async () => button('Remove filter Figma').click());
   expect(cards()).toHaveLength(3);
 });
@@ -142,7 +146,8 @@ it('tries the bundled brand logo after a published logo fails, then falls back t
   fetchItems([{ ...items[0], brand: 'Notion', brandLogoUrl: 'https://example.com/notion.svg' } as typeof items[0]]);
   await mount();
   await act(async () => button('Filters').click());
-  const label = [...host.querySelectorAll('[role=menuitemcheckbox]')].find(el => el.textContent === 'NNotion')!;
+  await act(async () => button('Reference brands').click());
+  const label = button('Notion');
   const image = label.querySelector('img')!;
   expect(image.getAttribute('src')).toBe('https://example.com/notion.svg');
   await act(async () => image.dispatchEvent(new Event('error')));
@@ -571,4 +576,85 @@ it('observes a positive instruction threshold so zero-area edge contact can prog
   await emit(0.01);
   await emit(1);
   expect(events('surface_view', { area: 'template_instruction' })).toHaveLength(1);
+});
+
+it('retains draft choices across groups, applies their intersection and clears one group or all choices', async () => {
+  await mount();
+  await search('clean');
+  await act(async () => button('Filters').click());
+  const popup = () => host.querySelector('[role=dialog][aria-label=Filters]')!;
+  await act(async () => button('Product launch films', popup()).click());
+  await act(async () => button('Motion style', popup()).click());
+  await act(async () => button('UI', popup()).click());
+  await act(async () => button('Reference brands', popup()).click());
+  await act(async () => button('Figma', popup()).click());
+  expect(popup().querySelector('[role=status]')?.textContent).toBe('1 templates');
+  expect(cards()).toEqual(['two', 'one']);
+  await act(async () => button('Other', popup()).click());
+  expect(popup().querySelector('[role=status]')?.textContent).toBe('2 templates');
+  await act(async () => button('Other', popup()).click());
+  expect(popup().querySelector('[role=status]')?.textContent).toBe('1 templates');
+  await act(async () => button('Clear selection', popup()).click());
+  expect(button('Figma', popup()).getAttribute('aria-checked')).toBe('false');
+  expect(popup().querySelector('[role=status]')?.textContent).toBe('2 templates');
+  await act(async () => button('Video purpose', popup()).click());
+  expect(button('Product launch films', popup()).getAttribute('aria-checked')).toBe('true');
+  await act(async () => button('Ready to edit', popup()).click());
+  await act(async () => button('Apply filters', popup()).click());
+  expect(cards()).toEqual(['one']);
+  await act(async () => button('Filters').click());
+  await act(async () => button('Clear filters', popup()).click());
+  expect(button('Ready to edit', popup()).getAttribute('aria-checked')).toBe('false');
+  expect(popup().querySelector('[role=status]')?.textContent).toBe('2 templates');
+  expect(cards()).toEqual(['one']);
+  await act(async () => button('Apply filters', popup()).click());
+  expect(cards()).toEqual(['two', 'one']);
+  expect(host.querySelector<HTMLInputElement>('input[type=search]')?.value).toBe('clean');
+});
+it('discards unapplied changes on dismissal and starts from the committed filters when reopened', async () => {
+  await mount();
+  await act(async () => button('Product launch films').click());
+  await act(async () => button('Filters').click());
+  await act(async () => button('Reference brands').click());
+  await act(async () => button('Figma').click());
+  await act(async () => button('Close filters').click());
+  expect(cards()).toEqual(['two', 'one']);
+  await act(async () => button('Filters').click());
+  expect(button('Figma').getAttribute('aria-checked')).toBe('false');
+  await act(async () => button('Video purpose').click());
+  const popup = host.querySelector('[role=dialog][aria-label=Filters]')!;
+  expect(button('Product launch films', popup).getAttribute('aria-checked')).toBe('true');
+});
+it('searches a long option group without losing selections hidden by the option search', async () => {
+  fetchItems(Array.from({ length: 14 }, (_, index) => ({ ...items[0], id: `brand-${index}`, brand: `Brand ${index}` })));
+  await mount();
+  await act(async () => button('Filters').click());
+  await act(async () => button('Reference brands').click());
+  await act(async () => button('Brand 0').click());
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="Search options…"]')!;
+  const find = async (value: string) => act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await find('Brand 13');
+  expect(button('Brand 0')).toBeUndefined();
+  await act(async () => button('Brand 13').click());
+  await find('No such brand');
+  expect(host.textContent).toContain('No matching options.');
+  expect(cards()).toHaveLength(14);
+  await act(async () => button('Apply filters').click());
+  expect(cards()).toEqual(['brand-0', 'brand-13']);
+});
+
+it('opens the template requested by the MCP page without selecting a different card', async () => {
+  function RoutedLibrary() {
+    const [templateId, setTemplateId] = React.useState<string | null>('two');
+    return <TemplateLibraryDialog open templateId={templateId} onTemplateChange={setTemplateId} busy={false} error="" onClose={() => {}} onOpen={() => {}} />;
+  }
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RoutedLibrary /></I18nProvider>));
+  expect(current()).toBe('Second');
+  await act(async () => button('Close template preview').click());
+  expect(current()).toBeUndefined();
+  await act(async () => preview('First'));
+  expect(current()).toBe('First');
 });

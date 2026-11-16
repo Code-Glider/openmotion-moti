@@ -122,6 +122,15 @@ test('test npm artifacts contain their application, locked manifest and no bundl
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
     }
     assert.equal((await json(path.join(application, 'package-lock.json'))).packages[''].version, version);
+    const installedLock = await json(path.join(application, 'package-lock.json'));
+    for (const name of ['@phosphor-icons/react', '@base-ui/react', '@codemirror/view', 'dockview-react', 'mediabunny']) {
+      assert.equal(installedLock.packages['node_modules/' + name].dev, true,
+        'Prebuilt Studio must not redownload its build-only dependency at setup: ' + name);
+    }
+    for (const name of ['hyperframes', '@hyperframes/core', '@hyperframes/studio-server', 'gsap', 'puppeteer-core', 'fontkit']) {
+      assert.notEqual(installedLock.packages['node_modules/' + name].dev, true,
+        'Editing/export runtime must remain installable in production: ' + name);
+    }
     assert.equal((await json(path.join(installer, 'package/package.json'))).version, version);
     assert.equal((await json(path.join(installer, 'package/package.json'))).private, false);
     const bundled = path.join(installer, 'package/payload');
@@ -136,6 +145,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const cli = path.join(installer, 'package', metadata.bin.openmotion);
     assert.equal((await runFile(process.execPath, [cli, '--version'])).trim(), version);
     const help = await runFile(process.execPath, [cli, 'setup', '--help']);
+    assert(help.includes('--onboarding-output'), 'The prebuilt installer must expose the no-reload presentation route');
     for (const host of ['codex', 'claude', 'deepseek', 'workbuddy']) assert(help.includes(host), host);
     await readFile(path.join(installer, 'package/LICENSE'));
     assert.deepEqual((await readdir(path.join(application, 'skills'))).sort(), [...packagedSkills].sort());
@@ -155,9 +165,15 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
-    assert(entries.includes('skills/openmotion-recreate/scripts/measure_frame.mjs'));
+    for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py']) {
+      const filename = 'skills/openmotion-recreate/scripts/' + script;
+      assert(entries.includes(filename), 'Missing recreation helper: ' + script);
+      assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
+    }
     assert(entries.includes('skills/openmotion-recreate/references/verify.md'));
     assert(entries.includes('studio/build/index.html'));
+    assert(entries.includes('scripts/inline-onboarding.mjs'));
+    assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
     assert(entries.includes('shared/editor-launch.pl'), 'macOS shared editor launcher must ship');
     for (const script of ['lint-project.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
     await readFile(path.join(installer, 'package/scripts/check-installed-mcp.mjs'));

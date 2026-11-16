@@ -27,12 +27,16 @@ const TYPE_PRIORITY: Record<TimelineSnapType, number> = {
   beat: 2,
   grid: 3,
 };
+// Only arrays built here have the sorted, unique-time contract. External arrays
+// keep the original order-sensitive behavior (including equal-distance ties).
+const indexedTargets = new WeakSet<readonly TimelineSnapTarget[]>();
 
 export function collectTimelineSnapTargets(input: {
   elements: ReadonlyArray<Pick<TimelineElement, "start" | "duration" | "key" | "id">>;
   playheadTime: number | null;
   beatTimes: readonly number[];
   excludeElementKey?: string | null;
+  excludeElementKeys?: ReadonlySet<string>;
 }): TimelineSnapTarget[] {
   const byTime = new Map<number, TimelineSnapTarget>();
   const add = (time: number, type: TimelineSnapType) => {
@@ -46,13 +50,16 @@ export function collectTimelineSnapTargets(input: {
 
   for (const beat of input.beatTimes) add(beat, "beat");
   for (const el of input.elements) {
+    if (input.excludeElementKeys?.has(el.key ?? el.id)) continue;
     if (input.excludeElementKey != null && (el.key ?? el.id) === input.excludeElementKey) continue;
     add(el.start, "clip-edge");
     add(el.start + el.duration, "clip-edge");
   }
   if (input.playheadTime != null) add(input.playheadTime, "playhead");
 
-  return Array.from(byTime.values()).sort((a, b) => a.time - b.time);
+  const targets = Array.from(byTime.values()).sort((a, b) => a.time - b.time);
+  indexedTargets.add(targets);
+  return targets;
 }
 
 /** Nearest ruler line in range, at its saved centisecond, and only within a pixel of it. */
@@ -77,7 +84,19 @@ export function snapTimelineTime(
 ): { time: number; target: TimelineSnapTarget | null } {
   let best: TimelineSnapTarget | null = null;
   let bestDist = thresholdSecs;
-  for (const target of targets) {
+  let from = 0;
+  let to = targets.length;
+  if (indexedTargets.has(targets)) {
+    while (from < to) {
+      const middle = (from + to) >>> 1;
+      if (targets[middle]!.time < time) from = middle + 1;
+      else to = middle;
+    }
+    to = Math.min(targets.length, from + 1);
+    from = Math.max(0, from - 1);
+  }
+  for (let index = from; index < to; index++) {
+    const target = targets[index]!;
     const d = Math.abs(target.time - time);
     if (
       d < bestDist ||

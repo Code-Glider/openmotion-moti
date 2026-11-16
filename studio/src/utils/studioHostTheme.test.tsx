@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { bindEmbeddedStudioTheme, shownStudioTheme } from "./studioTheme";
+import { bindEmbeddedStudioTheme, shownStudioTheme, setStudioTheme, savedStudioThemePreference } from "./studioTheme";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { cleanupMounted, mountHost } from "../components/ui/mountHost.testHelpers";
 
@@ -19,6 +19,7 @@ afterEach(() => {
   history.replaceState(null, "", "/");
   localStorage.clear();
   delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.themePreference;
 });
 
 function hostScheme(initial: boolean) {
@@ -87,5 +88,32 @@ describe("live embedded host theme", () => {
   it("hides the manual override in embedded Studio", () => {
     history.replaceState(null, "", "/?embed=1");
     expect(mountHost(<ThemeToggle />).querySelector("button")).toBeNull();
+  });
+
+  it('follows live system changes only in System mode and persists that preference across startup', () => {
+    const change = hostScheme(false);
+    unbind = bindEmbeddedStudioTheme();
+    setStudioTheme('system');
+    expect(savedStudioThemePreference()).toBe('system');
+    expect(shownStudioTheme()).toBe('light');
+    change(true);
+    expect(shownStudioTheme()).toBe('dark');
+    new Function(boot)();
+    expect(shownStudioTheme()).toBe('dark');
+    expect(document.documentElement.dataset.themePreference).toBe('system');
+    setStudioTheme('light');
+    change(true);
+    expect(shownStudioTheme()).toBe('light');
+    expect(savedStudioThemePreference()).toBe('light');
+  });
+
+  it('applies preference changes from another tab while keeping embedded appearance host-owned', () => {
+    hostScheme(true); unbind = bindEmbeddedStudioTheme();
+    localStorage.setItem(KEY, JSON.stringify({ theme: 'system' }));
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY }));
+    expect(shownStudioTheme()).toBe('dark');
+    history.replaceState(null, '', '/?embed=1');
+    setStudioTheme('light');
+    expect(shownStudioTheme()).toBe('dark');
   });
 });

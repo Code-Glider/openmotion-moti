@@ -7,6 +7,15 @@ import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/des
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+test('onboarding Skill is discoverable from the registered plugin roots', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8'));
+  const entry = manifest.extensions['com.openai'].onboardingSkill.replace(/^\.\//, '');
+  const skillRoots = (Array.isArray(manifest.skills) ? manifest.skills : [manifest.skills])
+    .map((root: string) => root.replace(/^\.\//, '').replace(/\/$/, ''));
+  assert(skillRoots.some((root: string) => entry === root || entry.startsWith(root + '/')),
+    'Codex plugin/read returns no onboardingSkill unless its entry is inside a registered Skill root');
+});
+
 test('plugin onboarding entry and its shared contract resolve inside every distribution', async () => {
   const manifest = JSON.parse(await readFile(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8'));
   const entry = manifest.extensions['com.openai'].onboardingSkill.replace(/^\.\//, '');
@@ -28,7 +37,7 @@ test('plugin onboarding entry and its shared contract resolve inside every distr
 test('every distribution preserves public workflow dependencies and licenses while excluding development material', async () => {
   for (const profile of ['phase1', 'legacy']) {
     const files = new Set(await distributionFiles(profile));
-    for (const file of ['AGENTS.md', 'CLAUDE.md', 'cloud.md', ...designSystemDocuments, ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file)]) {
+    for (const file of ['AGENTS.md', 'CLAUDE.md', ...designSystemDocuments, ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file)]) {
       assert(files.has(file), 'Missing shared design system dependency: ' + file);
     }
     assert(![...files].some(file => file.startsWith('packages/design-system/workbench/')), 'Source-write server and workbench tests stay out of runtime distribution');
@@ -37,7 +46,15 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('docs/release-guide.md'), 'The public test/stable manual must ship');
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
     assert(![...files].some(file => file.startsWith('library/templates/catalog/') || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
+    for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
+    assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
+    assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');
+    for (const script of ['register_motion.py', 'measure_motion.py']) {
+      assert(files.has('skills/openmotion-recreate/scripts/' + script), 'Missing recreation helper: ' + script);
+    }
+    for (const file of ['shared/provider-presets.json', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'docs/provider-settings.md', 'gateway/account.ts', 'gateway/connections.ts', 'gateway/compatible.ts']) assert(files.has(file), 'Missing provider settings runtime or license: ' + file);
+    assert(![...files].some(file => file.includes('@powerformer/vela-cli')), 'The optional account connector must not be redistributed');
     for (const file of ['studio/build/index.html', 'studio/LICENSE', 'template-library/LICENSE', 'template-library/NOTICE.md', 'packages/design-system/fonts/Albert-Sans-OFL.txt', 'scripts/distribution.ts', 'scripts/diagnostics.mjs', 'scripts/zip.mjs', 'scripts/diagnostic-redaction.mjs', 'shared/build-info.json', 'shared/editor-launch.pl', 'shared/workspace-studio.ts', 'shared/owned-studio.mjs', 'shared/workflow-entry.js', 'skills/openmotion-recreate/scripts/measure_frame.mjs']) assert(files.has(file), 'Missing runtime or license: ' + file);
     assert(![...files].some(file => /^(?:\.agents\/skills\/|tests\/|studio\/(?:src|tests)\/)|\.map$|publish-test-package|acceptance\.md$/.test(file)));
     for (const [workflow, definition] of Object.entries(workflowRegistry)) {

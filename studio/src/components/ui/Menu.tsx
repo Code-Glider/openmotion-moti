@@ -8,7 +8,7 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { useRef } from "react";
 import type { ComponentPropsWithoutRef, ElementType, ReactElement, ReactNode } from "react";
 import { cn } from "./cn";
-import { Check } from "../../icons/RemixIcons";
+import { Check, RemixIcon } from "../../icons/RemixIcons";
 
 /**
  * Base UI lets `className` be a function of the part's state. Studio's parts
@@ -138,6 +138,36 @@ export function Menu({
         </BaseMenu.Positioner>
       </BaseMenu.Portal>
     </BaseMenu.Root>
+  );
+}
+
+/** Nested choices share the parent menu's keyboard navigation and collision handling. */
+export function MenuSubmenu({
+  label,
+  detail,
+  children,
+  className,
+  container,
+  "aria-label": ariaLabel,
+}: Pick<PositionedProps, "className" | "container" | "aria-label"> & {
+  label: ReactNode;
+  detail?: string;
+  children: ReactNode;
+}) {
+  const inline = useInlinePortal(container);
+  return (
+    <BaseMenu.SubmenuRoot>
+      <BaseMenu.SubmenuTrigger className={itemBase} label={ariaLabel}>
+        <span className="truncate">{label}</span>
+        <span className="om-menu-detail">{detail}<RemixIcon name="arrow-right-s-line" size={14} /></span>
+      </BaseMenu.SubmenuTrigger>
+      {inline.host}
+      <BaseMenu.Portal {...inline.portal}>
+        <BaseMenu.Positioner side="right" align="start" sideOffset={SIDE_OFFSET} collisionPadding={VIEWPORT_MARGIN} className={POPUP_LAYER}>
+          <BaseMenu.Popup aria-label={ariaLabel} className={cn(menuPopup, className)}>{children}</BaseMenu.Popup>
+        </BaseMenu.Positioner>
+      </BaseMenu.Portal>
+    </BaseMenu.SubmenuRoot>
   );
 }
 

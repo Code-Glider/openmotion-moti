@@ -23,7 +23,7 @@ function workspace(existing: boolean, options: { status?: 'failed' | 'pending'; 
   const sessionId = existing ? '22222222-2222-2222-2222-222222222222' : 'project';
   const artifact = { id: 'artifact', kind: 'motion-project', projectId, title: 'Original project' };
   const session = { id: sessionId, artifacts: [artifact] };
-  const catalog = { activeId: projectId, projects: [{ id: projectId }], sessions: [session] };
+  const catalog = { activeId: projectId, projects: [{ id: projectId, title: 'Original project' }], sessions: [session] };
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.includes('/project/status')) {
       if (options.status === 'failed') return Response.json({ error: 'Status unavailable' }, { status: 503 });

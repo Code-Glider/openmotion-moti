@@ -755,7 +755,7 @@
   "Reading versions…": "Versão de leitura...",
   "Changes are recorded automatically. Pin important versions to keep them.": "As alterações são registradas automaticamente. Fixe versões importantes para mantê-las.",
   "No pinned versions yet. Select an entry to pin it.": "Ainda não há versões fixadas. Selecione uma entrada para fixá-la.",
-  "No edits yet. Changes made in the canvas, code, or by an agent will appear here.": "Nenhuma edição ainda. As alterações feitas na tela, no código ou por um agente aparecerão aqui.",
+  "No edits yet": "Nenhuma alteração ainda",
   "Manual edit": "Edição manual",
   "External change": "Modificação externa",
   "Changes in this version": "Esta modificação",
@@ -1841,5 +1841,13 @@
   "Usage guide": "Guia de uso",
   "API origin": "Origem da API",
   "Use the gateway address shown on your Cloud API key page.": "Use o endereço do gateway exibido na página da sua chave API do Cloud.",
-  "Save settings": "Salvar configurações"
+  "Save settings": "Salvar configurações",
+  "Fit timeline to content": "Ajustar linha do tempo ao conteúdo",
+  "Resize track controls": "Redimensionar os controles da faixa",
+  "Track {number}": "Faixa {number}",
+  "Lock track": "Bloquear faixa",
+  "Unlock track": "Desbloquear faixa",
+  "Delete track": "Excluir faixa",
+  "Unlock the track before deleting it": "Desbloqueie a faixa antes de excluí-la",
+  "Open the composition to delete this track": "Abra a composição para excluir esta faixa"
 }

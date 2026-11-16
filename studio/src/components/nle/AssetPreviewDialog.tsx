@@ -102,7 +102,7 @@ function DialogMedia({ url, kind, name }: { url: string; kind: "video" | "audio"
           className="flex h-7 w-8 items-center justify-center justify-self-center rounded-md hover:bg-hover disabled:opacity-30"><RemixIcon name={playing ? "pause-fill" : "play-fill"} size={20} /></button></Tooltip>
         <div className="motion-player-secondary flex min-w-0 items-center justify-self-end">
           <VolumeControl audioVolume={volume} audioMuted={muted} setAudioVolume={setVolume} setAudioMuted={setMuted} disabled={failed} />
-          <span className="motion-player-optional flex items-center gap-[inherit]">
+          <span className="flex items-center gap-[inherit]">
             <SpeedMenu playbackRate={rate} setPlaybackRate={setRate} disabled={failed} />
             <Tooltip label={t(loop ? "Disable loop playback" : "Enable loop playback")}><button type="button" aria-label={t(loop ? "Disable loop playback" : "Enable loop playback")} aria-pressed={loop} onClick={() => setLoop(!loop)} disabled={failed}
               className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover"><RemixIcon name="repeat-line" size={16} /></button></Tooltip>

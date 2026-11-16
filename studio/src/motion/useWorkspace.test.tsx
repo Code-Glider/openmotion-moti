@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { useWorkspace } from './useWorkspace';
+import { I18nProvider, useI18n } from '../i18n/I18n';
+import { languages, translate } from '../i18n/messages';
 
 const first = '11111111-1111-1111-1111-111111111111';
 const second = '22222222-2222-2222-2222-222222222222';
@@ -23,11 +25,36 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetcher);
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: string) {
-  function Harness() { workspace = useWorkspace(wait, projectId, sessionId); return null; }
+async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: string, onNavigate?: (url: string, replace?: boolean) => void) {
+  function Harness() { workspace = useWorkspace(wait, projectId, sessionId, onNavigate); return null; }
   await act(async () => root.render(<Harness />));
 }
 const writes = () => fetcher.mock.calls.filter(call => call[1]?.method === 'POST');
+
+it('switches the default project label in all interface languages without saving or translating custom names', async () => {
+  let locale: ReturnType<typeof useI18n>;
+  let custom = false;
+  fetcher.mockImplementation(async (url: string) => Response.json(url.endsWith('/projects') ? {
+    activeId: 'project', projects: [
+      { id: 'project', title: 'OpenMotion 示例短片', titleKey: custom ? null : 'OpenMotion Sample Video' },
+      { id: second, title: 'OpenMotion 示例短片' },
+    ],
+  } : { ...status, projectId: 'project' }));
+  const wait = async () => {};
+  function Harness() { locale = useI18n(); workspace = useWorkspace(wait, 'project'); return null; }
+  await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><Harness /></I18nProvider>));
+  for (const { locale: language } of languages) {
+    act(() => locale.setLocale(language));
+    expect(workspace.projects[0].title).toBe(translate(language, 'OpenMotion Sample Video'));
+    if (language !== 'en') expect(workspace.projects[0].title).not.toBe('OpenMotion Sample Video');
+    expect(workspace.projects[1].title).toBe('OpenMotion 示例短片');
+  }
+  custom = true;
+  await act(async () => workspace.retryConnection());
+  act(() => locale.setLocale('en'));
+  expect(workspace.projects[0].title).toBe('OpenMotion 示例短片');
+  expect(fetcher.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+});
 
 it('reconnects with read requests only and clears a recovered polling failure', async () => {
   const original = fetcher.getMockImplementation()!;
@@ -147,4 +174,38 @@ it('activates the viewer when an external Agent produces an artifact for an open
   fetcher.mockImplementation(async (url: string, init?: RequestInit) => url.endsWith('/projects') ? new Response(JSON.stringify({ projects: [], sessions: [{ id: 'conversation', artifacts: [{ id: 'artifact', projectId: first }] }] })) : original(url, init));
   await mount(async () => {}, undefined, 'conversation');
   expect(replace).toHaveBeenCalledWith(`/?session=conversation&project=${first}&openArtifact=1#project/${first}`);
+});
+
+it('unlocks actions after an in-page switch and scopes subsequent polling to the next project', async () => {
+  const onNavigate = vi.fn();
+  await mount(async () => {}, first, first, onNavigate);
+  await act(() => workspace.open('projects', second));
+  expect(onNavigate).toHaveBeenCalledWith(`/?project=${second}#project/${second}`);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(workspace.busy).toBe(false);
+  fetcher.mockImplementation(async (url: string) => Response.json(url.endsWith('/projects') ? { projects: [] } : { ...status, projectId: second }));
+  await mount(async () => {}, second, second, onNavigate);
+  expect(workspace.status?.projectId).toBe(second);
+  expect(workspace.error).toBe('');
+});
+
+it.each([false, true])('guards browser history navigation before replacing the project (save failure=%s)', async failure => {
+  const originalUrl = `/?session=${first}&project=${first}#project/${first}`;
+  const targetUrl = `/?session=${second}&project=${second}#project/${second}`;
+  history.replaceState(null, '', originalUrl);
+  let finishSave!: () => void;
+  const pending = new Promise<void>(resolve => { finishSave = resolve; });
+  const onNavigate = vi.fn();
+  await mount(async () => { await pending; if (failure) throw new Error('Unsaved edit'); }, first, first, onNavigate);
+  await act(async () => {
+    history.replaceState(null, '', targetUrl);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  expect(onNavigate).not.toHaveBeenCalled();
+  await act(async () => finishSave());
+  if (failure) {
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(location.href).toBe(new URL(originalUrl, location.origin).href);
+    expect(workspace.navigationError?.message).toBe('Unsaved edit');
+  } else expect(onNavigate).toHaveBeenCalledWith(new URL(targetUrl, location.origin).href, true);
 });
