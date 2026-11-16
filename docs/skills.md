@@ -26,7 +26,7 @@ The [native engine boundary](../skills/openmotion-production/references/native.m
 
 Director and its existing quality references now cover concrete visual events, joint material/motion design, recognizable action windows, representative prototypes and reuse of accepted implementations. Shared intake/runtime guidance covers scoped material acquisition; edit and verification own timing-evidence invalidation and evidence classification. No Skill, Resource section, public Tool or media service is added.
 
-The current five-route contract with fourteen registered Tool names (one compatibility alias), editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
+The current five-route contract with sixteen registered Tool names (one compatibility alias), editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
 
 ## Reference reconstruction guidance
 
@@ -86,7 +86,7 @@ Gallery prompts carry the guide URL and exact template ID; the host reads the gu
 
 ## 共享质量与工具边界
 
-When selecting, obtaining or replacing media, all five routes conditionally read the [shared material policy](../skills/openmotion-production/references/materials.md), exposed as `openmotion://workflow/production/materials`. It owns source priorities, acquisition and usability checks; director decisions retain material/motion, timing and state relationships. Viewing, previewing or exporting existing content does not trigger acquisition. User constraints, supported workflow scope and reference fidelity remain authoritative; no new generation or retrieval Tool is introduced.
+When selecting, obtaining or replacing media, all five routes conditionally read the [shared material policy](../skills/openmotion-production/references/materials.md), exposed as `openmotion://workflow/production/materials`. It owns source priorities, acquisition and usability checks; [Production decisions](../skills/openmotion-production/references/decisions.md) own material/motion, timing and state relationships. Shared [review](../skills/openmotion-production/references/review.md) and [sound execution](../skills/openmotion-production/references/sound.md) also live in production; director owns original creative design. Legacy director decisions/review resource URIs return these canonical bodies with their production documentId/contentHash; old local paths forward to them. Viewing, previewing or exporting existing content does not trigger acquisition. User constraints, supported workflow scope and reference fidelity remain authoritative; no new generation or retrieval Tool is introduced.
 
 A prior local trial used only “做一个哈利波特宣传片” in a fresh gpt-6.1-sol/high session, with no supplied media or follow-up sourcing prompt. It retrieved the Warner Bros. trailer and official imagery/wordmark, using ten original excerpts totaling 20.5 seconds in a 32-second 1080p30 MP4. Selected/project hashes and exported frames were checked. That trial used runtime 0.6.1 and director 1.5.5; this PR preserves current main and canonicalizes the shared policy links. The attached sample is historical execution evidence, not a behavioral rerun of this PR head. Harry Potter is already a policy example; no causal, generalization, conflicting-upload or full playback/listening claim follows from this single run.
 
@@ -96,19 +96,23 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
-一期公开接口已收敛为 [12 个 openmotion_ Tool](mcp-phase1-tools.md)（9 个工程 Tool、目录获取、模板详情与 media-use）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+一期公开接口已收敛为 [14 个 openmotion_ 注册名](mcp-phase1-tools.md)（13 个领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+
+## Shared production reading scope
+
+Common engineering rules live in production; selected creative entries own their sequence and creative design. The context's [scoped reading examples](../skills/openmotion-production/references/context.md#按范围收紧读集的例子) distinguish local wording edits, existing-music replacement and unchanged HTML/MP4 delivery. Registered references expose available documents, not a recursive mandatory read set. Typography/font resources, original action design and sound narrative design are conditional; technical checks, final-file playback and actual display evidence keep their existing requirements. Deterministic document/registry checks establish that these paths are available, not that every host Agent will follow them or that a film improved.
 
 ## openmotion-recreate 能力扩展点
 
-复刻目前只支持动态图形。下表是目前已发现的、写死当前能力的位置，不保证穷举。接入 TTS、图片或视频生成模型，或支持实拍/口播/AI 视频时，先按此表修改，再全文检索 `generation Tool`、`phase-one`、`motion graphics` 等字样补漏，并按新能力重新跑评测；新增的能力限制也应写进这些位置，不散落到其他段落。
+复刻用原生代码重建动态图形；肖像、产品照、实拍或 AI 镜头、旁白和音乐通过 openmotion-media 生成后放进同一个可编辑工程，没有可用供应商时说明缺口并完成其余部分。下表是目前已发现的、写死当前能力的位置，不保证穷举。接入 TTS、图片或视频生成模型，或支持实拍/口播/AI 视频时，先按此表修改，再全文检索 `generation Tool`、`phase-one`、`motion graphics` 等字样补漏，并按新能力重新跑评测；新增的能力限制也应写进这些位置，不散落到其他段落。
 
 | 位置 | 当前规则 | 接入新能力后 |
 | --- | --- | --- |
-| [SKILL.md](../skills/openmotion-recreate/SKILL.md) frontmatter description | 触发范围按动态图形复刻描述 | 支持新视频类型后同步触发范围，并重跑选路测试 |
-| SKILL.md Role and goal 第二段 | 只支持动态图形；实拍、口播、AI 视频说明不支持，不暗示给素材就能复刻，只提出动态图形版 | 放宽支持范围，缩小拒绝条件 |
-| SKILL.md §3 素材缺口（“Read the selected provider reference for the public media-use Tool”） | Within supported media scope, use shared materials guidance for missing assets; ask only for unresolved inputs or access/capability limits. The BYOK extension routes configured generation to openmotion-media; creative workflow scope remains unchanged | 本包公开生成 Tool 时改写此句，补调用、采用结果和失败处理规则 |
-| [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 一期 MCP 包不提供生成 Tool，生成交给宿主或 Studio | 与上一行同步修改 |
-| SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；删去念出原品牌的旁白 | 有 TTS 后可改为重新配音，不只删除 |
+| [SKILL.md](../skills/openmotion-recreate/SKILL.md) frontmatter description | 触发范围含带肖像、实拍/AI 镜头、旁白或音乐的参考片 | 新增视频类型时同步触发范围，并重跑选路测试 |
+| SKILL.md Role and goal 第二段 | 原生重建动态图形；原生做不了的镜头和声音走生成素材，镜头按作用、构图、动作和时间对齐，不追求像素或真人身份一致；无供应商时说明缺口、完成其余部分并给出选择 | 支持更多画面类型时同步 |
+| SKILL.md §3 素材缺口 | 需要生成的镜头、旁白、音乐在这一步规划，扣费确认问题并入同一批唯一提问；生成按 openmotion-media | 新增素材类型时同步 |
+| [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 生成前先按共享生成边界判断，再进入 openmotion-media | 与上一行同步修改 |
+| SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；念出原品牌的旁白在可生成且已同意时换成用户的台词，否则删除并说明 | — |
 | SKILL.md §5 原片作底层（用户自有成片只改几处细节） | 仅此情况可把原片放在时间线上并打补丁 | 支持实拍局部修改或分镜混排时扩展适用条件 |
 | [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[reconstruction.md](../skills/openmotion-recreate/references/reconstruction.md) 难画面分段重建、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
 
@@ -186,4 +190,4 @@ MT05 原先同批补读/执行的问题未重现，但读取完整性未全面�
 
 ## BYOK media Skill and provider references
 
-`openmotion-media` ships as an on-demand supporting Skill (`skills/openmotion-media/SKILL.md` and `openmotion://workflow/media/start`) alongside the five unchanged creative entry routes, while supplier-specific wire and schema references live in `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed,account,compatible}`. Pure motion graphics stay 100% native in code without invoking or mentioning `openmotion_media_use`. When image, video, speech or music generation is needed, `openmotion_media_use` reads configured provider credentials or the OpenDesign account inside the service (never exposing `secrets.json`), guides unconfigured users to Studio's **Model providers** settings, confirms user consent before spending configured API keys unless already authorized, and snapshots completed files under `assets/generated/...` via `openmotion_get_project`.
+`openmotion-media` remains the on-demand supporting Skill, with the five creative entry routes unchanged. Its single [generation boundary](../skills/openmotion-production/references/materials.md#generation-boundary) distinguishes native visuals from new speech/music needs. New assets use media_use discovery → assets_use generation/status → fixed-version inspection → explicit import_to_project → project read/edit. Standalone generation needs no carrier project. The old asset name and project-direct media_use jobs remain compatible; they are not a second recommended generation route. Credentials stay in settings, missing capabilities and alternatives are explained before spend, and further paid attempts need consent unless the approved plan already covers them.

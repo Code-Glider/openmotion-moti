@@ -3,7 +3,7 @@ import { studioUsageEvents } from './studio-events.ts';
 
 export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_create_project', 'motion_open_preview',
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
-  'motion_restore_version', 'motion_export_cancel'] as const;
+  'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
 export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'import_to_project', 'read', 'brand_kit'] as const;
 export function assetToolAction(tool: string, input: unknown): typeof assetActions[number] | undefined {
@@ -15,7 +15,8 @@ const tool = { tool_name: toolNames, action: assetActions, call_id: 'uuid', oper
 export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
   'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
   'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
-  'openmotion_export_cancel', 'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
+  'openmotion_export_cancel', 'openmotion_project_archive', 'openmotion_manage_project',
+  'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
   'openmotion_studio_frame', 'openmotion_studio_inspect'] as const;
 const webMcp = { tool_name: webMcpToolNames, transport: ['webmcp'] } as const;
 const generation = { modality: ['image', 'video', 'audio'] } as const;

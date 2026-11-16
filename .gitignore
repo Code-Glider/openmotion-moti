@@ -126,3 +126,5 @@ library/templates/catalog/**/*.zip
 web/inline-video.html
 # Generated native MCP presentation assets.
 /mcp-ui/template-recommendations/build/
+
+/docs/readme/maintainer-media-merge-smoke.webm

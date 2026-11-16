@@ -1,3 +1,4 @@
+import { projectArchiveHttp } from './gateway/project-archive-http.ts';
 import { modelMetadata } from './gateway/model-metadata.ts';
 import { assetConversations } from './gateway/asset-chat.ts';
 import { assetHttp } from './gateway/asset-http.ts';
@@ -23,7 +24,7 @@ import { startOwnedStudio } from './shared/owned-studio.mjs';
 import { sharedEditorEnabled, ensureEditor, editorRequest } from './editor-runtime.ts';
 import { agentGuide, integrationConfig, integrationHost, type IntegrationInfo } from './shared/integration.ts';
 import { validateInstruction } from './shared/conversation.ts';
-import { creationMode, creationModes, artifactViewers, type CreativeSession, type CreationMode } from './shared/session.ts';
+import { creationMode, creationModes, artifactViewers, availableSession, type CreativeSession, type CreationMode } from './shared/session.ts';
 import { gatewayFor } from './gateway/service.ts';
 import { providerDirectory, setDefaultModel, syncProvider } from './gateway/settings.ts';
 import { isMediaProvider, registeredProvider } from './shared/provider-registry.ts';
@@ -231,7 +232,9 @@ async function openProject(store: WorkspaceStore, context: Service, origin: stri
       const creating = Boolean(template) || 'title' in target;
       const id = creating ? crypto.randomUUID() : (target as { projectId: string }).projectId;
       const entry = creating ? { id, title: template?.title ?? (target as { title: string }).title, templateId: template?.id, createdAt: Date.now() } : undefined;
-      if (!entry && !store.projectCatalog().projects.some(item => item.id === id)) throw new Error('工程不存在');
+      const savedProject = !entry ? store.projectCatalog().projects.find(item => item.id === id) : undefined;
+      if (!entry && !savedProject) throw new Error('工程不存在');
+      if (!entry && savedProject?.trashedAt) throw new Error('PROJECT_TRASHED: 工程已在回收站');
       if (sessionTarget?.sessionId && !store.projectCatalog().sessions!.some(item => item.id === sessionTarget.sessionId)) throw new Error('会话不存在');
       if (!entry && id === 'project') await store.forProject(id).initializeLocked(runtimeRoot);
       if (!entry && store.projectCatalog().activeId === id) {
@@ -332,9 +335,11 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
     if (context.ensureStudio && !isWorkspaceSettingsPage(url.search) && (url.pathname === '/' || url.pathname.startsWith('/sessions/'))) {
       const projectId = url.searchParams.get('project'), sessionId = url.searchParams.get('session');
       if (projectId !== null) {
-        if (store.projectCatalog().projects.some(project => project.id === projectId)) await context.ensureStudio(projectId);
+        if (store.projectCatalog().projects.some(project => project.id === projectId && !project.trashedAt)) await context.ensureStudio(projectId);
       } else if (sessionId) {
-        const session = store.projectCatalog().sessions!.find(session => session.id === sessionId);
+        const catalog = store.projectCatalog();
+        const saved = catalog.sessions!.find(session => session.id === sessionId);
+        const session = saved && availableSession(saved, new Set(catalog.projects.filter(project => project.trashedAt).map(project => project.id)));
         const artifact = session?.artifacts.find(artifact => artifact.id === session.activeArtifactId) ?? session?.artifacts.at(-1);
         if (artifact) await context.ensureStudio(artifact.projectId);
       }
@@ -359,6 +364,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
       return json(res, 405, { error: 'Unsupported conversation request' });
     }
+    if (motionRequest && url.pathname.startsWith('/api/project-archives/') && await projectArchiveHttp(req, res, url, store.workspaceStore ?? store, context.runtimeRoot)) return;
     if (motionRequest && url.pathname.startsWith('/api/assets/') && await assetHttp(req, res, url, store)) return;
     if (motionRequest && await brandKitHttp(req, res, url, store.directory, input)) return;
     const editorUrl = `http://${host || 'localhost'}/#project/${store.projectId}`;
@@ -588,8 +594,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
     if (templateSource && req.method === 'GET') {
       const name = decodeURIComponent(templateSource[2]);
       const mime: Record<string, string> = { '.html': 'text/html', '.md': 'text/plain', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.otf': 'font/otf', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.m4v': 'video/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.flac': 'audio/flac' };
-      const type = mime[path.extname(name).toLowerCase()];
-      if (!type) return json(res, 404, { error: 'Unknown template source file' });
+      const type = mime[path.extname(name).toLowerCase()] || 'application/octet-stream';
       try {
         const bytes = await templateCatalogFor(store.directory).sourceFile(templateSource[1], name);
         res.writeHead(200, { 'Content-Type': type, 'Content-Length': bytes.length }); res.end(bytes); return;
@@ -645,7 +650,9 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         const session = await store.session(id);
         if (action === 'open') {
           if (!session.artifacts.length && !data.projectId) return json(res, 200, await store.selectSession(id));
-          const artifact = data.projectId ? session.artifacts.find(item => item.projectId === data.projectId) : session.artifacts.find(item => item.id === session.activeArtifactId) ?? session.artifacts[0];
+          const selectable = data.projectId ? session : availableSession(session, new Set(store.projectCatalog().projects.filter(project => project.trashedAt).map(project => project.id)));
+          if (!selectable) throw new Error('PROJECT_TRASHED: 工程已在回收站');
+          const artifact = data.projectId ? selectable.artifacts.find(item => item.projectId === data.projectId) : selectable.artifacts.find(item => item.id === selectable.activeArtifactId) ?? selectable.artifacts[0];
           if (!artifact) throw new Error('该产物不属于此会话');
           return json(res, 200, await openProject(store, context, new URL(editorUrl).origin, data.expectedRevision, { projectId: artifact.projectId }, data.expectedProjectId));
         }

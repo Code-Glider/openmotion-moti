@@ -1,3 +1,5 @@
+import { projectArchive } from './project-archive.ts';
+import { manageProject } from './project-management.ts';
 import { probeLibraryMedia } from './gateway/asset-probe.ts';
 import { isFontFilePath, prepareImportedFont } from './shared/import-font.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
@@ -28,6 +30,8 @@ import type { HostContext } from './tracking/host.ts';
 import { WorkRounds, workRoundMode } from './inline-video.ts';
 import { TaskLedger } from './tracking/task-ledger.ts';
 import { uuid } from './tracking/core.ts';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const metadataPath = 'motion-project.json', assetIndexPath = 'motion-assets.json';
 const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg', '.txt', '.md', '.vtt', '.srt', '.glsl', '.vert', '.frag']);
@@ -303,6 +307,11 @@ export class Phase1Service {
     return { projectId: args.projectId, review: record, changed: false };
   }
   async dispatch(name: string, args: any, host?: HostContext): Promise<any> {
+    if (name === 'motion_manage_project') return manageProject(this.store, args, this.runtimeRoot);
+    if (name === 'motion_project_archive') {
+      const result = await projectArchive(this.store, args, this.runtimeRoot);
+      return 'downloadUrl' in result ? { ...result, downloadUrl: new URL(result.downloadUrl, this.context.origin()).href } : result;
+    }
     if (name === 'motion_assets') {
       if (args.action === 'brand_kit') return brandKitOperation(brandKitsFor(this.store.directory), args.brandKit, this.context.origin());
       return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
@@ -310,15 +319,16 @@ export class Phase1Service {
     if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);
     if (name === 'motion_get_project' && !args.projectId) {
       if (args.file || args.exportJobId || args.expectedRevision || args.workId || args.includeVideo) throw new Error('INVALID_ARGUMENT: projectId is required for details');
-      const scope = args.sessionId ?? 'workspace';
+      const scope = (args.trashed ? 'trash:' : '') + (args.sessionId ?? 'workspace');
       const page = parseCursor(args.cursor, 'projects', scope);
       const catalog = this.store.projectCatalog();
       if (args.sessionId && !catalog.sessions!.some(session => session.id === args.sessionId)) throw new Error('SESSION_NOT_FOUND');
       const ids = args.sessionId ? new Set(catalog.sessions!.find(session => session.id === args.sessionId)!.artifacts.map(artifact => artifact.projectId)) : null;
       const all = [];
       for (const item of catalog.projects) {
+        if (Boolean(item.trashedAt) !== Boolean(args.trashed)) continue;
         if (ids && !ids.has(item.id)) continue;
-        if (await stat(path.join(this.store.projectDirectoryFor(item.id), 'index.html')).catch(() => null)) all.push(item);
+        if (args.trashed || await stat(path.join(this.store.projectDirectoryFor(item.id), 'index.html')).catch(() => null)) all.push(item);
       }
       all.sort((a, b) => -tupleCompare([a.createdAt ?? 0, a.id], [b.createdAt ?? 0, b.id]));
       const visible = all.filter(item => !page || tupleCompare([item.createdAt ?? 0, item.id], page.after) < 0);
@@ -328,7 +338,7 @@ export class Phase1Service {
       return { dataDirectory: this.store.directory, projects, pageSize: 5, hasMore: visible.length > 5, nextCursor: visible.length > 5 ? cursor({ kind: 'projects', scope, after: [last!.createdAt ?? 0, last!.id] }) : null };
     }
     if (name === 'motion_get_project') {
-      if (args.cursor) throw new Error('INVALID_ARGUMENT: cursor is for project lists');
+      if (args.cursor || args.trashed !== undefined) throw new Error('INVALID_ARGUMENT: cursor and trashed are for project lists');
       if (args.sessionId && !this.store.projectCatalog().sessions!.some(session => session.id === args.sessionId && session.artifacts.some(artifact => artifact.projectId === args.projectId))) throw new Error('PROJECT_SESSION_MISMATCH');
       if (args.workId) {
         if (args.file || args.exportJobId || args.expectedRevision) throw new Error('INVALID_ARGUMENT: workId cannot combine file or export queries');
@@ -414,15 +424,35 @@ export class Phase1Service {
       if (args.sessionId && !session) throw new Error('SESSION_NOT_FOUND');
       const projectId = args.projectId ?? session?.artifacts.find(item => item.id === session.activeArtifactId)?.projectId ?? session?.artifacts.at(-1)?.projectId;
       if (!projectId) throw new Error('PROJECT_NOT_BOUND: 请传入 projectId 或已绑定的 OpenMotion sessionId');
-      this.store.forProject(projectId);
+      const scoped = this.store.forProject(projectId);
       if (session && !session.artifacts.some(artifact => artifact.projectId === projectId)) throw new Error('PROJECT_SESSION_MISMATCH');
       const before = await this.detail(projectId);
       if (args.expectedRevision && args.expectedRevision !== before.revision || args.expectedVersionId && args.expectedVersionId !== before.currentVersionId) throw new Error('VERSION_CONFLICT');
+      let stampedRevision = before.revision;
+      if (args.expectedRevision || args.expectedVersionId) {
+        const require = createRequire(path.join(this.runtimeRoot, 'package.json'));
+        const parserManifest = require.resolve('@hyperframes/parsers/package.json');
+        const parser = JSON.parse(await readFile(parserManifest, 'utf8'));
+        const { stampHfIdsInPlace } = await import(pathToFileURL(path.join(path.dirname(parserManifest), parser.exports['./hf-ids'].import)).href);
+        const files = await Promise.all((before.project?.files ?? []).map(async file => {
+          if (!file.path.endsWith('.html')) return file;
+          const source = await readFile(await scoped.safePath(file.path), 'utf8');
+          if (digest(source) !== file.hash) throw new Error('VERSION_CONFLICT');
+          if (!/data-composition-id\s*=/.test(source)) return file;
+          const stamped = stampHfIdsInPlace(source);
+          // The pinned native stamper writes only when the ID attribute count increases.
+          if ((stamped.match(/\bdata-hf-id=/g) ?? []).length <= (source.match(/\bdata-hf-id=/g) ?? []).length) return file;
+          return { ...file, hash: digest(stamped), size: Buffer.byteLength(stamped) };
+        }));
+        stampedRevision = scoped.revision(files);
+      }
       const checked = await inspectProject(this.runtimeRoot, this.store.projectDirectoryFor(projectId), 'lint');
       if (checked.exitCode) throw new Error('PROJECT_VALIDATION_FAILED: ' + JSON.stringify(checked.result));
       await this.context.openProject(projectId);
       const detail = await this.detail(projectId);
-      if (args.expectedRevision && args.expectedRevision !== detail.revision || args.expectedVersionId && args.expectedVersionId !== detail.currentVersionId) throw new Error('VERSION_CONFLICT');
+      // Studio may add deterministic editor IDs; only that exact next-version change is compatible.
+      const stamped = stampedRevision !== before.revision && detail.revision === stampedRevision && detail.currentVersionNumber === before.currentVersionNumber + 1;
+      if (!stamped && (args.expectedRevision && args.expectedRevision !== detail.revision || args.expectedVersionId && args.expectedVersionId !== detail.currentVersionId)) throw new Error('VERSION_CONFLICT');
       return { ...detail, previewUrl: this.context.origin() + sessionPath(detail.sessionId, projectId, { embedded: args.embedded !== false }),
         sessionUrl: this.context.origin() + sessionPath(detail.sessionId, projectId), embeddedPreviewUrl: this.context.origin() + sessionPath(detail.sessionId, projectId, { embedded: true }),
         previewHandoff: previewHandoff(this.context.origin(), { projectId, sessionId: detail.sessionId, revision: detail.revision, versionId: detail.currentVersionId }, args.presentation, undefined, true,

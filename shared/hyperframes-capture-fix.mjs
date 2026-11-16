@@ -7,9 +7,15 @@ function replace(source, before, after, count = 1) {
   return source.replaceAll(before, after);
 }
 
-// shortcut: patch only the pinned engine in memory; remove when upstream handles socket-buffer exhaustion.
+// shortcut: patch only the pinned engine in memory; remove when upstream handles current canvas APIs and socket-buffer exhaustion.
 export function fixCaptureModule(url, source) {
   if (url.endsWith('/node_modules/hyperframes/dist/chunk-IAZ2A7D6.js')) {
+    source = replace(source, '      canvas.setAttribute("layoutsubtree", "");',
+      `      canvas.setAttribute("layoutsubtree", "");
+      if ("content" in HTMLCanvasElement.prototype) {
+        canvas.setAttribute("content", "drawable");
+        root.setAttribute("drawable", "");
+      }`);
     return replace(source, 'var TRANSIENT_BROWSER_ERROR_PATTERNS = [',
       'var TRANSIENT_BROWSER_ERROR_PATTERNS = [\n  /net::ERR_NO_BUFFER_SPACE\\b/i,');
   }

@@ -157,7 +157,7 @@ export class ProjectVersions {
     requestId: string, changes: { path: string; content?: string | Buffer; source?: string; remove?: boolean }[],
     options: { label: string; restoredFromVersionId?: string }) {
     const current = await this.current(history);
-    if (current.revision !== expectedRevision || expectedVersionId && current.versionId !== expectedVersionId) throw new Error('VERSION_CONFLICT: 请重新读取当前工程与版本');
+    if (current.revision !== expectedRevision || expectedVersionId && current.versionId !== expectedVersionId) throw new Error(`VERSION_CONFLICT: 工程已更新。当前 revision=${current.revision}，versionId=${current.versionId}。请调用 openmotion_get_project 读取最新内容后，用这两个值重试。`);
     const paths = changes.map(change => projectPath(change.path));
     if (paths.some((name, i) => paths.some((other, j) => i !== j && (name === other || name.startsWith(other + '/'))))) throw new Error('CONFLICTING_FILE_PATHS');
     const window = await history.beginWindow(actor, options.label, { exclusive: true, idleMs: 600_000 });

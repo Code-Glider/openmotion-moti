@@ -4,6 +4,10 @@ Assets stores reusable images, video and audio outside film projects. Upload loc
 
 The editor’s upload menu offers local upload and library import. A library import waits for pending saves, pins the selected asset/version and verifies the returned project-relative file in the native project listing before closing the picker and showing a floating success notice. My assets clears hiding search/type filters and reveals the imported file first in its media category. A failed list refresh keeps the picker retryable and reuses the completed import; an uncertain transport outcome retains its request ID. Late completions cannot refresh or notify a different project. Opening or dismissing the picker preserves the project sidebar.
 
+## Agent generation route
+
+Discover configured providers with `openmotion_media_use` inspect/reference/models, then use `openmotion_assets_use` to generate with a full model ID, poll the original job, inspect an exact asset/version, and import only the selected version into an explicit project before composing. Standalone assets require no carrier project. When only the compatible `openmotion_assets` name is discovered, use its actions and inspect adopted local files with available media tools; it has no read action. Existing project-direct media_use jobs retain their original Tool/projectId/jobId and must not be re-generated or imported a second time. Follow the single [generation boundary](../skills/openmotion-production/references/materials.md#generation-boundary).
+
 ## Storage and jobs
 
 The installation data directory owns `asset-library/records`, immutable media in `files/<assetId>/<versionId>/`, import request receipts, staging and conversations. Files are private user data and never belong in the checkout or package. Uploads accept at most 500 MB of decodable media. Local imports snapshot regular files without following the final symlink, validate the snapshot and hash the saved bytes before committing metadata under the workspace lock. Stable upload request IDs match content and options, rather than temporary browser-upload paths. A reserved asset identity makes an interrupted metadata commit recoverable without duplicating an asset.
@@ -42,7 +46,7 @@ Call `openmotion_assets_use` with `action: "read"`, `assetId` and `versionId`. `
 
 HTTP returns version metadata, measured preview metadata and typed `content`. Stdio MCP and WebMCP return the same media in native image/audio content blocks and keep base64 out of `structuredContent` and its text summary. The embedded Codex runner forwards image/audio data URLs using its app-server content types and persists only metadata, never media base64, in tool messages. Host support determines whether media can actually be interpreted or played; a successful read is not evidence of human listening or visual acceptance.
 
-Both names are registered, so the public profile has fourteen names for thirteen domain capabilities. The tool-wide annotation remains `readOnlyHint:false` because other actions modify state or generate media. New calls do not silently fall back to an older authority that advertises only the old contract; refresh/upgrade discovery and the owning backend together when needed, preserving workspace data and active jobs.
+Both names are registered, so the public profile has sixteen names for fifteen domain capabilities. The tool-wide annotation remains `readOnlyHint:false` because other actions modify state or generate media. New calls do not silently fall back to an older authority that advertises only the old contract; refresh/upgrade discovery and the owning backend together when needed, preserving workspace data and active jobs.
 
 ## Conversations
 
