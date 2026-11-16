@@ -62,8 +62,12 @@ export async function resolveCandidate(control, requested, version, env = proces
     assert(/^[1-9]\d*$/.test(env.GITHUB_RUN_NUMBER || '') && /^[1-9]\d*$/.test(env.GITHUB_RUN_ATTEMPT || ''), 'Positive GitHub run and attempt numbers are required');
     const source = JSON.parse(await run('git', ['show', `${commit}:package.json`], { cwd: control }));
     // Continue after historical test.6: candidate run #1 used the retired long format.
-    version = testVersion(source.version, String(BigInt(env.GITHUB_RUN_NUMBER) + 5n), env.GITHUB_RUN_ATTEMPT);
-    if (env.GITHUB_RUN_ATTEMPT === '1') version = version.slice(0, -2);
+    // The run number stays in every automatic version so concurrent runs never share an identity.
+    const automaticVersion = core => {
+      const next = testVersion(core, String(BigInt(env.GITHUB_RUN_NUMBER) + 5n), env.GITHUB_RUN_ATTEMPT);
+      return env.GITHUB_RUN_ATTEMPT === '1' ? next.slice(0, -2) : next;
+    };
+    version = automaticVersion(source.version);
     const response = await fetcher('https://registry.npmjs.org/@openmotion%2fapp', { redirect: 'error', signal: AbortSignal.timeout(30_000) });
     assert(response.ok, 'Cannot resolve the published npm version baseline: HTTP ' + response.status);
     const tags = (await response.json())['dist-tags'];
@@ -73,14 +77,9 @@ export async function resolveCandidate(control, requested, version, env = proces
       if (!published) continue;
       checkReleaseVersion(published);
       if (compareReleaseVersions(version, published) > 0) continue;
-      if (!published.includes('-test.')) {
-        version = testVersion(published, String(BigInt(env.GITHUB_RUN_NUMBER) + 5n), env.GITHUB_RUN_ATTEMPT);
-        if (env.GITHUB_RUN_ATTEMPT === '1') version = version.slice(0, -2);
-      } else {
-        const [core, counter] = published.split('-test.');
-        const next = BigInt(counter.split('.')[0]) + 1n;
-        version = `${core}-test.${next}${env.GITHUB_RUN_ATTEMPT === '1' ? '' : '.' + env.GITHUB_RUN_ATTEMPT}`;
-      }
+      // Advance the published core's patch series rather than only its test counter, so the
+      // result stays newer than every `${core}-test.*` version and remains run-unique.
+      version = automaticVersion(published.split('-test.')[0]);
     }
   }
   await validateSource(control, commit, version, run, channel);

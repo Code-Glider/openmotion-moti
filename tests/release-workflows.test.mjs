@@ -82,8 +82,16 @@ test('automatic candidates continue beyond published npm versions after a source
   const run = async (_, args) => args[0] === 'show' ? JSON.stringify({ version: '0.0.1' }) : '';
   const resolve = (tags, patch = {}) => resolveCandidate('.', '', '', { ...env, ...patch }, run, async () => Response.json({ 'dist-tags': tags }));
   assert.equal((await resolve({ latest: '0.6.7', test: '0.6.4-test.13' })).version, '0.6.8-test.14');
-  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.8-test.99', candidate: '0.6.8-test.100' })).version, '0.6.8-test.101');
+  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.8-test.99', candidate: '0.6.8-test.100' })).version, '0.6.9-test.14');
   assert.equal((await resolve({ latest: '0.6.7' }, { GITHUB_RUN_ATTEMPT: '2' })).version, '0.6.8-test.14.2');
+  const ahead = { latest: '0.6.7', test: '0.6.8-test.20' };
+  const first = await resolve(ahead, { GITHUB_RUN_NUMBER: '15' });
+  const second = await resolve(ahead, { GITHUB_RUN_NUMBER: '16' });
+  assert.equal(first.version, '0.6.9-test.20'); assert.equal(second.version, '0.6.8-test.21');
+  assert.notEqual(first.version, second.version, 'Concurrent candidates must keep distinct versions');
+  for (const version of [first.version, second.version]) {
+    assert(compareReleaseVersions(version, ahead.test) > 0, `${version} must stay newer than the published test tag`);
+  }
   await assert.rejects(resolveCandidate('.', '', '', env, run, async () => new Response('', { status: 503 })), /baseline/);
   await assert.rejects(resolve({ latest: 'bad' }), /MAJOR/);
   await assert.rejects(resolveCandidate('.', '', '', env, run, async () => Response.json({})), /Missing npm/);
