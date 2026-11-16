@@ -48,6 +48,7 @@ export const workflowRegistry = {
     sections: {
       start: 'skills/openmotion-recreate/SKILL.md',
       rebuild: 'skills/openmotion-recreate/references/rebuild.md',
+      reconstruction: 'skills/openmotion-recreate/references/reconstruction.md',
       verification: 'skills/openmotion-recreate/references/verify.md',
     },
   },

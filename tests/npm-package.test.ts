@@ -176,7 +176,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
       assert(entries.includes(filename), 'Missing recreation helper: ' + script);
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
     }
-    assert(entries.includes('skills/openmotion-recreate/references/verify.md'));
+    for (const file of ['rebuild.md', 'reconstruction.md', 'verify.md']) assert(entries.includes('skills/openmotion-recreate/references/' + file), 'Missing recreation reference: ' + file);
     assert(entries.includes('studio/build/index.html'));
     assert(entries.includes('scripts/inline-onboarding.mjs'));
     assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
