@@ -177,6 +177,8 @@
     const maskPixels = maskContext.createImageData(columns, rows);
     const intact = surface(box[2], box[3]);
     const intactContext = intact.getContext('2d');
+    const exposure = composite === 'source-over' && samples > 1 ? surface(1, 1) : null;
+    const exposureContext = exposure && exposure.getContext('2d');
     const cells = [];
     const particles = [];
     for (let row = 0; row < rows; row++) {
@@ -240,13 +242,33 @@
           const energyOpacity = particle.unitEnergy > 0 ? particle.energy / (particle.unitEnergy * width * width) : 0;
           const alpha = preserveEnergy ? Math.min(particle.alpha, energyOpacity) : particle.alpha;
           const released = preserveEnergy && dissolve && softness > 0 ? clamp(age / softness + 0.5) : 1;
-          destination.globalAlpha = parentAlpha * alpha * released * entrance * exit / samples;
+          const particleAlpha = parentAlpha * alpha * released * entrance * exit;
+          const positions = [];
           for (let sample = 0; sample < samples; sample++) {
             const dt = samples > 1 ? (sample / (samples - 1) - 0.5) * trail : 0;
             const sampleAge = Math.max(0, Math.min(particle.life, age + dt));
             const x = particle.x + particle.vx * sampleAge + particle.ax * sampleAge * sampleAge / 2;
             const y = particle.y + particle.vy * sampleAge + particle.ay * sampleAge * sampleAge / 2;
-            destination.drawImage(particle.sprite, x - width / 2, y - height / 2, width, height);
+            positions.push([x - width / 2, y - height / 2]);
+          }
+          if (exposure) {
+            // Source-over samples do not add opacity. Average premultiplied
+            // colour/alpha separately, then composite this particle only once.
+            const left = Math.floor(Math.min(...positions.map(position => position[0])));
+            const top = Math.floor(Math.min(...positions.map(position => position[1])));
+            const right = Math.ceil(Math.max(...positions.map(position => position[0])) + width);
+            const bottom = Math.ceil(Math.max(...positions.map(position => position[1])) + height);
+            if (exposure.width !== right - left) exposure.width = right - left;
+            if (exposure.height !== bottom - top) exposure.height = bottom - top;
+            exposureContext.clearRect(0, 0, exposure.width, exposure.height);
+            exposureContext.globalCompositeOperation = 'lighter';
+            exposureContext.globalAlpha = 1 / samples;
+            for (const [x, y] of positions) exposureContext.drawImage(particle.sprite, x - left, y - top, width, height);
+            destination.globalAlpha = particleAlpha;
+            destination.drawImage(exposure, left, top);
+          } else {
+            destination.globalAlpha = particleAlpha / samples;
+            for (const [x, y] of positions) destination.drawImage(particle.sprite, x, y, width, height);
           }
         }
         destination.restore();

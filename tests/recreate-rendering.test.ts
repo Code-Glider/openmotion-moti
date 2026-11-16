@@ -5,7 +5,9 @@ import puppeteer from 'puppeteer-core';
 import { browserExecutable } from '../browser.ts';
 
 test('recreation helpers preserve source pixels, sprite detail and seekable state', async t => {
-  const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+  const executablePath = await browserExecutable().catch(() => undefined);
+  if (!executablePath) return t.skip('Chrome is required for recreation rendering checks');
+  const browser = await puppeteer.launch({ executablePath, headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
   await page.setContent('<!doctype html><html><body></body></html>');
@@ -117,6 +119,28 @@ test('recreation helpers preserve source pixels, sprite detail and seekable stat
     for (const [actual, expected] of [[result.black, [32, 96, 192, 255]], [result.white, [64, 128, 192, 255]]]) {
       assert(actual.every((value, index) => Math.abs(value - expected[index]) <= 1), JSON.stringify({ actual, expected }));
     }
+  });
+
+  await t.test('stationary source-over exposure preserves opacity with one or three samples', async () => {
+    const result = await page.evaluate(() => {
+      const source = document.createElement('canvas'); source.width = source.height = 16;
+      const material = source.getContext('2d')!; material.fillStyle = 'black'; material.fillRect(0, 0, 16, 16);
+      const sprite = document.createElement('canvas'); sprite.width = sprite.height = 8;
+      const ink = sprite.getContext('2d')!; ink.fillStyle = 'black'; ink.fillRect(0, 0, 8, 8);
+      const frame = (samples: number, opacity: number, background: boolean) => {
+        const output = document.createElement('canvas'); output.width = output.height = 24;
+        const context = output.getContext('2d')!;
+        if (background) { context.fillStyle = 'white'; context.fillRect(0, 0, 24, 24); }
+        context.globalAlpha = opacity;
+        const field = (window as any).OpenMotionReconstruction.createParticleField({ image: source, sprite, box: [4, 4, 16, 16], pitch: 16, density: 1, threshold: 0, release: [0, 0], lifetime: [1, 1], speed: [0, 0], acceleration: 0, size: [8, 8], sizeGrowth: 0, fadeIn: 0, fadeOut: 0, samples, composite: 'source-over', spriteMatte: 'alpha', dissolve: false });
+        field.draw(context, .5);
+        return { pixels: Array.from(context.getImageData(0, 0, 24, 24).data), centre: Array.from(context.getImageData(12, 12, 1, 1).data), alpha: context.globalAlpha, composite: context.globalCompositeOperation };
+      };
+      return [true, false].flatMap(background => [1, 0.5].map(opacity => ({ one: frame(1, opacity, background), three: frame(3, opacity, background) })));
+    });
+    for (const { one, three } of result) assert.deepEqual(three, one);
+    assert.deepEqual(result[0].three.centre, [0, 0, 0, 255]);
+    assert.deepEqual(result[2].three.centre, [0, 0, 0, 255]);
   });
 
   await t.test('enlarging a sprite preserves the sampled material light budget', async () => {
