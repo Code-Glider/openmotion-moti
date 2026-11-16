@@ -25,6 +25,7 @@ import { validateInstruction } from './shared/conversation.ts';
 import { creationMode, creationModes, artifactViewers, type CreativeSession, type CreationMode } from './shared/session.ts';
 import { gatewayFor } from './gateway/service.ts';
 import { providerDirectory, setDefaultModel, syncProvider } from './gateway/settings.ts';
+import { isMediaProvider, registeredProvider } from './shared/provider-registry.ts';
 import { localAgentsFor } from './gateway/local-agents.ts';
 import { WorkspaceBrowser } from './browser.ts';
 import { Phase1Service } from './phase1.ts';
@@ -452,7 +453,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         if (provider[2] === '/sync' && req.method === 'POST') { await syncProvider(gateway, id); return json(res, 200, { ok: true }); }
         if (provider[2] === '/models' && req.method === 'POST') {
           const body = await input(req);
-          if (['fal', 'opendesign', 'atlascloud', 'wavespeed'].includes(id)) {
+          if (isMediaProvider(id)) {
             modelMetadata(body);
             const model = await gateway.registerModel({ ...body, provider: id, modality: body.kind, mode: body.kind === 'audio' ? 'text-to-speech' : `text-to-${body.kind}` });
             await gateway.connections.updateMetadata(model.model.id, body);
@@ -488,9 +489,9 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         query: url.searchParams.get('query') ?? '', refresh: url.searchParams.get('refresh') === 'true',
         offset: Number(url.searchParams.get('offset') ?? 0), limit: Number(url.searchParams.get('limit') ?? 100),
       }));
-      const reference = url.pathname.match(/^\/api\/models\/providers\/(fal|opendesign|atlascloud|wavespeed|account|compatible)\/reference$/);
-      if (reference && req.method === 'GET') {
-        const guide = await getWorkflow(reference[1], 'production');
+      const reference = url.pathname.match(/^\/api\/models\/providers\/([a-z0-9-]+)\/reference$/);
+      if (reference && req.method === 'GET' && (isMediaProvider(reference[1]) || reference[1] === 'account' || reference[1] === 'compatible')) {
+        const guide = await getWorkflow(registeredProvider(reference[1])?.reference ?? 'compatible', 'production');
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(guide.content);
       }
       const provider = url.pathname.match(/^\/api\/models\/providers\/([a-z]+)$/);

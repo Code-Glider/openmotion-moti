@@ -8,9 +8,10 @@ import { promisify } from 'node:util';
 import type { AccountSummary, DirectoryModel } from '../shared/provider-directory.ts';
 import type { GenerationJob, Model } from '../shared/gateway.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
+import { registeredProvider } from '../shared/provider-registry.ts';
 
 const execute = promisify(execFile);
-const consoleUrl = 'https://open-design.ai/cloud';
+const consoleUrl = registeredProvider('account')!.website!;
 type Profile = { runtimeKey?: string; pendingLogin?: unknown; user?: { name?: string; email?: string } };
 type AccountOptions = { pollMs?: number; binary?: string; run?: (args: string[], signal?: AbortSignal) => Promise<string>; spawn?: typeof spawn };
 

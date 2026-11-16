@@ -3,7 +3,7 @@ import type { GenerationOptions } from './generation-options.ts';
 /** Public contract shared by the model gateway, MCP and Studio. Never contains credentials. */
 export const modalities = ['image', 'video', 'audio'] as const;
 export type Modality = typeof modalities[number];
-export const mediaProviders = ['fal', 'opendesign', 'atlascloud', 'wavespeed'] as const;
+export { mediaProviders } from './provider-registry.ts';
 /** Built-in media IDs and service-registered compatible connections share one route identity. */
 export type ProviderId = string;
 export type Model = {

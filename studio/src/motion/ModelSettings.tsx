@@ -65,7 +65,7 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
   const [editing, setEditing] = useState<DirectoryModel | null>(null);
   const models = data.models.filter(model => model.provider === provider.id);
 
-  const fixedOrigin = provider.protocol === 'media' && provider.id !== 'opendesign';
+  const fixedOrigin = provider.baseUrlEditable === false;
   useEffect(() => { setBaseUrl(provider.baseUrl); setLabel(provider.label); }, [provider.baseUrl, provider.label]);
   const change: Change = async (action, message) => {
     setBusy(true);

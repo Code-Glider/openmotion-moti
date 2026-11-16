@@ -7,6 +7,7 @@ export type ProviderDefinition = {
   id: string; label: string; protocol: ProviderProtocol; baseUrl: string;
   kinds: ModelKind[]; category: ProviderCategory; website?: string; docs?: string;
   setupRequired?: boolean;
+  baseUrlEditable?: boolean;
 };
 export type ProviderConnection = ProviderDefinition & {
   configured: boolean; enabled: boolean; available: boolean; custom: boolean;

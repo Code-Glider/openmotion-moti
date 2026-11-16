@@ -67,6 +67,8 @@ flowchart LR
 | 源码 | 职责 |
 | --- | --- |
 | `shared/gateway.ts` | 无凭据的 Model、Provider、Capability、GenerationJob 合约 |
+| `shared/provider-registry.ts` | Shared registration metadata for dedicated media, compatible presets, account and local Codex; IDs, setup links, endpoint policy and credential environment names |
+| `gateway/connections.ts` | Shared provider configuration, credential/endpoint resolution and default storage, retaining existing file layouts |
 | `gateway/agents.ts` | 本地检测与 Codex 内置生图调用 |
 | `gateway/catalog.ts` | 目录规范化、来源、模态识别与默认候选 |
 | `gateway/providers.ts` | Atlas / fal / WaveSpeed submission, polling and supported remote cancellation |
@@ -77,7 +79,7 @@ flowchart LR
 | `studio/src/motion/MotionTimelineMedia.tsx` | 选择范围与原生导入/放置的桥接 |
 | `studio/src/motion/TimelineMediaBar.tsx`、`timelineMediaSelection.ts` | 片段/标尺/范围的上下文入口，项目素材定位与图片替换保护 |
 
-新增供应商应实现 `ProviderAdapter`，扩展 Provider ID、目录与凭据来源，不另建任务队列。支持参考图时必须显式声明 `supportsImageReference` 并实现适配器；不能仅依据模型名称推断支持。后续属性面板可传 `usage: {compositionId, elementId, property}` 并消费 `onComplete`；目前只有时间轴的图片修改流程显式替换目标，不自动替换任意元素。完整 motion 视频由 Agent 查询能力、生成素材，再用已有源文件/MCP 工具编排和导出，不把单个模型的媒体生成伪装成完整影片生产。
+Register dedicated providers in `shared/provider-registry.ts` and compatible presets through its imported preset directory. Dedicated media IDs derive the adapter-map type; implement `ProviderAdapter` and the provider's catalogue protocol without creating another configuration store or task queue. Account and CLI login remain separate authentication boundaries. Reference-image support still requires an explicit `supportsImageReference` declaration and an implemented adapter; model names do not establish support. Editor consumers may pass `usage: {compositionId, elementId, property}` and consume `onComplete`; only the timeline image-edit flow explicitly replaces its target. Complete films still require the Agent to generate assets, compose editable source, inspect and export.
 
 ## HTTP 与 MCP
 

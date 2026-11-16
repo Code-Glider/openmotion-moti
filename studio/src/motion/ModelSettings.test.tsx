@@ -24,7 +24,7 @@ for (const [id, label] of [['fal', 'fal.ai'], ['atlascloud', 'Atlas Cloud'], ['w
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PUT') { expect(url).toBe(`/motion-api/settings/providers/${id}`); const body = JSON.parse(String(init.body)); writes.push(body); configured = !!body.apiKey; return Response.json({}); }
     expect(url).toBe('/motion-api/settings/providers');
-    return Response.json({ providers: [account, { id, label, protocol: 'media', category: 'multimodal', kinds: ['image', 'video', 'audio'], baseUrl: 'https://api.example', configured, enabled: configured, available: configured, credentialSource: configured ? 'stored' : 'none' }], models: [], defaults: {} });
+    return Response.json({ providers: [account, { id, label, protocol: 'media', category: 'multimodal', kinds: ['image', 'video', 'audio'], baseUrl: 'https://api.example', baseUrlEditable: false, configured, enabled: configured, available: configured, credentialSource: configured ? 'stored' : 'none' }], models: [], defaults: {} });
   }));
   await mount();
   expect(document.body.textContent).toContain('One account. Your models, together.');

@@ -1,17 +1,18 @@
 import type { WorkspaceStore } from '../workspace.ts';
-import { mediaProviders, type GenerateInput } from '../shared/gateway.ts';
+import type { GenerateInput } from '../shared/gateway.ts';
+import { isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import { gatewayFor } from './service.ts';
 import { getWorkflow } from '../shared/workflow.ts';
 
 export async function mediaUse(store: WorkspaceStore, args: any) {
   const gateway = gatewayFor(store);
   const connections = await gateway.connections.list();
-  const supported = (id: string) => mediaProviders.includes(id as typeof mediaProviders[number]) || id === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
-  const referenceSection = (id: string) => mediaProviders.includes(id as typeof mediaProviders[number]) ? id : id === 'account' ? 'account' : 'compatible';
+  const supported = (id: string) => isMediaProvider(id) || registeredProvider(id)?.integration === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
+  const referenceSection = (id: string) => registeredProvider(id)?.reference ?? 'compatible';
   if (args.provider !== undefined && !supported(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
   if (args.action === 'inspect') {
     const status = await gateway.status();
-    return { providers: status.providers.filter(p => supported(p.id) && (mediaProviders.includes(p.id as any) || p.configured || p.id === 'account')),
+    return { providers: status.providers.filter(p => supported(p.id) && (isMediaProvider(p.id) || p.configured || p.id === 'account')),
       defaults: status.routes,
       settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
       references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
