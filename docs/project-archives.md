@@ -2,7 +2,7 @@
 
 Use **All projects** at the bottom of the project sidebar to search and open projects. Check any rows to export that selection as one ZIP, or use Export all projects with no rows checked. The header checkbox selects the currently visible search results. A project's action menu also offers **Export project**. **Import projects** accepts a ZIP and adds independent copies after validation. The import does not select a project, overwrite existing files or merge edits. Open a copy from the list to continue editing it.
 
-Project ZIPs contain editable source, local media, fonts and their licenses, and Studio manual-edit/motion manifests. Export waits for Studio saves and checks source revisions, then parses the finished ZIP and validates its projects in a clean folder using the same rules as import. If validation fails, no download is created. ZIP sharing is separate from rendering MP4 and does not require cloud collaboration or a model account. Current-project export and multi-project export use the same format.
+Project ZIPs contain editable source, local media, fonts and their licenses, and Studio manual-edit/motion manifests. Export waits for Studio saves and snapshots the checked source revisions. It then parses the finished ZIP and validates its projects in a clean folder using the same rules as import. Building and validating the ZIP does not hold the workspace lock, so other project saves can proceed. If validation fails, no download is created. ZIP sharing is separate from rendering MP4 and does not require cloud collaboration or a model account. Current-project export and multi-project export use the same format.
 
 ## Import from HyperFrames
 
@@ -89,6 +89,6 @@ These operations are also exposed through `openmotion_manage_project`; see the [
 
 ## Trash and recovery
 
-Move one project to Trash from its menu, or select several in All projects and choose **Move to trash**. Trashed projects disappear from the sidebar and are excluded from exports. If you trash the project you are editing, Studio switches to another available project. Keep at least one project outside Trash.
+Move one project to Trash from its menu, or select several in All projects and choose **Move to trash**. Trashed projects disappear from the sidebar and are excluded from exports. Recent conversations hides conversations whose projects are all in Trash; drafts and conversations with available projects stay visible. If you trash the project you are editing, Studio switches to another available project. Keep at least one project outside Trash.
 
 The **Trash** tab in All projects is always available. Select one or more projects to **Restore** them or choose **Delete permanently** and confirm the selected set. Permanent deletion removes the managed project folders and their catalog entries. Copies you imported separately and ZIPs or videos you already exported remain independent. A mutation retry keeps its original request identity. If adding or removing a project from Trash is interrupted, OpenMotion completes the saved request before applying another lifecycle action. Retrying the old request cannot undo a later decision.

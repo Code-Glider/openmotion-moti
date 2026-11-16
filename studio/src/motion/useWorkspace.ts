@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { projectHref, requestedProject, sessionHref } from './workspaceRouting';
-import type { CreativeSession, CreationMode } from '../../../shared/session';
+import { availableSession, type CreativeSession, type CreationMode } from '../../../shared/session';
 import { preservePresentation } from '../../../shared/workspace-url';
 import { diagnosticFetch } from './diagnosticRequests';
 import { initializeWorkspaceHistory, WORKSPACE_LOCATION_CHANGED, workspaceHistoryIndex, workspaceHistorySession, writeWorkspaceHistory } from '../utils/workspaceHistory';
@@ -33,6 +33,10 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
   const displayedProjects = useMemo(() => projects.map(project => project.id === 'project' && project.titleKey === 'OpenMotion Sample Video'
     ? { ...project, title: t(project.titleKey) } : project), [projects, t]);
   const [sessions, setSessions] = useState<CreativeSession[]>([]);
+  const visibleSessions = useMemo(() => {
+    const trashed = new Set(projects.filter(project => project.trashedAt).map(project => project.id));
+    return sessions.flatMap(session => availableSession(session, trashed) ?? []);
+  }, [projects, sessions]);
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -117,7 +121,8 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
         if (projectId && data.projectId !== projectId && !acting.current) {
           throw new Error('项目状态与当前页面不匹配，请重新打开对应项目。');
         }
-        const session = !projectId && sessionId ? catalog.sessions?.find(item => item.id === sessionId) : undefined;
+        const savedSession = !projectId && sessionId ? catalog.sessions?.find(item => item.id === sessionId) : undefined;
+        const session = savedSession && availableSession(savedSession, new Set(catalog.projects.filter(project => project.trashedAt).map(project => project.id)));
         const generated = session?.artifacts.find(item => item.id === session.activeArtifactId) ?? session?.artifacts.at(-1);
         if (generated && !acting.current) { navigate(sessionHref(sessionId!, generated.projectId, true), true); return; }
         setStatus(data); setConnectionError('');
@@ -189,5 +194,5 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
   }, [updateCatalog]);
   const rename = useCallback((id: string, title: string) => renameItem(id, title, 'projects'), [renameItem]);
   const renameSession = useCallback((id: string, title: string) => renameItem(id, title, 'sessions'), [renameItem]);
-  return { projects: displayedProjects.filter(project => !project.trashedAt), trashedProjects: displayedProjects.filter(project => Boolean(project.trashedAt)), sessions, session: sessions.find(item => item.id === sessionId), status, busy, navigationError, error: error || connectionError, errorSource: error ? 'operation' as const : 'connection' as const, checkingConnection, retryConnection, open, followActiveProject, create, home, rename, startSession, openSession, createArtifact, renameSession, clearError: () => { setError(''); setConnectionError(''); } };
+  return { projects: displayedProjects.filter(project => !project.trashedAt), trashedProjects: displayedProjects.filter(project => Boolean(project.trashedAt)), sessions: visibleSessions, session: visibleSessions.find(item => item.id === sessionId), status, busy, navigationError, error: error || connectionError, errorSource: error ? 'operation' as const : 'connection' as const, checkingConnection, retryConnection, open, followActiveProject, create, home, rename, startSession, openSession, createArtifact, renameSession, clearError: () => { setError(''); setConnectionError(''); } };
 }

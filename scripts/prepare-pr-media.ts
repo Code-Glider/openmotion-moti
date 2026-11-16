@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { isMain } from '../shared/entry.ts';
@@ -187,7 +187,6 @@ export async function preparePullRequest(pullNumber: number, apply: boolean) {
   const pr = await api('pulls/' + pullNumber);
   assert(!apply || !pr.draft, 'Finish the content review and mark the PR ready before preparing media');
   assert(pr.state === 'open' && pr.base.ref === 'main' && pr.head.repo, 'Require an open PR targeting main');
-  assert(pr.head.repo.full_name === repository || pr.maintainer_can_modify, 'Ask the contributor to enable Allow edits by maintainers on the original PR');
   const settings = await fetch('https://api.github.com/repos/' + repository, { headers: { authorization: 'Bearer ' + token }, redirect: 'error' }).then(response => response.json()) as any;
   assert(settings.permissions?.push, 'The configured GitHub identity must have maintainer write access');
   assert(settings.allow_squash_merge && !settings.allow_merge_commit && !settings.allow_rebase_merge, 'Configure Squash merge only before transferring media; other merge methods retain intermediate large blobs');
@@ -223,13 +222,19 @@ export async function preparePullRequest(pullNumber: number, apply: boolean) {
   for (const file of inputs.head) if (file.type === 'blob' && file.sha !== changed.get(file.path) && file.size > 1024 * 1024)
     assert(plan.media.some(lock => lock.path === file.path), 'Non-media Git blob exceeds 1 MiB: ' + file.path);
   console.log(JSON.stringify({ pullNumber, sourceSHA: plan.sourceSHA, files: plan.media.length, bytes: plan.media.reduce((sum, file) => sum + file.bytes, 0), apply }, null, 2));
-  if (!apply || !plan.media.length) return plan;
+  if (!apply) return plan;
+  if (!plan.media.length) {
+    if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `head_sha=${plan.sourceSHA}\n`);
+    return plan;
+  }
+  assert(pr.head.repo.full_name === repository || pr.maintainer_can_modify, 'Ask the contributor to enable Allow edits by maintainers on the original PR');
   // Finish validation/planning first. Failed uploads leave the PR unchanged.
-  await pushCleanup(plan, pr.head.repo.full_name, pr.head.ref, token, async push => finalizeMediaCleanup(plan, async () => {
+  const preparedSHA = await pushCleanup(plan, pr.head.repo.full_name, pr.head.ref, token, async push => finalizeMediaCleanup(plan, async () => {
     for (const lock of plan.media) await transfer(lock, await read(inputs.head.find((file: TreeFile) => file.path === lock.path)!));
   }, async () => (await api('pulls/' + pullNumber)).head.sha, push));
+  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `head_sha=${preparedSHA}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) await writeFile(process.env.GITHUB_STEP_SUMMARY,
-    `Prepared original PR #${pullNumber}: ${plan.media.length} media files were uploaded and publicly hash-verified.\n\nThe cleanup commit retains the original PR and contributor. Wait for CI and review of the new commit, then use Squash and merge. No PR was merged by this workflow.\n`, { flag: 'a' });
+    `Prepared original PR #${pullNumber}: ${plan.media.length} media files were uploaded and publicly hash-verified.\n\nThe cleanup commit retains the original PR and contributor. Prepared head: ${preparedSHA}. The workflow waits for this exact commit's CI and review before attempting Squash merge.\n`, { flag: 'a' });
   return plan;
 }
 
@@ -281,6 +286,7 @@ async function pushCleanup(plan: CleanupPlan, headRepository: string, branch: st
     // This also checks fork write access before storage is touched. Nothing is pushed.
     await git(['push', '--dry-run', 'https://github.com/' + headRepository + '.git', `${commit}:refs/heads/${branch}`], undefined, true);
     await finish(async () => { await git(['push', 'https://github.com/' + headRepository + '.git', `${commit}:refs/heads/${branch}`], undefined, true); });
+    return commit;
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 

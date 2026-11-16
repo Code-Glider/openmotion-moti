@@ -31,6 +31,26 @@ async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: 
 }
 const writes = () => fetcher.mock.calls.filter(call => call[1]?.method === 'POST');
 
+it('keeps drafts and mixed sessions in recent conversations but hides sessions with only trashed projects', async () => {
+  const live = { id: first, title: 'Live' }, removed = { id: second, title: 'Removed', trashedAt: 10 };
+  const other = { id: 'third', title: 'Also removed', trashedAt: 20 };
+  const artifact = ({ id: projectId, title }: typeof live) => ({ id: projectId, projectId, title, kind: 'motion-project' });
+  const sessions = [
+    { id: 'mixed', title: 'Mixed', mode: 'motion', artifacts: [artifact(removed), artifact(live)], activeArtifactId: second },
+    { id: 'hidden', title: 'Hidden', mode: 'motion', artifacts: [artifact(other)], activeArtifactId: other.id },
+    { id: 'draft', title: 'Draft', mode: 'motion', artifacts: [] },
+  ];
+  let projects = [live, removed, other];
+  fetcher.mockImplementation(async (url: string) => Response.json(url.endsWith('/projects') ? { projects, sessions } : status));
+  await mount(async () => {}, first, 'mixed');
+  expect(workspace.sessions.map(session => session.id)).toEqual(['mixed', 'draft']);
+  expect(workspace.session?.artifacts.map(item => item.projectId)).toEqual([first]);
+  expect(workspace.session?.activeArtifactId).toBe(first);
+  projects = [live, removed, { id: other.id, title: other.title, trashedAt: undefined }];
+  await act(async () => workspace.retryConnection());
+  expect(workspace.sessions.map(session => session.id)).toEqual(['mixed', 'hidden', 'draft']);
+});
+
 it('preserves the saved catalog order when project metadata changes', async () => {
   let projects = [
     { id: second, title: 'Second', createdAt: 200, openedAt: 200 },

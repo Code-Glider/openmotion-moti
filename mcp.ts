@@ -142,7 +142,10 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const value = showTemplateRecommendations(clientState.presentation, message.params.arguments);
         return result({ content: [{ type: 'text', text: value.onboarding
           ? 'The native onboarding component includes the complete welcome and three template cards. Do not append a duplicate welcome, verification status or an acknowledgment after this successful result. End the onboarding turn without an additional text reply and wait for the user. No project has been created.'
-          : 'Preview these templates, then choose a card or reply with its number. No project has been created.' }], structuredContent: value });
+          : 'Preview these templates, then choose a card or reply with its number. No project has been created.' }], structuredContent: value,
+          // Bind each result to its actual immutable resource and isolate it
+          // from an older mounted recommendation retained by the host.
+          _meta: { ui: { resourceUri: clientState.presentation.uri }, 'openai/widgetSessionId': value.recommendationId } });
       }
       if (registry.profile === 'phase1') {
         const internalName = legacyToolName(name);

@@ -24,7 +24,7 @@ import { startOwnedStudio } from './shared/owned-studio.mjs';
 import { sharedEditorEnabled, ensureEditor, editorRequest } from './editor-runtime.ts';
 import { agentGuide, integrationConfig, integrationHost, type IntegrationInfo } from './shared/integration.ts';
 import { validateInstruction } from './shared/conversation.ts';
-import { creationMode, creationModes, artifactViewers, type CreativeSession, type CreationMode } from './shared/session.ts';
+import { creationMode, creationModes, artifactViewers, availableSession, type CreativeSession, type CreationMode } from './shared/session.ts';
 import { gatewayFor } from './gateway/service.ts';
 import { providerDirectory, setDefaultModel, syncProvider } from './gateway/settings.ts';
 import { isMediaProvider, registeredProvider } from './shared/provider-registry.ts';
@@ -335,7 +335,9 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (projectId !== null) {
         if (store.projectCatalog().projects.some(project => project.id === projectId && !project.trashedAt)) await context.ensureStudio(projectId);
       } else if (sessionId) {
-        const session = store.projectCatalog().sessions!.find(session => session.id === sessionId);
+        const catalog = store.projectCatalog();
+        const saved = catalog.sessions!.find(session => session.id === sessionId);
+        const session = saved && availableSession(saved, new Set(catalog.projects.filter(project => project.trashedAt).map(project => project.id)));
         const artifact = session?.artifacts.find(artifact => artifact.id === session.activeArtifactId) ?? session?.artifacts.at(-1);
         if (artifact) await context.ensureStudio(artifact.projectId);
       }
@@ -645,7 +647,9 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         const session = await store.session(id);
         if (action === 'open') {
           if (!session.artifacts.length && !data.projectId) return json(res, 200, await store.selectSession(id));
-          const artifact = data.projectId ? session.artifacts.find(item => item.projectId === data.projectId) : session.artifacts.find(item => item.id === session.activeArtifactId) ?? session.artifacts[0];
+          const selectable = data.projectId ? session : availableSession(session, new Set(store.projectCatalog().projects.filter(project => project.trashedAt).map(project => project.id)));
+          if (!selectable) throw new Error('PROJECT_TRASHED: 工程已在回收站');
+          const artifact = data.projectId ? selectable.artifacts.find(item => item.projectId === data.projectId) : selectable.artifacts.find(item => item.id === selectable.activeArtifactId) ?? selectable.artifacts[0];
           if (!artifact) throw new Error('该产物不属于此会话');
           return json(res, 200, await openProject(store, context, new URL(editorUrl).origin, data.expectedRevision, { projectId: artifact.projectId }, data.expectedProjectId));
         }

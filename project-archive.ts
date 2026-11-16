@@ -8,6 +8,7 @@ import { inspectProject, nativeProjectConfig, ensureRuntime } from './hyperframe
 import { zip } from './scripts/zip.mjs';
 import { readProjectZip } from './shared/project-zip.ts';
 import { PROJECT_ARCHIVE_LIMITS as limits, PROJECT_ARCHIVE_VALIDATION_UNAVAILABLE, type ProjectArchiveInput } from './shared/project-archive.ts';
+import { withProcessLock } from './shared/process-lock.ts';
 
 const format = 'openmotion.project-archive', manifestName = 'openmotion-projects.json';
 const exportValidationVersion = 1;
@@ -148,8 +149,10 @@ export async function projectArchive(store: WorkspaceStore, input: ProjectArchiv
 }
 async function exportProjects(store: WorkspaceStore, input: ProjectArchiveInput, runtimeRoot?: string) {
   const root = path.join(store.directory, 'project-archives'), key = hash(input.requestId);
-  return store.lock(async () => {
-    const receiptPath = path.join(root, 'exports', key + '.json');
+  const receiptPath = path.join(root, 'exports', key + '.json');
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  // Serialize the same request across processes without holding up other workspace writes.
+  return withProcessLock(receiptPath + '.lock', async () => {
     const inputHash = hash(JSON.stringify({ projectIds: input.projectIds, all: input.all, expectedRevisions: input.expectedRevisions }));
     const previous = await jsonFile<any>(receiptPath, null);
     if (previous) {
@@ -162,30 +165,7 @@ async function exportProjects(store: WorkspaceStore, input: ProjectArchiveInput,
       }
       return { ...previous.result, replayed: true };
     }
-    const catalog = store.projectCatalog(), ids = input.all ? catalog.projects.filter(p => !p.trashedAt).map(p => p.id) : input.projectIds!;
-    if (!ids.length || ids.length > limits.projects || new Set(ids).size !== ids.length) throw new Error('INVALID_ARGUMENT: Choose 1–100 distinct projects');
-    if (input.expectedRevisions && Object.keys(input.expectedRevisions).some(id => !ids.includes(id))) throw new Error('INVALID_ARGUMENT: Unexpected project revision');
-    const skippedProjectIds: string[] = [];
-    const entries: { name: string; data: Buffer }[] = [], projects = [], revisions: Record<string, string> = {}; let total = 0;
-    for (const id of ids) {
-      const scoped = store.forProject(id), current = await scoped.get();
-      if (!current.project && input.all && id === 'project') { skippedProjectIds.push(id); continue; }
-      if (!current.project) throw new Error('PROJECT_NOT_READY: Open the project once before exporting');
-      if (input.expectedRevisions?.[id] && current.revision !== input.expectedRevisions[id]) throw new Conflict();
-      revisions[id] = current.revision;
-      const projectRoot = 'projects/' + randomUUID(), files = [];
-      for (const file of current.project.files.filter(file => portableProjectFile(file.path))) {
-        total += file.size;
-        if (total > limits.bytes || entries.length >= limits.files - 1) throw new Error('PROJECT_ARCHIVE_TOO_LARGE: Export fewer projects (500 MB / 5000 files maximum)');
-        const data = await readBounded(await scoped.safePath(file.path), limits.bytes - (total - file.size));
-        if (data.length !== file.size || hash(data) !== file.hash) throw new Conflict();
-        entries.push({ name: projectRoot + '/' + file.path, data });
-        files.push({ path: file.path, bytes: data.length, sha256: file.hash });
-      }
-      projects.push({ title: catalog.projects.find(p => p.id === id)!.title, root: projectRoot, revision: current.revision, files });
-    }
-    if (!projects.length) throw new Error('PROJECT_NOT_READY: No initialized projects to export');
-    for (const id of Object.keys(revisions)) if ((await store.forProject(id).get()).revision !== revisions[id]) throw new Conflict();
+    const { entries, projects, revisions, skippedProjectIds } = await store.lock(() => snapshotProjects(store, input));
     const manifest = Buffer.from(JSON.stringify({ format, version: 1, projects }));
     entries.unshift({ name: manifestName, data: manifest });
     const bytes = zip(entries);
@@ -200,6 +180,34 @@ async function exportProjects(store: WorkspaceStore, input: ProjectArchiveInput,
     await atomicJson(receiptPath, { inputHash, result, validationVersion: exportValidationVersion }); return result;
   });
 }
+
+async function snapshotProjects(store: WorkspaceStore, input: ProjectArchiveInput) {
+  const catalog = store.projectCatalog(), ids = input.all ? catalog.projects.filter(p => !p.trashedAt).map(p => p.id) : input.projectIds!;
+  if (!ids.length || ids.length > limits.projects || new Set(ids).size !== ids.length) throw new Error('INVALID_ARGUMENT: Choose 1–100 distinct projects');
+  if (input.expectedRevisions && Object.keys(input.expectedRevisions).some(id => !ids.includes(id))) throw new Error('INVALID_ARGUMENT: Unexpected project revision');
+  const skippedProjectIds: string[] = [];
+  const entries: { name: string; data: Buffer }[] = [], projects = [], revisions: Record<string, string> = {}; let total = 0;
+  for (const id of ids) {
+    const scoped = store.forProject(id), current = await scoped.get();
+    if (!current.project && input.all && id === 'project') { skippedProjectIds.push(id); continue; }
+    if (!current.project) throw new Error('PROJECT_NOT_READY: Open the project once before exporting');
+    if (input.expectedRevisions?.[id] && current.revision !== input.expectedRevisions[id]) throw new Conflict();
+    revisions[id] = current.revision;
+    const projectRoot = 'projects/' + randomUUID(), files = [];
+    for (const file of current.project.files.filter(file => portableProjectFile(file.path))) {
+      total += file.size;
+      if (total > limits.bytes || entries.length >= limits.files - 1) throw new Error('PROJECT_ARCHIVE_TOO_LARGE: Export fewer projects (500 MB / 5000 files maximum)');
+      const data = await readBounded(await scoped.safePath(file.path), limits.bytes - (total - file.size));
+      if (data.length !== file.size || hash(data) !== file.hash) throw new Conflict();
+      entries.push({ name: projectRoot + '/' + file.path, data });
+      files.push({ path: file.path, bytes: data.length, sha256: file.hash });
+    }
+    projects.push({ title: catalog.projects.find(p => p.id === id)!.title, root: projectRoot, revision: current.revision, files });
+  }
+  if (!projects.length) throw new Error('PROJECT_NOT_READY: No initialized projects to export');
+  for (const id of Object.keys(revisions)) if ((await store.forProject(id).get()).revision !== revisions[id]) throw new Conflict();
+  return { entries, projects, revisions, skippedProjectIds };
+}
 export async function duplicateProject(store: WorkspaceStore, input: { projectId: string; requestId: string; title?: string; expectedRevision?: string }, runtimeRoot?: string) {
   const title = input.title === undefined ? undefined : validateProjectTitle(input.title);
   const requestId = 'duplicate-' + hash(input.requestId);
@@ -212,12 +220,17 @@ export async function duplicateProject(store: WorkspaceStore, input: { projectId
 export async function importProjects(store: WorkspaceStore, requestId: string, bytes: Buffer, runtimeRoot?: string, copy?: { title?: string }) {
   if (!/^[\w-]{1,100}$/.test(requestId)) throw new Error('INVALID_ARGUMENT: Stable requestId required');
   const inputHash = copy ? hash(hash(bytes) + JSON.stringify(copy)) : hash(bytes), root = path.join(store.directory, 'project-archives'), receiptPath = path.join(root, 'imports', hash(requestId) + '.json');
-  return store.lock(async () => {
-    const previous = await jsonFile<any>(receiptPath, null), catalog = store.projectCatalog();
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  return withProcessLock(receiptPath + '.lock', async () => {
+    const previous = await jsonFile<any>(receiptPath, null);
     if (previous && previous.inputHash !== inputHash) throw new Error('REQUEST_ID_CONFLICT');
-    if (previous?.committed || previous?.projects.every((p: any) => catalog.projects.some(known => known.id === p.projectId))) return { projects: previous.projects, replayed: true };
-    if (previous?.projects.some((p: any) => catalog.projects.some(known => known.id === p.projectId))) throw new Error('PROJECT_ARCHIVE_UNAVAILABLE: Some imported projects are missing');
-    if (previous) for (const p of previous.projects) await rm(store.projectDirectoryFor(p.projectId), { recursive: true, force: true });
+    if (previous?.committed) return { projects: previous.projects, replayed: true };
+    if (previous) {
+      const known = new Set(store.projectCatalog().projects.map(project => project.id));
+      if (previous.projects.every((p: any) => known.has(p.projectId))) return { projects: previous.projects, replayed: true };
+      if (previous.projects.some((p: any) => known.has(p.projectId))) throw new Error('PROJECT_ARCHIVE_UNAVAILABLE: Some imported projects are missing');
+      for (const p of previous.projects) await rm(store.projectDirectoryFor(p.projectId), { recursive: true, force: true });
+    }
     const projects = decodeArchive(bytes);
     if (copy) {
       if (projects.length !== 1) throw new Error('INVALID_PROJECT_ARCHIVE: Duplicate requires exactly one project');
@@ -226,23 +239,27 @@ export async function importProjects(store: WorkspaceStore, requestId: string, b
     const engineRoot = runtimeRoot ?? await ensureRuntime(store.directory, false);
     const staging = path.join(root, 'staging', randomUUID());
     const results = projects.map(project => ({ projectId: randomUUID(), sessionId: randomUUID(), title: project.title }));
-    let committed = false;
     try {
       for (let i = 0; i < projects.length; i++) await validatePackedProject(projects[i], path.join(staging, results[i].projectId), engineRoot);
-      await atomicJson(receiptPath, { inputHash, projects: results });
-      await mkdir(path.join(store.directory, 'projects'), { recursive: true, mode: 0o700 });
-      for (const project of results) {
-        await rename(path.join(staging, project.projectId), store.projectDirectoryFor(project.projectId));
-        catalog.projects.unshift({ id: project.projectId, title: project.title, titleKey: null, createdAt: Date.now() });
-        catalog.sessions!.unshift({ id: project.sessionId, title: project.title, mode: 'motion', createdAt: Date.now(), activeArtifactId: project.projectId,
-          artifacts: [{ id: project.projectId, projectId: project.projectId, kind: 'motion-project', title: project.title }] });
-      }
-      await atomicJson(path.join(store.directory, 'projects.json'), catalog); committed = true;
-      await atomicJson(receiptPath, { inputHash, projects: results, committed: true });
+      await store.lock(async () => {
+        const catalog = store.projectCatalog();
+        await atomicJson(receiptPath, { inputHash, projects: results });
+        try {
+          await mkdir(path.join(store.directory, 'projects'), { recursive: true, mode: 0o700 });
+          for (const project of results) {
+            await rename(path.join(staging, project.projectId), store.projectDirectoryFor(project.projectId));
+            catalog.projects.unshift({ id: project.projectId, title: project.title, titleKey: null, createdAt: Date.now() });
+            catalog.sessions!.unshift({ id: project.sessionId, title: project.title, mode: 'motion', createdAt: Date.now(), activeArtifactId: project.projectId,
+              artifacts: [{ id: project.projectId, projectId: project.projectId, kind: 'motion-project', title: project.title }] });
+          }
+          await atomicJson(path.join(store.directory, 'projects.json'), catalog);
+        } catch (error) {
+          for (const project of results) await rm(store.projectDirectoryFor(project.projectId), { recursive: true, force: true });
+          throw error;
+        }
+        await atomicJson(receiptPath, { inputHash, projects: results, committed: true });
+      });
       return { projects: results, replayed: false };
-    } finally {
-      await rm(staging, { recursive: true, force: true });
-      if (!committed) for (const project of results) await rm(store.projectDirectoryFor(project.projectId), { recursive: true, force: true });
-    }
+    } finally { await rm(staging, { recursive: true, force: true }); }
   });
 }

@@ -139,5 +139,17 @@ test('Motion sessions own multiple independent artifacts and restore the last se
     assert.equal(new URL(templated.previewUrl).searchParams.get('embed'), '1');
     assert.equal(new URL(templated.sessionUrl).searchParams.has('embed'), false);
     assert.equal(new URL(templated.previewUrl).searchParams.get('project'), templated.projectId);
+    await store.trashProject(second.projectId, 'trash-recent-artifact');
+    const mixed = await mutate(`/sessions/${session.id}/open`);
+    assert.equal(mixed.status, 200, await mixed.clone().text());
+    assert.equal((await mixed.json()).projectId, first.projectId);
+    const explicit = await mutate(`/sessions/${session.id}/open`, { projectId: second.projectId });
+    assert.equal(explicit.status, 400);
+    assert.match((await explicit.json()).error, /PROJECT_TRASHED/);
+    await store.trashProject(first.projectId, 'trash-last-session-artifact');
+    const trashed = await mutate(`/sessions/${session.id}/open`);
+    assert.equal(trashed.status, 400);
+    assert.match((await trashed.json()).error, /PROJECT_TRASHED/);
+    assert.equal((await store.session(session.id)).artifacts.length, 2, 'Trash preserves ownership for restoration');
   } finally { await running.close(); }
 }));

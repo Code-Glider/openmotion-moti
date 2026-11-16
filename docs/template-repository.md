@@ -53,9 +53,9 @@ Add media under `<id>/source/assets/` and reference it by a relative path from t
 "localMedia": { "preview": "assets/reference.mp4", "poster": "assets/poster.webp" }
 ```
 
-When the final content is reviewed, a maintainer runs **Actions → Prepare PR media** once for that PR. It uploads changed media, verifies public downloads, replaces the files with links/identities and adds a cleanup commit to the same PR. The original author is retained. Personal forks must enable **Allow edits from maintainers**. There is no upload on every draft push, no replacement PR and no patch for the contributor to apply.
+When the final content is reviewed, a maintainer runs **Actions → Prepare and merge PR** once for that PR. It uploads changed media, verifies public downloads, replaces the files with links/identities and adds a cleanup commit to the same PR. A separate job then waits for CI and review of that exact commit before Squash merging through GitHub. The original author is retained. Personal forks must enable **Allow edits from maintainers**. There is no upload on every draft push, no replacement PR and no patch for the contributor to apply.
 
-Raw large files can fail CI before preparation. After cleanup, wait for the new commit's CI and required review, then Squash merge. If the contributor later revises media, prepare that revision again. See [the maintainer entry, one-time setup and failure behavior](repository-storage.md#prepare-final-pr-media-before-merging).
+Raw large files can fail CI before preparation. After cleanup, the workflow waits for the new commit's CI and required review before Squash merge. If the contributor pushes another commit, the run stops; no new content is merged implicitly. If the contributor later revises media, prepare that revision again. See [the maintainer entry, one-time setup and failure behavior](repository-storage.md#prepare-final-pr-media-before-merging).
 
 Transferred media is publicly linked in HTML/Markdown, catalog previews and MCP detail. The original path, bytes and SHA-256 remain in `remoteAssets` and `source/manifest.json`. Public R2 bytes retain the original hash; existing CMS rendition/original pairs retain their separate identities. Network access is required to view linked media. Existing LFS-only contributions remain readable after their scoped pull:
 

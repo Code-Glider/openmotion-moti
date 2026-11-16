@@ -18,7 +18,7 @@ async function fixture(run: (context: { directory: string; destination: string; 
     const log = path.join(directory, 'commands.log');
     await mkdir(bin);
     for (const file of ['scripts/install-motion.command', 'scripts/source-marketplace.mjs', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs',
-      'docs/install-onboarding.md', 'shared/template-config.json', 'marketplace.example.json']) {
+      'docs/install-onboarding.md', 'shared/template-config.json', 'marketplace.example.json', 'mcp-ui/template-recommendations/i18n.ts']) {
       await mkdir(path.dirname(path.join(source, file)), { recursive: true });
       await copyFile(path.join(root, file), path.join(source, file));
     }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile, readdir, symlink } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile, readdir, symlink } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { crc32, deflateRawSync } from 'node:zlib';
@@ -21,6 +22,47 @@ const native = (prefix = '') => zip([
   { name: prefix + 'assets/image.png', data: Buffer.from([137, 80, 78, 71]) },
   { name: prefix + '.hyperframes/studio-manual-edits.json', data: Buffer.from('{}') },
 ]);
+
+for (const action of ['export', 'import'] as const) {
+  test(`${action} leaves the workspace writable while native validation waits`, () => fixture(async store => {
+    const { projects: [source] } = await importProjects(store, 'source', native('Original/'), pluginRoot);
+    const runtime = path.join(store.directory, 'waiting-engine'), core = path.join(runtime, 'node_modules/@hyperframes/core');
+    const started = path.join(runtime, 'started'), release = path.join(runtime, 'release');
+    await mkdir(core, { recursive: true });
+    await writeFile(path.join(core, 'package.json'), JSON.stringify({ exports: { './lint': { import: './lint.mjs' } } }));
+    await writeFile(path.join(core, 'lint.mjs'), `
+      import { access, writeFile } from 'node:fs/promises';
+      import { setTimeout } from 'node:timers/promises';
+      export async function lintProject() {
+        await writeFile(${JSON.stringify(started)}, '');
+        while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await setTimeout(15);
+        return { totalErrors: 0, totalWarnings: 0, totalInfos: 0, results: [] };
+      }
+    `);
+    const operation = action === 'export'
+      ? projectArchive(store, { action, projectIds: [source.projectId], requestId: 'delayed' }, runtime)
+      : importProjects(store, 'delayed', native('Another/'), runtime);
+    void operation.catch(() => {});
+    try {
+      for (let attempt = 0; attempt < 200; attempt++) {
+        if (await access(started).then(() => true, () => false)) break;
+        await delay(15);
+      }
+      await access(started);
+      await assert.rejects(access(path.join(store.directory, 'workspace.lock')), { code: 'ENOENT' });
+      await store.renameProject(source.projectId, 'Renamed during validation');
+    } finally {
+      await writeFile(release, '');
+      await operation;
+    }
+    assert.equal(store.projectCatalog().projects.find(project => project.id === source.projectId)?.title, 'Renamed during validation');
+    const result = await operation;
+    if (action === 'export' && 'archivePath' in result) {
+      const manifest = readProjectZip(await readFile(result.archivePath)).get('openmotion-projects.json')!;
+      assert.equal(JSON.parse(manifest.toString()).projects[0].title, 'Original');
+    } else assert.ok(result.projects.length);
+  }, false));
+}
 const service = (store: any) => new Phase1Service(store, pluginRoot, {
   origin: () => 'http://localhost:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => ({}),
 });

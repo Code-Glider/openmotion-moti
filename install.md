@@ -19,7 +19,7 @@ If the intended checkout already exists, inspect its remote, version and local c
 
 Command-local Git LFS overrides keep optional media as pointers even when global LFS configuration is stale. No global Git configuration is changed. A read-only source check runs before dependency work; unknown inventory or installed-source conflicts stop with a concrete recovery instruction. See [clone size and optional media](docs/repository-storage.md).
 
-The installer saves phase timings and full onboarding details under `.artifacts/install/`. Read the concise result once and complete onboarding in this same installation turn. Prepare and publish the welcome/cards before opening the right-hand library; after one visibility check, immediately stream the returned welcomeMarkdown as normal reply text, followed by the ready cards reference. Never enqueue internal instructions as another user message or end early to await a callback. Download time depends on the network; no fixed installation duration is guaranteed.
+The installer saves phase timings and full onboarding details under `.artifacts/install/`. Read the concise result once and complete onboarding in this same installation turn. Prepare the cards and separate welcome before opening the right-hand library. For native reference cards, use the exact prepared IDs with onboarding:false, then stream welcomeMarkdown as the ordinary final reply after the Tool result. For self-contained builtin fragments, publish before the library reveal and stream welcomeMarkdown followed by the ready cards reference. Never enqueue internal instructions as another user message or end early to await a callback. Download time depends on the network; no fixed installation duration is guaranteed.
 
 ## Other local hosts: source and MCP
 
@@ -36,6 +36,8 @@ npm start
 Open the actual studioUrl or previewUrl printed at startup. Follow [manual MCP configuration](README.md#manual-mcp) and the [host adapter guide](docs/agent-adapters.md) to connect this checkout's mcp.ts and the same data directory. Source preview/export also need working Chrome/Chromium and FFmpeg/ffprobe; see [runtime setup](docs/usage.md). Merely starting Studio does not register an Agent connection.
 
 ## Verify installation and deliver onboarding
+
+For the default nine-reference pool, follow `inlinePresentation.status=native_required`: use its three frozen random selections with the compatible native presentation Tool. External posters/videos require the native App's declared media origin and cannot be published as a fixed-CSP visualization fragment. Refresh stale connection discovery through the supported host action when needed. Verify the actual in-conversation card resource and image/video playback; do not replace inline cards with a right-hand browser page or substitute builtin examples. Fragment publication below applies only to `status=prepared` with self-contained media.
 
 Discover the installed tools and call openmotion_get_project to verify the expected workspace. Registration or an independent probe alone does not prove this chat loaded the tools. Keep installed files, MCP access and host presentation results distinct.
 
