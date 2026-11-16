@@ -17,7 +17,7 @@ Use Node24 and pnpm11.13.0. Linux requires `ps` (`procps` on Debian); containers
 
 ```sh
 pnpm install --frozen-lockfile
-PLAYWRIGHT_BROWSERS_PATH=0 pnpm --filter @open-motion/web exec playwright install chromium
+pnpm --filter @open-motion/web exec playwright install chromium
 pnpm build
 pnpm test
 pnpm lint
