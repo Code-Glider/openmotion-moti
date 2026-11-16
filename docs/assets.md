@@ -14,11 +14,12 @@ Model Gateway keeps the existing credentials, providers, OpenDesign account conn
 
 ## APIs
 
-`openmotion_assets` is an additive public protocol-1 tool shared by stdio MCP, WebMCP and Studio's `/motion-api/phase1/call` authority:
+`openmotion_assets_use` is the preferred public protocol-1 tool; `openmotion_assets` retains its original nine-action schema and shares the same records, operation implementations and request receipts. The preferred name adds `read`. Both names are shared by stdio MCP, WebMCP and Studio's `/motion-api/phase1/call` authority:
 
 | Action | Boundary |
 | --- | --- |
 | `list`, `get` | Filter/page metadata; inspect versions and provenance |
+| `read` | Read bounded media content for an explicit assetId/versionId; no generation or asset-version mutation |
 | `import` | Copy a real local file using a stable requestId; optional assetId/parentVersionId appends a version |
 | `update` | Rename, trash/restore, or select an existing currentVersionId |
 | `generate` | Explicit model, modality, prompt, stable requestId and optional parameters/references; returns a job |
@@ -28,6 +29,19 @@ Model Gateway keeps the existing credentials, providers, OpenDesign account conn
 Discover available providers and models through `openmotion_media_use` before generating. User credentials stay in model settings. Reference capability is model-specific: local Codex image editing currently accepts one image reference. The Codex adapter reads bounded completion/error events and imports only one fresh, regular raster file from the isolated job directory. It does not import the reference, stale files, symlinks or arbitrary paths from model replies. CLI login and an enabled image feature do not prove image-service authorization: an authorization error remains a failed job with actionable guidance, rather than a missing-filename error. Missing proxy credentials are distinguished from account authorization errors; the active Codex provider must select the configuration matching its endpoint and authentication. OpenMotion inherits that configuration without rewriting it or copying credentials. No automatic paid retry or provider switch occurs. Other configured media models support standalone generation using their existing provider parameters; broad image/video/audio reference editing is not implied.
 
 The browser upload endpoint is `POST /motion-api/assets/upload?requestId=...` with binary body and URI-encoded `X-File-Name`. Media `GET`/`HEAD` at `/motion-api/assets/<assetId>/versions/<versionId>/file` supports single byte ranges and attachment downloads. These are local installation routes behind the existing loopback and same-origin boundary, not public remote endpoints. Browser imports use selected Files; external MCP imports require paths readable on the host.
+
+## Reading a fixed version
+
+Call `openmotion_assets_use` with `action: "read"`, `assetId` and `versionId`. `get` stays metadata-only. The shared reader snapshots a regular no-follow file, verifies its saved byte count/SHA-256 and decodes that snapshot; it never follows a changing current-version pointer. Retained trash is readable, consistently with get/download, while new references and project imports still require an active asset.
+
+- Images return a PNG preview with aspect ratio and transparency retained, at most 1024 pixels per side and without upscaling.
+- Video returns the first frame by default. Optional `timestamps` selects one to four seek positions in seconds, in request order. Positions must be before the known media duration; codec/frame-rate seeking can quantize the selected frame. These are requested seek positions, not frame-accurate motion measurements.
+- Audio returns mono 16 kHz PCM WAV. Optional `start` defaults to zero; `duration` defaults to 10 seconds, accepts 0.1–15 seconds, and clips to the available audio. The result records the measured clip duration. Timestamps are video-only; start/duration are audio-only.
+- Each preview is at most 4 MiB, and one read is at most 8 MiB of decoded output files before base64 encoding. A decode or limit failure returns an error, not an empty successful preview. Temporary snapshots/previews are removed on success or failure; no project, generation task or asset version is created.
+
+HTTP returns version metadata, measured preview metadata and typed `content`. Stdio MCP and WebMCP return the same media in native image/audio content blocks and keep base64 out of `structuredContent` and its text summary. The embedded Codex runner forwards image/audio data URLs using its app-server content types and persists only metadata, never media base64, in tool messages. Host support determines whether media can actually be interpreted or played; a successful read is not evidence of human listening or visual acceptance.
+
+Both names are registered, so the public profile has fourteen names for thirteen domain capabilities. The tool-wide annotation remains `readOnlyHint:false` because other actions modify state or generate media. New calls do not silently fall back to an older authority that advertises only the old contract; refresh/upgrade discovery and the owning backend together when needed, preserving workspace data and active jobs.
 
 ## Conversations
 

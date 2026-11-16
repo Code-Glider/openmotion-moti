@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { normalizeInlineResult } from './shared/inline-video-result.js';
 import { inlineVideoUri } from './shared/inline-video.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
+import { assetReadToolResult } from './shared/asset-library.ts';
 import { createInterface } from 'node:readline';
 import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -65,7 +66,7 @@ export async function rpc(message: any, store = new WorkspaceStore(), registry =
     || registry.profile !== 'phase1' || !(toolNames as readonly unknown[]).includes(name)) return invokeRpc(message, store, registry, connection, host, trackingContext, clientState);
   const tracking = await trackingFor(store), started = performance.now(), callId = crypto.randomUUID();
   let accepted = false;
-  try { validateInput(phase1Tools.find(tool => tool.name === publicToolName(name))!.inputSchema, message.params.arguments ?? {}); accepted = true; } catch {}
+  try { validateInput(phase1Tools.find(tool => tool.name === publicToolName(message.params.name))!.inputSchema, message.params.arguments ?? {}); accepted = true; } catch {}
   const fields = { tool_name: name as typeof toolNames[number], call_id: callId, accepted,
     ...(uuid.test(message.params.arguments?.requestId) ? { operation_id: message.params.arguments.requestId } : {}) };
   if (accepted) tracking.track('mcp_tool_started', fields, undefined, undefined, host);
@@ -163,6 +164,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         if (finalVideo && (!value.inlineWork?.playable || value.inlineWork.state !== 'completed' || !normalized?._meta?.inlineVideo?.video))
           throw new Error('FINAL_VIDEO_NOT_READY: Display only after the MP4 export completes and passes verification');
         if (value.projectId && value.sessionId) selections.set(store, { projectId: value.projectId, sessionId: value.sessionId });
+        if (internalName === 'motion_assets' && args.action === 'read') return result(assetReadToolResult(value));
         const { _inlineMedia: legacyMedia, ...visible } = value;
         const _inlineMedia = normalized?._meta?.inlineVideo ?? legacyMedia;
         return result({ content: [{ type: 'text', text: JSON.stringify(visible) }], structuredContent: visible,
