@@ -83,6 +83,28 @@ test('successful setup hands the current Agent a project-free template library b
   assert.equal('onboarding' in JSON.parse(await readFile(path.join(options.home, 'install.json'), 'utf8')), false);
 });
 
+test('legacy setup returns prepared onboarding to the installing Agent without sending another user message', async t => {
+  const options = await setupFixture(t);
+  await writeFile(path.join(options.application, 'scripts/inline-onboarding.mjs'), `import fs from 'node:fs/promises'; import path from 'node:path'; import {createHash} from 'node:crypto';
+export async function prepareInlineOnboarding({output}) { await fs.mkdir(path.dirname(output), {recursive:true}); await fs.writeFile(output, 'verified cards'); return {status:'prepared',path:output,sha256:createHash('sha256').update('verified cards').digest('hex')}; }`);
+  const manifest = JSON.parse(await readFile(options.manifest, 'utf8'));
+  manifest.application = await archive(options.directory, options.application, 'prepared-onboarding');
+  await writeJSON(options.manifest, manifest);
+  const queueLog = path.join(options.directory, 'queue.log');
+  const cli = await readFile(options.codex, 'utf8');
+  await writeFile(options.codex, cli + `\nif(args[0]==='queue') {fs.writeFileSync(${JSON.stringify(queueLog)},JSON.stringify(args));console.log('Queued message 11111111-1111-4111-8111-111111111111 for thread '+args[2]+'.');}\n`);
+  const installed = await setup(options);
+  assert.equal(installed.onboarding.onboardingStatus, 'awaiting_host_delivery');
+  assert.equal(installed.onboarding.callback, undefined);
+  assert.equal(installed.onboarding.inlinePresentation.status, 'prepared');
+  assert.equal(installed.onboarding.preview.status, 'ready');
+  assert.equal(installed.onboarding.preview.projectCreated, false);
+  assert.equal(installed.onboarding.onboardingComplete, false);
+  await assert.rejects(readFile(queueLog), { code: 'ENOENT' });
+  assert.equal(await readFile(installed.onboarding.inlinePresentation.path, 'utf8'), 'verified cards');
+  assert.equal(JSON.parse(await readFile(options.config, 'utf8')).unrelated.transport.command, 'keep-this');
+});
+
 for (const host of ['workbuddy', 'claude', 'codex', 'deepseek']) {
   test(`${host} upgrades remove retired Skills while preserving projects and unrelated entries`, async t => {
     const options = await setupFixture(t);
