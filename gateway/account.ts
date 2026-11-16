@@ -29,7 +29,7 @@ type AccountOptions = {
 const stagePrefix = 'OPEN_DESIGN_AMR_AUTH_STAGE\t', completionPrefix = 'OPEN_DESIGN_AMR_AUTH_COMPLETION\t';
 const stageNames: readonly string[] = accountStages;
 const failureMessages: Record<AccountErrorCode, string> = {
-  connector_unavailable: 'OpenDesign sign-in requires the Vela connector. Install @powerformer/vela-cli@0.1.10, then try signing in again.',
+  connector_unavailable: 'OpenDesign sign-in requires the Vela connector. Run npm install -g @powerformer/vela-cli@0.1.10 in a terminal, then sign in again.',
   setup_failed: "Can't connect to OpenDesign right now. Check your network and try again.",
   authorization_expired: 'Browser authorization expired or was cancelled. Sign in again.',
   credentials_rejected: 'Account credentials could not be verified. Sign in again, and contact us if this keeps happening.',

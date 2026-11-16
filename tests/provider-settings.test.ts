@@ -162,7 +162,7 @@ test('sign-in failures are classified by the stage reached and logged without ac
   assert.deepEqual(created.attempt?.stages, ['attempt_started:started', 'device_auth_create_result:failed:network_error']); assert.equal(created.attempt?.exitCode, 1);
   const missing = await attempt('', { binary: path.join(store.directory, 'missing-connector'), authorize: false });
   assert.equal(missing.errorCode, 'connector_unavailable');
-  assert.match(missing.error ?? '', /Install @powerformer\/vela-cli@0\.1\.10/);
+  assert.match(missing.error ?? '', /npm install -g @powerformer\/vela-cli@0\.1\.10/);
   const denied = await attempt('login-denied');
   assert.equal(denied.errorCode, 'authorization_expired'); assert.equal(denied.attempt?.stages.at(-1), 'device_authorization_result:failed:oauth_denied');
   assert.equal((await attempt('', { authorize: false, authorizationMs: 300 })).errorCode, 'authorization_expired');
