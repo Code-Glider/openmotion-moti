@@ -155,7 +155,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert(release.skills.every((name: string) => name.startsWith('openmotion-')));
     assert.match(await readFile(path.join(application, 'skills/openmotion-production/agents/openai.yaml'), 'utf8'), /OpenMotion Production/);
     assert.match(await readFile(path.join(application, 'skills/openmotion-media/agents/openai.yaml'), 'utf8'), /OpenMotion Media/);
-    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-media/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
+    for (const document of ['skills/openmotion-director/SKILL.md', 'skills/openmotion-media/SKILL.md', 'skills/openmotion-production/references/context.md', 'skills/openmotion-production/references/native.md', 'skills/openmotion-production/references/typography.md', 'skills/openmotion-production/references/fonts.md', 'skills/openmotion-production/fonts/catalog.json', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'skills/openmotion-production/references/verification.md', 'skills/openmotion-recreate/SKILL.md', 'phase1.ts', 'shared/phase1-tools.ts', 'shared/mcp-profiles.json']) {
       assert.equal(await readFile(path.join(application, document), 'utf8'), await readFile(document, 'utf8'));
     }
     assert.equal(await sha256(path.join(application, 'package-lock.json')), release.locks.npm);

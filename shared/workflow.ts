@@ -1,3 +1,4 @@
+import { fontCatalogResource } from './font-catalog.ts';
 import { createHash } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
@@ -24,6 +25,8 @@ export const workflowRegistry = {
       opendesign: 'skills/openmotion-production/references/media-providers/opendesign.md',
       atlascloud: 'skills/openmotion-production/references/media-providers/atlascloud.md',
       wavespeed: 'skills/openmotion-production/references/media-providers/wavespeed.md',
+      typography: 'skills/openmotion-production/references/typography.md',
+      fonts: 'skills/openmotion-production/references/fonts.md',
     },
   },
   director: {
@@ -78,10 +81,11 @@ export const packagedSkills = [...phase1Skills, ...supportingSkills];
 export function workflowResources() {
   return Object.entries(workflowRegistry).filter(([name]) => phase1WorkflowNames.includes(name)).flatMap(([workflow, definition]) => Object.keys(definition.sections).map(section => ({
     uri: `openmotion://workflow/${workflow}/${section}`, name: `${workflow}/${section}`, title: `OpenMotion · ${workflow}/${section}`, mimeType: 'application/json',
-  }))).concat([{ uri: 'openmotion://engine/SKILL.md', name: 'Hyperframes pinned authoring guide', title: 'OpenMotion · Hyperframes authoring guide', mimeType: 'text/markdown' }]);
+  }))).concat([{ uri: 'openmotion://fonts/index', name: 'fonts/index', title: 'OpenMotion · Curated fonts', mimeType: 'application/json' }, { uri: 'openmotion://engine/SKILL.md', name: 'Hyperframes pinned authoring guide', title: 'OpenMotion · Hyperframes authoring guide', mimeType: 'text/markdown' }]);
 }
 export async function readWorkflowResource(uri: unknown, dataDirectory: string) {
   if (typeof uri !== 'string') throw new Error('INVALID_RESOURCE_URI');
+  if (/^(?:openmotion|motion):\/\/fonts\//.test(uri)) return { uri, mimeType: 'application/json', text: JSON.stringify(await fontCatalogResource(uri)) };
   const match = /^(?:openmotion|motion):\/\/workflow\/([a-z]+(?:-[a-z]+)*)\/([a-z]+)$/.exec(uri);
   if (match && phase1WorkflowNames.includes(match[1])) return { uri, mimeType: 'application/json', text: JSON.stringify({ ...await getWorkflow(match[2], match[1]), workflows: phase1WorkflowNames }) };
   const engine = /^(?:openmotion|motion):\/\/engine\/([a-zA-Z0-9_/-]+\.md)$/.exec(uri);
