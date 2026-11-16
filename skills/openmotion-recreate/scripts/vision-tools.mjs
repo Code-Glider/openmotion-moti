@@ -34,13 +34,14 @@ async function runtimeRoot() {
 
 try {
   const [command, ...args] = process.argv.slice(2);
-  assert(['register', 'measure', 'python', 'prepare'].includes(command), 'Usage: node vision-tools.mjs register|measure|python|prepare [arguments]');
+  assert(['register', 'measure', 'observe', 'python', 'prepare'].includes(command), 'Usage: node vision-tools.mjs register|measure|observe|python|prepare [arguments]');
   const root = await runtimeRoot();
   const { ensureVisionRuntime, visionEnvironment } = await import(pathToFileURL(path.join(root, 'scripts/vision-runtime.mjs')).href);
   const config = await ensureVisionRuntime(root);
   if (command === 'prepare') console.log(JSON.stringify({ python: config.python, versions: config.runtime.vision }));
   else {
-    const script = command === 'python' ? [] : [path.join(root, 'skills/openmotion-recreate/scripts', command === 'register' ? 'register_motion.py' : 'measure_motion.py')];
+    const scripts = { register: 'register_motion.py', measure: 'measure_motion.py', observe: 'observe_marks.py' };
+    const script = command === 'python' ? [] : [path.join(root, 'skills/openmotion-recreate/scripts', scripts[command])];
     const pythonArgs = [...script, ...args];
     // Isolated Python omits the script directory. Restore only that explicit
     // directory so sibling imports work without adopting host site-packages.

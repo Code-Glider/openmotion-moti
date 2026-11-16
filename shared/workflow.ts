@@ -52,6 +52,8 @@ export const workflowRegistry = {
       start: 'skills/openmotion-recreate/SKILL.md',
       rebuild: 'skills/openmotion-recreate/references/rebuild.md',
       reconstruction: 'skills/openmotion-recreate/references/reconstruction.md',
+      rendering: 'skills/openmotion-recreate/references/rendering.md',
+      rendercode: 'skills/openmotion-recreate/assets/reconstruction.js',
       verification: 'skills/openmotion-recreate/references/verify.md',
     },
   },

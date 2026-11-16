@@ -2,11 +2,13 @@
 
 This page continues [rebuild](rebuild.md) for openmotion-recreate. Read it before authoring a passage that has any of the following: dense multi-shot work split into units for coordinated integration; an unfamiliar visual mechanism, such as camera travel over a surface, a changing silhouette, content flowing inside a fixed boundary, repeated marks or particles, a scene breaking apart or reforming, or localized flashes and distortion; or movement whose rebuilt output still differs from the reference after a repair. Passages that the rebuild steps already reproduce do not need it.
 
+Use source-analysis and implementation guidance during default creation, followed by the single focused preview pass in [recreation delivery](verify.md). Detailed local validation and further visual repair follow an explicit review or revision request.
+
 ## Plan shot and action units
 
 For a dense multi-shot film, organize reconstruction into locally reviewable units near shot or action boundaries. Keep coupled actions together, and include neighboring reference frames so an entrance or exit can cross a unit boundary. Choose unit lengths from the action and dependencies. A unit can contain several fast cuts or one continuous move.
 
-Keep independent shots with different visual mechanisms as distinct units, including when they will share one final source module. When units outnumber available worker slots, queue the remaining units and reuse workers after their current unit has been inspected. Return the source and local comparison for each unit so the coordinator can resolve its visible differences before assembling a larger passage.
+Keep independent shots with different visual mechanisms as distinct units, including when they will share one final source module. When units outnumber available worker slots, queue the remaining units and reuse workers after their current unit is implemented. Return the source, timing and known gaps for integration. Include output comparisons when review is requested.
 
 Use separate workers for independent units when the host supports delegation and the task authorizes it. A single Agent follows the same local process sequentially. Keep one coordinator responsible for the root timeline, shared resources and soundtrack. Give each worker disjoint source files. Save integrated changes through the existing revision-protected project workflow.
 
@@ -19,13 +21,15 @@ Make the unit brief concrete enough to execute. Supply the following information
 | Available inputs | Supplied assets, reusable source and known limitations, plus visible discrepancies already established by comparison |
 | Ownership | Which objects, text, transient effects and files belong to this unit, and which are shared |
 | Integration | Coordinate space, global-to-local time mapping, asset paths, entry points and shared typography |
-| Return | Editable source, asset mapping, timed observations, actual local output comparisons and remaining differences |
+| Return | Editable source, asset mapping, timed observations and known gaps; output comparisons for requested review |
 
-For each independent visual mechanism, keep a compact entry in the existing unit notes identifying its source observations, defining form and surrounding relationships, chosen material/geometry, current local comparison and next repair. Compare the first usable reconstruction with the reference at a clear pose and a state that challenges that choice, including the surrounding scene. Use the result to decide whether to refine the controls or revise the material, geometry or isolation boundary before extending the mechanism. A changed defining form or removed surrounding structure belongs in that decision even when movement and appearance measurements pass. Keep separate entries when one worker or source module handles several mechanisms. Reread the relevant entry when resuming or switching work and continue its recorded next action. Carry unresolved differences and the compared source/output identities into integration.
+For each independent mechanism, use existing notes to connect source observations to material, geometry and timed controls. Resolve the recognizable form, surroundings, texture, feature-size distribution, density and exposure together in the first implementation. Preserve a suitable recovered material through its observed motion. Use supported source-field correspondence, local-coordinate transport or deformation for detailed changing contents. Procedural geometry takes its shape and appearance parameters from the source. Choose a method that represents the important intermediate state as well as the clear pose. Carry source identities, coordinate offsets and known gaps into integration.
 
-Keep reused implementation and newly reconstructed work identifiable. Recheck a reused object at every new appearance, including a different scale, camera, occluder or text state. Respect the supplied-input boundary when the task calls for an independent experiment.
+Keep reused implementation and newly reconstructed work identifiable. Account for a reused object's different scales, cameras, occluders and text states in the implementation. Respect the supplied-input boundary when the task calls for an independent experiment.
 
 ## Turn observations into driving data
+
+The [reusable texture and particle renderer](rendering.md) implements complete-region transport and sprite-based release with motion exposure. Use it for matching mechanisms, passing the current reference's materials, source observations and editable timing controls.
 
 For an unfamiliar or inaccurate unit, describe its defining form and action, then follow recognizable features through the reference. Keep a compact record of source frame/time, feature or object, screen position, size, orientation, pose and visibility. Use relative distances and occlusion to distinguish common camera movement, part movement and deformation. Mark uncertain observations, including measurements contaminated by overlapping text or objects.
 
@@ -41,20 +45,20 @@ Measure source travel before assigning velocities for each trackable local regio
 node "<skill directory>/scripts/vision-tools.mjs" measure reference.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out source-motion.json
 ```
 
-The source-only report has `comparisonPerformed: false` and `output: null`. Fit controls from the observed displacement and elapsed time in the declared coordinate scale. After rendering, supply both videos to compare the same region. Repeat this for the independently moving regions in the inventory, preserving unresolved observations explicitly.
+The source-only report has `comparisonPerformed: false` and `output: null`. Fit controls from the observed displacement and elapsed time in the declared coordinate scale. For an explicitly requested detailed review, supply both videos to compare the same region. Preserve unresolved source observations explicitly. Default creation uses the focused preview pass in [recreation delivery](verify.md).
 
 Convert those observations into timed controls the renderer actually reads. Keep the connection from observation to model parameter and source function inspectable. Depending on the passage, the useful record may be landmark coordinates, per-part keyframes, camera matrices, shape states, correspondence fields or per-line text bounds. Record direction/speed changes, extreme poses, fastest travel and settling. Add observations where interpolation remains uncertain.
 
-| Observed change | An editable way to encode it | Output that challenges the model |
+| Observed change | An editable way to encode it | Source constraints to encode |
 |---|---|---|
 | Camera travel over a surface | Match stable landmarks across views, fit transforms and interpolate the camera over a spatial material | Motion extremes, perspective, registration residuals and newly revealed areas |
 | Parts moving relative to one another | Shared parent/camera transform plus part-local paths and occlusion order | Relative distances and overlap at intermediate times |
-| Content flowing inside a stable boundary | Local content coordinates, a clipped material and timed scroll or content-state controls | Boundary position, internal feature travel, update cadence and newly exposed material |
+| Content flowing inside a stable boundary | Transport a recovered material in local coordinates, or interpolate aligned source content fields, with clipping and timed state controls | Boundary position, texture and mark structure, internal feature travel, update cadence and newly exposed material |
 | Changing silhouette or surface | Timed shape states, skeleton or mesh with correspondence between recognizable parts | Intermediate pose, volume, holes and changing visibility |
 | Text assembling or leaving | Per-line or per-glyph reveal, travel, spacing, compression, opacity and blur curves | First visibility, readable hold, fastest expansion and final disappearance |
 | Streaks, flash or scan distortion | Separate time envelopes with observed direction, extent, affected layers and recovery | Frames immediately before, during and after the event in the complete layer stack |
 
-Match the temporal behavior of content inside a fixed boundary. Continuous scrolling needs local-coordinate motion or aligned field interpolation between observations. Discrete refreshes need their observed update cadence. Check between material samples for artificial holds, jumps or double text.
+Match the temporal behavior of content inside a fixed boundary. Continuous scrolling uses local-coordinate motion or aligned field interpolation between observations. Discrete refreshes use their observed update cadence. When tracking mixes stationary and moving content, follow a recognizable moving feature across adjacent source frames or derive correspondence within its own region. Use its displacement and elapsed time to set the movement, preserving the enclosing stationary structure.
 
 A changing silhouette needs controls for its internal change. If one spatial sample plus a global transform fits the endpoints but misses an intermediate pose, add a constraint at that time and revise the representation that failed. Connect the same recognizable parts through time. Correct unreliable correspondence around occlusion, repaired text or disappearing features by changing anchors, masks, state grouping or the model. Check estimated motion against the visible travel before limiting it.
 
@@ -72,7 +76,7 @@ Choose state count, extraction method, correspondence and control resolution fro
 
 When a scene breaks apart or reforms, follow recognizable regions from the intact scene into the transition. Record when each region releases, what texture or shape remains visible, its travel direction and how the intact material disappears. Derive fragments or marks from the participating content and keep their initial coordinates consistent with its last intact state. Choose fragment shape, grouping, velocity and lifetime from consecutive reference frames. When individual marks cannot be tracked reliably, model the evolving spatial density, brightness and directional streaks with timed fields and supported correspondence. Reliable surviving tracks can omit fast, blurred or disappearing features. Check the evolving spatial distribution and streak geometry alongside the tracked trajectories. Compare release, peak spread and decay against the intact-to-transition handoff in the complete composite.
 
-Calibrate transition material at its first visible change before extending the simulation. In a matched crop at delivery scale, compare the typical bright mark, largest coherent hole or fragment, remaining silhouette and edge softness. Keep source-sampling pitch, release-group size and visible fragment size separately controllable. A coarse sampling grid can introduce square holes and large tiles even when later particle travel matches. Choose their scales from the source observations and inspect the earliest altered frames after compositing. Check both residual source structure and released marks through peak spread and decay.
+Use the source transition's first visible change, peak spread and decay to set the fragment model before implementation. Obtain typical bright-mark size, largest coherent fragment or hole, edge softness, colour and directional streak extent at delivery scale. Keep source-sampling pitch, release-group size and visible fragment size separately controllable. Sample brightness and texture from the participating material, and derive visible size, coverage, velocity and lifetime distributions from those source states. Maintain the observed relationship between remaining intact structure and released fragments throughout the handoff.
 
 For spatially localized flashes, tearing or distortion, record the affected bounds and layers through each pulse. Fit its onset, peak and recovery from consecutive source frames, including clear intervals between pulses. Give local bands or regions their own displacement, exposure and visibility controls when their behavior differs. Inspect these bounds in the complete composite so an added glow or repeated whole object cannot conceal a mismatched local effect.
 
@@ -98,6 +102,8 @@ Inspect the material when the covering text or object has left, after requested 
 
 ## Validate and repair the local implementation
 
+Use this section when review or visual revision is explicitly requested. A review-only or evaluation-only task reports findings for the inspected version. Source repair follows an authorized revision request.
+
 Use the pinned seekable preview or targeted native captures to iterate on the actual unit source. Compare reference and output at equal scale and corresponding times. Include observed states, intermediate times, extreme poses, the fastest displacement and entry/exit boundaries. Read back feature positions, size ratios, angles, relative distances or visible widths from the output using the same method as the reference. Review the timed sequence to assess acceleration, holds, reversals and recovery.
 
 For each defining change identified above, locate the source control and compare its actual effect in the output. Check both moving features and their stationary anchors. If a changing region was flattened into a fixed crop, recover its missing local control before refining its appearance. If neighboring states overlap as double images, align or deform their corresponding features before blending. Recheck direction, distance, cadence and disappearance through the affected interval.
@@ -110,16 +116,16 @@ node "<skill directory>/scripts/vision-tools.mjs" measure reference.mp4 output.m
 
 Choose a region belonging to the moving feature and measure its stationary anchor separately. Coordinates use each video's original pixels. Supply `--output-roi` when the output needs different coordinates. The report includes decoded times, displacement samples, travel span, retained features and point pairs. A possible-suppression warning flags travel below half the reference span once reference movement exceeds the helper's jitter floor. This warning or unresolved tracking returns a failing exit code. Inspect the actual travel values, tracked features and layer stack before deciding the cause. Small motion, changing content, occlusion and mixed movement can invalidate the comparison. Timing, direction and semantic fidelity require visual review, including when the diagnostic returns successfully.
 
-For the most consequential difference, name the failing feature and interval, locate its source control and repair that mechanism. An early unreadable title may need different opacity, travel and blur durations. A double contour may need corrected correspondence or material alignment. Reinspect the same failed moment and neighboring states after changing it. Keep the measured and visually estimated controls distinguishable.
+Run the planned [appearance measurements](verify.md#2-measure-the-selected-checkpoints) on preview captures selected for this requested visual review. The frame measurer accepts an exact reference frame and a preview PNG with `--ref-frame <source index> --frame 0`. Keep the capture's time, resolution and source revision explicit. Collect findings by source control. For a revision request, fix independent defects together. Reinspect affected moments and neighboring states. Keep measured and visually estimated controls distinguishable.
 
 Calibrate light, density, edges and material on the established motion. For exposure sampling, check preserved brightness and high-frequency marks for repeated copies or comb-like gaps. Adjust temporal sampling or directional integration when needed, and match the observed streak direction, extent and clear hold. Keep frame-specific flash peaks and recovery explicit. Inspect later text and post-processing layers for marks that alter a flash after it is drawn.
 
-Return the working source and actual comparison evidence with the brief's time range, asset identities, shared dependencies and remaining differences. Keep generation scripts consistent with the final corrected source when they are part of the handoff. Use local captures for targeted fixes, then verify the final integrated export as [check and deliver](verify.md) describes.
+Return the working source and actual comparison evidence with the brief's time range, asset identities, shared dependencies and remaining differences. Keep generation scripts consistent with the final corrected source when they are part of the handoff. For an authorized revision, use local captures for targeted fixes, then follow [export and requested review](verify.md).
 
 Check every planned unit against its defining action and brief transient events before marking it ready for integration. When an independent visual reviewer is available and authorized, give them the reference and actual local output with the requested changes. Keep the review focused on visible differences. Feed concrete failed intervals back into the unit's source repair and recheck them in the integrated film.
 
-## Integrate the inspected units
+## Integrate the units
 
 Import shared media once and connect the returned paths. Preserve each unit's global-to-local clock and coordinate transforms. A background ownership boundary can differ from a foreground element's first visible frame. Coordinate overlaps explicitly so an outgoing title and incoming logo can coexist as the reference shows.
 
-Review the integrated project across joins and repeated appearances, including pose, direction, speed, exposure, text and layer ordering. Capture the final composite for short events. Recheck every affected use after replacing a shared asset or renderer, and bind the evidence to that source or export version. Play the integrated sequence at normal speed and check the single soundtrack through the existing delivery workflow.
+For requested review or revision, inspect the integrated project across joins and repeated appearances, including pose, direction, speed, exposure, text and layer ordering. Capture the final composite for short events. Recheck every affected use after replacing a shared asset or renderer, and bind the evidence to that source or export version. Play the integrated sequence at normal speed and check the single soundtrack through the existing delivery workflow.
