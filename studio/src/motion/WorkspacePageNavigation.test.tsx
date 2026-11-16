@@ -214,6 +214,46 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
 });
 
+it('keeps project rows in place while switching, updating selection and reloading', async () => {
+  const original = fetcher.getMockImplementation()!;
+  const opened: Record<string, number> = { [first]: 20, [second]: 10 };
+  let activeId = first, clock = 20;
+  fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+    const url = new URL(input, location.origin);
+    if (url.pathname.endsWith('/projects') && !init?.method) return Response.json({
+      ...catalog, activeId,
+      projects: catalog.projects.map(project => ({ ...project, openedAt: opened[project.id] })),
+      sessions: catalog.sessions.map(session => ({ ...session, openedAt: opened[session.id] })),
+    });
+    if (url.pathname.includes('/projects/') && url.pathname.endsWith('/open') && init?.method === 'POST') {
+      activeId = url.pathname.split('/').at(-2)!;
+      opened[activeId] = ++clock;
+      return Response.json({ projectId: activeId, revision: 'r' });
+    }
+    return original(input, init);
+  });
+  const rows = () => [...container.querySelectorAll('.motion-session-list button strong')].map(node => node.textContent);
+  const selected = () => container.querySelector('.motion-session-list button[aria-current="page"] strong')?.textContent;
+  await mount();
+  const initialOrder = rows();
+  expect(initialOrder).toEqual(['First project', 'Second project']);
+  expect(selected()).toBe('First project');
+  for (const [title, projectId] of [['Second project', second], ['First project', first]]) {
+    await click(title);
+    expect(rows()).toEqual(initialOrder);
+    expect(selected()).toBe(title);
+    expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(projectId);
+  }
+  const switches = () => fetcher.mock.calls.filter(([, init]) => init?.method === 'POST');
+  const completedSwitches = switches().length;
+  await click('First project');
+  expect(switches()).toHaveLength(completedSwitches);
+  expect(rows()).toEqual(initialOrder);
+  await mount(1);
+  expect(rows()).toEqual(initialOrder);
+  expect(selected()).toBe('First project');
+});
+
 it('restores a rejected project history entry without losing the later Forward destination', async () => {
   await mount(); await click('MCP · Connect Agent'); await click('Back to home');
   await click('Second project');
