@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, chmod, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawn, type SpawnOptions } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,7 +91,10 @@ test('account device authorization, billing, remote models and all media outputs
   assert.equal((await account.summary()).state, 'signed-out');
   await signIn(account);
   const summary = await account.summary(true);
-  assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.50'); assert.doesNotMatch(JSON.stringify(summary), /synthetic-private-account-key/);
+  assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.50'); assert.doesNotMatch(JSON.stringify(summary), /synthetic-private/);
+  assert.equal(summary.errorCode, undefined); assert.equal(summary.attempt?.receipt, 'accepted'); assert.equal(summary.attempt?.exitCode, 0);
+  assert.deepEqual(summary.attempt?.stages, ['attempt_started:started', 'device_auth_create_result:success', 'activation_ready:success', 'browser_open_result:success',
+    'device_authorization_result:success', 'token_exchange_result:success', 'credential_persist_result:success']);
   assert.equal((await stat(path.join(account.home, 'config.json'))).mode & 0o777, 0o600);
   const directory = await providerDirectory(gateway);
   assert(directory.providers.find(p => p.id === 'account')?.available); assert.equal(directory.models.find(m => m.modelId === 'disabled-one')?.enabled, false);
@@ -117,7 +120,79 @@ test('cancelling account authorization cannot register a provider from a late co
   await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
   assert.equal((await account.summary()).userCode, 'TEST-123');
   await account.cancel(); await writeFile(path.join(account.home, 'authorize'), 'late'); await delay(50);
-  assert.equal((await account.summary()).state, 'signed-out'); assert.equal(await account.identity(), undefined); account.close();
+  const cancelled = await account.summary();
+  assert.equal(cancelled.state, 'signed-out'); assert.equal(cancelled.errorCode, undefined); assert.equal(await account.identity(), undefined); account.close();
+}));
+
+test('sign-in failures are classified by the stage reached and logged without account data', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const logs: string[] = [];
+  const attempt = async (scenario: string, options: { authorize?: boolean; binary?: string; authorizationMs?: number } = {}) => {
+    const account = new OpenDesignAccount(store.directory, { binary: options.binary ?? binary, authorizationMs: options.authorizationMs, log: line => logs.push(line) });
+    t.after(() => account.close());
+    await mkdir(account.home, { recursive: true });
+    await writeFile(path.join(account.home, 'fixture-mode'), scenario); await rm(path.join(account.home, 'authorize'), { force: true });
+    await account.login();
+    if (options.authorize !== false) { await until(async () => Boolean((await account.summary()).authorizationUrl)); await writeFile(path.join(account.home, 'authorize'), 'yes'); }
+    await until(async () => (await account.summary()).state !== 'authorizing');
+    const summary = await account.summary();
+    assert.equal(summary.state, 'signed-out', scenario); assert.equal(await account.identity(), undefined, scenario);
+    assert.equal(summary.authorizationUrl, undefined); assert.equal(summary.userCode, undefined);
+    return summary;
+  };
+  const created = await attempt('login-create-failure', { authorize: false });
+  assert.equal(created.errorCode, 'setup_failed'); assert.equal(created.error, "Can't connect to OpenDesign right now. Check your network and try again.");
+  assert.deepEqual(created.attempt?.stages, ['attempt_started:started', 'device_auth_create_result:failed:network_error']); assert.equal(created.attempt?.exitCode, 1);
+  assert.equal((await attempt('', { binary: path.join(store.directory, 'missing-connector') , authorize: false })).errorCode, 'setup_failed');
+  const denied = await attempt('login-denied');
+  assert.equal(denied.errorCode, 'authorization_expired'); assert.equal(denied.attempt?.stages.at(-1), 'device_authorization_result:failed:oauth_denied');
+  assert.equal((await attempt('', { authorize: false, authorizationMs: 300 })).errorCode, 'authorization_expired');
+  const incomplete = await attempt('login-incomplete');
+  assert.equal(incomplete.errorCode, 'credentials_rejected'); assert.equal(incomplete.attempt?.receipt, 'rejected'); assert.equal(incomplete.attempt?.persisted, true);
+  const unconfirmed = await attempt('login-complete-failure');
+  assert.equal(unconfirmed.errorCode, 'credentials_rejected'); assert.equal(unconfirmed.attempt?.receipt, 'accepted'); assert.equal(unconfirmed.attempt?.exitCode, 1);
+  assert.equal(unconfirmed.attempt?.stages.at(-1), 'credential_persist_result:success');
+  const approved = await attempt('login-missing-key-id');
+  assert.equal(approved.errorCode, 'credentials_rejected'); assert.equal(approved.attempt?.stages.at(-1), 'device_authorization_result:success');
+  assert.equal(logs.length, 7);
+  assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id|private upstream/);
+}));
+
+test('billing reads an empty tier as Free, keeps the session on refusal and asks to sign in again on a rejected key', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary }); t.after(() => gateway.close());
+  const mode = (scenario: string) => writeFile(path.join(account.home, 'fixture-mode'), scenario);
+  const provider = async () => (await providerDirectory(gateway)).providers.find(p => p.id === 'account')!;
+  await signIn(account);
+  await mode('billing-free');
+  const free = await account.summary(true);
+  assert.equal(free.plan, 'free'); assert.equal(free.balance, '0.00'); assert.equal(free.billingUnavailable, false);
+  await mode('billing-403');
+  const refused = await account.summary(true);
+  assert.equal(refused.state, 'signed-in'); assert.equal(refused.billingUnavailable, true); assert.equal(refused.plan, undefined); assert.equal(refused.balance, undefined);
+  assert.deepEqual(refused.billingError, { status: 403, code: 'workspace_billing_scope_locked' }); assert((await provider()).available);
+  await mode('billing-failure');
+  const failed = await account.summary(true);
+  assert.equal(failed.billingUnavailable, true); assert.equal(failed.billingError, undefined); assert.doesNotMatch(JSON.stringify(failed), /private upstream/);
+  await mode('billing-401');
+  const rejected = await account.summary(true);
+  assert.equal(rejected.state, 'reauth-required'); assert.equal(rejected.billingUnavailable, false); assert.equal(rejected.plan, undefined);
+  assert.equal((await provider()).available, false); assert.match((await provider()).reason, /sign-in expired/);
+  assert.equal((await account.summary()).state, 'reauth-required');
+  for (const scenario of ['billing-failure', 'billing-502']) {
+    await mode(scenario); assert.equal((await account.summary(true)).state, 'reauth-required', scenario);
+  }
+  await mode('billing-403-text');
+  const untyped = await account.summary(true);
+  assert.equal(untyped.state, 'signed-in'); assert.deepEqual(untyped.billingError, { status: 403 });
+  await mode('billing-401'); await account.summary(true);
+  await mode('billing-403');
+  assert.equal((await account.summary(true)).state, 'signed-in');
+  await mode('billing-401'); await account.summary(true);
+  await mode('');
+  const restored = await account.summary(true);
+  assert.equal(restored.state, 'signed-in'); assert.equal(restored.plan, 'pro'); assert.equal(restored.billingError, undefined);
 }));
 
 test('a late catalogue response cannot replace models after a protocol change', () => fixture(async store => {
