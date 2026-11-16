@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { execute } from '../hyperframes.ts';
 
 test('detached render environment reaches the child while execution timeout still cancels it', async () => {
@@ -14,7 +15,7 @@ test('detached render environment reaches the child while execution timeout stil
 test('explicit cancellation waits for the owned process group to stop', { skip: process.platform === 'win32', timeout: 10_000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'motion-cancel-process-'));
   const controller = new AbortController();
-  const source = `const {spawn}=require('node:child_process'); const fs=require('node:fs'); const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'}); fs.writeFileSync('owned.json',JSON.stringify([process.pid,child.pid]));setInterval(()=>{},1000);`;
+  const source = `const {spawn}=require('node:child_process'); const fs=require('node:fs'); const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'}); fs.writeFileSync('owned.tmp',JSON.stringify([process.pid,child.pid]));fs.renameSync('owned.tmp','owned.json');setInterval(()=>{},1000);`;
   const result = execute(process.execPath, ['-e', source], directory, 10_000, {}, controller.signal);
   const stopped = assert.rejects(result, /COMMAND_CANCELLED/);
   try {
@@ -26,8 +27,12 @@ test('explicit cancellation waits for the owned process group to stop', { skip: 
     assert.equal(pids.length, 2); controller.abort(); await stopped;
     for (const pid of pids) {
       try { process.kill(pid, 0); } catch (error) { assert.equal((error as NodeJS.ErrnoException).code, 'ESRCH'); continue; }
-      // Exited grandchildren can await PID1 reaping in CI containers.
-      const state = process.platform === 'linux' ? await readFile(`/proc/${pid}/stat`, 'utf8').then(text => text.match(/\) ([A-Z]) /)?.[1], error => { if (error.code === 'ENOENT') return 'X'; throw error; }) : null;
+      // PID existence includes exited grandchildren awaiting system reaping.
+      let state = process.platform === 'linux' ? await readFile(`/proc/${pid}/stat`, 'utf8').then(text => text.match(/\) ([A-Z]) /)?.[1], error => { if (error.code === 'ENOENT') return 'X'; throw error; }) : null;
+      if (process.platform === 'darwin') {
+        try { state = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim()[0]; }
+        catch (error) { if ((error as { status?: number }).status !== 1) throw error; state = 'X'; }
+      }
       assert.ok(state === 'Z' || state === 'X', `owned process ${pid} is still executing`);
     }
   } finally { controller.abort(); await stopped; await rm(directory, { recursive: true, force: true }); }
