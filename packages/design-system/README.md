@@ -19,7 +19,7 @@ It is a private source package in the standalone root application. The visual wo
 | `metadata.js` | Localized titles, descriptions, favicon links and social-card metadata; shared by generated HTML and Studio. |
 | `provider-icons.js`, `providers/` | Local provider artwork, explicit identity mapping and complete source/license metadata. |
 | `react/RemixIcons.tsx`, `react/IconGlyph.tsx`, `loading.ts` | Shared React icons and loading artwork behavior. |
-| `brand/` | [Brandkit](brand/BRANDKIT.md), [motion art direction](brand/MOTION_DESIGN.md), logos, loading and community artwork. |
+| `brand/` | [Brandkit](brand/BRANDKIT.md), [motion art direction](brand/MOTION_DESIGN.md), logos and loading artwork. |
 | `index.html`, `catalog.*`, `token-model.js` | Standalone visual workbench and browser-safe token metadata. |
 | `generate.js`, `workbench/` | Package-owned token generation, local source-save server and deterministic tests. |
 

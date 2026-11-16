@@ -74,7 +74,7 @@ export function privacyFindings(name, text, kind = 'source') {
   const publicCommunity = publicCommunityFiles.includes(publicCommunityFile) || /^studio\/build\/editor-assets\/[^/]+\.js$/.test(publicCommunityFile);
   const urls = text.match(/https?:\/\/[^\s"'<>)]*/gi) || [];
   if (urls.some(url => /(?:powerformer\.(?:net|com)|feishu\.(?:cn|com)|larksuite\.com)/i.test(url)
-    && !(publicCommunity && createHash('sha256').update(url).digest('hex') === 'd1ef660c64a3de1c4af950e3f786b378986402ba8fb2470584f040ee66edf35e'))) add('internal-link');
+    && !(publicCommunity && createHash('sha256').update(url).digest('hex') === 'd3337d48607e553372bf4a64d1fb41299487d510b1cc95d565698ff4540003b3'))) add('internal-link');
   if (/\/(?:Users|home)\/[a-zA-Z0-9_.-]+\/|[a-z]:\\Users\\[^\\\s]+\\|\/var\/folders\//i.test(text)) add('personal-path');
   return findings;
 }
