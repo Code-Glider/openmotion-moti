@@ -79,3 +79,14 @@ it('explains that account models still work when the plan and balance cannot be 
   const page = await open({ state: 'signed-in', user: { email: 'ada@example.test' }, billingUnavailable: true }, 'zh-CN');
   expect(page.textContent).toContain('暂时无法读取订阅和余额。账户模型不受影响，可以照常使用。');
 });
+
+it('replaces missing billing metrics with a dashboard link on 403 and restores them on retry', async () => {
+  const page = await open({ state: 'signed-in', billingUnavailable: true, billingError: { status: 403 } }, 'zh-CN');
+  expect(page.textContent).toContain('账单服务拒绝了本次查询');
+  expect(page.querySelector('.om-account-metrics')).toBeNull();
+  expect(page.querySelector('a')?.href).toBe('https://open-design.ai/cloud/dashboard?billing=plan');
+  hooks.account = { state: 'signed-in', plan: 'pro', balance: '0.00', consoleUrl: 'https://open-design.ai/cloud' };
+  await act(async () => page.querySelector<HTMLButtonElement>('button[aria-busy]')!.click());
+  expect(page.querySelector('.om-account-metrics')?.textContent).toContain('$0.00');
+  expect(page.textContent).not.toContain('账单服务拒绝了本次查询');
+});

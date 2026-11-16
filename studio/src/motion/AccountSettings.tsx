@@ -28,7 +28,10 @@ export function useAccountSummary() {
 export function AccountSettings({ subscription = false, openProviders }: { subscription?: boolean; openProviders: () => void }) {
   const { t } = useI18n(), state = useAccountSummary(), toast = useToast();
   const [busy, setBusy] = useState(false), [refreshing, setRefreshing] = useState(false), [lastState, setLastState] = useState<string>();
-  useEffect(() => { void state.refresh(true); }, [state.refresh]);
+  const signedIn = state.account?.state === 'signed-in';
+  useEffect(() => {
+    if (signedIn) void state.refresh(true);
+  }, [signedIn, state.refresh]);
   useEffect(() => {
     if (lastState === 'authorizing' && state.account?.state === 'signed-in') {
       notifyProvidersChanged(); window.dispatchEvent(new Event('motion:account-changed')); toast.showToast(t('Signed in to OpenDesign'), 'info');
@@ -45,7 +48,7 @@ export function AccountSettings({ subscription = false, openProviders }: { subsc
     setRefreshing(true);
     try { await state.refresh(true); } finally { setRefreshing(false); }
   }
-  const account = state.account, signedIn = account?.state === 'signed-in', pending = account?.state === 'authorizing', expired = account?.state === 'reauth-required';
+  const account = state.account, pending = account?.state === 'authorizing', expired = account?.state === 'reauth-required';
   const syncing = pending && account.syncing, failure = !pending && !signedIn ? account?.errorCode : undefined;
   const signIn = <button className="om-button" data-primary disabled={busy} onClick={() => void action('login')}><RemixIcon name={failure === 'setup_failed' ? 'refresh-line' : 'login-box-line'} size={17} />{t(failure === 'setup_failed' ? 'Retry' : expired || failure ? 'Sign in again' : 'Sign in with OpenDesign')}</button>;
   // The connector opens the activation page itself; the link is the fallback, and leads only when opening failed.
@@ -61,9 +64,9 @@ export function AccountSettings({ subscription = false, openProviders }: { subsc
         <div className="om-settings-actions">{signedIn ? <button className="om-button" onClick={() => void action('logout')} disabled={busy}>{t('Sign out')}</button> : pending ? <>{browserLink}<button className="om-button" disabled={busy || syncing} onClick={() => void action('cancel')}>{t('Cancel')}</button></> : expired ? <>{signIn}<button className="om-button" onClick={() => void action('logout')} disabled={busy}>{t('Sign out')}</button></> : <>{signIn}{failure === 'credentials_rejected' && <a className="om-button" href={`${GITHUB_REPOSITORY}/issues/new/choose`} target="_blank" rel="noreferrer">{t('Report an issue')}<RemixIcon name="external-link-line" size={15} /></a>}</>}</div>
       </section>
       <section className="om-settings-section"><div className="om-settings-row"><h2 className="om-subtitle">{t('Subscription & usage')}</h2>{signedIn && <button className="motion-icon-button" aria-label={t('Refresh account')} title={t('Refresh account')} disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={17} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} /></button>}</div>
-        <div className="om-account-metrics"><div className="om-card"><span className="om-muted">{t('Current plan')}</span><h3 className="om-title">{signedIn && account.plan ? account.plan === 'free' ? t('Free plan') : account.plan : '—'}</h3><p className="om-muted">{t(signedIn ? 'Managed by OpenDesign' : 'Sign in to view your plan')}</p></div><div className="om-card"><span className="om-muted">{t('Available balance')}</span><h3 className="om-title">{signedIn && account.balance != null ? `$${account.balance}` : '—'}</h3><p className="om-muted">{t(signedIn ? 'Account credits in USD' : 'Sign in to view usage')}</p></div></div>
-        {signedIn && account.billingUnavailable && <div className="om-settings-row"><p className="om-muted">{t("Couldn't load your plan and balance. Account models are unaffected and can be used as usual.")}</p><button className="om-button" disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={15} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />{t('Refresh')}</button></div>}
-        {signedIn && <a className="om-button" href={account.consoleUrl + '/dashboard'} target="_blank" rel="noreferrer">{t('Manage subscription')}<RemixIcon name="external-link-line" size={15} /></a>}
+        {!(signedIn && account.billingUnavailable) && <div className="om-account-metrics"><div className="om-card"><span className="om-muted">{t('Current plan')}</span><h3 className="om-title">{signedIn && account.plan ? account.plan === 'free' ? t('Free plan') : account.plan : '—'}</h3><p className="om-muted">{t(signedIn ? 'Managed by OpenDesign' : 'Sign in to view your plan')}</p></div><div className="om-card"><span className="om-muted">{t('Available balance')}</span><h3 className="om-title">{signedIn && account.balance != null ? `$${account.balance}` : '—'}</h3><p className="om-muted">{t(signedIn ? 'Account credits in USD' : 'Sign in to view usage')}</p></div></div>}
+        {signedIn && account.billingUnavailable && <div className="om-settings-row"><p className="om-muted">{t(account.billingError?.status === 403 ? "The billing service declined this request. Open Manage subscription to check your plan in OpenDesign." : "Couldn't load your plan and balance. Account models are unaffected and can be used as usual.")}</p><button className="om-button" disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={15} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />{t('Refresh')}</button></div>}
+        {signedIn && <a className="om-button" href={account.consoleUrl + '/dashboard?billing=plan'} target="_blank" rel="noreferrer">{t('Manage subscription')}<RemixIcon name="external-link-line" size={15} /></a>}
       </section>
       <section className="om-card om-settings-row"><div><h2 className="om-subtitle">{t('Your models, your choice')}</h2><p className="om-muted">{t('Use account models or connect your own API keys. Choose a default for each capability.')}</p></div><button className="om-button" onClick={openProviders}>{t('Model providers')}<RemixIcon name="arrow-right-line" size={15} /></button></section>
     </>}
