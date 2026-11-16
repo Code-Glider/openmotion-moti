@@ -127,7 +127,7 @@ Workspace owns observation metadata and its equality token; Web owns serial abor
 
 Generic controls/anonymous layouts belong to components; panel registration, positions, drafts and context switching belong to Web. Preserve input DOM/focus and incomplete numeric drafts. `WebView.dispose` drains operations, revokes previews and removes listeners before reusing a root; it does not implicitly save drafts.
 
-Real browser tests live in `apps/web/tests/browser`; carrier composition tests live in the owning carrier. Drivers and PNG comparison belong to automation. Pin Chromium, viewport, theme, fonts and native readiness. A theme round-trip is not full product parity. Install Chromium in this worktree as documented; permanent tests must cover actual behavior, rather than relying exclusively on temporary scripts.
+Real browser tests live in `apps/web/tests/browser`; carrier composition tests live in the owning carrier. Drivers and PNG comparison belong to automation. Pin Chromium, viewport, theme, fonts and native readiness. A theme round-trip is not full product parity. Install the pinned Playwright Chromium revision as documented. Installation and tests must honor the same explicit `PLAYWRIGHT_BROWSERS_PATH` override or use Playwright's shared OS cache by default; do not force a worktree-local browser cache. This test-driver cache does not replace the product renderer's sidecar/Blob-managed tools. Permanent tests must cover actual behavior, rather than relying exclusively on temporary scripts.
 
 ### Lifecycle and end-to-end validation
 

@@ -6,7 +6,7 @@ Use Node24 and pnpm11.13.0 inside an owned topic worktree. Internal dependencies
 
 ```sh
 pnpm install --frozen-lockfile
-PLAYWRIGHT_BROWSERS_PATH=0 pnpm --filter @open-motion/web exec playwright install chromium
+pnpm --filter @open-motion/web exec playwright install chromium
 pnpm build
 pnpm test
 pnpm lint
@@ -16,7 +16,7 @@ pnpm exec odsuite guard
 
 CI uses `pnpm install --frozen-lockfile --store-dir node_modules/.pnpm-store`, with no extra root-cache exemption. Run all modules serially using `pnpm -r --workspace-concurrency=1 --if-present run test`. Process/network/persistence tests need explicit, justified finite budgets; do not change production timing or GC for CI. The workspace pins `enableGlobalVirtualStore: false` and `verifyDepsBeforeRun: error`: CI, interactive commands and SDK subprocesses use the same dependency policy without inheriting the full host environment. A stale installation fails with an instruction to install explicitly; runtime/debug commands never repair dependencies implicitly. Installation has no build or hook. There are no root dev/check/typecheck shortcuts; use module-standard commands for focused iteration and Biome for formatting.
 
-Chromium is pinned by Playwright and installed inside this worktree's node_modules, not borrowed from another checkout/system browser. Linux CI uses `install --with-deps chromium`. Full tests include browser cases; focus them with:
+Chromium is pinned by Playwright. Installation and tests inherit `PLAYWRIGHT_BROWSERS_PATH`; when unset, Playwright uses its shared OS cache (`~/Library/Caches/ms-playwright` on macOS, `~/.cache/ms-playwright` on Linux). Worktrees using the same browser revision reuse those binaries while retaining independent dependencies, browser contexts and test data. Run the install command in each checkout to register its dependency and download any missing revision. An explicit override must be identical during installation and testing; `PLAYWRIGHT_BROWSERS_PATH=0` opts into a worktree-local installation when needed. Do not point tests at a system browser or manually select a different revision. Linux CI uses `install --with-deps chromium` with the same cache policy; persisting caches between CI jobs is separate. Test-driver caching does not change the product renderer's sidecar/Blob-managed tools. Full tests include browser cases; focus them with:
 
 ```sh
 pnpm --filter @open-motion/web exec vitest run -c vitest.config.ts tests/browser/studio.test.ts
@@ -60,7 +60,7 @@ The manifest has exactly `browser`, `ffmpeg`, `ffprobe` entries, each containing
 Set `OPEN_MOTION_RENDER_EVIDENCE` to an owned `.artifacts` JSON path to retain result digests, decoded frame/seek facts, process occupancy, GC and final manager state. The test covers silent/AAC films, edit-after-freeze and historical source reopen, real capture cancellation/retry and tool GC without deleting exports. Without the explicit seed manifest, this native case is skipped; source CI does not thereby qualify native rendering on its platform. The same explicit seed manifest enables the native Web and relocated Codex export tests:
 
 ```sh
-OPEN_MOTION_NATIVE_MANIFEST=/absolute/owned/native-manifest.json PLAYWRIGHT_BROWSERS_PATH=0 pnpm --filter @open-motion/standalone test
+OPEN_MOTION_NATIVE_MANIFEST=/absolute/owned/native-manifest.json pnpm --filter @open-motion/standalone test
 OPEN_MOTION_NATIVE_MANIFEST=/absolute/owned/native-manifest.json pnpm --filter @open-motion/codexplugin test
 ```
 
@@ -300,7 +300,7 @@ Use a stable request UUID and complete fixed owner/revision/model/prompt intent 
 
 Read the exact verified PNG with `generation_result`; explicitly adopt its hash/path/name through `generation_adopt` against the intended project revision. Reuse the adoption request after an unknown response before fetching a candidate or changing the payload. Then insert the adopted resource through existing native editing. Durable candidates and adopted workspace bytes are user data, not blob GC inputs. Normal quiesce drains adapters and actual reads before stop; interrupted authority still needs explicit sidecar recovery. Loopback-provider protocol evidence and real paid model execution are separate acceptance boundaries.
 
-Run the permanent Web/process continuity fixture after building and installing this worktree’s pinned Chromium:
+Run the permanent Web/process continuity fixture after building and installing the pinned Playwright Chromium revision:
 
 ```sh
 pnpm --filter @open-motion/standalone exec vitest run -c vitest.config.ts tests/generation/continuity.test.ts
