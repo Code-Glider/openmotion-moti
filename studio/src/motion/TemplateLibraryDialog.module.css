@@ -123,6 +123,13 @@
 .related button { position: relative; aspect-ratio: 16/10; overflow: hidden; border-radius: 8px; padding: 0; background: var(--color-template-preview-bg); text-align: left; }
 .related img { width: 100%; height: 100%; object-fit: cover; }
 .related .relatedCaption { display: block; position: absolute; inset: auto 0 0; padding: 15px 7px 7px; background: linear-gradient(transparent, var(--motion-video-overlay)); color: var(--motion-overlay-ink); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.relatedPreviewPositioner { width: min(560px, var(--available-width), calc(100vw - 32px), calc((100dvh - 32px) * 16 / 9)); }
+.relatedPreview { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--motion-radius-xl); background: var(--color-template-preview-bg); box-shadow: var(--motion-shadow-lg); }
+.relatedPreview::after { content: ''; position: absolute; inset: 45% 0 0; background: linear-gradient(to bottom, transparent 0%, 65%, var(--motion-video-overlay) 100%); pointer-events: none; }
+.relatedPreview > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.relatedPreview :global(.om-gallery-poster) img { object-fit: contain; }
+.relatedPreviewCaption { position: absolute; z-index: 1; inset: auto 0 0; padding: var(--motion-space-16) var(--motion-space-20); color: var(--motion-overlay-ink); font-size: var(--motion-text-step-18); font-weight: var(--motion-weight-medium); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.relatedPreviewStatus { position: absolute; inset: var(--motion-space-12) var(--motion-space-12) auto; display: flex; align-items: center; justify-content: center; gap: var(--motion-space-8); padding: var(--motion-space-8); border-radius: var(--motion-radius-md); background: var(--motion-video-overlay); color: var(--motion-overlay-ink); font-size: var(--motion-text-sm); }
 .introActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .library .submitVideo { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; min-height: 38px; border: 1px solid var(--library-line); border-radius: 8px; font-size: 13px; background: var(--motion-brand); color: var(--motion-on-brand); font-weight: 600; text-decoration: none; }
 .submitVideo:hover { filter: brightness(.96); }
