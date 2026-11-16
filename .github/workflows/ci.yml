@@ -137,6 +137,9 @@ jobs:
           npm run design:test
           npm run typecheck:studio
           npm run typecheck:backend
+      - name: Check capture failure classification and bounded recovery
+        if: steps.scope.outputs.full == 'true'
+        run: node --test tests/capture-retry.test.ts
 
   platform-reliability:
     name: Workspace reliability (${{ matrix.os }})
@@ -167,7 +170,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check ownership recovery, read verification and immutable snapshots
         if: steps.scope.outputs.full == 'true'
-        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts
+        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts tests/capture-retry.test.ts tests/hyperframes-startup.test.ts tests/command-lifecycle.test.ts
 
   studio:
     name: Studio regression (${{ matrix.shard }}/2)
