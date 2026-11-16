@@ -258,17 +258,19 @@ describe("studio url state", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     });
     await act(async () => {
-      await Promise.resolve();
+      // Drain Happy DOM's queued hashchange events from replaceState before
+      // measuring applications caused by the older deferred result.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
     });
     expect(applyDomSelection).toHaveBeenCalled();
     expect(applyDomSelection.mock.calls.every(([selection]) => selection === second)).toBe(true);
+    const appliedBeforeOlderResolution = applyDomSelection.mock.calls.length;
 
     await act(async () => {
       resolveFirst(first);
       await firstResolution;
     });
-    // Happy DOM can queue additional hashchange events for replaceState. Every
-    // applied selection must still be the newer target after the old promise resolves.
+    expect(applyDomSelection).toHaveBeenCalledTimes(appliedBeforeOlderResolution);
     expect(applyDomSelection.mock.calls.every(([selection]) => selection === second)).toBe(true);
     harness.unmount();
   });

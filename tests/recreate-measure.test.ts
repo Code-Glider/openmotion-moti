@@ -21,6 +21,14 @@ test('skill frontmatter check rejects plain values that YAML cannot parse', asyn
   assertSkillFrontmatterYaml(recreate.match(/^---\n([\s\S]*?)\n---/)![1], 'openmotion-recreate');
 });
 
+test('host motion helpers pass their Python regression suite', (t) => {
+  const python = process.env.PYTHON || 'python3';
+  const available = spawnSync(python, ['-c', 'import numpy, cv2'], { encoding: 'utf8', timeout: 10_000 });
+  if (available.status !== 0) return t.skip('Host Python with NumPy and OpenCV is unavailable');
+  const result = spawnSync(python, [path.join(root, 'tests/recreate-registration.py')], { encoding: 'utf8', timeout: 60_000 });
+  assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
+});
+
 test('measure_frame never reports a missing element as measured', { skip: !hasFfmpeg && 'ffmpeg/ffprobe unavailable' }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'measure-frame-'));
   try {
