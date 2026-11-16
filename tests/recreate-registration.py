@@ -1,4 +1,4 @@
-"""Run with a host Python environment containing NumPy and OpenCV."""
+"""Run through motion_tools.mjs python using the managed vision runtime."""
 
 import importlib.util
 import json

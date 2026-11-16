@@ -80,10 +80,12 @@ Cover the features responsible for the passage's motion, including changes insid
 
 Fast or repetitive content can match a neighboring repeat across a sparse frame gap and underestimate travel. Begin with adjacent decoded frames, follow recognizable features and check the accumulated path before fitting a longer interval. Keep displacement units, coordinate scale and elapsed time explicit when deriving velocity. Inspect the tracked feature's own region separately from nearby stationary structure.
 
-Measure source travel before assigning velocities for each trackable local region. The optional `scripts/measure_motion.py` accepts a reference alone for observations before authoring, using host Python, NumPy and OpenCV. Choose a continuous interval with recognizable features and inspect its samples and point pairs.
+Use the installation's Node executable for these commands. Complete ZIPs provide `runtime/node/bin/node` on macOS and `runtime/node/node.exe` on Windows. The managed entry works from source, installed bundles and flat Skills using their installation metadata. First use downloads verified platform assets into the installation cache. Complete platform ZIPs include those assets for offline preparation. Repeated use reuses the completed environment. Use `node "<skill directory>/scripts/motion_tools.mjs" prepare` to prepare or retry explicitly. For additional source analysis/material scripts, use the same entry with `python <script.py> [arguments]`. User-installed Python and uv are unnecessary. Vision helpers support macOS 13+ arm64 and Windows 11+ x64. Respect host execution/network permissions and report preparation failures instead of silently claiming measurements.
+
+Measure source travel before assigning velocities for each trackable local region. The optional motion helper accepts a reference alone for observations before authoring. Invoke it through `scripts/motion_tools.mjs`, which prepares the installation-managed, pinned Python, NumPy and headless OpenCV environment. Choose a continuous interval with recognizable features and inspect its samples and point pairs.
 
 ```sh
-python <skill directory>/scripts/measure_motion.py reference.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out source-motion.json
+node "<skill directory>/scripts/motion_tools.mjs" measure reference.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out source-motion.json
 ```
 
 The source-only report has `comparisonPerformed: false` and `output: null`. Fit controls from the observed displacement and elapsed time in the declared coordinate scale. After rendering, supply both videos to compare the same region. Repeat this for the independently moving regions in the inventory, preserving unresolved observations explicitly.
@@ -123,10 +125,10 @@ For spatially localized flashes, tearing or distortion, record the affected boun
 
 For camera movement or surface deformation, prepare enough spatial material to cover the revealed area. Align useful views of the same structure when available. Check overlap for doubled edges and check the sampling boundary for gaps or stretched pixels. If blending imperfectly aligned views produces double structure, select a reliable source for that region and use other views to fill uncovered areas, or adjust seams and visible regions. Recheck intermediate and extreme camera positions. Use a more suitable projection, layers or geometry when one plane cannot preserve the observed relationships. Preserve weakly supported intervals in the review notes.
 
-Fit camera travel from stable scene landmarks at corresponding times. For a textured plane, the bundled `scripts/register_motion.py` can measure anchor-to-frame homographies when the host has Python, NumPy and OpenCV. Choose times within one continuous shot and exclude independently changing overlays. Run it from an available host environment, using the directory containing this Skill's `SKILL.md`.
+Fit camera travel from stable scene landmarks at corresponding times. For a textured plane, the bundled registration helper can measure anchor-to-frame homographies. Choose times within one continuous shot and exclude independently changing overlays. Use the managed entry below, with the directory containing this Skill's `SKILL.md`.
 
 ```sh
-python <skill directory>/scripts/register_motion.py reference.mp4 --anchor <anchor seconds> --times <comma-separated seconds> --out camera-observations.json
+node "<skill directory>/scripts/motion_tools.mjs" register reference.mp4 --anchor <anchor seconds> --times <comma-separated seconds> --out camera-observations.json
 ```
 
 Optional `--roi x,y,width,height` and repeatable `--exclude x,y,width,height` use original pixels. The report records decoded timestamps, full-frame pixel matrices, inlier point pairs, residuals and spatial support. Inspect that support across the intended plane and compare projected landmarks in intermediate output. Unresolved samples return a failing exit code and carry their reason. Resolve the cut, mask, observation or representation before using those samples. Apply supported matrices to the renderer in the declared coordinates, and verify material coverage throughout the camera path.
@@ -147,10 +149,10 @@ Use the pinned seekable preview or targeted native captures to iterate on the ac
 
 For each defining change identified above, locate the source control and compare its actual effect in the output. Check both moving features and their stationary anchors. If a changing region was flattened into a fixed crop, recover its missing local control before refining its appearance. If neighboring states overlap as double images, align or deform their corresponding features before blending. Recheck direction, distance, cadence and disappearance through the affected interval.
 
-An animated source parameter can be hidden by an opaque material, a clip, an overlay or a later paint operation. Compare the fully composited output region before accepting that control. For trackable local movement, use the bundled `scripts/measure_motion.py` with host Python, NumPy and OpenCV when available. It follows adjacent decoded frames through continuous reference/output intervals. Reuse it for this check before writing another tracker, and inspect its correspondence and uncertainty.
+An animated source parameter can be hidden by an opaque material, a clip, an overlay or a later paint operation. Compare the fully composited output region before accepting that control. For trackable local movement, use the bundled motion helper through the managed entry below. It follows adjacent decoded frames through continuous reference/output intervals. Reuse it for this check before writing another tracker, and inspect its correspondence and uncertainty.
 
 ```sh
-python <skill directory>/scripts/measure_motion.py reference.mp4 output.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out visible-motion.json
+node "<skill directory>/scripts/motion_tools.mjs" measure reference.mp4 output.mp4 --start <seconds> --end <seconds> --roi <x,y,width,height> --out visible-motion.json
 ```
 
 Choose a region belonging to the moving feature and measure its stationary anchor separately. Coordinates use each video's original pixels. Supply `--output-roi` when the output needs different coordinates. The report includes decoded times, displacement samples, travel span, retained features and point pairs. A possible-suppression warning flags travel below half the reference span once reference movement exceeds the helper's jitter floor. This warning or unresolved tracking returns a failing exit code. Inspect the actual travel values, tracked features and layer stack before deciding the cause. Small motion, changing content, occlusion and mixed movement can invalidate the comparison. Timing, direction and semantic fidelity require visual review, including when the diagnostic returns successfully.
