@@ -9,7 +9,7 @@ import { createNodeTracking, createPosthogSender, loadIdentity } from '../tracki
 import { assetActions, assetToolAction, omEvents, studioEvents } from '../tracking/events.ts';
 import { closeTracking, createAppTracking, saveTrackingPreference, trackingError } from '../shared/tracking.ts';
 import { Phase1Service } from '../phase1.ts';
-import { renderNext, technicalCheckResult } from '../server.ts';
+import { renderNext, technicalCheckResult, trackExportTerminal } from '../server.ts';
 import { TaskLedger } from '../tracking/task-ledger.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { fixture } from './fixtures.ts';
@@ -296,6 +296,29 @@ test('an interrupted export is closed by the worker tick with one unknown termin
   assert.ok(terminal[0].properties.terminal_at);
   assert.equal((await store.job(job.id))!.state, 'failed');
   assert.equal((await new TaskLedger(store.directory).snapshot())[job.id].outcome, 'unknown');
+  tracking.close();
+}));
+
+test('a claimed export past its deadline is closed once and not restated by its worker', () => fixture(async store => {
+  const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
+  const current = await store.get(), job = await store.requestExport(current.revision);
+  // This process owns the render, so nothing can abort it when its accepted deadline passes.
+  assert.equal((await store.claimExport())!.state, 'running');
+  await store.saveJob({ ...(await store.job(job.id))!, expiresAt: Date.now() - 1 });
+  await renderNext(store, pluginRoot, tracking);
+  const final = (await store.job(job.id))!;
+  assert.equal(final.state, 'failed');
+  assert.equal(final.observedOutcome, 'unknown');
+  const closed = (await new TaskLedger(store.directory).snapshot())[job.id];
+  assert.equal(closed.outcome, 'unknown');
+  await tracking.flush();
+  // The worker that held the job still reaches its own terminal path after that reconciliation.
+  await trackExportTerminal(store, final, tracking);
+  await tracking.flush();
+  const terminal = events.filter(event => event.event === 'task_terminal');
+  assert.equal(terminal.length, 1, 'only the reconciliation owner states the terminal outcome');
+  assert.equal(terminal[0].properties.outcome, 'unknown');
+  assert.equal((await new TaskLedger(store.directory).snapshot())[job.id].terminal_at, closed.terminal_at, 'the recorded terminal time does not move');
   tracking.close();
 }));
 

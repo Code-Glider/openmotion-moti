@@ -75,7 +75,9 @@ acceptance time, explicit deadline, terminal time and observed outcome. A worker
 terminal result updates the same ledger and emits `task_terminal`; unknown or
 cancelled results remain separate from success. An export whose worker vanished or
 whose deadline passed is reconciled once by the worker tick with outcome `unknown`,
-so its accepted entry also gets a terminal time and the same event. The ledger is
+so its accepted entry also gets a terminal time and the same event. A tick never
+reconciles an export this process is still rendering, and a worker whose job was
+closed that way does not restate its terminal outcome. The ledger is
 installation-local, atomic and does not contain prompts, source content or
 credentials.
 

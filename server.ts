@@ -88,24 +88,41 @@ export function technicalCheckResult(job: Pick<ExportJob, 'state' | 'verificatio
 // The worker tick owns the terminal evidence of an export no worker claimed or finished.
 async function trackInterruptedExport(store: WorkspaceStore, seen: ExportJob, tracking?: OmTracking) {
   const { job, reconciled } = await store.reconcileInterruptedExport(seen);
-  if (!reconciled || !job || !tracking) return;
+  if (!reconciled || !job) return;
+  // Nothing else may keep rendering a job this tick just closed.
+  runningExports.get(job.id)?.abort();
+  if (!tracking) return;
   const host = validHostContext(job.trackingHost) ? job.trackingHost : undefined;
   tracking.track('task_terminal', { task_id: job.id, task_type: 'export', ...(job.projectId ? { project_id: job.projectId } : {}),
     ...(job.workId ? { run_id: job.workId } : {}), outcome: 'unknown', applied: 'unknown',
     terminal_at: new Date(job.terminalAt ?? Date.now()).toISOString() }, undefined, 'worker', host);
 }
 
+// The worker that claimed a job states its terminal result once; a reconciled job was already closed by its tick.
+export async function trackExportTerminal(store: WorkspaceStore, final: ExportJob, tracking?: OmTracking) {
+  if (final.observedOutcome === 'unknown') return;
+  const outcome = final.state === 'completed' ? 'success' : final.state === 'cancelled' ? 'cancelled' : 'failure';
+  const applied = outcome === 'success' ? 'true' : 'unknown';
+  await new TaskLedger(store.directory).terminal(final.id, outcome, applied, outcome === 'failure' ? 'EXPORT_FAILED' : undefined).catch(() => {});
+  const host = validHostContext(final.trackingHost) ? final.trackingHost : undefined;
+  tracking?.track('task_terminal', { task_id: final.id, task_type: 'export', ...(final.projectId ? { project_id: final.projectId } : {}),
+    ...(final.workId ? { run_id: final.workId } : {}), outcome, applied,
+    terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(outcome === 'failure' ? { error_code: 'EXPORT_FAILED' } : {}) }, undefined, 'worker', host);
+}
+
 export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tracking?: OmTracking) {
   await emitQueueTelemetry(store, tracking);
   const pending = await store.job();
   if (pending?.projectId) store = store.forProject(pending.projectId);
-  if (pending && interruptedExport(pending)) await trackInterruptedExport(store, pending, tracking);
   const key = store.directory;
+  // The tick that renders a job also owns its record, so no tick reconciles work still running in this process.
   if (working.has(key)) return;
   working.add(key);
   let job;
   let control: AbortController | undefined;
   try {
+    // A queued job whose deadline passed, or a claimed job whose worker vanished, is closed before claiming.
+    if (pending && interruptedExport(pending)) await trackInterruptedExport(store, pending, tracking);
     job = await store.claimExport();
     if (!job) return;
     control = new AbortController(); runningExports.set(job.id, control);
@@ -156,34 +173,27 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
   } finally {
     if (job && tracking) {
       const final = await store.job(job.id).catch(() => null);
-      if (final && ['completed', 'failed', 'cancelled'].includes(final.state)) tracking.track('export_result', {
-        job_id: final.id, job_state: final.state as 'completed' | 'failed' | 'cancelled',
-        duration_ms: Math.min(86_400_000, Math.max(0, Date.now() - final.createdAt)),
-        technical_check: (final.verification as any)?.status === 'passed' ? 'passed'
-          : (final.verification as any)?.status === 'failed' ? 'failed' : 'unknown',
-      }, undefined, 'worker', validHostContext(final.trackingHost) ? final.trackingHost : undefined);
       if (final && ['completed', 'failed', 'cancelled'].includes(final.state)) {
-        const ledger = new TaskLedger(store.directory);
-        const outcome = final.state === 'completed' ? 'success' : final.state === 'cancelled' ? 'cancelled' : final.observedOutcome === 'unknown' ? 'unknown' : 'failure';
-        await ledger.terminal(final.id, outcome, outcome === 'success' ? 'true' : outcome === 'cancelled' ? 'unknown' : 'unknown', outcome === 'failure' ? 'EXPORT_FAILED' : undefined).catch(() => {});
+        tracking.track('export_result', {
+          job_id: final.id, job_state: final.state as 'completed' | 'failed' | 'cancelled',
+          duration_ms: Math.min(86_400_000, Math.max(0, Date.now() - final.createdAt)),
+          technical_check: (final.verification as any)?.status === 'passed' ? 'passed'
+            : (final.verification as any)?.status === 'failed' ? 'failed' : 'unknown',
+        }, undefined, 'worker', validHostContext(final.trackingHost) ? final.trackingHost : undefined);
+        await trackExportTerminal(store, final, tracking);
         const host = validHostContext(final.trackingHost) ? final.trackingHost : undefined;
-        if (tracking) {
-          tracking.track('task_terminal', { task_id: final.id, task_type: 'export', ...(final.projectId ? { project_id: final.projectId } : {}),
-            ...(final.workId ? { run_id: final.workId } : {}), outcome, applied: outcome === 'success' ? 'true' : outcome === 'cancelled' ? 'unknown' : 'unknown',
-            terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(outcome === 'failure' ? { error_code: 'EXPORT_FAILED' } : {}) }, undefined, 'worker', host);
-          if (final.projectId && final.versionId) tracking.track('check_completed', { check_id: final.id, check_type: 'technical_export', project_id: final.projectId,
-            version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
-            result: technicalCheckResult(final), evidence_ref: final.id }, undefined, 'worker', host);
-          if (final.workId && final.projectId) {
-            const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
-            if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {
-              run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
-            else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
-            else tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
-            tracking.track('host_state_changed', { run_id: final.workId, sequence: 2,
-              state: final.state === 'completed' && final.verification && (final.verification as any).status === 'passed' ? 'delivered' : final.state === 'cancelled' ? 'cancelled' : 'failed',
-              phase: 'technical_export', state_reason: final.state === 'completed' ? 'EXPORT_VERIFIED' : final.state === 'cancelled' ? 'EXPORT_CANCELLED' : 'EXPORT_FAILED' }, undefined, 'worker', host);
-          }
+        if (final.projectId && final.versionId) tracking.track('check_completed', { check_id: final.id, check_type: 'technical_export', project_id: final.projectId,
+          version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
+          result: technicalCheckResult(final), evidence_ref: final.id }, undefined, 'worker', host);
+        if (final.workId && final.projectId) {
+          const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
+          if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {
+            run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
+          else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
+          else tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
+          tracking.track('host_state_changed', { run_id: final.workId, sequence: 2,
+            state: final.state === 'completed' && final.verification && (final.verification as any).status === 'passed' ? 'delivered' : final.state === 'cancelled' ? 'cancelled' : 'failed',
+            phase: 'technical_export', state_reason: final.state === 'completed' ? 'EXPORT_VERIFIED' : final.state === 'cancelled' ? 'EXPORT_CANCELLED' : 'EXPORT_FAILED' }, undefined, 'worker', host);
         }
       }
     }
