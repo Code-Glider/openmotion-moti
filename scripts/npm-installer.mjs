@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -99,7 +100,7 @@ export async function setup(options) {
     assert(!previous || (previous.templateEnvironment ?? 'prod') === templateEnvironment, 'This installation uses another template environment; choose a separate --home');
     const launcher = path.join(home, 'run-mcp.mjs');
     if (!previous) await readFile(launcher).then(() => { throw new Error('Refusing to replace an unowned MCP launcher'); }, error => { if (error.code !== 'ENOENT') throw error; });
-    const plan = await hostPlan(options, home, launcher, previous);
+    const plan = await hostPlan(options, home, launcher, previous, randomUUID());
     assert(!plan.metadata.configFile || !contains(dataDirectory, plan.metadata.configFile), 'Keep host configuration outside user data');
     assert(!plan.metadata.configFile || !['apps', 'cache', 'hosts'].some(name => contains(path.join(home, name), plan.metadata.configFile)), 'Keep host configuration outside managed application/cache/host directories');
     if (plan.layout !== 'deepseek') assert(!contains(dataDirectory, plan.skillsDirectory) && !contains(plan.skillsDirectory, dataDirectory)
@@ -160,6 +161,9 @@ export async function setup(options) {
         ...(plan.host === 'codex' ? { skillsDirectory: targets[0] } : {}) };
       await writeJSON(stateFile, state); wroteState = true;
       await plan.register();
+      if (plan.host === 'deepseek' && previous?.hosts?.deepseek?.bundleDirectory) {
+        console.error('OpenMotion: previous Harness bundle retained at ' + previous.hosts.deepseek.bundleDirectory + '. Refresh host Tools/Skills; remove this old bundle only after the host has stopped.');
+      }
       for (const item of directories) await rm(item.backup, { recursive: true, force: true }).catch(error => console.error('Old instruction backup retained: ' + error.message));
       await startNativePreparation(appRoot).catch(error => console.error('OpenMotion: background preparation could not start; retry in Studio or run prepare. ' + error.message));
       const onboarding = await prepareInstallationFlow({ appRoot, dataDirectory, templateEnvironment,

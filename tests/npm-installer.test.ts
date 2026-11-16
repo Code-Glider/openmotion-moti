@@ -120,8 +120,13 @@ for (const host of ['workbuddy', 'claude', 'codex', 'deepseek']) {
     const upgraded = await setup({ ...options, ...extra, host });
     assert.equal(upgraded.dataDirectory, installed.dataDirectory);
     assert.equal(await readFile(path.join(installed.dataDirectory, 'keep.txt'), 'utf8'), 'Existing project data');
-    for (const name of retired) await assert.rejects(readdir(path.join(root, name)), { code: 'ENOENT' });
-    await readFile(path.join(root, 'openmotion-production/SKILL.md'));
+    const upgradedRoot = host === 'deepseek' ? path.join(upgraded.hostInstallation.bundleDirectory, 'skills') : root;
+    for (const name of retired) await assert.rejects(readdir(path.join(upgradedRoot, name)), { code: 'ENOENT' });
+    await readFile(path.join(upgradedRoot, 'openmotion-production/SKILL.md'));
+    if (host === 'deepseek') {
+      assert.notEqual(upgradedRoot, root);
+      await readFile(path.join(root, retired[0], 'SKILL.md')); // The running host's old bundle is untouched.
+    }
     assert.equal(await readFile(path.join(foreign, 'SKILL.md'), 'utf8'), 'User workflow');
     if (flat) assert.equal(await readFile(path.join(root, 'brandkit/SKILL.md'), 'utf8'), 'Another installation');
   });
@@ -573,4 +578,23 @@ test('installed CLI uses the selected host transport and keeps failed tool resul
   await assert.rejects(runFile(process.execPath, [cli, 'call', 'openmotion_edit_project', '--args-file', argsFile, ...flags]), /JSON object/);
   const config=JSON.parse(await readFile(options.config,'utf8')); config.openmotion.enabled=false; await writeJSON(options.config,config);
   await assert.rejects(runFile(process.execPath, [cli, 'tools', ...flags]), /disabled/);
+});
+
+test('failed Harness upgrade preserves the registered bundle and removes its unused replacement', async t => {
+  const options = await setupFixture(t), dshHome = path.join(options.directory, 'dsh');
+  const before = process.env.DSH_HOME; process.env.DSH_HOME = dshHome;
+  t.after(() => { if (before === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = before; });
+  const cli = path.join(options.directory, 'dsh-cli.mjs'), fail = path.join(options.directory, 'fail');
+  await writeFile(cli, `import fs from 'node:fs';import path from 'node:path';
+    if(fs.existsSync(${JSON.stringify(fail)})) {console.error('registration failed');process.exit(1);}
+    const p=path.join(process.env.DSH_HOME,'profiles/web');fs.mkdirSync(p,{recursive:true});
+    fs.writeFileSync(path.join(p,'package.json'),JSON.stringify({dependencies:{'dsh-plugin-openmotion-local':'file:'+process.argv.slice(2)[4]}}));`);
+  const installed = await setup({ ...options, host: 'deepseek', dsh: cli });
+  const original = await readFile(path.join(options.home, 'install.json'), 'utf8');
+  const bundles = await readdir(path.join(options.home, 'hosts'));
+  await writeFile(fail, 'fail');
+  await assert.rejects(setup({ ...options, host: 'deepseek', dsh: cli }), /registration failed/);
+  assert.equal(await readFile(path.join(options.home, 'install.json'), 'utf8'), original);
+  assert.deepEqual(await readdir(path.join(options.home, 'hosts')), bundles);
+  await readFile(path.join(installed.hostInstallation.bundleDirectory, 'skills/openmotion-production/SKILL.md'));
 });

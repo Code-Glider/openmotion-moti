@@ -565,7 +565,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'phase1.ts', 'phase1-versions.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
     'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts',
     'scripts/runtime-assets.mjs', 'scripts/vision-runtime.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
-    'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
+    'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/recover-workspace-lock.ts', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
     'scripts/install-onboarding.mjs', 'scripts/inline-onboarding.mjs', 'scripts/onboarding-callback.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
     'scripts/diagnostics.mjs', 'scripts/diagnostic-redaction.mjs', 'scripts/zip.mjs',
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',

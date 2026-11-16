@@ -167,7 +167,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check ownership recovery, read verification and immutable snapshots
         if: steps.scope.outputs.full == 'true'
-        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts
+        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts tests/windows-install-recovery.test.ts
 
   studio:
     name: Studio regression (${{ matrix.shard }}/2)

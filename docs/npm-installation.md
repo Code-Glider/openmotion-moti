@@ -228,3 +228,18 @@ Recreation measurement and registration use a private Python environment with th
 Complete platform ZIPs include the Python archive and both wheels in `runtime/vision-assets` for offline preparation. Lightweight npm installations need network access on first use. The vision tools support macOS 13+ arm64 and Windows 11+ x64. Host execution and network permissions still apply. Preparation failures report an error and can be retried with the same entry's `prepare` command. Project HTML/JavaScript and exported MP4s do not acquire a Python runtime dependency.
 
 The original Python distribution license files, NumPy distribution licenses and OpenCV wheel licenses (including bundled native-library notices) are retained in the shipped archives and installed environment. Source provenance is recorded in the pinned public URLs and hashes.
+
+
+### Windows legacy installation recovery
+
+Published npm installation remains retired; these repairs preserve existing managed installations without enabling publication. Windows Codex, Claude and DeepSeek host adapters resolve supported npm `.cmd`/`.ps1` shims to the JavaScript or native executable and keep arguments outside a shell. Unsupported wrappers fail with an executable-path hint. Missing commands fail immediately; command deadlines are cleared on spawn failure, exit and timeout.
+
+Harness setup writes a fresh `hosts/deepseek-<id>` bundle on each run and registers that path instead of renaming the bundle a running host may hold open. The previous owned bundle is retained, including the original `hosts/deepseek` layout. Refresh the host's Tools/Skills after setup. Remove only an explicitly superseded bundle after stopping that host; automatic cleanup of potentially open bundles is intentionally disabled. Project data and unrelated host configuration remain separate.
+
+New runtime locks record their owner and recover after its process exits. A legacy empty `workspace.lock` has no trustworthy owner and is never deleted automatically. From the updated source checkout or application root, inspect it with:
+
+```sh
+node --experimental-strip-types scripts/recover-workspace-lock.ts --data-dir "<actual workspace data directory>"
+```
+
+This first command changes nothing. Stop every Studio/backend, connected Agent and export using that exact directory. Only after verifying they have stopped, rerun with `--confirm-all-processes-stopped`. Recovery quarantines the empty file beside its original path, preserves project data and refuses nonempty or symbolic-link locks. Restart using the same data directory. The confirmation is an operator assertion, not automatic proof that no legacy process is alive; do not run recovery against an active workspace.
