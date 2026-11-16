@@ -1,14 +1,16 @@
 import { pane, panelGrid, railLayout, slot } from "@open-motion/components";
 export function workspaceLayout(document: Document) {
-  const shell = railLayout(document),
-    header = slot(document, "header");
-  shell.showRail(false);
+  const shell = railLayout(document, { compact: true }),
+    header = slot(document, "header"),
+    editor = slot(document, "fill");
   shell.body.setAttribute("role", "region");
   shell.body.setAttribute("aria-label", "编辑工作区");
   header.setAttribute("role", "toolbar");
   header.setAttribute("aria-label", "项目工具栏");
-  shell.body.append(header);
-  return { element: shell.element, editor: shell.body, header };
+  editor.setAttribute("role", "region");
+  editor.setAttribute("aria-label", "项目编辑器");
+  shell.body.append(header, editor);
+  return { element: shell.element, editor, header, rail: shell.rail, body: shell.body };
 }
 /** Product registration and placement. Atoms own only anonymous grid cells and panel surfaces. */
 export function studioLayout(document: Document) {

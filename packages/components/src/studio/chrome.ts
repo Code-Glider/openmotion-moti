@@ -3,12 +3,13 @@ function box(document: Document, className: string) {
   element.className = className;
   return element;
 }
-export function railLayout(document: Document) {
+export function railLayout(document: Document, options: { compact?: boolean } = {}) {
   document.body.classList.add("om-document");
   const element = box(document, "om-shell"),
     rail = box(document, "om-shell__rail"),
     body = box(document, "om-shell__body");
   element.append(rail, body);
+  if (options.compact) element.classList.add("om-shell--compact");
   return {
     element,
     rail,
@@ -45,6 +46,7 @@ export function panelGrid(document: Document) {
 export function slot(
   document: Document,
   mode:
+    | "navigation"
     | "stack"
     | "toolbar"
     | "fill"

@@ -181,7 +181,6 @@ export class Studio {
       },
     });
   }
-
   sync(project: Project | null, blocked: boolean) {
     if (this.disposed) return;
     this.blocked = blocked;
@@ -200,7 +199,6 @@ export class Studio {
       this.properties.clear();
       this.animations.update("", undefined, true);
       this.globalTime = 0;
-
       this.currentTime = 0;
     }
     this.properties.block(blocked || !this.model || this.animations.dirty);
@@ -240,7 +238,6 @@ export class Studio {
       this.retire();
       this.properties.clear();
       this.animations.update("", undefined, true);
-
       this.layers.update([], "", true);
       this.context.element.replaceChildren();
       this.timelineRoot.replaceChildren(note(this.root.ownerDocument, "创建或打开工程，开始编辑时间轴。"));
@@ -479,6 +476,9 @@ export class Studio {
     if (mode === "source") this.control("pause");
     syncMode(this.toolbar, mode);
     if (this.model) this.render(this.model.clips);
+  }
+  pause() {
+    if (this.viewer.revision) this.control("pause");
   }
   private show(project: Project) {
     return this.viewer.open(project);

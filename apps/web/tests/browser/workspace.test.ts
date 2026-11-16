@@ -247,7 +247,7 @@ it("creates through an empty MVP, retries exact template/save receipts and prese
     await page
       .getByRole("region", { name: "编辑工作区", exact: true })
       .evaluate((node) => node.getBoundingClientRect().width),
-  ).toBe(1600);
+  ).toBe(1544);
   await page.getByRole("button", { name: "新建项目", exact: true }).click();
   await page.getByLabel("项目标题", { exact: true }).fill("Second project");
   const saveIds: string[] = [];
@@ -316,7 +316,7 @@ it("creates through an empty MVP, retries exact template/save receipts and prese
     await page
       .getByRole("region", { name: "编辑工作区", exact: true })
       .evaluate((node) => node.getBoundingClientRect().width),
-  ).toBe(960);
+  ).toBe(904);
   await manager.close();
   expect((await readDirectory(root)).manager.phase).toBe("closed");
   expect(await observeProcesses(root)).toEqual([]);

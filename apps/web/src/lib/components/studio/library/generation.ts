@@ -115,7 +115,6 @@ export class GenerationPanel {
       this.tasks.element,
       paging,
     );
-    this.loadStatus();
     this.controls();
   }
   update(project: Project | null, blocked: boolean) {
@@ -123,6 +122,7 @@ export class GenerationPanel {
     if (!this.editing.editor.unconfirmed) this.adoptions.clear();
     const key = project ? keyOf(project) : "";
     if (key !== this.key) {
+      if (key && !this.catalog) this.loadStatus();
       this.key = key;
       ++this.epoch;
       this.before = undefined;

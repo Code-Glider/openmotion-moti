@@ -3,6 +3,7 @@
   display: grid; grid-template-columns: var(--om-nav-width) minmax(0, var(--om-flex-track)); height: var(--om-screen-height); min-width: 0;
   background: var(--om-canvas); color: var(--om-text); font-family: var(--om-font-body); font-size: var(--om-font-size); line-height: var(--om-line-height);
   &--rail-hidden { grid-template-columns: minmax(0, var(--om-flex-track)); }
+  &--compact { grid-template-columns: var(--om-nav-compact-width) minmax(0, var(--om-flex-track)); }
   &__rail { &[hidden] { display: none; } box-sizing: border-box; background: var(--om-navigation-surface); display: flex; flex-direction: column; gap: var(--om-control-padding-x); min-width: 0; min-height: 0; overflow: auto; padding: var(--om-control-padding-x); border-right: var(--om-focus-width) solid var(--om-border); }
   &__body { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 }
@@ -22,6 +23,7 @@
 .om-slot {
   &[hidden] { display: none; }
   min-width: 0;
+  &--navigation { display: flex; flex-direction: column; gap: var(--om-control-padding-y); }
   &--stack { display: flex; flex-direction: column; gap: var(--om-control-padding-y); }
   &--toolbar { display: flex; flex-wrap: wrap; gap: var(--om-field-gap); align-items: center; }
   &--spread { display: flex; align-items: center; justify-content: space-between; gap: var(--om-control-padding-y); }
@@ -48,7 +50,8 @@
 }
 @media (max-width: 760px) {
   .om-shell { grid-template-columns: minmax(0, var(--om-flex-track)); &__rail { max-height: var(--om-list-max-height); } }
+  .om-shell { &--compact &__rail { flex-direction: row; align-items: center; border-right: 0; border-bottom: var(--om-focus-width) solid var(--om-border); } }
   .om-split { &__start { min-height: var(--om-conversation-narrow); } }
   .om-grid { grid-template-columns: minmax(0, var(--om-flex-track)); grid-template-rows: auto; &__leading, &__body, &__trailing, &__footer { grid-column: auto; min-height: var(--om-stage-min-height); } }
-  .om-slot { &--editorbar { flex-wrap: wrap; } }
+  .om-slot { &--navigation { flex-direction: row; } &--editorbar { flex-wrap: wrap; } }
 }
