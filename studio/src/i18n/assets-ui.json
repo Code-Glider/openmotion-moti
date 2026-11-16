@@ -300,6 +300,10 @@
     "OpenDesign account request failed. Check your connection and sign in again if needed.": "OpenDesign 账号请求失败。请检查网络，必要时重新登录。",
     "Account media task failed. Check the original task before retrying.": "OpenDesign 生成任务失败。重试前请先查看原任务。",
     "Your OpenDesign sign-in is no longer accepted. Sign out, then sign in again.": "OpenDesign 登录已失效，请先退出再重新登录。",
+    "OpenDesign accepted this task, but your sign-in was rejected while reading its result. Sign out, then sign in again, and check the original task before retrying.": "OpenDesign 已接收这个任务，但读取结果时登录已失效。请先退出再重新登录，并在重试前查看原任务。",
+    "Account changed; the queued task was not submitted": "OpenDesign 账号已变更，排队中的任务没有提交。",
+    "OpenDesign reported a task status this version does not recognize. Check the original task before retrying.": "OpenDesign 返回了当前版本无法识别的任务状态。重试前请先查看原任务。",
+    "Account changed; check the original task before retrying": "OpenDesign 账号已变更。重试前请先查看原任务。",
     "OpenDesign accepted this task, but its result could not be read. Check the original task before retrying.": "OpenDesign 已接收这个任务，但未能读取结果。重试前请先查看原任务。"
   }
 }

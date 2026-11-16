@@ -301,6 +301,8 @@ test('account media failures report the service reason without connector output'
     ['media-empty-code', /^OpenDesign could not complete this request\. Try again later/],
     // The task was accepted; a failed download must not suggest choosing another model and paying again.
     ['media-get-502', /^OpenDesign accepted this task, but its result could not be read\./],
+    // A rejected sign-in while reading the task keeps the sign-out hint; the account still reports signed-in.
+    ['media-get-401', /^OpenDesign accepted this task, but your sign-in was rejected while reading its result\. Sign out, then sign in again/],
   ];
   for (const [scenario, expected] of cases) {
     await writeFile(path.join(account.home, 'fixture-mode'), scenario);

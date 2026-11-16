@@ -127,6 +127,7 @@ else if (args[0] === 'media') json({ models: [...['image', 'video', 'audio'].map
 else if (args[1] === 'get') {
   // A failed result download after the task was accepted.
   if (mode() === 'media-get-502') { console.error('Error: media download failed after 3 attempts: private detail (provider_error, HTTP 502)'); process.exit(1); }
+  if (mode() === 'media-get-401') { console.error('Error: perform media request: private detail for fixture-user-id (unauthorized, HTTP 401)'); process.exit(1); }
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
   const bytes = args[0] === 'image' ? png : readFileSync(path.join(home, `fixture-${args[0]}`));
   writeFileSync(args[args.indexOf('--output') + 1], bytes);
