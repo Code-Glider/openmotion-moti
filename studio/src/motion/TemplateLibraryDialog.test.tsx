@@ -3,6 +3,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider, useI18n, type Locale } from '../i18n/I18n';
+import { translate } from '../i18n/messages';
 import { TemplateLibraryDialog } from './TemplateLibraryDialog';
 import { MAX_TEMPLATE_PLAYERS } from './useTemplatePlayback';
 import { validProperties } from '../../../tracking/core.ts';
@@ -87,6 +88,31 @@ it('uses one ordered gallery without a duplicate featured section and combines c
   expect(events('template_filter_result').at(-1)).toMatchObject({ action: 'filter_apply', result_count: 1 });
   await act(async () => button('Remove filter Figma').click());
   expect(cards()).toHaveLength(3);
+});
+it.each(['en', 'zh-CN'] as const)('merges launch aliases in quick and grouped filters without losing templates in %s', async locale => {
+  fetchItems([
+    ...items,
+    { ...items[0], id: 'plural', uses: ['Product launches'], sortOrder: 4 },
+    { ...items[0], id: 'localized', uses: ['产品发布', 'Product launch films'], sortOrder: 5 },
+  ]);
+  await mount(locale);
+  const t = (message: string) => translate(locale, message);
+  const categories = host.querySelector(`[role=group][aria-label="${t('Video purpose')}"]`)!;
+  expect([...categories.querySelectorAll('button')].map(node => node.textContent).filter(label => label === t('Product launch films'))).toHaveLength(1);
+  expect(categories.textContent).not.toContain('Product launches');
+  await act(async () => button(t('Product launch films'), categories).click());
+  expect(cards()).toEqual(['two', 'one', 'plural', 'localized']);
+
+  await act(async () => button(t('Clear filters')).click());
+  expect(cards()).toHaveLength(5);
+  await act(async () => button(t('Filters')).click());
+  const filters = host.querySelector(`[role=dialog][aria-label="${t('Filters')}"]`)!;
+  expect(filters.querySelectorAll(`[role=checkbox][aria-label="${t('Product launch films')}"]`)).toHaveLength(1);
+  expect(filters.textContent).not.toContain('Product launches');
+  await act(async () => button(t('Product launch films'), filters).click());
+  expect(filters.querySelector('[role=status]')?.textContent).toBe(translate(locale, '{count} templates', { count: 4 }));
+  await act(async () => button(t('Apply filters'), filters).click());
+  expect(cards()).toEqual(['two', 'one', 'plural', 'localized']);
 });
 it('shows author avatars and falls back to initials for unavailable images', async () => {
   await mount();
