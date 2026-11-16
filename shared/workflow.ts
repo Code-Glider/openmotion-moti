@@ -70,6 +70,10 @@ export const workflowRegistry = {
     status: 'ready',
     sections: {
       start: 'skills/openmotion-media/SKILL.md',
+      planning: 'skills/openmotion-media/references/planning.md',
+      setup: 'skills/openmotion-media/references/setup.md',
+      jobs: 'skills/openmotion-media/references/jobs.md',
+      inspection: 'skills/openmotion-media/references/inspection.md',
     },
   },
 } as const;
