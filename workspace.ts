@@ -37,6 +37,7 @@ export type FileEdit = { path: string; content: string };
 export type SavedProject = { id: string; title: string; titleKey?: 'OpenMotion Sample Video' | null; templateId?: string; createdAt?: number; openedAt?: number; trashedAt?: number };
 export type ProjectCatalog = { activeId: string; projects: SavedProject[]; sessions?: CreativeSession[]; activeSessionId?: string };
 export type ProjectMutationResult = { projectId: string; title: string; trashed?: boolean; deleted?: boolean; activeProjectId: string; replayed?: boolean };
+type ProjectTrashIntent = { action: 'trash' | 'restore'; projectId: string; requestId: string };
 export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; workId?: string; phase1?: boolean; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
   createdAt: number; acceptedAt?: number; deadlineAt?: number; terminalAt?: number; observedOutcome?: 'success' | 'failure' | 'unknown' | 'cancelled'; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
 export class Conflict extends Error { constructor() { super('工程已经被 Studio 或 Agent 更新，请重新读取 revision 后再修改。'); } }
@@ -287,36 +288,55 @@ export class WorkspaceStore {
   async deleteProject(id: string, requestId: string): Promise<ProjectMutationResult> {
     return this.projectMutation('delete', id, requestId);
   }
+  private async completeProjectTrashIntent(intent: ProjectTrashIntent, journalPath: string): Promise<ProjectMutationResult> {
+    const { action, projectId, requestId } = intent;
+    if ((action !== 'trash' && action !== 'restore') || !/^[\w-]{1,100}$/.test(requestId)) throw new Error('PROJECT_TRASH_JOURNAL_INVALID');
+    const { receiptPath, fingerprint, receipt } = await this.projectMutationReceipt(action, requestId, projectId);
+    if (receipt) {
+      await rm(journalPath, { force: true });
+      return receipt.result;
+    }
+    const catalog = this.projectCatalog(), project = catalog.projects.find(item => item.id === projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND: 工程不存在');
+    const trashed = action === 'trash';
+    if (trashed !== Boolean(project.trashedAt)) {
+      if (trashed) {
+        project.trashedAt = Date.now();
+        if (catalog.activeId === projectId) {
+          catalog.activeId = catalog.projects.find(item => !item.trashedAt)!.id;
+          catalog.activeSessionId = catalog.sessions!.find(session => session.artifacts.some(artifact => artifact.projectId === catalog.activeId))?.id;
+        }
+      } else delete project.trashedAt;
+      await atomic(path.join(this.directory, 'projects.json'), JSON.stringify(catalog));
+    }
+    const result = { projectId, title: project.title, trashed, activeProjectId: catalog.activeId };
+    await atomic(receiptPath, JSON.stringify({ fingerprint, result }));
+    await rm(journalPath, { force: true });
+    return result;
+  }
   private async projectMutation(action: 'trash' | 'restore' | 'delete', id: string, requestId: string): Promise<ProjectMutationResult> {
     if (!/^[\w-]{1,100}$/.test(requestId)) throw new Error('INVALID_ARGUMENT: Stable requestId required');
     return this.lock(async () => {
+      // Finish an interrupted Trash change before any subsequent lifecycle action
+      // can make the opposite change. Keep the intent until its receipt is saved.
+      const journalPath = path.join(this.directory, 'project-operations', 'pending-trash-change.json');
+      const pending = await readFile(journalPath, 'utf8').catch(error => {
+        if (error.code !== 'ENOENT') throw error;
+        return undefined;
+      });
+      if (pending !== undefined) await this.completeProjectTrashIntent(JSON.parse(pending), journalPath);
       const catalog = this.projectCatalog();
       const project = catalog.projects.find(item => item.id === id);
       const { receiptPath, fingerprint, receipt } = await this.projectMutationReceipt(action, requestId, id);
       if (receipt && (!receipt.pending || !project)) return { ...receipt.result, replayed: true };
       if (!project) throw new Error('PROJECT_NOT_FOUND: 工程不存在');
-      if (action === 'trash') {
-        if (!project.trashedAt) {
-          if (catalog.projects.filter(item => !item.trashedAt).length <= 1) throw new Error('PROJECT_DELETE_LAST_ACTIVE: 至少保留一个可用工程');
-          project.trashedAt = Date.now();
-          if (catalog.activeId === id) {
-            catalog.activeId = catalog.projects.find(item => !item.trashedAt)!.id;
-            catalog.activeSessionId = catalog.sessions!.find(session => session.artifacts.some(artifact => artifact.projectId === catalog.activeId))?.id;
-          }
-          await atomic(path.join(this.directory, 'projects.json'), JSON.stringify(catalog));
+      if (action !== 'delete') {
+        if (action === 'trash' && !project.trashedAt && catalog.projects.filter(item => !item.trashedAt).length <= 1) {
+          throw new Error('PROJECT_DELETE_LAST_ACTIVE: 至少保留一个可用工程');
         }
-        const result = { projectId: id, title: project.title, trashed: true, activeProjectId: catalog.activeId };
-        await atomic(receiptPath, JSON.stringify({ fingerprint, result }));
-        return result;
-      }
-      if (action === 'restore') {
-        if (project.trashedAt) {
-          delete project.trashedAt;
-          await atomic(path.join(this.directory, 'projects.json'), JSON.stringify(catalog));
-        }
-        const result = { projectId: id, title: project.title, trashed: false, activeProjectId: catalog.activeId };
-        await atomic(receiptPath, JSON.stringify({ fingerprint, result }));
-        return result;
+        const intent = { action, projectId: id, requestId };
+        await atomic(journalPath, JSON.stringify(intent));
+        return this.completeProjectTrashIntent(intent, journalPath);
       }
       if (!project.trashedAt) throw new Error('PROJECT_DELETE_REQUIRES_TRASH: 请先将工程移到回收站');
       const directory = this.projectDirectoryFor(id), info = await lstat(directory).catch(error => {

@@ -29,7 +29,8 @@ test('connection guidance exposes the maintained media workflow without asking f
   const guide = agentGuide(info, 'codex');
   for (const operation of ['openmotion_media_use', 'inspect', 'reference', 'models', 'schema', 'generate', 'status', 'cancel', 'requestId', 'jobId']) assert.ok(guide.includes(operation), operation);
   assert.doesNotMatch(guide, /不公开生成/);
-  assert.match(guide, /不把凭据放进对话/);
+  assert.match(guide, /Keep credentials in Settings/);
+  assert.match(guide, /openmotion_assets_use generate/);
 });
 
 test('media example preserves setup and task continuation across supported languages', async () => {

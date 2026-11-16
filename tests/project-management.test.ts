@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 import { readFile, writeFile, mkdir, symlink, access } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
@@ -9,6 +11,7 @@ import { manageProject, projectRevealCommand } from '../project-management.ts';
 import { Phase1Service } from '../phase1.ts';
 import { zip } from '../scripts/zip.mjs';
 import { pluginRoot, nativeProjectConfig } from '../hyperframes.ts';
+import { WorkspaceStore } from '../workspace.ts';
 
 const html = '<!doctype html><html><head><meta charset="utf-8"></head><body><div data-composition-id="main" data-start="0" data-duration="1" data-width="320" data-height="180">Editable</div><script>window.__timelines = {};</script></body></html>';
 const bundle = () => zip([
@@ -19,6 +22,33 @@ const bundle = () => zip([
 ]);
 const api = (store: any) => new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
   openProject: async () => {}, mutation: async task => task(), cancel: async () => ({}) });
+
+for (const [action, next] of [['trash', 'restore'], ['restore', 'trash']] as const) {
+  test(`retrying ${action} after a failed receipt write does not undo a later ${next}`, t => fixture(async store => {
+    const { projects: [project] } = await importProjects(store, 'recover-trash-request', bundle(), pluginRoot);
+    const projectId = project.projectId;
+    if (action === 'restore') await manageProject(store, { action: 'trash', projectId, requestId: 'setup' });
+    const mutation = { action, projectId, requestId: 'interrupted' };
+    const receiptDirectory = path.join(store.directory, 'project-operations', action);
+    const rename = fs.rename;
+    const write = t.mock.method(fs, 'rename', async (...args: Parameters<typeof rename>) => {
+      if (path.dirname(String(args[1])) === receiptDirectory) throw new Error('Interrupted receipt write');
+      return rename(...args);
+    });
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(manageProject(store, mutation), /Interrupted receipt write/);
+      assert.equal(Boolean(store.projectCatalog().projects.find(p => p.id === projectId)?.trashedAt), action === 'trash');
+    } finally {
+      write.mock.restore();
+      syncBuiltinESMExports();
+    }
+    const reopened = new WorkspaceStore(store.directory);
+    await manageProject(reopened, { action: next, projectId, requestId: 'later-choice' });
+    assert.equal((await manageProject(reopened, mutation)).replayed, true);
+    assert.equal(Boolean(reopened.projectCatalog().projects.find(p => p.id === projectId)?.trashedAt), next === 'trash');
+  }, false));
+}
 
 test('HTTP and MCP rename the explicit project with conflict protection and stable retry receipts', () => fixture(async store => {
   const id = (await importProjects(store, 'import', bundle(), pluginRoot)).projects[0].projectId;
