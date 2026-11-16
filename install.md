@@ -6,6 +6,8 @@ For an Agent asked to install OpenMotion from this repository, use the source in
 
 Collect OS/CPU, Git, Node.js/npm and the current host once. Source validation uses Node.js 26.11.1. Codex must support `codex plugin add`. Preserve projects, credentials, unrelated plugins and MCP configuration. Configure only the current host.
 
+Before running the installer, including setup from an existing checkout, export `OPENMOTION_ONBOARDING_LANGUAGE` in the same shell. Derive it from the latest user request's language, not the OS or host UI language. Supported codes are `zh`, `en`, `ja`, `ko`, `fr`, `es` and `pt`; normalize locale tags to their lowercase primary code and use `en` for unsupported languages. For a Chinese request, run `export OPENMOTION_ONBOARDING_LANGUAGE=zh` before the commands below so the welcome/cards and queued presentation are prepared in Chinese.
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/nexu-io/openmotion/main/install.sh -o /tmp/openmotion-source-install.sh
 bash /tmp/openmotion-source-install.sh
