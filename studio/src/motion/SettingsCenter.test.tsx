@@ -7,9 +7,9 @@ import { I18nProvider } from '../i18n/I18n';
 import { SettingsCenter } from './SettingsCenter';
 
 it.each([
-  { locale: 'zh-CN', heading: '社群', label: '飞书群 (README)', path: '/blob/main/README.zh-CN.md', anchor: '社区', document: chineseReadme, invite: '飞书群' },
-  { locale: 'en', heading: 'Community', label: 'Feishu group (README)', path: '', anchor: 'community', document: readme, invite: 'Feishu' },
-] as const)('offers both community resources from Help in $locale', ({ locale, heading, label, path, anchor, document, invite }) => {
+  { locale: 'zh-CN', heading: '社群', labels: ['飞书群', 'Discord'], document: chineseReadme, platforms: ['飞书群', 'Discord'] },
+  { locale: 'en', heading: 'Community', labels: ['Discord', 'Feishu group'], document: readme, platforms: ['Discord', 'Feishu'] },
+] as const)('offers both README invitations in locale order from Help in $locale', ({ locale, heading, labels, document, platforms }) => {
   const html = renderToStaticMarkup(
     <I18nProvider initialLocale={locale}>
       <SettingsCenter section="help" onSection={() => {}} openConnections={() => {}} />
@@ -19,11 +19,9 @@ it.each([
   const section = page.querySelector('section[aria-labelledby="om-community-heading"]');
   expect(section?.querySelector('h2')?.textContent).toBe(heading);
   const links = Array.from(section!.querySelectorAll('a'));
-  expect(links.map(link => link.textContent)).toEqual(['Discord', label]);
-  expect(readme).toContain(`[Discord](${links[0].href})`);
-  expect(links[1].getAttribute('href')).toBe(`https://github.com/nexu-io/openmotion${path}#${anchor}`);
-  expect(document.split(`<a id="${anchor}"></a>`)[1]).toContain(`[${invite}](`);
-  for (const link of links) {
+  expect(links.map(link => link.textContent)).toEqual(labels);
+  for (const [index, link] of links.entries()) {
+    expect(document).toContain(`[${platforms[index]}](${link.href})`);
     expect(link.target).toBe('_blank');
     expect(link.relList.contains('noopener')).toBe(true);
   }

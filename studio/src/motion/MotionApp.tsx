@@ -8,6 +8,8 @@ import { ArtifactViewer } from './ArtifactViewer';
 import { EditorLoading, readEditorLoadingLayout, type EditorLoadingLayout } from './EditorLoading';
 import { RecoveryScreen } from '../components/RecoveryScreen';
 import { trackMotion } from './tracking';
+import { WORKSPACE_LOCATION_CHANGED, writeWorkspaceHistory } from '../utils/workspaceHistory';
+import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
 
 const noPendingSaves = async () => {};
 
@@ -24,6 +26,12 @@ export function MotionApp() {
   const { t } = useI18n();
   const [route, setRoute] = useState(() => ({ projectId: requestedProject(location.search, location.hash), sessionId: new URLSearchParams(location.search).get('session') }));
   const { projectId, sessionId } = route;
+  const [settingsPage, setSettingsPage] = useState(() => isWorkspaceSettingsPage(location.search));
+  useEffect(() => {
+    const sync = () => setSettingsPage(isWorkspaceSettingsPage(location.search));
+    window.addEventListener(WORKSPACE_LOCATION_CHANGED, sync);
+    return () => window.removeEventListener(WORKSPACE_LOCATION_CHANGED, sync);
+  }, []);
   const [libraryOnly, setLibraryOnly] = useState(() => new URLSearchParams(location.search).get('templates') === '1' && projectId === null && !sessionId);
   const [ready, setReady] = useState<{ sessionId: string; artifact?: SessionArtifact } | null>(null);
   const [error, setError] = useState('');
@@ -48,7 +56,7 @@ export function MotionApp() {
       duration_ms: Math.min(86_400_000, Math.round(performance.now() - view.current.started)) });
   }, [projectId, sessionId, ready, error, libraryOnly]);
   useEffect(() => {
-    if (ready) return;
+    if (ready || settingsPage) return;
     const controller = new AbortController();
     setError('');
     async function resolve() {
@@ -69,21 +77,18 @@ export function MotionApp() {
       if (controller.signal.aborted) return;
       const url = new URL(location.href); url.searchParams.set('session', id); url.searchParams.set('project', artifact.projectId);
       if (!url.hash.startsWith(`#project/${artifact.projectId}`)) url.hash = `project/${artifact.projectId}`;
-      history.replaceState(null, '', url);
+      writeWorkspaceHistory(url, true);
       setReady({ sessionId: id, artifact });
     }
     void resolve().catch(err => { if (!controller.signal.aborted) setError((err as Error).message); });
     return () => controller.abort();
-  }, [route, attempt, libraryOnly]);
+  }, [route, attempt, libraryOnly, settingsPage]);
   const closeLibrary = () => {
-    const url = new URL(location.href);
-    url.searchParams.delete('templates');
-    history.replaceState(null, '', url);
     setLibraryOnly(false);
   };
   return <WorkspaceFrame waitForSaves={noPendingSaves} projectId={ready?.artifact?.projectId ?? (error ? undefined : projectId ?? undefined)}
     sessionId={libraryOnly ? undefined : ready?.sessionId ?? sessionId ?? undefined} onNavigate={onNavigate}
-    blocked={!ready && !error && !libraryOnly} onLibraryClose={libraryOnly ? closeLibrary : undefined}>
+    blocked={!ready && !error && !libraryOnly && !settingsPage} onLibraryClose={libraryOnly ? closeLibrary : undefined}>
     <div ref={surface} className="motion-project-surface">
     {error ? <RecoveryScreen title={t('Could not open project')} message={error}><button className="om-button" data-primary onClick={() => retry(value => value + 1)}>{t('Retry')}</button><a className="om-button" href="/">{t('Open active project')}</a></RecoveryScreen>
       : ready ? ready.artifact ? <ArtifactViewer key={ready.artifact.projectId} artifact={ready.artifact} loadingLayout={loadingLayout} /> : <div className="motion-route-state"><WorkspaceMenuButton />{t('Create a project with your Agent to start editing.')}</div>

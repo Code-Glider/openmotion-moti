@@ -10,6 +10,8 @@ import { startServer } from '../../../server.ts';
 import { launchStudioChrome } from './chrome-executable.mjs';
 import { installWebMcpHost } from './webmcp-host.mjs';
 
+// The browser uses a fake same-origin collector; never report fixtures to the real collector.
+process.env.OPENMOTION_TELEMETRY = '0';
 const evidence = process.env.WEBMCP_E2E_EVIDENCE_DIR || await mkdtemp(path.join(tmpdir(), 'motion-webmcp-evidence-'));
 await mkdir(evidence, { recursive: true });
 const directory = await mkdtemp(path.join(tmpdir(), 'motion-webmcp-source-edit-'));
@@ -30,6 +32,33 @@ try {
   const url = (await server.info()).studioUrl;
   ({ browser } = await launchStudioChrome());
   const page = await browser.newPage();
+  const telemetry = [], previous = { calls: [], registrations: [] };
+  await page.setRequestInterception(true);
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/motion-api/tracking') {
+      if (request.method() === 'POST') telemetry.push(...JSON.parse(request.postData()).events);
+      void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: true }) });
+    } else void request.continue();
+  });
+  const checkTracking = async () => {
+    const activity = await page.evaluate(() => window.__webMcpSource.activity());
+    const expected = { calls: [...previous.calls, ...activity.calls], registrations: [...previous.registrations, ...activity.registrations] };
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline && telemetry.filter(event => event.event === 'webmcp_tool_finished').length < expected.calls.length) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    for (const [name, names] of [['webmcp_tool_started', expected.calls], ['webmcp_tool_finished', expected.calls], ['webmcp_registration_result', expected.registrations]]) {
+      const rows = telemetry.filter(event => event.event === name);
+      assert.deepEqual(rows.map(event => event.properties.tool_name).sort(), [...names].sort());
+      assert.ok(rows.every(event => event.entrypoint === 'studio' && event.properties.transport === 'webmcp'));
+    }
+    const starts = telemetry.filter(event => event.event === 'webmcp_tool_started');
+    const finishes = telemetry.filter(event => event.event === 'webmcp_tool_finished');
+    assert.equal(new Set(starts.map(event => event.properties.call_id)).size, expected.calls.length);
+    assert.deepEqual(starts.map(event => event.properties.call_id).sort(), finishes.map(event => event.properties.call_id).sort());
+    assert.ok(finishes.every(event => Number.isInteger(event.properties.duration_ms) && event.properties.duration_ms >= 0));
+    return expected;
+  };
   await page.setViewport({ width: 1600, height: 1000 });
   await page.evaluateOnNewDocument(installWebMcpHost, '__webMcpSource');
   await page.goto(url, { waitUntil: 'domcontentloaded' });
@@ -60,6 +89,7 @@ try {
   });
   assert.equal(results.stale.error.code, 'VERSION_CONFLICT');
   assert.equal(await readFile(index, 'utf8'), content);
+  Object.assign(previous, await checkTracking());
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => {
     const iframe = document.querySelector('hyperframes-player')?.shadowRoot?.querySelector('iframe');
@@ -84,6 +114,12 @@ try {
   await disabled.waitForSelector('hyperframes-player', { timeout: 90_000 });
   assert.deepEqual(await disabled.evaluate(() => window.__webMcpSource.names()), []);
   results.disabledPreference = true;
+  const activity = await checkTracking();
+  assert.ok(telemetry.filter(event => event.event === 'webmcp_tool_finished').some(event => event.properties.outcome === 'failure'));
+  const measured = telemetry.filter(event => event.event.startsWith('webmcp_tool_') || event.event === 'webmcp_registration_result');
+  assert.ok(!JSON.stringify(measured).includes('WebMCP 测试成功'));
+  await writeFile(path.join(evidence, 'tracking-events.json'), JSON.stringify(measured, null, 2));
+  results.tracking = { calls: activity.calls.length, registrations: activity.registrations.length, events: measured.length };
   await writeFile(path.join(evidence, 'browser-result.json'), JSON.stringify({ status: 'PASS', results }, null, 2));
   console.log(JSON.stringify({ status: 'PASS', evidence, results }, null, 2));
 } catch (error) {
