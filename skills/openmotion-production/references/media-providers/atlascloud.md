@@ -16,12 +16,7 @@ Underlying public catalogue request:
 curl --fail-with-body --silent --show-error 'https://api.atlascloud.ai/api/v1/models'
 ```
 
-Read the response `data` array. Change or omit modality/query for video/audio. The tool returns normalized metadata, not every model's input schema. Confirm the selected model in the current [model library](https://www.atlascloud.ai/models) and read its static JSON schema or example payload before guessing parameter names:
-
-- `https://static.atlascloud.ai/model/schema/<model-slug>.json` (for example `https://static.atlascloud.ai/model/schema/minimax/speech-2.6-turbo.json`)
-- `https://static.atlascloud.ai/model/example/<model-slug>.json`
-
-Public discovery and cached/built-in examples do not establish key validity, balance or model entitlement. `minimax/lyrics-generation` returns text lyrics rather than an audio file and is excluded from audio normalization.
+Read the response `data` array. Change or omit modality/query for video/audio. The tool returns normalized metadata, not every model's input schema. Confirm the selected model in the current [model library](https://www.atlascloud.ai/models) and read its API schema on the model page before guessing parameter names. Public discovery and cached/built-in examples do not establish key validity, balance or model entitlement. `minimax/lyrics-generation` returns text lyrics rather than an audio file and is excluded from audio normalization.
 
 ## Request templates
 
