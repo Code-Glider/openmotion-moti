@@ -21,7 +21,7 @@ export function ApplicationHeader({ settings }: { settings: SettingsSection | nu
     <div className="om-app-leading">
       <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><button className="om-nav-item om-app-sidebar-toggle" onClick={toggleNavigation} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><RemixIcon name="side-bar-line" size={16} /></button></Tooltip>
       <WorkspaceHistoryNavigation />
-      <Tooltip label={t('Back to home')}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={t('Back to home')}><BrandLogo /></button></Tooltip>
+      <Tooltip label={t('Back to home')}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={t('Back to home')}><BrandLogo compact /></button></Tooltip>
     </div>
     <div className="om-app-navigation">{settings ? <button className="om-nav-item" onClick={openHome} aria-label={t('Back to home')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Back to home')}</span></button> : null}</div>
     <div className="om-app-header-actions"><div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>{!settings && <ModelSwitcher openSettings={openModelSettings} />}{settings && <button className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}</div>

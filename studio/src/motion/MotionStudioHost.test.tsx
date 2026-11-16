@@ -125,7 +125,7 @@ it('keeps project switching, templates, history actions and native export in the
   expect(container.querySelector('.motion-save-state')).toBeNull();
   expect(container.querySelector('a[download]')).toBeNull();
   expect(container.querySelector('.om-app-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
-  expect(container.querySelector('.om-app-brand .motion-brand-lockup--responsive')).toBeNull();
+  expect(container.querySelector('.om-app-brand .motion-brand-lockup--responsive')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="模型供应商"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="设置"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="编辑器"]')).toBeNull();
