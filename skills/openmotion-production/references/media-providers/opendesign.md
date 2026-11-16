@@ -20,7 +20,7 @@ curl --fail-with-body --silent --show-error \
   -H "Authorization: Bearer ${OPENDESIGN_API_KEY:?Set OPENDESIGN_API_KEY locally}"
 ```
 
-The response is `{models:[{model,kind,capabilities}]}`. Change/omit modality to discover video/audio. Account/workspace availability comes from this list, not the example names below. Tool entries are normalized; check the current contract/model capabilities for required options. Cached entries do not establish current entitlement. Billing and credentials belong to the Cloud workspace, not its upstream model vendor; workspace allowance is used first and additional use may consume recharge balance.
+The response is `{models:[{model,kind,capabilities}]}`. Change/omit modality to discover video/audio (note `/api/v1/media/models` may list only `image` and `video` rows while workspace speech uses built-in IDs such as `elevenlabs-v3` or `byteplus-tts-2` with matching `parameters.voice`). Account/workspace availability comes from workspace entitlement, not the example names below. Tool entries are normalized; check the current contract/model capabilities for required options. Cached entries do not establish current entitlement. Changing the saved gateway origin while a job is queued or running stops that job rather than polling a mismatched host. Billing and credentials belong to the Cloud workspace, not its upstream model vendor; workspace allowance is used first and additional use may consume recharge balance.
 
 ## Request templates
 
@@ -94,8 +94,8 @@ The supplied contract does **not** define a complete authoritative Cloud HTTP er
 
 | Signal | Interpretation / next action |
 | --- | --- |
-| HTTP 401 | Authentication was not accepted. Check dashboard API origin/path, Bearer header, selected workspace key and saved-vs-environment source. Do not assert expired key, wrong key or insufficient balance without provider evidence. |
-| HTTP 403 / 404 | Check workspace/model/task ownership, endpoint path and access. Confirm the actual Cloud code/message; HTTP status alone does not identify the exact permission/resource issue. |
+| HTTP 401 | Authentication was not accepted. Check dashboard API origin/path, Bearer header, selected workspace key and saved-vs-environment source. Distinguish workspace key rejection from `upstream_provider_unauthenticated` (an upstream vendor credential failure behind the Cloud gateway, which changing the user's Cloud Key cannot fix). Do not assert expired key, wrong key or insufficient balance without provider evidence. |
+| HTTP 403 / 404 | Distinguish an environment origin where `/api/v1/media/*` is not deployed (route-level 404 across discovery and submit) from workspace/model/task ownership or an unknown model/task ID. Confirm the actual Cloud code/message; HTTP status alone does not identify the exact permission/resource issue. |
 | HTTP 400 / 422 | Check current contract fields: image/video fields are flat, speech text is nested and voice must match the model. Inspect actual validation detail if available. |
 | Quota/balance rejection | Check workspace model allowance and recharge balance. The contract does not assign one guaranteed HTTP status to this case. |
 | HTTP 429 / 5xx / network timeout | Possible limits/transient failure or uncertain outcome. Check the original task/history before another paid submit; do not assume a timeout means no task was created. |

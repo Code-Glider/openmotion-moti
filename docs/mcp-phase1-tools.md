@@ -5,7 +5,7 @@
 
 本地候选包版本为0.6.3，避免误复用缺少模板目录接口的旧服务和宿主缓存；尚未发布。源码和默认导出均使用 `phase1`，只公开以下 12 个 `openmotion_` Tool。发现、调用门禁、接入元数据和构建使用同一注册表；旧名不可绕过调用。原有领域服务、Studio、渲染器和内部兼容 handler 保留。适配不只是改名：补了项目身份、批量导入、请求去重、版本和保存保护、取消终态、自动导出校验。
 
-Skill 是指导文档，与公开 Tool 数量分开。本次后续命名与分发对齐后，一期装入 openmotion-production、openmotion-director、openmotion-template-to-video、openmotion-recreate、openmotion-video-to-template 五个入口及其参考。模板使用与视频转模板保留已有实际流程；openmotion-recreate 包含实际复刻流程，规则与测量脚本随 Skill 分发，不新增自动创作算法或 Tool。原九个工程 Tool 保留，本次新增目录获取和模板详情入口；详见 [Skill 路由与能力边界](skills.md)。
+Skill 是指导文档，与公开 Tool 数量分开。本次后续命名与分发对齐后，一期装入 openmotion-production、openmotion-director、openmotion-template-to-video、openmotion-recreate、openmotion-video-to-template 五个创作入口及其参考，以及按需支撑多模态素材生成的 openmotion-media。模板使用与视频转模板保留已有实际流程；openmotion-recreate 包含实际复刻流程，规则与测量脚本随 Skill 分发，不新增自动创作算法或 Tool。原九个工程 Tool 保留，本次新增目录获取和模板详情入口；详见 [Skill 路由与能力边界](skills.md)。
 
 ## Optional native template presentation
 
@@ -129,7 +129,7 @@ The open editor also shows these restore refusals through its shared dismissible
 
 - shared/mcp-profiles.json 是12项唯一公开清单，shared/mcp-release.json 默认 phase1；mcpRegistry 同时控制发现与调用，禁止运行时环境变量扩大列表。新增/缺失实现由构建完整性检查拦截。
 - npm run package:phase1 构建 Studio 并生成 dist/openmotion-0.6.3-phase1.zip；npm run package:plugin 默认也沿用 phase1。该插件 ZIP 不带原生 Node/浏览器/FFmpeg：使用支持的本机 Node、首次安装锁定依赖，FFmpeg/ffprobe 需本机可用。
-- 四宿主薄适配器从同一运行时导出，scope.json 记录 profile，复制上述5个 Skill；不另维护 allowlist。数据目录放在 runtime/插件缓存之外。资源指导通过本地文件或 resources/list、resources/read 取得，不另增加 workflow Tool。
+- 四宿主薄适配器从同一运行时导出，scope.json 记录 profile，复制上述5个创作入口及支撑 Skill `openmotion-media`；不另维护 allowlist。数据目录放在 runtime/插件缓存之外。资源指导通过本地文件或 resources/list、resources/read 取得，不另增加 workflow Tool。
 - 完整原生测试包的 build <target> <beta-version> [phase1|legacy] 使用同表检查并写 release.json；本次不声称重新制作/验收各平台原生安装包。
 - Internal compatibility handlers and explicit legacy development builds remain separate; hidden calls return MCP_TOOL_NOT_EXPOSED in phase-one packages. Existing supported phase-one calls continue across compatible updates. Newly added Tools, changed discovery metadata and Skills require host refresh before use.
 
@@ -196,7 +196,7 @@ CI不按路径过滤、不跳过渲染、无失败重试或continue-on-error；�
 
 ## BYOK media-use extension
 
-Read action=reference for the selected provider, or `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed}`. The provider references belong to the existing production guidance; no separate media debugging Skill is distributed. `action=generate` requires provider, provider-native model ID, projectId, requestId, modality and prompt. Provider parameters use the selected model API schema; no key argument is accepted. The queued job is polled with action=status and the same projectId/jobId; completed means actual validated files were imported under assets/generated. Cancellation is local and best effort remotely, without a refund promise. Edits still require a fresh project revision/version. Saving a key in editor Media providers enables that provider. Cloud also requires its public HTTPS gateway origin. Configuration and live model discovery are not proof of paid generation success.
+Read action=reference for the selected provider, or `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed}`, alongside the supporting BYOK media workflow `openmotion://workflow/media/start` (`skills/openmotion-media/SKILL.md`). Provider references remain under `openmotion-production`, `openmotion-media` ships alongside the five creative entry Skills as the supporting asset-generation Skill, and the retired `openmotion-debug-media` Skill is not distributed. `action=generate` requires provider, provider-native model ID, projectId, requestId, modality and prompt. Provider parameters use the selected model API schema; no key argument is accepted. The queued job is polled with action=status and the same projectId/jobId; completed means actual validated files were imported under assets/generated. Cancellation is local and best effort remotely, without a refund promise. Edits still require a fresh project revision/version. Saving a key in editor Media providers (`多模态供应商` in Chinese UI) enables that provider. Cloud also requires its public HTTPS gateway origin. Configuration and live model discovery are not proof of paid generation success.
 
 ## Final video presentation
 

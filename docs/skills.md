@@ -49,17 +49,18 @@ Original motion-video requests on a user-supplied topic, including esports recap
 
 ## 同源文档接口
 
-本地文件和 MCP 返回同一份全文。注册表在 `shared/workflow.ts`，一期分发以下五条路线。Skill 名称与目录统一；既有 workflow 短 ID 保持兼容，不增加同义 Skill 入口：
+本地文件和 MCP 返回同一份全文。注册表在 `shared/workflow.ts`，一期分发五条创作主路线及按需支撑素材生成的 `openmotion-media`。Skill 名称与目录统一；既有 workflow 短 ID 保持兼容，不增加同义 Skill 入口：
 
 MCP 工具说明和领域执行位于 `mcp-tools.ts`；`mcp.ts` 保留初始化、协议与共享后台转发。macOS 每条连接保留工程绑定，读取指导不启动后台或改变连接选择；托管工程写入仍校验目标与 revision，见 [共享编辑器](shared-editor.md)。
 
 | Skill | workflow 短 ID | section |
 | --- | --- | --- |
-| openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials |
+| openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials、fal、opendesign、atlascloud、wavespeed |
 | openmotion-director | director | start、actions、craft、phrases、decisions、sound、review、examples |
 | openmotion-template-to-video | template | start |
 | openmotion-recreate | recreate | start、rebuild、verification |
 | openmotion-video-to-template | video-to-template | start、measure、rebuild、project、verification、sources |
+| openmotion-media | media（辅助素材生成，非成片主入口） | start |
 
 ```json
 {"uri":"openmotion://workflow/director/start"}
@@ -85,7 +86,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
-一期公开接口已收敛为 [12 个 openmotion_ Tool](mcp-phase1-tools.md)（9 个工程 Tool、目录获取、模板详情与 media-use）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个入口及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+一期公开接口已收敛为 [12 个 openmotion_ Tool](mcp-phase1-tools.md)（9 个工程 Tool、目录获取、模板详情与 media-use）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
 
 ## openmotion-recreate 能力扩展点
 
@@ -95,7 +96,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 | --- | --- | --- |
 | [SKILL.md](../skills/openmotion-recreate/SKILL.md) frontmatter description | 触发范围按动态图形复刻描述 | 支持新视频类型后同步触发范围，并重跑选路测试 |
 | SKILL.md Role and goal 第二段 | 只支持动态图形；实拍、口播、AI 视频说明不支持，不暗示给素材就能复刻，只提出动态图形版 | 放宽支持范围，缩小拒绝条件 |
-| SKILL.md §3 素材缺口（“Read the selected provider reference for the public media-use Tool”） | Within supported media scope, use shared materials guidance for missing assets; ask only for unresolved inputs or access/capability limits. The BYOK extension adds openmotion_media_use; creative workflow scope remains unchanged | 本包公开生成 Tool 时改写此句，补调用、采用结果和失败处理规则 |
+| SKILL.md §3 素材缺口（“Read the selected provider reference for the public media-use Tool”） | Within supported media scope, use shared materials guidance for missing assets; ask only for unresolved inputs or access/capability limits. The BYOK extension routes configured generation to openmotion-media; creative workflow scope remains unchanged | 本包公开生成 Tool 时改写此句，补调用、采用结果和失败处理规则 |
 | [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 一期 MCP 包不提供生成 Tool，生成交给宿主或 Studio | 与上一行同步修改 |
 | SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；删去念出原品牌的旁白 | 有 TTS 后可改为重新配音，不只删除 |
 | SKILL.md §5 原片作底层（用户自有成片只改几处细节） | 仅此情况可把原片放在时间线上并打补丁 | 支持实拍局部修改或分镜混排时扩展适用条件 |
@@ -105,7 +106,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 ## Tool 契约审计与宿主能力边界
 
-- 以 `shared/phase1-tools.ts` 的 Schema 和实际 handler 为准：Skill 规定何时调用及检查结果，不新增 Tool、参数或后台创作 Agent。五个入口及全部 Markdown 参考都进入公开 Tool 名称回归。
+- 以 `shared/phase1-tools.ts` 的 Schema 和实际 handler 为准：Skill 规定何时调用及检查结果，不新增 Tool、参数或后台创作 Agent。五个创作入口、支撑 Skill `openmotion-media` 及全部 Markdown 参考都进入公开 Tool 名称回归。
 - 指引通过 resources/read 读取；文件读取与具名任务查询使用 openmotion_get_project；保存使用 openmotion_edit_project；导出使用 openmotion_export_request 并自动技术验证。旧的独立工作流、检查、比较、单素材导入、写文件、导出查询/验证 Tool 不在一期公开契约中。
 - 明确 projectId、requestId、revision 与版本身份；导入和 GUI 保存后读回新版本。创建只建立载体，不分析参考或完成影片。预览会 lint 并选择已有工程，不是纯运行时路径查询。
 - 参考下载/分析、CLI lint/timeline/info、比较视频和 ZIP 打包依赖宿主可用的文件/媒体/执行能力，不能声称由这九个 Tool 提供。独立文件夹使用自己的源文件和固定版本 CLI；托管工程的保存与导入不能绕过版本保护。字体/SVG/PDF/任意二进制不属于本期素材导入格式。
@@ -173,6 +174,6 @@ MT05 原先同批补读/执行的问题未重现，但读取完整性未全面�
 
 复测期间当前分支另有首次体验、角色说明改动，director 更新为 v1.4.4。已保留这些改动及共享 edit 接入；冻结实验副本未变化。当前合并文本另通过 7 项接口/文档回归和仓库检查，完整真实会话结果仅对应冻结 v1.4.3，不自动认证合并后的行为。
 
-## Temporary BYOK debug media guidance
+## BYOK media Skill and provider references
 
-BYOK provider references are part of the existing production guidance, available locally and through `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed}`; no separate media debugging Skill is distributed. `openmotion_media_use` reads configured fal.ai, OpenDesign Cloud, Atlas Cloud or WaveSpeedAI credentials inside the service and returns task state and real imported assets; the Agent never needs to read the key file. Formal creative media guidance remains separate.
+`openmotion-media` ships as an on-demand supporting Skill (`skills/openmotion-media/SKILL.md` and `openmotion://workflow/media/start`) alongside the five unchanged creative entry routes, while supplier-specific wire and schema references live in `openmotion://workflow/production/{fal,opendesign,atlascloud,wavespeed}`. Pure motion graphics stay 100% native in code without invoking or mentioning `openmotion_media_use`. When image, video, speech or music generation is needed, `openmotion_media_use` reads configured fal.ai, OpenDesign Cloud, Atlas Cloud or WaveSpeedAI credentials inside the service (never exposing `secrets.json`), guides unconfigured users to Studio's project drawer footer **Media providers**, confirms user consent before spending configured API keys unless already authorized, and snapshots completed files under `assets/generated/...` via `openmotion_get_project`.

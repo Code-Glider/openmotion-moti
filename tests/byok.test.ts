@@ -29,6 +29,8 @@ test('public media tool reads guides, generates fal media once and binds job que
   assert.equal((await stat(path.join(gateway.root, 'secrets.json'))).mode & 0o777, 0o600);
   const inspect = await api.call('openmotion_media_use', { action: 'inspect' });
   assert.deepEqual(inspect.providers.map((p: any) => [p.id, p.enabled]), [['atlascloud', false], ['fal', true], ['opendesign', false], ['wavespeed', false]]);
+  assert.equal(inspect.setupRequired, false);
+  assert.deepEqual(inspect.capabilities.map((c: any) => [c.kind, c.providers]), [['image', ['fal']], ['video', ['fal']], ['speech', ['fal']], ['music', []]]);
   assert.doesNotMatch(JSON.stringify(inspect), /test-fal-private/);
   const reference = await api.call('openmotion_media_use', { action: 'reference', provider: 'fal' });
   assert.match(reference.content, /https:\/\/fal.ai\/docs\//);
@@ -197,4 +199,77 @@ test('WaveSpeed stops deleted tasks, rejects unsafe remote IDs and records auth 
   }
   assert.equal((await gateway.status()).providers.find(p => p.id === 'wavespeed')!.verification, 'rejected');
   await gateway.close();
+}));
+
+test('Atlas normalizes uppercase prediction statuses, excludes lyrics-only models and maps Suno chirp to prompt', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  gateway.options.download = async () => audio;
+  const bodies: any[] = [];
+  let polls = 0;
+  gateway.options.fetcher = (async (raw, init = {}) => {
+    const url = String(raw);
+    if (url === 'https://api.atlascloud.ai/api/v1/models') {
+      return Response.json({ data: [
+        { model: 'minimax/lyrics-generation', categories: ['TEXT-TO-AUDIO'], displayName: 'Lyrics Only' },
+        { model: 'suno/chirp-v5', categories: ['TEXT-TO-SPEECH'], displayName: 'Suno v5' },
+        { model: 'minimax/speech-2.6-turbo', categories: ['TEXT-TO-SPEECH'], displayName: 'MiniMax Speech 2.6 Turbo' },
+      ] });
+    }
+    if (init.method === 'POST') {
+      bodies.push(JSON.parse(String(init.body)));
+      return Response.json({ code: 200, data: { id: `pred-${bodies.length}`, status: 'PROCESSING' } });
+    }
+    polls++;
+    if (url.endsWith('/pred-1')) {
+      return Response.json({ code: 200, data: polls === 1 ? { status: 'PROCESSING' } : { status: 'COMPLETED', outputs: ['https://cdn.example/music.mp3'] } });
+    }
+    return Response.json({ code: 200, data: { status: 'ERROR', error: 'upstream error' } });
+  }) as Fetcher;
+  await gateway.configureProvider('atlascloud', { apiKey: 'test-atlas-key' });
+  const catalog = await api.call('openmotion_media_use', { action: 'models', provider: 'atlascloud', modality: 'audio', refresh: true });
+  const discovered = catalog.catalogs[0].models;
+  assert.ok(!discovered.some((m: any) => m.modelId === 'minimax/lyrics-generation'), 'Lyrics-only text model must not appear in audio catalog');
+  assert.equal(discovered.find((m: any) => m.modelId === 'suno/chirp-v5')?.mode, 'text-to-audio');
+  assert.equal(discovered.find((m: any) => m.modelId === 'minimax/speech-2.6-turbo')?.mode, 'text-to-speech');
+
+  const musicQueued = await api.call('openmotion_media_use', {
+    action: 'generate', provider: 'atlascloud', projectId: store.projectId, requestId: 'atlas-suno-upper',
+    model: 'suno/chirp-v5', modality: 'audio', mode: 'text-to-speech', prompt: 'ambient synth pulse', parameters: { instrumental: true },
+  });
+  const musicDone = await finish(store, musicQueued.job.id);
+  assert.equal(musicDone.state, 'completed', musicDone.error);
+  assert.equal(bodies[0].prompt, 'ambient synth pulse');
+  assert.equal(bodies[0].text, undefined);
+
+  const errorQueued = await api.call('openmotion_media_use', {
+    action: 'generate', provider: 'atlascloud', projectId: store.projectId, requestId: 'atlas-error-upper',
+    model: 'minimax/speech-2.6-turbo', modality: 'audio', mode: 'text-to-speech', prompt: '你好世界', parameters: { voice_id: 'Chinese (Mandarin)_Reliable_Executive' },
+  });
+  const errorDone = await finish(store, errorQueued.job.id);
+  assert.equal(errorDone.state, 'failed');
+  assert.match(errorDone.error!, /Atlas generation error/);
+  assert.equal(bodies[1].text, '你好世界');
+  assert.equal(bodies[1].prompt, undefined);
+  await gateway.close();
+}));
+
+test('media inspect separates no key, rejected key and partial capabilities without exposing keys', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const empty = await api.call('openmotion_media_use', { action: 'inspect' });
+  assert.equal(empty.setupRequired, true);
+  assert(empty.capabilities.every((c: any) => c.providers.length === 0));
+  await gateway.configureProvider('atlascloud', { apiKey: 'atlas-private' });
+  const atlas = await api.call('openmotion_media_use', { action: 'inspect' });
+  assert.equal(atlas.setupRequired, false);
+  assert.deepEqual(atlas.capabilities.map((c: any) => [c.kind, c.providers]), [['image', ['atlascloud']], ['video', ['atlascloud']], ['speech', ['atlascloud']], ['music', ['atlascloud']]]);
+  gateway.options.pollMs = 1;
+  gateway.options.fetcher = (async () => new Response('{"message":"invalid api key"}', { status: 401, headers: { 'Content-Type': 'application/json' } })) as Fetcher;
+  const queued = await api.call('openmotion_media_use', { action: 'generate', provider: 'atlascloud', model: 'google/nano-banana-2/text-to-image', projectId: store.projectId, requestId: 'rejected-key', modality: 'image', prompt: 'cup' });
+  assert.equal((await finish(store, queued.job.id)).state, 'failed');
+  const rejected = await api.call('openmotion_media_use', { action: 'inspect' });
+  const provider = rejected.providers.find((p: any) => p.id === 'atlascloud');
+  assert.deepEqual([provider.configured, provider.available, provider.verification], [true, false, 'rejected']);
+  assert.match(provider.reason, /rejected/);
+  assert.equal(rejected.setupRequired, true);
+  assert.doesNotMatch(JSON.stringify([empty, atlas, rejected]), /atlas-private/);
 }));

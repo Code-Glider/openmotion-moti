@@ -8,8 +8,11 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
   if (args.provider !== undefined && !mediaProviders.includes(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
   if (args.action === 'inspect') {
     const status = await gateway.status();
-    return { providers: status.providers.filter(p => mediaProviders.includes(p.id as any)),
-      settings: 'Open Media providers in the editor project drawer. Saving a key enables the provider.',
+    const capabilities = await gateway.mediaCapabilities();
+    const providers = status.providers.filter(p => mediaProviders.includes(p.id as any));
+    return { providers, capabilities, setupRequired: !providers.some(p => p.available),
+      capabilityNote: 'speech = narration/dialogue (text-to-speech); music = other audio. Lists come from built-in and cached catalogs: confirm an empty kind with action "models" and refresh: true before telling the user it is unsupported.',
+      settings: 'Open Media providers (多模态供应商) at the bottom of the Studio left project drawer. Saving a key enables the provider.',
       references: mediaProviders.map(provider => ({ provider, uri: `openmotion://workflow/production/${provider}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }

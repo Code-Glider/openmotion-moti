@@ -26,7 +26,7 @@
 
 ## BYOK provider references
 
-For configured BYOK generation, call openmotion_media_use with action=inspect, then action=reference for the selected provider. The service injects saved credentials; never read key files or put a key in a prompt. Query action=models with refresh=true and check the selected model's current schema before generating. Use an explicit projectId and stable requestId; poll the original local job with action=status rather than resubmitting. Only completed assets are usable; composition edits require the latest revision/version. Missing provider detail is unknown, not proof of an invalid key. Inspect the original task/history before another paid submission.
+Pure motion graphics stay native in code: do not call, suggest or ask about generation. When a task genuinely needs generated imagery, footage, speech or music, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
 
 Read only the selected provider's document for model queries, request templates, polling and error interpretation:
 

@@ -15,6 +15,7 @@ export const builtinModels: Model[] = [
   { ...builtin('codex', 'image-generation', 'Codex Image', 'image', 'text-to-image'), supportsImageReference: true },
   builtin('atlascloud', 'google/nano-banana-2/text-to-image', 'Nano Banana 2', 'image', 'text-to-image'),
   builtin('atlascloud', 'bytedance/seedance-2.0/text-to-video', 'Seedance 2.0', 'video', 'text-to-video'),
+  builtin('atlascloud', 'minimax/speech-2.6-turbo', 'MiniMax Speech 2.6 Turbo', 'audio', 'text-to-speech'),
   builtin('atlascloud', 'suno/chirp-v4', 'Suno v4', 'audio', 'text-to-audio'),
   builtin('fal', 'fal-ai/flux/schnell', 'FLUX Schnell', 'image', 'text-to-image'),
   builtin('fal', 'fal-ai/wan/v2.2-a14b/text-to-video', 'Wan 2.2', 'video', 'text-to-video'),
@@ -25,7 +26,8 @@ export const builtinModels: Model[] = [
 /** Prefer explicit output/task metadata; never infer image output from image input. */
 export function classifyModel(category: string, output?: string): { modality: Modality; mode: string } | null {
   const text = category.toLowerCase().replace(/_/g, '-');
-  if (/to-text|transcri|speech-recognition|training|embedding|caption|detection|segmentation/.test(text)) return null;
+  if (/to-text|lyrics-generation|transcri|speech-recognition|training|embedding|caption|detection|segmentation/.test(text)) return null;
+  if (/\bsuno\/chirp/.test(text)) return { modality: 'audio', mode: 'text-to-audio' };
   for (const modality of ['image', 'video', 'audio'] as Modality[]) {
     const match = text.match(new RegExp(`(?:text|image|video|audio)-to-${modality}`));
     if (match) return { modality, mode: match[0] };

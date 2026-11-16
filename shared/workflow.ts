@@ -57,15 +57,22 @@ export const workflowRegistry = {
       sources: 'skills/openmotion-video-to-template/references/rule-sources.md',
     },
   },
+  media: {
+    status: 'ready',
+    sections: {
+      start: 'skills/openmotion-media/SKILL.md',
+    },
+  },
 } as const;
 
 // Keep the original production section export and getWorkflow(section) API.
 export const workflowFiles = workflowRegistry.production.sections;
 export const workflowNames = Object.keys(workflowRegistry);
 export const workflowSections = [...new Set(Object.values(workflowRegistry).flatMap(workflow => Object.keys(workflow.sections)))];
-export const phase1WorkflowNames = ['production', 'director', 'template', 'recreate', 'video-to-template'];
+export const phase1WorkflowNames = ['production', 'director', 'template', 'recreate', 'video-to-template', 'media'];
 export const phase1Skills = ['openmotion-production', 'openmotion-director', 'openmotion-template-to-video', 'openmotion-recreate', 'openmotion-video-to-template'];
-export const packagedSkills = phase1Skills;
+export const supportingSkills = ['openmotion-media'];
+export const packagedSkills = [...phase1Skills, ...supportingSkills];
 export function workflowResources() {
   return Object.entries(workflowRegistry).filter(([name]) => phase1WorkflowNames.includes(name)).flatMap(([workflow, definition]) => Object.keys(definition.sections).map(section => ({
     uri: `openmotion://workflow/${workflow}/${section}`, name: `${workflow}/${section}`, title: `OpenMotion · ${workflow}/${section}`, mimeType: 'application/json',
