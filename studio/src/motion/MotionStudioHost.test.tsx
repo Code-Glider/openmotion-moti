@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MotionEditorFrame, MotionStudioHost } from './MotionStudioHost';
 import { COMMUNITY_URL, FEISHU_COMMUNITY_URL } from './CommunityLink';
 import discordLogo from './community-discord.svg';
-import feishuLogo from './community-feishu.svg';
+import feishuLogo from '../../../packages/design-system/brand/community-feishu.svg';
 import { GITHUB_REPOSITORY } from './githubRepository';
 import { StudioHeader } from '../components/StudioHeader';
 import { useMotionHistoryOperation } from './MotionHistoryState';
