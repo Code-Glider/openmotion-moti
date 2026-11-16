@@ -104,8 +104,8 @@ export class Phase1Service {
       trackPhase1Result(this.context.tracking, name, args, undefined, error, host);
       if (this.context.tracking && args?.workId && name !== 'motion_export_cancel') {
         const work = await this.workRounds.get(args.projectId, args.workId).catch(() => null);
-        if (work?.state === 'failed' && !work.jobId) {
-          this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: work.mode, error_code: trackingError(error), stage: name }, undefined, undefined, host);
+        this.context.tracking.track('host_run_failed', { run_id: args.workId, task_type: work?.mode ?? 'modify', error_code: trackingError(error), stage: name }, undefined, undefined, host);
+        if (work?.state === 'failed') {
           this.context.tracking.track('host_state_changed', { run_id: args.workId, sequence: 2, state: 'failed', phase: name }, undefined, undefined, host);
         }
       }
