@@ -16,11 +16,15 @@ export function ProjectAgentAction() {
   const { projectId } = useStudioShellContext();
   const { workspace, switchingDisabled, settingsOpen } = useWorkspaceChrome();
   const [open, setOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const available = Boolean(projectId && workspace.status?.projectId === projectId && !switchingDisabled && !settingsOpen);
   useEffect(() => setOpen(false), [projectId, settingsOpen]);
 
-  return <Popover.Root modal={false} open={open && available} onOpenChange={setOpen}>
+  return <Popover.Root modal={false} open={open && available} onOpenChange={next => {
+    if (next) setHasOpened(true);
+    setOpen(next);
+  }}>
     <Tooltip label={t('MCP')}>
       <Popover.Trigger render={<Button ref={trigger} className="motion-project-agent-trigger" disabled={!available}
         aria-label={t('MCP')}>
@@ -36,7 +40,7 @@ export function ProjectAgentAction() {
             <Popover.Title className="text-step-14 font-semibold text-text-1">{t('MCP')}</Popover.Title>
             <Popover.Close render={<IconButton aria-label={t('Close')} icon={<RemixIcon name="close-line" size={16} />} />} />
           </div>
-          {available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} />}
+          {hasOpened && available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} />}
         </Popover.Popup>
       </Popover.Positioner>
     </Popover.Portal>

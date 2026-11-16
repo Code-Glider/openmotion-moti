@@ -79,5 +79,5 @@ await mkdir(path.join(output, 'assets'), { recursive: true });
 await copyFile(path.join(root, 'node_modules/gsap/dist/gsap.min.js'), path.join(output, 'assets/gsap.min.js'));
 await copyFile(path.join(source, 'LICENSE'), path.join(output, 'OPENDESIGN-LICENSE.txt'));
 const catalog: BrandCatalog = { schemaVersion: 1, repository: 'https://github.com/nexu-io/open-design', revision, entries };
-await writeFile(path.join(output, 'catalog.json'), JSON.stringify(catalog, null, 2) + '\n');
+await writeFile(path.join(output, 'catalog.json'), JSON.stringify(catalog) + '\n');
 console.log(`Imported ${entries.length} design systems at ${revision}`);
