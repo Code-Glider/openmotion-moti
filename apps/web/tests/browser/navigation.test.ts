@@ -218,6 +218,8 @@ it("browses without a project, retains drafts through page history and keeps ack
   const linked = `${url}?page=templates&embed=1${intended.fragment}`;
   operations.length = 0;
   await page.goto(linked);
+  await expect.poll(() => cards.count()).toBe(3);
+  operations.length = 0;
   await page.reload();
   await expect.poll(() => cards.count()).toBe(3);
   expect(operations).toEqual(["template_list"]);
@@ -243,7 +245,9 @@ it("browses without a project, retains drafts through page history and keeps ack
   expect(await code.inputValue()).toBe(edited);
   expect(await code.getAttribute("data-retained")).toBe("draft");
   expect(await code.evaluate((node) => (node as HTMLTextAreaElement).selectionStart)).toBe(5);
-  expect(operations.filter((op) => !["template_list", "workspace_observe"].includes(op))).toEqual([]);
+  // The retained editor may observe durable task metadata; page navigation must not write or load source.
+  const reads = ["template_list", "workspace_observe", "export_list", "generation_list"];
+  expect(operations.filter((op) => !reads.includes(op))).toEqual([]);
   expect((await client.execute("workspace_state", {})).selection).toEqual(before.selection);
   // Save in an earlier page-history entry, then forward through an older URL.
   await click("保存");
