@@ -8,6 +8,9 @@ import { canonical, readJSON, runFile, withLock, writeJSON } from './runtime-ass
 // application, launcher and Skills, then hands the MCP entry to the calling Agent to register.
 export const hosts = ['codex', 'claude', 'deepseek', 'workbuddy'];
 export const genericHostPattern = /^[a-z][a-z0-9-]{0,31}$/;
+// `constructor` and the other Object.prototype keys match the name pattern but are never an Agent name.
+const prototypeHostNames = new Set(Object.getOwnPropertyNames(Object.prototype));
+export const isGenericHostName = host => genericHostPattern.test(host) && !prototypeHostNames.has(host);
 // Generic hosts share one flat Skills root, so their Skills have one owner rather than one per Agent name.
 const genericSkillOwner = 'agents';
 // Keep ownership stable so earlier local installations remain upgradable.
@@ -60,9 +63,10 @@ export async function harnessBundleInventory(home, configFile) {
 
 export async function hostPlan(options, home, launcher, previous, bundleId) {
   const host = options.host || 'codex';
-  assert(hosts.includes(host) || genericHostPattern.test(host), 'Use --host ' + hosts.join('|') + ' or the current Agent name in lowercase letters, digits and hyphens (for example opencode)');
+  assert(hosts.includes(host) || isGenericHostName(host), 'Use --host ' + hosts.join('|') + ' or the current Agent name in lowercase letters, digits and hyphens (for example opencode)');
   const transport = { type: 'stdio', command: process.execPath, args: [launcher] };
-  const saved = previous?.hosts?.[host] || (host === 'codex' && previous?.skillsDirectory ? { skillsDirectory: previous.skillsDirectory } : null);
+  const saved = Object.hasOwn(previous?.hosts ?? {}, host) ? previous.hosts[host]
+    : (host === 'codex' && previous?.skillsDirectory ? { skillsDirectory: previous.skillsDirectory } : null);
   if (!hosts.includes(host)) {
     // No adapter: the installer cannot read this host's configuration, so the calling Agent registers the entry.
     const skillsDirectory = await canonical(options.skillsDirectory || saved?.skillsDirectory || path.join(os.homedir(), '.agents/skills'));

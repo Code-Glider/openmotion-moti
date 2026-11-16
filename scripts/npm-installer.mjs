@@ -233,8 +233,8 @@ async function installedConnection(options) {
   const home = await canonical(options.home || defaultHome(environment));
   const state = await readJSON(path.join(home, 'install.json'));
   assert(state?.managedBy === managedBy, 'Run setup for the selected host and installation home first.');
-  assert(state.hosts?.[host] || host === 'codex' && state.skillsDirectory, 'This installation is not registered for the selected host.');
-  const saved = state.hosts?.[host];
+  assert(Object.hasOwn(state.hosts ?? {}, host) || host === 'codex' && state.skillsDirectory, 'This installation is not registered for the selected host.');
+  const saved = Object.hasOwn(state.hosts ?? {}, host) ? state.hosts[host] : undefined;
   try {
     const plan = await hostPlan({ ...options, skillsDirectory: saved?.skillsDirectory, profile: options.profile || saved?.profile }, home, state.launcher, state);
     const connection = plan.readConnection ? await plan.readConnection() : plan.connection;

@@ -724,7 +724,7 @@ test('an Agent without an adapter gets the same application, launcher and Skills
 
 test('invalid Agent names are rejected before any download or state change', async t => {
   const options = await setupFixture(t);
-  for (const host of ['Open Code', '../opencode', 'OPENCODE', '-x', 'a'.repeat(33)]) {
+  for (const host of ['Open Code', '../opencode', 'OPENCODE', '-x', 'a'.repeat(33), 'constructor']) {
     await assert.rejects(setup({ ...options, host }), /current Agent name/, host);
   }
   await assert.rejects(readdir(path.join(options.home, 'apps')), { code: 'ENOENT' });
@@ -747,4 +747,6 @@ test('adapter-less Agents can diagnose and call the installed MCP directly', { s
   const listed = JSON.parse(await runFile(process.execPath, [cli, 'tools', '--home', options.home, '--host', 'opencode']));
   assert.equal(listed.tools.length, tools.length);
   assert.equal((await diagnose({ home: options.home, host: 'gemini' })).status, 'failed', 'an Agent that was never set up is not reported as installed');
+  await assert.rejects(runFile(process.execPath, [cli, 'tools', '--home', options.home, '--host', 'constructor']), /not registered/, 'an Object.prototype key is never an installed Agent');
+  assert.match((await diagnose({ home: options.home, host: 'constructor' })).message, /not registered/);
 });
