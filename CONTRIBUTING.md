@@ -43,6 +43,21 @@ brief that also identifies the selected template; **Recreate template** copies o
 the recreation brief. Paste either into your Agent to continue. These controls do
 not upload media or create a pull request by themselves.
 
+### Submit a Brand Kit
+
+Studio's **Submit Brand Kit** link opens this contribution guide. Start with a
+public website or a local Brand Kit Motion Package. Include the original source,
+permission and license notes, reusable design tokens and brand assets, and a
+preview of the fixed showcase. Mark the package `brand-kit` and `style-only`:
+its colors, typography and visual rules can be reused, while the showcase's story
+and timing are not template guidance. See [Brand Kits](docs/brand-kits.md).
+
+Ask your Agent to prepare a focused pull request with the source references,
+package validation and preview evidence. Keep private context files and rules out
+of the contribution. The link does not upload a kit, submit a pull request or
+publish it to the official collection. Catalogue inclusion requires review and
+an explicit update to the maintained catalogue.
+
 Work from the repository root; read [AGENTS.md](AGENTS.md) and the [architecture](docs/product/architecture.md). Use the pinned CI Node version. Keep `package-lock.json` and `scripts/runtime-lock.json` in sync with any intentional dependency change.
 
 Before opening a PR, follow the [local validation guidance](AGENTS.md#local-validation) and report the checks you actually ran. Studio unit tests use `npm run test:studio`. Model creation and visual acceptance require separate evidence. Do not overwrite real user data or host configuration to test an installer.

@@ -49,6 +49,7 @@
 - [shared-editor.md](shared-editor.md)
 - [skills.md](skills.md)
 - [template-catalog.md](template-catalog.md)
+- [Brand Kits](brand-kits.md): Website style extraction, fixed previews and style-only Motion Packages.
 - [Repository template source, storage checks and CMS publication](template-repository.md)
 - [templates/requirement.md](templates/requirement.md)
 - [test-packages.md](test-packages.md)

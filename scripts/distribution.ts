@@ -1,4 +1,4 @@
-import { lstat, open, readdir } from 'node:fs/promises';
+import { lstat, open, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagedSkills } from '../shared/workflow.ts';
@@ -9,6 +9,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 
 // New documentation and developer scripts require an explicit distribution decision.
 const motionPackageFiles = [
+  'docs/brand-kits.md',
   'docs/motion-package-spec.md',
   'packages/motion-package/README.md',
   'packages/motion-package/package.json',
@@ -583,6 +584,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',
     'scripts/repository-media.ts', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'scripts/build-template-cards.mjs',
     'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
+    'gateway/brand-capture/LICENSE', 'gateway/brand-capture/NOTICE.md',
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
@@ -608,6 +610,14 @@ export async function distributionFiles(profile: string, include: (file: string)
     }
   }
   for (const directory of ['shared', 'gateway']) await walk(directory, /\.(?:ts|mjs|json)$/);
+  // Public, pinned design-system references; generated local kits stay outside the checkout.
+  const brandRoot = 'library/brand-kits';
+  files.push(...['catalog.json', 'websites.json', 'NOTICE.md', 'OPENDESIGN-LICENSE.txt', 'THIRD-PARTY-NOTICES.txt', 'assets/gsap.min.js'].map(file => brandRoot + '/' + file));
+  const brandCatalog = JSON.parse(await readFile(path.join(root, brandRoot, 'catalog.json'), 'utf8'));
+  for (const entry of brandCatalog.entries) {
+    if (!/^[a-z][a-z0-9-]*$/.test(entry.id)) throw new Error('Invalid packaged Brand Kit ID');
+    files.push(...['manifest.json', 'DESIGN.md', 'tokens.css'].map(file => `${brandRoot}/sources/${entry.id}/${file}`));
+  }
   await walk('web', /\.(?:ts|js|json|html|css|svg|jpg|png|webp|ttf|woff2?|txt)$/);
   for (const directory of ['templates', 'template-library']) await walk(directory, /\.(?:html|js|json|css|svg|jpg|png|webp|md|txt|ttf|woff2?)$/);
   files.push('template-library/openmotion-welcome/assets/soundtrack.m4a');

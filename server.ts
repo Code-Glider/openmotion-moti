@@ -44,6 +44,8 @@ import { collectDiagnostics, diagnosticLimits, recordDiagnostic } from './script
 import { isWorkspaceSettingsPage } from './shared/workspace-url.ts';
 import { TaskLedger } from './tracking/task-ledger.ts';
 import { workRoundMode } from './inline-video.ts';
+import { brandKitHttp } from './gateway/brand-http.ts';
+import { brandKitsFor } from './gateway/brand-kits.ts';
 
 const sharedStore = new WorkspaceStore();
 export type Service = { trackingHosts?: Map<string, { host: HostContext; createdAt: number }>; diagnostics?: { running: boolean; lastExport: number; events: number; window: number }; studio?: Studio; runtimeRoot?: string; nativeRoot?: string; ffmpeg?: boolean; switching?: boolean; studioPort?: number; browser?: WorkspaceBrowser; editorToken?: string; ensureStudio?: (projectId?: string) => Promise<Studio>; launchStudio?: (directory: string, port: number) => Promise<Studio>; phase1?: Phase1Service; phase1Mutation?: Promise<void>; tracking?: OmTracking };
@@ -358,6 +360,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       return json(res, 405, { error: 'Unsupported conversation request' });
     }
     if (motionRequest && url.pathname.startsWith('/api/assets/') && await assetHttp(req, res, url, store)) return;
+    if (motionRequest && await brandKitHttp(req, res, url, store.directory, input)) return;
     const editorUrl = `http://${host || 'localhost'}/#project/${store.projectId}`;
     if (motionRequest && ['/api/diagnostics', '/api/diagnostics/events'].includes(url.pathname)) {
       // Downloads are POST-only: cross-origin links must not trigger a collection.
@@ -790,7 +793,7 @@ export async function startServer(store = sharedStore, port = Number(process.env
   const timer = setInterval(tick, 500); tick();
   return { server, get activeToolCalls() { return (context.phase1?.pending ?? 0) + assetConversations(store).pending; }, openProject: async (projectId: string) => openProject(store, context, origin, (await store.get()).revision, { projectId }, store.projectId), get studio() { return context.studio!; }, ensureStudio: context.ensureStudio,
     info: async () => ({ previewUrl: origin, studioUrl: context.studio?.alive() ? `${origin}/#project/${store.projectId}` : undefined, engine: 'hyperframes', ready: true, editorReady: Boolean(context.studio?.alive()), ffmpeg, revision: (await store.get()).revision, dataDirectory: store.directory, browserOpened: false, nativeRuntime: await nativeRuntimeStatus(pluginRoot), authoringGuide: path.join(runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'), hyperframesCli: cliPath(runtimeRoot) }),
-    close: async () => { clearInterval(timer); await context.browser?.close(); await gateway.close(); await assetConversations(store).close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
+    close: async () => { clearInterval(timer); await context.browser?.close(); await brandKitsFor(store.directory).close(); await gateway.close(); await assetConversations(store).close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
 }
 if (isMain(import.meta.url)) {
   try {

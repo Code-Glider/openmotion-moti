@@ -24,6 +24,7 @@ import { readWorkspacePage, workspacePageHref, type WorkspacePage } from './work
 import { WORKSPACE_LOCATION_CHANGED, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
+import { BrandKitPage } from './BrandKitPage';
 
 // Settings shares the model-picker dependencies. Keep it in the loaded shell so
 // an open editor never requests a removed Settings chunk after a local rebuild.
@@ -179,7 +180,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       </div>
       {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings)} inert={!assetsOpen || Boolean(settings)}><AssetsPage active={assetsOpen && !settings} /></div>}
       {skillsOpen && !settings && <div className="om-skills-host"><SkillsPage skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} /></div>}
-      {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'mcp'
+      {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'brand-kit'
+        ? <BrandKitPage onClose={() => navigatePage({ settings: null })} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} /> : settings === 'mcp'
         ? <McpConnectionPage previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
         : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
       </div>
