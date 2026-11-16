@@ -22,7 +22,9 @@ Keep these control files together:
 
 - `.github/workflows/motion-candidate.yml`, `motion-publish-test.yml`, `motion-publication-recovery.yml` and `motion-install-check.yml` (read-only manual rechecks).
 - `.github/scripts/motion-release.mjs`, `motion-scan.mjs`, `motion-registry.mjs`, `motion-registry-smoke.mjs`, `publish-install-guide.mjs` and `.github/gitleaks.toml`.
-- `scripts/runtime-assets.mjs`, `release-version.mjs`, `install-guide.mjs`, `docs/install.md`, `docs/templates/release-record.md` and `docs/templates/candidate-install.md`.
+- `scripts/runtime-assets.mjs`, `release-version.mjs`, `install-guide.mjs`, `docs/install-onboarding.md`, `docs/templates/npm-install.md`, `docs/templates/release-record.md` and `docs/templates/candidate-install.md`.
+
+The generator's two documentation inputs are `docs/templates/npm-install.md` (the published guide template) and `docs/install-onboarding.md` (inlined as the installation-success contract). The short `docs/install.md` in the source repository is only an archived pointer to the source guide; editing it does not change a generated guide.
 
 Protect changes to the trusted control files and `main`; keep default-branch registration aligned. There is no `motion-test-publish` GitHub Environment prerequisite or Review deployments step in this version.
 
