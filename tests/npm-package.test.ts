@@ -87,7 +87,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     await extractArchive(built.application, application); await extractArchive(built.installer, installer);
     const sourceEnv = { ...process.env }; delete sourceEnv.MOTION_TEMPLATE_SOURCE;
     const sourceMode = await runFile(process.execPath, ['--input-type=module', '-e', `import {templateConfig} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/template-config.ts')).href)}; process.stdout.write(templateConfig().source);`], { env: sourceEnv });
-    assert.equal(sourceMode, 'cms', 'An npm application without repository templates must retain its CMS source');
+    assert.equal(sourceMode, 'github', 'An npm application without repository templates must read the latest GitHub catalog');
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
     const readme = await readFile(path.join(installer, 'package/README.md'), 'utf8');
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));

@@ -74,7 +74,7 @@ export async function packageNpm(output = path.join(root, 'dist/npm-local'), ver
   output = path.resolve(output);
   const explicitVersion = version !== undefined;
   if (explicitVersion) checkReleaseVersion(version);
-  const templateConfig = packageTemplateConfig(templateEnvironment ?? (explicitVersion ? releaseTemplateEnvironment(version) : 'prod'));
+  const templateConfig = packageTemplateConfig(templateEnvironment ?? (explicitVersion ? releaseTemplateEnvironment(version) : 'prod'), 'github');
   const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const lockfile = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'utf8'));
   const runtime = JSON.parse(await readFile(path.join(root, 'scripts/runtime-lock.json'), 'utf8'));

@@ -147,7 +147,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         validateInput(definition.inputSchema, args);
         if (internalName === 'motion_open_preview' && args.target !== 'templates' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
         if (args.sessionId === undefined) delete args.sessionId;
-        if (templateConfig().source === 'repository' && ['motion_list_templates', 'motion_get_template'].includes(internalName)) {
+        if (['repository', 'github'].includes(templateConfig().source) && ['motion_list_templates', 'motion_get_template'].includes(internalName)) {
           const catalog = templateCatalogFor(store.directory);
           const value = internalName === 'motion_list_templates' ? await catalog.index() : await catalog.detail(args.templateId);
           return result({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value });
