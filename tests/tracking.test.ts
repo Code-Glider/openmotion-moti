@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createTracker, deviceContext, validProperties } from '../tracking/core.ts';
 import { createNodeTracking, createPosthogSender, loadIdentity } from '../tracking/node.ts';
-import { omEvents, studioEvents } from '../tracking/events.ts';
+import { assetActions, assetToolAction, omEvents, studioEvents } from '../tracking/events.ts';
 import { closeTracking, createAppTracking, saveTrackingPreference, trackingError } from '../shared/tracking.ts';
 import { Phase1Service } from '../phase1.ts';
 import { renderNext } from '../server.ts';
@@ -30,6 +30,25 @@ test('Studio event types reject Node-only events and invalid semantic fields', (
     '--noEmit', '--strict', '--allowImportingTsExtensions', '--module', 'ESNext', '--moduleResolution', 'Bundler',
     '--target', 'ES2022', '--lib', 'ES2023,DOM', '--skipLibCheck', path.join(pluginRoot, 'tests/tracking-types.ts')],
   { cwd: pluginRoot, stdio: 'pipe' });
+});
+
+test('asset call action is a closed optional dimension and never includes arbitrary input', () => {
+  assert.deepEqual([...assetActions], phase1Tools.find(tool => tool.name === 'openmotion_assets_use')!.inputSchema.properties.action.enum);
+  for (const name of ['openmotion_assets_use', 'openmotion_assets', 'motion_assets_use', 'motion_assets']) {
+    for (const action of assetActions) assert.equal(assetToolAction(name, { action, prompt: 'PRIVATE_PROMPT' }), action);
+    for (const input of [null, {}, { action: 'PRIVATE_ACTION' }, { action: 42 }, { action: ['read'] }]) assert.equal(assetToolAction(name, input), undefined);
+  }
+  assert.equal(assetToolAction('openmotion_media_use', { action: 'read' }), undefined);
+  for (const event of ['mcp_tool_started', 'mcp_tool_finished', 'webmcp_tool_started', 'webmcp_tool_finished']) {
+    const web = event.startsWith('webmcp');
+    const fields = { tool_name: web ? 'openmotion_assets_use' : 'motion_assets', call_id: crypto.randomUUID(),
+      ...(web ? { transport: 'webmcp' } : { accepted: true }),
+      ...(event.endsWith('finished') ? { outcome: 'success', duration_ms: 12 } : {}) };
+    assert(validProperties(omEvents, event, fields), 'Existing events without action remain valid');
+    for (const action of assetActions) assert(validProperties(omEvents, event, { ...fields, action }));
+    for (const action of ['PRIVATE_ACTION', 42, ['read']]) assert(!validProperties(omEvents, event, { ...fields, action }));
+    assert(!validProperties(omEvents, event, { ...fields, action: 'read', data: 'PRIVATE_BASE64' }));
+  }
 });
 
 test('bounded queue rejects private properties, preserves UUID/time on retries and serializes flushes', async () => {
@@ -151,7 +170,7 @@ test('browser ingress rejects forged identity, worker events and oversized batch
 }, false));
 
 test('domain events follow real commits, skip replay and retain safe failure without source contents', () => fixture(async store => {
-  assert.deepEqual([...toolNames].sort(), phase1Tools.map(tool => legacyToolName(tool.name)).sort());
+  assert.deepEqual([...toolNames].sort(), [...new Set(phase1Tools.map(tool => legacyToolName(tool.name)))].sort());
   const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
   const service = new Phase1Service(store, pluginRoot, { tracking, origin: () => 'http://127.0.0.1:4173',
     nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });

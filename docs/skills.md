@@ -6,6 +6,12 @@ Old `motion_*` / legacy `design_*` Tool names and `motion://` resource addresses
 
 Renaming does not change schemas, defaults, engine versions, permissions or project data formats. Internal request identities and telemetry keys retain their original names so retries cannot duplicate saved changes or exports. Compatible running backends are negotiated using either Tool spelling. See [installation and migration](npm-installation.md#public-names-and-compatibility). Generic terms such as motion graphics and motion blur remain animation terminology.
 
+## Media tools and upstream guidance
+
+All production entries share the [material tool policy](../skills/openmotion-production/references/materials.md#tool-selection-and-discovery): choose sources by content need, then prefer OpenMotion when its available capabilities match the operation. Retrieval of original material is distinct from generation. External tools, including other video platforms' stock search, can fill capability gaps within existing authorization without requiring the user to name a platform. Keep supported project operations in OpenMotion and external contributions scoped to the needed operation.
+
+The [native engine boundary](../skills/openmotion-production/references/native.md#engine-guidance-boundary) applies to both filesystem guides and MCP engine resources. Hyperframes supplies technical constraints, not supplier onboarding, creative routes, mandatory soundtrack defaults or delivery policy. These are Agent instructions, not host-level tool isolation; refreshed Skills must be loaded before evaluating model behavior.
+
 ## 可选社区资源
 
 [`library/`](../library/README.zh-CN.md) 收纳可选创作 Skills、模板索引、组件配方、`MOTION_DESIGN.md` 设计体系与 Brandkits。首个 [`brandkit`](../library/skills/openmotion-brandkit/SKILL.md) 只整理品牌上下文，可用 `npx skills add ./library/skills --skill openmotion-brandkit` 单独安装。它不进入以下五个核心制作入口、不自动注册为 MCP resource，也不改变制作意图路由。资源需要由用户或 Agent 明确选择与提供；新增条目遵循[贡献清单](../library/ENTRY_TEMPLATE.md)。
@@ -20,7 +26,7 @@ Renaming does not change schemas, defaults, engine versions, permissions or proj
 
 Director and its existing quality references now cover concrete visual events, joint material/motion design, recognizable action windows, representative prototypes and reuse of accepted implementations. Shared intake/runtime guidance covers scoped material acquisition; edit and verification own timing-evidence invalidation and evidence classification. No Skill, Resource section, public Tool or media service is added.
 
-The current five-route, thirteen-Tool contract, editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
+The current five-route contract with fourteen registered Tool names (one compatibility alias), editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
 
 ## Reference reconstruction guidance
 

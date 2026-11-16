@@ -1,7 +1,7 @@
 import { inlineVideoUri } from './inline-video.ts';
 import { publicToolName, legacyToolName } from './public-names.mjs';
 import { templateDiscoveryGuide } from './workflow-entry.js';
-import { assetLibraryTool } from './asset-tools.ts';
+import { assetLibraryTool, assetUseTool } from './asset-tools.ts';
 const id = { type: 'string', minLength: 1, maxLength: 100 };
 const projectId = { type: 'string', pattern: '^(project|[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12})$' };
 const workId = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
@@ -17,6 +17,7 @@ const display = object({ revision, versionId: id, previewUrl: { type: 'string', 
 const read = { readOnlyHint: true, openWorldHint: false };
 const write = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 export const phase1Tools = [
+  assetUseTool,
   assetLibraryTool,
   { name: 'openmotion_media_use', title: 'OpenMotion · Media Use', description: 'Use configured media providers, OpenDesign account models and registered OpenAI-compatible image/speech APIs to generate files. Start with action=inspect to discover enabled providers and their reference URIs. Before model discovery or generation, call action=reference with the selected provider to read its bundled guide: model-list API, supported modality request templates, authentication/input mapping, polling, error meanings and retry limits. Reference reading needs no projectId, key or local filesystem access; the same guides are discoverable through MCP resources/list and resources/read. Then query action=models with provider and refresh=true, select the provider-native model and check its schema. Generate requires explicit projectId, stable requestId, provider, model, modality and prompt; returns queued, not media. Poll action=status with the same projectId/jobId. The local service injects credentials; never pass or read keys. Connect an account or configure a provider in Settings > Model providers. Language/embedding selections do not run through this media tool. Only completed assets are imported; composition editing is separate. No automatic paid fallback or resubmission.',
     inputSchema: object({ action: { enum: ['inspect', 'reference', 'models', 'generate', 'status', 'cancel'], description: 'inspect returns provider setup state and reference URIs; reference returns the selected provider guide; models discovers capabilities; generate submits a job; status reads that original job; cancel requests cancellation.' }, provider: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,80}$', description: 'Required for reference and generate; optional provider filter for models. Read this provider reference before constructing model queries or generation inputs.' },
@@ -57,6 +58,8 @@ export function phase1TransportTool(health: { mcp?: { protocol?: unknown; tools?
   const name = publicToolName(tool);
   if (typeof name !== 'string' || !phase1McpCapabilities.tools.includes(name)
     || health.mcp?.protocol !== phase1McpCapabilities.protocol || !Array.isArray(health.mcp.tools)) return;
+  // An older asset handler does not advertise the new read contract.
+  if (name === 'openmotion_assets_use') return health.mcp.tools.includes(name) ? name : undefined;
   return [name, legacyToolName(name)].find(candidate => (health.mcp!.tools as unknown[]).includes(candidate));
 }
 
@@ -65,6 +68,9 @@ export function supportsPhase1Tool(health: { mcp?: { protocol?: unknown; tools?:
 }
 
 export function validateInput(schema: any, value: any, field = 'arguments'): void {
+  if (schema.oneOf && schema.oneOf.filter((variant: any) => {
+    try { validateInput(variant, value, field); return true; } catch { return false; }
+  }).length !== 1) throw new Error('INVALID_ARGUMENT: ' + field + ' must match one action and its required fields');
   if (schema.enum && !schema.enum.includes(value)) throw new Error('INVALID_ARGUMENT: ' + field);
   if (schema.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_ARGUMENT: ' + field + ' must be an object');

@@ -19,6 +19,12 @@ For a video task, identify OpenMotion as the intended execution path in the firs
 
 If OpenMotion tools are unavailable or fail, disclose the connection status and recovery action as soon as it is observed, including during planning. Apply the [connection diagnosis and recovery rules](production.md#tool-transport-and-workspace-readiness) before creating or importing work. Use the installed host/home identity, retain the actual connection error and verify recovery through a real read. For npm installs, setup's directAccess commands can call the same registered MCP in the current chat when native discovery is missing or stale; this does not prove native host reconnection. A separate CLI probe cannot confirm the current chat connection. Continue independent planning within the requested scope while connection recovery is pending.
 
+## OpenMotion capability priority
+
+Prefer OpenMotion for operations its available capabilities can satisfy, including project authoring, timeline edits, preview and export. For material gaps, first choose retrieval, generation or native graphics from the content need, then apply the [shared tool-selection policy](materials.md#tool-selection-and-discovery). External tools, including other video-platform tools, can supply missing capabilities within the task's authorization.
+
+Read Hyperframes guidance within the [native engine boundary](native.md#engine-guidance-boundary): it supplies technical authoring and rendering constraints, while OpenMotion owns creative routing, material sourcing, provider setup and delivery.
+
 ## 先补齐阅读缺口，再执行当前范围
 
 每轮先复用会话或已有 `STATE.md` 中的**已读文档**，再计算“本次必需 − 正文仍在上下文中的已读文档”。只读取差集。独立读取可以并行，但长文档应按外层工具的实际输出预算分批或分段，检查模型收到的结果是否截断，不能只看命令成功或完整 stdout。后续章节再次提到“读取”同一参考，表示应用其规范，不是重新加载全文。
