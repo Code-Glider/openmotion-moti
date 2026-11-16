@@ -27,7 +27,7 @@ beforeEach(async () => {
   await render();
 });
 afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); });
-async function open() { await act(async () => button('Handoff').click()); }
+async function open() { await act(async () => button('MCP').click()); }
 
 it('waits for saves and copies the exact project and workspace without credentials', async () => {
   let finish!: () => void;
@@ -77,7 +77,7 @@ it('cancels an unfinished handoff when the project changes', async () => {
 
 it('disables the trigger when the editor cannot hand off safely', async () => {
   state.blocked = true; await render();
-  expect(button('Handoff').disabled).toBe(true);
+  expect(button('MCP').disabled).toBe(true);
 });
 
 it('opens the existing connection guide without starting an Agent', async () => {

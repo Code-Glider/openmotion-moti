@@ -21,10 +21,10 @@ export function ProjectAgentAction() {
   useEffect(() => setOpen(false), [projectId, settingsOpen]);
 
   return <Popover.Root modal={false} open={open && available} onOpenChange={setOpen}>
-    <Tooltip label={t('Handoff')}>
+    <Tooltip label={t('MCP')}>
       <Popover.Trigger render={<Button ref={trigger} className="motion-project-agent-trigger" disabled={!available}
-        aria-label={t('Handoff')}>
-        {t('Handoff')}
+        aria-label={t('MCP')}>
+        {t('MCP')}
       </Button>} />
     </Tooltip>
     <Popover.Portal>
@@ -33,7 +33,7 @@ export function ProjectAgentAction() {
           className="hf-floating-motion flex w-[min(320px,calc(100vw-32px))] max-h-[var(--available-height)] flex-col overflow-y-auto rounded-xl border border-border bg-surface text-text-1 shadow-menu outline-none"
           onKeyDown={event => event.stopPropagation()}>
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
-            <Popover.Title className="text-step-14 font-semibold text-text-1">{t('Handoff')}</Popover.Title>
+            <Popover.Title className="text-step-14 font-semibold text-text-1">{t('MCP')}</Popover.Title>
             <Popover.Close render={<IconButton aria-label={t('Close')} icon={<RemixIcon name="close-line" size={16} />} />} />
           </div>
           {open && available && <ProjectAgentContent key={projectId} projectId={projectId} onClose={() => setOpen(false)} />}
@@ -88,7 +88,7 @@ function ProjectAgentContent({ projectId, onClose }: { projectId: string; onClos
         </Button>
       </p>
       {failed ? <SettingsError retry={retry} /> : !info ? <SettingsLoading /> : null}
-      {manualCopy && <textarea className="om-field min-h-32 w-full resize-y text-step-11" aria-label={t('Handoff details')}
+      {manualCopy && <textarea className="om-field min-h-32 w-full resize-y text-step-11" aria-label={t('Project instruction')}
         readOnly value={manualCopy} onFocus={event => event.currentTarget.select()} />}
     </div>
     <div className="motion-project-handoff-actions flex items-center gap-2 border-t border-border px-4 py-3">
