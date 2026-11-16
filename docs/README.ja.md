@@ -65,7 +65,7 @@ https://github.com/nexu-io/openmotion/blob/main/install.md を読み、手順に
 Git、npm、Node.js 26.11.1 が必要です：
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -74,17 +74,6 @@ npm start
 
 起動時に表示される実際の `studioUrl` または `previewUrl` を開き、**テンプレートライブラリ**を選択します。Studio と MCP はこのチェックアウトのテンプレートを読み込みます。同じソースにエージェントを接続するには、[ソースと MCP の設定](#agent-setup)を参照してください。[クローン容量と任意のメディア](repository-storage.md)
 
-### 公開済みアプリをエージェントにインストール
-
-この方法は公開済みの npm アプリをインストールし、その設定済みオンラインカタログを使用します。リポジトリのテンプレートを使う場合や貢献する場合は、上記のソース起動手順を使用してください。
-
-次の指示をコピーしてローカルエージェントに送ると、インストールを開始できます：
-
-```text
-https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手順に従って現在のエージェントに OpenMotion をインストールして接続してください。
-```
-
-インストール後、エージェントが試せるテンプレートを提案します。選択を確認してからプロジェクトを作成します。[インストールと初回利用ガイド](install.md#installation-success-reply)
 
 <a id="agent-wall"></a>
 
@@ -445,7 +434,7 @@ Brand Kit セクションには、ブランド情報、語り口、確認済み�
 Git、npm、**Node.js 26.11.1** を用意してください。ソースからのプレビューと書き出しには Chrome または Chromium と、FFmpeg・FFprobe も必要です。[実行環境の設定](usage.md)
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git openmotion
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git openmotion
 cd openmotion
 npm ci
 npm run build:studio
@@ -470,7 +459,7 @@ bash scripts/install-motion.command
 
 <a id="claude-setup"></a>
 
-**Claude Code** · ローカルインストーラーで `--host claude` を選び、Claude Code で `/mcp` を実行して接続を確認します。[ローカルインストーラー](npm-installation.md)
+**Claude Code** · [手動 MCP 設定](#manual-mcp)でこのソースに接続し、`/mcp` で確認してください。
 
 <a id="deepseek-setup"></a>
 

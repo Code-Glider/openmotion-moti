@@ -65,7 +65,7 @@ After setup, the agent opens the local template library and suggests a template.
 Use Git, npm and Node.js 26.11.1:
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -74,17 +74,6 @@ npm start
 
 Open the actual `studioUrl` or `previewUrl` printed at startup, then choose **Template library**. Studio and MCP read the templates in this checkout. To connect your agent to this same copy, follow [source setup and MCP configuration](#agent-setup). [Clone size and optional media](docs/repository-storage.md)
 
-### Install the published app in your agent
-
-This installs the published npm application and uses its configured online catalog. To use or contribute repository templates, use the local source setup above.
-
-Copy this instruction into your local agent:
-
-```text
-Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect OpenMotion in the current agent.
-```
-
-After installation, the agent offers a template to try. Confirm the choice before creating a project. [Installation and first-run guide](docs/install.md#installation-success-reply)
 
 <a id="agent-wall"></a>
 
@@ -440,7 +429,7 @@ When choosing or replacing media, creation workflows share a [material sourcing 
 
 For agent-led installation, use the [installation instruction above](#quick-start). To run from source, follow the steps below.
 
-After a successful Agent-led installation, open the editor's template library in the current conversation, without creating a project. Browse and preview first; choose **Open and edit** to create an independent editable copy. Setup provides a direct library link even before the chat reloads MCP. See the [installation reply rules](docs/install.md#installation-success-reply).
+After a successful Agent-led installation, open the editor's template library in the current conversation, without creating a project. Browse and preview first; choose **Open and edit** to create an independent editable copy. Setup provides a direct library link even before the chat reloads MCP. See the [installation reply rules](docs/install-onboarding.md#installation-success-reply).
 
 During video creation and editing, the chat stays free of preview areas. OpenMotion presents the editable Studio when the final video is ready to preview, then shows [the final video in chat](docs/inline-video.md) after its MP4 export completes and passes verification. Native-host acceptance of an installed build remains separate.
 
@@ -449,7 +438,7 @@ If MCP tools are missing or fail to connect, use the installed [connection diagn
 Use Git, npm and **Node.js 26.11.1**. Source-based preview and export also need Chrome/Chromium and FFmpeg/FFprobe. [Runtime setup](docs/usage.md)
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -482,7 +471,7 @@ bash scripts/install-motion.command
 
 <a id="claude-setup"></a>
 
-**Claude Code** · Select `--host claude` in the local installer, then run `/mcp` in Claude Code to check the connection. [Local installation guide](docs/npm-installation.md)
+**Claude Code** · Connect this source checkout through the [manual MCP configuration](#manual-mcp), then run `/mcp` to check the connection.
 
 <a id="deepseek-setup"></a>
 

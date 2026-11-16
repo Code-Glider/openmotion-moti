@@ -1,5 +1,7 @@
 # Test and stable package acceptance
 
+> Archived npm distribution documentation. New installations use the [source guide](../install.md). Candidate builds, npm publication and snapshot recovery are disabled. Existing published versions, projects and diagnostics are preserved; the commands below document historical behavior and are not a new installation route.
+
 This is the maintainer and tester manual for the application npm format. It defines required checks, not a claim that all platforms or a published registry version have passed. [Installation](npm-installation.md) supplies macOS/PowerShell commands, DEV template setup, host adapters and recovery boundaries. Ordinary CI retains candidate installation instructions for review; npm, R2 and Release publication remain separate controlled actions.
 
 ## One record per candidate

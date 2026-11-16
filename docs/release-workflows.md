@@ -1,5 +1,7 @@
 # Motion releases: build, test, publish
 
+> Archived npm distribution documentation. New installations use the [source guide](../install.md). Candidate builds, npm publication and snapshot recovery are disabled. Existing published versions, projects and diagnostics are preserved; the commands below document historical behavior and are not a new installation route.
+
 Use two manual Actions entries: **Motion candidate build**, then **Motion npm publication**, in `nexu-io/openmotion` on `main`. The daily flow is **build → optional local testing → manual publish**. Neither entry runs on pushes, PR merges, tags or a schedule. Merging a workflow change does not publish a package or configure npm permissions. Daily development branches from the latest `origin/main` and PRs target `main`.
 
 | Operator step | Automated work |

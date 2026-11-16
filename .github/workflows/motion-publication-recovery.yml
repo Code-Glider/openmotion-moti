@@ -19,7 +19,8 @@ permissions:
 
 jobs:
   select-ref:
-    if: github.repository == 'nexu-io/openmotion'
+    # Retired: repository installations use the source bootstrap.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     steps:
       - name: Require Motion integration branch

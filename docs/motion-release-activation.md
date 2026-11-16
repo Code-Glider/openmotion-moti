@@ -1,5 +1,7 @@
 # OpenMotion repository and release activation
 
+> Archived npm release activation record. New installations use the [source guide](../install.md). The candidate-build, npm-publication and snapshot-recovery workflow roots are disabled; the steps below are historical and must not be used for a new installation or publication without separate authorization. The current shared onboarding contract is [install-onboarding.md](install-onboarding.md#installation-success-reply).
+
 OpenMotion is the application on `main` in `nexu-io/openmotion`, renamed from `nexu-io/html-anything`. Daily development and new manual release operations use `main`. Git history, existing issues, pull requests and historical candidate artifacts remain in the same GitHub repository. The former HTML Anything application remains on [legacy](https://github.com/nexu-io/openmotion/tree/legacy).
 
 A push or merge runs validation; it does not publish a package, advance npm tags or update the public installation guide.

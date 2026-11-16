@@ -65,7 +65,7 @@ OpenMotion 是 **首个全栈 Agentic 视频生成器**。上传参考视频或�
 需要 Git、npm 和 Node.js 26.11.1：
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -74,17 +74,6 @@ npm start
 
 打开启动时打印的实际 `studioUrl` 或 `previewUrl`，进入 **模板库**。Studio 和 MCP 读取此仓库中的模板。要让 Agent 连接同一份源码，请参阅 [源码接入与 MCP 配置](#agent-setup)。[仓库大小与可选素材](repository-storage.md)
 
-### 在 Agent 中安装已发布版
-
-此方式安装已发布的 npm 应用，使用其配置的在线模板目录。使用或贡献仓库模板，请选择上面的源码启动方式。
-
-复制下面的指令，发给你的本地 Agent，即可开始安装：
-
-```text
-阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前 Agent 中安装并连接 OpenMotion。
-```
-
-安装完成后，Agent 会推荐一个模板供你体验，确认选择后再创建工程。[安装与首次使用指南](install.md#installation-success-reply)
 
 <a id="agent-wall"></a>
 
@@ -445,7 +434,7 @@ Agent 安装成功后会直接打开编辑器的模板库，暂不创建项目�
 准备 Git、npm 和 **Node.js 26.11.1**。从源码预览和导出还需要 Chrome/Chromium 和 FFmpeg/FFprobe。[运行环境配置](usage.md)
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git openmotion
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git openmotion
 cd openmotion
 npm ci
 npm run build:studio
@@ -470,7 +459,7 @@ bash scripts/install-motion.command
 
 <a id="claude-setup"></a>
 
-**Claude Code** · 在本机安装器中选择 `--host claude`，然后在 Claude Code 中运行 `/mcp` 检查 OpenMotion 是否已连接。[本地安装器](npm-installation.md)
+**Claude Code** · 按[手动 MCP 配置](#manual-mcp)连接这份源码，再运行 `/mcp` 检查连接。
 
 <a id="deepseek-setup"></a>
 
