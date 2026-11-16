@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { providerAdapters } from '../gateway/providers.ts';
+import { resumableJob } from '../shared/gateway.ts';
 import { mediaBytes } from './media-fixtures.ts';
 import { fixture } from './fixtures.ts';
 import { gatewayFor } from '../gateway/service.ts';
@@ -18,7 +22,7 @@ const catalogue = [
   { model: 'gen-only', kind: 'image', capabilities: {} },
   { model: 'i2v', kind: 'video', capabilities: { max_input_images: 1, durations: { values: [5, 10], default: 5 } } },
   { model: 't2v-only', kind: 'video', capabilities: {} },
-  { model: 'wide-edit', kind: 'image', capabilities: { edits: true, max_input_images: 16 } },
+  { model: 'wide-edit', kind: 'image', capabilities: { edits: true, max_input_images: 20 } },
   { model: 'multi-input-video', kind: 'video', capabilities: { max_input_images: 2 } },
 ];
 function service(store: any) { return new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
@@ -233,5 +237,165 @@ test('the project-direct referenceAsset route stays image-only', () => fixture(a
   await gateway.listModels({ provider: 'opendesign', refresh: true });
   await assert.rejects(gateway.submit({ projectId: store.projectId, referenceAsset: 'frame.png', model: 'opendesign:i2v', modality: 'video', prompt: 'x' }), /does not accept an input image/);
   assert.equal(submitted, 0);
+  await gateway.close();
+}));
+
+for (const recovery of ['poll failure', 'interruption'] as const) test(`explicit Cloud resume after ${recovery} reuses one paid submission and saves once`, () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  const output = await readFile(await image(store.directory, 'output.png', 'green'));
+  gateway.options.download = async () => output;
+  const calls = cloud(gateway, () => {}, { result: { alignment: { characters: ['a'] }, nested: ['cloud-key', { text: 'prefix cloud-key "\\\n suffix' }] } });
+  const base = gateway.options.fetcher!; let failing = true;
+  gateway.options.fetcher = (async (url, init = {}) => String(url).includes('/tasks/') && failing ? new Response(null, { status: 400 }) : base(url, init)) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  const ref = await libraryRef(store, 'input.png', 'red');
+  const queued = (await api.call('openmotion_assets_use', { action: 'generate', requestId: 'original', model: 'opendesign:edit-image', modality: 'image', prompt: 'edit', references: [ref] })).job;
+  const failed = await finish(store, queued.id); assert.equal(failed.state, 'failed'); assert.equal(resumableJob(failed), true);
+  assert.match(failed.error!, /action=resume/);
+  if (recovery === 'interruption') {
+    await writeFile(path.join(gateway.root, 'jobs', failed.id + '.json'), JSON.stringify({ ...failed, state: 'running', workerPid: 2147483647 }));
+    await gateway.tick(); assert.equal((await gateway.getJob(failed.id)).state, 'failed'); assert.equal(gateway.active.size, 0);
+  }
+  failing = false;
+  const resume = { action: 'resume', jobId: failed.id, requestId: 'resume-original' };
+  await assert.rejects(api.call('openmotion_assets_use', { action: 'resume', jobId: failed.id }), /requestId|required/);
+  const pair = await Promise.all([api.call('openmotion_assets_use', resume), api.call('openmotion_assets_use', resume)]);
+  assert.equal(pair[0].job.id, pair[1].job.id);
+  await Promise.all([gateway.tick(), gateway.tick()]); assert.equal(gateway.active.size, 1);
+  await Promise.all([...gateway.active.values()].map(task => task.done));
+  const done = await gateway.getJob(failed.id); assert.equal(done.state, 'completed', done.error);
+  assert.equal((await api.call('openmotion_assets', resume)).job.state, 'completed');
+  assert.equal(calls.filter(c => c === 'POST /api/v1/media/uploads').length, 1);
+  assert.equal(calls.filter(c => c === 'POST /api/v1/media/images/edits').length, 1);
+  const asset = await new AssetLibrary(store).get(done.libraryAssets![0].assetId);
+  assert.equal(asset.versions.length, 1); assert.deepEqual(asset.versions[0].result, done.result);
+  assert.deepEqual(done.result?.alignment, { characters: ['a'] });
+  assert.doesNotMatch(await readFile(path.join(gateway.root, 'jobs', done.id + '.json'), 'utf8'), /cloud-key/);
+  assert.doesNotMatch(JSON.stringify(asset), /cloud-key/);
+  await gateway.close();
+}));
+
+test('resume guards invalid jobs, changed origin, unavailable provider and deleted project', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  let posts = 0;
+  gateway.options.fetcher = (async (_url, init = {}) => { if (init.method === 'POST') { posts++; return Response.json({ task_id: 'original-task' }); } return new Response(null, { status: 400 }); }) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  const failed = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id);
+  const file = path.join(gateway.root, 'jobs', failed.id + '.json');
+  for (const patch of [{ state: 'cancelled' }, { savePending: true }, { remoteTerminal: true }, { model: { ...failed.model, provider: 'fal' } }, { remoteId: undefined }, { remoteId: '../bad' }, { projectId: randomUUID() }]) {
+    await writeFile(file, JSON.stringify({ ...failed, ...patch }));
+    await assert.rejects(gateway.resume(failed.id, 'resume')); assert.equal(posts, 1);
+  }
+  await writeFile(file, JSON.stringify(failed));
+  await gateway.configureProvider('opendesign', { baseUrl: 'https://other.example' });
+  await assert.rejects(gateway.resume(failed.id, 'resume'), /origin changed/);
+  await gateway.configureProvider('opendesign', { baseUrl: 'https://cloud.example', enabled: false });
+  await assert.rejects(gateway.resume(failed.id, 'resume'), /no longer available/);
+  await gateway.close();
+}));
+
+test('project media resume retains project ownership and the original task', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1; gateway.options.download = async () => audio;
+  let posts = 0, fail = true;
+  gateway.options.fetcher = (async (_url, init = {}) => {
+    if (init.method === 'POST') { posts++; return Response.json({ task_id: 'project-task' }); }
+    return fail ? new Response(null, { status: 400 }) : Response.json({ status: 'succeeded', assets: [{ url: 'https://cdn.example/audio' }] });
+  }) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  const queued = (await api.call('openmotion_media_use', { action: 'generate', projectId: store.projectId, provider: 'opendesign', model: 'music', modality: 'audio', prompt: 'x', requestId: 'original' })).job;
+  await finish(store, queued.id); fail = false;
+  const args = { action: 'resume', projectId: store.projectId, jobId: queued.id, requestId: 'resume' };
+  await assert.rejects(api.call('openmotion_media_use', { ...args, projectId: randomUUID() }), /PROJECT_NOT_FOUND/);
+  await api.call('openmotion_media_use', args);
+  assert.equal((await finish(store, queued.id)).state, 'completed'); assert.equal(posts, 1);
+  await gateway.close();
+}));
+
+test('cancellation during resumed polling stays cancelled and ignores late result callbacks', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  let posts = 0, fail = true, id = '';
+  gateway.options.fetcher = (async (_url, init = {}) => {
+    if (init.method === 'POST') { posts++; return Response.json({ task_id: 'original-task' }); }
+    if (fail) return new Response(null, { status: 400 });
+    await gateway.cancel(id);
+    return Response.json({ status: 'succeeded', result: { late: true }, assets: [{ url: 'https://cdn.example/audio' }] });
+  }) as Fetcher;
+  gateway.options.download = async () => assert.fail('cancelled poll must not download');
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  id = (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id;
+  await finish(store, id); fail = false; await gateway.resume(id, 'resume');
+  const cancelled = await finish(store, id); assert.equal(cancelled.state, 'cancelled'); assert.equal(cancelled.result, undefined); assert.equal(posts, 1);
+  // Exercise the persistence callback itself after cancellation, not only the adapter abort guard.
+  const adapter = providerAdapters.opendesign.generate;
+  providerAdapters.opendesign.generate = async (_job, ctx) => { await gateway.cancel(id); await ctx.result?.({ late: true }, true); await ctx.progress('generating'); throw new Error('cancelled fixture'); };
+  try {
+    id = (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'late callback' })).id;
+    const late = await finish(store, id); assert.equal(late.state, 'cancelled'); assert.equal(late.phase, 'cancelled'); assert.equal(late.result, undefined); assert.equal(late.remoteTerminal, undefined);
+  } finally { providerAdapters.opendesign.generate = adapter; await gateway.close(); }
+}));
+
+for (const state of ['failed', 'cancelled']) test(`Cloud terminal ${state} records structured error and cannot resume`, () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  cloud(gateway, () => {}, { status: state, error: { code: 'audio_outcome_unknown', retryable: false } });
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  const job = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id);
+  assert.equal(job.remoteTerminal, true); assert.equal(resumableJob(job), false);
+  assert.deepEqual(job.result, { error: { code: 'audio_outcome_unknown', retryable: false } });
+  assert.doesNotMatch(job.error!, /action=resume/); await assert.rejects(gateway.resume(job.id, 'resume'), /cannot be resumed/);
+  await gateway.close();
+}));
+
+test('result metadata structurally redacts escaped credentials and rejects oversized or non-object replacements', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const key = 'fixture-"\\-key';
+  await gateway.configureProvider('opendesign', { apiKey: key, baseUrl: 'https://cloud.example' });
+  const adapter = providerAdapters.opendesign.generate;
+  providerAdapters.opendesign.generate = async (_job, ctx) => {
+    await ctx.result?.({ nested: [key, { text: `prefix ${key} suffix` }], [key]: 'value' });
+    await ctx.result?.(['not an object'] as any);
+    await ctx.result?.(Object.assign(Object.create(null), { invalid: true }));
+    await ctx.result?.({ oversized: 'x'.repeat(2_000_000) });
+    return [audio];
+  };
+  try {
+    const job = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:music', modality: 'audio', prompt: 'x' })).id);
+    assert.equal(job.state, 'completed', job.error);
+    assert.deepEqual(job.result, { nested: ['[redacted]', { text: 'prefix [redacted] suffix' }], '[redacted]': 'value' });
+    const asset = await new AssetLibrary(store).get(job.libraryAssets![0].assetId);
+    assert.deepEqual(asset.versions[0].result, job.result);
+    const stored = await readFile(path.join(gateway.root, 'jobs', job.id + '.json'), 'utf8');
+    assert.equal(stored.includes(JSON.stringify(key).slice(1, -1)), false);
+    assert.equal(JSON.stringify(asset).includes(JSON.stringify(key).slice(1, -1)), false);
+  } finally { providerAdapters.opendesign.generate = adapter; await gateway.close(); }
+}));
+
+test('Cloud native image handles choose edits, conflicting inputs fail before POST, and all nine outputs save', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  const png = await readFile(await image(store.directory, 'out.png', 'green')); gateway.options.download = async () => png;
+  const submits: [string, any][] = []; const calls = cloud(gateway, (p, body) => submits.push([p, body]), { assets: Array.from({ length: 9 }, () => ({ url: 'https://cdn.example/image' })) });
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  const missing = { assetId: randomUUID(), versionId: randomUUID() };
+  await assert.rejects(gateway.submit({ library: { references: [missing] }, model: 'opendesign:edit-image', modality: 'image', prompt: 'x', parameters: { images: ['ma_existing'] } }), /Choose pinned references/);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, referenceAsset: 'missing.png', model: 'opendesign:edit-image', modality: 'image', prompt: 'x', parameters: { images: ['ma_existing'] } }), /Choose pinned references/);
+  assert.equal(calls.filter(c => c.startsWith('POST')).length, 0);
+  const job = await finish(store, (await gateway.submit({ library: {}, model: 'opendesign:edit-image', modality: 'image', prompt: 'x', parameters: { images: ['ma_existing'] } })).id);
+  assert.equal(job.state, 'completed', job.error); assert.equal(job.libraryAssets!.length, 9);
+  assert.equal(submits[0][0], '/api/v1/media/images/edits'); assert.deepEqual(submits[0][1].images, ['ma_existing']);
+  await gateway.close();
+}));
+
+test('twenty references pass the public schema, while model count rejection precedes reference resolution', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  const png = await readFile(await image(store.directory, 'out.png', 'green')); gateway.options.download = async () => png;
+  const submits: any[] = []; cloud(gateway, (_p, body) => submits.push(body));
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' }); await gateway.listModels({ provider: 'opendesign', refresh: true });
+  const missing = { assetId: randomUUID(), versionId: randomUUID() };
+  await assert.rejects(gateway.submit({ library: { references: Array(21).fill(missing) }, model: 'opendesign:wide-edit', modality: 'image', prompt: 'x' }), /at most 20 input images/);
+  await assert.rejects(gateway.submit({ library: { references: [null as any] }, model: 'opendesign:wide-edit', modality: 'image', prompt: 'x' }), /Invalid asset reference/);
+  const ref = await libraryRef(store, 'input.png', 'red');
+  const queued = (await api.call('openmotion_assets_use', { action: 'generate', requestId: 'twenty', model: 'opendesign:wide-edit', modality: 'image', prompt: 'x', references: Array(20).fill(ref) })).job;
+  assert.equal((await finish(store, queued.id)).state, 'completed'); assert.equal(submits[0].images.length, 20);
   await gateway.close();
 }));

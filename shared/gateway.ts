@@ -50,5 +50,18 @@ export type GenerationJob = { id: string; projectId?: string; library?: LibraryG
   references?: { path: string; sha256: string; mimeType: string; bytes: number }[];
   /** Provider result metadata kept with the job, such as speech timestamps. */
   result?: Record<string, unknown>;
+  /** Cloud confirmed failure/cancellation; polling cannot recover this task. */
+  remoteTerminal?: boolean;
   createdAt: number; updatedAt: number; startedAt?: number; workerPid?: number;
   phase: string; error?: string; remoteId?: string; assets: GeneratedAsset[] };
+
+/** Effective adapter input contract, shared by service validation and existing Studio controls. */
+export function modelReferenceLimit(model: Model): number {
+  if (model.modality === 'image' && model.supportsImageReference) return ['account', 'codex'].includes(model.provider) ? 1 : model.maxInputImages ?? 1;
+  return model.modality === 'video' ? Math.min(model.maxInputImages ?? 0, 1) : 0;
+}
+/** Local eligibility; the service additionally rechecks project, origin and credentials. */
+export function resumableJob(job: GenerationJob): boolean {
+  return job.model.provider === 'opendesign' && typeof job.remoteId === 'string' && /^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)
+    && job.state === 'failed' && !job.savePending && !job.remoteTerminal;
+}

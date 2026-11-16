@@ -56,22 +56,28 @@ export const opendesign: ProviderAdapter = {
     const audio = job.modality === 'audio';
     const speech = audio && job.model.mode === 'text-to-speech';
     const parameters = { ...job.model.defaults, ...job.parameters };
-    const { voice, ...speechOptions } = parameters;
-    if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
-    const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };
-    const inputs = audio ? [] : await uploadInputs(fetcher, api, headers, job.id, ctx);
-    const images = inputs.length ? { images: job.modality === 'video' ? [{ asset_id: inputs[0], role: 'first_frame' }] : inputs } : {};
-    const payload = audio ? { model: job.model.modelId, ...audioBody }
-      : { ...parameters, model: job.model.modelId, prompt: job.prompt, ...images };
-    const endpoint = audio ? speech ? '/audio/speech' : '/audio/music' : job.modality === 'image' ? inputs.length ? '/images/edits' : '/images/generations' : '/videos/tasks';
-    const submitted = await apiJson(fetcher, api + endpoint, { method: 'POST', headers: { ...headers, 'Idempotency-Key': job.id }, body: JSON.stringify(payload), signal: ctx.signal });
-    if (typeof submitted.task_id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(submitted.task_id)) throw new Error('OpenDesign Cloud did not return a task ID');
-    await ctx.progress('submitted', submitted.task_id);
-    const taskUrl = api + `/${audio ? 'audio' : job.modality === 'image' ? 'images' : 'videos'}/tasks/${submitted.task_id}`;
+    let remoteId = job.remoteId;
+    if (!remoteId) {
+      const { voice, ...speechOptions } = parameters;
+      if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
+      const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };
+      const inputs = audio ? [] : await uploadInputs(fetcher, api, headers, job.id, ctx);
+      const images = inputs.length ? { images: job.modality === 'video' ? [{ asset_id: inputs[0], role: 'first_frame' }] : inputs } : {};
+      const payload = audio ? { model: job.model.modelId, ...audioBody }
+        : { ...parameters, model: job.model.modelId, prompt: job.prompt, ...images };
+      const endpoint = audio ? speech ? '/audio/speech' : '/audio/music' : job.modality === 'image' ? inputs.length || Array.isArray(parameters.images) && parameters.images.length ? '/images/edits' : '/images/generations' : '/videos/tasks';
+      const submitted = await apiJson(fetcher, api + endpoint, { method: 'POST', headers: { ...headers, 'Idempotency-Key': job.id }, body: JSON.stringify(payload), signal: ctx.signal });
+      if (typeof submitted.task_id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(submitted.task_id)) throw new Error('OpenDesign Cloud did not return a task ID');
+      remoteId = submitted.task_id;
+      await ctx.progress('submitted', remoteId);
+    }
+    if (!/^[a-zA-Z0-9_-]{1,180}$/.test(remoteId!)) throw new Error('Invalid Cloud task ID');
+    const taskUrl = api + `/${audio ? 'audio' : job.modality === 'image' ? 'images' : 'videos'}/tasks/${remoteId}`;
     for (;;) {
       await delay(ctx.pollMs ?? 2000, undefined, { signal: ctx.signal });
       // The task is already paid for: a dropped poll connection must not discard its result.
-      const result = await retryRead(() => apiJson(fetcher, taskUrl, { headers, signal: ctx.signal }), ctx.signal);
+      const result = await retryRead(() => apiJson(fetcher, taskUrl, { headers, signal: ctx.signal }), ctx.signal, 5, () => ctx.progress('reconnecting'), () => ctx.progress('generating'));
+      ctx.signal.throwIfAborted();
       if (result.status === 'succeeded') {
         // Speech timestamps (character alignment or word timings) arrive beside the file.
         if (result.result && typeof result.result === 'object' && !Array.isArray(result.result) && JSON.stringify(result.result).length <= 2_000_000) await ctx.result?.(result.result);
@@ -81,13 +87,17 @@ export const opendesign: ProviderAdapter = {
             if ([301, 302, 303, 307, 308].includes(response.status) && response.headers.get('location')) return new URL(response.headers.get('location')!, taskUrl).href;
             if (!response.ok) throw new ProviderError(`OpenDesign Cloud content HTTP ${response.status}`, response.status);
             return Buffer.from(await response.arrayBuffer());
-          }, ctx.signal)];
+          }, ctx.signal, 5, () => ctx.progress('reconnecting'), () => ctx.progress('generating'))];
         }
         const urls = result.assets?.map((asset: any) => asset.url).filter((url: unknown) => typeof url === 'string');
         if (!urls?.length) throw new Error('OpenDesign Cloud completed without media output');
-        return urls.slice(0, 8);
+        return urls;
       }
-      if (['failed', 'cancelled'].includes(result.status)) throw new Error(`OpenDesign Cloud task ${result.status}; inspect the original task before retrying`);
+      if (['failed', 'cancelled'].includes(result.status)) {
+        const code = typeof result.error?.code === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(result.error.code) ? result.error.code : undefined;
+        await ctx.result?.({ error: { ...(code ? { code } : {}), ...(typeof result.error?.retryable === 'boolean' ? { retryable: result.error.retryable } : {}) } }, true);
+        throw new Error(`OpenDesign Cloud task ${result.status}${code ? ` (${code})` : ''}; the remote task is terminal`);
+      }
       if (!['queued', 'pending', 'running', 'processing', 'submitted'].includes(result.status)) throw new Error('OpenDesign Cloud returned an unknown task status');
       await ctx.progress('generating');
     }

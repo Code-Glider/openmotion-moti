@@ -4,7 +4,7 @@ import { copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writ
 import path from 'node:path';
 import type { OmTracking } from '../shared/tracking.ts';
 import { WorkspaceStore } from '../workspace.ts';
-import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
+import { modelReferenceLimit, resumableJob, mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
 import { detectAgents, generateCodexImage } from './agents.ts';
 import { downloadMedia, mediaType, publicProviderFetch, ProviderError, retryRead, type Fetcher } from './network.ts';
@@ -207,7 +207,7 @@ export class ModelGateway {
     const params = parameters(input.parameters);
     if (input.library && input.projectId) throw new Error('Choose either an asset library or a project destination');
     const library = new AssetLibrary(this.store);
-    if (input.library) await library.validateGeneration(input.library);
+    if (input.library?.references !== undefined && !Array.isArray(input.library.references)) throw new Error('Asset references must be an array');
     if (input.referenceAsset !== undefined && (typeof input.referenceAsset !== 'string' || !input.referenceAsset || input.referenceAsset.length > 1024)) throw new Error('Invalid reference image path');
     if (input.idempotencyKey !== undefined && (typeof input.idempotencyKey !== 'string' || !/^[\w-]{1,100}$/.test(input.idempotencyKey))) throw new Error('Invalid idempotency key');
     if (input.usage && (typeof input.usage !== 'object' || Object.entries(input.usage).some(([key, value]) => !['compositionId', 'elementId', 'property'].includes(key) || typeof value !== 'string' || value.length > 240))) throw new Error('Invalid editor usage context');
@@ -239,13 +239,16 @@ export class ModelGateway {
       if (previous) { if (previous.requestHash !== requestHash) throw new Error('Idempotency key was already used for another request'); return previous; }
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
       validateGenerationOptions(model, { ...model.defaults, ...params });
-      if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
       const referenceCount = (input.library?.references?.length ?? 0) + (input.referenceAsset ? 1 : 0);
       // Video sends only a first frame; the project-direct referenceAsset route stays image-only as before.
-      const referenceLimit = input.modality === 'image' ? model.supportsImageReference ? model.maxInputImages ?? 1 : 0 : input.modality === 'video' && !input.referenceAsset ? Math.min(model.maxInputImages ?? 0, 1) : 0;
+      const referenceLimit = input.referenceAsset && input.modality !== 'image' ? 0 : modelReferenceLimit(model);
       if (referenceCount && !referenceLimit) throw new Error(input.modality === 'video' ? 'This video model does not accept an input image. Choose a video model with maxInputImages, or remove the reference.'
         : input.referenceAsset ? 'Selected model does not support reference image editing' : 'This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
       if (referenceCount > referenceLimit) throw new Error(`This model accepts at most ${referenceLimit} input image${referenceLimit === 1 ? '' : 's'}`);
+      if (referenceCount && input.referenceAsset && input.library) throw new Error('Choose library references or a project referenceAsset');
+      if (model.provider === 'opendesign' && referenceCount && { ...model.defaults, ...params }.images !== undefined) throw new Error('Choose pinned references or parameters.images for Cloud input');
+      if (input.library) await library.validateGeneration(input.library);
+      if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');
       const job: GenerationJob = { id: randomUUID(), saveToLibrary: true, ...(input.library ? { library: { ...input.library, createNew: !input.library.assetId, assetId: input.library.assetId ?? randomUUID() } } : { projectId }), state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
@@ -275,6 +278,21 @@ export class ModelGateway {
         this.options.tracking?.track('media_generation_submitted', { modality: job.modality, job_id: job.id }, undefined, 'worker');
         return job;
       } catch (error) { await rm(work, { recursive: true, force: true }); throw error; }
+    });
+  }
+  async resume(id: unknown, requestId: unknown) {
+    if (typeof requestId !== 'string' || !/^[\w-]{1,100}$/.test(requestId)) throw new Error('A stable requestId is required');
+    return this.store.lock(async () => {
+      const job = await this.getJob(id);
+      if (job.model.provider !== 'opendesign' || !job.remoteId || !/^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)) throw new Error('Only an existing Cloud task can be resumed');
+      if (['queued', 'running', 'completed'].includes(job.state)) return job;
+      if (!resumableJob(job)) throw new Error(job.savePending ? 'Use retry_save for retained local outputs' : 'This Cloud task cannot be resumed');
+      if (job.projectId && !this.store.projectCatalog().projects.some(project => project.id === job.projectId)) throw new Error('Project not found');
+      if (job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the original task was not resumed');
+      if (!(await this.credential('opendesign')).key || !(await this.status()).providers.find(provider => provider.id === 'opendesign')?.available) throw new Error('Provider is no longer available');
+      if ((await this.listJobs()).filter(item => ['queued', 'running'].includes(item.state)).length >= 20) throw new Error('Generation queue is full (20 jobs)');
+      job.state = 'queued'; job.phase = 'resuming'; job.updatedAt = Date.now(); delete job.error;
+      await this.saveJob(job); return job;
     });
   }
   async cancel(id: unknown) {
@@ -351,7 +369,7 @@ export class ModelGateway {
         const jobs = await this.listJobs();
         for (const job of jobs.filter(j => j.state === 'running' && !alive(j.workerPid))) {
           job.savePending = !!job.savePending || await lstat(path.join(this.root, 'work', job.id, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
-          job.state = 'failed'; job.phase = job.savePending ? 'save_failed' : 'interrupted'; job.error = job.savePending ? 'Saving was interrupted. Local outputs are retained; retry_save saves them without another model request.' : 'Worker stopped; request was not automatically resubmitted. Check provider history before retrying.'; job.updatedAt = Date.now(); await this.saveResult(job);
+          job.state = 'failed'; job.phase = job.savePending ? 'save_failed' : 'interrupted'; job.error = job.savePending ? 'Saving was interrupted. Local outputs are retained; retry_save saves them without another model request.' : 'Worker stopped; request was not automatically resubmitted. Check provider history before retrying.'; if (resumableJob(job)) job.error += ' Check the original Cloud task with action=resume without paying again.'; job.updatedAt = Date.now(); await this.saveResult(job);
           if (!job.savePending) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
         }
         const capacity = Math.max(0, 2 - jobs.filter(j => j.state === 'running').length);
@@ -387,6 +405,7 @@ export class ModelGateway {
       retained ||= await lstat(path.join(dir, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
       let files = retained ? await this.savedOutputs(job) : null;
       if (!files) {
+        if (job.projectId && !this.store.projectCatalog().projects.some(project => project.id === job.projectId)) throw new Error('Project not found');
         key = (await this.credential(job.model.provider)).key;
         const provider = (await this.status()).providers.find(p => p.id === job.model.provider);
         if (!provider?.available) throw new Error('Provider is no longer available');
@@ -406,14 +425,19 @@ export class ModelGateway {
           buffers = [await (this.options.codex ?? generateCodexImage)(job.prompt + (Object.keys(imageOptions).length ? '\nImage options: ' + JSON.stringify(imageOptions) : ''), dir, controller.signal, reference)];
         } else {
           const adapter = isMediaProvider(job.model.provider) ? providerAdapters[job.model.provider] : compatibleProvider;
-          const keepResult = async (data: Record<string, unknown>) => {
-            await this.store.lock(async () => { const current = await this.getJob(job.id); if (current.state !== 'running') return; current.result = data; current.updatedAt = Date.now(); await this.saveJob(current); });
+          const keepResult = async (data: Record<string, unknown>, remoteTerminal = false) => {
+            if (!data || Object.getPrototypeOf(data) !== Object.prototype || JSON.stringify(data).length > 2_000_000) return;
+            const redact = (value: unknown): unknown => typeof value === 'string' ? key ? value.replaceAll(key, '[redacted]') : value
+              : Array.isArray(value) ? value.map(redact) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([name, item]) => [key ? name.replaceAll(key, '[redacted]') : name, redact(item)])) : value;
+            const clean = redact(data) as Record<string, unknown>;
+            if (JSON.stringify(clean).length > 2_000_000) return;
+            await this.store.lock(async () => { const current = await this.getJob(job.id); if (current.state !== 'running') return; current.result = clean; if (remoteTerminal) current.remoteTerminal = true; current.updatedAt = Date.now(); await this.saveJob(current); });
           };
           const urls = await adapter.generate(job, { key, baseUrl: job.providerOrigin, fetcher: this.options.fetcher ?? fetch, signal: controller.signal, progress, pollMs: this.options.pollMs, references: inputs, result: keepResult });
           await this.connections.verifyKey(job.model.provider, key, 'verified', job.providerOrigin);
           await progress('downloading');
           buffers = [];
-          for (const url of urls) buffers.push(Buffer.isBuffer(url) ? url : await retryRead(() => (this.options.download ?? downloadMedia)(url, controller.signal), controller.signal));
+          for (const url of urls) buffers.push(Buffer.isBuffer(url) ? url : await retryRead(() => (this.options.download ?? downloadMedia)(url, controller.signal), controller.signal, 5, () => progress('reconnecting'), () => progress('downloading')));
         }
         await progress('downloading');
         files = [];
@@ -447,7 +471,7 @@ export class ModelGateway {
             const asset = await library.addLocked(prepared[index], { assetId: existing?.id, createId: targetId,
               name: job.library?.title || job.prompt.replace(/\s+/g, ' ').trim().slice(0, 80), expectedModality: job.modality,
               version: { source: 'generated', prompt: job.prompt, model: job.model.id, parameters: job.parameters, references: job.library?.references ?? [],
-                parentVersionId: job.library?.parentVersionId, jobId: job.id, requestId: `${job.id}-${index}`, requestHash: file.sha256, conversationId: job.library?.conversationId } });
+                parentVersionId: job.library?.parentVersionId, jobId: job.id, requestId: `${job.id}-${index}`, requestHash: file.sha256, conversationId: job.library?.conversationId, result: current.result } });
             const version = asset.versions.find(v => v.requestId === `${job.id}-${index}`)!;
             current.libraryAssets.push({ assetId: asset.id, versionId: version.id });
             current.updatedAt = Date.now(); await this.saveJob(current);
@@ -488,6 +512,7 @@ export class ModelGateway {
         current.state = 'failed'; current.phase = unavailable ? 'save_unavailable' : retained ? 'save_failed' : 'failed'; current.savePending = retained && !unavailable; current.updatedAt = Date.now();
         let message = controller.signal.aborted ? 'Generation stopped or timed out; no automatic retry was made' : error instanceof Error ? error.message : 'Generation failed';
         if (key) message = message.replaceAll(key, '[redacted]');
+        if (resumableJob(current)) message += ' Check the original Cloud task with action=resume without paying again.';
         current.error = message.slice(0, 500); await this.saveResult(current);
       });
     } finally { clearTimeout(timeout); clearInterval(cancelPoll); if (!retained) await rm(dir, { recursive: true, force: true }); }

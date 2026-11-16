@@ -9,9 +9,9 @@ export class ProviderError extends Error {
 }
 export type Fetcher = typeof fetch;
 /** Repeat a read-only request (task polling or media download) after transient failures; never used for paid submissions. */
-export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, attempts = 5): Promise<T> {
+export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, attempts = 5, reconnecting?: () => Promise<void>, recovered?: () => Promise<void>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
-    try { return await read(); }
+    try { const result = await read(); if (attempt > 1) await recovered?.(); return result; }
     catch (error) {
       const status = (error as { status?: number }).status;
       const code = String((error as any)?.code ?? (error as any)?.cause?.code ?? '');
@@ -19,9 +19,12 @@ export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, 
         || (error as Error)?.name === 'TimeoutError' || /socket hang up|timed out|fetch failed/i.test(String((error as Error)?.message));
       const transient = status === undefined ? network : status === 429 || status >= 500;
       if (signal.aborted || !transient || attempt >= attempts) throw error;
+      await reconnecting?.();
+      signal.throwIfAborted();
       await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(resolve, Math.min(2000 * attempt, 10_000));
-        signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+        const abort = () => { clearTimeout(timer); reject(signal.reason); };
+        const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, Math.min(2000 * attempt, 10_000));
+        signal.addEventListener('abort', abort, { once: true });
       });
     }
   }
