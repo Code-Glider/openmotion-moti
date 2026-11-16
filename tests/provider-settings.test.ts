@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { execFile, spawn, type SpawnOptions } from 'node:child_process';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
@@ -117,6 +118,19 @@ test('account device authorization, billing, remote models and all media outputs
   assert.equal(JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')).length, 3);
   await gateway.close();
 }));
+
+test('source installations use the connector locked with their dependencies instead of installing one at runtime', async t => {
+  const packaged = createRequire(import.meta.url)('@powerformer/vela-cli').resolveVelaCliBin() as string | null;
+  if (!packaged) return t.skip('The connector has no binary for this platform');
+  await fixture(async store => {
+    const explicit = process.env.OPENMOTION_ACCOUNT_CLI; delete process.env.OPENMOTION_ACCOUNT_CLI;
+    t.after(() => { if (explicit !== undefined) process.env.OPENMOTION_ACCOUNT_CLI = explicit; });
+    const account = new OpenDesignAccount(store.directory); t.after(() => account.close());
+    // Preparation may install; it must pick the checkout's binary before `vela` on PATH or the private installation.
+    assert.equal(await account['prepare'](), packaged);
+    await assert.rejects(stat(path.join(store.directory, 'account', 'runtime')), { code: 'ENOENT' });
+  });
+});
 
 test('cancelling account authorization cannot register a provider from a late completion', t => fixture(async store => {
   await chmod(binary, 0o755); const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());

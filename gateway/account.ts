@@ -148,20 +148,22 @@ export class OpenDesignAccount {
   private async resolveRuntime(install = false) {
     if (this.options.binary || process.env.OPENMOTION_ACCOUNT_CLI) return this.options.binary || process.env.OPENMOTION_ACCOUNT_CLI!;
     if (this.runtime) return this.runtime;
-    try { const { stdout } = await execute('vela', ['--version'], { timeout: 5000 }); if (stdout.trim() === connectorVersion) return this.runtime = 'vela'; } catch { /* Try the private managed installation. */ }
-    const runtimeRoot = path.join(this.directory, 'account', 'runtime');
-    const resolve = async () => {
-      const binary = createRequire(path.join(runtimeRoot, 'package.json'))('@powerformer/vela-cli').resolveVelaCliBin({ strict: true }) as string;
+    const resolve = async (from: string) => {
+      const binary = createRequire(from)('@powerformer/vela-cli').resolveVelaCliBin({ strict: true }) as string;
       const { stdout } = await execute(binary, ['--version'], { timeout: 5000 });
       if (stdout.trim() !== connectorVersion) throw new Error('The installed account connector version is not supported');
       return binary;
     };
-    try { return this.runtime = await resolve(); } catch { if (!install) throw new Error('Connect your OpenDesign account to prepare the account service.'); }
+    // Source installations receive the locked connector with their dependencies; application artifacts omit it.
+    try { return this.runtime = await resolve(import.meta.url); } catch { /* Try an installed CLI. */ }
+    try { const { stdout } = await execute('vela', ['--version'], { timeout: 5000 }); if (stdout.trim() === connectorVersion) return this.runtime = 'vela'; } catch { /* Try the private managed installation. */ }
+    const runtimeRoot = path.join(this.directory, 'account', 'runtime');
+    try { return this.runtime = await resolve(path.join(runtimeRoot, 'package.json')); } catch { if (!install) throw new Error('Connect your OpenDesign account to prepare the account service.'); }
     await mkdir(runtimeRoot, { recursive: true, mode: 0o700 });
     // Fixed package/version only, installed outside the checkout; lifecycle scripts are disabled.
     const npmCli = path.resolve(path.dirname(process.execPath), process.platform === 'win32' ? 'node_modules/npm/bin/npm-cli.js' : '../lib/node_modules/npm/bin/npm-cli.js');
     await execute(process.execPath, [npmCli, 'install', '--prefix', runtimeRoot, '--ignore-scripts', '--no-audit', '--no-fund', '--save-exact', `@powerformer/vela-cli@${connectorVersion}`], { timeout: 300_000, maxBuffer: 1024 * 1024, signal: this.closing.signal });
-    return this.runtime = await resolve();
+    return this.runtime = await resolve(path.join(runtimeRoot, 'package.json'));
   }
   /** Locates or installs the connector. Background preparation and sign-in share one installation. */
   private prepare() {
