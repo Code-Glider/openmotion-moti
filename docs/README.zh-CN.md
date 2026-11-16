@@ -565,15 +565,13 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 <a id="ai-video-editing"></a> <a id="keep-editing-after-the-remake"></a>
 
-#### 查看模板与 Motion.md
-
-在左侧播放参考视频，在右侧展开「风格描述」或「制作要点」。需要保存指南时，点击「下载 motion.md」。
-
-![查看模板与 Motion.md](readme/live-product/detail.zh-CN.jpg)
+<a id="查看模板与-motionmd"></a>
 
 #### 把模板交给 Agent
 
-在详情面板点击「查看完整指令」，再点「复刻模板」复制指令。将它粘贴到 Agent，补充品牌素材和创作要求，再到 Studio 打开生成的工程，继续剪辑并导出。
+1. 播放参考视频，展开「风格描述」或「制作要点」查看细节。要保存指南，点击「下载 motion.md」。
+2. 点击「查看完整指令」，再点「复刻模板」复制指令。把指令粘贴到 Agent，附上品牌素材和创作要求。
+3. 在 Studio 打开 Agent 生成的工程，继续剪辑并导出。
 
 ![Studio 模板详情全屏：左侧预览参考视频，右侧显示完整指令和「复刻模板」按钮，顶部提示指令已复制。](readme/live-product/remix.zh-CN.jpg)
 

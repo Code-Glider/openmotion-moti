@@ -578,15 +578,13 @@ export an MP4 and retain the source for the next edit.
 
 <a id="ai-video-editing"></a> <a id="keep-editing-after-the-remake"></a>
 
-#### Review the template and its Motion.md
-
-Watch the reference video on the left. In the details panel, expand **Visual style** or **Production notes**, or choose **Download motion.md** to save the guide.
-
-![Review the template and its Motion.md](docs/readme/live-product/detail.en.jpg)
+<a id="review-the-template-and-its-motionmd"></a>
 
 #### Send the template to your agent
 
-In the details panel, choose **Show instruction** to read the prompt. **Recreate template** copies it to the clipboard. Paste it into your agent with your brand kit and creative brief. Open the resulting project in Studio to edit and export.
+1. Watch the reference video. Expand **Visual style** or **Production notes** for details, or choose **Download motion.md** to save the guide.
+2. Choose **Show instruction** to read the prompt, then **Recreate template** to copy it. Paste it into your agent with your brand kit and creative brief.
+3. Open the project your agent creates in Studio to edit and export.
 
 ![Template preview beside the expanded instruction and Recreate template button, with a confirmation that the instruction was copied.](docs/readme/live-product/remix.en.jpg)
 
