@@ -238,6 +238,8 @@ export class ModelGateway {
     }
     if (input.mode !== undefined && !['text-to-image', 'text-to-video', 'text-to-audio', 'text-to-speech'].includes(input.mode)) throw new Error('Unsupported generation mode');
     if (input.mode && input.mode !== `text-to-${input.modality}` && !(input.modality === 'audio' && input.mode === 'text-to-speech')) throw new Error('Generation mode does not match modality');
+    // An account model runs one connector command, so its catalogue mode is fixed (speech and music share `audio`).
+    if (model?.provider === 'account' && input.mode && input.mode !== model.mode) throw new Error('Generation mode does not match the selected account model');
     if (model && input.mode) model = { ...model, mode: input.mode };
     if (model?.provider === 'opendesign' && input.modality === 'audio' && model.mode !== 'text-to-speech') throw new Error('OpenDesign Cloud currently supports speech audio only');
     const projectId = input.library ? undefined : input.projectId ?? this.store.projectCatalog().activeId;
@@ -254,8 +256,8 @@ export class ModelGateway {
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
       validateGenerationOptions(model, { ...model.defaults, ...params });
       if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
-      if (input.library?.references?.length && (model.provider !== 'codex' || input.modality !== 'image' || input.library.references.length !== 1)) throw new Error('This model does not support asset references. Choose the local Codex image model or remove the reference.');
-      if (input.referenceAsset && (model.provider !== 'codex' || !model.supportsImageReference || input.modality !== 'image')) throw new Error('Selected model does not support reference image editing');
+      if (input.library?.references?.length && (!model.supportsImageReference || input.modality !== 'image' || input.library.references.length !== 1)) throw new Error('This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
+      if (input.referenceAsset && (!model.supportsImageReference || input.modality !== 'image')) throw new Error('Selected model does not support reference image editing');
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');
       const job: GenerationJob = { id: randomUUID(), ...(input.library ? { library: { ...input.library, createNew: !input.library.assetId, assetId: input.library.assetId ?? randomUUID() } } : { projectId }), state: 'queued', modality: input.modality, prompt: input.prompt.trim(), model,
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
@@ -350,11 +352,12 @@ export class ModelGateway {
       if (job.library) await requireLibraryMediaRuntime();
       await mkdir(dir, { recursive: true, mode: 0o700 });
       let buffers: Buffer[];
+      // Written by submit() when the job was queued with an input image.
+      const reference = job.reference ? path.join(dir, 'reference.' + (job.reference.mimeType === 'image/jpeg' ? 'jpg' : job.reference.mimeType.split('/')[1])) : undefined;
       if (job.model.provider === 'account') {
-        buffers = await this.account.generate(job, dir, controller.signal, progress);
+        buffers = await this.account.generate(job, dir, controller.signal, progress, reference);
       } else if (job.model.provider === 'codex') {
         await progress('generating');
-        const reference = job.reference ? path.join(dir, 'reference.' + (job.reference.mimeType === 'image/jpeg' ? 'jpg' : job.reference.mimeType.split('/')[1])) : undefined;
         const imageOptions = { ...job.model.defaults, ...job.parameters };
         buffers = [await (this.options.codex ?? generateCodexImage)(job.prompt + (Object.keys(imageOptions).length ? '\nImage options: ' + JSON.stringify(imageOptions) : ''), dir, controller.signal, reference)];
       } else {

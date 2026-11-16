@@ -145,7 +145,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const finalVideo = name === finalVideoTool.name;
         const definition = finalVideo ? finalVideoTool : phase1Tools.find(tool => tool.name === publicToolName(name))!;
         validateInput(definition.inputSchema, args);
-        if (internalName === 'motion_open_preview' && args.target !== 'templates' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
+        if (internalName === 'motion_open_preview' && args.target !== 'templates' && args.target !== 'providers' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
         if (args.sessionId === undefined) delete args.sessionId;
         if (templateConfig().source === 'repository' && ['motion_list_templates', 'motion_get_template'].includes(internalName)) {
           const catalog = templateCatalogFor(store.directory);

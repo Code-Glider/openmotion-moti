@@ -144,3 +144,18 @@ it('filters the full catalogue, autoplays only visible cards and hands off the e
   expect(document.querySelectorAll('video[src]')).toHaveLength(0);
   expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
 });
+
+it.each(['en', 'zh-CN'] as const)('copies the complete media onboarding flow in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const card = [...document.querySelectorAll('article')].find(node => node.querySelector('h3')?.textContent === (locale === 'en' ? 'Generate images, video, music and voice' : '生成图片、视频、音乐与配音'))!;
+  await act(async () => card.querySelector('button')!.click());
+  const instruction = copy.mock.calls[0][0];
+  expect(instruction).toContain('target=providers');
+  expect(instruction).not.toContain('install.md');
+  expect(instruction).not.toContain('quick-start');
+  expect(instruction).toContain(locale === 'en' ? 'inspect again' : '再次检查配置');
+  expect(instruction).toContain(locale === 'en' ? 'original request' : '原来的需求');
+  expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toContain(locale === 'en' ? 'Copied to clipboard' : '已复制');
+});
