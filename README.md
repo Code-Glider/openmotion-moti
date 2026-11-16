@@ -33,12 +33,12 @@
 
 # OpenMotion
 
-OpenMotion is a **full-stack agentic video generator** and an **open-source alternative to CapCut and Claude Motion**. Upload a reference video or paste a social video link to **recreate it with your own brand kit and copy**.
+OpenMotion is a **full-stack agentic video** studio and an **open-source alternative to CapCut and Claude Motion**. Upload a reference video or paste a social video link to **recreate it with your own brand kit and copy**.
 
 - 🎬 **Full-stack video recreation.** Code video with HTML. Your agent breaks down the reference, rebuilds its shots and transitions, and generates missing assets. Edit the timing in Studio and render an MP4 from the same project.
 - 🔑 **BYOA — Bring Your Own Agent. BYOK — Bring Your Own Keys.** OpenMotion is free and open source. Recreate videos in [your local agent](#agent-wall) with your own API keys. Supported agents include Claude Code, Codex, and WorkBuddy.
 - 🧩 OpenMotion introduces **Motion.md**, a Markdown format for shot order, timing and transitions. Use it to share how a brand film works, shot by shot.
-- 🎛️ **Images, video, music and voice.** Generate artwork with Nano Banana 2, add a shot with Seedance 2.0, score it with Suno v4 and narrate it with Kokoro. [Explore all seven built-in models](#model-wall).
+- 🎛️ **Images, video, music and voice.** Create artwork with GPT Image 2.6, add a shot with Seedance 2.5, score it with Suno and narrate it with Eleven v4. [Explore the models and providers](#model-wall).
 
 <a id="快速开始"></a> <a id="quick-start"></a>
 
@@ -283,7 +283,7 @@ Product tutorial + live demonstration<br>
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. The first full-stack agentic video generator
+### 1. A full-stack agentic video studio
 
 **Code video with HTML.** OpenMotion uses HTML, CSS and JavaScript to describe scenes, typography, layout, transitions and timing. Recorded footage, generated clips, images, music and voice-over become media inside the composition. The same project opens in Studio and renders to MP4.
 
@@ -369,7 +369,7 @@ Provider credentials stay in your workspace, separate from the video project. Yo
 
 <a id="make-your-motion-language-reusable"></a> <a id="motion-design-community"></a>
 
-### 3. 100+ Motion.md guides for video recreation
+### 3. 300+ Motion.md guides for video recreation
 
 OpenMotion introduces **Motion.md**: a Markdown format for shot order, timing, transitions and the assets you can replace. The online library brings reference videos and their motion guides into the same detail page.
 
@@ -398,6 +398,8 @@ Reference-only entries start a reconstruction workflow. When editable source is 
 ### 4. Multimodal generation: images, video, music and speech
 
 **BYOK makes your multimodal accounts part of the video workflow.** Add your supported provider keys in **Model Settings**, choose your models, and generate images, video, music and speech through the Studio's **Model Gateway**. Preview candidates and adopt the results into the same project your agent and Studio edit. The supported local image path can reuse your existing agent login.
+
+Connect fal.ai in **Model Settings** and refresh its catalog to find GPT Image 2.6, Nano Banana 2.1, FLUX.3, Seedance 2.5, Kling 4.0, Wan 3.0 and Eleven v4. The presets below also appear before you refresh.
 
 <p><img src="docs/readme/models/codex.svg" width="133" alt="Codex Image">
 <img src="docs/readme/models/nano-banana.svg" width="133" alt="Nano Banana 2">
