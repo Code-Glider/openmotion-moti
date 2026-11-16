@@ -20,6 +20,7 @@ import { purposeOrder } from './templateDiscoveryTaxonomy';
 import { templateContributionUrl, templateSubmissionPrompt } from './templateContribution';
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
+import { RelatedTemplatePreviews } from './RelatedTemplatePreviews';
 import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, randomTemplate, type Facet } from './templateDiscovery';
 import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
@@ -475,7 +476,7 @@ export function TemplateLibraryDialog(props: Props) {
               {preview.reviewFocus && <details><summary>{t('Production notes')}</summary><p>{preview.reviewFocus}</p></details>}
               {preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
             </section>}
-            {related.length > 0 && <section className={styles.related}><h3>{t('Related templates')}</h3><div>{related.map((item, index) => <button key={item.id} onClick={() => openRelated(item, index + 1)} aria-label={t('Preview template {title}', { title: item.title })}><TemplatePoster template={item} /><span className={styles.relatedCaption}>{item.title}</span></button>)}</div></section>}
+            {related.length > 0 && <RelatedTemplatePreviews key={preview.id} templates={related} panel={detailInfo} onSelect={openRelated} />}
           </div>
         </div>
       </div>}
