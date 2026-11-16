@@ -241,7 +241,8 @@ export class ModelGateway {
       validateGenerationOptions(model, { ...model.defaults, ...params });
       if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
       const referenceCount = (input.library?.references?.length ?? 0) + (input.referenceAsset ? 1 : 0);
-      const referenceLimit = input.modality === 'image' ? model.supportsImageReference ? model.maxInputImages ?? 1 : 0 : input.modality === 'video' ? model.maxInputImages ?? 0 : 0;
+      // Video sends only a first frame; the project-direct referenceAsset route stays image-only as before.
+      const referenceLimit = input.modality === 'image' ? model.supportsImageReference ? model.maxInputImages ?? 1 : 0 : input.modality === 'video' && !input.referenceAsset ? Math.min(model.maxInputImages ?? 0, 1) : 0;
       if (referenceCount && !referenceLimit) throw new Error(input.modality === 'video' ? 'This video model does not accept an input image. Choose a video model with maxInputImages, or remove the reference.'
         : input.referenceAsset ? 'Selected model does not support reference image editing' : 'This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
       if (referenceCount > referenceLimit) throw new Error(`This model accepts at most ${referenceLimit} input image${referenceLimit === 1 ? '' : 's'}`);

@@ -225,3 +225,13 @@ test('MCP initialization and the connection guide describe per-model references 
     assert.match(text, /take one image as the first frame/, file);
   }
 });
+
+test('the project-direct referenceAsset route stays image-only', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  let submitted = 0; cloud(gateway, () => submitted++);
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  await assert.rejects(gateway.submit({ projectId: store.projectId, referenceAsset: 'frame.png', model: 'opendesign:i2v', modality: 'video', prompt: 'x' }), /does not accept an input image/);
+  assert.equal(submitted, 0);
+  await gateway.close();
+}));

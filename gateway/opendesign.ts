@@ -60,7 +60,7 @@ export const opendesign: ProviderAdapter = {
     if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
     const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };
     const inputs = audio ? [] : await uploadInputs(fetcher, api, headers, job.id, ctx);
-    const images = inputs.length ? { images: job.modality === 'video' ? inputs.map(asset_id => ({ asset_id, role: 'first_frame' })) : inputs } : {};
+    const images = inputs.length ? { images: job.modality === 'video' ? [{ asset_id: inputs[0], role: 'first_frame' }] : inputs } : {};
     const payload = audio ? { model: job.model.modelId, ...audioBody }
       : { ...parameters, model: job.model.modelId, prompt: job.prompt, ...images };
     const endpoint = audio ? speech ? '/audio/speech' : '/audio/music' : job.modality === 'image' ? inputs.length ? '/images/edits' : '/images/generations' : '/videos/tasks';
