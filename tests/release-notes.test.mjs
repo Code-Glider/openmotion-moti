@@ -146,7 +146,7 @@ test('diverged or truncated comparison data is explicitly rejected or disclosed'
 test('a comparison page the endpoint returns short is disclosed instead of failing the build', async t => {
   const f = await fixture(t, '0.6.4-test.99');
   const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit }, base = 'a'.repeat(40);
-  // GitHub's comparison endpoint caps the returned commits while total_commits reports the whole delta.
+  // Simulate unexpectedly short/empty pages despite a larger declared delta.
   for (const [available, total] of [[250, 300], [300, 350]]) {
     await rm(path.join(f.build, 'release-notes.md'), { force: true });
     const calls = [];
@@ -182,4 +182,24 @@ test('notes are sealed before upload, displayed in the summary and never require
   const prepare = build.indexOf('motion-release-notes.mjs prepare'), seal = build.indexOf('motion-release.mjs seal');
   assert(prepare > build.indexOf('motion-scan.mjs package') && prepare < seal && seal < build.indexOf('actions/upload-artifact'));
   assert(build.includes("/candidate/release-notes.md") && build.includes('Candidate release notes (unpublished)'));
+});
+
+for (const scenario of ['full-300', 'empty-page', 'repeated-page']) test(`comparison ${scenario} never duplicates rows or invents an empty release delta`, async t => {
+  const f = await fixture(t, '0.6.8-test.14'); await rm(path.join(f.build, 'release-notes.md'));
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  const commits = Array.from({ length: 300 }, (_, i) => ({ sha: (i + 1).toString(16).padStart(40, '0'), commit: { message: `Unique change ${i}` } }));
+  let pages = 0;
+  const body = await prepareCandidateNotes(f.build, { env, fetcher: async url => {
+    if (url.includes('/releases?')) return Response.json([{ tag_name: 'v0.6.8-test.13', prerelease: true }]);
+    if (url.includes('/git/ref/')) return Response.json({ object: { type: 'commit', sha: 'a'.repeat(40) } });
+    const page = Number(new URL(url).searchParams.get('page')); pages++;
+    const start = scenario === 'repeated-page' ? 0 : (page - 1) * 100;
+    return Response.json({ status: 'ahead', total_commits: 300, commits: scenario === 'empty-page' ? [] : commits.slice(start, start + 100) });
+  } });
+  const count = { 'full-300': 300, 'empty-page': 0, 'repeated-page': 100 }[scenario];
+  assert.equal((body.match(/^- Unique change /gm) || []).length, count);
+  if (scenario === 'full-300') assert(!body.includes('compared commits are shown'));
+  else assert(body.includes(`Only the first ${count} of 300 compared commits are shown`) && body.includes('Full source comparison/history'));
+  assert(!body.includes('No source commits since the baseline.'));
+  assert.equal(pages, { 'full-300': 3, 'empty-page': 1, 'repeated-page': 2 }[scenario]);
 });

@@ -52,16 +52,21 @@ export async function prepareCandidateNotes(directory, { env = process.env, fetc
     assert.equal(object.type, 'commit'); assert.match(object.sha, /^[a-f0-9]{40}$/); base = object.sha;
     link = `https://github.com/${repository}/compare/${base}...${source}`;
     commits = [];
+    const seen = new Set();
     let total = 0, truncated = false;
     for (let page = 1; page <= 10; page++) {
       const compared = await api(`/compare/${base}...${source}?per_page=100&page=${page}`);
       assert(['ahead', 'identical'].includes(compared.status), 'Published baseline must be an ancestor of the selected source');
       assert(Array.isArray(compared.commits) && Number.isSafeInteger(compared.total_commits) && compared.total_commits >= 0, 'Invalid comparison metadata');
-      total = compared.total_commits; commits.push(...compared.commits);
+      total = compared.total_commits;
+      const fresh = compared.commits.filter(commit => {
+        if (seen.has(commit.sha)) return false;
+        seen.add(commit.sha); return true;
+      });
+      commits.push(...fresh);
       if (commits.length >= total) break;
-      // The comparison endpoint caps how many commits it returns, so a short or empty
-      // page ends the readable delta instead of signalling a malformed response.
-      truncated = compared.commits.length < 100 || page === 10;
+      // A short or repeated page is incomplete evidence, not a candidate-build failure.
+      truncated = compared.commits.length < 100 || fresh.length !== compared.commits.length || page === 10;
       if (truncated) break;
     }
     if (truncated) warning = `Only the first ${commits.length.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} compared commits are shown; inspect the full comparison.`;
@@ -78,7 +83,7 @@ export async function prepareCandidateNotes(directory, { env = process.env, fetc
     const title = escape(commit.commit.message.split(/\r?\n/, 1)[0]);
     return `- ${title} ([${commit.sha.slice(0, 7)}](https://github.com/${repository}/commit/${commit.sha}))`;
   });
-  const body = `# OpenMotion ${manifest.version}\n\nChannel: ${channel}; templates: ${manifest.templateEnvironment}.\nSource: [${source}](https://github.com/${repository}/commit/${source}).\nBaseline: ${previous ? `${previous.tag_name} (${base})` : 'not available'}.\n\n## Changes\n\n${warning ? warning + '\n\n' : ''}${rows.join('\n') || (previous ? 'No source commits since the baseline.' : 'No commit entries returned; inspect the full history.')}\n\n[Full source comparison/history](${link})\n\n## Acceptance focus\n\nNOT PROVIDED — maintainers record the required checks and actual results in their private acceptance.md copy. No acceptance is implied.\n\n## Known issues\n\nNOT PROVIDED — review before distribution; this does not mean there are no known issues. Maintainers may edit the published GitHub Release prose.\n\n${candidateNoteIdentity({ version: manifest.version, sourceCommit: source, tgzSHA256: manifest.installer.sha256 })}\n`;
+  const body = `# OpenMotion ${manifest.version}\n\nChannel: ${channel}; templates: ${manifest.templateEnvironment}.\nSource: [${source}](https://github.com/${repository}/commit/${source}).\nBaseline: ${previous ? `${previous.tag_name} (${base})` : 'not available'}.\n\n## Changes\n\n${warning ? warning + '\n\n' : ''}${rows.join('\n') || (previous && !warning ? 'No source commits since the baseline.' : 'No complete commit list is available; inspect the full history/comparison.')}\n\n[Full source comparison/history](${link})\n\n## Acceptance focus\n\nNOT PROVIDED — maintainers record the required checks and actual results in their private acceptance.md copy. No acceptance is implied.\n\n## Known issues\n\nNOT PROVIDED — review before distribution; this does not mean there are no known issues. Maintainers may edit the published GitHub Release prose.\n\n${candidateNoteIdentity({ version: manifest.version, sourceCommit: source, tgzSHA256: manifest.installer.sha256 })}\n`;
   assert(Buffer.byteLength(body) <= 1024 * 1024, 'Candidate notes exceed 1 MiB');
   await writeFile(path.join(directory, 'release-notes.md'), body, { flag: 'wx' });
   return body;
