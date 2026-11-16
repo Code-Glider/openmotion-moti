@@ -34,7 +34,7 @@ export const designSystemDocuments = Object.freeze([
 ]);
 
 export const designSystemRuntimeFiles = Object.freeze([
-  ...publicDesignFiles, 'index.js', 'metadata.js', 'provider-icons.js', 'package.json', 'tailwind.css',
+  ...publicDesignFiles, 'index.js', 'metadata.js', 'provider-icons.js', 'package.json', 'tailwind.css', 'inline-feedback.ts',
   'studio/theme.css', 'studio/tokens.css', 'studio/palette-reset.css',
 ]);
 
