@@ -102,27 +102,63 @@ for (const [workflow, definition] of Object.entries(workflowRegistry)) for (cons
   if (!documents.has(documentId)) documents.set(documentId, { workflow, section, documentId });
 }
 
+const withoutFences = (content: string) => content.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*(?:\n|$)/gm, '');
+
+// Inline links and reference-link definitions; ignore fenced examples and inline code.
+function markdownHrefs(content: string) {
+  const prose = withoutFences(content).replace(/(`+)[^\n]*?\1/g, '');
+  return [
+    ...prose.matchAll(/\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)/g),
+    ...prose.matchAll(/^ {0,3}\[[^\]]+\]:\s*(?:<([^>]+)>|(\S+))/gm),
+  ].map(link => link[1] ?? link[2]);
+}
+
+function registeredTarget(href: string, documentId: string) {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) return null;
+  const target = decodeURIComponent(href.split(/[?#]/, 1)[0]);
+  if (!/\.md$/i.test(target)) return null;
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(documentId), target));
+  const reference = !target.startsWith('/') && !target.includes('\\') ? documents.get(resolved) : undefined;
+  if (!reference) throw new Error(`Unregistered workflow Markdown link in ${documentId}: ${href}`);
+  return reference;
+}
+
 /** Resolve packaged Markdown links through the registry, never through a caller-supplied path. */
 export function workflowReferences(content: string, documentId: string) {
   if (!documents.has(documentId)) throw new Error('Unknown workflow document: ' + documentId);
   const references = new Map<string, { workflow: string; section: string; documentId: string }>();
-  // Inline links and reference-link definitions; ignore fenced examples and inline code.
-  const prose = content.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*(?:\n|$)/gm, '').replace(/(`+)[^\n]*?\1/g, '');
-  const links = [
-    ...prose.matchAll(/\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)/g),
-    ...prose.matchAll(/^ {0,3}\[[^\]]+\]:\s*(?:<([^>]+)>|(\S+))/gm),
-  ];
-  for (const link of links) {
-    const href = link[1] ?? link[2];
-    if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
-    const target = decodeURIComponent(href.split(/[?#]/, 1)[0]);
-    if (!/\.md$/i.test(target)) continue;
-    const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(documentId), target));
-    const reference = !target.startsWith('/') && !target.includes('\\') ? documents.get(resolved) : undefined;
-    if (!reference) throw new Error(`Unregistered workflow Markdown link in ${documentId}: ${href}`);
-    references.set(reference.documentId, reference);
+  for (const href of markdownHrefs(content)) {
+    const reference = registeredTarget(href, documentId);
+    if (reference) references.set(reference.documentId, reference);
   }
   return [...references.values()];
+}
+
+/** Heading anchors as GitHub renders them, including -1, -2 suffixes for repeated headings. */
+export function markdownAnchors(content: string) {
+  const anchors = new Set<string>();
+  const counts = new Map<string, number>();
+  for (const [, text] of withoutFences(content).matchAll(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/gm)) {
+    const base = text.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').trim().toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-');
+    const repeat = counts.get(base) ?? 0;
+    counts.set(base, repeat + 1);
+    anchors.add(repeat ? `${base}-${repeat}` : base);
+  }
+  return anchors;
+}
+
+/** `#fragment` links to registered documents, including same-document links. Stripping fragments in workflowReferences keeps them out of MCP identity, so they are validated separately. */
+export function workflowLinkAnchors(content: string, documentId: string) {
+  const self = documents.get(documentId);
+  if (!self) throw new Error('Unknown workflow document: ' + documentId);
+  const anchors: Array<{ workflow: string; section: string; documentId: string; anchor: string; href: string }> = [];
+  for (const href of markdownHrefs(content)) {
+    const hash = href.indexOf('#');
+    if (hash < 0 || hash === href.length - 1) continue;
+    const reference = href.startsWith('#') ? self : registeredTarget(href, documentId);
+    if (reference) anchors.push({ ...reference, anchor: decodeURIComponent(href.slice(hash + 1)), href });
+  }
+  return anchors;
 }
 
 export async function getWorkflow(section: unknown = 'start', workflow: unknown = 'production') {
