@@ -13,6 +13,7 @@ import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { Popover } from '../components/ui/Popover';
 import { Tabs, TabsList, Tab, TabPanel } from '../components/ui/Tabs';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Tooltip } from '../components/ui/Tooltip';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
 import { purposeOrder } from './templateDiscoveryTaxonomy';
@@ -29,6 +30,22 @@ import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './t
 type Filters = Partial<Record<Facet, string[]>>;
 const toggleValue = (filters: Filters, key: Facet, value: string): Filters => ({ ...filters, [key]: filters[key]?.includes(value) ? filters[key]!.filter(item => item !== value) : [...(filters[key] ?? []), value] });
 const matchesFilters = (item: GalleryTemplate, filters: Filters, editable: boolean) => (!editable || isEditableTemplate(item)) && facets.every(([key]) => !filters[key]?.length || filters[key]!.some(value => values(item, key).includes(value)));
+
+function MetadataTag({ label, onClick }: { label: string; onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [overflow, setOverflow] = useState(false);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => setOverflow(element.scrollWidth > element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    document.fonts?.addEventListener('loadingdone', measure);
+    return () => { observer.disconnect(); document.fonts?.removeEventListener('loadingdone', measure); };
+  }, [label]);
+  return <Tooltip withinDialog label={label} disabled={!overflow} wrap><button ref={ref} onClick={onClick}>{label}</button></Tooltip>;
+}
 
 function DetailMedia({ template }: { template: GalleryTemplate }) {
   const { t } = useI18n();
@@ -59,7 +76,7 @@ export function TemplateLibraryDialog(props: Props) {
   const [warning, setWarning] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(false);
   const [attempt, retry] = useState(0), [query, setQuery] = useState(''), [sort, setSort] = useState<Sort>('recommended');
   const [selected, setSelected] = useState<Filters>({});
-  const [preview, setPreview] = useState<GalleryTemplate | null>(null), [prompt, setPrompt] = useState(''), [feedback, setFeedback] = useState('');
+  const [preview, setPreview] = useState<GalleryTemplate | null>(null), [prompt, setPrompt] = useState('');
   const [manualCopy, setManualCopy] = useState('');
   const [promptError, setPromptError] = useState(false), [promptAttempt, retryPrompt] = useState(0);
   const [priority, setPriority] = useState<string | null>(null), [filtersOpen, setFiltersOpen] = useState(false);
@@ -254,7 +271,7 @@ export function TemplateLibraryDialog(props: Props) {
     const view = { id: tracking.newTrackingId(), placement }; detailView.current = view; instructionShown.current = undefined;
     const index = latest.current.items.findIndex(candidate => candidate.id === item.id);
     tracking.reportDetailShown(item, view, placement === 'related' || index < 0 ? undefined : index + 1);
-    setPreview(item); setPrompt(''); setPromptError(false); setFeedback(''); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false);
+    setPreview(item); setPrompt(''); setPromptError(false); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false);
     if (detailInfo.current) detailInfo.current.scrollTop = 0;
     if (!detail.current?.open) detail.current?.showModal();
   }, []);
@@ -312,18 +329,16 @@ export function TemplateLibraryDialog(props: Props) {
     void loadPrompt();
     return () => { cancelled = true; };
   }, [preview, locale, promptAttempt]);
-  /** `origin` is the control used: a recreate button reports the intent to use, the instruction's own button a copy click. */
-  async function copy(submit = false, origin: 'recreate' | 'instruction' = 'recreate') {
+  async function copy(submit = false) {
     if (!prompt) return;
     const text = submit ? templateSubmissionPrompt(prompt) : prompt;
     const template = preview, view = detailView.current, attemptId = tracking.newTrackingId();
-    if (template && origin === 'recreate') tracking.reportUseClicked(template, submit ? 'recreate_submit' : 'recreate', view, attemptId);
-    else if (template) tracking.reportCopyClicked(template, attemptId, view);
+    if (template) tracking.reportUseClicked(template, submit ? 'recreate_submit' : 'recreate', view, attemptId);
     try {
-      await navigator.clipboard.writeText(text); setManualCopy(''); setFeedback('Copied. Paste into your Agent.'); showToast('Copied. Paste into your Agent.', 'info');
+      await navigator.clipboard.writeText(text); setManualCopy(''); showToast('Copied. Paste into your Agent.', 'info');
       if (template) tracking.reportCopyResult(template, 'clipboard_written', attemptId, submit, view);
     } catch {
-      setManualCopy(text); setPromptExpanded(true); setFeedback(''); showToast('Copy failed. Select and copy the instruction below.', 'error', 'feedback');
+      setManualCopy(text); setPromptExpanded(true); showToast('Copy failed. Select and copy the instruction below.', 'error', 'feedback');
       if (template) tracking.reportCopyResult(template, 'manual_fallback_shown', attemptId, submit, view);
     }
   }
@@ -350,7 +365,7 @@ export function TemplateLibraryDialog(props: Props) {
   }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
-        {props.onTemplateChange && <WorkspaceHistoryNavigation />}
+        {props.onTemplateChange && <WorkspaceHistoryNavigation tooltips />}
         <div className={styles.wordmark}><BrandLogo compact /><span className={styles.libraryLabel}>{t('Template library')}</span></div>
         <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
         <GitHubLink />
@@ -416,7 +431,7 @@ export function TemplateLibraryDialog(props: Props) {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }
     }}>
-      {preview && props.onTemplateChange && <header className={styles.historyHeader}><WorkspaceHistoryNavigation /><BrandLogo /></header>}
+      {preview && props.onTemplateChange && <header className={styles.historyHeader}><WorkspaceHistoryNavigation tooltips /><BrandLogo /></header>}
       {preview && <div className={styles.detailGrid}>
         <div className={styles.stage}>
           {preview.posterUrl && <img className={styles.ambient} src={preview.posterUrl} alt="" aria-hidden="true" />}
@@ -424,21 +439,38 @@ export function TemplateLibraryDialog(props: Props) {
           <DetailMedia key={preview.id} template={preview} />
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
-          <div className={styles.detailNav}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button><span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')} title={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')} title={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></div>
+          <div className={styles.detailNav}>
+            <Tooltip withinDialog label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
+            <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
+            <Tooltip withinDialog label={t('Previous template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
+            <Tooltip withinDialog label={t('Next template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
+          </div>
           <div className={styles.detailBody}>
             <h2>{preview.title}</h2>
-            <a className={styles.repositoryLink} href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}<MotionIcon name="arrow-up-right" size={14} /></a>
-            <div className={styles.creator}><Identity template={preview} /><div><strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>{preview.sourceUrl && <a href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')} title={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a>}</div>
             {preview.description && <p className={styles.description}>{preview.description}</p>}
-            <div className={styles.actions}>{isEditableTemplate(preview) && <button className={styles.primary} disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}<div className={styles.recreateActions}><button disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button><button className={styles.submitTemplate} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')} title={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></div></div>
-            <section ref={instructionText} className={styles.instruction} aria-label={t('Template instruction')}><header><h3>{t('Template instruction')}</h3><button disabled={!prompt} onClick={() => void copy(false, 'instruction')}><MotionIcon name="copy" size={14} />{t(feedback === 'Copied. Paste into your Agent.' ? 'Copied' : 'Copy')}</button></header>{manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>}<button disabled={!prompt} className={styles.expandInstruction} aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
+            <div className={styles.creator}>
+              <Identity template={preview} />
+              <div><strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>
+              {preview.sourceUrl && <Tooltip withinDialog label={t('Source')}><a className={styles.sourceLink} href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>}
+            </div>
+            <section ref={instructionText} className={styles.instruction} aria-label={t('Template instruction')}><header><h3>{t('Template instruction')}</h3></header>{manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>}<button disabled={!prompt} className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
+            <div className={styles.actions}>
+              {isEditableTemplate(preview) && <button className="om-button" data-primary disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}
+              <div className={styles.recreateActions}>
+                <button className="om-button" data-primary disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button>
+                <Tooltip withinDialog label={t('Recreate and submit')}><button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></Tooltip>
+              </div>
+            </div>
+            <div className={styles.resourceLinks}>
+              <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}</a>
+              {preview.motionDocumentUrl && <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={15} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>}
+            </div>
             <dl className={styles.metadata}>
               {preview.duration != null && <div><dt>{t('Duration')}</dt><dd>{t('{value}s', { value: Number(preview.duration.toFixed(1)) })}</dd></div>}
               {(preview.width || preview.ratio) && <div><dt>{t('Aspect ratio')}</dt><dd>{templateRatio(preview)}</dd></div>}
-              {facets.filter(([key]) => !['duration', 'ratio'].includes(key)).map(([key, label]) => values(preview, key).length > 0 && <div key={key}><dt>{t(label)}</dt><dd>{values(preview, key).map(value => <button key={value} onClick={() => filterBy(key, value)}>{key === 'brand' ? value : t(value)}</button>)}</dd></div>)}
+              {facets.filter(([key]) => !['duration', 'ratio'].includes(key)).map(([key, label]) => values(preview, key).length > 0 && <div key={key}><dt>{t(label)}</dt><dd>{values(preview, key).map(value => <MetadataTag key={value} label={key === 'brand' ? value : t(value)} onClick={() => filterBy(key, value)} />)}</dd></div>)}
             </dl>
-            {preview.tags.length > 0 && <div className={styles.tags}>{preview.tags.map(tag => <button key={tag} onClick={() => { clear(); setQuery(tag); closeDetail(); }}>{t(tag)}</button>)}</div>}
-            {(preview.motionDocumentUrl || preview.projectFileUrl) && <div className={styles.projectActions}>{preview.motionDocumentUrl && <button disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={15} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>}{preview.projectFileUrl && <a href={preview.projectFileUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDownloadClicked(preview, 'download_project', undefined, detailView.current)}>{t('Download OpenMotion project')}<MotionIcon name="arrow-up-right" size={14} /></a>}</div>}
+            {preview.projectFileUrl && <div className={styles.projectActions}><a href={preview.projectFileUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDownloadClicked(preview, 'download_project', undefined, detailView.current)}>{t('Download OpenMotion project')}<MotionIcon name="arrow-up-right" size={14} /></a></div>}
             {(preview.styleDescription || preview.reviewFocus || preview.motionGuideUrl) && <section className={styles.guide} aria-label={t('Motion guide')}>
               {preview.styleDescription && <details><summary>{t('Visual style')}</summary><p>{preview.styleDescription}</p></details>}
               {preview.reviewFocus && <details><summary>{t('Production notes')}</summary><p>{preview.reviewFocus}</p></details>}

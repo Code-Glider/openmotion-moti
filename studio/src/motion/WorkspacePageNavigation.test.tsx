@@ -139,6 +139,8 @@ it('restores provider details and returns to the providers list through history'
 
 it('uses the header controls for visited pages, preserves Forward on reload and drops abandoned destinations', async () => {
   await mount();
+  expect(historyButton('Back').title).toBe('Back');
+  expect(historyButton('Forward').title).toBe('Forward');
   expect(historyButton('Back').disabled).toBe(true);
   expect(historyButton('Forward').disabled).toBe(true);
   await click('MCP · Connect Agent'); await click('Settings');
@@ -161,6 +163,10 @@ it('keeps history controls inside the active template dialogs', async () => {
   const detail = 'dialog[aria-label="Template preview"] > header';
   await mount(); await click('MCP · Connect Agent'); await click('Explore templates');
   await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
+  expect(historyButton('Back', detail).hasAttribute('title')).toBe(false);
+  expect(historyButton('Back').title).toBe('Back');
+  await act(async () => { historyButton('Back', detail).focus(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('dialog[aria-label="Template preview"] [role="tooltip"]')?.textContent).toBe('Back');
   await clickHistory('Back', detail); expect(page().template).toBeNull();
   expect(historyButton('Forward', library).disabled).toBe(false);
   await clickHistory('Forward', library); expect(page().template).toBe('product-promo');
