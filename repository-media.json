@@ -410,6 +410,12 @@
       "url": "https://releases.open-design.ai/open-motion/media/sha256/3181f1208ab8c39e8eaeb1abe638f20be6400ff4a6fb98fdce62154d332e93ae.gif"
     },
     {
+      "path": "docs/readme/maintainer-media-merge-smoke.webm",
+      "bytes": 3449,
+      "sha256": "eb700b816ed952525efe786e10b0a18f1349bfd7dddd60061d2e306110425466",
+      "url": "https://releases.open-design.ai/open-motion/media/sha256/eb700b816ed952525efe786e10b0a18f1349bfd7dddd60061d2e306110425466.webm"
+    },
+    {
       "path": "docs/readme/motion-design/wireframe-portal-title.github.gif",
       "bytes": 836877,
       "sha256": "d6cd62a5cf75aa06e6091ec56a94ebf6cb3dfe6faade022aded21092d00b9fd4",

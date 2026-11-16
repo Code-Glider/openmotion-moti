@@ -33,7 +33,7 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
   if (args.action === 'generate') {
     if (!args.provider || !args.model || !args.requestId || !args.modality || typeof args.prompt !== 'string') throw new Error('INVALID_ARGUMENT: provider, model, projectId, requestId, modality and prompt are required');
     const job = await gateway.submit({ projectId: args.projectId, model: `${args.provider}:${args.model}`, modality: args.modality,
-      prompt: args.prompt, parameters: args.parameters, mode: args.mode, idempotencyKey: args.requestId } as GenerateInput);
+      prompt: args.prompt, parameters: args.parameters, mode: args.mode, referenceAsset: args.referenceAsset, idempotencyKey: args.requestId } as GenerateInput);
     return { projectId: job.projectId, job, next: { action: 'status', projectId: job.projectId, jobId: job.id } };
   }
   if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {

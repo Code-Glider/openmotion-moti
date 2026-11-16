@@ -197,7 +197,7 @@ test('MCP rejects unknown routes, invalid route-section pairs and arbitrary path
       { workflow: 'unknown' }, { workflow: 'debug-media' }, { workflow: '__proto__' }, { workflow: '../director' }, { workflow: null }, { workflow: [] },
       { section: '../.env' }, { section: 'constructor' }, { section: null }, { section: 1 }, { section: {} },
       { workflow: 'director', section: 'intake' }, { workflow: 'template', section: 'production' }, { workflow: 'recreate', section: 'native' },
-      { workflow: 'production', section: 'sound' }, { path: 'skills/openmotion-director/SKILL.md' }, [], 'director',
+      { workflow: 'production', section: 'actions' }, { path: 'skills/openmotion-director/SKILL.md' }, [], 'director',
       { workflow: 'video-to-template', section: 'intake' }, { workflow: 'video--to-template' }, { workflow: 'video-to-template-' }, { workflow: 'template-to-video' }, { workflow: 'motion-template' },
     ];
     const responses = stdio(directory, invalid.map((args, index) => workflowCall(index + 1, args)));

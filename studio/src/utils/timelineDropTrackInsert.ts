@@ -62,6 +62,10 @@ export function applyTrackRenumbers(source: string, plan: DropTrackInsertPlan): 
     if (!target || !readTagSnippetByTarget(out, target)) {
       throw new Error(`Cannot renumber the track of "${element.id}" in the source`);
     }
+    if (element.implicitTextTiming) {
+      out = applyPatchByTarget(out, target, { type: "attribute", property: "start", value: formatTimelineAttributeNumber(element.start) });
+      out = applyPatchByTarget(out, target, { type: "attribute", property: "duration", value: formatTimelineAttributeNumber(element.duration) });
+    }
     out = applyPatchByTarget(out, target, {
       type: "attribute",
       property: "track-index",
@@ -95,10 +99,18 @@ function resolveRowDrop(
   };
 }
 
+/** The shared magnetic import position, usable before media metadata resolves. */
+export function mainTrackAppendStart(elements: readonly TimelineElement[], track: number): number {
+  return elements.filter(element => !isAudioTimelineElement(element) && element.track === track)
+    .reduce((end, element) => Math.max(end, element.start + element.duration), 0);
+}
+
 /** Where a dropped clip is written: the aimed row's file track at its nearest free time, or a new track. */
 export function resolveDropTrack(input: {
   source: string;
   elements: TimelineElement[];
+  /** Main-track imports append head-to-tail when its magnet is on. */
+  magneticMainTrack?: boolean;
   /** Clips this drop gesture already wrote, which `elements` does not hold yet. */
   placed?: readonly TimelineElement[];
   placement: TimelineDropPlacement;
@@ -106,13 +118,16 @@ export function resolveDropTrack(input: {
 }): { source: string; track: number; start: number } {
   const { source, elements, placement, dropped } = input;
   if (placement.newTrack === "top") {
+    const target = elements[0];
+    const realized = target ? planTimelineLanePersistence(elements, target) : [];
+    const insertionSource = applyTrackRenumbers(source, { track: 0, renumbers: realized });
     // Read tracks from the serialized source, since a previous insertion may
     // already be saved while the iframe still shows the old row order.
     const peers = new Map<string, TimelineElement>();
     for (const element of [...elements, ...(input.placed ?? [])]) {
       const target = buildPatchTarget(element);
-      const raw = target ? readAttributeByTarget(source, target, "track-index") : undefined;
-      if (!target || !readTagSnippetByTarget(source, target)) continue;
+      const raw = target ? readAttributeByTarget(insertionSource, target, "track-index") : undefined;
+      if (!target || !readTagSnippetByTarget(insertionSource, target)) continue;
       // Absent data-track-index is the authored default lane, not a missing node.
       const track = raw === undefined ? 0 : Number(raw);
       if (!Number.isFinite(track)) throw new Error("Invalid authored track index");
@@ -126,9 +141,16 @@ export function resolveDropTrack(input: {
       dropped,
     });
     if (!plan) throw new Error("Cannot open a new track here: a locked clip would have to move.");
-    return { source: applyTrackRenumbers(source, plan), track: plan.track, start: dropped.start };
+    return { source: applyTrackRenumbers(insertionSource, plan), track: plan.track, start: dropped.start };
   }
   if (placement.insertRow == null) {
+    if (input.magneticMainTrack && !isAudioTimelineElement(dropped)) {
+      const end = mainTrackAppendStart([...elements, ...(input.placed ?? [])], placement.track);
+      const peers = planTimelineLanePersistence(elements, { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile });
+      const persisted = withPersistedTimelineLanes(elements, peers);
+      const track = authoredTrackForLane(placement.track, persisted, { ...dropped, track: placement.track });
+      return { source: applyTrackRenumbers(source, { track, renumbers: peers }), track, start: end };
+    }
     const target = { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile };
     const renumbers = planTimelineLanePersistence(elements, target);
     return {

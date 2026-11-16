@@ -89,6 +89,12 @@ npm start
 起動時に表示される実際の `studioUrl` または `previewUrl` を開き、**テンプレートライブラリ**を選択します。Studio と MCP はこのチェックアウトのテンプレートを読み込みます。同じソースにエージェントを接続するには、[ソースと MCP の設定](#agent-setup)を参照してください。[クローン容量と任意のメディア](repository-storage.md)
 
 
+### 既存のプロジェクトから始める
+
+**HyperFrames のプロジェクト ZIP を OpenMotion にインポート**して、既存のアニメーションとローカル素材を引き続き編集できます。プロジェクトフォルダーを ZIP に圧縮し、**すべてのプロジェクト → プロジェクトをインポート**で選択します。追加されたコピーを開き、Studio またはエージェントで編集を続けてください。インポートでは独立したコピーが作成され、対応するネイティブプロジェクト構造が必要です。
+
+[インポート手順・必要なファイル・互換性](project-archives.md#import-from-hyperframes)
+
 <a id="agent-wall"></a>
 
 **22 種類のローカルエージェントに対応** · [エージェントを選ぶ](#choose-agent)
@@ -307,7 +313,7 @@ npm start
 
 <a id="studio-in-use"></a>
 
-<img src="https://releases.open-design.ai/open-motion/media/sha256/f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073.png" width="100%" alt="Studio の実際の利用画面。左に読み込んだ素材、中央に動画プレビュー、下に編集可能なタイムライン。">
+<img src="readme/live-product/editor.ja.jpg" width="100%" alt="Studio のサンプルプロジェクト。左にコンポジションの一覧、中央にプレビュー、下にシーンのタイムラインと音声波形が表示されています。">
 
 同じ Studio ワークスペースで動画を確認し、クリップを配置して書き出せます。
 
@@ -399,7 +405,7 @@ Brand Kit セクションには、ブランド情報、語り口、確認済み�
 
 参考動画のみの項目は再現ワークフローで制作します。編集可能なソースが付属する項目は、そのプロジェクトを直接アレンジできます。
 
-![テンプレートを選び、自分の内容に置き換える](https://releases.open-design.ai/open-motion/media/sha256/70d396c18c6d2e8d6c9a6d47804a8d813eaa3bdde75df000e5cfca6de8f38e1a.jpg)
+![テンプレートを選び、自分の内容に置き換える](readme/live-product/library.ja.jpg)
 
 [オンラインテンプレート一覧](https://open-design.ai/templates/)
 
@@ -565,17 +571,15 @@ OpenMotion で添付の参考動画を自社ブランド向けに再構築して
 
 <a id="ai-video-editing"></a> <a id="keep-editing-after-the-remake"></a>
 
-#### テンプレートと Motion.md を確認する
-
-テンプレートを開くと、参考動画、ビジュアルスタイル、制作の要点を確認できます。ガイドをファイルとして再利用する場合は Motion.md をダウンロードします。
-
-![テンプレートと Motion.md を確認する](readme/live-product/detail.ja.jpg)
+<a id="テンプレートと-motionmd-を確認する"></a>
 
 #### テンプレートをエージェントに渡す
 
-**テンプレートを再現**を選び、指示をコピーして Brand Kit、文章、制作要件を追加します。必要に応じてエージェントが OpenMotion をインストール・接続し、選んだテンプレートをもとに制作します。完成したプロジェクトを Studio で開き、テンポの確認、編集、書き出しを行えます。
+1. 参考動画を再生し、「ビジュアルスタイル」や「制作時のポイント」を開いて内容を確認します。ガイドを保存するには「motion.md をダウンロード」を選びます。
+2. 「指示を表示」で内容を確認し、「テンプレートを再現」でコピーします。ブランド素材と制作要件を添えて、指示をエージェントに貼り付けます。
+3. エージェントが作成したプロジェクトを Studio で開き、編集して書き出します。
 
-![テンプレートをエージェントに渡す](readme/live-product/remix.ja.jpg)
+![テンプレートのプレビュー、展開した指示、「テンプレートを再現」ボタン、コピー完了の通知が同じ画面に表示されています。](readme/live-product/remix.ja.jpg)
 
 <a id="open-projects-reusable-knowledge"></a> <a id="developer-architecture"></a>
 

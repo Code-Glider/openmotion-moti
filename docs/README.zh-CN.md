@@ -89,6 +89,12 @@ npm start
 打开启动时打印的实际 `studioUrl` 或 `previewUrl`，进入 **模板库**。Studio 和 MCP 读取此仓库中的模板。要让 Agent 连接同一份源码，请参阅 [源码接入与 MCP 配置](#agent-setup)。[仓库大小与可选素材](repository-storage.md)
 
 
+### 从已有项目快速开始
+
+可以将 **HyperFrames 项目 ZIP 直接导入 OpenMotion**，继续编辑已有动效和本地素材。将项目文件夹压缩为 ZIP，在 **全部项目 → 导入项目** 中选择文件，再打开导入的副本，即可通过 Studio 或 Agent 继续修改。导入会创建独立副本，项目需符合支持的原生工程结构。
+
+[查看导入步骤、文件要求与兼容范围](project-archives.md#import-from-hyperframes)
+
 <a id="agent-wall"></a>
 
 **22 个本地 Agent** · [选择你的 Agent](#choose-agent)
@@ -307,7 +313,7 @@ npm start
 
 <a id="studio-in-use"></a>
 
-<img src="https://releases.open-design.ai/open-motion/media/sha256/f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073.png" width="100%" alt="Studio 实际使用界面：左侧为导入素材，中间为视频预览，下方为可编辑时间轴。">
+<img src="readme/live-product/editor.zh-CN.jpg" width="100%" alt="Studio 示例工程：左侧是片段列表，中间是视频预览，下方是场景时间线和音频波形。">
 
 在同一个 Studio 工作区中预览视频、排列片段并导出成片。
 
@@ -399,7 +405,7 @@ Brand Kit 章节记录品牌身份、语气和已确认的产品信息；Design 
 
 仅有参考视频的条目会进入复刻流程；提供可编辑源码的条目可以直接交给 Agent 改编。
 
-![选好模板，再换成自己的内容](https://releases.open-design.ai/open-motion/media/sha256/01b43503d98d59a407d5cfb6baf9a31660670c195513601e501a781250d069ea.jpg)
+![选好模板，再换成自己的内容](readme/live-product/library.zh-CN.jpg)
 
 [浏览全部线上模板](https://open-design.ai/templates/)
 
@@ -565,17 +571,15 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 <a id="ai-video-editing"></a> <a id="keep-editing-after-the-remake"></a>
 
-#### 查看模板与 Motion.md
-
-打开模板，查看参考视频、风格描述与制作要点。需要复用这份说明时，可以下载 Motion.md。
-
-![查看模板与 Motion.md](readme/live-product/detail.zh-CN.jpg)
+<a id="查看模板与-motionmd"></a>
 
 #### 把模板交给 Agent
 
-点击**复刻模板**，复制指令，并补充自己的 Brand Kit、文案和创作要求。Agent 会在需要时安装或接入 OpenMotion，然后基于所选模板制作。打开生成的工程，在 Studio 检查节奏、继续编辑并导出。
+1. 播放参考视频，展开「风格描述」或「制作要点」查看细节。要保存指南，点击「下载 motion.md」。
+2. 点击「查看完整指令」，再点「复刻模板」复制指令。把指令粘贴到 Agent，附上品牌素材和创作要求。
+3. 在 Studio 打开 Agent 生成的工程，继续剪辑并导出。
 
-![把模板交给 Agent](readme/live-product/remix.zh-CN.jpg)
+![Studio 模板详情全屏：左侧预览参考视频，右侧显示完整指令和「复刻模板」按钮，顶部提示指令已复制。](readme/live-product/remix.zh-CN.jpg)
 
 <a id="open-projects-reusable-knowledge"></a> <a id="developer-architecture"></a>
 

@@ -1,3 +1,5 @@
+import { brandKitToolArguments } from './brand-kit-tool.ts';
+
 const id = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
 const object = <T extends Record<string, unknown>>(properties: T, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const reference = object({ assetId: id, versionId: id }, ['assetId', 'versionId']);
@@ -21,7 +23,7 @@ export const assetLibraryTool = {
 
 export const assetUseTool = {
   ...assetLibraryTool, name: 'openmotion_assets_use', title: 'OpenMotion · Assets Use',
-  description: 'Preferred unified asset tool. ' + assetLibraryTool.description + ' action=read requires assetId and versionId and returns bounded image previews, timestamped video frames or a mono 16 kHz WAV audio clip. get remains metadata-only. Read does not generate, create a project or change asset versions; retained trash is readable. Media interpretation/playback depends on the host.',
+  description: 'Preferred Agent route for new media: discover providers and full model IDs through openmotion_media_use inspect/reference/models, then generate, track the original job, inspect fixed versions and import only selected versions into a film project. No carrier project is needed. ' + assetLibraryTool.description + ' action=read requires assetId and versionId and returns bounded image previews, timestamped video frames or a mono 16 kHz WAV audio clip. get remains metadata-only. Read does not generate, create a project or change asset versions; retained trash is readable. Media interpretation/playback depends on the host.',
   inputSchema: { ...assetLibraryTool.inputSchema, properties: { ...assetLibraryTool.inputSchema.properties,
     action: { enum: [...assetLibraryTool.inputSchema.properties.action.enum, 'read'] },
     timestamps: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'number', minimum: 0 }, description: 'read video only: at most four frame times in seconds. Defaults to the first frame.' },
@@ -31,5 +33,15 @@ export const assetUseTool = {
     generate: ['requestId', 'model', 'modality', 'prompt'], jobs: [], status: ['jobId'], cancel: ['jobId'], retry_save: ['jobId', 'requestId'],
     import_to_project: ['projectId', 'requestId', 'assetId', 'versionId'], read: ['assetId', 'versionId'] })
     .map(([action, required]) => ({ type: 'object', properties: { action: { enum: [action] } }, required, additionalProperties: true })),
+  },
+};
+export const workspaceAssetUseTool = {
+  ...assetUseTool,
+  description: assetUseTool.description + ' Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.',
+  annotations: { ...assetUseTool.annotations, destructiveHint: true },
+  inputSchema: {
+    ...assetUseTool.inputSchema, properties: { ...assetUseTool.inputSchema.properties,
+      action: { enum: [...assetUseTool.inputSchema.properties.action.enum, 'brand_kit'] }, brandKit: brandKitToolArguments },
+    oneOf: [...assetUseTool.inputSchema.oneOf, { type: 'object', properties: { action: { enum: ['brand_kit'] } }, required: ['brandKit'], additionalProperties: true }],
   },
 };

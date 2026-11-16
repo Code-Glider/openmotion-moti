@@ -27,8 +27,18 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   assert(match, 'Verified production bootstrap is missing');
   const bootstrap = JSON.parse(match[1]);
   const recommendation = showTemplateRecommendations(presentation, {
-    templateIds, language, onboarding: true,
+    templateIds, language, ...(templateIds.some(id => id.startsWith('motion-')) ? { onboarding: true } : {}),
   });
+  // Native MCP Apps carry ui.csp.resourceDomains; a visualization fragment
+  // cannot inherit it. Never mark remote-reference fragments as displayable.
+  if (bootstrap.templates.some(template => templateIds.includes(template.id) && (template.posterUrl || template.videoUrl))) {
+    return { status: 'native_required', mode: 'native-mcp-app', reason: 'INLINE_EXTERNAL_MEDIA_BLOCKED',
+      resourceVersion: presentation.resourceVersion, templateIds: recommendation.cards.map(card => card.templateId), language,
+      welcomeMarkdown: welcomeMarkdown(language, 'before'),
+      publicationRequired: false, nativeMcpSessionVerified: false,
+      presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: false } },
+      instructions: 'Show these exact three prepared references in the calling conversation through the natively discovered presentation Tool with onboarding:false. Its resource declares the approved image/video origin. Finish verification before the final presentation; after the cards-only Tool result, stream welcomeMarkdown once as ordinary final reply text. Do not put the welcome inside the App, use collapsed commentary or simulate streaming with animation. Native cards precede the final text; its pointers refer to the cards above. Verify the current Tool schema accepts all selected IDs, then check actual image decoding and full video playback in the mounted native cards. Preserve the IDs and order on retries; never resample or substitute builtins. If discovery is stale, refresh this existing MCP connection through the supported host action. Without a compatible native connection, report the concrete blocker and keep the task incomplete. A right-hand browser page, shell RPC, downloaded-media embedding or a host security change is not inline card delivery.' };
+  }
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');
   const parts = {
