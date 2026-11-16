@@ -8,7 +8,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
 import { gatewayFor } from '../gateway/service.ts';
 import { ProviderConnections, connectionBaseUrl } from '../gateway/connections.ts';
-import { OpenDesignAccount } from '../gateway/account.ts';
+import { OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
+import { validProperties } from '../tracking/core.ts';
+import { omEvents } from '../tracking/events.ts';
 import { providerDirectory, setDefaultModel } from '../gateway/settings.ts';
 import { mediaUse } from '../gateway/media-use.ts';
 import type { Fetcher } from '../gateway/network.ts';
@@ -161,8 +163,8 @@ test('sign-in failures are classified by the stage reached and logged without ac
 
 test('an interrupted sign-in is confirmed by the next attempt, or replaced by a new authorization once the service refuses it', t => fixture(async store => {
   await chmod(binary, 0o755);
-  const logs: string[] = [];
-  const account = new OpenDesignAccount(store.directory, { binary, log: line => logs.push(line) }); t.after(() => account.close());
+  const logs: string[] = [], records: SignInRecord[] = [];
+  const account = new OpenDesignAccount(store.directory, { binary, log: line => logs.push(line), track: record => records.push(record) }); t.after(() => account.close());
   const config = path.join(account.home, 'config.json');
   const mode = async (scenario: string) => {
     await mkdir(account.home, { recursive: true });
@@ -201,6 +203,46 @@ test('an interrupted sign-in is confirmed by the next attempt, or replaced by a 
   assert.equal(JSON.parse(await readFile(path.join(account.home, 'revoked.json'), 'utf8')).length, 2);
   assert.equal(logs.length, 3); assert.match(logs[2], /"errorCode":"credentials_rejected".*"resumed":true/);
   assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|fixture-user-id/);
+  // The refused attempt is reported as replaced, so one click still counts as one completed sign-in.
+  assert.deepEqual(records.map(record => [record.outcome, record.resumed, record.error_code]), [
+    ['failure', false, 'setup_failed'], ['success', true, undefined], ['failure', false, 'setup_failed'], ['replaced', true, 'credentials_rejected'], ['success', false, undefined]]);
+}));
+
+test('each finished sign-in attempt gives telemetry one record the tracker accepts, without account data', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const records: SignInRecord[] = [];
+  const account = new OpenDesignAccount(store.directory, { binary, track: record => records.push(record) }); t.after(() => account.close());
+  const file = (name: string) => path.join(account.home, name);
+  // Holds the model catalogue sync so the step after browser approval can be observed.
+  let release: (() => void) | undefined;
+  const connector = (args: string[]) => new Promise<string>((resolve, reject) => execFile(binary, args, { env: { ...process.env, AMR_HOME: account.home } }, (error, stdout) => error ? reject(error) : resolve(stdout)));
+  account.options.run = async args => { if (args[0] === 'model') await new Promise<void>(resolve => { release = resolve; }); return connector(args); };
+  await account.login(); await until(async () => (await account.summary()).browserOpened !== undefined);
+  const waiting = await account.summary();
+  assert.equal(waiting.browserOpened, true); assert.equal(waiting.syncing, undefined); assert(waiting.authorizationUrl);
+  await writeFile(file('authorize'), 'yes'); await until(async () => Boolean(release));
+  const syncing = await account.summary();
+  assert.equal(syncing.state, 'authorizing'); assert.equal(syncing.syncing, true); assert.equal(syncing.authorizationUrl, undefined); assert.equal(records.length, 0);
+  release!(); await until(async () => (await account.summary()).state === 'signed-in');
+  assert.equal((await account.summary()).syncing, undefined);
+  await account.logout(); await rm(file('authorize'));
+  // Two clients cancelling the same attempt still count it once.
+  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl)); await Promise.all([account.cancel(), account.cancel()]);
+  await writeFile(file('fixture-mode'), 'login-denied');
+  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+  await writeFile(file('authorize'), 'yes'); await until(async () => (await account.summary()).state !== 'authorizing');
+  assert.deepEqual(records.map(record => record.outcome), ['success', 'cancelled', 'failure']);
+  const [success, cancelled, failure] = records;
+  const { attempt_id: _id, duration_ms, prepare_ms, link_ms, approved_ms, ...fixed } = success;
+  assert.deepEqual(fixed, { outcome: 'success', connector_version: '0.1.10', resumed: false, last_stage: 'credential_persist_result', last_result: 'success',
+    browser_opened: true, receipt: 'accepted', exit_code: 0 });
+  assert(prepare_ms! <= link_ms! && link_ms! <= approved_ms! && approved_ms! <= duration_ms);
+  assert.equal(cancelled.error_code, undefined); assert.equal(cancelled.last_stage, 'browser_open_result'); assert.equal(cancelled.approved_ms, undefined);
+  assert.equal(failure.error_code, 'authorization_expired'); assert.equal(failure.error_kind, 'oauth_denied');
+  assert.equal(failure.last_stage, 'device_authorization_result'); assert.equal(failure.last_result, 'failed'); assert.equal(failure.exit_code, 1);
+  assert.equal(new Set(records.map(record => record.attempt_id)).size, 3);
+  for (const record of records) assert(validProperties(omEvents, 'account_sign_in_result', record), JSON.stringify(record));
+  assert.doesNotMatch(JSON.stringify(records), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id/);
 }));
 
 test('sign-out keeps an undelivered revocation and retries it after a restart and on refresh', t => fixture(async store => {

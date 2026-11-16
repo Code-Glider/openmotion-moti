@@ -39,6 +39,10 @@ export type AccountAttempt = {
 export type AccountSummary = {
   state: 'signed-out' | 'authorizing' | 'signed-in' | 'reauth-required' | 'unavailable';
   user?: { name?: string; email?: string }; authorizationUrl?: string; userCode?: string;
+  /** While authorizing: whether the connector opened the activation page in the default browser, once it has tried. */
+  browserOpened?: boolean;
+  /** While authorizing: the browser approved the sign-in and the account is being set up locally. */
+  syncing?: boolean;
   plan?: string; balance?: string | null; billingUnavailable?: boolean;
   /** Service rejection behind `billingUnavailable`, when the connector reported one. */
   billingError?: { status: number; code?: string };
