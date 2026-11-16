@@ -28,9 +28,24 @@ export type ProviderDirectory = {
   providers: ProviderConnection[]; models: DirectoryModel[];
   defaults: Partial<Record<ModelKind, string>>;
 };
+/** Why the latest sign-in attempt ended without an account session. */
+export type AccountErrorCode = 'connector_unavailable' | 'setup_failed' | 'authorization_expired' | 'credentials_rejected';
+/** Non-secret progress of one connector sign-in: stages are `stage:result[:errorKind]`. */
+export type AccountAttempt = {
+  id: string; stages: string[]; persisted: boolean; receipt?: 'accepted' | 'rejected'; exitCode?: number | null;
+  /** Confirms credentials an interrupted attempt had already saved; the connector shows no activation link for it. */
+  resumed?: boolean;
+};
 export type AccountSummary = {
-  state: 'signed-out' | 'authorizing' | 'signed-in' | 'unavailable';
+  state: 'signed-out' | 'authorizing' | 'signed-in' | 'reauth-required' | 'unavailable';
   user?: { name?: string; email?: string }; authorizationUrl?: string; userCode?: string;
-  plan?: string; balance?: string | null; billingUnavailable?: boolean; error?: string;
+  /** While authorizing: whether the connector opened the activation page in the default browser, once it has tried. */
+  browserOpened?: boolean;
+  /** While authorizing: the browser approved the sign-in and the account is being set up locally. */
+  syncing?: boolean;
+  plan?: string; balance?: string | null; billingUnavailable?: boolean;
+  /** Service rejection behind `billingUnavailable`, when the connector reported one. */
+  billingError?: { status: number; code?: string };
+  error?: string; errorCode?: AccountErrorCode; attempt?: AccountAttempt;
   consoleUrl: string;
 };

@@ -29,6 +29,9 @@ const placement = ['popular', 'catalog', 'related', 'random', 'navigation'] as c
 const templateDetail = { detail_view_id: 'uuid', detail_mode: ['modal'], resource_kind: ['reference', 'editable_project', 'motion_guide'],
   instruction_kind: ['template_use', 'reference_recreate', 'recreate_submit'] } as const;
 const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer' } as const;
+/** Stage names and error kinds of the OpenDesign account connector's `jsonl-v1` sign-in progress lines. */
+export const accountStages = ['attempt_started', 'device_auth_create_result', 'activation_ready', 'browser_open_result', 'device_authorization_result', 'token_exchange_result', 'credential_persist_result'] as const;
+export const accountErrorKinds = ['network_error', 'browser_open_error', 'oauth_timeout', 'oauth_denied', 'invalid_state', 'credential_persist_error', 'internal_error', 'unknown'] as const;
 
 export const omEvents = {
   ...studioUsageEvents,
@@ -49,6 +52,14 @@ export const omEvents = {
   export_request_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', queue_state: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
   export_cancel_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', state_after: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
   export_result: { producers: ['worker'], fields: { job_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer', technical_check: ['passed', 'failed', 'unknown'] }, required: ['job_id', 'job_state', 'duration_ms', 'technical_check'] },
+  // One per finished OpenDesign sign-in attempt. `replaced` is an interrupted attempt the service refused; the same
+  // sign-in continues with a new attempt. Times are milliseconds since the click. Stage values come from the connector
+  // protocol; activation links, codes, identities and credentials are never fields.
+  account_sign_in_result: { producers: ['mcp'], fields: { attempt_id: 'uuid', outcome: ['success', 'failure', 'cancelled', 'replaced'],
+    error_code: ['connector_unavailable', 'setup_failed', 'authorization_expired', 'credentials_rejected'], connector_version: 'code', resumed: 'boolean',
+    last_stage: accountStages, last_result: ['started', 'success', 'failed'], error_kind: accountErrorKinds, browser_opened: 'boolean',
+    receipt: ['accepted', 'rejected'], exit_code: 'integer', duration_ms: 'integer', prepare_ms: 'integer', link_ms: 'integer', approved_ms: 'integer' },
+    required: ['attempt_id', 'outcome', 'connector_version', 'resumed', 'duration_ms'] },
   page_view: { producers: ['studio'], fields: { page_name: ['home', 'studio'], view_id: 'uuid', embedded: 'boolean', has_project: 'boolean' }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean' }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
   ui_click: { producers: ['studio'], fields: { page_name: ['home', 'studio'],

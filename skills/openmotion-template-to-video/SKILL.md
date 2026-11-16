@@ -7,6 +7,8 @@ description: Browse, compare and recommend OpenMotion catalog templates with a v
 
 ## Scope and shared execution
 
+For an unchanged template with explicit HTML/project or MP4 file delivery, follow [unchanged file export](references/unchanged-export.md) directly. That branch owns its reading, verification and parallel handoff sequence; resume the general flow below only when content, assets, timing or output specifications change. Opening an unchanged template without requesting files still uses the editor-only flow below.
+
 Turn the selected editable template into the requested draft, editable project or finished video, preserving its agreed structure, motion and style. This is the implemented template route, including direct Skill selection. Read [shared context](../openmotion-production/references/context.md) once and apply only dependencies needed by this scope; reuse complete bodies and completed operations. Continue here without returning to production/start. MCP-only clients use resources/read `openmotion://workflow/template/start`, which returns this same file with `status: "ready"`.
 
 Changes to existing content use the [shared edit workflow](../openmotion-production/references/edit.md), including required related changes and preserved content. Missing instructions and target sources must finish returning to the model before a later call applies a template, imports, writes or exports. Entering this Skill again does not create another copy, apply the template again or repeat a completed export.
