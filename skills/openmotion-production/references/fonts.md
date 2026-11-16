@@ -27,6 +27,8 @@ For a consequential open choice or a complaint about font character, use a repre
 node --experimental-strip-types <runtime>/scripts/font-specimen.ts <request.json> <new-output-directory>
 ```
 
+Source installations resolve the parser from their installed dependencies. For an extracted plugin whose dependencies live separately, append `--runtime-root <existing-locked-runtime>`: the directory containing the `node_modules` used by `hyperframesCli` in project details. This selects an already installed parser; it does not install dependencies or acquire fonts.
+
 Supply JSON in this shape, replacing the example copy, dimensions, roles and candidates with this task's inputs. `sourcePath` is a selected `files[].sourcePath` from preparation; `licensePath` is the same preparation's returned path. All resource paths must be absolute. Prepare each candidate at the role's weight first.
 
 ```json

@@ -84,6 +84,8 @@ Only metadata and code ship with the application/Skills, not the complete font b
 
 The catalog contains upright resources only. Variable axes and real weight ranges, glyph sample results, byte sizes, hashes and source revisions come from the pinned files. Language tags are not a guarantee for every character or regional glyph form; inspect actual copy. No visual-quality or anti-template effect has been established merely by catalog inclusion.
 
+Font parsing uses the existing locked dependency runtime, including when a plugin is extracted without its own `node_modules`. For the offline specimen command in that layout, select that already installed directory with `--runtime-root <existing-locked-runtime>`; the helper performs no dependency installation.
+
 ## Sources
 
 Font binaries and licenses are pinned individually from [Google Fonts](https://github.com/google/fonts) and [LXGW WenKai](https://github.com/lxgw/LxgwWenKai); each family records its upstream commit, exact file URLs and OFL license hash. Original bytes are preserved. Editorial metadata was curated for Motion, informed by the role-based structure of [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), and does not copy a fixed style prescription or claim those projects' endorsement.

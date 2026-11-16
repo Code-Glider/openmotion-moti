@@ -1,9 +1,16 @@
 import { constants } from 'node:fs';
+import { createRequire } from 'node:module';
 import { open, stat } from 'node:fs/promises';
+import path from 'node:path';
 import { MAX_ASSET_BYTES } from './asset-limits.ts';
 
 export type FontMetadata = { family: string; weight: string; style: 'normal' | 'italic'; postscriptName: string };
 type FontParser = (bytes: Buffer) => any;
+
+/** Resolve through the installed runtime; extracted plugins have no local dependencies. */
+export function loadFontParser(runtimeRoot: string): FontParser {
+  return createRequire(path.resolve(runtimeRoot, 'package.json'))('fontkit').create;
+}
 
 export async function readFontFile(filename: string): Promise<Buffer> {
   const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW);

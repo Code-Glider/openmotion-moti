@@ -1,15 +1,14 @@
-import { create } from 'fontkit';
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { open, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { prepareFont, readFontFile } from './studio-fonts.ts';
+import { loadFontParser, prepareFont, readFontFile } from './studio-fonts.ts';
 
 export const isFontFilePath = (filename: string) => /\.(?:ttf|otf|ttc|woff2?)$/i.test(filename);
 
 /** Prepare font bytes and optional license in staging; the caller owns the project transaction. */
-export async function prepareImportedFont(staged: string, licensePath: string | undefined, assetId: string, staging: string) {
-  const { data, format, ...font } = prepareFont(await readFontFile(staged), create);
+export async function prepareImportedFont(staged: string, licensePath: string | undefined, assetId: string, staging: string, runtimeRoot: string) {
+  const { data, format, ...font } = prepareFont(await readFontFile(staged), loadFontParser(runtimeRoot));
   await writeFile(staged, data);
   const relative = `assets/fonts/${assetId}.${format}`;
   const changes: Array<{ path: string; source: string }> = [{ path: relative, source: staged }];

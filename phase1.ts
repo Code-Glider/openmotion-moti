@@ -461,7 +461,7 @@ export class Phase1Service {
             if (item.expectedSha256 && sha256 !== item.expectedSha256) throw new Error('ASSET_CONTENT_CHANGED: library bytes no longer match this version');
             if (isFontFilePath(item.sourcePath)) {
               const assetId = crypto.randomUUID();
-              const prepared = await prepareImportedFont(staged, item.licensePath, assetId, staging);
+              const prepared = await prepareImportedFont(staged, item.licensePath, assetId, staging, this.runtimeRoot);
               const { changes: fontChanges, ...metadata } = prepared;
               const asset = { itemId: item.itemId, assetId, inputHash, ...metadata, size: (await stat(staged)).size,
                 sha256: await fileHash(staged), name: item.name ?? path.basename(item.sourcePath) };

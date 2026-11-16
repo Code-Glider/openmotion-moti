@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,29 @@ function request(): SpecimenRequest {
   return { title: 'Actual <copy>', sourceWidth: 1080, displayWidth: 360, roles: [{ name: 'Main claim', text: 'OPEN 2026\n汉字 <script>', fontSize: 90, weight: 700, width: 900, lineHeight: 1.1, letterSpacing: 3,
     candidates: [{ label: 'A', faces: [face] }, { label: 'B', faces: [face] }] }] };
 }
+
+test('an extracted specimen command uses the existing dependency runtime without plugin node_modules', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'motion-specimen-package-'));
+  const source = fileURLToPath(new URL('../', import.meta.url));
+  try {
+    const plugin = path.join(directory, 'plugin');
+    for (const name of ['scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/studio-fonts.ts', 'shared/asset-limits.ts', 'shared/entry.ts', 'skills/openmotion-production/fonts/catalog.json']) {
+      const target = path.join(plugin, name); await mkdir(path.dirname(target), { recursive: true }); await cp(path.join(source, name), target);
+    }
+    await writeFile(path.join(plugin, 'package.json'), '{"type":"module"}');
+    const input = path.join(directory, 'request.json'), output = path.join(directory, 'comparison');
+    await writeFile(input, JSON.stringify(request()));
+    const result = spawnSync(process.execPath, ['--experimental-strip-types', path.join(plugin, 'scripts/font-specimen.ts'), input, output, '--runtime-root', source], {
+      cwd: directory, encoding: 'utf8', timeout: 10_000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const record = JSON.parse(await readFile(JSON.parse(result.stdout).recordPath, 'utf8'));
+    assert.equal(record.roles[0].candidates[0].resources[0].family, 'Orbitron');
+    assert.deepEqual(record.roles[0].candidates[0].missingGlyphs, ['汉', '字']);
+    await assert.rejects(stat(path.join(plugin, 'node_modules')), { code: 'ENOENT' });
+    assert.deepEqual((await readdir(directory)).sort(), ['comparison', 'plugin', 'request.json']);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
 test('offline specimen preserves actual copy, equal role conditions, portable pinned resources and explicit coverage gaps', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'motion-specimen-'));
   try {

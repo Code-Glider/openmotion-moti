@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { create } from 'fontkit';
+import { fileURLToPath } from 'node:url';
 import { isMain } from '../shared/entry.ts';
 import { loadFontCatalog } from '../shared/font-catalog.ts';
+import { loadFontParser } from '../shared/studio-fonts.ts';
 
 type Face = { id: string; sourcePath: string; licensePath: string };
 type Candidate = { label: string; faces: Face[] };
@@ -21,12 +22,13 @@ function text(value: string, field: string) {
 }
 
 /** Explicit, offline comparison. Only supplied, catalog-verified resources enter a new output folder. */
-export async function buildFontSpecimen(request: SpecimenRequest, outputDirectory: string) {
+export async function buildFontSpecimen(request: SpecimenRequest, outputDirectory: string, runtimeRoot = fileURLToPath(new URL('../', import.meta.url))) {
   text(request.title, 'TITLE');
   number(request.sourceWidth, 1, 16384, 'SOURCE_WIDTH');
   number(request.displayWidth, 1, 16384, 'DISPLAY_WIDTH');
   if (!Array.isArray(request.roles) || !request.roles.length) throw new Error('INVALID_SPECIMEN_ROLES');
   const { version, fonts } = await loadFontCatalog();
+  const parseFont = loadFontParser(runtimeRoot);
   const scale = request.displayWidth / request.sourceWidth;
   const assets = new Map<string, Buffer>();
   const styles: string[] = [];
@@ -60,7 +62,7 @@ export async function buildFontSpecimen(request: SpecimenRequest, outputDirector
         if (!file || license.length !== font.license.size || hash(license) !== font.license.sha256) throw new Error('SPECIMEN_RESOURCE_INTEGRITY_MISMATCH: ' + face.id);
         const [min, max = min] = file.weight.split(' ').map(Number);
         if (file.style !== 'normal' || min > role.weight || role.weight > max) throw new Error('FONT_WEIGHT_UNAVAILABLE: ' + face.id);
-        const parsed = create(bytes);
+        const parsed = parseFont(bytes);
         for (const point of parsed.characterSet) coverage.add(point);
         const relative = `assets/${sha256}${path.extname(file.name)}`;
         const licenseRelative = `assets/${font.license.sha256}.license.txt`;
@@ -99,6 +101,6 @@ export async function buildFontSpecimen(request: SpecimenRequest, outputDirector
 
 if (isMain(import.meta.url)) {
   const args = process.argv.slice(2);
-  if (args.length !== 2) throw new Error('Usage: node --experimental-strip-types scripts/font-specimen.ts <request.json> <new-output-directory>');
-  console.log(JSON.stringify(await buildFontSpecimen(JSON.parse(await readFile(args[0], 'utf8')), path.resolve(args[1])), null, 2));
+  if (!(args.length === 2 || args.length === 4 && args[2] === '--runtime-root')) throw new Error('Usage: node --experimental-strip-types scripts/font-specimen.ts <request.json> <new-output-directory> [--runtime-root <existing-locked-runtime>]');
+  console.log(JSON.stringify(await buildFontSpecimen(JSON.parse(await readFile(args[0], 'utf8')), path.resolve(args[1]), args[3]), null, 2));
 }
