@@ -1,7 +1,7 @@
 import { inlineVideoUri } from './inline-video.ts';
 import { publicToolName, legacyToolName } from './public-names.mjs';
 import { templateDiscoveryGuide } from './workflow-entry.js';
-import { assetLibraryTool, assetUseTool } from './asset-tools.ts';
+import { assetLibraryTool, workspaceAssetUseTool } from './asset-tools.ts';
 const id = { type: 'string', minLength: 1, maxLength: 100 };
 const projectId = { type: 'string', pattern: '^(project|[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12})$' };
 const workId = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
@@ -17,7 +17,7 @@ const display = object({ revision, versionId: id, previewUrl: { type: 'string', 
 const read = { readOnlyHint: true, openWorldHint: false };
 const write = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 export const phase1Tools = [
-  assetUseTool,
+  workspaceAssetUseTool,
   assetLibraryTool,
   { name: 'openmotion_media_use', title: 'OpenMotion · Media Use', description: 'Use configured media providers, OpenDesign account models and registered OpenAI-compatible image/speech APIs to generate files. Start with action=inspect to discover enabled providers and their reference URIs. Before model discovery or generation, call action=reference with the selected provider to read its bundled guide: model-list API, supported modality request templates, authentication/input mapping, polling, error meanings and retry limits. Reference reading needs no projectId, key or local filesystem access; the same guides are discoverable through MCP resources/list and resources/read. Then query action=models with provider and refresh=true, select the provider-native model and check its schema. Generate requires explicit projectId, stable requestId, provider, model, modality and prompt; returns queued, not media. Optional referenceAsset uses a project-relative image with a model that supports editing; it snapshots one PNG/JPEG/WebP under 20 MB. Audio follows the selected model: speech uses text-to-speech, music and sound effects use text-to-audio; read its native input schema. Poll action=status with the same projectId/jobId. The local service injects credentials; never pass or read keys. Connect an account or configure a provider in Settings > Model providers. Language/embedding selections do not run through this media tool. Completed results are automatically saved to the local workspace asset library and copied into the original project paths. job.libraryAssets pins assetId/versionId; job.assets retains project paths. If savePending is true, use action=retry_save with the same projectId/jobId and a stable requestId to save retained local outputs without a model call. Composition editing is separate. No automatic paid fallback or resubmission.',
     inputSchema: object({ action: { enum: ['inspect', 'reference', 'models', 'generate', 'status', 'cancel', 'retry_save'], description: 'inspect returns provider setup state and reference URIs; reference returns the selected provider guide; models discovers capabilities; generate submits a job; status reads that original job; cancel requests cancellation; retry_save retries only local saving.' }, provider: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,80}$', description: 'Required for reference and generate; optional provider filter for models. Read this provider reference before constructing model queries or generation inputs.' },

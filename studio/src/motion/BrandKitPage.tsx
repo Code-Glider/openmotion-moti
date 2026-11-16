@@ -61,6 +61,7 @@ export function BrandKitPage({
   const collection = collectionRoute ?? detailCollection;
   const [sort, setSort] = useState("newest");
   const detailReturnFocus = useRef<HTMLElement | null>(null);
+  const pendingExtraction = useRef<{ url: string; requestId: string } | null>(null);
   const catalogOrder = useRef<string[]>([]), lastRandom = useRef<string | null>(null);
   const root = useRef<HTMLDivElement>(null),
     [priority, setPriority] = useState<string | null>(null);
@@ -136,10 +137,14 @@ export function BrandKitPage({
     }
   }, [busy, notify]);
   const create = useCallback((url: string) => run(async () => {
+      const pending = pendingExtraction.current?.url === url ? pendingExtraction.current : { url, requestId: crypto.randomUUID() };
+      pendingExtraction.current = pending;
       const { kit } = await brandRequest<{ kit: BrandKit }>("", "POST", {
         url,
+        requestId: pending.requestId,
       });
-      setKits((previous) => [kit, ...(previous || [])]);
+      pendingExtraction.current = null;
+      setKits((previous) => [kit, ...(previous || []).filter(record => record.id !== kit.id)]);
       setDetailCollection("mine");
       onSelect(kit.id);
       notify("Brand extraction started");
@@ -174,7 +179,7 @@ export function BrandKitPage({
           : ["edit", "context"].includes(operation)
             ? "PUT"
             : "POST",
-        body,
+        operation === "cancel" ? body : { ...(body && typeof body === 'object' ? body : {}), expectedUpdatedAt: selected.updatedAt },
       );
       if (operation === "delete") {
         setKits((previous) =>

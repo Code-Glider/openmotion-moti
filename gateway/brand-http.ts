@@ -56,10 +56,10 @@ export async function brandKitHttp(
     if (url.pathname === "/api/brand-kits") {
       if (req.method === "GET")
         return json(200, { kits: await library.list() });
-      if (req.method === "POST")
-        return json(202, {
-          kit: await library.create((await input(req, 16_384)).url),
-        });
+      if (req.method === "POST") {
+        const { url, requestId } = await input(req, 16_384);
+        return json(202, { kit: await library.create(url, requestId) });
+      }
     }
     const coverRoute = url.pathname.match(/^\/api\/brand-kits\/([a-f0-9-]{36})\/(cover|favicon)$/);
     if (coverRoute && req.method === 'GET') {
@@ -93,22 +93,28 @@ export async function brandKitHttp(
     const [, id, action, filename] = route;
     if (!action && req.method === "GET")
       return json(200, { kit: await library.get(id) });
-    if (!action && req.method === "PUT")
-      return json(202, {
-        kit: await library.retry(id, await input(req, 16_384)),
-      });
+    if (!action && req.method === "PUT") {
+      const changes = await input(req, 16_384);
+      return json(202, { kit: await library.retry(id, changes, changes.expectedUpdatedAt) });
+    }
     if (!action && req.method === "DELETE") {
-      await library.remove(id);
+      const changes = req.headers["content-type"]?.includes("application/json") ? await input(req, 16_384) : {};
+      await library.remove(id, changes.expectedUpdatedAt);
       return json(200, { ok: true });
     }
-    if (action === "context" && req.method === "PUT")
-      return json(200, { kit: await library.updateContext(id, await input(req, 12 * 1024 * 1024)) });
+    if (action === "context" && req.method === "PUT") {
+      const changes = await input(req, 12 * 1024 * 1024);
+      return json(200, { kit: await library.updateContext(id, changes, changes.expectedUpdatedAt) });
+    }
     if (action === "cancel" && req.method === "POST")
       return json(200, { kit: await library.cancel(id) });
-    if (action === "retry" && req.method === "POST")
-      return json(202, { kit: await library.retry(id, req.headers["content-type"]?.includes("application/json") ? await input(req, 16_384) : undefined) });
+    if (action === "retry" && req.method === "POST") {
+      const changes = req.headers["content-type"]?.includes("application/json") ? await input(req, 16_384) : undefined;
+      return json(202, { kit: await library.retry(id, changes?.rescan ? { rescan: changes.rescan } : undefined, changes?.expectedUpdatedAt) });
+    }
     if (filename && ["GET", "HEAD"].includes(req.method || "")) {
-      const file = await library.file(id, filename),
+      const revision = url.searchParams.get('v');
+      const file = filename === 'package.zip' && revision ? (await library.packageSnapshot(id, revision)).packageZipPath : await library.file(id, filename),
         info = await stat(file);
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
@@ -165,7 +171,7 @@ export async function brandKitHttp(
     return json(405, { error: "Unsupported Brand Kit operation" });
   } catch (error) {
     return json(
-      (error as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 400,
+      (error as NodeJS.ErrnoException).code === "ENOENT" ? 404 : /^(?:BRAND_KIT_CHANGED|REQUEST_ID_CONFLICT):/.test((error as Error).message) ? 409 : 400,
       { error: (error as Error).message },
     );
   }

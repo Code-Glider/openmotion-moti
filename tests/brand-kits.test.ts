@@ -17,6 +17,9 @@ import { inspectPackage } from "../packages/motion-package/index.mjs";
 import type { BrandCapture } from "../gateway/brand-extract.ts";
 import { browserAutomation } from "../browser.ts";
 import { BrandCoverCache } from '../gateway/brand-cover.ts';
+import { Phase1Service } from '../phase1.ts';
+import { WorkspaceStore } from '../workspace.ts';
+import { pluginRoot } from '../hyperframes.ts';
 
 test("browser dependencies resolve from the supplied managed runtime", async t => {
   const runtime = await mkdtemp(path.join(tmpdir(), "brand-runtime-test-"));
@@ -81,6 +84,54 @@ async function setup(t: any, overrides = {}) {
   t.after(() => library.close());
   return { root, library, calls: () => calls };
 }
+
+test('website creation replays the original request and rejects the same key for another URL', async t => {
+  const { library, calls } = await setup(t);
+  const initial = await library.create('brand.example', 'capture-brand');
+  await library.idle();
+  const replay = await library.create('https://brand.example/', 'capture-brand');
+  assert.equal(replay.id, initial.id);
+  assert.equal(replay.state, 'ready');
+  assert.equal(calls(), 1);
+  await assert.rejects(library.create('other.example', 'capture-brand'), /REQUEST_ID_CONFLICT/);
+});
+
+test('MCP Brand Kits share HTTP records, style handoff and stale revision protection', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'brand-kit-contract-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const server = createServer(async (req, res) => {
+    const input = async () => { let raw = ''; for await (const chunk of req) raw += chunk; return JSON.parse(raw); };
+    if (!await brandKitHttp(req, res, new URL(req.url || '/', 'http://localhost'), directory, input)) res.end();
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise<void>(resolve => server.close(() => resolve())));
+  const base = 'http://127.0.0.1:' + (server.address() as { port: number }).port;
+  const api = new Phase1Service(new WorkspaceStore(directory), pluginRoot, {
+    origin: () => base, nativeUrl: () => undefined, openProject: async () => {},
+    mutation: async task => task(), cancel: async () => {},
+  });
+  const call = (operation: string, fields = {}) => api.call('openmotion_assets_use', { action: 'brand_kit', brandKit: { operation, ...fields } });
+  await assert.rejects(call('create', { url: 'https://example.com/' }), /INVALID_ARGUMENT/);
+  assert.ok((await call('catalog', { query: 'agentic' })).entries.some(entry => entry.id === 'agentic'));
+  const { kit } = await call('import', { catalogId: 'agentic' });
+  assert.equal((await call('list')).kits[0].id, kit.id);
+  const kitUrl = base + '/api/brand-kits/' + kit.id;
+  assert.equal((await (await fetch(kitUrl)).json()).kit.updatedAt, kit.updatedAt);
+  const fields = { kitId: kit.id, expectedUpdatedAt: kit.updatedAt };
+  const output = await call('package', fields);
+  assert.match(output.instruction, /STYLE-ONLY/);
+  const savedZip = await readFile(output.packageZipPath);
+  assert.deepEqual(savedZip, Buffer.from(await (await fetch(kitUrl + '/files/package.zip?v=' + encodeURIComponent(kit.updatedAt))).arrayBuffer()));
+  assert.match((await call('preview', { kitId: kit.id })).mediaUrl, /catalog\/agentic\/showcase/);
+  const changed = await call('context', { ...fields, rules: ['Use the supplied accents.'] });
+  assert.notEqual(changed.kit.updatedAt, kit.updatedAt);
+  assert.deepEqual((await (await fetch(kitUrl)).json()).kit.context.rules, ['Use the supplied accents.']);
+  assert.deepEqual(await readFile(output.packageZipPath), savedZip);
+  await assert.rejects(call('package', fields), /BRAND_KIT_CHANGED/);
+  await assert.rejects(call('remove', fields), /BRAND_KIT_CHANGED/);
+  const stale = await fetch(kitUrl + '/context', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules: [], expectedUpdatedAt: kit.updatedAt }) });
+  assert.equal(stale.status, 409);
+});
 test("public website validation rejects local networks, credentials and alternate schemes", () => {
   assert.equal(brandWebsite("brand.example"), "https://brand.example/");
   for (const url of [

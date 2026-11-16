@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   access,
+  link,
   mkdir,
   readFile,
   readdir,
@@ -35,6 +36,10 @@ const defaults: BrandKitDependencies = {
   render: renderBrandPreview,
   runtime: (directory) => ensureRuntime(directory, false),
 };
+function checkKitRevision(kit: BrandKit, expectedUpdatedAt?: unknown) {
+  if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== kit.updatedAt)
+    throw new Error('BRAND_KIT_CHANGED: Read the current Brand Kit before retrying.');
+}
 export class BrandKitLibrary {
   readonly root: string;
   private initialized?: Promise<void>;
@@ -49,7 +54,7 @@ export class BrandKitLibrary {
     this.root = path.join(dataDirectory, "brand-kits");
   }
   private async save(kit: BrandKit) {
-    kit.updatedAt = new Date().toISOString();
+    kit.updatedAt = new Date(Math.max(Date.now(), Date.parse(kit.updatedAt) + 1)).toISOString();
     const file = path.join(this.folder(kit.id), "record.json"),
       temporary = file + "." + randomUUID() + ".tmp";
     await writeFile(temporary, JSON.stringify(kit, null, 2), { mode: 0o600 });
@@ -99,10 +104,19 @@ export class BrandKitLibrary {
     );
     return records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  async create(raw: unknown) {
+  async create(raw: unknown, requestId?: unknown) {
     const url = brandWebsite(raw);
+    if (requestId !== undefined && (typeof requestId !== 'string' || !/^[\w-]{1,100}$/.test(requestId)))
+      throw new Error('INVALID_ARGUMENT: Supply a valid Brand Kit requestId.');
     await this.init();
     return this.lock(async () => {
+      if (typeof requestId === 'string') {
+        const previous = (await this.list()).find(kit => kit.requestId === requestId);
+        if (previous) {
+          if (previous.url !== url) throw new Error('REQUEST_ID_CONFLICT: This requestId belongs to another Brand Kit website.');
+          return previous;
+        }
+      }
       if (this.controls.size >= 5)
         throw new Error(
           "Five Brand Kits are already queued. Wait for one to finish.",
@@ -118,6 +132,7 @@ export class BrandKitLibrary {
         updatedAt: now,
         state: "queued",
         progress: 0,
+        ...(typeof requestId === 'string' ? { requestId } : {}),
       };
       // List polling must only see complete records, including after a crash.
       const staging = path.join(this.root, `.${id}.create`);
@@ -252,10 +267,11 @@ export class BrandKitLibrary {
       }
     });
   }
-  async retry(id: string, updates?: { name?: unknown; style?: unknown; rescan?: boolean }) {
+  async retry(id: string, updates?: { name?: unknown; style?: unknown; rescan?: boolean }, expectedUpdatedAt?: unknown) {
     await this.init();
     return this.lock(async () => {
       const kit = await this.read(id);
+      checkKitRevision(kit, expectedUpdatedAt);
       if (isBrandKitBusy(kit) || this.controls.has(id))
         throw new Error("This Brand Kit is still processing");
       if (this.controls.size >= 5)
@@ -302,10 +318,11 @@ export class BrandKitLibrary {
       return kit;
     });
   }
-  async updateContext(id: string, updates: ContextUpdate) {
+  async updateContext(id: string, updates: ContextUpdate, expectedUpdatedAt?: unknown) {
     await this.init();
     return this.lock(async () => {
       const kit = await this.read(id);
+      checkKitRevision(kit, expectedUpdatedAt);
       if (kit.state !== "ready" || this.controls.has(id)) throw new Error("This Brand Kit is still processing");
       const previous = structuredClone(kit);
       const context = kit.context ??= { rules: [], files: [] };
@@ -343,10 +360,11 @@ export class BrandKitLibrary {
       return kit;
     });
   }
-  async remove(id: string) {
+  async remove(id: string, expectedUpdatedAt?: unknown) {
     await this.init();
     return this.lock(async () => {
       const kit = await this.read(id);
+      checkKitRevision(kit, expectedUpdatedAt);
       if (isBrandKitBusy(kit) || this.controls.has(id))
         throw new Error("Wait for this Brand Kit to stop before deleting");
       await rm(this.folder(id), { recursive: true });
@@ -376,6 +394,20 @@ export class BrandKitLibrary {
     )
       throw new Error("Brand Kit file is unavailable");
     return path.join(this.folder(id), "package", name);
+  }
+  async packageSnapshot(id: string, expectedUpdatedAt: string) {
+    await this.init();
+    return this.lock(async () => {
+      const kit = await this.read(id);
+      checkKitRevision(kit, expectedUpdatedAt);
+      const source = await this.file(id, 'package.zip');
+      const directory = path.join(this.folder(id), 'handoffs');
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      const packageZipPath = path.join(directory, encodeURIComponent(kit.updatedAt) + '.zip');
+      // Packaging replaces its ZIP by rename, so the old inode remains intact.
+      await link(source, packageZipPath).catch(error => { if (error.code !== 'EEXIST') throw error; });
+      return { kit, packageZipPath };
+    });
   }
   async idle() {
     await this.work;

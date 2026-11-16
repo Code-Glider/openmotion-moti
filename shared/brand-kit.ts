@@ -65,6 +65,7 @@ export type BrandKit = {
   websiteUrl?: string;
   createdAt: string;
   updatedAt: string;
+  requestId?: string;
   state:
     | "queued"
     | "scanning"

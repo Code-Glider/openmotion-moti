@@ -1,3 +1,5 @@
+import { brandKitToolArguments } from './brand-kit-tool.ts';
+
 const id = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
 const object = <T extends Record<string, unknown>>(properties: T, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const reference = object({ assetId: id, versionId: id }, ['assetId', 'versionId']);
@@ -31,5 +33,15 @@ export const assetUseTool = {
     generate: ['requestId', 'model', 'modality', 'prompt'], jobs: [], status: ['jobId'], cancel: ['jobId'], retry_save: ['jobId', 'requestId'],
     import_to_project: ['projectId', 'requestId', 'assetId', 'versionId'], read: ['assetId', 'versionId'] })
     .map(([action, required]) => ({ type: 'object', properties: { action: { enum: [action] } }, required, additionalProperties: true })),
+  },
+};
+export const workspaceAssetUseTool = {
+  ...assetUseTool,
+  description: assetUseTool.description + ' Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.',
+  annotations: { ...assetUseTool.annotations, destructiveHint: true },
+  inputSchema: {
+    ...assetUseTool.inputSchema, properties: { ...assetUseTool.inputSchema.properties,
+      action: { enum: [...assetUseTool.inputSchema.properties.action.enum, 'brand_kit'] }, brandKit: brandKitToolArguments },
+    oneOf: [...assetUseTool.inputSchema.oneOf, { type: 'object', properties: { action: { enum: ['brand_kit'] } }, required: ['brandKit'], additionalProperties: true }],
   },
 };

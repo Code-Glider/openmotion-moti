@@ -31,7 +31,7 @@ test('preferred and compatible asset tools are discover save recovery and retain
     const tool = phase1Tools.find(tool => tool.name === name);
     assert.ok(tool, name);
     assert.equal(tool.annotations.readOnlyHint, false);
-    assert.equal(tool.inputSchema.properties.action.enum.length, 11);
+    assert.ok(tool.inputSchema.properties.action.enum.includes('brand_kit'));
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID() }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), timestamps: [Infinity] }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), timestamps: [0, 1, 2, 3, 4] }), /INVALID_ARGUMENT/);

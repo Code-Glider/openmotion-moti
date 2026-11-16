@@ -119,9 +119,11 @@ it("creates a background extraction and allows cancellation without a layout not
     "/motion-api/brand-kits",
     expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ url: "brand.example" }),
+      body: expect.stringContaining('"url":"brand.example"'),
     }),
   );
+  const createRequest = requests.mock.calls.find(([, init]) => init?.method === 'POST');
+  expect(JSON.parse(String(createRequest?.[1]?.body)).requestId).toMatch(/^[a-f\d-]{36}$/);
   expect(detail().querySelector('[role="status"]')?.textContent).toContain(
     "Reading your website",
   );
@@ -266,7 +268,7 @@ it('saves brand rules through context, keeps source sections accessible and repo
     await Promise.resolve();
   });
   await act(async () => textarea.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-  expect(requests).toHaveBeenCalledWith(`/motion-api/brand-kits/${kit.id}/context`, expect.objectContaining({ method: 'PUT', body: JSON.stringify({ rules: ['Keep the wordmark intact.'] }) }));
+  expect(requests).toHaveBeenCalledWith(`/motion-api/brand-kits/${kit.id}/context`, expect.objectContaining({ method: 'PUT', body: JSON.stringify({ rules: ['Keep the wordmark intact.'], expectedUpdatedAt: kit.updatedAt }) }));
   expect(detail().textContent).toContain('Keep the wordmark intact.');
   expect(document.querySelector('.studio-toast-viewport')?.textContent || document.body.textContent).toContain('Brand context saved');
   const contextTab = detail().querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')!;
