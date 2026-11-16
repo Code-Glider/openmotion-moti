@@ -74,7 +74,26 @@ try {
     if (theme === 'light') await page.screenshot({ path: path.join(output, `saved-light-${width}.png`) });
     results.push({ theme, width, jobId: queued.id, recovered: true, assetVersions: 1 });
   }
-  assert.equal(submissions, 3); assert.deepEqual(errors, []);
+  const { job: unavailable } = await mediaUse(store, { action: 'generate', projectId: store.projectId, provider: 'fal', model: 'vendor/image', modality: 'image', prompt: 'Unavailable retained files', requestId: 'browser-unavailable' });
+  const target = path.join(store.projectDirectory, `assets/generated/${unavailable.id}-1.png`);
+  await writeFile(target, 'Project conflict');
+  await gateway.tick(); await Promise.all([...gateway.active.values()].map(task => task.done));
+  await page.goto(`${origin}/?page=assets`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('button[aria-label="View tasks"]'); await page.click('button[aria-label="View tasks"]');
+  await page.waitForFunction(() => [...document.querySelectorAll('.om-task-item')].some(node => node.textContent.includes('Unavailable retained files')));
+  await page.evaluate(() => [...document.querySelectorAll('.om-task-item')].find(node => node.textContent.includes('Unavailable retained files')).click());
+  const retry = await page.waitForFunction(() => [...document.querySelectorAll('button')].find(node => node.textContent === 'Retry saving'));
+  await rm(path.join(gateway.root, 'work', unavailable.id, 'outputs.json'));
+  const rejected = page.waitForResponse(response => response.url().endsWith('/motion-api/phase1/call') && response.request().postData()?.includes('retry_save'));
+  await retry.evaluate(node => node.click()); assert.equal((await rejected).ok(), false);
+  await page.waitForFunction(() => document.querySelector('.om-creation-job-error') && ![...document.querySelectorAll('.om-creation-job button')].some(node => node.textContent.includes('Retry saving')));
+  await page.click('.om-creation-job-error summary');
+  await page.waitForFunction(() => document.querySelector('.om-creation-job-error').textContent.includes('Saving cannot be retried'));
+  assert.equal((await gateway.getJob(unavailable.id)).savePending, false);
+  assert.deepEqual(await readFile(path.join(gateway.root, 'work', unavailable.id, `${unavailable.id}-1.png`)), png);
+  await page.screenshot({ path: path.join(output, 'save-unavailable-light-390.png') });
+  results.push({ unrecoverable: true, savePending: false, retainedBytesPreserved: true });
+  assert.equal(submissions, 4); assert.deepEqual(errors, []);
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ status: 'passed', lane: process.env.D4_LANE, checks: results, submissions, paidCalls: false, errors }, null, 2));
   console.log('Workspace asset save recovery passed in both themes and at 390px; no paid model calls.');
 } catch (error) {

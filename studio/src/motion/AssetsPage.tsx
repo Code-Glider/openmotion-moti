@@ -134,7 +134,7 @@ export function AssetsPage({ active }: { active: boolean }) {
     try {
       const { job: next } = await assetRequest<{ job: GenerationJob }>({ action: 'retry_save', jobId: job.id, requestId: `save-${job.id}` });
       knownJobs.current = mergeAssetJobs(knownJobs.current, [next]); setJobs(knownJobs.current);
-    } catch (error) { onError((error as Error).message); }
+    } catch (error) { onError((error as Error).message.startsWith('SAVE_NOT_AVAILABLE:') ? t('The retained files are missing, changed or unreadable. Saving cannot be retried. No new generation was requested.') : (error as Error).message); }
   };
   const openReference = async (reference: { assetId: string; versionId: string }) => {
     const request = ++selectionRequest.current;

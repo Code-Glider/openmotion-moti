@@ -248,6 +248,7 @@
     "Saving to assets": "正在入库",
     "Saving needs attention": "保存遇到了问题",
     "Retry saving": "重试保存",
+    "The retained files are missing, changed or unreadable. Saving cannot be retried. No new generation was requested.": "保留文件已缺失、发生变化或无法读取，不能再重试保存。本次没有重新生成。",
     "Retrying save…": "正在重试保存…",
     "Generated files are kept locally. Retry saving without generating again.": "生成文件已保留在本机，可重试保存，无需重新生成。",
     "Failure details": "查看失败原因",

@@ -15,11 +15,13 @@ import { OpenDesignAccount } from './account.ts';
 import { AssetLibrary } from './asset-library.ts';
 import { requireLibraryMediaRuntime } from './asset-probe.ts';
 import { generationOptions, validateGenerationOptions } from '../shared/generation-options.ts';
+import { MAX_ASSET_BYTES } from '../shared/asset-limits.ts';
 
 type Config = { version: 1; providers: Partial<Record<ProviderId, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number }>>;
   routes: Partial<Record<Modality, string>>; customModels: Model[] };
 type Options = { fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
 type SavedOutput = { path: string; mimeType: string; bytes: number; sha256: string };
+const saveUnavailable = 'SAVE_NOT_AVAILABLE: retained outputs are missing, changed or unreadable; no model request was made';
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const uuid = (id: unknown): id is string => typeof id === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
 function alive(pid?: number) { try { if (!pid) return false; process.kill(pid, 0); return true; } catch { return false; } }
@@ -295,12 +297,54 @@ export class ModelGateway {
     if (job.state === 'cancelled' && !job.startedAt) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
     return job;
   }
+  private async savedOutputs(job: GenerationJob): Promise<SavedOutput[]> {
+    try {
+      const files = JSON.parse(await readFile(path.join(this.root, 'work', job.id, 'outputs.json'), 'utf8'));
+      if (!Array.isArray(files) || !files.length || files.some((file, index) => !file
+        || !new RegExp(`^assets/generated/${job.id}-${index + 1}\\.[a-z0-9]+$`).test(file.path)
+        || !/^[a-f0-9]{64}$/.test(file.sha256) || !Number.isSafeInteger(file.bytes) || file.bytes <= 0 || file.bytes > MAX_ASSET_BYTES
+        || typeof file.mimeType !== 'string' || !file.mimeType.startsWith(job.modality + '/'))) throw new Error(saveUnavailable);
+      return files;
+    } catch (error) {
+      if (error instanceof SyntaxError || ['ENOENT', 'ENOTDIR', 'ELOOP'].includes((error as NodeJS.ErrnoException).code!)) throw new Error(saveUnavailable);
+      throw error;
+    }
+  }
+  private async prepareOutput(library: AssetLibrary, file: SavedOutput, dir: string) {
+    let snapshot: Awaited<ReturnType<AssetLibrary['prepare']>> | undefined;
+    const source = path.join(dir, path.basename(file.path));
+    try {
+      snapshot = await library.prepare(await this.store.safePath(path.basename(file.path), dir));
+      if (snapshot.sha256 !== file.sha256 || snapshot.bytes !== file.bytes || snapshot.media.mimeType !== file.mimeType) throw new Error(saveUnavailable);
+      return snapshot;
+    } catch (error) {
+      if (snapshot) await rm(snapshot.file, { force: true });
+      if (['ENOENT', 'ENOTDIR', 'ELOOP'].includes((error as NodeJS.ErrnoException).code!) && (error as NodeJS.ErrnoException & { path?: string }).path === source
+        || error instanceof Error && /not readable|could not be decoded|Unsupported media type|Asset must be a file|符号链接/.test(error.message)) throw new Error(saveUnavailable);
+      throw error;
+    }
+  }
   async retrySave(id: unknown) {
+    const original = await this.getJob(id);
+    if (['completed', 'queued', 'running'].includes(original.state)) return original;
+    try {
+      const library = new AssetLibrary(this.store);
+      for (const file of await this.savedOutputs(original)) {
+        const snapshot = await this.prepareOutput(library, file, path.join(this.root, 'work', original.id));
+        await rm(snapshot.file, { force: true });
+      }
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith('SAVE_NOT_AVAILABLE:')) throw error;
+      return this.store.lock(async () => {
+        const job = await this.getJob(id);
+        if (['completed', 'queued', 'running'].includes(job.state)) return job;
+        job.state = 'failed'; job.phase = 'save_unavailable'; job.savePending = false; job.error = error.message; job.updatedAt = Date.now();
+        await this.saveJob(job); throw error;
+      });
+    }
     return this.store.lock(async () => {
       const job = await this.getJob(id);
-      if (job.state === 'completed' || job.state === 'queued' || job.state === 'running') return job;
-      const files = await readJson(path.join(this.root, 'work', job.id, 'outputs.json'), null);
-      if (!Array.isArray(files) || !files.length) throw new Error('SAVE_NOT_AVAILABLE: no complete local outputs; this action never resubmits generation');
+      if (['completed', 'queued', 'running'].includes(job.state)) return job;
       job.savePending = true; job.state = 'queued'; job.phase = 'saving'; job.updatedAt = Date.now(); delete job.error;
       await this.saveJob(job); return job;
     });
@@ -356,9 +400,7 @@ export class ModelGateway {
     };
     try {
       retained ||= await lstat(path.join(dir, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
-      let files = await readJson<SavedOutput[] | null>(path.join(dir, 'outputs.json'), null);
-      if (files && (!Array.isArray(files) || !files.length)) throw new Error('SAVE_NOT_AVAILABLE: invalid retained output manifest; no model request was made');
-      if (!files && job.savePending) throw new Error('SAVE_NOT_AVAILABLE: retained outputs are missing; no model request was made');
+      let files = retained ? await this.savedOutputs(job) : null;
       if (!files) {
         key = (await this.credential(job.model.provider)).key;
         const provider = (await this.status()).providers.find(p => p.id === job.model.provider);
@@ -404,12 +446,7 @@ export class ModelGateway {
       const library = new AssetLibrary(this.store);
       const prepared: Awaited<ReturnType<AssetLibrary['prepare']>>[] = [];
       try {
-        for (const [index, file] of files.entries()) {
-          if (!new RegExp(`^assets/generated/${job.id}-${index + 1}\\.[a-z0-9]+$`).test(file.path) || !/^[a-f0-9]{64}$/.test(file.sha256)) throw new Error('Invalid saved output');
-          const snapshot = await library.prepare(await this.store.safePath(path.basename(file.path), dir));
-          prepared.push(snapshot);
-          if (snapshot.sha256 !== file.sha256 || snapshot.bytes !== file.bytes || snapshot.media.mimeType !== file.mimeType) throw new Error('Saved output changed; refusing to import different bytes');
-        }
+        for (const file of files) prepared.push(await this.prepareOutput(library, file, dir));
         await this.store.lock(async () => {
           const current = await this.getJob(job.id); if (current.state !== 'running') return;
           current.libraryAssets = [];
@@ -458,7 +495,8 @@ export class ModelGateway {
       if (error instanceof ProviderError && (error.status === 401 || error.status === 403)) await this.verifyKey(job.model.provider, key, 'rejected', job.providerOrigin);
       await this.store.lock(async () => {
         const current = await this.getJob(job.id); if (current.state !== 'running') return;
-        current.state = 'failed'; current.phase = retained ? 'save_failed' : 'failed'; current.savePending = retained; current.updatedAt = Date.now();
+        const unavailable = error instanceof Error && error.message.startsWith('SAVE_NOT_AVAILABLE:');
+        current.state = 'failed'; current.phase = unavailable ? 'save_unavailable' : retained ? 'save_failed' : 'failed'; current.savePending = retained && !unavailable; current.updatedAt = Date.now();
         let message = controller.signal.aborted ? 'Generation stopped or timed out; no automatic retry was made' : error instanceof Error ? error.message : 'Generation failed';
         if (key) message = message.replaceAll(key, '[redacted]');
         current.error = message.slice(0, 500); await this.saveJob(current);

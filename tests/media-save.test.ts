@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -128,10 +129,11 @@ test('interrupted saving retains local bytes and missing/corrupted recovery neve
     await writeFile(jobFile, JSON.stringify({ ...queued.job, state: 'running', workerPid: 2147483647 }));
     let job = await finish(store, queued.job.id);
     assert.equal(job.phase, 'save_failed'); assert.equal(job.savePending, true);
-    await gateway.retrySave(job.id); job = await finish(store, job.id);
-    assert.equal(job.phase, 'save_failed'); assert.match(job.error!, /Saved output changed/); assert.equal(submissions(), 0);
+    await assert.rejects(gateway.retrySave(job.id), /SAVE_NOT_AVAILABLE/); job = await gateway.getJob(job.id);
+    assert.equal(job.phase, 'save_unavailable'); assert.equal(job.savePending, false); assert.equal(submissions(), 0);
     await rm(path.join(work, 'outputs.json'));
     await assert.rejects(gateway.retrySave(job.id), /SAVE_NOT_AVAILABLE/); assert.equal(submissions(), 0);
+    assert.equal((await gateway.getJob(job.id)).savePending, false);
     assert.equal((await new AssetLibrary(store).list()).total, 0);
   } finally { await gateway.close(); }
 }));
@@ -156,4 +158,52 @@ test('library edits recover an already-committed version without duplicating it 
     assert.equal(edited.versions.length, 2); assert.equal(edited.versions[1].parentVersionId, asset.currentVersionId);
     assert.deepEqual(await readFile((await library.resolve({ assetId: asset.id, versionId: asset.currentVersionId })).filename), png);
   } finally { failure.mock.restore(); await gateway.close(); }
+}));
+
+for (const damage of ['missing-manifest', 'corrupt-manifest', 'empty-manifest', 'missing-file', 'changed-file', 'missing-after-queue']) test(`unrecoverable ${damage} clears save recovery without model usage`, () => fixture(async store => {
+  const { gateway, api, submissions } = await setup(store);
+  try {
+    const { job: queued } = await mediaUse(store, request(store));
+    const work = path.join(gateway.root, 'work', queued.id), file = path.join(work, `${queued.id}-1.png`), manifest = path.join(work, 'outputs.json');
+    await mkdir(work, { recursive: true }); await writeFile(file, png);
+    const output = { path: `assets/generated/${queued.id}-1.png`, mimeType: 'image/png', bytes: png.length, sha256: createHash('sha256').update(png).digest('hex') };
+    await writeFile(manifest, JSON.stringify([output]));
+    await writeFile(path.join(gateway.root, 'jobs', `${queued.id}.json`), JSON.stringify({ ...queued, state: 'failed', phase: 'save_failed', savePending: true }));
+    if (damage === 'missing-manifest') await rm(manifest);
+    if (damage === 'corrupt-manifest') await writeFile(manifest, '{');
+    if (damage === 'empty-manifest') await writeFile(manifest, '[]');
+    if (damage === 'missing-file') await rm(file);
+    if (damage === 'changed-file') await writeFile(file, 'Changed retained bytes');
+    const retry = { action: 'retry_save', jobId: queued.id, requestId: 'save-only' };
+    if (damage === 'missing-after-queue') {
+      await api.call('openmotion_assets_use', retry); await rm(file); await finish(store, queued.id);
+    } else await assert.rejects(api.call('openmotion_assets_use', retry), /SAVE_NOT_AVAILABLE/);
+    let failed = await gateway.getJob(queued.id);
+    assert.equal(failed.state, 'failed'); assert.equal(failed.phase, 'save_unavailable'); assert.equal(failed.savePending, false);
+    assert.match(failed.error!, /SAVE_NOT_AVAILABLE/); assert.equal(submissions(), 0);
+    await gateway.tick(); failed = await gateway.getJob(queued.id);
+    assert.equal(failed.savePending, false); assert.equal(submissions(), 0);
+    assert.equal((await new AssetLibrary(store).list()).total, 0);
+    if (!['missing-file', 'missing-after-queue', 'changed-file'].includes(damage)) assert.deepEqual(await readFile(file), png, 'Remaining paid bytes are preserved');
+  } finally { await gateway.close(); }
+}));
+
+test('an unavailable decoder preserves save recovery instead of declaring retained bytes lost', () => fixture(async store => {
+  const { gateway, submissions } = await setup(store);
+  const previous = process.env.HYPERFRAMES_FFPROBE_PATH;
+  try {
+    const { job: queued } = await mediaUse(store, request(store));
+    const work = path.join(gateway.root, 'work', queued.id), file = path.join(work, `${queued.id}-1.png`);
+    await mkdir(work, { recursive: true }); await writeFile(file, png);
+    await writeFile(path.join(work, 'outputs.json'), JSON.stringify([{ path: `assets/generated/${queued.id}-1.png`, mimeType: 'image/png', bytes: png.length, sha256: createHash('sha256').update(png).digest('hex') }]));
+    await writeFile(path.join(gateway.root, 'jobs', `${queued.id}.json`), JSON.stringify({ ...queued, state: 'failed', phase: 'save_failed', savePending: true }));
+    process.env.HYPERFRAMES_FFPROBE_PATH = path.join(store.directory, 'missing-ffprobe');
+    await assert.rejects(gateway.retrySave(queued.id), error => !String(error).includes('SAVE_NOT_AVAILABLE'));
+    const job = await gateway.getJob(queued.id);
+    assert.equal(job.savePending, true); assert.equal(job.phase, 'save_failed'); assert.equal(submissions(), 0);
+    assert.deepEqual(await readFile(file), png);
+  } finally {
+    if (previous === undefined) delete process.env.HYPERFRAMES_FFPROBE_PATH; else process.env.HYPERFRAMES_FFPROBE_PATH = previous;
+    await gateway.close();
+  }
 }));

@@ -26,7 +26,8 @@ export function AssetGenerationCard({ job, onCancel, onView, onRetrySave }: { jo
   const [failedPreview, setFailedPreview] = useState<string>();
   const preview = result && assetMediaUrl(result.assetId, result.versionId);
   let error = job.error;
-  if (error?.startsWith('CODEX_IMAGE_PROXY_AUTH_REQUIRED:')) error = t('The local Codex proxy requires its own authentication. In Codex settings, select the configured proxy provider and check its endpoint and credentials. Signing in again alone will not fix a missing proxy key. Your original asset is unchanged; no automatic retry was made.');
+  if (error?.startsWith('SAVE_NOT_AVAILABLE:')) error = t('The retained files are missing, changed or unreadable. Saving cannot be retried. No new generation was requested.');
+  else if (error?.startsWith('CODEX_IMAGE_PROXY_AUTH_REQUIRED:')) error = t('The local Codex proxy requires its own authentication. In Codex settings, select the configured proxy provider and check its endpoint and credentials. Signing in again alone will not fix a missing proxy key. Your original asset is unchanged; no automatic retry was made.');
   else if (error?.startsWith('CODEX_IMAGE_AUTH_REQUIRED:')) error = t('The configured Codex image service rejected authorization. Check the active provider, endpoint and authentication in Codex settings; sign in again only if your account session has expired. Your original asset is unchanged; no automatic retry was made.');
   else if (error?.startsWith('ASSET_MEDIA_RUNTIME_NOT_READY:')) error = t('Local media components are unavailable. Prepare or repair this installation, then submit again. No model request was made; your original asset is unchanged.');
   return <section className="om-creation-job" data-tone={job.modality} data-state={job.state} aria-label={t('Generation activity')} aria-busy={working}>

@@ -78,3 +78,13 @@ it('retries only saving retained outputs, disables duplicate clicks and can insp
   await act(async () => complete()); expect(retry.disabled).toBe(false);
   expect(container.textContent).toContain('View asset'); expect(cancel).not.toHaveBeenCalled();
 });
+
+it('removes save recovery for unavailable retained files and explains that nothing was regenerated', async () => {
+  const retrySave = vi.fn();
+  const job = { ...initial, state: 'failed' as const, phase: 'save_unavailable', savePending: false, error: 'SAVE_NOT_AVAILABLE: retained data missing' };
+  await act(async () => root.render(<AssetGenerationCard job={job} onCancel={cancel} onView={view} onRetrySave={retrySave} />));
+  expect(container.textContent).toContain('Saving cannot be retried');
+  expect(container.textContent).toContain('No new generation was requested');
+  expect(container.textContent).not.toContain('Retry saving'); expect(container.textContent).not.toContain('SAVE_NOT_AVAILABLE');
+  expect(retrySave).not.toHaveBeenCalled();
+});
