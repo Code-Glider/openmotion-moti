@@ -39,13 +39,24 @@ it("fences catalogue responses across page changes and drains even an abort-igno
   await vi.waitFor(() => expect(view.element.querySelector("button")?.disabled).toBe(false));
   expect(view.element.textContent).not.toContain("Obsolete");
   view.element.querySelector("button")!.click();
+  view.activate(false);
+  view.activate(true);
+  expect(pending).toHaveLength(3);
+  expect(view.element.textContent).toContain("刷新已暂停");
+  expect(view.element.textContent).toContain("Current 0");
+  expect(view.element.querySelector("button")!.disabled).toBe(false);
+  pending[2]!.resolve(new Response(JSON.stringify(catalog("Late refresh"))));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(view.element.textContent).not.toContain("Late refresh");
+  expect(view.element.textContent).toContain("刷新已暂停");
+  view.element.querySelector("button")!.click();
   let drained = false;
   const close = view.dispose().then(() => {
     drained = true;
   });
   await Promise.resolve();
   expect(drained).toBe(false);
-  pending[2]!.resolve(new Response(JSON.stringify(catalog("Disposed"))));
+  pending[3]!.resolve(new Response(JSON.stringify(catalog("Disposed"))));
   await close;
   expect(view.element.isConnected).toBe(false);
 });
