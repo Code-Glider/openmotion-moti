@@ -33,6 +33,8 @@ export type AccountErrorCode = 'setup_failed' | 'authorization_expired' | 'crede
 /** Non-secret progress of one connector sign-in: stages are `stage:result[:errorKind]`. */
 export type AccountAttempt = {
   id: string; stages: string[]; persisted: boolean; receipt?: 'accepted' | 'rejected'; exitCode?: number | null;
+  /** Confirms credentials an interrupted attempt had already saved; the connector shows no activation link for it. */
+  resumed?: boolean;
 };
 export type AccountSummary = {
   state: 'signed-out' | 'authorizing' | 'signed-in' | 'reauth-required' | 'unavailable';

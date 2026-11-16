@@ -12,6 +12,8 @@ import { readSettings, writeSettings } from './settings-storage.ts';
 const execute = promisify(execFile);
 const consoleUrl = 'https://open-design.ai/cloud';
 type Profile = { controlKey?: string; controlKeyId?: string; runtimeKey?: string; pendingLogin?: unknown; user?: { id?: string; name?: string; email?: string } };
+/** Connector-owned credentials file. `pendingRevocations` holds keys whose remote revocation has not been confirmed yet. */
+type CredentialsFile = { profiles?: Record<string, Profile>; pendingRevocations?: unknown[] };
 type AccountOptions = {
   pollMs?: number; binary?: string; authorizationMs?: number; log?: (line: string) => void;
   run?: (args: string[], signal?: AbortSignal) => Promise<string>; spawn?: typeof spawn;
@@ -43,7 +45,10 @@ class SignInFailure extends Error {
   readonly code: AccountErrorCode;
   constructor(code: AccountErrorCode) { super(failureMessages[code]); this.code = code; }
 }
-/** Classifies an attempt by the furthest point it reached. Credentials that reached disk are never a setup failure. */
+/**
+ * Classifies an attempt by the furthest point it reached. Credentials that reached disk count as rejected; `authorize`
+ * reports `setup_failed` instead when the connector kept them unconfirmed because the service was unreachable.
+ */
 function failureCode(attempt: AccountAttempt, cancelled: boolean): AccountErrorCode {
   if (attempt.persisted) return 'credentials_rejected';
   const [stage, , errorKind] = attempt.stages.findLast(entry => entry.split(':')[1] === 'failed' && !entry.startsWith('browser_open_result'))?.split(':') ?? [];
@@ -73,6 +78,9 @@ export class OpenDesignAccount {
   /** Control key the account service rejected; cleared by a successful read or a new sign-in. */
   private rejectedKeyId?: string;
   private cachedModels: DirectoryModel[] = [];
+  /** In-flight `logout --retry-pending`. The connector rewrites the credentials file, so sign-in and sign-out wait for it. */
+  private revoking?: Promise<void>;
+  private revocationChecked = false;
   private runtime?: string;
   readonly directory: string;
   readonly options: AccountOptions;
@@ -83,9 +91,22 @@ export class OpenDesignAccount {
     for (const key of ['VELA_RUNTIME_KEY', 'VELA_CONTROL_KEY', 'VELA_LINK_URL', 'VELA_API_URL', 'OD_AMR_ENDPOINT_BINDING']) delete env[key];
     return env;
   }
-  private async profile(): Promise<Profile | undefined> {
-    const file = await readSettings<{ profiles?: Record<string, Profile> }>(path.join(this.home, 'config.json'), {});
-    return file.profiles?.prod;
+  private credentials() { return readSettings<CredentialsFile>(path.join(this.home, 'config.json'), {}); }
+  private async profile(): Promise<Profile | undefined> { return (await this.credentials()).profiles?.prod; }
+  /** Retries revocations the connector could not deliver at sign-out; the file is removed once nothing is left to revoke. */
+  private retryRevocations() {
+    if (this.revoking || this.connecting || this.signingOut) return;
+    this.revocationChecked = true;
+    const generation = this.generation;
+    this.revoking = this.run(['logout', '--retry-pending', '--json']).then(async output => {
+      if (JSON.parse(output).revocationPending !== false || generation !== this.generation || this.connecting || this.signingOut) return;
+      const file = await this.credentials(), profile = file.profiles?.prod;
+      if (!file.pendingRevocations?.length && !profile?.controlKey && !profile?.runtimeKey && !profile?.pendingLogin) await rm(path.join(this.home, 'config.json'), { force: true });
+    }).catch(() => { /* Still queued; retried on the next refresh. */ }).finally(() => { this.revoking = undefined; });
+  }
+  private report(errorCode: AccountErrorCode, attempt: AccountAttempt) {
+    // Diagnostics for support: attempt progress only, never URLs, codes, identities or credentials.
+    (this.options.log ?? console.error)('OpenDesign sign-in failed ' + JSON.stringify({ errorCode, ...attempt }));
   }
   private commit(generation: number, task: () => Promise<void>) {
     this.stateWrites = this.stateWrites.catch(() => {}).then(async () => { if (generation === this.generation) await task(); });
@@ -116,7 +137,9 @@ export class OpenDesignAccount {
   }
   async summary(refresh = false): Promise<AccountSummary> {
     const generation = this.generation;
-    const profile = await this.profile();
+    const file = await this.credentials(), profile = file.profiles?.prod;
+    // Undelivered revocations are retried once after startup and on every refresh.
+    if (file.pendingRevocations?.length && (refresh || !this.revocationChecked)) this.retryRevocations();
     const signedIn = signedInProfile(profile) && Boolean(await this.identity());
     if (refresh && signedIn && !this.connecting) await this.readBilling(generation, profile!);
     if (generation !== this.generation) return this.summary();
@@ -154,18 +177,18 @@ export class OpenDesignAccount {
     this.connecting = true; this.error = undefined; this.errorCode = undefined; this.cachedModels = [];
     this.billing = undefined; this.billingUnavailable = false; this.billingError = undefined; this.rejectedKeyId = undefined;
     this.authorizationUrl = undefined; this.userCode = undefined;
-    const generation = ++this.generation, attempt: AccountAttempt = this.attempt = { id: randomUUID(), stages: [], persisted: false };
-    void this.authorize(generation, attempt).catch(error => {
+    const generation = ++this.generation;
+    this.attempt = { id: randomUUID(), stages: [], persisted: false };
+    void this.authorize(generation).catch(error => {
       if (this.generation !== generation) return;
       this.connecting = false; this.child = undefined; this.authorizationUrl = undefined; this.userCode = undefined;
-      this.errorCode = error instanceof SignInFailure ? error.code : failureCode(attempt, false);
+      this.errorCode = error instanceof SignInFailure ? error.code : failureCode(this.attempt!, false);
       this.error = failureMessages[this.errorCode];
-      // Diagnostics for support: attempt progress only, never URLs, codes, identities or credentials.
-      (this.options.log ?? console.error)('OpenDesign sign-in failed ' + JSON.stringify({ errorCode: this.errorCode, ...attempt }));
+      this.report(this.errorCode, this.attempt!);
     });
     return this.summary();
   }
-  private async authorize(generation: number, attempt: AccountAttempt) {
+  private async authorize(generation: number) {
     await mkdir(this.home, { recursive: true, mode: 0o700 });
     if (generation !== this.generation) return;
     await this.commit(generation, async () => {
@@ -173,7 +196,37 @@ export class OpenDesignAccount {
       await writeSettings(path.join(this.directory, 'account', 'models.json'), []);
     });
     const binary = await this.resolveRuntime(true);
+    await this.revoking;
     if (generation !== this.generation) return;
+    let attempt = this.attempt!, result = await this.connect(binary, generation, attempt);
+    if (generation !== this.generation) return;
+    const rolledBack = result.exitCode !== 0 && attempt.resumed && !(await this.profile())?.pendingLogin;
+    if (generation !== this.generation) return;
+    if (rolledBack) {
+      // The service no longer accepts the interrupted attempt and the connector rolled it back: authorize again.
+      this.report(failureCode(attempt, result.cancelled), attempt);
+      attempt = this.attempt = { id: randomUUID(), stages: [], persisted: false };
+      result = await this.connect(binary, generation, attempt);
+      if (generation !== this.generation) return;
+    }
+    // The connector keeps saved credentials unconfirmed only when the service could not be reached (5xx, 408, 429,
+    // network). The next sign-in confirms them, so this is reported as a connection failure, not a rejection.
+    if (result.exitCode !== 0) throw new SignInFailure((await this.profile())?.pendingLogin ? 'setup_failed' : failureCode(attempt, result.cancelled));
+    if (!signedInProfile(await this.profile())) throw new SignInFailure('credentials_rejected');
+    if (generation !== this.generation) return;
+    await this.commit(generation, () => writeSettings(path.join(this.directory, 'account', 'session.json'), { id: randomUUID() }));
+    if (generation !== this.generation) return;
+    await this.models(true).catch(() => { this.error = 'Signed in, but the model catalogue could not be synced. Retry in Model providers.'; });
+    if (generation !== this.generation) return;
+    this.connecting = false;
+    await this.summary(true);
+  }
+  /** Runs `vela login` once. Saved but unconfirmed credentials make the connector confirm them again, without an activation link. */
+  private async connect(binary: string, generation: number, attempt: AccountAttempt) {
+    const resumed = Boolean((await this.profile())?.pendingLogin);
+    // A cancel during the read above must not leave a connector running.
+    if (generation !== this.generation) return { exitCode: null, cancelled: true };
+    if (resumed) attempt.resumed = true;
     const env = { ...this.env(), OPEN_DESIGN_AMR_AUTH_STAGE_FORMAT: 'jsonl-v1', OPEN_DESIGN_AMR_AUTH_ATTEMPT_ID: attempt.id };
     const child = (this.options.spawn ?? spawn)(binary, ['login', '--completion-receipt=stdin-v1'], { env, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child = child;
@@ -220,18 +273,11 @@ export class OpenDesignAccount {
       child.once('error', () => { clearTimeout(timer); reject(new SignInFailure(failureCode(attempt, cancelled))); });
       child.once('close', code => { clearTimeout(timer); resolve(code); });
     });
-    if (generation !== this.generation) return;
-    if (partial) record(partial);
-    this.child = undefined; this.authorizationUrl = undefined; this.userCode = undefined;
-    if (attempt.exitCode !== 0) throw new SignInFailure(failureCode(attempt, cancelled));
-    if (!signedInProfile(await this.profile())) throw new SignInFailure('credentials_rejected');
-    if (generation !== this.generation) return;
-    await this.commit(generation, () => writeSettings(path.join(this.directory, 'account', 'session.json'), { id: randomUUID() }));
-    if (generation !== this.generation) return;
-    await this.models(true).catch(() => { this.error = 'Signed in, but the model catalogue could not be synced. Retry in Model providers.'; });
-    if (generation !== this.generation) return;
-    this.connecting = false;
-    await this.summary(true);
+    if (generation === this.generation) {
+      if (partial) record(partial);
+      this.child = undefined; this.authorizationUrl = undefined; this.userCode = undefined;
+    }
+    return { exitCode: attempt.exitCode, cancelled };
   }
   async cancel() {
     const connecting = this.connecting, generation = ++this.generation;
@@ -258,8 +304,15 @@ export class OpenDesignAccount {
         await writeSettings(path.join(this.directory, 'account', 'session.json'), {});
         await writeSettings(path.join(this.directory, 'account', 'models.json'), []);
       });
-      try { await this.run(['logout']); } catch { /* Always remove this installation's credentials, even offline. */ }
-      await rm(path.join(this.home, 'config.json'), { force: true });
+      await this.revoking;
+      let revocationPending = false;
+      try { const result = JSON.parse(await this.run(['logout', '--json'])); revocationPending = result.ok === true && result.revocationPending === true; }
+      catch { /* Removing the file below still signs this installation out. */ }
+      // Offline, the connector clears this account's keys and keeps only a revocation record; keep the file so the
+      // revocation is retried. Otherwise (or if the connector could not run) remove this installation's credentials.
+      const profile = await this.profile();
+      if (revocationPending && !profile?.controlKey && !profile?.runtimeKey) this.revocationChecked = true;
+      else await rm(path.join(this.home, 'config.json'), { force: true });
       return this.summary();
     } finally { this.signingOut = false; }
   }

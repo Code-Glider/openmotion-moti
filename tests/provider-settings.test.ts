@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { spawn, type SpawnOptions } from 'node:child_process';
+import { execFile, spawn, type SpawnOptions } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -157,6 +157,108 @@ test('sign-in failures are classified by the stage reached and logged without ac
   assert.equal(approved.errorCode, 'credentials_rejected'); assert.equal(approved.attempt?.stages.at(-1), 'device_authorization_result:success');
   assert.equal(logs.length, 7);
   assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id|private upstream/);
+}));
+
+test('an interrupted sign-in is confirmed by the next attempt, or replaced by a new authorization once the service refuses it', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const logs: string[] = [];
+  const account = new OpenDesignAccount(store.directory, { binary, log: line => logs.push(line) }); t.after(() => account.close());
+  const config = path.join(account.home, 'config.json');
+  const mode = async (scenario: string) => {
+    await mkdir(account.home, { recursive: true });
+    await writeFile(path.join(account.home, 'fixture-mode'), scenario); await rm(path.join(account.home, 'authorize'), { force: true });
+  };
+  const interrupt = async () => {
+    await mode('login-complete-unavailable');
+    await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+    await writeFile(path.join(account.home, 'authorize'), 'yes');
+    await until(async () => (await account.summary()).state !== 'authorizing');
+    // The service could not confirm the saved credentials: they stay pending and the failure reads as a connection problem.
+    const failed = await account.summary();
+    assert.equal(failed.state, 'signed-out'); assert.equal(failed.errorCode, 'setup_failed'); assert.equal(failed.attempt?.receipt, 'accepted');
+    assert(JSON.parse(await readFile(config, 'utf8')).profiles.prod.pendingLogin);
+  };
+  await interrupt();
+  await mode('');
+  await account.login(); await until(async () => (await account.summary()).state !== 'authorizing');
+  const resumed = await account.summary();
+  assert.equal(resumed.state, 'signed-in'); assert.equal(resumed.errorCode, undefined); assert.equal(resumed.attempt?.resumed, true);
+  assert.deepEqual(resumed.attempt?.stages, ['attempt_started:started', 'device_authorization_result:success', 'token_exchange_result:success', 'credential_persist_result:success']);
+  await account.logout();
+  await interrupt();
+  // The service refuses the old attempt and the connector rolls it back; the same sign-in continues with a new link.
+  // Offline, the rolled-back key stays queued for revocation next to the new session until a refresh delivers it.
+  await mode('resume-rejected'); await writeFile(path.join(account.home, 'offline'), 'yes');
+  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+  const fresh = await account.summary();
+  assert.equal(fresh.state, 'authorizing'); assert.equal(fresh.userCode, 'TEST-123'); assert.equal(fresh.attempt?.resumed, undefined);
+  await writeFile(path.join(account.home, 'authorize'), 'yes');
+  await until(async () => (await account.summary()).state === 'signed-in');
+  assert.equal(JSON.parse(await readFile(config, 'utf8')).pendingRevocations.length, 1);
+  await rm(path.join(account.home, 'offline')); await account.summary(true);
+  await until(async () => !JSON.parse(await readFile(config, 'utf8')).pendingRevocations);
+  assert.equal((await account.summary()).state, 'signed-in');
+  assert.equal(JSON.parse(await readFile(path.join(account.home, 'revoked.json'), 'utf8')).length, 2);
+  assert.equal(logs.length, 3); assert.match(logs[2], /"errorCode":"credentials_rejected".*"resumed":true/);
+  assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|fixture-user-id/);
+}));
+
+test('sign-out keeps an undelivered revocation and retries it after a restart and on refresh', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());
+  const file = (name: string) => path.join(account.home, name);
+  const exists = (name: string) => access(file(name)).then(() => true, () => false);
+  const retries = async () => await exists('retries') ? (await readFile(file('retries'), 'utf8')).length : 0;
+  await signIn(account);
+  await writeFile(file('offline'), 'yes');
+  assert.equal((await account.logout()).state, 'signed-out'); assert.deepEqual(await account.models(), []);
+  const queued = JSON.parse(await readFile(file('config.json'), 'utf8'));
+  assert.equal(queued.pendingRevocations.length, 1); assert.doesNotMatch(JSON.stringify(queued.profiles), /synthetic-private/);
+  await account.summary(true); await until(async () => await retries() === 1);
+  assert(await exists('config.json')); assert.equal(await exists('revoked.json'), false);
+  // Back online: the first status read after a restart delivers the revocation and removes the file.
+  await rm(file('offline'));
+  const restarted = new OpenDesignAccount(store.directory, { binary }); t.after(() => restarted.close());
+  assert.equal((await restarted.summary()).state, 'signed-out');
+  await until(async () => !await exists('config.json'));
+  assert.equal(await retries(), 2); assert.deepEqual(JSON.parse(await readFile(file('revoked.json'), 'utf8')), ['fixture-control-key-id']);
+  // A refresh retries as well.
+  await rm(file('authorize')); await signIn(account);
+  await writeFile(file('offline'), 'yes'); await account.logout(); await rm(file('offline'));
+  await account.summary(true); await until(async () => !await exists('config.json'));
+  assert.equal(await retries(), 3); assert.equal(JSON.parse(await readFile(file('revoked.json'), 'utf8')).length, 2);
+}));
+
+test('a revocation retry in flight holds back sign-in and sign-out and cannot remove the credentials they use', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());
+  const file = (name: string) => path.join(account.home, name);
+  // Holds every `logout --retry-pending` until released; other commands run the fixture connector.
+  let release: ((output: string) => void) | undefined;
+  const connector = (args: string[]) => new Promise<string>((resolve, reject) => execFile(binary, args, { env: { ...process.env, AMR_HOME: account.home } }, (error, stdout) => error ? reject(error) : resolve(stdout)));
+  const hold = () => { release = undefined; account.options.run = args => args.includes('--retry-pending') ? new Promise(resolve => { release = resolve; }) : connector(args); };
+  const delivered = JSON.stringify({ ok: true, revocationPending: false });
+  await signIn(account);
+  await writeFile(file('offline'), 'yes'); await account.logout(); await rm(file('offline')); await rm(file('authorize'));
+  hold(); await account.summary(true); await until(async () => Boolean(release));
+  // Sign-in waits for the retry: no connector runs and no activation link appears before it finishes.
+  await account.login(); await delay(200);
+  const waiting = await account.summary();
+  assert.equal(waiting.state, 'authorizing'); assert.equal(waiting.authorizationUrl, undefined);
+  release!(delivered);
+  await until(async () => Boolean((await account.summary()).authorizationUrl));
+  await writeFile(file('authorize'), 'yes'); await until(async () => (await account.summary()).state === 'signed-in');
+  assert((await access(file('config.json')).then(() => true, () => false)));
+  // Sign in again while offline so a key stays queued; the refresh at the end of sign-in starts a held retry.
+  await writeFile(file('offline'), 'yes'); await account.logout(); await rm(file('authorize'));
+  hold(); await signIn(account); await until(async () => Boolean(release)); await rm(file('offline'));
+  // Sign-out waits for that retry, and the retry finishing during sign-out cannot remove the file first.
+  let signedOut = false; const logout = account.logout().then(summary => { signedOut = true; return summary; });
+  await delay(200);
+  assert.equal(signedOut, false); assert(JSON.parse(await readFile(file('config.json'), 'utf8')).profiles.prod.controlKey);
+  release!(delivered);
+  assert.equal((await logout).state, 'signed-out');
+  assert.equal(await access(file('config.json')).then(() => true, () => false), false);
 }));
 
 test('billing reads an empty tier as Free, keeps the session on refusal and asks to sign in again on a rejected key', t => fixture(async store => {
