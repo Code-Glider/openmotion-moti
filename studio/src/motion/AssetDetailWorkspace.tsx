@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { assetMediaUrl, assetVersion, type AssetReference, type LibraryAsset } from '../../../shared/asset-library';
 import { useI18n } from '../i18n/I18n';
@@ -31,7 +32,7 @@ export function AssetDetailWorkspace({ asset, versionId, active, uploading, savi
   return <section className="om-asset-workspace" aria-label={t('Asset preview')} data-editing={editing} data-mobile-view={mobileView}>
     <header className="om-asset-workspace-header">
       <button className="om-nav-item" onClick={onBack}><RemixIcon name="arrow-left-line" size={16} />{t('All assets')}</button>
-      <strong title={asset.name}>{asset.name}</strong><span className="om-badge">V{number}</span>
+      <Tooltip label={asset.name} wrap><strong>{asset.name}</strong></Tooltip><span className="om-badge">V{number}</span>
       <div className="om-asset-workspace-actions">{taskControls}<a className="om-button" href={assetMediaUrl(asset.id, version.id) + '?download=1'} download onClick={onDownload}><RemixIcon name="download-2-line" size={15} />{t('Download')}</a></div>
     </header>
     <div className="om-asset-detail-switch" role="group" aria-label={t('Asset preview')}><div className="om-choice-tabs">

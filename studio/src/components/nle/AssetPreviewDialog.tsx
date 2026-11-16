@@ -44,7 +44,7 @@ export function AssetPreviewDialog({ url, kind, name, onClose, onAdd }: {
         onKeyDown={event => event.stopPropagation()}>
         <div className={`${audioMode ? "motion-audio-preview-header " : ""}flex shrink-0 items-center justify-between gap-3 px-3 py-2`}>
           {audioMode && <span className="motion-audio-preview-icon" aria-hidden="true"><RemixIcon name="music-2-line" size={18} /></span>}
-          <Dialog.Title className={`${audioMode ? "flex-1 " : ""}min-w-0 truncate text-step-14 font-semibold`} title={name}>{name}</Dialog.Title>
+          <Tooltip label={name} wrap><Dialog.Title className={`${audioMode ? "flex-1 " : ""}min-w-0 truncate text-step-14 font-semibold`}>{name}</Dialog.Title></Tooltip>
           <div className="flex shrink-0 items-center gap-2">
             {onAdd && <Button type="button" variant="primary" loading={adding} onClick={add}>
               {t(adding ? "Adding…" : "Use")}
