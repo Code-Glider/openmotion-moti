@@ -72,7 +72,7 @@ Once this turn's final video HTML and assets are complete and ready for preview,
 
 Apply the [production decisions](../openmotion-director/references/production-decisions.md) and [Motion review](../openmotion-director/references/motion-review.md) to time structure, key actions, joins and state; still frames that look similar do not replace a moving comparison. Do not restart original creative direction.
 
-Then follow [check and deliver](references/verify.md): export the inspected version, read the automatic technical verification, inspect the exported MP4, measure it against the reference with the bundled measurer and fix every failing row before delivery.
+Then follow [check and deliver](references/verify.md): export the inspected version, read the automatic technical verification, inspect the exported MP4, measure it against the reference with the bundled measurer and fix every failing row before delivery. For dense multi-unit films, use available, authorized delegation for the integrated-export review described there, with a fresh review context or workers reviewing another author's units.
 
 Opening the editor is a preview handoff, not completion of these checks. Keep working after it opens; the shared starter draft default does not replace this recreation workflow. Check small objects whose shape carries meaning with close crops as described in rebuild and verify: numerical similarity does not establish the correct contour. Continue authorized repairs for failed checks, revisiting the affected unit's representation decision and rechecking its actual output. When available material or tools cannot resolve a specific gap after recovery, identify the project as an incomplete draft and state that gap.
 
