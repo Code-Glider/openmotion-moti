@@ -6,30 +6,71 @@ import type { WorkspaceStore } from './workspace.ts';
 import { execute } from './hyperframes.ts';
 import { verificationBinaries } from './scripts/verify-export.ts';
 
-const maxInlineVideoBytes = 32 * 1024 * 1024;
 /** Hosts stall on very large MCP messages, so larger films play a re-encoded preview; the verified export is unchanged. */
 export const inlineEmbedBytes = 8 * 1024 * 1024;
+const previewVersion = 'h264-aac-v1';
+const previewBudgetMs = 45_000;
+const pending = new Map<string, Promise<Buffer>>();
+const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
-/** Bytes for the chat player: the verified file when small enough, otherwise a cached H.264/AAC preview within the limit. */
-export async function inlinePlaybackBytes(source: string, bytes: Buffer, cacheFile: string, cwd: string, limit = inlineEmbedBytes): Promise<Buffer> {
-  if (bytes.length <= limit) return bytes;
-  const cached = await lstat(cacheFile).catch(() => null);
-  if (!cached) {
-    await mkdir(path.dirname(cacheFile), { recursive: true });
-    for (const [height, crf] of [[720, 28], [540, 33], [360, 38]]) {
-      const temp = `${cacheFile}.${crypto.randomUUID()}.mp4`;
+/** Bytes for the chat player: the verified file when small enough, otherwise a cached, validated H.264/AAC preview bound to that file. */
+export async function inlinePlaybackBytes(source: string, sourceSha256: string, cacheFile: string, cwd: string, limit = inlineEmbedBytes): Promise<Buffer> {
+  const info = await lstat(source);
+  if (!info.isFile() || info.isSymbolicLink() || !info.size) throw new Error('INLINE_MEDIA_UNAVAILABLE');
+  if (info.size <= limit) {
+    const bytes = await readFile(source);
+    if (sha(bytes) !== sourceSha256) throw new Error('INLINE_MEDIA_CHANGED');
+    return bytes;
+  }
+  const key = `${cacheFile}|${sourceSha256}|${limit}`;
+  let task = pending.get(key);
+  if (!task) { task = preparePreview(source, sourceSha256, cacheFile, cwd, limit).finally(() => pending.delete(key)); pending.set(key, task); }
+  return task;
+}
+
+async function cachedPreview(cacheFile: string, sourceSha256: string, limit: number) {
+  const meta = await jsonFile<{ version?: string; source?: string; limit?: number; preview?: string } | null>(cacheFile + '.json', null).catch(() => null);
+  if (!meta || meta.version !== previewVersion || meta.source !== sourceSha256 || meta.limit !== limit) return null;
+  const info = await lstat(cacheFile).catch(() => null);
+  if (!info?.isFile() || info.isSymbolicLink() || !info.size || info.size > limit) return null;
+  const bytes = await readFile(cacheFile);
+  return sha(bytes) === meta.preview ? bytes : null;
+}
+
+async function decodable(file: string, cwd: string) {
+  const probe = await execute(verificationBinaries().ffprobe, ['-v', 'error', '-show_entries', 'stream=codec_type:format=duration', '-of', 'json', file], cwd, 15_000).catch(() => null);
+  if (!probe || probe.code) return false;
+  try {
+    const data = JSON.parse(probe.stdout);
+    return data.streams?.some((stream: any) => stream.codec_type === 'video') && Number(data.format?.duration) > 0;
+  } catch { return false; }
+}
+
+async function preparePreview(source: string, sourceSha256: string, cacheFile: string, cwd: string, limit: number) {
+  const cached = await cachedPreview(cacheFile, sourceSha256, limit);
+  if (cached) return cached;
+  await mkdir(path.dirname(cacheFile), { recursive: true });
+  const deadline = Date.now() + previewBudgetMs;
+  for (const [height, crf] of [[720, 28], [540, 33], [360, 38]]) {
+    const remaining = deadline - Date.now();
+    if (remaining < 2_000) break;
+    const temp = `${cacheFile}.${crypto.randomUUID()}.mp4`;
+    try {
       const result = await execute(verificationBinaries().ffmpeg, ['-v', 'error', '-y', '-i', source, '-map', '0:v:0', '-map', '0:a:0?',
         '-vf', `scale=-2:'min(${height},ih)'`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(crf), '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', temp], cwd, 60_000);
+        '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', temp], cwd, remaining).catch(() => ({ code: 1 }));
+      if (result.code) continue;
       const made = await lstat(temp).catch(() => null);
-      if (!result.code && made?.isFile() && made.size > 0 && made.size <= limit) { await rename(temp, cacheFile); break; }
-      await rm(temp, { force: true });
-    }
+      if (!made?.isFile() || !made.size || made.size > limit || !(await decodable(temp, cwd))) continue;
+      // The preview must come from the verified bytes, not a file replaced while encoding.
+      if (await fileHash(source) !== sourceSha256) throw new Error('INLINE_MEDIA_CHANGED');
+      const bytes = await readFile(temp);
+      await rename(temp, cacheFile);
+      await atomicJson(cacheFile + '.json', { version: previewVersion, source: sourceSha256, limit, preview: sha(bytes) });
+      return bytes;
+    } finally { await rm(temp, { force: true }); }
   }
-  const preview = await lstat(cacheFile).catch(() => null);
-  if (!preview?.isFile() || preview.isSymbolicLink() || preview.size > limit)
-    throw new Error('INLINE_MEDIA_UNAVAILABLE: a chat playback preview could not be prepared; give the user the verified MP4 file instead');
-  return readFile(cacheFile);
+  throw new Error('INLINE_MEDIA_UNAVAILABLE: a chat playback preview could not be prepared; give the user the verified MP4 file instead');
 }
 function verified(value: unknown): { sha256: string } | null {
   if (!value || typeof value !== 'object') return null;
@@ -118,7 +159,6 @@ export class WorkRounds {
             if (!file.isFile() || file.isSymbolicLink() || !file.size) throw new Error('视频文件不可用');
             const verification = verified(job.verification);
             if (!verification) throw new Error('视频尚无通过的技术校验');
-            if (file.size > maxInlineVideoBytes) throw new Error('视频超过 32 MiB 内嵌上限，请使用导出文件');
             sha256 = verification.sha256;
             if (!sha256 || await fileHash(await this.videoFile(job.id)) !== sha256) throw new Error('视频文件与已校验版本不一致');
             playable = true;
@@ -160,12 +200,9 @@ export class WorkRounds {
       }
     }
     if (view.playable) {
-      const file = await lstat(await this.videoFile(view.jobId!));
-      if (!file.isFile() || file.isSymbolicLink() || file.size > maxInlineVideoBytes) throw new Error('INLINE_MEDIA_UNAVAILABLE');
-      const source = await this.videoFile(view.jobId!), bytes = await readFile(source);
-      if (createHash('sha256').update(bytes).digest('hex') !== view.sha256) throw new Error('INLINE_MEDIA_CHANGED');
-      const cache = path.join(this.store.directory, 'phase1', 'inline-previews', `${view.jobId}-${view.sha256!.slice(0, 16)}.mp4`);
-      media.video = 'data:video/mp4;base64,' + (await inlinePlaybackBytes(source, bytes, cache, this.store.directory)).toString('base64');
+      const source = await this.videoFile(view.jobId!);
+      const cache = path.join(this.store.directory, 'phase1', 'inline-previews', `${view.jobId}-${view.sha256}.mp4`);
+      media.video = 'data:video/mp4;base64,' + (await inlinePlaybackBytes(source, view.sha256!, cache, this.store.directory)).toString('base64');
     }
     return media;
   }
