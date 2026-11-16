@@ -132,7 +132,40 @@ test('interrupted saving retains local bytes and missing/corrupted recovery neve
     assert.equal(job.phase, 'save_failed'); assert.match(job.error!, /Saved output changed/); assert.equal(submissions(), 0);
     await rm(path.join(work, 'outputs.json'));
     await assert.rejects(gateway.retrySave(job.id), /SAVE_NOT_AVAILABLE/); assert.equal(submissions(), 0);
+    job = await gateway.getJob(job.id);
+    assert.equal(job.savePending, false); assert.equal(job.phase, 'failed'); assert.match(job.error!, /SAVE_NOT_AVAILABLE/);
     assert.equal((await new AssetLibrary(store).list()).total, 0);
+  } finally { await gateway.close(); }
+}));
+
+test('retained outputs that vanished or became unreadable end as a terminal failure instead of an endless retry', () => fixture(async store => {
+  const { gateway, submissions } = await setup(store);
+  const stage = async (broken: 'missing-bytes' | 'corrupt-manifest' | 'missing-manifest', state: 'failed' | 'queued') => {
+    const queued = await mediaUse(store, request(store, broken));
+    const work = path.join(gateway.root, 'work', queued.job.id), staged = path.join(work, `${queued.job.id}-1.png`);
+    await mkdir(work, { recursive: true }); await writeFile(staged, png);
+    await writeFile(path.join(work, 'outputs.json'), JSON.stringify([{ path: `assets/generated/${queued.job.id}-1.png`, mimeType: 'image/png', bytes: png.length, sha256: '0'.repeat(64) }]));
+    await writeFile(path.join(gateway.root, 'jobs', `${queued.job.id}.json`), JSON.stringify({ ...queued.job, state, phase: state === 'queued' ? 'saving' : 'save_failed', savePending: true }));
+    if (broken === 'missing-bytes') await rm(staged);
+    else if (broken === 'corrupt-manifest') await writeFile(path.join(work, 'outputs.json'), '{ not json');
+    else await rm(path.join(work, 'outputs.json'));
+    return queued.job.id;
+  };
+  try {
+    for (const broken of ['missing-bytes', 'corrupt-manifest', 'missing-manifest'] as const) {
+      const id = await stage(broken, 'failed');
+      await assert.rejects(gateway.retrySave(id), /SAVE_NOT_AVAILABLE/);
+      await assert.rejects(gateway.retrySave(id), /SAVE_NOT_AVAILABLE/);
+      const job = await gateway.getJob(id);
+      assert.equal(job.savePending, false, broken); assert.equal(job.state, 'failed', broken); assert.equal(job.phase, 'failed', broken);
+      assert.match(job.error!, /SAVE_NOT_AVAILABLE/);
+    }
+    // A recovery claimed before its staged bytes disappear also ends terminally rather than staying retryable.
+    const orphaned = await stage('missing-bytes', 'queued');
+    const job = await finish(store, orphaned);
+    assert.equal(job.state, 'failed'); assert.equal(job.phase, 'failed'); assert.equal(job.savePending, false);
+    assert.match(job.error!, /retained outputs are missing/);
+    assert.equal(submissions(), 0); assert.equal((await new AssetLibrary(store).list()).total, 0);
   } finally { await gateway.close(); }
 }));
 

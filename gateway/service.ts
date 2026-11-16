@@ -20,6 +20,7 @@ type Config = { version: 1; providers: Partial<Record<ProviderId, { enabled?: bo
   routes: Partial<Record<Modality, string>>; customModels: Model[] };
 type Options = { fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
 type SavedOutput = { path: string; mimeType: string; bytes: number; sha256: string };
+const saveUnavailable = 'SAVE_NOT_AVAILABLE: no complete local outputs; this action never resubmits generation';
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const uuid = (id: unknown): id is string => typeof id === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
 function alive(pid?: number) { try { if (!pid) return false; process.kill(pid, 0); return true; } catch { return false; } }
@@ -295,12 +296,28 @@ export class ModelGateway {
     if (job.state === 'cancelled' && !job.startedAt) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
     return job;
   }
+  /** A retainable save needs both a complete manifest and its staged local bytes. */
+  private async retainedOutputs(dir: string): Promise<SavedOutput[] | undefined> {
+    const files = await readJson<SavedOutput[] | null>(path.join(dir, 'outputs.json'), null).catch(() => null);
+    if (!Array.isArray(files) || !files.length) return undefined;
+    const present = await Promise.all(files.map(file => typeof file?.path === 'string'
+      ? lstat(path.join(dir, path.basename(file.path))).then(info => info.isFile() && !info.isSymbolicLink(), () => false)
+      : false));
+    return present.every(Boolean) ? files : undefined;
+  }
   async retrySave(id: unknown) {
     return this.store.lock(async () => {
       const job = await this.getJob(id);
       if (job.state === 'completed' || job.state === 'queued' || job.state === 'running') return job;
-      const files = await readJson(path.join(this.root, 'work', job.id, 'outputs.json'), null);
-      if (!Array.isArray(files) || !files.length) throw new Error('SAVE_NOT_AVAILABLE: no complete local outputs; this action never resubmits generation');
+      const files = await this.retainedOutputs(path.join(this.root, 'work', job.id));
+      if (!files) {
+        // Nothing is left to save, so a pending retry could only fail forever. Record the terminal outcome instead.
+        if (job.savePending) {
+          job.savePending = false; if (job.state === 'failed') job.phase = 'failed';
+          job.error = saveUnavailable; job.updatedAt = Date.now(); await this.saveJob(job);
+        }
+        throw new Error(saveUnavailable);
+      }
       job.savePending = true; job.state = 'queued'; job.phase = 'saving'; job.updatedAt = Date.now(); delete job.error;
       await this.saveJob(job); return job;
     });
@@ -343,7 +360,7 @@ export class ModelGateway {
   private async run(job: GenerationJob, controller: AbortController) {
     const dir = path.join(this.root, 'work', job.id);
     let key = '';
-    let retained = !!job.savePending;
+    let retained = false;
     const timeout = setTimeout(() => controller.abort(new Error('Generation timed out')), 15 * 60_000);
     let checking = false;
     const cancelPoll = setInterval(() => {
@@ -355,9 +372,8 @@ export class ModelGateway {
         current.phase = phase; if (remoteId) current.remoteId = remoteId; current.updatedAt = Date.now(); await this.saveJob(current); });
     };
     try {
-      retained ||= await lstat(path.join(dir, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
-      let files = await readJson<SavedOutput[] | null>(path.join(dir, 'outputs.json'), null);
-      if (files && (!Array.isArray(files) || !files.length)) throw new Error('SAVE_NOT_AVAILABLE: invalid retained output manifest; no model request was made');
+      let files = await this.retainedOutputs(dir);
+      retained = !!files;
       if (!files && job.savePending) throw new Error('SAVE_NOT_AVAILABLE: retained outputs are missing; no model request was made');
       if (!files) {
         key = (await this.credential(job.model.provider)).key;
