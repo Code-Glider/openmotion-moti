@@ -64,6 +64,16 @@ OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也�
 
 安装完成后，Agent 会打开本地模板库并推荐一个模板，确认选择后再创建工程。[源码安装指南](../install.md)
 
+### Install the published npm app (optional)
+
+Source setup above remains the default for repository installation. To explicitly choose the published application with prebuilt Studio and its configured online catalog, copy this instruction into your local agent:
+
+```text
+Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect the published npm application in the current agent.
+```
+
+[Published application installation and channel selection](install.md). Published versions can lag behind this checkout.
+
 ### 克隆仓库并在本地启动
 
 需要 Git、npm 和 Node.js 26.11.1：

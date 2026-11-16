@@ -64,6 +64,16 @@ https://github.com/nexu-io/openmotion/blob/main/install.md を読み、手順に
 
 セットアップ後、エージェントがローカルのテンプレートライブラリを開き、テンプレートを提案します。選択を確認してからプロジェクトを作成します。[ソースインストールガイド](../install.md)
 
+### Install the published npm app (optional)
+
+Source setup above remains the default for repository installation. To explicitly choose the published application with prebuilt Studio and its configured online catalog, copy this instruction into your local agent:
+
+```text
+Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect the published npm application in the current agent.
+```
+
+[Published application installation and channel selection](install.md). Published versions can lag behind this checkout.
+
 ### リポジトリをローカルで起動する
 
 Git、npm、Node.js 26.11.1 が必要です：

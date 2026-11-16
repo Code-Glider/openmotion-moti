@@ -64,6 +64,16 @@ Read https://github.com/nexu-io/openmotion/blob/main/install.md and follow the i
 
 After setup, the agent opens the local template library and suggests a template. Confirm the choice before creating a project. [Source installation guide](install.md)
 
+### Install the published npm app (optional)
+
+Source setup above remains the default for repository installation. To explicitly choose the published application with prebuilt Studio and its configured online catalog, copy this instruction into your local agent:
+
+```text
+Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect the published npm application in the current agent.
+```
+
+[Published application installation and channel selection](docs/install.md). Published versions can lag behind this checkout.
+
 ### Run the repository locally
 
 Use Git, npm and Node.js 26.11.1:
