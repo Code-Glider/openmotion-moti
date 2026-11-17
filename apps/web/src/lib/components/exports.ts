@@ -91,7 +91,7 @@ export class Exports {
       label: this.submissions.has(key) ? m("重试导出提交") : m("导出 MP4（30fps）"),
       icon: "film",
       compact: true,
-      disabled: blocked || !project,
+      disabled: blocked || !project || !!(project && this.client.receipts?.blocks("export_create", project)),
       onClick: () => this.run(() => this.submit()),
     });
     if (key === this.key) return;
@@ -107,12 +107,14 @@ export class Exports {
     this.refresh();
   }
   private async submit() {
-    await this.editor.save();
     const project = this.editor.project;
     if (!project) throw Error("请先打开工程");
     const key = `${project.sessionId}:${project.artifactId}`;
     let input = this.submissions.get(key);
     if (!input) {
+      await this.editor.save();
+      const project = this.editor.project;
+      if (!project) throw Error("请先打开工程");
       input = {
         requestId: crypto.randomUUID(),
         sessionId: project.sessionId,

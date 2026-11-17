@@ -24,16 +24,23 @@ const uuid = z.uuid(),
   hash = z.string().regex(/^sha256:[a-f0-9]{64}$/),
   owner = { sessionId: uuid, artifactId: uuid },
   selected = { ...owner, id: uuid };
+const create = z.strictObject({ ...owner, requestId: uuid, revision: hash, fps });
+const control = z.strictObject({ ...selected, requestId: uuid, expectedVersion: z.number().int().nonnegative() });
 export const exportSchemas = {
-  export_create: z.strictObject({ ...owner, requestId: uuid, revision: hash, fps }),
+  export_create: create,
   export_list: z.strictObject({
     ...owner,
     limit: z.number().int().min(1).max(16).default(12),
     before: uuid.optional(),
   }),
   export_read: z.strictObject(selected),
-  export_cancel: z.strictObject({ ...selected, requestId: uuid, expectedVersion: z.number().int().nonnegative() }),
-  export_retry: z.strictObject({ ...selected, requestId: uuid, expectedVersion: z.number().int().nonnegative() }),
+  export_cancel: control,
+  export_retry: control,
+  export_lookup: z.discriminatedUnion("operation", [
+    create.extend({ operation: z.literal("export_create") }),
+    control.extend({ operation: z.literal("export_cancel") }),
+    control.extend({ operation: z.literal("export_retry") }),
+  ]),
   export_download: z.strictObject(selected),
 };
 export type ExportOperation = keyof typeof exportSchemas;
@@ -81,9 +88,11 @@ export interface Download {
 }
 export type ExportOutput<K extends ExportOperation> = K extends "export_list"
   ? { jobs: Job[]; next: string | null }
-  : K extends "export_download"
-    ? Download
-    : Job;
+  : K extends "export_lookup"
+    ? { job: Job | null }
+    : K extends "export_download"
+      ? Download
+      : Job;
 export type Projection = { digest: string; bytes: number };
 export type Reply<T> =
   | { ok: true; value: T }

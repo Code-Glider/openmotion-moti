@@ -125,6 +125,18 @@ export class Store {
       return result;
     });
   }
+  /** Query the original receipt, then current job state; never creates an intent or wakes execution. */
+  lookup(input: ExportInput<"export_lookup">): { job: Job | null } {
+    const { operation, ...command } = input;
+    const prior = this.db.prepare("SELECT fingerprint,result FROM requests WHERE id=?").get(input.requestId);
+    if (!prior) return { job: null };
+    const receipt = JSON.parse(String(prior.result)) as Job;
+    const record = this.owned({ ...input, id: receipt.id });
+    const original = operation === "export_create" ? { ...command, projection: record.projection } : command;
+    if (prior.fingerprint !== digest(canonical({ op: operation, input: original })))
+      throw new Fault("idempotency", "export request identity reused with different input");
+    return { job: record.job };
+  }
   scan(states: string[]): Record[] {
     return this.db
       .prepare(

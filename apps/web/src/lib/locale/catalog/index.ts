@@ -18,6 +18,7 @@ import { library0 } from "./library/templates.js";
 import { workspace1 } from "./workspace/controls.js";
 import { workspace0 } from "./workspace/history.js";
 export const catalog = {
+  ...recovery,
   ...feedback0,
   ...feedback1,
   ...feedback2,
@@ -38,3 +39,5 @@ export const catalog = {
   ...workspace0,
   ...workspace1,
 };
+
+import { recovery } from "./feedback/recovery.js";

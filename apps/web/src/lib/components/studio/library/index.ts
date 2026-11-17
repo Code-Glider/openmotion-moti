@@ -132,7 +132,12 @@ export class StudioLibrary {
   disable(value: boolean) {
     if (this.current) this.current.blocked = value;
     this.layers.disable(value);
-    this.upload.disabled = value;
+    this.upload.disabled =
+      value ||
+      !!(
+        this.editing.editor.project &&
+        this.editing.client.receipts?.blocks("resource_import", this.editing.editor.project)
+      );
     for (const button of this.mediaList.querySelectorAll("button")) button.disabled = value;
   }
   private resources(resources: Resource[], blocked: boolean) {
@@ -200,7 +205,7 @@ export class StudioLibrary {
         }),
       );
     }
-    this.upload.disabled = blocked;
+    this.disable(blocked);
     for (const button of this.mediaList.querySelectorAll("button")) button.disabled = blocked;
   }
   update(clips: Clip[], selected: string, blocked: boolean) {

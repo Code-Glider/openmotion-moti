@@ -13,7 +13,7 @@ export class Archives {
   constructor(
     document: Document,
     editor: Editor,
-    client: Client,
+    private client: Client,
     run: (action: () => Promise<void>, next?: () => Promise<void>) => void,
   ) {
     const view = disclosure(document, m("工程 ZIP"));
@@ -79,7 +79,7 @@ export class Archives {
       },
     });
     this.file.onchange = () => {
-      this.create.disabled = !this.file.files?.length;
+      this.create.disabled = this.file.disabled || !this.file.files?.length;
     };
     view.body.append(
       field(document, "ZIP", this.file),
@@ -89,9 +89,13 @@ export class Archives {
     );
   }
   update(editor: Editor, blocked: boolean) {
-    this.file.disabled = blocked || !editor.session;
-    this.title.disabled = blocked || !editor.session;
-    this.create.disabled = blocked || !editor.session || !this.file.files?.length;
+    const importing =
+      blocked ||
+      !editor.session ||
+      !!(editor.session && this.client.receipts?.blocks("archive_import", { sessionId: editor.session.id }));
+    this.file.disabled = importing;
+    this.title.disabled = importing;
+    this.create.disabled = importing || !this.file.files?.length;
     this.download.disabled = blocked || !editor.project;
   }
   dispose() {

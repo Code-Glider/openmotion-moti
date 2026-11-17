@@ -68,6 +68,7 @@ export async function host(
           queue.signal();
           return job;
         }),
+      export_lookup: (input) => reply(() => exportQueue().store.lookup(exportSchemas.export_lookup.parse(input))),
       export_list: (input) => reply(() => exportQueue().store.list(exportSchemas.export_list.parse(input))),
       export_read: (input) => reply(() => exportQueue().store.owned(exportSchemas.export_read.parse(input)).job),
       export_cancel: (input) =>

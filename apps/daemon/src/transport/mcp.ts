@@ -24,7 +24,10 @@ export function register(server: McpServer, execute: Execute, host?: { web(): Pr
         inputSchema: schema,
         annotations: {
           readOnlyHint:
-            !["archive_release", "resource_release"].includes(operation) && !("requestId" in schemas[operation].shape),
+            operation === "export_lookup" ||
+            (!["archive_release", "resource_release"].includes(operation) &&
+              "shape" in schemas[operation] &&
+              !("requestId" in schemas[operation].shape)),
           destructiveHint: [
             "project_save",
             "project_undo",
