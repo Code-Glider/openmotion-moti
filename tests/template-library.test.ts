@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { runInNewContext } from 'node:vm';
 import { zip } from '../scripts/package.ts';
+import { lfsPointer } from '../shared/repository-template-catalog.ts';
 import { checkTemplateLibrary, git, scope } from '../scripts/check-template-library.ts';
 import { catalogRoot, cmsUrl, digest, exportCatalog, importCatalog, refreshManifest, safePath, unzip, validateRecord } from '../scripts/template-library.ts';
 
@@ -43,7 +45,7 @@ async function inspectCatalogAssets(root: string, ids: string[]) {
   return { images, remoteImages };
 }
 
-test('imported templates preserve IDs, eleven locales, filtering data and reference-only status', async () => {
+test('imported templates preserve IDs, eleven locales and filtering data while distinguishing editable projects', async () => {
   const manifest = JSON.parse(await readFile(path.join(catalogRoot, 'catalog.json'), 'utf8'));
   const publication = await exportCatalog();
   assert(manifest.templateIds.length >= 286); assert.equal(Object.keys(publication.content).length, 11);
@@ -51,11 +53,56 @@ test('imported templates preserve IDs, eleven locales, filtering data and refere
     const { templates, ...facets } = publication.content[locale];
     assert.deepEqual(facets, manifest.localeContent[locale]); assert(facets.brands.length > 0);
     assert.deepEqual(templates.map(item => item.templateId), manifest.templateIds);
-    assert(templates.filter(item => item.files.length === 0 && item.projectFileUrl === null && item.conversionStatus === 'pending').length >= 286);
+    for (const item of templates) {
+      if (item.files.length === 0) {
+        assert.equal(item.projectFileUrl, null);
+        assert.equal(item.conversionStatus, 'pending');
+      } else {
+        const entry = item.files.find(file => file.path === 'index.html');
+        assert(entry, `${item.templateId}: editable projects need a root HTML entry`);
+        assert.equal(item.indexUrl, entry.url);
+      }
+    }
   }
   const { images, remoteImages } = await inspectCatalogAssets(catalogRoot, manifest.templateIds);
   assert(images >= 1419 && remoteImages >= 236, 'Small images are local; large originals have CMS rendition links');
 });
+test('voice mode registers its timeline without replacing existing engine timelines', async () => {
+  const source = await readFile(path.join(catalogRoot, 'motion-dac924da-010f-4445-baf3-a39cb033e48f/source/assets/motion.js'), 'utf8');
+  const existing: Record<string, unknown> = { engine: {} };
+  const window = { __timelines: existing };
+  const node = { style: {}, textContent: '', querySelector: () => ({ style: {} }) };
+  const timeline = { to() { return this; } };
+  runInNewContext(source, { window, document: { querySelector: () => node }, gsap: { timeline: () => timeline } });
+  assert.equal(window.__timelines, existing, 'Keep the shared engine/composition registry');
+  assert.equal(window.__timelines['main'], timeline);
+});
+
+test('editable catalog project locks match checked-in source and optional LFS media', async () => {
+  const publication = await exportCatalog();
+  const entries = publication.content[publication.defaultLocale].templates.filter(item => item.files.length > 0);
+  assert(entries.length > 0, 'The catalog includes editable project contributions');
+  for (const entry of entries) {
+    const directory = path.join(catalogRoot, entry.templateId, 'source');
+    const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+    assert.equal(new Set(entry.files.map(file => file.path)).size, entry.files.length);
+    for (const file of entry.files) {
+      safePath(file.path);
+      const source = await readFile(path.join(directory, file.path));
+      const identity = lfsPointer(source) ?? { bytes: source.length, sha256: digest(source) };
+      assert.deepEqual(identity, { bytes: file.bytes, sha256: file.sha256 }, `${entry.templateId}/${file.path}`);
+      const lock = manifest.files.find((item: { path: string }) => item.path === file.path);
+      assert.deepEqual(lock, { path: file.path, ...identity });
+    }
+    for (const { templates } of Object.values(publication.content)) {
+      const localized = templates.find(item => item.templateId === entry.templateId)!;
+      assert.deepEqual(localized.files, entry.files, 'Project identity must agree across locales');
+      assert.equal(localized.indexUrl, entry.indexUrl);
+      assert.equal(localized.projectFileUrl, entry.projectFileUrl);
+    }
+  }
+});
+
 test('import unpacks verified source and original images without fetching a video or keeping duplicate archives', async t => {
   const f = fixture(t); const publication = await exportCatalog(f.catalog);
   const input = path.join(f.root, 'publication.json'); writeFileSync(input, JSON.stringify(publication));
@@ -85,6 +132,19 @@ test('staged small local images pass without LFS; product media is outside this 
   const f = fixture(t); mkdirSync(path.join(f.root, 'product')); writeFileSync(path.join(f.root, 'product/video.mp4'), Buffer.alloc(1024 * 1024 + 1));
   f.stage(); assert.deepEqual(checkTemplateLibrary(f.root), []);
   writeFileSync(path.join(f.directory, 'source/preview.html'), 'unstaged edit'); assert.deepEqual(checkTemplateLibrary(f.root), []);
+});
+test('catalog source growth is covered by the advisory repository total rather than a second hard cap', t => {
+  const f = fixture(t);
+  const bytes = Buffer.alloc(1024 * 1024, 120);
+  const sha256 = digest(bytes);
+  const oid = git(['hash-object', '-w', '--stdin'], f.root, bytes).toString().trim();
+  const names = Array.from({ length: 129 }, (_, index) => `source-${index}.js`);
+  f.sourceManifest.files.push(...names.map(name => ({ path: name, bytes: bytes.length, sha256 })));
+  f.json('source/manifest.json', f.sourceManifest);
+  f.stage();
+  for (const name of names)
+    git(['update-index', '--add', '--cacheinfo', '100644', oid, `${scope}${f.id}/source/${name}`], f.root);
+  assert.deepEqual(checkTemplateLibrary(f.root), []);
 });
 test('edited source must refresh its manifest before staging a valid contribution', async t => {
   const f = fixture(t); writeFileSync(path.join(f.directory, 'source/preview.html'), 'edited source'); f.stage();

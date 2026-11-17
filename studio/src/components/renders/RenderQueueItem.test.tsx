@@ -7,6 +7,8 @@ import type { RenderJob } from "./useRenderQueue";
 
 vi.mock('../../motion/diagnostics', () => ({ recordBrowserDiagnostic: vi.fn(), diagnosticsActive: () => false }));
 const io = vi.hoisted(() => ({ begin: vi.fn(), finish: vi.fn() }));
+const usage = vi.hoisted(() => ({ click: vi.fn() }));
+vi.mock('../../motion/editorTracking', () => ({ trackStudioClick: usage.click, clickMethod: (event: { detail: number }) => event.detail === 0 ? 'keyboard' : 'pointer' }));
 vi.mock('../../telemetry/ioRecovery', () => ({ beginStudioIo: io.begin }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -20,7 +22,7 @@ const onCancel = vi.fn();
 
 beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
-  onDelete.mockReset(); onCancel.mockReset();
+  onDelete.mockReset(); onCancel.mockReset(); usage.click.mockReset();
   io.finish.mockReset(); io.begin.mockReset().mockReturnValue(io.finish);
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); });
@@ -41,12 +43,31 @@ describe('export task recovery', () => {
     expect(fetch).toHaveBeenCalledWith('/api/render/native-1/view?projectId=demo', expect.objectContaining({ method: 'HEAD', cache: 'no-store' }));
     expect(click.mock.instances[0].getAttribute('href')).toBe('/api/render/native-1/download?projectId=demo');
     expect(io.begin).toHaveBeenCalledExactlyOnceWith('download_render');
+    expect(usage.click).toHaveBeenCalledExactlyOnceWith('export_panel', 'download_render', 'demo', 'keyboard');
     expect(io.finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'unknown', file_status: 'available', delivery_status: 'browser_save_requested' });
     expect(document.querySelector('.motion-feedback-layer [role=status]')).toBeNull();
     act(() => host.querySelector<HTMLButtonElement>('[aria-label="Delete j1.gif"]')!.click());
     expect(onDelete).not.toHaveBeenCalled();
     act(() => button('Delete?').click());
     expect(onDelete).toHaveBeenCalledOnce();
+    expect(usage.click.mock.calls).toEqual([['export_panel', 'download_render', 'demo', 'keyboard'], ['export_panel', 'delete_render', 'demo', 'keyboard']]);
+  });
+
+  it('preserves one usage click when cancelling and keeps opening on its recovery event', async () => {
+    render({ status: 'rendering' });
+    act(() => button('Cancel').click());
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(usage.click).toHaveBeenCalledExactlyOnceWith('export_panel', 'cancel_render', 'demo', 'keyboard');
+    usage.click.mockClear();
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    render({ status: 'complete' });
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Open j1.gif in a new tab"]')!.click());
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(io.begin).toHaveBeenCalledExactlyOnceWith('open_render');
+    expect(usage.click).not.toHaveBeenCalled();
+    expect(tab.location.href).toBe('/api/render/native-1/view?projectId=demo');
   });
 
   it('retains filename access only for legacy history without a native attempt identity', async () => {

@@ -5,6 +5,7 @@ import { RippleEditIcon } from "./icons/RippleEditIcon";
 import { Tooltip } from "./ui";
 import { flatActive, flatIdle } from "./timelineToolbarStyles";
 import { keyHint, useStudioKeys } from "../player/components/studioShortcuts";
+import { trackStudioClick } from "../motion/editorTracking";
 
 export function TimelineBehaviorToggles() {
   const { t } = useI18n();
@@ -22,7 +23,10 @@ export function TimelineBehaviorToggles() {
           >
             <button
               type="button"
-              onClick={() => setTimelineSnapEnabled(!timelineSnapEnabled)}
+              onClick={() => {
+                trackStudioClick("timeline", "snap_toggle", undefined, undefined, timelineSnapEnabled ? "off" : "on");
+                setTimelineSnapEnabled(!timelineSnapEnabled);
+              }}
               aria-label={t("Snapping")}
               aria-pressed={timelineSnapEnabled}
               className={timelineSnapEnabled ? flatActive : flatIdle}

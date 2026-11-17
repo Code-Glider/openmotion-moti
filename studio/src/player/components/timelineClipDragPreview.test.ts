@@ -23,7 +23,6 @@ import {
   createTimelineRowGeometry,
 } from "./timelineLayout";
 import { isMultiDragPassenger } from "./timelineMultiDragPreview";
-import { compactMainTrack } from "./timelineMainMagnet";
 import { resolveMultiDragPreview } from "./timelineProviderStateBuilders";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,7 +123,7 @@ function horizontalDrag(
 }
 
 describe("computeDragPreview — plain horizontal drag never arms a phantom insert (BUG 1)", () => {
-  it("does not alternate between distant gaps for one-pixel pointer jitter over an occupied clip", () => {
+  it("holds the inserted slot through small reversals over an occupied clip", () => {
     const dragged = clip("ease", 0, 24, 4, 1);
     const context = { ...ctx(undefined, [clip("left", 0, 0, 6, 1), clip("block", 0, 10, 10, 1), dragged]), trackOrder: [0], rippleEditEnabled: true };
     const { drag, clientY } = horizontalDrag(dragged, 0.5, 0);
@@ -135,9 +134,9 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     };
     expect(move(12.9)).toBe(6);
     for (const time of [13.01, 12.99, 13.02, 12.98]) expect(move(time)).toBe(6);
-    expect(move(13.3)).toBe(20);
-    for (const time of [12.99, 13.01, 12.98]) expect(move(time)).toBe(20);
-    expect(move(12.7)).toBe(6);
+    expect(move(13.3)).toBe(6);
+    for (const time of [14.99, 15.01, 14.98]) expect(move(time)).toBe(6);
+    expect(move(15.3)).toBe(20);
     expect(move(22)).toBe(22); // Free space still follows the pointer without a dead zone.
   });
 
@@ -986,7 +985,7 @@ describe("trimPreviewTime", () => {
 describe("magnet-aware collision preview and commit", () => {
   it.each([
     { name: "secondary track", magnet: true, track: 0, start: 12, aim: 6, landing: 6, insertRow: 0 },
-    { name: "magnetic main track", magnet: true, track: 1, start: 5, aim: 2, landing: 5, insertRow: null },
+    { name: "magnetic main track", magnet: true, track: 1, start: 5, aim: 2, landing: 0, insertRow: null },
     { name: "nonmagnetic main track", magnet: false, track: 1, start: 12, aim: 6, landing: 6, insertRow: 1 },
   ])("shares the resolved landing with commit on $name", ({ magnet, track, start, aim, landing, insertRow }) => {
     const moving = clip("moving", track, start, 5, 1);
@@ -1008,13 +1007,10 @@ describe("magnet-aware collision preview and commit", () => {
     const batch = onMoveElements.mock.calls[0]?.[0] as TimelineMoveEdit[] | undefined;
     const committed = single?.[1] ?? batch?.find(edit => edit.element.id === moving.id)?.updates;
     if (insertRow === null) {
-      // Returning to the adjacent origin is a no-op, so no save or lane write is needed.
       expect(onMoveElement).not.toHaveBeenCalled();
-      expect(onMoveElements).not.toHaveBeenCalled();
-      expect(moving.start).toBe(ghost.previewStart);
-      const changes = compactMainTrack(elements, [{ element: moving, start: ghost.previewStart, duration: 5 }], magnet, false);
-      expect(changes.find(change => change.element.id === moving.id)?.start).toBe(5);
-      expect(busy.start).toBe(0);
+      expect(onMoveElements).toHaveBeenCalledTimes(1);
+      expect(committed?.start).toBe(ghost.previewStart);
+      expect(batch?.find(edit => edit.element.id === busy.id)?.updates.start).toBe(5);
     } else {
       expect(committed?.start).toBe(ghost.previewStart);
     }

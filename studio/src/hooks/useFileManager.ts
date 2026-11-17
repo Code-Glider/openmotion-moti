@@ -11,6 +11,7 @@ import { useFileTree } from "./useFileTree";
 import { useEditorSave } from "./useEditorSave";
 import { useProjectFileWriter } from "./useProjectFileWriter";
 import { studioApiFetch } from "../utils/studioApiFetch";
+import { importErrorCategory, reportAssetImport, reportEdit, setProjectInventory, type ImportEntryPoint, type ImportErrorCategory } from "../motion/editorTracking";
 import { encodeUrlPath } from "@hyperframes/parsers";
 import { beginStudioIo } from "../telemetry/ioRecovery";
 import { prepareFontImport } from "../components/editor/fontImport";
@@ -42,12 +43,13 @@ export function useFileManager({
   const { t } = useI18n();
   // ── Shared refs ──
 
-  const [pendingImport, setPendingImport] = useState<{ projectId: string; files: File[]; dir?: string; attempt?: ManualImportAttempt } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ projectId: string; files: File[]; dir?: string; entryPoint?: ImportEntryPoint; attempt?: ManualImportAttempt } | null>(null);
   const [importBatch, setImportBatch] = useState<ManualImportBatch | null>(null);
   const importBatchRef = useRef(importBatch);
   importBatchRef.current = importBatch;
   const importSequence = useRef(0);
   const manualImportsInFlight = useRef(new Set<string>());
+  const importBatchEntry = useRef<{ id: string; entryPoint?: ImportEntryPoint } | null>(null);
   const manualRefreshesInFlight = useRef(new Set<string>());
   const updateImportBatch = useCallback((pid: string, id: string, update: (batch: ManualImportBatch) => ManualImportBatch) => {
     setImportBatch(previous => previous?.projectId === pid && previous.id === id ? update(previous) : previous);
@@ -81,6 +83,11 @@ export function useFileManager({
     assets,
     fontAssets,
   } = useFileTree({ projectId, projectIdRef });
+  // Counts Studio already holds, for bucketed project-scale fields. Unknown until the tree loads.
+  useEffect(() => {
+    setProjectInventory(fileTreeLoaded ? { assets: assets.length, compositions: compositions.length } : null);
+    return () => setProjectInventory(null);
+  }, [fileTreeLoaded, assets.length, compositions.length]);
 
   useEffect(() => { importedFontAssetsRef.current = []; }, [projectId]);
 
@@ -211,17 +218,18 @@ export function useFileManager({
   // ── Upload ──
 
   const uploadProjectFiles = useCallback(
-    async (files: Iterable<File>, dir?: string, attempt?: ManualImportAttempt): Promise<string[]> => {
+    async (files: Iterable<File>, dir?: string, entryPoint?: ImportEntryPoint, attempt?: ManualImportAttempt): Promise<string[]> => {
       const pid = projectIdRef.current;
       let fileList = Array.from(files);
       if (!pid || fileList.length === 0 || (attempt && manualImportsInFlight.current.has(pid))) return [];
-      let itemIds = attempt?.itemIds ?? [];
+      let itemIds = attempt?.itemIds ?? fileList.map((_, index) => String(index));
       const requestedCount = fileList.length;
       const finish = attempt ? beginStudioIo(attempt.action ?? 'import_files', { requested_count: requestedCount }) : undefined;
       const results = new Map<string, ManualImportItem['status']>(itemIds.map(id => [id, 'pending']));
       const addedPaths = new Set<string>();
       let listingStatus: ManualImportBatch['listing'] = attempt && importBatchRef.current?.id === attempt.batchId ? importBatchRef.current.listing : 'ready';
       let cancelledBeforeUpload = false;
+      let failureCategory: ImportErrorCategory | undefined;
       const update = (change: (batch: ManualImportBatch) => ManualImportBatch) => {
         if (attempt) updateImportBatch(pid, attempt.batchId, change);
       };
@@ -246,6 +254,7 @@ export function useFileManager({
               await file.slice(0, 1).arrayBuffer();
               readable.push(file); readableIds.push(itemIds[index]);
             } catch {
+              failureCategory = 'unreadable';
               markResults([{ id: itemIds[index], name: file.name, status: 'failed', reason: t('Cannot access this file. Choose it again.') }]);
             }
           }
@@ -264,11 +273,11 @@ export function useFileManager({
         if (res.ok) {
           const data: UploadResponse = await res.json();
           const paths = Array.isArray(data.files) ? data.files : [];
-          if (attempt) {
-            const results = manualImportResults(fileList, itemIds, data, t);
-            markResults(results, paths);
-            update(batch => ({ ...batch, diagnostic: results.some(item => item.status === 'unknown') ? 'The response could not be matched to every selected file.' : undefined }));
-          }
+          const fileResults = manualImportResults(fileList, itemIds, data, t);
+          markResults(fileResults, paths);
+          update(batch => ({ ...batch, diagnostic: fileResults.some(item => item.status === 'unknown') ? 'The response could not be matched to every selected file.' : undefined }));
+          failureCategory = data.skipped?.length ? 'too_large'
+            : data.invalid?.length ? importErrorCategory(String(data.invalid[0].reason)) : failureCategory;
           // Manual batches already show each result and its reason. Repeating
           // legacy notices can imply that the entire batch failed.
           if (!attempt) {
@@ -301,12 +310,14 @@ export function useFileManager({
         }
         const body = await res.clone().json().catch(() => null);
         if (res.status === 409 && body?.code === 'NATIVE_RUNTIME_NOT_READY') {
-          if (projectIdRef.current === pid) setPendingImport({ projectId: pid, files: fileList, dir, attempt: attempt ? { ...attempt, itemIds } : undefined });
+          if (projectIdRef.current === pid) setPendingImport({ projectId: pid, files: fileList, dir, entryPoint, attempt: attempt ? { ...attempt, itemIds } : undefined });
+          failureCategory = 'runtime_not_ready';
           markResults(fileList.map((file, index) => ({ id: itemIds[index], name: file.name, status: 'pending', reason: t('Media components are preparing. Selected files are kept for retry.') })));
           showToast(t('Media components are preparing. Selected files are kept for retry.'), 'info');
         } else {
           update(batch => ({ ...batch, diagnostic: `HTTP ${res.status}${typeof body?.error === 'string' ? `: ${body.error}` : ''}` }));
           const knownRejection = res.status === 413 || body?.applied === false;
+          if (knownRejection) failureCategory = res.status === 413 ? 'too_large' : 'other';
           const reason = res.status === 413 ? t('Upload rejected: payload too large. Choose smaller files.') : knownRejection ? t('The server rejected this upload before adding files. Choose the files again.') : t(UNKNOWN_IMPORT_REASON);
           markResults(fileList.map((file, index) => ({ id: itemIds[index], name: file.name, status: knownRejection ? 'failed' : 'unknown', reason })));
           if (attempt) setPendingImport(previous => previous?.attempt?.batchId === attempt.batchId ? null : previous);
@@ -318,14 +329,16 @@ export function useFileManager({
         if (attempt) setPendingImport(previous => previous?.attempt?.batchId === attempt.batchId ? null : previous);
         showToast(t(UNKNOWN_IMPORT_REASON), 'error');
       } finally {
+        // Both event families describe this selection, never the accumulated
+        // batch. Unknown receipts and pending preparation are not failures.
+        const statuses = [...results.values()];
+        const added = Math.min(requestedCount, addedPaths.size);
+        const failed = statuses.filter(status => status === 'failed').length;
+        const pending = statuses.filter(status => status === 'pending').length;
+        const unknown = Math.max(0, requestedCount - added - failed - pending);
+        reportAssetImport({ projectId: pid, entryPoint, requested: requestedCount, added,
+          failed, unknown, pending, category: failureCategory });
         if (finish) {
-          // Counts belong to this explicit selection, never the accumulated
-          // batch. A listing error cannot negate confirmed upload success.
-          const statuses = [...results.values()];
-          const added = Math.min(requestedCount, addedPaths.size);
-          const failed = statuses.filter(status => status === 'failed').length;
-          const pending = statuses.filter(status => status === 'pending').length;
-          const unknown = Math.max(0, requestedCount - added - failed - pending);
           const outcome = cancelledBeforeUpload ? 'cancelled' : unknown || pending
             ? added || failed ? 'partial' : 'unknown'
             : added ? failed ? 'partial' : 'success' : failed ? 'failure' : 'unknown';
@@ -404,6 +417,7 @@ export function useFileManager({
           method: "DELETE",
         },
       );
+      if (isMediaFile(path) || FONT_EXT.test(path)) reportEdit("asset_delete", "assets", res.ok, pid);
       if (res.ok) {
         if (editingPathRef.current === path) setEditingFile(null);
         await refreshFileTree();
@@ -428,6 +442,7 @@ export function useFileManager({
           body: JSON.stringify({ newPath }),
         },
       );
+      if (isMediaFile(oldPath) || FONT_EXT.test(oldPath)) reportEdit("asset_rename", "assets", res.ok, pid);
       if (res.ok) {
         if (editingPathRef.current === oldPath) {
           handleFileSelect(newPath);
@@ -468,16 +483,17 @@ export function useFileManager({
   const handleMoveFile = handleRenameFile;
 
   const retryPendingImport = useCallback(() => pendingImport?.projectId === projectIdRef.current
-    ? uploadProjectFiles(pendingImport.files, pendingImport.dir, pendingImport.attempt) : Promise.resolve([]), [pendingImport, uploadProjectFiles]);
+    ? uploadProjectFiles(pendingImport.files, pendingImport.dir, pendingImport.entryPoint, pendingImport.attempt) : Promise.resolve([]), [pendingImport, uploadProjectFiles]);
 
   const handleImportFiles = useCallback(
-    async (files: FileList | File[], dir?: string) => {
+    async (files: FileList | File[], dir?: string, entryPoint?: ImportEntryPoint) => {
       const pid = projectIdRef.current, selected = Array.from(files);
       if (!pid || !selected.length || manualImportsInFlight.current.has(pid)) return [];
       const id = `manual-import-${++importSequence.current}`;
       const items: ManualImportItem[] = selected.map((file, index) => ({ id: `${id}-${index}`, name: file.name, status: 'pending' }));
+      importBatchEntry.current = { id, entryPoint };
       setImportBatch({ id, projectId: pid, dir, items, paths: [], busy: true, listing: 'ready' });
-      return uploadProjectFiles(selected, dir, { batchId: id, itemIds: items.map(item => item.id), action: 'import_files' });
+      return uploadProjectFiles(selected, dir, entryPoint, { batchId: id, itemIds: items.map(item => item.id), action: 'import_files' });
     },
     [uploadProjectFiles],
   );
@@ -493,7 +509,7 @@ export function useFileManager({
       const replacement = selected.find(entry => entry.itemId === item.id);
       return replacement ? { id: item.id, name: replacement.file.name, status: 'pending' } : item;
     }) }));
-    return uploadProjectFiles(selected.map(entry => entry.file), batch.dir, { batchId, itemIds: selected.map(entry => entry.itemId), action: 'replace_failed_import' });
+    return uploadProjectFiles(selected.map(entry => entry.file), batch.dir, importBatchEntry.current?.id === batchId ? importBatchEntry.current.entryPoint : undefined, { batchId, itemIds: selected.map(entry => entry.itemId), action: 'replace_failed_import' });
   }, [updateImportBatch, uploadProjectFiles]);
 
   const reloadImportAssets = useCallback(async (batchId: string) => {
@@ -532,7 +548,7 @@ export function useFileManager({
         const prepared: Awaited<ReturnType<typeof prepareFontImport>>[] = [];
         for (const file of Array.from(files).filter((file) => FONT_EXT.test(file.name))) prepared.push(await prepareFontImport(file));
         if (projectIdRef.current !== pid) throw new Error("Active project changed before font import");
-        const uploaded = await uploadProjectFiles(prepared.map(font => font.file), "assets/fonts");
+        const uploaded = await uploadProjectFiles(prepared.map(font => font.file), "assets/fonts", "properties");
         if (uploaded.length !== prepared.length) throw new Error("Font import did not complete");
         imported = uploaded.map((asset, index) => ({ ...prepared[index].metadata,
           path: asset, url: `/api/projects/${encodeURIComponent(pid)}/preview/${encodeUrlPath(asset)}`,

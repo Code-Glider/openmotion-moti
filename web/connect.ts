@@ -3,10 +3,11 @@ import { mountFeedbackLayer } from './feedback-layer';
 import { integrationHost, hostNames, hostDescriptions, setupPrompt, manualConnection, agentGuide, apiDiscoveryCommand } from '../shared/integration';
 import type { IntegrationInfo } from '../shared/integration';
 import { mountTemplates } from './template-gallery';
+import type { TemplateGalleryEvent } from './template-gallery';
 import { localizeFragment } from './i18n';
 import type { Locale, Translate } from '../studio/src/i18n/messages';
 
-export function mountConnection(root: HTMLElement, options: { close: () => void; useTemplate: (id: string) => void; initialHost?: string | null; t: Translate; locale: Locale }) {
+export function mountConnection(root: HTMLElement, options: { close: () => void; useTemplate: (id: string) => void; onTemplateEvent?: TemplateGalleryEvent; initialHost?: string | null; t: Translate; locale: Locale }) {
   const language = localizeFragment(root, options.locale, options.t), { t } = language;
   const element = <T extends HTMLElement = HTMLElement>(id: string) => root.querySelector<T>('#' + id)!;
   let host = integrationHost(options.initialHost ?? null), info: IntegrationInfo | null = null;
@@ -33,16 +34,18 @@ export function mountConnection(root: HTMLElement, options: { close: () => void;
     clearTimeout(feedbackTimer); feedback.classList.remove('is-visible');
     releaseFeedback?.(); releaseFeedback = undefined;
   }
-  async function copy(value: string, label: string, button?: HTMLButtonElement) {
+  async function copy(value: string, label: string, button?: HTMLButtonElement): Promise<'clipboard_written' | 'manual_fallback_shown'> {
     try {
       await navigator.clipboard.writeText(value); resetCopied();
       if (button) { copiedButtons.set(button, [...button.childNodes]); buttonLabel(button, 'Copied', 'check'); }
       language.text(feedback, '{label} copied. Paste it into {host}.', () => ({ label: t(label), host: hostNames[host] }));
       feedback.classList.add('is-visible'); releaseFeedback = mountFeedbackLayer(feedback); feedbackTimer = setTimeout(resetCopied, 3000);
+      return 'clipboard_written';
     } catch {
       element<HTMLTextAreaElement>('copy-fallback').value = value;
       element<HTMLDialogElement>('copy-dialog').showModal();
       element<HTMLTextAreaElement>('copy-fallback').focus(); element<HTMLTextAreaElement>('copy-fallback').select();
+      return 'manual_fallback_shown';
     }
   }
   function scrollTo(id: string) {
@@ -157,7 +160,7 @@ export function mountConnection(root: HTMLElement, options: { close: () => void;
   }
   element('check-connection').onclick = () => void checkConnection();
 
-  galleryController = mountTemplates(root, { language, info: () => info, host: () => host, copy, useTemplate: options.useTemplate });
+  galleryController = mountTemplates(root, { language, info: () => info, host: () => host, copy, useTemplate: options.useTemplate, onEvent: options.onTemplateEvent });
   renderHost();
   return {
     setLanguage(locale: Locale, translate: Translate) { resetCopied(); language.setLanguage(locale, translate); galleryController?.setLanguage(); renderHost(); },

@@ -1,4 +1,5 @@
 import { RemixIcon } from "../icons/RemixIcons";
+import { trackStudioClick } from "../motion/editorTracking";
 import { useI18n } from "../i18n/I18n";
 import { useMvpEditor } from "../motion/StudioHost";
 import { useEffect, type ReactNode } from "react";
@@ -40,14 +41,20 @@ export function TimelineToolPicker({ showSelectAroundPlayhead = true, splitShort
       shortcut: keyHint("selectTool", keys),
       icon: <SelectIcon />,
       active: activeTool === "select",
-      run: () => store().setActiveTool("select"),
+      run: () => {
+        if (store().activeTool !== "select") trackStudioClick("timeline", "tool_select");
+        store().setActiveTool("select");
+      },
     },
     {
       label: "Blade tool",
       shortcut: keyHint("razorTool", keys),
       icon: <Scissors size={16} />,
       active: activeTool === "razor",
-      run: () => store().setActiveTool("razor"),
+      run: () => {
+        if (store().activeTool !== "razor") trackStudioClick("timeline", "tool_split");
+        store().setActiveTool("razor");
+      },
     },
   ];
   if (mvp) {

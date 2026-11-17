@@ -14,3 +14,7 @@ library/**/*.motion filter=lfs diff=lfs merge=lfs -text
 
 # Preserve exact hash-pinned upstream license bytes, including original whitespace.
 tests/fixtures/fonts/OFL.txt -text -whitespace
+
+# Preserve upstream whitespace in hash-pinned catalog project dependencies.
+library/templates/catalog/*/source/assets/gsap.min.js -whitespace
+library/templates/catalog/*/source/assets/OFL-caveat.txt -whitespace

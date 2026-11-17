@@ -151,8 +151,10 @@ acceptance; `trackMotion()` resolves with a local queue/configuration status. Ne
 that the event is queryable in PostHog. Normal calls do not need an explicit flush.
 
 Current field rules are closed enums, booleans, UUIDv4 values, safe-code strings,
-nonnegative safe integers up to 86,400,000, or explicit finite numeric `{min,max}`
-bounds for fractional/signed measurements. Do not invent arbitrary string fields
+nonnegative safe integers up to 86,400,000, catalogue slugs (`slug`: letters, digits and single hyphens,
+at most 64 characters), or explicit finite numeric `{min,max}` bounds for fractional/signed measurements.
+Use `slug` only for an identifier the catalogue assigns, such as a template id; it is not a channel for
+names or titles. Do not invent arbitrary string fields
 or use the safe-code rule to tunnel user content. Omit unknown optional counts;
 missing is not zero. If the measurement needs a new type, review the validator and
 its tests rather than bypassing it. Do not silently change an existing event's

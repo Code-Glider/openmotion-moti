@@ -87,6 +87,116 @@
   },
   "files": [
     {
+      "path": "assets/fonts/Inter-400.woff2",
+      "bytes": 23664,
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+      "path": "assets/fonts/Inter-700.woff2",
+      "bytes": 24356,
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+      "path": "assets/fonts/OFL-inter.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
+      "path": "assets/glean-wordmark.jpg",
+      "bytes": 14647,
+      "sha256": "031bf147b6c278e54e082f7286bb2b28ea42451eded6059c75174f9d9fe77e25"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/lfs/original-soundtrack.m4a",
+      "bytes": 1023125,
+      "sha256": "35aa305ecacdc259c5417f712743500cf83b8150e1761f4cbbce5a427b57b10c"
+    },
+    {
+      "path": "assets/photos/avatar-00.jpg",
+      "bytes": 1881,
+      "sha256": "d574b0b9e6e0b2508dba283303ab17d2d55fc022331582f8431afd5a60febf53"
+    },
+    {
+      "path": "assets/photos/avatar-01.jpg",
+      "bytes": 2060,
+      "sha256": "48835ed832e5f8db96b3b2cfab15fcc677a27b97d917344822a2fdceb7d865bd"
+    },
+    {
+      "path": "assets/photos/avatar-02.jpg",
+      "bytes": 2070,
+      "sha256": "337ef3d280edfd078d3dc4ac0e7991a415f38f2849f1c3c99038ab6ea85eb19b"
+    },
+    {
+      "path": "assets/photos/avatar-03.jpg",
+      "bytes": 2120,
+      "sha256": "aadc197114ebd02103e67672b75919a32f037e9157fb1281536bae14533a4e0f"
+    },
+    {
+      "path": "assets/photos/avatar-04.jpg",
+      "bytes": 2257,
+      "sha256": "7a7fb53f3d22816c9f2a9b1be5fa4c5f5b479125036d8e124065ad299e4f8cd7"
+    },
+    {
+      "path": "assets/photos/avatar-05.jpg",
+      "bytes": 2063,
+      "sha256": "0afcf490dec1f2fe2960e88fc589eb5f8b5bb65a50003cc13f43be56c93efb67"
+    },
+    {
+      "path": "assets/photos/avatar-06.jpg",
+      "bytes": 2237,
+      "sha256": "ddcb5946fc3f72f5d7b9ea9e2d024378ba22fba4f6db0fa1b5798285bb762f8a"
+    },
+    {
+      "path": "assets/photos/avatar-07.jpg",
+      "bytes": 1895,
+      "sha256": "7c1f9b4a8071dde43e447dce0bbe7ed08b3df00520adf80f2d8c8236d318fa29"
+    },
+    {
+      "path": "assets/photos/avatar-08.jpg",
+      "bytes": 2132,
+      "sha256": "6b4876b5df6665185b1052fd55383488e24bc6da13f982ee5ed0f817c1be0385"
+    },
+    {
+      "path": "assets/photos/avatar-09.jpg",
+      "bytes": 1926,
+      "sha256": "912e240df356c0826e4be22ef94a3ea7da0af0a523f5931d983c93812d869b16"
+    },
+    {
+      "path": "assets/photos/avatar-10.jpg",
+      "bytes": 1984,
+      "sha256": "fe8935cfc7cfcf8fb0f730b757c43aaaa1448d819097170a4dae3f0b96ef65ab"
+    },
+    {
+      "path": "assets/photos/avatar-11.jpg",
+      "bytes": 1818,
+      "sha256": "e8cae403c155203ddeb3f88ed80c26989a49e1c5d3bcf94bc510fd9f37678c59"
+    },
+    {
+      "path": "assets/photos/avatar-12.jpg",
+      "bytes": 1895,
+      "sha256": "7c1f9b4a8071dde43e447dce0bbe7ed08b3df00520adf80f2d8c8236d318fa29"
+    },
+    {
+      "path": "assets/photos/avatar-13.jpg",
+      "bytes": 1818,
+      "sha256": "e8cae403c155203ddeb3f88ed80c26989a49e1c5d3bcf94bc510fd9f37678c59"
+    },
+    {
+      "path": "assets/photos/person-one.jpg",
+      "bytes": 12888,
+      "sha256": "e9b90cfc9f694fc930c8f095125e65ae720f29a7d0b2c2f4f6f899beacf7b9de"
+    },
+    {
+      "path": "assets/photos/person-two.jpg",
+      "bytes": 16992,
+      "sha256": "e0dfd7cc3a5d3c475e8b9a04bb1d2ca12e6e6599c347a5c1cb9df0d4aa2a4337"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 5850,
       "sha256": "2fe68ca96747f687950c6cd3bb293d0be799dcb1412a50c78af146a19d7f8a0c"
@@ -117,6 +227,11 @@
       "sha256": "2ec78bfbc534410ea490128c9151b81facb3887ac950d9e333ea5c0b7311be2d"
     },
     {
+      "path": "compositions/glean-film.html",
+      "bytes": 123704,
+      "sha256": "af3fe2bdf5d5380f3ef20e7f8f2fbd3d2da915e1513782b1e97a9fa7d6a7c370"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -145,6 +260,16 @@
       "path": "demos/sequence.html",
       "bytes": 538,
       "sha256": "7b505d5cfc4cb0249d2300b3607d694e01a9d9a3e231f7a79b465cca20dbb4cf"
+    },
+    {
+      "path": "hyperframes.json",
+      "bytes": 49,
+      "sha256": "b02e305cfff00c99edb12020f6741ed13a55efc99ffe9b9cf9bdff4c39af038f"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1845,
+      "sha256": "859b2140ef00176257177b85f5e7558094be9cae9d2f26ee92578f509e89c729"
     },
     {
       "path": "motion.md",

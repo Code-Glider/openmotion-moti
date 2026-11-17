@@ -2,6 +2,7 @@ import { TimelineBehaviorToggles } from "./TimelineBehaviorToggles";
 import { TimelineTrimButtons } from "./TimelineTrimButtons";
 import type { TimelineEditCallbacks } from "../player/components/timelineCallbacks";
 import { RemixIcon } from "../icons/RemixIcons";
+import { trackStudioClick } from "../motion/editorTracking";
 import { useMvpEditor } from "../motion/StudioHost";
 import { useI18n } from "../i18n/I18n";
 import { memo, useEffect, useRef, type ReactNode } from "react";
@@ -481,7 +482,10 @@ export const TimelineToolbar = memo(function TimelineToolbar({
               aria-label={
                 canZoomSelection ? t("Zoom to selected clips") : t("Select a clip to zoom the timeline")
               }
-              onClick={() => zoomTimelineToSelectedClips()}
+              onClick={() => {
+                trackStudioClick("timeline", "zoom_selection");
+                zoomTimelineToSelectedClips();
+              }}
               className={canZoomSelection ? flatIdle : flatDisabled}
             >
               <ZoomSelection size={16} aria-hidden="true" />
@@ -494,7 +498,11 @@ export const TimelineToolbar = memo(function TimelineToolbar({
             <button
               type="button"
               disabled={zoomDisabled}
-              onClick={() => { if (!zoomDisabled) setZoomMode("fit"); }}
+              onClick={() => {
+                if (zoomDisabled) return;
+                trackStudioClick("timeline", "zoom_fit");
+                setZoomMode("fit");
+              }}
               aria-label={t("Fit timeline to width")}
               className={zoomDisabled ? flatDisabled : flatIdle}
             >
@@ -511,7 +519,11 @@ export const TimelineToolbar = memo(function TimelineToolbar({
               type="button"
               aria-label={t("Zoom out")}
               disabled={zoomDisabled}
-              onClick={() => { if (!zoomDisabled) zoomTimelineStep("out"); }}
+              onClick={() => {
+                if (zoomDisabled) return;
+                trackStudioClick("timeline", "zoom_out");
+                zoomTimelineStep("out");
+              }}
               className={zoomDisabled ? flatDisabled : flatIdle}
             >
               <MagnifyingGlassMinus size={16} aria-hidden="true" />
@@ -539,7 +551,11 @@ export const TimelineToolbar = memo(function TimelineToolbar({
               type="button"
               aria-label={t("Zoom in")}
               disabled={zoomDisabled}
-              onClick={() => { if (!zoomDisabled) zoomTimelineStep("in"); }}
+              onClick={() => {
+                if (zoomDisabled) return;
+                trackStudioClick("timeline", "zoom_in");
+                zoomTimelineStep("in");
+              }}
               className={zoomDisabled ? flatDisabled : flatIdle}
             >
               <MagnifyingGlassPlus size={16} aria-hidden="true" />

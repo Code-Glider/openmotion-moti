@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { trackStudioClick } from "../motion/editorTracking";
 import { EXCLUDED_TAGS, ensureHfIds, mintHfId, walkCompositionDescendants } from "@hyperframes/parsers/hf-ids";
 import type { TimelineElement } from "../player";
 import { usePlayerStore } from "../player";
@@ -407,7 +408,12 @@ export function useClipboard({
     return own;
   }, [activeCompPath, copyDomSelection, copyTimelineSelection, domEditSelectionRef, previewIframeRef, showToast]);
 
-  const handleCopy = useCallback((): boolean => copyToClipboard() !== null, [copyToClipboard]);
+  const handleCopy = useCallback((): boolean => {
+    const copied = copyToClipboard() !== null;
+    // Copy changes nothing in the project, so it is an interaction, not an edit.
+    if (copied) trackStudioClick("timeline", "copy");
+    return copied;
+  }, [copyToClipboard]);
 
   // Two independent paste modes (timeline clip vs DOM element) behind one guarded save.
   // fallow-ignore-next-line complexity

@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { setStudioTheme, studioUsesHostTheme, useStudioThemePreference } from '../utils/studioTheme';
+import { clickMethod, clickOption, trackStudioClick } from './editorTracking';
 
 /** The samples consume the actual light/dark tokens, including future theme edits. */
 function ThemeSample({ theme }: { theme: 'light' | 'dark' }) {
@@ -17,7 +18,7 @@ export function AppearanceSettings() {
     <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Theme')}</h2>
       {embedded ? <p className="om-muted">{t('Appearance follows the app hosting this editor.')}</p> : <>
         <div className="om-theme-options" role="group" aria-label={t('Theme')}>
-          {(['light', 'dark', 'system'] as const).map(value => <button className="om-theme-choice" key={value} aria-pressed={preference === value} onClick={() => setStudioTheme(value)}>
+          {(['light', 'dark', 'system'] as const).map(value => <button className="om-theme-choice" key={value} aria-pressed={preference === value} onClick={event => { if (preference !== value) trackStudioClick('settings', 'theme_toggle', undefined, clickMethod(event), clickOption(value)); setStudioTheme(value); }}>
             <span className="om-theme-thumbnail" aria-hidden="true">
               {value === 'system' ? <span className="om-theme-split"><ThemeSample theme="light" /><ThemeSample theme="dark" /></span> : <ThemeSample theme={value} />}
             </span>

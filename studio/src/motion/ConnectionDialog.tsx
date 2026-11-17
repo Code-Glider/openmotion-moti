@@ -6,10 +6,11 @@ import connectionPage from '../../../web/connect.html?raw';
 import { TemplateLibraryDialog } from './TemplateLibraryDialog';
 import { AgentConnectionDialog } from './AgentConnectionDialog';
 import { MotionIcon } from './icons';
+import { reportTemplateEvent } from './editorTracking';
 import '../../../web/connect.css';
 import '../../../web/template-gallery.css';
 
-type Props = { open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void };
+type Props = { open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string };
 
 /** The original integration page lives inside one modal; Studio stays mounted beneath it. */
 export function ConnectionDialog(props: Props) {
@@ -32,6 +33,7 @@ function LegacyConnectionDialog(props: Props) {
       initialHost: new URLSearchParams(location.search).get('host'),
       close: () => { if (!callbacks.current.busy) callbacks.current.onClose(); },
       useTemplate: id => { if (!callbacks.current.busy && !callbacks.current.openingDisabled) callbacks.current.onOpen(id); },
+      onTemplateEvent: event => reportTemplateEvent(event, callbacks.current.projectId),
     });
     if (mvp) {
       // Keep the shared gallery controller, previews and attribution links.

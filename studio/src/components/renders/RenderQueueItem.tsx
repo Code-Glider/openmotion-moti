@@ -1,6 +1,7 @@
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { buildProjectApiPath } from "../../utils/projectRouting";
+import { clickMethod, trackStudioClick } from "../../motion/editorTracking";
 import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { RenderQueueInfo } from "./RenderQueueInfo";
 import { RenderPreview } from "./RenderPreview";
@@ -142,6 +143,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (fileRequest.current) return;
+    trackStudioClick("export_panel", "download_render", projectId, clickMethod(e));
     const finish = beginStudioIo('download_render');
     const fileStatus = await checkFile();
     if (fileStatus !== 'available') {
@@ -247,6 +249,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
+                trackStudioClick("export_panel", "cancel_render", projectId, clickMethod(e));
                 onCancel();
               }}
             >
@@ -263,6 +266,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
                 onClick={(e) => {
                   e.stopPropagation();
                   setConfirmingDelete(false);
+                  trackStudioClick("export_panel", "delete_render", projectId, clickMethod(e));
                   onDelete();
                 }}
               >

@@ -6,7 +6,8 @@ import { useFileManager } from './useFileManager';
 import { FileManagerProvider } from '../contexts/FileManagerContext';
 import { AssetsTab } from '../components/sidebar/AssetsTab';
 
-const { ioOperations } = vi.hoisted(() => ({ ioOperations: [] as { action: string; properties?: Record<string, unknown>; finish: ReturnType<typeof vi.fn> }[] }));
+const { ioOperations, assetImportResults } = vi.hoisted(() => ({ ioOperations: [] as { action: string; properties?: Record<string, unknown>; finish: ReturnType<typeof vi.fn> }[], assetImportResults: vi.fn() }));
+vi.mock('../motion/editorTracking', async original => ({ ...await original<Record<string, unknown>>(), reportAssetImport: assetImportResults }));
 vi.mock('../telemetry/ioRecovery', () => ({ beginStudioIo: (action: string, properties?: Record<string, unknown>) => {
   const finish = vi.fn();
   ioOperations.push({ action, properties, finish });
@@ -34,7 +35,7 @@ function Harness({ projectId }: { projectId: string }) {
 async function render(projectId = 'a') { await act(async () => root.render(<Harness projectId={projectId} />)); }
 const button = (label: string) => [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === label)!;
 async function click(label: string) { await act(async () => button(label).click()); }
-async function importFiles(selected: File[]) { await act(async () => { await manager.handleImportFiles(selected, 'assets'); }); }
+async function importFiles(selected: File[], entryPoint?: 'assets_button' | 'assets_drop' | 'timeline_button') { await act(async () => { await manager.handleImportFiles(selected, 'assets', entryPoint); }); }
 function selectReplacement(name: string, file: File) {
   const input = host.querySelector<HTMLInputElement>(`input[aria-label="Choose replacement for ${name}"]`)!;
   Object.defineProperty(input, 'files', { configurable: true, value: [file] });
@@ -69,7 +70,7 @@ it('retains two successes and explicitly uploads only the reselected failed file
     return Response.json({ files: ['assets/fixed.mp4'], invalid: [], skipped: [] });
   };
   await render();
-  await importFiles([new File(['x'], 'good.png'), new File(['x'], 'song.mp3'), new File(['bad'], 'broken.mp4')]);
+  await importFiles([new File(['x'], 'good.png'), new File(['x'], 'song.mp3'), new File(['bad'], 'broken.mp4')], 'assets_button');
   expect(host.textContent).toContain('Imported 2/3 files');
   expect(host.textContent).toContain('Not added to the timeline.');
   expect(host.textContent).toContain('Cannot read this media file.');
@@ -84,6 +85,10 @@ it('retains two successes and explicitly uploads only the reselected failed file
   expect(ioOperations[0].properties).toEqual({ requested_count: 3 });
   expect(ioOperations[0].finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'partial', requested_count: 3, added_count: 2, failed_count: 1, unknown_count: 0, pending_count: 0, listing_status: 'ready' });
   expect(ioOperations[1].properties).toEqual({ requested_count: 1 });
+  expect(assetImportResults.mock.calls.map(([event]) => event)).toEqual([
+    { projectId: 'a', entryPoint: 'assets_button', requested: 3, added: 2, failed: 1, unknown: 0, pending: 0, category: 'unreadable' },
+    { projectId: 'a', entryPoint: 'assets_button', requested: 1, added: 1, failed: 0, unknown: 0, pending: 0 },
+  ]);
   expect(ioOperations[1].finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'success', requested_count: 1, added_count: 1, failed_count: 0, unknown_count: 0, pending_count: 0, listing_status: 'ready' });
   expect(host.textContent).toContain('Imported 3/3 files');
   expect(showToast).not.toHaveBeenCalled();
@@ -93,7 +98,8 @@ it('retains two successes and explicitly uploads only the reselected failed file
 
 it('keeps a lost upload response unknown after checking the listing and never offers a file retry', async () => {
   upload = async () => { files.a = ['assets/clip.mp4']; throw new TypeError('response lost'); };
-  await render(); await importFiles([new File(['x'], 'clip.mp4')]);
+  await render(); await importFiles([new File(['x'], 'clip.mp4')], 'assets_drop');
+  expect(assetImportResults).toHaveBeenCalledExactlyOnceWith({ projectId: 'a', entryPoint: 'assets_drop', requested: 1, added: 0, failed: 0, unknown: 1, pending: 0 });
   expect(host.textContent).toContain('Result unknown');
   expect(host.querySelector('input[aria-label^="Choose replacement"]')).toBeNull();
   await click('Check project assets');
@@ -117,6 +123,7 @@ it('retains upload success when listing refresh fails and reloads without anothe
   expect(host.querySelector('[data-assets-list]')?.textContent).toContain('good.png');
   expect(host.textContent).not.toContain('Files were imported, but the asset list could not reload.');
   expect(ioOperations[0].finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'success', requested_count: 1, added_count: 1, failed_count: 0, unknown_count: 0, pending_count: 0, listing_status: 'failed' });
+  expect(assetImportResults).toHaveBeenCalledExactlyOnceWith({ projectId: 'a', entryPoint: undefined, requested: 1, added: 1, failed: 0, unknown: 0, pending: 0 });
   expect(ioOperations[1].action).toBe('refresh_import_list');
   expect(ioOperations[1].finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'success', listing_status: 'ready' });
 });
@@ -163,15 +170,17 @@ it('explains an empty rejected file and keeps a payload-limit rejection safe to 
 
 it('preserves manual native-runtime preparation and only resubmits it on explicit retry', async () => {
   upload = async () => Response.json({ code: 'NATIVE_RUNTIME_NOT_READY', applied: false }, { status: 409 });
-  await render(); await importFiles([new File(['x'], 'clip.mp4')]);
+  await render(); await importFiles([new File(['x'], 'clip.mp4')], 'timeline_button');
   expect(manager.pendingImport?.files[0].name).toBe('clip.mp4');
   expect(host.querySelector('input[aria-label^="Choose replacement"]')).toBeNull();
   expect(uploadCalls()).toHaveLength(1);
+  expect(assetImportResults).toHaveBeenNthCalledWith(1, { projectId: 'a', entryPoint: 'timeline_button', requested: 1, added: 0, failed: 0, unknown: 0, pending: 1, category: 'runtime_not_ready' });
   upload = async () => { files.a = ['assets/clip.mp4']; return Response.json({ files: files.a }); };
   await click('Retry import');
   expect(uploadCalls()).toHaveLength(2);
   expect(manager.pendingImport).toBeNull();
   expect(host.textContent).toContain('Imported 1/1 files');
+  expect(assetImportResults).toHaveBeenNthCalledWith(2, { projectId: 'a', entryPoint: 'timeline_button', requested: 1, added: 1, failed: 0, unknown: 0, pending: 0 });
 });
 
 it('keeps an ambiguous renamed rejection unknown instead of retrying the wrong original file', async () => {
@@ -263,4 +272,14 @@ it('keeps skipped, invalid and unchecked manual results in the batch card withou
   expect(host.textContent).toContain('No playable video found.');
   expect(host.textContent).toContain('Media checking is unavailable.');
   expect(showToast).not.toHaveBeenCalled();
+});
+
+
+it('preserves the entry point and unknown counts for uploads outside the manual batch card', async () => {
+  upload = async () => { throw new TypeError('reply lost'); };
+  await render();
+  await act(async () => { await manager.uploadProjectFiles([new File(['x'], 'clip.mp4')], 'assets', 'timeline_button'); });
+  expect(manager.importBatch).toBeNull();
+  expect(assetImportResults).toHaveBeenCalledExactlyOnceWith({ projectId: 'a', entryPoint: 'timeline_button', requested: 1, added: 0, failed: 0, unknown: 1, pending: 0 });
+  expect(uploadCalls()).toHaveLength(1);
 });

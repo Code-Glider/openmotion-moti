@@ -330,6 +330,8 @@ export function useTimelineClipDrag({
         audioTracks: dragAudioTracksRef.current,
         gridStep: snapGridStep(),
         rippleEditEnabled: usePlayerStore.getState().rippleEditEnabled,
+        timelineLinkageEnabled: usePlayerStore.getState().timelineLinkageEnabled,
+        linkedSelectionEnabled: isLinkedSelectionOn(),
       });
     },
     [

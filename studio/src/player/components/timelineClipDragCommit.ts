@@ -294,6 +294,15 @@ export function commitDraggedClipMove(drag: DraggedClipState, deps: DragCommitDe
       : edit);
   };
 
+  if (!isInsert && !laneChanged && drag.mainTrackReorder) {
+    const edits = drag.mainTrackReorder.changes.map(({ element, start }) => ({
+      element, updates: { start, track: element.track },
+    }));
+    void persistMoveEdits(renumbers.length ? preserveLanes(edits) : edits, deps, undefined,
+      renumbers.length ? "lane-reorder" : "timing");
+    return;
+  }
+
   // ── Pure time-move (dragged clip keeps its lane, no insert) ─────────────────
   if (!isInsert && !laneChanged) {
     const delta = drag.previewStart - drag.element.start;

@@ -167,6 +167,7 @@ export function useAppHotkeys({
     onAfterUndoRedo,
     activeCompPath,
     forceReloadSdkSession,
+    projectId,
   });
 
   const applyHistory = useCallback(

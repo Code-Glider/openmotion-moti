@@ -87,6 +87,51 @@
   },
   "files": [
     {
+      "path": "assets/as-code.js",
+      "bytes": 20101,
+      "sha256": "e7e246ddade56a98b1135ea53412bf4f2849e25a8db53ef0f7a7dd50190e33ac"
+    },
+    {
+      "path": "assets/fonts/Inter-variable-latin.woff2",
+      "bytes": 31388,
+      "sha256": "a7578810fc5ca3ccdb1c56ce077b47f7db921c1860dfb054408d95eb5f9016f9"
+    },
+    {
+      "path": "assets/fonts/JetBrainsMono-400.woff2",
+      "bytes": 21168,
+      "sha256": "14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb"
+    },
+    {
+      "path": "assets/fonts/OFL-inter.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
+      "path": "assets/fonts/OFL-jetbrains-mono.txt",
+      "bytes": 4524,
+      "sha256": "403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/lfs/original-audio.m4a",
+      "bytes": 697488,
+      "sha256": "9331b2ea49c9dbd7949ad6f75d1ce3e0f731a6a07f9698f72295748a20acd35b"
+    },
+    {
+      "path": "assets/media/meal-bowl.jpg",
+      "bytes": 27043,
+      "sha256": "0619d13849e787d7487d092093843fc0a60b8f3ad3457fa07466e0e684be2547"
+    },
+    {
+      "path": "assets/media/meal-steak.jpg",
+      "bytes": 21563,
+      "sha256": "486e8efa0113979e5bc57b2c3acfedf8063ac0cac3f6aeef8a76161988db8d89"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 1976,
       "sha256": "1d0c74e0d6b24aca60fa2abd5910d212fe0448006f8c71614231486988dde945"
@@ -115,6 +160,16 @@
       "path": "assets/reference-6.webp",
       "bytes": 6970,
       "sha256": "52306ce3e5938259c7116f679bc989dd00c4f011c34bbeb874112c5d2d6a5483"
+    },
+    {
+      "path": "assets/styles.css",
+      "bytes": 13710,
+      "sha256": "d5c5f565a59df1e54f803467b26b7a5a08cc9561e813ebf256b2a3a568e76823"
+    },
+    {
+      "path": "compositions/catalog-scene.html",
+      "bytes": 11109,
+      "sha256": "fff17806695c66a27afc8f180cfa3d7df1ff1828f8d4b780e524158b6078e6e0"
     },
     {
       "path": "demos/bridge.js",
@@ -150,6 +205,11 @@
       "path": "demos/sequence.html",
       "bytes": 551,
       "sha256": "3fa520137cd9204854a357ab4420aaee30c31e9e3727a5e331c2bf827e35fdd0"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1314,
+      "sha256": "d262f8e1b23b81ca221221db29f1ae880273177fa05cc59f1b20f40839a82d96"
     },
     {
       "path": "motion.md",

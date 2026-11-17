@@ -2,6 +2,7 @@ import { AssetImportMenu } from '../../motion/AssetLibraryImport';
 import { useFileManagerContextOptional } from '../../contexts/FileManagerContext';
 import { ManualImportResults } from './ManualImportResults';
 import { RemixIcon } from "../../icons/RemixIcons";
+import { clickOption, searchStarted, trackStudioClick } from "../../motion/editorTracking";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
 import { useMediaGateway } from "../../motion/MediaGatewayContext";
@@ -30,7 +31,7 @@ import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
 interface AssetsTabProps {
   projectId: string;
   assets: string[];
-  onImport?: (files: FileList) => void | Promise<void>;
+  onImport?: (files: FileList, entryPoint?: "assets_button" | "assets_drop") => void | Promise<void>;
   onLibraryImport?: (options: FileTreeRefreshOptions) => Promise<void>;
   onDelete?: (path: string) => void;
   onRename?: (oldPath: string, newPath: string) => void;
@@ -170,6 +171,10 @@ export const AssetsTab = memo(function AssetsTab({
   const [importing, setImporting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<MediaCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const chooseFilter = (next: MediaCategory | "all") => {
+    if (next !== activeFilter) trackStudioClick("assets", "asset_filter", projectId, undefined, clickOption(next));
+    setActiveFilter(next);
+  };
   const groupId = useId();
   const [collapsedCategories, setCollapsedCategories] = useState<Set<MediaCategory>>(new Set());
   useEffect(() => {
@@ -227,11 +232,11 @@ export const AssetsTab = memo(function AssetsTab({
   }, [projectId, assetsKey]);
 
   const handleImport = useCallback(
-    async (files: FileList) => {
+    async (files: FileList, entryPoint: "assets_button" | "assets_drop") => {
       if (!onImport) return;
       setImporting(true);
       try {
-        await onImport(files);
+        await onImport(files, entryPoint);
       } finally {
         setImporting(false);
       }
@@ -243,7 +248,7 @@ export const AssetsTab = memo(function AssetsTab({
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
-      if (e.dataTransfer.files.length) void handleImport(e.dataTransfer.files);
+      if (e.dataTransfer.files.length) void handleImport(e.dataTransfer.files, "assets_drop");
     },
     [handleImport],
   );
@@ -315,7 +320,10 @@ export const AssetsTab = memo(function AssetsTab({
         <div className="flex items-center gap-1.5">
           <SearchInput
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              if (searchStarted(searchQuery, e.target.value)) trackStudioClick("assets", "asset_search", projectId);
+              setSearchQuery(e.target.value);
+            }}
             placeholder={t("Search assets...")}
             aria-label={t("Search assets")}
             className="min-w-0 flex-1"
@@ -332,7 +340,7 @@ export const AssetsTab = memo(function AssetsTab({
             className="hidden"
             onChange={(e) => {
               if (e.target.files?.length) {
-                void handleImport(e.target.files);
+                void handleImport(e.target.files, "assets_button");
                 e.target.value = "";
               }
             }}
@@ -343,7 +351,7 @@ export const AssetsTab = memo(function AssetsTab({
         {allMediaAssets.length > 0 && (
           <div className="flex gap-1.5 flex-wrap">
             <FilterChip
-              onClick={() => setActiveFilter("all")}
+              onClick={() => chooseFilter("all")}
               className="max-w-full [overflow-wrap:anywhere]"
               active={activeFilter === "all"}
             >
@@ -353,7 +361,7 @@ export const AssetsTab = memo(function AssetsTab({
               counts[cat] > 0 || activeFilter === cat ? (
                 <FilterChip
                   key={cat}
-                  onClick={() => setActiveFilter(activeFilter === cat ? "all" : cat)}
+                  onClick={() => chooseFilter(activeFilter === cat ? "all" : cat)}
                   className="max-w-full [overflow-wrap:anywhere]"
                   active={activeFilter === cat}
                 >

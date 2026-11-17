@@ -17,7 +17,10 @@ import { WorkspaceProject } from './WorkspaceProject';
 import { ProjectAgentAction } from './ProjectAgentAction';
 import { WorkspaceSaveStatus } from './WorkspaceSaveStatus';
 import { trackMotion } from './tracking';
+import { installEditorTracking, openTemplateFields, projectFields, projectScaleFields, setProjectTemplate } from './editorTracking';
 import { OpenMotionAgentTools } from './OpenMotionAgentTools';
+
+installEditorTracking(trackMotion);
 
 export function MotionEditorFrame({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -30,11 +33,18 @@ export function MotionEditorFrame({ children }: { children: ReactNode }) {
   }, [chrome?.settingsOpen]);
   const saving = useSyncExternalStore(subscribeStudioEditSaving, isStudioEditSaving, isStudioEditSaving);
   const load = useRef({ id: crypto.randomUUID(), sent: false });
+  // The workspace catalogue already says which template a project came from; exports are attributed to it.
+  const templateId = chrome?.workspace.projects.find(project => project.id === projectId)?.templateId;
+  useEffect(() => { setProjectTemplate(templateId); return () => setProjectTemplate(undefined); }, [templateId]);
   useEffect(() => {
     if (load.current.sent) return;
     load.current.sent = true;
+    setProjectTemplate(templateId);
+    // Whatever is in memory right now; the timeline and file tree are usually still loading, so `unknown`.
+    const player = usePlayerStore.getState();
     void trackMotion('studio_load_result', { load_id: load.current.id, outcome: 'success',
-      embedded: workspacePresentation(location.search).embedded, duration_ms: Math.min(86_400_000, Math.round(performance.now())) });
+      embedded: workspacePresentation(location.search).embedded, duration_ms: Math.min(86_400_000, Math.round(performance.now())), ...projectFields(projectId),
+      ...projectScaleFields(player.timelineReady ? player.elements.length : undefined), ...openTemplateFields() });
   }, []);
   const blocked = renderQueue.isRendering || historyOperation.busy || Boolean(writeBlockedReason);
   useStudioAutosave({ projectId, blocked, flush: () => waitForPendingDomEditSaves({ blur: false }) });

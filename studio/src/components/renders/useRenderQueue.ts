@@ -14,6 +14,9 @@ import { studioApiFetch, studioProjectUrl } from "../../utils/studioApiFetch";
 import { blocksProjectWork, isPendingRender, mergeRenderJobs, readRenderStatus, serverRenderJobs } from "./renderQueueState";
 import { useRenderProgress } from "./useRenderProgress";
 import { beginStudioIo } from "../../telemetry/ioRecovery";
+import { usePlayerStore } from "../../player/store/playerStore";
+import { durationBucket, exportRejection, exportSettings, openTemplateFields, projectScaleFields, projectFields,
+  reportExportRequest, reportExportResult, type ExportOrigin } from "../../motion/editorTracking";
 
 export interface RenderJob {
   id: string;
@@ -58,6 +61,7 @@ export interface StartRenderOptions {
    * `hyperframes render --variables` uses.
    */
   variables?: Record<string, unknown>;
+  origin?: ExportOrigin;
 }
 
 // "Hide" (formerly "Clear") is a view operation, not a delete: hidden ids are
@@ -136,6 +140,13 @@ export function useRenderQueue(
   const sessionJobs = useRef(new Map<string, FeedbackContext>());
   const promptedJobIds = useRef(new Set<string>());
   const requestSettings = useRef(new Map<string, FeedbackContext>());
+  // Keep one business export identity across an uncertain receipt and its
+  // later lookup. Neither a connection loss nor a cancel acknowledgement is terminal.
+  const trackedExports = useRef(new Map<string, {
+    exportId: string;
+    reported: boolean;
+    settings: ReturnType<typeof exportSettings> & { video_duration_bucket: ReturnType<typeof durationBucket>; template_id?: string };
+  }>());
 
   /**
    * The one way a render started here enters the list. Every start path — the
@@ -154,6 +165,7 @@ export function useRenderQueue(
     sessionJobs.current.clear();
     promptedJobIds.current.clear();
     requestSettings.current.clear();
+    trackedExports.current.clear();
     setLoadError(null);
     setActionError(null);
     setChecking(false);
@@ -218,10 +230,32 @@ export function useRenderQueue(
         setActionError("No content to export. Add media first.");
         return;
       }
+      const exportId = generateId();
+      const player = usePlayerStore.getState();
+      const openComposition = !opts.composition || opts.composition === activeCompPathRef.current;
+      const timeline = openComposition && player.timelineReady;
+      const tracked = { ...exportSettings(opts.origin, opts),
+        video_duration_bucket: durationBucket(timeline ? player.duration : undefined), ...openTemplateFields() };
+      const scale = projectScaleFields(timeline ? player.elements.length : undefined);
+      let requestKey: string | undefined;
+      let reportedRequest = false;
+      const requestResult = (outcome: "accepted" | "rejected" | "unknown",
+        error_code?: Parameters<typeof reportExportRequest>[0]["error_code"]) => {
+        if (reportedRequest) return;
+        reportedRequest = true;
+        reportExportRequest({ export_id: exportId, outcome, ...tracked, ...scale,
+          ...(error_code ? { error_code } : {}), ...projectFields(projectId) });
+        if (requestKey) {
+          const pending = trackedExports.current.get(requestKey);
+          if (outcome === "rejected") trackedExports.current.delete(requestKey);
+          else if (pending) pending.reported = true;
+        }
+      };
       // The server would answer this with a 503 anyway. Refusing here keeps
       // the reason and the fix in the message, and keeps a control that
       // forgot to disable itself from producing a mystery failure.
       if (ffmpegMissing) {
+        requestResult("rejected", ffmpeg?.runtime ? "RUNTIME_NOT_READY" : "FFMPEG_MISSING");
         if (ffmpeg?.runtime) return;
         addSessionJob(
           {
@@ -238,6 +272,7 @@ export function useRenderQueue(
       }
 
       if (startingRef.current === projectId || jobsRef.current.some(blocksProjectWork)) {
+        requestResult("rejected", "REQUEST_REJECTED");
         setActionError("An export is already in progress. Check the original task.");
         return;
       }
@@ -251,15 +286,19 @@ export function useRenderQueue(
         const confirmed = await loadRenders();
         if (currentProject.current !== projectId) return;
         if (!confirmed) {
+          requestResult("rejected", "SERVER_UNREACHABLE");
           setActionError("Couldn't check the original export. Check the connection before starting another export.");
           return;
         }
         if (confirmed.some(blocksProjectWork)) {
+          requestResult("rejected", "REQUEST_REJECTED");
           setActionError("An export is already in progress. Check the original task.");
           return;
         }
       }
       const requestId = generateId();
+      requestKey = requestId;
+      trackedExports.current.set(requestId, { exportId, reported: false, settings: tracked });
       const fps = opts.fps ?? 30;
       const quality = opts.quality ?? "standard";
       const format = opts.format ?? "mp4";
@@ -334,7 +373,9 @@ export function useRenderQueue(
       if (opts.variables && Object.keys(opts.variables).length > 0) {
         body.variables = opts.variables;
       }
-      const keepUnconfirmedRequest = (cause: string) => {
+      const keepUnconfirmedRequest = (cause: string,
+        errorCode: Parameters<typeof reportExportRequest>[0]["error_code"] = "SERVER_UNREACHABLE") => {
+        requestResult("unknown", errorCode);
         const pendingJob: RenderJob = {
           id: `request-${requestId}`,
           requestId,
@@ -362,21 +403,24 @@ export function useRenderQueue(
       if (!res.ok) {
         const refusal = await res.clone().json().catch(() => null);
         if (["EXPORT_BUSY", "RENDER_BUSY"].includes(refusal?.code)) {
+          requestResult("rejected", "REQUEST_REJECTED");
           await loadRenders();
           setActionError("An export is already in progress. Check the original task.");
           return;
         }
         if (res.status === 409 && (await res.clone().json().catch(() => null))?.code === 'NATIVE_RUNTIME_NOT_READY') {
+          requestResult("rejected", "RUNTIME_NOT_READY");
           setActionError('Video components are not ready. Check preparation status.');
           recheckFfmpeg(false);
           return;
         }
         // A host error can occur after the renderer has accepted the job.
         // Only a definite client rejection permits declaring this attempt failed.
-        if (res.status >= 500 || refusal?.applied !== false && ![400, 401, 403, 404, 405, 409, 413, 422].includes(res.status)) {
-          keepUnconfirmedRequest(await readServerError(res));
+        if (refusal?.applied !== false && (res.status >= 500 || ![400, 401, 403, 404, 405, 409, 413, 422].includes(res.status))) {
+          keepUnconfirmedRequest(await readServerError(res), exportRejection(res.status));
           return;
         }
+        requestResult("rejected", exportRejection(res.status));
         const failedJob: RenderJob = {
           id: generateId(),
           status: "failed",
@@ -393,10 +437,11 @@ export function useRenderQueue(
         receipt = await res.json();
         if (typeof receipt?.jobId !== "string" || !receipt.jobId) throw new Error("Export receipt has no task identity");
       } catch (error) {
-        keepUnconfirmedRequest(error instanceof Error ? error.message : String(error));
+        keepUnconfirmedRequest(error instanceof Error ? error.message : String(error), "INVALID_RESPONSE");
         return;
       }
       const { jobId: nativeJobId, filename, createdAt } = receipt as { jobId: string; filename?: string; createdAt?: number };
+      requestResult("accepted");
       if (currentProject.current !== projectId) return;
       const job: RenderJob = {
         nativeJobId,
@@ -483,6 +528,17 @@ export function useRenderQueue(
   // finished-anyway. `requestStudioFeedback` decides whether to actually ask.
   useEffect(() => {
     for (const job of jobs) {
+      if (!["complete", "failed", "cancelled"].includes(job.status)) continue;
+      const started = job.requestId && trackedExports.current.get(job.requestId);
+      if (!started || !started.reported || !job.requestId) continue;
+      trackedExports.current.delete(job.requestId);
+      reportExportResult({ export_id: started.exportId,
+        job_state: job.status === "complete" ? "completed" : job.status === "cancelled" ? "cancelled" : "failed",
+        duration_ms: Math.min(86_400_000, Math.max(0, Math.round(job.durationMs ?? Date.now() - job.createdAt))),
+        ...started.settings, ...(job.status === "failed" ? { error_code: "RENDER_FAILED" as const } : {}),
+        ...projectFields(projectId) });
+    }
+    for (const job of jobs) {
       if (job.status !== "complete" && job.status !== "failed") continue;
       const settings = sessionJobs.current.get(job.id);
       if (!settings || promptedJobIds.current.has(job.id)) continue;
@@ -505,7 +561,7 @@ export function useRenderQueue(
         },
       });
     }
-  }, [jobs]);
+  }, [jobs, projectId]);
 
   const isRendering = Boolean(projectId && (startingProject === projectId || jobs.some(blocksProjectWork)));
   return useMemo(

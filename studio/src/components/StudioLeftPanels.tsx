@@ -1,4 +1,5 @@
 import { useMvpEditor } from "../motion/StudioHost";
+import { trackStudioClick } from "../motion/editorTracking";
 import { useI18n } from "../i18n/I18n";
 import { memo, useCallback, type ReactNode } from "react";
 import { SourceEditor } from "./editor/SourceEditor";
@@ -80,13 +81,16 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
       }
       await waitForPendingDomEditSaves();
       const { format, quality, fps, gpu } = getPersistedRenderSettings();
-      await renderQueue.startRender({ composition: comp, format, quality, fps, gpu });
+      await renderQueue.startRender({ composition: comp, format, quality, fps, gpu, origin: "composition_card" });
     },
     [renderQueue, waitForPendingDomEditSaves],
   );
 
   const importFiles = async (files: FileList, dir?: string) => {
     await handleImportFiles(files, dir);
+  };
+  const importAssets = async (files: FileList, entryPoint?: "assets_button" | "assets_drop") => {
+    await handleImportFiles(files, undefined, entryPoint);
   };
   const lintButton = mvp ? null : (
     <SidebarLintButton
@@ -104,7 +108,10 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
           <CompositionsPanel
             projectId={projectId}
             compositions={compositions}
-            onSelect={onSelectComposition}
+            onSelect={(...args: Parameters<typeof onSelectComposition>) => {
+              trackStudioClick("clips", "select_clip", projectId);
+              return onSelectComposition(...args);
+            }}
             onAddToTimeline={mvp ? undefined : onAddCompositionToTimeline}
             onRenderComposition={mvp ? undefined : handleRenderComposition}
             isRendering={renderQueue.isRendering}
@@ -117,7 +124,7 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
           <AssetsTab
             projectId={projectId}
             assets={assets}
-            onImport={importFiles}
+            onImport={importAssets}
             onLibraryImport={refreshFileTree}
             onDelete={handleDeleteFile}
             onRename={handleRenameFile}
