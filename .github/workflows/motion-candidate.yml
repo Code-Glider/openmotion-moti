@@ -73,7 +73,7 @@ jobs:
       - name: Download full-bundle media explicitly
         working-directory: source
         run: |
-          git lfs pull --include="docs/readme/**,library/**,examples/**" --exclude="library/templates/catalog/**"
+          git lfs pull --include="docs/readme/**,library/**,examples/**" --exclude=""
           node scripts/repository-media.ts
       - name: Scan tracked source before dependency installation
         run: |
