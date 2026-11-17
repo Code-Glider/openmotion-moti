@@ -57,10 +57,14 @@ export const versionCursor = z.strictObject({
   ceiling: z.number().int().positive().safe(),
   before: z.number().int().positive().safe(),
 });
+export const locales = ["en", "zh-CN", "ja", "ko", "de", "fr", "ru", "es", "pt-BR", "it", "tr"] as const;
+export const locale = z.enum(locales);
+export type Locale = z.infer<typeof locale>;
 /** Workspace-scoped presentation, independent of project source/history. */
 export const viewPreferences = z.strictObject({
   theme: z.enum(["light", "dark", "system"]),
   layout: z.enum(["edit", "preview"]),
+  locale,
 });
 export type ViewPreferences = z.infer<typeof viewPreferences>;
 export interface Preferences {
@@ -72,7 +76,8 @@ export const schemas = {
   workspace_configure: z.strictObject({
     ...request,
     expectedVersion: z.number().int().nonnegative().safe(),
-    value: viewPreferences,
+    // An absent locale preserves the current choice and the original accepted request fingerprint.
+    value: viewPreferences.extend({ locale: locale.optional() }),
   }),
   workspace_state: z.strictObject({}),
   workspace_observe: z.strictObject({}),
@@ -251,7 +256,7 @@ export class Fault extends Error {
 }
 export const descriptions: Record<Operation, string> = {
   workspace_preferences:
-    "Read workspace-scoped theme/layout preferences without admitting a project or changing content/selection.",
+    "Read workspace-scoped theme/layout/interface-locale preferences without admitting a project or changing content/selection.",
   workspace_configure:
     "Save finite workspace view preferences with optimistic version and original-request replay; never changes project source, history or selection.",
   workspace_state: "List creative sessions and the current selection.",

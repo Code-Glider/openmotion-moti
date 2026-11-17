@@ -271,7 +271,7 @@ it("upgrades accepted format3 in place, preserves all rows and receipts, and lab
     try {
       f.cold();
       expect(rows()).toEqual(before);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(5);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(6);
       const legacy = inventory(f);
       expect(legacy).toHaveLength(4);
       expect(legacy.every((v) => v.kind === "legacy" && v.createdAt === null)).toBe(true);

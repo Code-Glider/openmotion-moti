@@ -1,6 +1,18 @@
-import { button, codeEditor, disclosure, field, heading, note, setButton, slot } from "@open-motion/components";
 import type { Descriptor, TemplateInput, TemplateOutput } from "@open-motion/templates/contract";
 import type { Client } from "../../../api.js";
+import {
+  attr,
+  button,
+  codeEditor,
+  text as copyText,
+  disclosure,
+  field,
+  heading,
+  m,
+  note,
+  setButton,
+  slot,
+} from "../../locale/index.js";
 import { NativePreview } from "../preview.js";
 
 type Selection = TemplateInput<"template_read">;
@@ -44,60 +56,60 @@ export class TemplateDetail {
   ) {
     this.element = slot(document, "fill");
     this.element.setAttribute("role", "region");
-    this.element.setAttribute("aria-label", "模板详情");
+    attr(this.element, "aria-label", m("模板详情"));
     this.element.hidden = true;
     const content = slot(document, "content"),
       toolbar = slot(document, "toolbar"),
       host = slot(document, "fill");
-    this.heading = heading(document, "模板详情");
+    this.heading = heading(document, m("模板详情"));
     this.heading.tabIndex = -1;
     this.info = slot(document, "stack");
     this.status = note(document, "");
     this.status.setAttribute("role", "status");
-    this.status.setAttribute("aria-label", "模板预览状态");
+    attr(this.status, "aria-label", m("模板预览状态"));
     this.title = document.createElement("input");
     this.title.maxLength = 120;
-    this.title.setAttribute("aria-label", "独立项目标题");
+    attr(this.title, "aria-label", m("独立项目标题"));
     this.title.oninput = () => this.drafts.set(this.key, this.title.value);
     this.create = button(document, {
-      label: "从此模板创建独立项目",
+      label: m("从此模板创建独立项目"),
       primary: true,
       onClick: this.createProject,
     });
-    this.retry = button(document, { label: "重试模板预览", onClick: () => this.load() });
-    const back = button(document, { label: "返回模板目录", onClick: actions.back });
+    this.retry = button(document, { label: m("重试模板预览"), onClick: () => this.load() });
+    const back = button(document, { label: m("返回模板目录"), onClick: actions.back });
     this.seek = document.createElement("input");
     this.seek.type = "number";
     this.seek.min = "0";
     this.seek.step = "0.1";
     this.seek.value = "0";
-    this.seek.setAttribute("aria-label", "模板定位秒");
+    attr(this.seek, "aria-label", m("模板定位秒"));
     this.transport = [
-      button(document, { label: "播放模板预览", onClick: () => this.preview.control("play") }),
-      button(document, { label: "暂停模板预览", onClick: () => this.preview.control("pause") }),
+      button(document, { label: m("播放模板预览"), onClick: () => this.preview.control("play") }),
+      button(document, { label: m("暂停模板预览"), onClick: () => this.preview.control("pause") }),
       button(document, {
-        label: "定位模板预览",
+        label: m("定位模板预览"),
         onClick: () => {
           const time = this.seek.valueAsNumber;
           if (Number.isFinite(time) && time >= 0 && time <= (this.selected?.template.duration ?? 0))
             this.preview.control("seek", time);
-          else this.status.textContent = "请输入模板时长以内的有效秒数";
+          else copyText(this.status, m("请输入模板时长以内的有效秒数"));
         },
       }),
     ];
-    toolbar.append(back, this.retry, ...this.transport, field(document, "模板定位秒", this.seek));
-    const source = disclosure(document, "已验证源码与许可", false);
+    toolbar.append(back, this.retry, ...this.transport, field(document, m("模板定位秒"), this.seek));
+    const source = disclosure(document, m("已验证源码与许可"), false);
     this.path = document.createElement("select");
-    this.path.setAttribute("aria-label", "模板源文件");
+    attr(this.path, "aria-label", m("模板源文件"));
     this.code = codeEditor(document);
     this.code.readOnly = true;
-    this.code.setAttribute("aria-label", "模板源码");
+    attr(this.code, "aria-label", m("模板源码"));
     this.path.onchange = () => this.showSource();
     this.provenance = slot(document, "stack");
-    source.body.append(this.provenance, field(document, "模板源文件", this.path), this.code);
+    source.body.append(this.provenance, field(document, m("模板源文件"), this.path), this.code);
     this.preview = new NativePreview(host, client, () => null, {
       message: (value) => {
-        if (this.active && value) this.status.textContent = value;
+        if (this.active && value) copyText(this.status, value);
       },
       ready: () => {
         if (this.active) {
@@ -113,9 +125,9 @@ export class TemplateDetail {
     });
     content.append(
       this.heading,
-      note(document, "浏览和播放不会创建项目。确认模板后，可创建独立的可编辑工程。"),
+      note(document, m("浏览和播放不会创建项目。确认模板后，可创建独立的可编辑工程。")),
       this.info,
-      field(document, "独立项目标题", this.title),
+      field(document, m("独立项目标题"), this.title),
       this.create,
       toolbar,
       this.status,
@@ -159,22 +171,22 @@ export class TemplateDetail {
     this.ready = false;
     this.loading = true;
     this.selected = undefined;
-    this.status.textContent = this.target ? "正在验证模板源码" : "模板链接无效，请返回目录重新选择";
+    copyText(this.status, this.target ? m("正在验证模板源码") : m("模板链接无效，请返回目录重新选择"));
     this.provenance.replaceChildren();
     this.title.value = "";
     this.info.replaceChildren();
     this.code.value = "";
     this.path.replaceChildren();
-    this.heading.textContent = "模板详情";
+    copyText(this.heading, m("模板详情"));
     this.controls();
     const flight = (async () => {
       await this.preview.close();
       if (!this.active || epoch !== this.epoch) return;
       if (!this.target) {
-        this.status.textContent = "模板链接无效，请返回目录重新选择";
+        copyText(this.status, m("模板链接无效，请返回目录重新选择"));
         return;
       }
-      this.status.textContent = "正在验证模板源码";
+      copyText(this.status, m("正在验证模板源码"));
       const selected = await this.client.execute("template_read", this.target, controller.signal);
       if (!this.active || epoch !== this.epoch) return;
       if (selected.template.id !== this.target.id || selected.template.contentHash !== this.target.contentHash)
@@ -182,7 +194,7 @@ export class TemplateDetail {
       this.selected = selected;
       const { template, files } = selected,
         document = this.element.ownerDocument;
-      this.heading.textContent = template.title;
+      copyText(this.heading, template.title);
       this.title.value = this.drafts.get(this.key) ?? template.title;
       this.seek.value = "0";
       this.seek.max = String(template.duration);
@@ -190,19 +202,25 @@ export class TemplateDetail {
         note(document, template.description),
         note(
           document,
-          `${template.duration} 秒 · ${template.width} × ${template.height} · ${files.length} 个源文件 · ${template.license}`,
+          m("{0} 秒 · {1} × {2} · {3} 个源文件 · {4}", [
+            template.duration,
+            template.width,
+            template.height,
+            files.length,
+            template.license,
+          ]),
         ),
       );
       this.provenance.replaceChildren(
         note(document, template.source),
-        note(document, `模板 ${template.id} · 来源版本 ${template.contentHash}`),
+        note(document, m("模板 {0} · 来源版本 {1}", [template.id, template.contentHash])),
         ...template.adaptations.map((value) => note(document, value)),
       );
       this.path.replaceChildren(
         ...files.map((file) => {
           const option = document.createElement("option");
           option.value = file.path;
-          option.textContent = file.path;
+          copyText(option, file.path);
           return option;
         }),
       );
@@ -212,7 +230,7 @@ export class TemplateDetail {
     })()
       .catch((error) => {
         if (this.active && epoch === this.epoch)
-          this.status.textContent = `模板预览不可用：${(error as Error).message} · 可重试或返回目录`;
+          copyText(this.status, m("模板预览不可用：{0} · 可重试或返回目录", [(error as Error).message]));
       })
       .finally(() => {
         this.flights.delete(flight);
@@ -238,7 +256,7 @@ export class TemplateDetail {
     setButton(this.create, {
       primary: true,
       onClick: this.createProject,
-      label: this.pending ? "继续上次创建" : "从此模板创建独立项目",
+      label: this.pending ? m("继续上次创建") : m("从此模板创建独立项目"),
       disabled: !this.active || (this.pending ? this.busy : this.blocked || !this.ready || !this.selected),
     });
     this.title.disabled = this.blocked || !this.selected;

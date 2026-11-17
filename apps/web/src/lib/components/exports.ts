@@ -1,21 +1,22 @@
-import { button, disclosure, note, readout, setButton, slot } from "@open-motion/components";
 import type { Job } from "@open-motion/render/contract";
 import type { Project } from "@open-motion/workspace/contract";
 import type { Client } from "../../api.js";
 import type { Editor } from "../editor.js";
+import type { Copy } from "../locale/index.js";
+import { attr, button, text as copyText, disclosure, m, note, readout, setButton, slot } from "../locale/index.js";
 
-const labels: Record<Job["state"], string> = {
-  queued: "等待中",
-  preparing: "准备资源",
-  capturing: "渲染中",
-  encoding: "编码中",
-  verifying: "校验中",
-  cancelling: "停止中",
-  succeeded: "已完成",
-  failed: "失败",
-  cancelled: "已取消",
-  interrupted: "已中断",
-  recovering: "等待恢复",
+const labels: Record<Job["state"], Copy> = {
+  queued: m("等待中"),
+  preparing: m("准备资源"),
+  capturing: m("渲染中"),
+  encoding: m("编码中"),
+  verifying: m("校验中"),
+  cancelling: m("停止中"),
+  succeeded: m("已完成"),
+  failed: m("失败"),
+  cancelled: m("已取消"),
+  interrupted: m("已中断"),
+  recovering: m("等待恢复"),
 };
 /** Business projection only. Closing this panel never cancels an accepted service-owned job. */
 export class Exports {
@@ -45,21 +46,21 @@ export class Exports {
     private client: Client,
     private run: (action: () => Promise<void>) => void,
   ) {
-    const view = disclosure(document, "影片导出", false);
+    const view = disclosure(document, m("影片导出"), false);
     this.element = view.element;
-    this.element.setAttribute("aria-label", "影片导出");
+    attr(this.element, "aria-label", m("影片导出"));
     this.rows = slot(document, "content");
-    this.status = readout(document, "导出状态", "");
+    this.status = readout(document, m("导出状态"), "");
     this.status.setAttribute("aria-live", "polite");
     this.create = button(document, {
-      label: "导出 MP4（30fps）",
+      label: m("导出 MP4（30fps）"),
       icon: "film",
       compact: true,
       onClick: () => this.run(() => this.submit()),
     });
     const navigation = slot(document, "toolbar");
     this.previousButton = button(document, {
-      label: "上一页导出",
+      label: m("上一页导出"),
       compact: true,
       disabled: true,
       onClick: () => {
@@ -69,7 +70,7 @@ export class Exports {
       },
     });
     this.nextButton = button(document, {
-      label: "下一页导出",
+      label: m("下一页导出"),
       compact: true,
       disabled: true,
       onClick: () => {
@@ -87,7 +88,7 @@ export class Exports {
     this.blocked = blocked;
     const key = project ? `${project.sessionId}:${project.artifactId}` : "";
     setButton(this.create, {
-      label: this.submissions.has(key) ? "重试导出提交" : "导出 MP4（30fps）",
+      label: this.submissions.has(key) ? m("重试导出提交") : m("导出 MP4（30fps）"),
       icon: "film",
       compact: true,
       disabled: blocked || !project,
@@ -101,7 +102,7 @@ export class Exports {
     this.signature = "";
     this.owner = project ? { sessionId: project.sessionId, artifactId: project.artifactId } : undefined;
     this.rows.replaceChildren();
-    this.status.value = "";
+    copyText(this.status, "");
     clearTimeout(this.timer);
     this.refresh();
   }
@@ -140,14 +141,14 @@ export class Exports {
         this.previousButton.disabled = this.cursors.length === 0;
         this.nextButton.disabled = !next;
         if (this.disposed || key !== this.key) return;
-        this.status.value = jobs.length ? `${jobs.length} 条导出记录` : "尚无导出记录";
+        copyText(this.status, jobs.length ? m("{0} 条导出记录", [jobs.length]) : m("尚无导出记录"));
         const signature = JSON.stringify(jobs);
         if (signature !== this.signature) {
           this.signature = signature;
           this.rows.replaceChildren(...jobs.map((j) => this.row(j)));
         }
       } catch (e) {
-        if (!this.disposed && key === this.key) this.status.value = (e as Error).message;
+        if (!this.disposed && key === this.key) copyText(this.status, (e as Error).message);
       }
       if (!this.disposed && key === this.key) this.timer = setTimeout(() => this.refresh(), 750);
     });
@@ -156,14 +157,14 @@ export class Exports {
     const row = slot(this.document, "toolbar");
     row.setAttribute("data-export-id", job.id);
     row.setAttribute("data-export-state", job.state);
-    row.append(note(this.document, `${labels[job.state]} · ${job.revision.slice(7, 19)}`));
+    row.append(note(this.document, m("{0} · {1}", [labels[job.state], job.revision.slice(7, 19)])));
     if (job.error) row.append(note(this.document, job.error));
     const owner = { id: job.id, sessionId: job.sessionId, artifactId: job.artifactId },
       command = { ...owner, requestId: crypto.randomUUID(), expectedVersion: job.version };
     if (["queued", "preparing", "capturing", "encoding", "verifying"].includes(job.state)) {
       row.append(
         button(this.document, {
-          label: "取消导出",
+          label: m("取消导出"),
           compact: true,
           onClick: () =>
             this.run(async () => {
@@ -177,7 +178,7 @@ export class Exports {
     if (["failed", "cancelled", "interrupted"].includes(job.state)) {
       row.append(
         button(this.document, {
-          label: "重试此导出",
+          label: m("重试此导出"),
           compact: true,
           onClick: () =>
             this.run(async () => {
@@ -191,7 +192,7 @@ export class Exports {
     if (job.state === "succeeded")
       row.append(
         button(this.document, {
-          label: "下载 MP4",
+          label: m("下载 MP4"),
           compact: true,
           onClick: () =>
             this.run(async () => {

@@ -1,5 +1,5 @@
-import { button, note, setButtonSelected, slot } from "@open-motion/components";
 import { type TemplateInput, templateSchemas } from "@open-motion/templates/contract";
+import { attr, button, text as copyText, m, note, setButtonSelected, slot } from "../../locale/index.js";
 
 export type Page = "editor" | "templates";
 type Position = { visit: string; index: number };
@@ -39,30 +39,30 @@ export class Pages {
     this.window = document.defaultView;
     this.element = slot(document, "navigation");
     this.element.setAttribute("role", "navigation");
-    this.element.setAttribute("aria-label", "工作区导航");
+    attr(this.element, "aria-label", m("工作区导航"));
     this.editor = button(document, {
-      label: "编辑工作区",
+      label: m("编辑工作区"),
       icon: "film",
       iconOnly: true,
       variant: "item",
       onClick: () => this.go("editor"),
     });
     this.templates = button(document, {
-      label: "模板库",
+      label: m("模板库"),
       icon: "layers",
       iconOnly: true,
       variant: "item",
       onClick: () => this.go("templates"),
     });
     this.back = button(document, {
-      label: "后退",
+      label: m("后退"),
       icon: "undo",
       iconOnly: true,
       variant: "ghost",
       onClick: () => this.move(-1),
     });
     this.forward = button(document, {
-      label: "前进",
+      label: m("前进"),
       icon: "redo",
       iconOnly: true,
       variant: "ghost",
@@ -189,7 +189,7 @@ export class Pages {
       this.window.history.pushState(this.state(), "", address);
     } catch {
       this.current = current;
-      this.status.textContent = "页面切换失败，请重试";
+      copyText(this.status, m("页面切换失败，请重试"));
       return;
     }
     this.maximum = this.current.index;
@@ -215,7 +215,7 @@ export class Pages {
       this.window.history.go(delta);
     } catch {
       this.traversing = false;
-      this.status.textContent = "页面切换失败，请重试";
+      copyText(this.status, m("页面切换失败，请重试"));
       this.render();
     }
   }

@@ -1,8 +1,8 @@
-import { button, disclosure, field } from "@open-motion/components";
 import type { Input } from "@open-motion/daemon/contract";
 import type { Artifact } from "@open-motion/workspace/contract";
 import type { Client } from "../../../api.js";
 import type { Editor } from "../../editor.js";
+import { attr, button, disclosure, display, field, m } from "../../locale/index.js";
 
 export class Archives {
   readonly element: HTMLDetailsElement;
@@ -16,21 +16,24 @@ export class Archives {
     client: Client,
     run: (action: () => Promise<void>, next?: () => Promise<void>) => void,
   ) {
-    const view = disclosure(document, "工程 ZIP");
+    const view = disclosure(document, m("工程 ZIP"));
     this.element = view.element;
     this.file = document.createElement("input");
     this.file.type = "file";
     this.file.accept = ".zip,application/zip";
-    this.file.setAttribute("aria-label", "导入 ZIP");
+    attr(this.file, "aria-label", m("导入 ZIP"));
     this.title = document.createElement("input");
     this.title.maxLength = 120;
-    this.title.setAttribute("aria-label", "ZIP 工程标题");
+    attr(this.title, "aria-label", m("ZIP 工程标题"));
     this.create = button(document, {
-      label: "导入 ZIP 工程",
+      label: m("导入 ZIP 工程"),
       onClick: () => {
         const file = this.file.files?.item(0);
         if (!file) return;
-        const title = this.title.value.trim() || file.name.replace(/\.zip$/i, "").slice(0, 120) || "导入工程";
+        const title =
+          this.title.value.trim() ||
+          file.name.replace(/\.zip$/i, "").slice(0, 120) ||
+          display(this.title, m("导入工程"));
         let artifact: Artifact;
         run(
           async () => {
@@ -43,7 +46,7 @@ export class Archives {
       },
     });
     this.download = button(document, {
-      label: "下载工程 ZIP",
+      label: m("下载工程 ZIP"),
       onClick: () => {
         let input: Input<"archive_export"> | undefined;
         run(async () => {
@@ -80,7 +83,7 @@ export class Archives {
     };
     view.body.append(
       field(document, "ZIP", this.file),
-      field(document, "工程标题", this.title),
+      field(document, m("工程标题"), this.title),
       this.create,
       this.download,
     );

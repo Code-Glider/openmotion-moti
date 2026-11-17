@@ -1,14 +1,14 @@
-import { pane, panelGrid, railLayout, slot } from "@open-motion/components";
+import { attr, m, pane, panelGrid, railLayout, slot } from "../locale/index.js";
 export function workspaceLayout(document: Document) {
   const shell = railLayout(document, { compact: true }),
     header = slot(document, "header"),
     editor = slot(document, "fill");
   shell.body.setAttribute("role", "region");
-  shell.body.setAttribute("aria-label", "编辑工作区");
+  attr(shell.body, "aria-label", m("编辑工作区"));
   header.setAttribute("role", "toolbar");
-  header.setAttribute("aria-label", "项目工具栏");
+  attr(header, "aria-label", m("项目工具栏"));
   editor.setAttribute("role", "region");
-  editor.setAttribute("aria-label", "项目编辑器");
+  attr(editor, "aria-label", m("项目编辑器"));
   shell.body.append(header, editor);
   return { element: shell.element, editor, header, rail: shell.rail, body: shell.body };
 }
@@ -16,16 +16,16 @@ export function workspaceLayout(document: Document) {
 export function studioLayout(document: Document) {
   const grid = panelGrid(document),
     registry = {
-      library: { label: "资源", symbol: "folder", cell: grid.leading, region: "图层与文件" },
-      canvas: { label: "预览", symbol: "eye", cell: grid.body, region: "画布与源码" },
-      inspector: { label: "属性", symbol: "layers", cell: grid.trailing, region: "属性" },
-      timeline: { label: "时间轴", symbol: "clock", cell: grid.footer, region: "时间轴" },
+      library: { label: m("资源"), symbol: "folder", cell: grid.leading, region: m("图层与文件") },
+      canvas: { label: m("预览"), symbol: "eye", cell: grid.body, region: m("画布与源码") },
+      inspector: { label: m("属性"), symbol: "layers", cell: grid.trailing, region: m("属性") },
+      timeline: { label: m("时间轴"), symbol: "clock", cell: grid.footer, region: m("时间轴") },
     } as const;
   const mount = (name: keyof typeof registry) => {
     const definition = registry[name],
       view = pane(document, definition.label, definition.symbol);
     definition.cell.setAttribute("role", "region");
-    definition.cell.setAttribute("aria-label", definition.region);
+    attr(definition.cell, "aria-label", definition.region);
     definition.cell.append(view.element);
     return view;
   };

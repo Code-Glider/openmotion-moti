@@ -37,6 +37,12 @@ guard:
       - suites/blob/src/control
       - suites/runtime/src/control
       - apps/web/src/lib
+      - apps/web/src/lib/locale
+      - apps/web/src/lib/locale/catalog
+      - apps/web/src/lib/locale/catalog/feedback
+      - apps/web/src/lib/locale/catalog/editor
+      - apps/web/src/lib/locale/catalog/library
+      - apps/web/src/lib/locale/catalog/workspace
       - apps/web/src/lib/components
       - apps/web/src/lib/components/studio
       - apps/web/src/lib/components/studio/library

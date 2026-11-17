@@ -1,7 +1,7 @@
-import { button, dialog, note, setButton, slot } from "@open-motion/components";
 import type { ContentVersion, Input, Output } from "@open-motion/workspace/contract";
 import type { Client } from "../../../api.js";
 import type { Editor } from "../../editor.js";
+import { attr, button, text as copyText, dialog, m, note, setButton, slot } from "../../locale/index.js";
 
 /** Read-only version pages; the existing Editor owns save/restore intents and source application. */
 export class Versions {
@@ -29,23 +29,23 @@ export class Versions {
     private client: Client,
     private run: (action: () => Promise<void>) => unknown,
   ) {
-    this.view = dialog(document, "版本历史", true);
-    this.status = note(document, "打开版本历史以读取工程快照");
+    this.view = dialog(document, m("版本历史"), true);
+    this.status = note(document, m("打开版本历史以读取工程快照"));
     this.status.setAttribute("role", "status");
-    this.status.setAttribute("aria-label", "版本读取状态");
+    attr(this.status, "aria-label", m("版本读取状态"));
     this.list = slot(document, "stack");
     this.list.setAttribute("role", "list");
-    this.list.setAttribute("aria-label", "工程版本");
-    this.restore = button(document, { label: "恢复为新版本", primary: true, onClick: () => this.apply() });
+    attr(this.list, "aria-label", m("工程版本"));
+    this.restore = button(document, { label: m("恢复为新版本"), primary: true, onClick: () => this.apply() });
     this.previous = button(document, {
-      label: "上一页版本",
+      label: m("上一页版本"),
       onClick: () => {
         this.cursor = this.history.pop();
         this.load();
       },
     });
     this.next = button(document, {
-      label: "下一页版本",
+      label: m("下一页版本"),
       onClick: () => {
         if (this.page?.nextCursor) {
           this.history.push(this.cursor);
@@ -54,11 +54,11 @@ export class Versions {
         }
       },
     });
-    this.refresh = button(document, { label: "刷新版本历史", onClick: () => this.reset() });
+    this.refresh = button(document, { label: m("刷新版本历史"), onClick: () => this.reset() });
     const pages = slot(document, "toolbar");
     pages.append(this.previous, this.next, this.refresh);
     this.view.body.append(
-      note(document, "每页五个完整快照。恢复会先保存当前修改，再创建新版本；后续版本会保留。"),
+      note(document, m("每页五个完整快照。恢复会先保存当前修改，再创建新版本；后续版本会保留。")),
       this.status,
       this.list,
       pages,
@@ -104,12 +104,12 @@ export class Versions {
       controller = new AbortController();
     this.controller = controller;
     if (!project) {
-      this.status.textContent = "先打开工程";
+      copyText(this.status, m("先打开工程"));
       this.controls();
       return;
     }
     this.loading = true;
-    this.status.textContent = "正在读取版本";
+    copyText(this.status, m("正在读取版本"));
     this.controls();
     const flight = this.client
       .execute(
@@ -122,12 +122,12 @@ export class Versions {
           if (this.disposed || epoch !== this.epoch) return;
           this.page = page;
           if (!page.versions.some((v) => v.id === this.selected)) this.selected = page.versions[0]?.id;
-          this.status.textContent = page.newerAvailable ? "此分页读取期间有新版本，请刷新查看" : "版本已就绪";
+          copyText(this.status, page.newerAvailable ? m("此分页读取期间有新版本，请刷新查看") : m("版本已就绪"));
           this.paint();
         },
         (error) => {
           if (!this.disposed && epoch === this.epoch)
-            this.status.textContent = `版本读取失败：${(error as Error).message}`;
+            copyText(this.status, m("版本读取失败：{0}", [(error as Error).message]));
         },
       )
       .finally(() => {
@@ -140,7 +140,7 @@ export class Versions {
     this.flights.add(flight);
   }
   private label(version: ContentVersion) {
-    return version.kind === "legacy" ? `既有快照 #${version.number}（时间与先后未知）` : `v${version.number}`;
+    return version.kind === "legacy" ? m("既有快照 #{0}（时间与先后未知）", [version.number]) : `v${version.number}`;
   }
   private paint() {
     const document = this.list.ownerDocument;
@@ -157,17 +157,28 @@ export class Versions {
           },
         }),
         current = version.id === this.page?.current.id,
-        kinds = { create: "创建", edit: "编辑", undo: "撤销", redo: "重做", restore: "恢复", legacy: "既有快照" };
+        kinds = {
+          create: m("创建"),
+          edit: m("编辑"),
+          undo: m("撤销"),
+          redo: m("重做"),
+          restore: m("恢复"),
+          legacy: m("既有快照"),
+        };
       row.setAttribute("role", "listitem");
       row.append(
         select,
         note(
           document,
-          `${kinds[version.kind]}${current ? " · 当前版本" : ""}${version.createdAt === null ? "" : ` · ${new Date(version.createdAt).toLocaleString("zh-CN")}`}`,
+          m("{0}{1}{2}", [
+            kinds[version.kind],
+            current ? m(" · 当前版本") : "",
+            version.createdAt === null ? "" : m(" · {0}", [{ date: version.createdAt }]),
+          ]),
         ),
       );
-      if (!version.restorable) row.append(note(document, `无法恢复：${version.unavailableFiles.join("、")}`));
-      if (version.restoredFromVersionId) row.append(note(document, "此版本由历史快照恢复，原版本仍保留"));
+      if (!version.restorable) row.append(note(document, m("无法恢复：{0}", [version.unavailableFiles.join("、")])));
+      if (version.restoredFromVersionId) row.append(note(document, m("此版本由历史快照恢复，原版本仍保留")));
       this.list.append(row);
     }
   }
@@ -180,10 +191,10 @@ export class Versions {
       version = this.page?.versions.find((v) => v.id === this.selected);
     setButton(this.restore, {
       label: pending
-        ? "继续上次恢复"
+        ? m("继续上次恢复")
         : this.editor.dirty || this.editor.drafts?.dirty()
-          ? "保存当前修改并恢复为新版本"
-          : "恢复为新版本",
+          ? m("保存当前修改并恢复为新版本")
+          : m("恢复为新版本"),
       primary: true,
       onClick: () => this.apply(),
     });

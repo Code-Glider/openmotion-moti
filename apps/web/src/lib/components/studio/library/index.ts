@@ -1,10 +1,9 @@
-import { button, field, note, slot, tabs, tree } from "@open-motion/components";
 import type { Input } from "@open-motion/daemon/contract";
 import type { Clip } from "@open-motion/motion/contract";
 import { isFontResource, type Resource, resourceLimit } from "@open-motion/workspace/contract";
-
 import type { Client } from "../../../../api.js";
 import type { Editor } from "../../../editor.js";
+import { attr, button, field, m, note, slot, tabs, tree } from "../../../locale/index.js";
 import type { CompositionContext } from "../context.js";
 import { insertResource } from "../transactions.js";
 import { SourceFiles } from "./files.js";
@@ -41,7 +40,7 @@ export class StudioLibrary {
       if (this.current) this.update(this.current.clips, this.current.selected, this.current.blocked);
     };
     this.layers = tree(document, {
-      label: "工程图层",
+      label: m("工程图层"),
       select: choose,
       expand: (id, open) => {
         if (open) this.expanded.add(id);
@@ -50,7 +49,7 @@ export class StudioLibrary {
       },
     });
     this.tabs = tabs(document, {
-      label: "资源视图",
+      label: m("资源视图"),
       select: (id) => {
         this.mode = id;
         this.sync(this.blocked);
@@ -59,12 +58,12 @@ export class StudioLibrary {
     });
     this.files = new SourceFiles(document, editing, file);
     this.media = slot(document, "content");
-    this.media.setAttribute("aria-label", "工程媒体");
+    attr(this.media, "aria-label", m("工程媒体"));
     this.mediaList = slot(document, "content");
     this.upload = document.createElement("input");
     this.upload.type = "file";
     this.upload.accept = ".png,.wav,.ttf,.otf,.woff,.woff2";
-    this.upload.setAttribute("aria-label", "导入媒体");
+    attr(this.upload, "aria-label", m("导入媒体"));
     this.upload.addEventListener("change", () => {
       const file = this.upload.files?.item(0),
         owner = this.editing.editor.project;
@@ -97,10 +96,12 @@ export class StudioLibrary {
     this.generation = new GenerationPanel(document, editing);
     this.media.append(
       this.generation.element,
-      field(document, "导入媒体", this.upload),
+      field(document, m("导入媒体"), this.upload),
       note(
         document,
-        "PNG / PCM16 WAV / TTF / OTF / WOFF / WOFF2 · 单资源最多 16 MiB；素材随工程历史持久保存。导入字体后可在文本图层的字体选项中选择。",
+        m(
+          "PNG / PCM16 WAV / TTF / OTF / WOFF / WOFF2 · 单资源最多 16 MiB；素材随工程历史持久保存。导入字体后可在文本图层的字体选项中选择。",
+        ),
       ),
       this.mediaList,
     );
@@ -112,9 +113,9 @@ export class StudioLibrary {
     this.files.update(blocked || !!this.editing.editor.drafts?.dirty());
     this.tabs.update(
       [
-        { id: "media", label: "媒体" },
-        { id: "layers", label: "图层" },
-        { id: "files", label: "文件" },
+        { id: "media", label: m("媒体") },
+        { id: "layers", label: m("图层") },
+        { id: "files", label: m("文件") },
       ],
       this.mode,
       blocked,
@@ -143,9 +144,12 @@ export class StudioLibrary {
           const document = this.mediaList.ownerDocument,
             row = slot(document, "content");
           row.append(
-            note(document, `${asset.name} · ${asset.type} · ${(asset.bytes / 1024).toFixed(1)} KiB`),
+            note(
+              document,
+              m("{0} · {1} · {2} KiB", [asset.name, asset.type, { number: asset.bytes / 1024, digits: 1 }]),
+            ),
             button(document, {
-              label: `插入 ${asset.name}`,
+              label: m("插入 {0}", [asset.name]),
               compact: true,
               onClick: () => {
                 const project = this.editing.editor.project;
@@ -166,7 +170,7 @@ export class StudioLibrary {
               },
             }),
             button(document, {
-              label: `移除资源 ${asset.name}`,
+              label: m("移除资源 {0}", [asset.name]),
               compact: true,
               onClick: () => {
                 const owner = this.editing.editor.project;

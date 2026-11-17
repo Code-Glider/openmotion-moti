@@ -1,8 +1,25 @@
-import { badge, button, disclosure, field, note, numberField, slot } from "@open-motion/components";
 import { type Animation, type AnimationInput, type Clip, eases, properties } from "@open-motion/motion/contract";
 import { timeAtProgress } from "@open-motion/motion/protocol";
+import {
+  attr,
+  badge,
+  button,
+  text as copyText,
+  disclosure,
+  field,
+  m,
+  note,
+  numberField,
+  slot,
+} from "../../locale/index.js";
 
-const labels = { x: "动画 X", y: "动画 Y", rotation: "动画旋转", opacity: "动画不透明度", scale: "动画缩放" };
+const labels = {
+  x: m("动画 X"),
+  y: m("动画 Y"),
+  rotation: m("动画旋转"),
+  opacity: m("动画不透明度"),
+  scale: m("动画缩放"),
+};
 type Frame = Extract<AnimationInput, { action: "put" }>["frames"][number];
 export class AnimationEditor {
   readonly element: HTMLElement;
@@ -37,7 +54,7 @@ export class AnimationEditor {
     document: Document,
     private actions: { change(): void; apply(): void; seek(time: number): void },
   ) {
-    const view = disclosure(document, "关键帧动画"),
+    const view = disclosure(document, m("关键帧动画")),
       timing = slot(document, "pair"),
       controls = slot(document, "toolbar");
     this.element = document.createElement("section");
@@ -45,25 +62,25 @@ export class AnimationEditor {
     inset.append(view.element);
     this.element.append(inset);
     this.tracks = document.createElement("select");
-    this.tracks.setAttribute("aria-label", "动画选择");
+    attr(this.tracks, "aria-label", m("动画选择"));
     this.property = document.createElement("select");
-    this.property.setAttribute("aria-label", "动画属性");
+    attr(this.property, "aria-label", m("动画属性"));
     for (const name of properties) {
       const o = document.createElement("option");
       o.value = name;
-      o.textContent = labels[name];
+      copyText(o, labels[name]);
       this.property.append(o);
     }
     this.runEase = document.createElement("select");
-    this.runEase.setAttribute("aria-label", "动画整体缓动");
+    attr(this.runEase, "aria-label", m("动画整体缓动"));
     const inherited = document.createElement("option");
     inherited.value = "";
-    inherited.textContent = "原生默认";
+    copyText(inherited, m("原生默认"));
     this.runEase.append(inherited);
     for (const name of eases) {
       const option = document.createElement("option");
       option.value = name;
-      option.textContent = name;
+      copyText(option, name);
       this.runEase.append(option);
     }
     const change = () => {
@@ -71,16 +88,16 @@ export class AnimationEditor {
       this.mark();
     };
     this.runEase.onchange = change;
-    this.start = numberField(document, { label: "动画开始秒", unit: "s", min: 0, change });
-    this.duration = numberField(document, { label: "动画持续秒", unit: "s", min: 0, change });
+    this.start = numberField(document, { label: m("动画开始秒"), unit: "s", min: 0, change });
+    this.duration = numberField(document, { label: m("动画持续秒"), unit: "s", min: 0, change });
     timing.append(
-      field(document, "动画开始秒", this.start.element),
-      field(document, "动画持续秒", this.duration.element),
+      field(document, m("动画开始秒"), this.start.element),
+      field(document, m("动画持续秒"), this.duration.element),
     );
-    this.message = badge(document, "动画状态", "");
+    this.message = badge(document, m("动画状态"), "");
     this.host = slot(document, "stack");
     this.save = button(document, {
-      label: "保存动画",
+      label: m("保存动画"),
       icon: "save",
       primary: true,
       compact: true,
@@ -91,7 +108,7 @@ export class AnimationEditor {
       },
     });
     this.remove = button(document, {
-      label: "删除动画",
+      label: m("删除动画"),
       icon: "close",
       compact: true,
       onClick: () => {
@@ -100,9 +117,9 @@ export class AnimationEditor {
         actions.apply();
       },
     });
-    this.add = button(document, { label: "添加关键帧", icon: "plus", compact: true, onClick: () => this.insert() });
+    this.add = button(document, { label: m("添加关键帧"), icon: "plus", compact: true, onClick: () => this.insert() });
     this.discard = button(document, {
-      label: "放弃动画草稿",
+      label: m("放弃动画草稿"),
       compact: true,
       onClick: () => {
         this.changed = false;
@@ -137,7 +154,7 @@ export class AnimationEditor {
       this.mark();
     };
     this.conversion = button(document, {
-      label: "转换原生关键帧",
+      label: m("转换原生关键帧"),
       compact: true,
       onClick: () => {
         this.operation = "convert";
@@ -146,7 +163,7 @@ export class AnimationEditor {
       },
     });
     this.separation = button(document, {
-      label: "拆分属性轨道",
+      label: m("拆分属性轨道"),
       compact: true,
       onClick: () => {
         this.operation = "separate";
@@ -156,11 +173,11 @@ export class AnimationEditor {
     });
     controls.append(this.conversion, this.separation, this.add, this.save, this.remove, this.discard);
     view.body.append(
-      note(document, "数值关键帧作用于图层的绝对时间窗；不同属性可独立成轨，复杂或动态脚本保持只读。"),
-      field(document, "动画选择", this.tracks),
+      note(document, m("数值关键帧作用于图层的绝对时间窗；不同属性可独立成轨，复杂或动态脚本保持只读。")),
+      field(document, m("动画选择"), this.tracks),
       this.message,
-      field(document, "动画属性", this.property),
-      field(document, "动画整体缓动", this.runEase),
+      field(document, m("动画属性"), this.property),
+      field(document, m("动画整体缓动"), this.runEase),
       timing,
       this.host,
       controls,
@@ -216,31 +233,37 @@ export class AnimationEditor {
         tools = slot(document, "toolbar"),
         change = () => this.mark();
       const percentage = numberField(document, {
-          label: `关键帧 ${index + 1} 位置`,
+          label: m("关键帧 {0} 位置", [index + 1]),
           unit: "%",
           min: 0,
           max: 100,
           change,
         }),
-        value = numberField(document, { label: `关键帧 ${index + 1} 值`, unit: "", min: -65536, max: 65536, change });
+        value = numberField(document, {
+          label: m("关键帧 {0} 值", [index + 1]),
+          unit: "",
+          min: -65536,
+          max: 65536,
+          change,
+        });
       percentage.value(frame.percentage);
       value.value(frame.value);
       const ease = document.createElement("select");
-      ease.setAttribute("aria-label", `关键帧 ${index + 1} 缓动`);
+      attr(ease, "aria-label", m("关键帧 {0} 缓动", [index + 1]));
       const fallback = document.createElement("option");
       fallback.value = "";
-      fallback.textContent = "原生默认";
+      copyText(fallback, m("原生默认"));
       ease.append(fallback);
       for (const name of eases) {
         const o = document.createElement("option");
         o.value = name;
-        o.textContent = name;
+        copyText(o, name);
         ease.append(o);
       }
       ease.value = frame.ease ?? "";
       ease.onchange = change;
       const seek = button(document, {
-        label: `跳到关键帧 ${index + 1}`,
+        label: m("跳到关键帧 {0}", [index + 1]),
         icon: "eye",
         compact: true,
         onClick: () =>
@@ -251,7 +274,7 @@ export class AnimationEditor {
           ),
       });
       const remove = button(document, {
-        label: `删除关键帧 ${index + 1}`,
+        label: m("删除关键帧 {0}", [index + 1]),
         icon: "close",
         compact: true,
         onClick: () => {
@@ -261,9 +284,9 @@ export class AnimationEditor {
           this.mark();
         },
       });
-      pair.append(field(document, "位置", percentage.element), field(document, "值", value.element));
+      pair.append(field(document, m("位置"), percentage.element), field(document, m("值"), value.element));
       tools.append(seek, remove);
-      root.append(pair, field(document, "缓动", ease), tools);
+      root.append(pair, field(document, m("缓动"), ease), tools);
       this.host.append(root);
       this.rows.push({ percentage, value, ease, seek, remove });
     });
@@ -289,7 +312,7 @@ export class AnimationEditor {
             { percentage: 100, value: 1, ease: "none" },
           ],
     );
-    this.message.value = animation?.reason ?? clip?.animationReason ?? "原生数值关键帧";
+    copyText(this.message, animation?.reason ?? clip?.animationReason ?? m("原生数值关键帧"));
     this.block(this.blocked);
   }
   update(owner: string, clip: Clip | undefined, blocked: boolean) {
@@ -312,14 +335,20 @@ export class AnimationEditor {
       const document = this.tracks.ownerDocument,
         newOption = document.createElement("option");
       newOption.value = "";
-      newOption.textContent = "新动画";
+      copyText(newOption, m("新动画"));
       this.tracks.append(newOption);
       for (const animation of clip?.animations ?? []) {
         const o = document.createElement("option");
         o.value = animation.id;
-        o.textContent = animation.property
-          ? `${labels[animation.property]} · ${animation.start === null ? "未知" : animation.start.toFixed(2)}s`
-          : animation.id;
+        copyText(
+          o,
+          animation.property
+            ? m("{0} · {1}s", [
+                labels[animation.property],
+                animation.start === null ? m("未知") : { number: animation.start, digits: 2 },
+              ])
+            : animation.id,
+        );
         this.tracks.append(o);
       }
       this.tracks.value = this.identity;

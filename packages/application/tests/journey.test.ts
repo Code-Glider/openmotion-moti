@@ -357,6 +357,31 @@ it("continues installed MCP projects in the actual Web, retains history and reop
     await ready();
     await preview();
     await driver.capture("installed-restored");
+    const retainedFrame = await page.locator("iframe").getAttribute("src");
+    await page.getByRole("button", { name: "界面设置", exact: true }).click();
+    const settingsId = await page.getByRole("dialog", { name: "界面设置", exact: true }).getAttribute("id");
+    const settings = page.locator(`[id="${settingsId}"]`);
+    await settings.locator('select[name="locale"]').selectOption("en");
+    await settings.getByRole("button", { name: "应用并保存界面", exact: true }).click();
+    await settings.getByRole("status").filter({ hasText: "Interface settings saved and synchronized" }).waitFor();
+    expect((await mcp.call("workspace_preferences", {})).value.locale).toBe("en");
+    expect(await page.locator("iframe").getAttribute("src")).toBe(retainedFrame);
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await page.getByLabel("Preview status", { exact: true }).filter({ hasText: "Preview ready" }).waitFor();
+    expect(await page.getByRole("button", { name: "Save", exact: true }).count()).toBe(1);
+    expect(await mcp.call("project_read", owner)).toEqual(continued);
+    await driver.capture("installed-english-reloaded");
+    await page.getByRole("button", { name: "Interface settings", exact: true }).click();
+    const englishSettings = page.getByRole("dialog", { name: "Interface settings", exact: true });
+    await englishSettings.locator('select[name="locale"]').selectOption("zh-CN");
+    await englishSettings.getByRole("button", { name: "Apply and save interface", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: "界面设置", exact: true })
+      .getByRole("status")
+      .filter({ hasText: "界面设置已保存并同步" })
+      .waitFor();
+    await page.keyboard.press("Escape");
     if (film) {
       expect(await mcp.call("export_read", { ...owner, id: film.id })).toEqual(film);
       const info = await mcp.call("export_download", { ...owner, id: film.id }),

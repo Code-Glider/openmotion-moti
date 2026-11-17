@@ -1,6 +1,8 @@
 import type { Observation, WorkspaceView } from "@open-motion/workspace/contract";
 import type { Client } from "../api.js";
 import type { Editor } from "./editor.js";
+import type { Copy } from "./locale/index.js";
+import { m } from "./locale/index.js";
 
 /** Bodies use existing bounded APIs; matching metadata fences prevent torn view publication. */
 export async function observedView(
@@ -42,13 +44,13 @@ export function observeWorkspace(
     available(): boolean;
     generation(): number;
     changed(): void;
-    status(value: string, state: ConnectionState): void;
+    status(value: Copy, state: ConnectionState): void;
   },
 ) {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined, flight: Promise<void> | undefined;
   let state: ConnectionState | undefined;
-  const status = (value: string, next: ConnectionState) => {
+  const status = (value: Copy, next: ConnectionState) => {
     if (state === next) return;
     state = next;
     options.status(value, next);
@@ -60,19 +62,21 @@ export function observeWorkspace(
     flight = (async () => {
       if (!options.available() || !editor.initialized || editor.unconfirmed) return;
       try {
-        if (manual || state === undefined) status("正在连接工作区，当前内容与草稿仍保留", "connecting");
+        if (manual || state === undefined) status(m("正在连接工作区，当前内容与草稿仍保留"), "connecting");
         const generation = options.generation();
         const changed = await editor.observe(
           controller.signal,
           () => options.available() && options.generation() === generation,
         );
         if (controller.signal.aborted) return;
-        status("已连接", "connected");
+        status(m("已连接"), "connected");
         if (changed) options.changed();
       } catch {
         if (!controller.signal.aborted)
           status(
-            "工作区同步暂不可用，当前内容与草稿仍保留。请确认实例已启动；若实例已重启，请通过 odsuite status 获取当前入口。",
+            m(
+              "工作区同步暂不可用，当前内容与草稿仍保留。请确认实例已启动；若实例已重启，请通过 odsuite status 获取当前入口。",
+            ),
             "disconnected",
           );
       }
