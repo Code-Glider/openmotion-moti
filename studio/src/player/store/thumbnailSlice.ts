@@ -16,7 +16,7 @@ export interface ThumbnailSlice {
   thumbnailRevisions: Readonly<Record<string, number>>;
   setThumbnailMode: (mode: ThumbnailMode) => void;
   /** `null` moves every composition, e.g. after a root or asset change. */
-  bumpThumbnailRevisions: (compositions: readonly string[] | null) => void;
+  bumpThumbnailRevisions: (compositions: readonly string[] | null, changedFile?: string) => void;
 }
 
 export function thumbnailRevisionOf(
@@ -34,11 +34,15 @@ export function createThumbnailSlice(set: StoreApi<ThumbnailSlice>["setState"]):
       writeStudioUiPreferences({ thumbnailMode: mode });
       set({ thumbnailMode: mode });
     },
-    bumpThumbnailRevisions: (compositions) =>
+    bumpThumbnailRevisions: (compositions, changedFile) =>
       set(({ thumbnailRevisions }) => {
         const next = { ...thumbnailRevisions };
         for (const path of compositions?.map(revisionKey) ?? [EVERY_COMPOSITION]) {
           next[path] = (next[path] ?? 0) + 1;
+        }
+        if (changedFile) {
+          const key = "file:" + changedFile.replace(/\\/g, "/").replace(/^\.?\//, "");
+          next[key] = (next[key] ?? 0) + 1;
         }
         return { thumbnailRevisions: next };
       }),

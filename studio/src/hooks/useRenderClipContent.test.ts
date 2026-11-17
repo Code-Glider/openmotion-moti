@@ -498,12 +498,15 @@ describe("useRenderClipContent", () => {
     try {
       act(() => root.render(React.createElement(Harness)));
       expect(src()).toBe(source);
-      act(() => usePlayerStore.getState().bumpThumbnailRevisions(null));
+      act(() => usePlayerStore.getState().bumpThumbnailRevisions(null, "index.html"));
+      expect(src()).toBe(source);
+      const assetPath = tag === "img" ? "assets/clip.svg" : "assets/clip.mp4";
+      act(() => usePlayerStore.getState().bumpThumbnailRevisions(null, assetPath));
       const updated = new URL(src()!);
       expect(updated.searchParams.get("revision")).toBe("1");
       expect(updated.searchParams.get("v")).toBe("original");
       expect(updated.hash).toBe("#frame");
-      act(() => usePlayerStore.getState().bumpThumbnailRevisions(null));
+      act(() => usePlayerStore.getState().bumpThumbnailRevisions(null, assetPath));
       expect(new URL(src()!).searchParams.get("revision")).toBe("2");
     } finally { act(() => root.unmount()); }
   });
