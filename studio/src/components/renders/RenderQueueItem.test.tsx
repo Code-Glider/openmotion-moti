@@ -85,7 +85,7 @@ describe('export task recovery', () => {
 
   it('copies only allowlisted, redacted diagnostics for the original task without inventing an export failure', async () => {
     const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
-    render({ status: 'unknown', stage: 'Encoding frame 46/100', error: 'Worker disconnected; Authorization: Bearer private-credential\nFile /Users/alice/private/result.mp4', settings: {
+    render({ status: 'unknown', stage: 'Encoding frame 46/100', error: 'Worker disconnected; Authorization: Bearer private-credential\nFile /tmp/redaction-fixture/private/result.mp4', settings: {
       format: 'mp4', fps: 24, quality: 'high', resolution: 'landscape', composition: 'intro.html',
       variables: { source: '<html>full project source</html>' }, chat: 'private conversation', apiKey: 'private-key-value',
     } });
@@ -97,7 +97,7 @@ describe('export task recovery', () => {
     expect(diagnostic).toContain('intro.html');
     expect(diagnostic).toContain('Worker disconnected');
     expect(diagnostic).not.toContain('private-credential');
-    expect(diagnostic).not.toContain('/Users/alice');
+    expect(diagnostic).not.toContain('/tmp/redaction-fixture');
     expect(diagnostic).not.toContain('private conversation');
     expect(diagnostic).not.toContain('private-key-value');
     expect(diagnostic).not.toContain('full project source');
