@@ -258,6 +258,31 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
 
 
 describe("row quick insertion", () => {
+  it.each([
+    ["font", false], ["image", false], ["image", true], ["audio", false], ["audio", true],
+  ] as const)("dismisses failed quick-add feedback without activating the %s row (used=%s)", async (kind, used) => {
+    const add = vi.fn().mockResolvedValue(false);
+    const copy = vi.fn();
+    const asset = kind === "font" ? "assets/AlbertSans.ttf" : kind === "audio" ? "assets/music.mp3" : "assets/logo.png";
+    usePlayerStore.getState().setElements([clip({ id: "existing", src: asset })]);
+    useAssetPreviewStore.getState().setPreviewAsset("assets/other.png", "p1");
+    const props = { asset, used, onCopy: copy, copyFeedback: null, onAddAssetToTimeline: add };
+    const host = mount(kind === "font" ? <FontRow {...props} /> : kind === "audio" ? <AudioRow {...props} projectId="p1" /> : <AssetCard {...props} projectId="p1" />);
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!.click());
+    const dismiss = document.querySelector<HTMLButtonElement>('.hf-toast-viewport button[aria-label="Dismiss error"]')!;
+    expect(dismiss).not.toBeNull();
+    act(() => {
+      dismiss.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 5, clientY: 5 }));
+      dismiss.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 5, clientY: 5 }));
+      dismiss.click();
+    });
+    expect(copy).not.toHaveBeenCalled();
+    expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/other.png");
+    expect(usePlayerStore.getState().selectedElementId).toBeNull();
+    expect(add).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.classList.contains("hf-toast-exit")).toBe(true);
+  });
+
   it.each(["font", "audio"])("adds %s without copying or opening preview", async kind => {
     const add = vi.fn().mockResolvedValue(true);
     const copy = vi.fn();

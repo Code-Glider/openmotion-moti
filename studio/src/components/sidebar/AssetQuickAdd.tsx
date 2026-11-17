@@ -25,8 +25,11 @@ export function AssetQuickAdd({ asset, onAdd, compact = false }: { asset: string
     }
   };
   const label = t(adding ? "Adding…" : "Add at playhead");
-  return <>
-    <div className="om-media-quick-actions" data-busy={adding || undefined} data-compact={compact || undefined}>
+  // Portaled Toast events still bubble through React's owning asset row.
+  return <div className="om-media-quick-actions" data-busy={adding || undefined} data-compact={compact || undefined}
+      onPointerDown={event => event.stopPropagation()}
+      onPointerUp={event => event.stopPropagation()}
+      onClick={event => event.stopPropagation()}>
       <Tooltip label={label} wrap>
         <IconButton type="button" variant="primary" className="om-media-quick-add"
           aria-label={label} aria-busy={adding} disabled={adding} draggable={false}
@@ -36,7 +39,6 @@ export function AssetQuickAdd({ asset, onAdd, compact = false }: { asset: string
           onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}
           onClick={event => { event.stopPropagation(); void add(); }} />
       </Tooltip>
-    </div>
     <StudioToastViewport toasts={toasts} dismissToast={dismissToast} />
-  </>;
+  </div>;
 }
