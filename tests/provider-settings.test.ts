@@ -464,16 +464,17 @@ test('completed sign-in delivers its source through the shared sender and respec
   const fields = batch[0].properties;
   assert.equal(fields.outcome, 'success'); assert.equal(fields.product, 'openmotion');
   assert.equal(fields.source_product, 'openmotion'); assert.equal(fields.source_detail, 'openmotion_editor_login');
+  assert.equal(fields.amr_user_id, 'fixture-user-id');
   assert.equal(fields.installation_id, installationId); assert.equal(fields.distinct_id, installationId); assert.equal(fields.utm_source, 'creator');
   assert.notEqual(fields.entry_id, fields.attempt_id);
-  assert.doesNotMatch(JSON.stringify(batches), /fixture@example|fixture-user-id|synthetic-private|TEST-123|open-design\.ai/);
+  assert.doesNotMatch(JSON.stringify(batches), /fixture@example|synthetic-private|TEST-123|open-design\.ai/);
   enabled = false;
   await account.logout(); await rm(path.join(account.home, 'authorize'));
   await signIn(account);
   assert.equal(await tracking.flush(), 'disabled'); assert.equal(batches.length, 1);
 }));
 
-test('each finished sign-in attempt gives telemetry one record the tracker accepts, without account data', t => fixture(async store => {
+test('finished sign-in reports the confirmed account only on success, without credentials or personal details', t => fixture(async store => {
   await chmod(binary, 0o755);
   const records: SignInRecord[] = [];
   const account = new OpenDesignAccount(store.directory, { binary, track: record => records.push(record) }); t.after(() => account.close());
@@ -500,7 +501,7 @@ test('each finished sign-in attempt gives telemetry one record the tracker accep
   const [success, cancelled, failure] = records;
   const { attempt_id: _id, entry_id, entry_occurred_at, duration_ms, prepare_ms, link_ms, approved_ms, ...fixed } = success;
   assert.deepEqual(fixed, { outcome: 'success', connector_version: '0.1.10', resumed: false, last_stage: 'credential_persist_result', last_result: 'success',
-    source_product: 'openmotion', source_detail: 'openmotion_editor_login',
+    source_product: 'openmotion', source_detail: 'openmotion_editor_login', amr_user_id: 'fixture-user-id',
     browser_opened: true, receipt: 'accepted', exit_code: 0 });
   assert.match(entry_id!, /^[0-9a-f-]{36}$/); assert.notEqual(entry_id, success.attempt_id);
   assert.equal(new Date(entry_occurred_at!).toISOString(), entry_occurred_at);
@@ -509,9 +510,10 @@ test('each finished sign-in attempt gives telemetry one record the tracker accep
   assert.equal(cancelled.error_code, undefined); assert.equal(cancelled.last_stage, 'browser_open_result'); assert.equal(cancelled.approved_ms, undefined);
   assert.equal(failure.error_code, 'authorization_expired'); assert.equal(failure.error_kind, 'oauth_denied');
   assert.equal(failure.last_stage, 'device_authorization_result'); assert.equal(failure.last_result, 'failed'); assert.equal(failure.exit_code, 1);
+  assert.equal(cancelled.amr_user_id, undefined); assert.equal(failure.amr_user_id, undefined);
   assert.equal(new Set(records.map(record => record.attempt_id)).size, 3);
   for (const record of records) assert(validProperties(omEvents, 'account_sign_in_result', record), JSON.stringify(record));
-  assert.doesNotMatch(JSON.stringify(records), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id/);
+  assert.doesNotMatch(JSON.stringify(records), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user/);
 }));
 
 test('sign-out keeps an undelivered revocation and retries it after a restart and on refresh', t => fixture(async store => {
