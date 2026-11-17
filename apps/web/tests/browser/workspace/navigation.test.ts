@@ -160,6 +160,20 @@ afterEach(async (context) => {
 it("browses without a project, retains drafts through page history and keeps acknowledged project intent on forward/reload", async () => {
   const page = driver.page,
     operations: string[] = [];
+  // Fetch starts belong to the creating document. A retiring editor's task poll may
+  // still emit a browser request event while reload is committing the new catalogue.
+  await page.addInitScript(() => {
+    if (window !== window.top) return;
+    const started: string[] = [],
+      original = window.fetch.bind(window);
+    Reflect.set(window, "navigationOperations", started);
+    window.fetch = (input, init) => {
+      const address = typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+        operation = new URL(address, location.href).pathname.split("/api/")[1];
+      if (operation) started.push(operation);
+      return original(input, init);
+    };
+  });
   page.on("request", (request) => {
     const op = new URL(request.url()).pathname.split("/api/")[1];
     if (op) operations.push(op);
@@ -222,7 +236,7 @@ it("browses without a project, retains drafts through page history and keeps ack
   operations.length = 0;
   await page.reload();
   await expect.poll(() => cards.count()).toBe(3);
-  expect(operations).toEqual(["template_list"]);
+  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toEqual(["template_list"]);
   expect((await client.execute("workspace_state", {})).selection.artifactId).toBeNull();
   await nav.getByRole("button", { name: "编辑工作区", exact: true }).click();
   await ready();
@@ -251,6 +265,7 @@ it("browses without a project, retains drafts through page history and keeps ack
   expect((await client.execute("workspace_state", {})).selection).toEqual(before.selection);
   // Save in an earlier page-history entry, then forward through an older URL.
   await click("保存");
+  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toContain("project_save");
   const fresh = new URL(page.url()).hash;
   expect(fresh).not.toBe(intended.fragment);
   await nav.getByRole("button", { name: "前进", exact: true }).click();
@@ -261,7 +276,7 @@ it("browses without a project, retains drafts through page history and keeps ack
   operations.length = 0;
   await page.reload();
   await cards.first().waitFor();
-  expect(operations).toEqual(["template_list"]);
+  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toEqual(["template_list"]);
   expect((await client.execute("workspace_state", {})).selection).toEqual(acknowledged);
   expect(await nav.getByRole("button", { name: "后退", exact: true }).isEnabled()).toBe(true);
   await nav.getByRole("button", { name: "后退", exact: true }).click();
