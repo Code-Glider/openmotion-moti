@@ -357,6 +357,8 @@ export function timeTracks(
   });
   const playhead = document.createElementNS("http://www.w3.org/2000/svg", "line");
   playhead.classList.add("om-time__playhead");
+  playhead.setAttribute("x1", String(coordinate(cursor)));
+  playhead.setAttribute("x2", String(coordinate(cursor)));
   playhead.setAttribute("y1", "0");
   playhead.setAttribute("y2", String(Math.max(100, height)));
   svg.append(playhead);
@@ -365,7 +367,9 @@ export function timeTracks(
     element,
     resize(value: number) {
       if (!Number.isFinite(value) || value <= 0 || value > 16384) return;
-      width = Math.max(640, value);
+      const next = Math.max(640, value);
+      if (next === width) return;
+      width = next;
       svg.setAttribute("viewBox", `0 0 ${width} ${Math.max(100, height)}`);
       ruler.setAttribute("width", String(width - 180));
       for (const update of measurements) update();

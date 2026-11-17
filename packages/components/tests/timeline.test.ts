@@ -192,3 +192,43 @@ it("keeps a declared start-edge end fixed, bounds its span and refuses blocked o
     ?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", shiftKey: true, bubbles: true }));
   expect(commit).toHaveBeenCalledTimes(2);
 });
+
+it("keeps an active drag through an unchanged size notification but cancels it when the scale changes", () => {
+  const commit = vi.fn(),
+    axis = timeTracks(document, {
+      duration: 5,
+      tracks: [{ id: "clip", label: "Clip", start: 1, duration: 2, selected: true }],
+      disabled: false,
+      select: vi.fn(),
+      seek: vi.fn(),
+      commit,
+    });
+  document.body.replaceChildren(axis.element);
+  const svg = axis.element.querySelector("svg"),
+    track = axis.element.querySelector<SVGElement>("[data-clip-id]"),
+    bar = track?.querySelector(".om-time__bar");
+  if (!svg || !track || !bar) throw Error("missing gesture fixture");
+  Object.defineProperty(track, "setPointerCapture", { value: vi.fn() });
+  vi.spyOn(svg, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1000, 100));
+  const pointer = (type: string, clientX: number) =>
+    bar.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX }));
+  pointer("pointerdown", 200);
+  axis.resize(1000);
+  pointer("pointermove", 364);
+  pointer("pointerup", 364);
+  expect(commit).toHaveBeenCalledExactlyOnceWith("clip", 2, 2);
+  const end = track.querySelector(".om-time__handle");
+  if (!end) throw Error("missing end handle");
+  const trim = (type: string, clientX: number) =>
+    end.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX }));
+  trim("pointerdown", 500);
+  axis.resize(1000);
+  trim("pointermove", 336);
+  trim("pointerup", 336);
+  expect(commit).toHaveBeenLastCalledWith("clip", 1, 1);
+  pointer("pointerdown", 200);
+  axis.resize(900);
+  pointer("pointermove", 364);
+  pointer("pointerup", 364);
+  expect(commit).toHaveBeenCalledTimes(2);
+});
