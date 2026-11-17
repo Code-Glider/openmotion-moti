@@ -45,6 +45,7 @@ export function studioTimeline(
   if (
     current?.identity === options.identity &&
     current.key === key &&
+    current.axis.disabled === options.blocked &&
     current.actions === options.actions &&
     options.root.contains(current.axis.element)
   ) {

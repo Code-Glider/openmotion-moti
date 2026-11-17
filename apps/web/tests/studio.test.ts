@@ -167,6 +167,10 @@ it("keeps the same timeline projection and active trim through an unchanged rend
     pointer("pointermove", 172);
     pointer("pointerup", 172);
     expect(commit).toHaveBeenCalledExactlyOnceWith("title", 0, 3);
+    first.disable(true);
+    const invalidated = studioTimeline(document, options);
+    expect(invalidated.element).not.toBe(first.element);
+    expect(invalidated.disabled).toBe(false);
     const changed = studioTimeline(document, { ...options, identity: "revision-two" });
     expect(changed.element).not.toBe(first.element);
     expect(root.contains(first.element)).toBe(false);

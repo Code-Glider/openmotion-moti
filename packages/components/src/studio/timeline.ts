@@ -365,6 +365,9 @@ export function timeTracks(
   element.append(svg);
   return {
     element,
+    get disabled() {
+      return disabled;
+    },
     resize(value: number) {
       if (!Number.isFinite(value) || value <= 0 || value > 16384) return;
       const next = Math.max(640, value);
