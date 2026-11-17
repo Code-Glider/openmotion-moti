@@ -9,6 +9,7 @@ export default defineConfig({
     },
   },
   test: {
+    fileParallelism: false,
     environment: "jsdom",
     include: ["tests/**/*.test.ts"],
   },
