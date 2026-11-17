@@ -219,13 +219,11 @@ export function useFileManager({
         if (res.ok) {
           const data = await res.json();
           if (data.skipped?.length) {
-            showToast(`Skipped (too large): ${data.skipped.join(", ")}`);
+            showToast(`"${data.skipped.join(", ")}" exceeds the size limit. Compress or replace the file.`, "error");
           }
           if (data.invalid?.length) {
-            const why = data.invalid
-              .map((entry: { name: string; reason: string }) => `${entry.name} (${importValidationMessage(entry.reason, t)})`)
-              .join(", ");
-            showToast(t("Not added: {message}", { message: why }));
+            const names = data.invalid.map((entry: { name: string }) => entry.name).join(", ");
+            showToast(`Cannot add "${names}". Re-export or replace the file.`, "error");
           }
           if (data.unchecked?.length) {
             const names = data.unchecked.map((entry: { name: string }) => entry.name).join(", ");

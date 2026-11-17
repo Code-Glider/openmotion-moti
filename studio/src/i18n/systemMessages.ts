@@ -5,6 +5,8 @@ import { historyEntryLabel } from './historyMessages';
 // Only known system messages are interpreted. Captured names, paths and server
 // details are passed through as values, never translated as interface labels.
 const TEMPLATES = [
+  '"{name}" exceeds the size limit. Compress or replace the file.',
+  'Cannot add "{name}". Re-export or replace the file.',
   "Copied element info for {name}. Paste it into any AI agent",
   "{label}: no change applied",
   "Applied color grading on {count} media item",

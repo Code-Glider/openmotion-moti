@@ -47,7 +47,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "暂时无法读取此元素的源文件。请重试；仍失败时，可让 Agent 检查文件。",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "无法连接编辑器，暂时无法编辑。请检查连接后重新选择。",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "暂时无法确认此元素能否编辑。请重新选择，或刷新预览重试。",
-    "Interface resources could not be loaded. Reload the editor to try again.": "界面资源加载失败，请重新加载编辑器后再试。"
+    "Interface resources could not be loaded. Reload the editor to try again.": "界面资源加载失败，请重新加载编辑器后再试。",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}”超过大小限制，请压缩或更换文件。",
+    "Cannot add \"{name}\". Re-export or replace the file.": "无法添加“{name}”，请重新导出或更换文件。",
+    "Some changes were saved, but other changes remain incomplete.": "部分修改已保存，但仍有修改未完成。",
+    "Frame capture timed out. Please capture again.": "截帧超时，请重新截取。"
   },
   "ja": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "この要素はスクリプトで使用されています。Agent にスクリプトの更新を依頼するか、コンポジション全体を削除してください。",
@@ -97,7 +101,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "ソースファイルを読み込めません。再試行するか、エージェントに確認を依頼してください。",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "要素を確認するためにエディターに接続できません。接続を確認して選択し直してください。",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "この要素を編集できるか確認できませんでした。選択し直すか、プレビューを更新してください。",
-    "Interface resources could not be loaded. Reload the editor to try again.": "画面のリソースを読み込めませんでした。エディターを再読み込みしてお試しください。"
+    "Interface resources could not be loaded. Reload the editor to try again.": "画面のリソースを読み込めませんでした。エディターを再読み込みしてお試しください。",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "「{name}」はサイズ上限を超えています。圧縮するか、別のファイルを選んでください。",
+    "Cannot add \"{name}\". Re-export or replace the file.": "「{name}」を追加できません。再エクスポートするか、別のファイルを選んでください。",
+    "Some changes were saved, but other changes remain incomplete.": "一部の変更は保存されましたが、まだ完了していない変更があります。",
+    "Frame capture timed out. Please capture again.": "フレームのキャプチャがタイムアウトしました。もう一度キャプチャしてください。"
   },
   "ko": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "스크립트에서 이 요소를 사용하고 있습니다. Agent에게 스크립트 수정을 요청하거나 전체 컴포지션을 삭제하세요.",
@@ -147,7 +155,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "소스 파일을 읽을 수 없습니다. 다시 시도하거나 에이전트에게 파일 확인을 요청하세요.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "요소를 확인하기 위해 편집기에 연결할 수 없습니다. 연결을 확인한 후 다시 선택하세요.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "이 요소의 편집 가능 여부를 확인할 수 없습니다. 다시 선택하거나 미리보기를 새로고침하세요.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "인터페이스 리소스를 불러오지 못했습니다. 편집기를 새로고침한 후 다시 시도하세요."
+    "Interface resources could not be loaded. Reload the editor to try again.": "인터페이스 리소스를 불러오지 못했습니다. 편집기를 새로고침한 후 다시 시도하세요.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}”이 크기 제한을 초과했습니다. 파일을 압축하거나 다른 파일로 바꿔 주세요.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "“{name}”을 추가할 수 없습니다. 다시 내보내거나 다른 파일로 바꿔 주세요.",
+    "Some changes were saved, but other changes remain incomplete.": "일부 변경 사항은 저장되었지만 아직 완료되지 않은 변경 사항이 있습니다.",
+    "Frame capture timed out. Please capture again.": "프레임 캡처 시간이 초과되었습니다. 다시 캡처해 주세요."
   },
   "de": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Dieses Element wird von einem Skript verwendet. Bitte deinen Agent, das Skript anzupassen, oder lösche die gesamte Komposition.",
@@ -197,7 +209,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "Die Quelldatei konnte nicht gelesen werden. Versuche es erneut oder bitte einen Agenten, die Datei zu prüfen.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Keine Verbindung zum Editor, um dieses Element zu prüfen. Prüfe die Verbindung und wähle es erneut aus.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "Es konnte nicht geprüft werden, ob dieses Element bearbeitbar ist. Wähle es erneut aus oder aktualisiere die Vorschau.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "Die Oberflächenressourcen konnten nicht geladen werden. Laden Sie den Editor neu und versuchen Sie es erneut."
+    "Interface resources could not be loaded. Reload the editor to try again.": "Die Oberflächenressourcen konnten nicht geladen werden. Laden Sie den Editor neu und versuchen Sie es erneut.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "„{name}“ überschreitet die Größenbeschränkung. Komprimieren oder ersetzen Sie die Datei.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "„{name}“ kann nicht hinzugefügt werden. Exportieren Sie die Datei erneut oder ersetzen Sie sie.",
+    "Some changes were saved, but other changes remain incomplete.": "Einige Änderungen wurden gespeichert, andere sind noch nicht abgeschlossen.",
+    "Frame capture timed out. Please capture again.": "Zeitüberschreitung bei der Einzelbildaufnahme. Nehmen Sie das Bild erneut auf."
   },
   "fr": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Cet élément est utilisé par un script. Demandez à votre Agent de modifier le script ou supprimez toute la composition.",
@@ -247,7 +263,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "Impossible de lire le fichier source. Réessayez ou demandez à un agent de vérifier le fichier.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Impossible de se connecter à l’éditeur pour vérifier cet élément. Vérifiez la connexion et sélectionnez-le à nouveau.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "Impossible de vérifier si cet élément est modifiable. Sélectionnez-le à nouveau ou actualisez l’aperçu.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "Impossible de charger les ressources de l’interface. Rechargez l’éditeur pour réessayer."
+    "Interface resources could not be loaded. Reload the editor to try again.": "Impossible de charger les ressources de l’interface. Rechargez l’éditeur pour réessayer.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "« {name} » dépasse la taille limite. Compressez ou remplacez le fichier.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "Impossible d’ajouter « {name} ». Exportez à nouveau le fichier ou remplacez-le.",
+    "Some changes were saved, but other changes remain incomplete.": "Certaines modifications ont été enregistrées, mais d’autres restent incomplètes.",
+    "Frame capture timed out. Please capture again.": "La capture de l’image a expiré. Effectuez une nouvelle capture."
   },
   "es": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Un script utiliza este elemento. Pide a tu Agent que actualice el script o elimina toda la composición.",
@@ -297,7 +317,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "No se pudo leer el archivo fuente. Inténtalo de nuevo o pide a un agente que revise el archivo.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "No se puede conectar con el editor para comprobar este elemento. Revisa la conexión y vuelve a seleccionarlo.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "No se pudo comprobar si este elemento se puede editar. Vuelve a seleccionarlo o actualiza la vista previa.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "No se pudieron cargar los recursos de la interfaz. Recarga el editor para volver a intentarlo."
+    "Interface resources could not be loaded. Reload the editor to try again.": "No se pudieron cargar los recursos de la interfaz. Recarga el editor para volver a intentarlo.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "«{name}» supera el límite de tamaño. Comprime o sustituye el archivo.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "No se puede añadir «{name}». Vuelve a exportar el archivo o sustitúyelo.",
+    "Some changes were saved, but other changes remain incomplete.": "Se guardaron algunos cambios, pero otros siguen incompletos.",
+    "Frame capture timed out. Please capture again.": "Se agotó el tiempo de captura del fotograma. Vuelve a capturarlo."
   },
   "pt-BR": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Este elemento é usado por um script. Peça ao seu Agent para atualizar o script ou exclua toda a composição.",
@@ -347,7 +371,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "Não foi possível ler o arquivo-fonte. Tente novamente ou peça a um agente para verificar o arquivo.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Não foi possível conectar ao editor para verificar este elemento. Verifique a conexão e selecione-o novamente.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "Não foi possível verificar se este elemento pode ser editado. Selecione-o novamente ou atualize a prévia.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "Não foi possível carregar os recursos da interface. Recarregue o editor para tentar novamente."
+    "Interface resources could not be loaded. Reload the editor to try again.": "Não foi possível carregar os recursos da interface. Recarregue o editor para tentar novamente.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}” excede o limite de tamanho. Comprima ou substitua o arquivo.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "Não foi possível adicionar “{name}”. Exporte o arquivo novamente ou substitua-o.",
+    "Some changes were saved, but other changes remain incomplete.": "Algumas alterações foram salvas, mas outras ainda estão incompletas.",
+    "Frame capture timed out. Please capture again.": "O tempo de captura do quadro se esgotou. Capture novamente."
   },
   "it": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Questo elemento è usato da uno script. Chiedi al tuo Agent di aggiornare lo script oppure elimina l’intera composizione.",
@@ -397,7 +425,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "Impossibile leggere il file sorgente. Riprova o chiedi a un agente di controllare il file.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Impossibile connettersi all’editor per verificare questo elemento. Controlla la connessione e selezionalo di nuovo.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "Impossibile verificare se questo elemento è modificabile. Selezionalo di nuovo o aggiorna l’anteprima.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "Impossibile caricare le risorse dell’interfaccia. Ricarica l’editor per riprovare."
+    "Interface resources could not be loaded. Reload the editor to try again.": "Impossibile caricare le risorse dell’interfaccia. Ricarica l’editor per riprovare.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}” supera il limite di dimensione. Comprimi o sostituisci il file.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "Impossibile aggiungere “{name}”. Esporta di nuovo il file o sostituiscilo.",
+    "Some changes were saved, but other changes remain incomplete.": "Alcune modifiche sono state salvate, ma altre sono ancora incomplete.",
+    "Frame capture timed out. Please capture again.": "Tempo scaduto per la cattura del fotogramma. Acquisiscilo di nuovo."
   },
   "ru": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Этот элемент используется скриптом. Попросите Agent обновить скрипт или удалите всю композицию.",
@@ -447,7 +479,11 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "Не удалось прочитать исходный файл. Повторите попытку или попросите агента проверить файл.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Не удалось подключиться к редактору для проверки элемента. Проверьте соединение и выберите элемент снова.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "Не удалось проверить, можно ли редактировать элемент. Выберите его снова или обновите предпросмотр.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "Не удалось загрузить ресурсы интерфейса. Перезагрузите редактор и повторите попытку."
+    "Interface resources could not be loaded. Reload the editor to try again.": "Не удалось загрузить ресурсы интерфейса. Перезагрузите редактор и повторите попытку.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "Файл «{name}» превышает допустимый размер. Сожмите или замените файл.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "Не удалось добавить «{name}». Экспортируйте файл заново или замените его.",
+    "Some changes were saved, but other changes remain incomplete.": "Часть изменений сохранена, но остальные изменения ещё не завершены.",
+    "Frame capture timed out. Please capture again.": "Время ожидания захвата кадра истекло. Захватите кадр ещё раз."
   },
   "tr": {
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Bu öğe bir betik tarafından kullanılıyor. Agent’tan betiği güncellemesini isteyin veya kompozisyonun tamamını silin.",
@@ -497,6 +533,10 @@
     "The source file could not be read. Try again or ask an agent to check the source file.": "Kaynak dosya okunamadı. Yeniden deneyin veya bir ajandan dosyayı kontrol etmesini isteyin.",
     "Cannot connect to the editor to check this element. Check the connection and select it again.": "Bu öğeyi kontrol etmek için düzenleyiciye bağlanılamıyor. Bağlantıyı kontrol edip öğeyi yeniden seçin.",
     "Could not check whether this element can be edited. Select it again or refresh the preview.": "Bu öğenin düzenlenip düzenlenemeyeceği kontrol edilemedi. Öğeyi yeniden seçin veya önizlemeyi yenileyin.",
-    "Interface resources could not be loaded. Reload the editor to try again.": "Arayüz kaynakları yüklenemedi. Tekrar denemek için düzenleyiciyi yeniden yükleyin."
+    "Interface resources could not be loaded. Reload the editor to try again.": "Arayüz kaynakları yüklenemedi. Tekrar denemek için düzenleyiciyi yeniden yükleyin.",
+    "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}” boyut sınırını aşıyor. Dosyayı sıkıştırın veya değiştirin.",
+    "Cannot add \"{name}\". Re-export or replace the file.": "“{name}” eklenemedi. Dosyayı yeniden dışa aktarın veya değiştirin.",
+    "Some changes were saved, but other changes remain incomplete.": "Bazı değişiklikler kaydedildi, ancak diğer değişiklikler henüz tamamlanmadı.",
+    "Frame capture timed out. Please capture again.": "Kare yakalama zaman aşımına uğradı. Lütfen yeniden yakalayın."
   }
 }
