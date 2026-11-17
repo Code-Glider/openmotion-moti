@@ -1,5 +1,6 @@
 {
   "zh-CN": {
+    "Connection lost. Reconnecting…": "连接已断开，正在重连",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "脚本仍在使用这个元素。请让 Agent 同步修改脚本，或删除整个合成。",
     "Reconnecting…": "重连中…",
     "Connection lost.": "连接已断开",
@@ -54,6 +55,7 @@
     "Frame capture timed out. Please capture again.": "截帧超时，请重新截取。"
   },
   "ja": {
+    "Connection lost. Reconnecting…": "接続が切れました。再接続中…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "この要素はスクリプトで使用されています。Agent にスクリプトの更新を依頼するか、コンポジション全体を削除してください。",
     "Reconnecting…": "再接続中…",
     "Connection lost.": "接続が切れました",
@@ -108,6 +110,7 @@
     "Frame capture timed out. Please capture again.": "フレームのキャプチャがタイムアウトしました。もう一度キャプチャしてください。"
   },
   "ko": {
+    "Connection lost. Reconnecting…": "연결이 끊겼습니다. 다시 연결 중…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "스크립트에서 이 요소를 사용하고 있습니다. Agent에게 스크립트 수정을 요청하거나 전체 컴포지션을 삭제하세요.",
     "Reconnecting…": "다시 연결 중…",
     "Connection lost.": "연결이 끊겼습니다",
@@ -162,6 +165,7 @@
     "Frame capture timed out. Please capture again.": "프레임 캡처 시간이 초과되었습니다. 다시 캡처해 주세요."
   },
   "de": {
+    "Connection lost. Reconnecting…": "Verbindung unterbrochen. Verbindung wird wiederhergestellt…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Dieses Element wird von einem Skript verwendet. Bitte deinen Agent, das Skript anzupassen, oder lösche die gesamte Komposition.",
     "Reconnecting…": "Verbindung wird hergestellt…",
     "Connection lost.": "Verbindung unterbrochen",
@@ -216,6 +220,7 @@
     "Frame capture timed out. Please capture again.": "Zeitüberschreitung bei der Einzelbildaufnahme. Nehmen Sie das Bild erneut auf."
   },
   "fr": {
+    "Connection lost. Reconnecting…": "Connexion perdue. Reconnexion en cours…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Cet élément est utilisé par un script. Demandez à votre Agent de modifier le script ou supprimez toute la composition.",
     "Reconnecting…": "Reconnexion…",
     "Connection lost.": "Connexion interrompue",
@@ -270,6 +275,7 @@
     "Frame capture timed out. Please capture again.": "La capture de l’image a expiré. Effectuez une nouvelle capture."
   },
   "es": {
+    "Connection lost. Reconnecting…": "Conexión perdida. Reconectando…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Un script utiliza este elemento. Pide a tu Agent que actualice el script o elimina toda la composición.",
     "Reconnecting…": "Reconectando…",
     "Connection lost.": "Conexión perdida",
@@ -324,6 +330,7 @@
     "Frame capture timed out. Please capture again.": "Se agotó el tiempo de captura del fotograma. Vuelve a capturarlo."
   },
   "pt-BR": {
+    "Connection lost. Reconnecting…": "Conexão perdida. Reconectando…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Este elemento é usado por um script. Peça ao seu Agent para atualizar o script ou exclua toda a composição.",
     "Reconnecting…": "Reconectando…",
     "Connection lost.": "Conexão perdida",
@@ -378,6 +385,7 @@
     "Frame capture timed out. Please capture again.": "O tempo de captura do quadro se esgotou. Capture novamente."
   },
   "it": {
+    "Connection lost. Reconnecting…": "Connessione interrotta. Riconnessione in corso…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Questo elemento è usato da uno script. Chiedi al tuo Agent di aggiornare lo script oppure elimina l’intera composizione.",
     "Reconnecting…": "Riconnessione…",
     "Connection lost.": "Connessione interrotta",
@@ -432,6 +440,7 @@
     "Frame capture timed out. Please capture again.": "Tempo scaduto per la cattura del fotogramma. Acquisiscilo di nuovo."
   },
   "ru": {
+    "Connection lost. Reconnecting…": "Соединение потеряно. Переподключение…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Этот элемент используется скриптом. Попросите Agent обновить скрипт или удалите всю композицию.",
     "Reconnecting…": "Переподключение…",
     "Connection lost.": "Соединение потеряно",
@@ -486,6 +495,7 @@
     "Frame capture timed out. Please capture again.": "Время ожидания захвата кадра истекло. Захватите кадр ещё раз."
   },
   "tr": {
+    "Connection lost. Reconnecting…": "Bağlantı kesildi. Yeniden bağlanılıyor…",
     "This element is used by a script. Ask your Agent to update the script, or delete the whole composition.": "Bu öğe bir betik tarafından kullanılıyor. Agent’tan betiği güncellemesini isteyin veya kompozisyonun tamamını silin.",
     "Reconnecting…": "Yeniden bağlanılıyor…",
     "Connection lost.": "Bağlantı kesildi",

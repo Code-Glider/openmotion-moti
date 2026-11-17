@@ -16,7 +16,8 @@ const MAX_TOASTS = 3;
 let nextToastId = 1;
 
 /**
- * Stacked toasts (max 3). Info toasts auto-dismiss after 3s; error toasts
+ * Owner-local toasts (max 3), displayed in the shared StudioToastLayer layout.
+ * Info toasts auto-dismiss after 3s; error toasts
  * persist until explicitly dismissed, unless explicitly marked brief feedback.
  * Optional actions stay available until completed, dismissed or displaced.
  * Feedback dismissal never changes the underlying operation or save guards.
