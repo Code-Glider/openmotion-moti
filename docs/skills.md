@@ -55,7 +55,7 @@ Before material grouping, the recreation guidance distinguishes object motion, i
 
 按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 registry 进入 template；video-only reference 进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
 
-专业入口可由宿主 Skill 自动匹配、用户指定或准确模板指引直接选中，只读取共享 context 后继续，不返回 production 重做选路。局部创作/声音重新设计/创作品质审片由 director 承接；按既定决定修改、替换已选音乐、技术检查和仅导出由 production 承接；仅脚本或审片停在当前范围；共享质量参考不会要求重启 director 的完整创作流程。Skills 是同一 Agent 的文档，不是相互递归执行的独立进程。
+专业入口可由宿主 Skill 自动匹配、用户指定或准确模板指引直接选中，只读取共享 context 后继续，不返回 production 重做选路；各入口范围以其 Skill 说明和上表为准。仅脚本或审片停在当前范围；共享质量参考不会要求重启 director 的完整创作流程。Skills 是同一 Agent 的文档，不是相互递归执行的独立进程。
 
 An exact editable template with no requested content changes and explicit HTML/MP4 delivery uses the template route's [unchanged file-delivery branch](../skills/openmotion-template-to-video/references/unchanged-export.md), available at `openmotion://workflow/template/unchanged`. It preserves source and pins the version after required editor normalization, then coordinates export, packaging and bounded host presentation without reopening creative intake. Actual exported-file checks and the existing project, request and revision protections still apply; a display limitation is reported separately from verified file delivery.
 
