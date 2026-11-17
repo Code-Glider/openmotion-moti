@@ -138,6 +138,52 @@ describe("AssetCard click behavior", () => {
     expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/logo.png");
     expect(useAssetPreviewStore.getState().previewProjectId).toBe("p1");
   });
+
+  it("adds from the thumbnail without opening preview or revealing a used clip", async () => {
+    const add = vi.fn().mockResolvedValue(true);
+    usePlayerStore.getState().setElements([clip({ id: "existing", src: "assets/logo.png" })]);
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used onAddAssetToTimeline={add} />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    const PointerCtor = window.PointerEvent ?? MouseEvent;
+    await act(async () => {
+      button.dispatchEvent(new PointerCtor("pointerdown", { bubbles: true, clientX: 5, clientY: 5 }));
+      button.dispatchEvent(new PointerCtor("pointerup", { bubbles: true, clientX: 5, clientY: 5 }));
+      button.click();
+    });
+    expect(add).toHaveBeenCalledExactlyOnceWith("assets/logo.png");
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+    expect(usePlayerStore.getState().selectedElementId).toBeNull();
+  });
+
+  it.each([false, new Error("Internal failure")])("keeps quick add retryable after failure: %s", async result => {
+    let finish!: () => void;
+    const add = vi.fn(() => new Promise<boolean>((resolve, reject) => {
+      finish = () => result instanceof Error ? reject(result) : resolve(result);
+    }));
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used={false} onAddAssetToTimeline={add} />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    act(() => { button.click(); button.click(); });
+    expect(add).toHaveBeenCalledOnce();
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    await act(async () => finish());
+    expect(button.disabled).toBe(false);
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.textContent).toBe("Failed to add media");
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+    act(() => button.click());
+    expect(add).toHaveBeenCalledTimes(2);
+    await act(async () => finish());
+  });
+
+  it("only offers quick add when insertion is available and leaves thumbnail dragging intact", () => {
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used={false} />);
+    expect(host.querySelector('button[aria-label="Add at playhead"]')).toBeNull();
+    const setData = vi.fn();
+    const event = new Event("dragstart", { bubbles: true });
+    Object.defineProperty(event, "dataTransfer", { value: { setData, effectAllowed: "none" } });
+    act(() => host.querySelector('[draggable="true"]')!.dispatchEvent(event));
+    expect(setData).toHaveBeenCalledWith(TIMELINE_ASSET_MIME, JSON.stringify({ path: "assets/logo.png" }));
+  });
 });
 
 describe("AudioRow click behavior", () => {

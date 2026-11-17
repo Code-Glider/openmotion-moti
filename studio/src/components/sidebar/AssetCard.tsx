@@ -1,4 +1,5 @@
 import { MediaDurationBadge } from "./MediaDurationBadge";
+import { AssetQuickAdd } from "./AssetQuickAdd";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
@@ -279,6 +280,7 @@ export function AssetCard({
 
           {/* Duration badge — top-right, media only */}
           <MediaDurationBadge duration={resolvedDuration} className="absolute top-1 right-1" />
+          {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} />}
         </div>
 
         {/* Match catalog caption spacing and typography; keep actions beside the name. */}
