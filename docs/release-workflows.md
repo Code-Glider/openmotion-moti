@@ -133,16 +133,16 @@ Each version archives the exact tgz, manifests, generated blank acceptance check
 
 Builds have no publication lock, so another version can build during acceptance. Test/stable publication and snapshot recovery share one workflow-wide concurrency group with cancellation disabled. GitHub concurrency is not a durable FIFO: it retains one running and one newest pending run; do not enqueue a batch. Publish one accepted version at a time. A superseded candidate can retain version snapshots without moving the default. Default-guide version comparison plus ETag conditional writes prevent late older completion from rolling a newer entry back; unrecognized or conflicting same-version guide bytes require inspection.
 
-Actions artifacts and attempt records expire after **30 days**. R2 snapshots follow the separately managed bucket lifecycle. Acceptance does not extend artifact retention. Two unexpired builds with the same version are ambiguous and blocked; use a new version rather than asking the publisher to guess. Expired/deleted artifacts fail closed; retain internal evidence before expiry and build a new version when necessary.
+Actions artifacts and attempt records expire after **30 days**. R2 snapshots follow the separately managed bucket lifecycle. Acceptance does not extend artifact retention. Different builds of an unpublished version coexist; publication explicitly selects the accepted build run ID. Expired/deleted artifacts fail closed; retain internal evidence before expiry and create a fresh candidate when needed. Once npm contains a version, different bytes require a new version.
 
 
 ## Publishing the first active stable version
 
 Before cutover, ensure no historical publication or recovery run is queued or running. After the policy is merged, start new manual runs from the latest main; do not rerun pre-reset publication/recovery runs, whose frozen control scripts still use the old ordering. Existing candidate artifacts may be consumed by the new controller with their original identity.
 
-After this policy change is reviewed and merged, prepare the `0.0.1` English/Chinese description, then run **Motion candidate build** from `main`, choose `stable` and enter `0.0.1`. Inspect that exact prod package and its sealed Notes. When separately authorized, run **Motion npm publication** from `main`, choose `stable` and enter the same `0.0.1`.
+After this policy change is reviewed and merged, prepare the selected stable version's English/Chinese description, then run **Motion candidate build** from `main`, choose `stable` and enter that version (for example `0.1.0`). Inspect that exact prod package and its sealed Notes. When separately authorized, run **Motion npm publication** from `main`, choose `stable` and enter the same version and accepted candidate build run ID.
 
-The existing sequence stays **public stage → both native checks → latest → immutable snapshots → default guide → GitHub Release notes**. Source/hash verification, native-check gating, conditional R2 writes, race/supersession protection, retry identity and archive-only boundaries are unchanged. Stable publication preserves the test tag. Later `0.0.2` can advance `0.0.1`; an older `0.0.1` cannot replace `0.0.2`. Historical snapshots are never deleted or rewritten. No force flag, new workflow input, manual pre-move of npm tags, or new permission is needed.
+The existing sequence stays **public stage → both native checks → latest → immutable snapshots → default guide → GitHub Release notes**. Source/hash verification, native-check gating, conditional R2 writes, race/supersession protection, retry identity and archive-only boundaries are unchanged. Stable publication preserves the test tag. Later `0.0.2` can advance `0.0.1`; an older `0.0.1` cannot replace `0.0.2`. Historical snapshots are never deleted or rewritten. The ordering policy needs no force flag, manual pre-move of npm tags or new permission. Publication selects its accepted build through the `candidate_run_id` input described above.
 
 ## Failure and snapshot recovery
 
@@ -159,7 +159,7 @@ Source/package scans are not a scan of every historical Git object or business c
 
 Run the repository's release/scanner/guide tests and actionlint. The no-publication rehearsal uses temporary candidate files and simulated GitHub/npm/R2 responses to test the transition and failure cases. It does **not** exercise npm OIDC, hosted native installation or CDN routing.
 
-After separately authorized default-branch/npm setup, build a new candidate and verify that building alone publishes nothing. A publication dispatch requires only the exact candidate version; automated validation failures must still stop promotion. A positive hosted publication rehearsal is a real publication and needs explicit release authorization. Ordinary PR CI remains credential-free. This implementation PR enables none of those administrative actions by itself.
+After separately authorized default-branch/npm setup, build a new candidate and verify that building alone publishes nothing. A publication dispatch requires the channel, exact candidate version and accepted candidate build run ID; automated validation failures must still stop promotion. A positive hosted publication rehearsal is a real publication and needs explicit release authorization. Ordinary PR CI remains credential-free. This implementation PR enables none of those administrative actions by itself.
 
 ## GitHub Release notes
 
