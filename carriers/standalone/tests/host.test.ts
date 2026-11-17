@@ -60,6 +60,37 @@ it("edits parent host windows without stretching shared child source and restore
     driver = await browser({ evidence, viewport: { width: 1600, height: 1100 } });
     const page = driver.page;
     page.setDefaultTimeout(10000);
+    await page.addInitScript(() => {
+      const events: unknown[] = [],
+        ids = new WeakMap<Element, number>();
+      let next = 0;
+      Object.assign(window, { __hostGestures: events });
+      for (const type of ["pointerdown", "pointermove", "pointerup", "lostpointercapture"]) {
+        window.addEventListener(
+          type,
+          (raw) => {
+            const event = raw as PointerEvent,
+              target = event.target as Element,
+              track = target.closest?.("[data-clip-id]"),
+              svg = track?.closest("svg");
+            if (!track || !svg) return;
+            if (!ids.has(svg)) ids.set(svg, ++next);
+            events.push({
+              type,
+              axis: ids.get(svg),
+              clip: track.getAttribute("data-clip-id"),
+              target: target.getAttribute("class"),
+              x: event.clientX,
+              disabled: track.getAttribute("aria-disabled"),
+              viewBox: svg.getAttribute("viewBox"),
+              width: svg.getBoundingClientRect().width,
+            });
+            if (events.length > 24) events.shift();
+          },
+          true,
+        );
+      }
+    });
     page.on("request", (request) => {
       const url = new URL(request.url());
       if (["http:", "https:"].includes(url.protocol) && !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname))
@@ -244,6 +275,13 @@ it("edits parent host windows without stretching shared child source and restore
       "reload-and-cold-restore",
     ];
   } catch (error) {
+    if (driver)
+      console.error(
+        "host gesture trace",
+        JSON.stringify(
+          await driver.page.evaluate(() => (window as Window & { __hostGestures?: unknown[] }).__hostGestures ?? []),
+        ),
+      );
     await driver?.capture("failure");
     if (driver)
       await writeFile(

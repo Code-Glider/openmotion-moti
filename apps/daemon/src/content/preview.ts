@@ -4,6 +4,7 @@ import { gsap, preview, runtime } from "@open-motion/motion/runtime";
 import { type TemplateInput, type TemplateOutput, templateSchemas } from "@open-motion/templates/contract";
 import { Fault, id, type Project, revision, schemas, type Workspace } from "@open-motion/workspace";
 import { z } from "zod";
+import { byteRange } from "../transport/range.js";
 
 const schema = schemas.project_read.extend({ id, expectedRevision: revision });
 const templateSchema = z.strictObject({ id, template: templateSchemas.template_read });
@@ -190,22 +191,8 @@ export class Previews {
     let status = 200,
       contentRange: string | undefined;
     if (asset && range && !head) {
-      const match = /^bytes=(\d*)-(\d*)$/.exec(range),
-        first = match?.[1],
-        last = match?.[2];
-      const start = first ? Number(first) : last ? Math.max(0, fullLength - Number(last)) : Number.NaN,
-        end = first ? (last ? Math.min(Number(last), fullLength - 1) : fullLength - 1) : fullLength - 1;
-      if (
-        !match ||
-        (first !== "" && !Number.isSafeInteger(Number(first))) ||
-        (last !== "" && !Number.isSafeInteger(Number(last))) ||
-        !Number.isSafeInteger(start) ||
-        !Number.isSafeInteger(end) ||
-        start < 0 ||
-        start >= fullLength ||
-        end < start ||
-        (!first && Number(last) <= 0)
-      ) {
+      const interval = byteRange(range, fullLength);
+      if (!interval) {
         response.writeHead(416, {
           "content-range": `bytes */${fullLength}`,
           "content-length": 0,
@@ -215,9 +202,9 @@ export class Previews {
         response.end();
         return;
       }
-      content = (content as Buffer).subarray(start, end + 1);
+      content = (content as Buffer).subarray(interval.start, interval.end + 1);
       status = 206;
-      contentRange = `bytes ${start}-${end}/${fullLength}`;
+      contentRange = `bytes ${interval.start}-${interval.end}/${fullLength}`;
     }
     response.writeHead(status, {
       "content-type": asset ? type : `${type}; charset=utf-8`,

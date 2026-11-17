@@ -13,7 +13,7 @@ function required<T>(value: T | null | undefined): T {
   if (value === null || value === undefined) throw new Error("missing fixture element");
   return value;
 }
-async function fixture(fail: boolean) {
+async function fixture(fail: boolean, inspect?: () => Promise<void>) {
   const root = mkdtempSync(join(tmpdir(), "studio-fields-")),
     db = new Workspace(root);
   const session = db.execute("session_create", { requestId: randomUUID(), title: "creative", mode: "motion" });
@@ -77,6 +77,7 @@ async function fixture(fail: boolean) {
       expect(document.querySelector("[aria-live]")?.textContent).toBe("就绪");
       expect(document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]')?.readOnly).toBe(false);
     });
+    await inspect?.();
     const field = required(document.querySelector<HTMLTextAreaElement>('[aria-label="文本内容"]'));
     field.value = "Pending native field";
     field.dispatchEvent(new Event("input"));
@@ -114,6 +115,48 @@ async function fixture(fail: boolean) {
 }
 it("drains real native SDK fields into the shared save before a project switch", () => fixture(false));
 it("keeps transformed native draft and original selection when the actual transaction aborts", () => fixture(true));
+
+it("retains a timeline trim through fractional observer delivery for the same client width", async () => {
+  let notify: (() => void) | undefined;
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1000);
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        notify = () =>
+          this.callback(
+            [{ target, contentRect: new DOMRect(0, 0, 1000.25, 100) } as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          );
+      }
+      disconnect() {
+        notify = undefined;
+      }
+    },
+  );
+  try {
+    await fixture(false, async () => {
+      const svg = required(document.querySelector<SVGSVGElement>(".om-time__surface")),
+        track = required(svg.querySelector<SVGElement>("[data-clip-id]")),
+        handle = required(track.querySelector(".om-time__handle"));
+      Object.defineProperty(track, "setPointerCapture", { value: vi.fn() });
+      vi.spyOn(svg, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1000, 100));
+      const pointer = (type: string, clientX: number) =>
+        handle.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX }));
+      pointer("pointerdown", 500);
+      required(notify)();
+      pointer("pointermove", 172);
+      pointer("pointerup", 172);
+      await vi.waitFor(() =>
+        expect(document.querySelector('[data-clip-id="hf-title"]')?.getAttribute("aria-label")).toContain("3.00秒"),
+      );
+    });
+  } finally {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+});
 
 // JSDOM covers modal state only; native focus, Escape and inertness are verified in Chromium.
 Object.defineProperties(HTMLDialogElement.prototype, {

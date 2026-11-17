@@ -100,7 +100,13 @@ export async function serve(options: Options): Promise<Service> {
         return;
       }
       if (["GET", "HEAD"].includes(request.method ?? "") && request.url?.startsWith("/exports/files/")) {
-        await exports.downloads.serve(request.url, response, request.method === "HEAD");
+        await exports.downloads.serve(
+          request.url,
+          response,
+          request.method === "HEAD",
+          request.headers.range,
+          request.headers["if-range"],
+        );
         return;
       }
       if (["GET", "HEAD"].includes(request.method ?? "") && request.url?.startsWith("/preview/")) {
