@@ -41,7 +41,22 @@ export function panelGrid(document: Document) {
     trailing = box(document, "om-grid__trailing"),
     footer = box(document, "om-grid__footer");
   element.append(leading, body, trailing, footer);
-  return { element, leading, body, trailing, footer };
+  return {
+    element,
+    leading,
+    body,
+    trailing,
+    footer,
+    focusBody(focused: boolean) {
+      if (focused && [leading, trailing].some((cell) => cell.contains(document.activeElement))) {
+        body.tabIndex = -1;
+        body.focus();
+      }
+      element.classList.toggle("om-grid--focused", focused);
+      leading.hidden = trailing.hidden = focused;
+      leading.inert = trailing.inert = focused;
+    },
+  };
 }
 export function slot(
   document: Document,

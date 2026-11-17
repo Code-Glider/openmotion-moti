@@ -1,7 +1,7 @@
 import { badge, button, dialog, field, note, setButton, slot } from "@open-motion/components";
 import type { Artifact, Input, Output } from "@open-motion/workspace/contract";
-import type { Client } from "../../../api.js";
-import type { Editor } from "../../editor.js";
+import type { Client } from "../../../../api.js";
+import type { Editor } from "../../../editor.js";
 /** One bounded metadata page; workspace remains the project catalogue and selection authority. */
 export class Navigation {
   readonly view;
@@ -68,7 +68,7 @@ export class Navigation {
       },
     });
     this.refresh = button(document, { label: "刷新项目", onClick: () => this.reset() });
-    this.theme = button(document, { label: "切换主题", icon: "moon", onClick: actions.theme });
+    this.theme = button(document, { label: "外观与布局", icon: "moon", onClick: actions.theme });
     const pages = slot(document, "toolbar"),
       footer = slot(document, "footer");
     pages.append(this.previous, this.next, this.refresh);
@@ -136,11 +136,11 @@ export class Navigation {
     void current.then(() => this.flights.delete(current));
     this.controls();
   }
-  update(editor: Editor, blocked: boolean, dark: boolean, busy: boolean) {
+  update(editor: Editor, blocked: boolean, busy: boolean) {
     this.busy = busy;
     this.blocked = blocked;
     this.selected = editor.project?.artifactId ?? "";
-    setButton(this.theme, { label: "切换主题", icon: dark ? "sun" : "moon", onClick: this.actions.theme });
+    setButton(this.theme, { label: "外观与布局", icon: "moon", onClick: this.actions.theme });
     this.controls();
     this.render();
   }

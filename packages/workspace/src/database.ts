@@ -18,7 +18,7 @@ export class Database {
       this.sql.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;");
       this.transaction(() => {
         const version = Number(this.one("PRAGMA user_version")?.user_version);
-        if (![0, 3, 4].includes(version)) throw new Fault("integrity", "unsupported workspace database schema");
+        if (![0, 3, 4, 5].includes(version)) throw new Fault("integrity", "unsupported workspace database schema");
         if (version === 0) {
           if (this.one("SELECT name FROM sqlite_master WHERE type='table'"))
             throw new Fault("integrity", "unknown workspace database");
@@ -35,7 +35,7 @@ export class Database {
           CREATE TABLE requests(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,result TEXT NOT NULL);
           PRAGMA user_version=3;`);
         }
-        if (version !== 4) {
+        if (version < 4) {
           if (
             this.one(
               "SELECT id FROM projects p WHERE NOT EXISTS(SELECT 1 FROM revisions r WHERE r.project_id=p.id AND r.revision=p.current_revision)",
@@ -64,6 +64,11 @@ export class Database {
               );
           }
           this.sql.exec("PRAGMA user_version=4;");
+        }
+        if (version !== 5) {
+          this.sql.exec(`CREATE TABLE preferences(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL,value TEXT NOT NULL);
+            INSERT INTO preferences VALUES(1,0,'{"theme":"light","layout":"edit"}');
+            PRAGMA user_version=5;`);
         }
       });
     } catch (error) {

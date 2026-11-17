@@ -105,7 +105,10 @@ it("navigates repeated instances with local clocks and commits shared native sou
       .getByLabel("合成实例", { exact: true })
       .evaluate((element) => element.setAttribute("data-probe", "stable-context"));
     await page.getByRole("button", { name: "打开项目列表", exact: true }).click();
-    await click("切换主题");
+    await page.getByRole("button", { name: "外观与布局", exact: true }).click();
+    await page.getByRole("combobox", { name: "主题", exact: true }).selectOption("dark");
+    await page.getByRole("button", { name: "应用并保存界面", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: "界面设置已保存并同步" }).waitFor();
     await page.keyboard.press("Escape");
     expect(await page.getByLabel("合成实例", { exact: true }).getAttribute("data-probe")).toBe("stable-context");
     expect(await page.getByLabel("合成实例", { exact: true }).inputValue()).toBe("hf-b");

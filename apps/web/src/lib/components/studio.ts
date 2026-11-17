@@ -1,4 +1,4 @@
-import { badge, button, emptyState, note, readout, slot, type timeTracks } from "@open-motion/components";
+import { badge, note, readout, slot, type timeTracks } from "@open-motion/components";
 import type { Clip, NativeValues } from "@open-motion/motion/contract";
 import type { ContextModel } from "@open-motion/motion/project";
 import { isFontResource, type Project } from "@open-motion/workspace/contract";
@@ -11,12 +11,11 @@ import { type Binding, CompositionContext } from "./studio/context.js";
 import { StudioLibrary } from "./studio/library/index.js";
 import { Properties } from "./studio/properties.js";
 import { studioTimeline } from "./studio/timeline.js";
-import { playerControls, studioTools, syncMode } from "./studio/toolbar.js";
+import { emptyStudio, playerControls, studioTools, syncMode } from "./studio/toolbar.js";
 import { applyClip, commitClip, editClip, retimeKey } from "./studio/transactions.js";
-
-const editorLabel = (session: boolean) => (session ? "新建影片工程" : "开始创作");
 /** Product editor projection. The SDK owns native transforms; workspace owns committed content. */
 export class Studio {
+  private areas: ReturnType<typeof studioLayout>;
   private disposed = false;
   private teardown?: () => void;
   private model?: ContextModel;
@@ -80,6 +79,7 @@ export class Studio {
     this.context = new CompositionContext(document, editor, (id) => this.navigate(id));
     const areas = studioLayout(document),
       { library, canvas, inspector, timeline } = areas;
+    this.areas = areas;
     this.inspector = inspector.body;
     this.properties = new Properties(document);
     this.animations = new AnimationEditor(document, {
@@ -242,20 +242,9 @@ export class Studio {
       this.context.element.replaceChildren();
       this.timelineRoot.replaceChildren(note(this.root.ownerDocument, "创建或打开工程，开始编辑时间轴。"));
       this.toolbar.replaceChildren(note(this.root.ownerDocument, "本地 Studio"));
-      const empty = emptyState(this.root.ownerDocument, {
-        title: "让想法成为画面",
-        detail: "创建空白或模板项目，或让 Agent 创建项目后继续编辑。",
-        icon: "film",
-      });
-      empty.actions.append(
-        button(this.root.ownerDocument, {
-          label: editorLabel(this.editor.session !== null),
-          icon: "plus",
-          primary: true,
-          onClick: () => this.options.start(),
-        }),
+      this.preview.replaceChildren(
+        emptyStudio(this.root.ownerDocument, this.editor.session !== null, this.options.start),
       );
-      this.preview.replaceChildren(empty.element);
       this.player.replaceChildren();
       this.transport = undefined;
       return;
@@ -476,6 +465,9 @@ export class Studio {
     if (mode === "source") this.control("pause");
     syncMode(this.toolbar, mode);
     if (this.model) this.render(this.model.clips);
+  }
+  setLayout(layout: "edit" | "preview") {
+    this.areas.focusBody(layout === "preview");
   }
   pause() {
     if (this.viewer.revision) this.control("pause");

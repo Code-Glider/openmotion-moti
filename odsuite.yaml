@@ -41,6 +41,7 @@ guard:
       - apps/web/src/lib/components/studio
       - apps/web/src/lib/components/studio/library
       - apps/web/src/lib/components/workspace
+      - apps/web/src/lib/components/workspace/navigation
       - packages/components/src/studio
       - packages/components/src/controls
       - packages/components/src/surfaces

@@ -1,6 +1,5 @@
 import { badge, button, codeEditor, field, note, readout, slot, tooltip } from "@open-motion/components";
 import { entryFragment } from "@open-motion/daemon/contract";
-import { setTheme, type Theme } from "@open-motion/theme";
 import type { Client } from "../../api.js";
 import type { Editor } from "../editor.js";
 import { observeWorkspace } from "../observe.js";
@@ -10,7 +9,8 @@ import { Studio } from "./studio.js";
 import { Archives } from "./workspace/archives.js";
 import { Creation } from "./workspace/create.js";
 import { Library } from "./workspace/library.js";
-import { Navigation } from "./workspace/navigation.js";
+import { Preferences } from "./workspace/navigation/preferences.js";
+import { Navigation } from "./workspace/navigation/projects.js";
 import { Pages } from "./workspace/pages.js";
 import { WorkspaceSync } from "./workspace/sync.js";
 import { Versions } from "./workspace/versions.js";
@@ -30,8 +30,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   sourceView.append(body);
   shell.editor.append(studioRoot);
   root.replaceChildren(shell.element);
-  let theme: Theme = "light",
-    busy = false,
+  let busy = false,
     disposed = false,
     message = "加载中",
     retry: (() => void) | undefined,
@@ -149,8 +148,8 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     },
     create: () => creation.open(newProject),
     theme: () => {
-      theme = theme === "light" ? "dark" : "light";
-      render(message);
+      navigation.view.close();
+      preferences.open(settings);
     },
   });
   const archives = new Archives(document, editor, client, run);
@@ -172,6 +171,14 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     },
     start: () => creation.open(newProject),
   });
+  const preferences = new Preferences(root, client, {
+    layout: (value) => studio.setLayout(value),
+  });
+  const settings = button(document, { label: "界面设置", compact: true, onClick: () => preferences.open(settings) });
+  settings.setAttribute("aria-haspopup", "dialog");
+  settings.setAttribute("aria-expanded", "false");
+  shell.rail.append(settings);
+  shell.element.append(preferences.view.element);
   const exports = new Exports(document, editor, client, (action) => run(action));
   shell.editor.append(exports.element, archives.element);
   const newProject = button(document, {
@@ -304,11 +311,10 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     if (disposed) return;
     message = next;
     const blocked = busy || editor.unconfirmed || creation.pending || !!editor.incoming;
-    setTheme(root, theme);
     root.setAttribute("data-session-id", editor.state.selection.sessionId ?? "");
     root.setAttribute("data-artifact-id", editor.state.selection.artifactId ?? "");
     synchronization.update(busy || editor.unconfirmed || creation.pending);
-    navigation.update(editor, blocked, theme === "dark", busy);
+    navigation.update(editor, blocked, busy);
     creation.update(busy, blocked, message);
     archives.update(editor, blocked);
     library.update(blocked, creation.pending, busy);
@@ -361,6 +367,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
         await navigation.dispose();
         await library.dispose();
         await versions.dispose();
+        await preferences.dispose();
         pages.dispose();
         await studio.dispose();
         archives.dispose();

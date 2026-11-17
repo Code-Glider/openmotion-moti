@@ -66,8 +66,16 @@ it("renders real sessions/artifacts as business composition and preserves theme/
     document.querySelector<HTMLButtonElement>(`[data-project-id="${artifact.id}"]`)?.click();
     await vi.waitFor(() => expect(editor.session?.id).toBe(session.id));
     expect(document.body.getAttribute("data-session-id")).toBe(session.id);
-    const theme = Array.from(document.querySelectorAll("button")).find((b) => b.textContent === "切换主题");
-    theme?.click();
+    document.querySelector<HTMLButtonElement>('[aria-label="外观与布局"]')?.click();
+    await vi.waitFor(() =>
+      expect(document.querySelector<HTMLSelectElement>('[aria-label="主题"]')?.disabled).toBe(false),
+    );
+    const theme = document.querySelector<HTMLSelectElement>('[aria-label="主题"]')!;
+    theme.value = "dark";
+    Array.from(document.querySelectorAll("button"))
+      .find((b) => b.textContent === "应用并保存界面")
+      ?.click();
+    await vi.waitFor(() => expect(document.body.getAttribute("data-om-theme")).toBe("dark"));
     expect(document.body.getAttribute("data-om-theme")).toBe("dark");
     expect(document.querySelector("style,[style],link[rel=stylesheet]")).toBeNull();
   }));

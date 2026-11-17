@@ -57,7 +57,23 @@ export const versionCursor = z.strictObject({
   ceiling: z.number().int().positive().safe(),
   before: z.number().int().positive().safe(),
 });
+/** Workspace-scoped presentation, independent of project source/history. */
+export const viewPreferences = z.strictObject({
+  theme: z.enum(["light", "dark", "system"]),
+  layout: z.enum(["edit", "preview"]),
+});
+export type ViewPreferences = z.infer<typeof viewPreferences>;
+export interface Preferences {
+  version: number;
+  value: ViewPreferences;
+}
 export const schemas = {
+  workspace_preferences: z.strictObject({}),
+  workspace_configure: z.strictObject({
+    ...request,
+    expectedVersion: z.number().int().nonnegative().safe(),
+    value: viewPreferences,
+  }),
   workspace_state: z.strictObject({}),
   workspace_observe: z.strictObject({}),
   session_create: z.strictObject({ ...request, title, mode: z.literal("motion"), instruction: text.optional() }),
@@ -196,6 +212,8 @@ export interface WorkspaceView {
   project: Project | null;
 }
 export interface Outputs {
+  workspace_preferences: Preferences;
+  workspace_configure: Preferences;
   workspace_state: State;
   workspace_observe: Observation;
   session_create: SessionDetail;
@@ -232,6 +250,10 @@ export class Fault extends Error {
   }
 }
 export const descriptions: Record<Operation, string> = {
+  workspace_preferences:
+    "Read workspace-scoped theme/layout preferences without admitting a project or changing content/selection.",
+  workspace_configure:
+    "Save finite workspace view preferences with optimistic version and original-request replay; never changes project source, history or selection.",
   workspace_state: "List creative sessions and the current selection.",
   workspace_observe:
     "Read an atomic lightweight workspace token and selected project/history head; fetch owned bodies and fence with another observation before applying.",
