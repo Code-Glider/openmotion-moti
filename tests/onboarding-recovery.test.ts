@@ -1,0 +1,95 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { persistInstallationOnboarding, resumeInstallationOnboarding } from '../scripts/install-onboarding.mjs';
+import { loadTemplatePresentation } from '../shared/mcp-template-recommendations.ts';
+
+const appRoot = fileURLToPath(new URL('../', import.meta.url));
+const templateIds = ['motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b',
+  'motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc', 'motion-dac924da-010f-4445-baf3-a39cb033e48f'];
+const threadId = 'installing-chat', dataDirectory = '/workspace/existing-motion-data';
+const presentation = loadTemplatePresentation();
+function receipt() {
+  return { installationStatus: 'installed', applicationRoot: appRoot, dataDirectory,
+    onboardingComplete: false, hostSessionVerified: false, onboardingStatus: 'refresh_requested',
+    inlinePresentation: { status: 'native_required', resourceVersion: presentation.resourceVersion,
+      resourceUri: presentation.uri, templateIds, language: 'zh' },
+    hostHandoff: { threadId, presentation: { tool: 'openmotion_show_template_recommendations',
+      arguments: { templateIds, language: 'zh', onboarding: true } } },
+    preview: { status: 'ready', previewUrl: 'http://127.0.0.1:4173/?templates=1&embed=1', projectCreated: false } };
+}
+function connectedHost(directory = dataDirectory) {
+  const calls: string[] = [];
+  const request = async (method: string, params: any) => {
+    calls.push(method);
+    if (method === 'thread/loaded/list') return { data: [threadId] };
+    if (method === 'mcpServerStatus/list') {
+      assert.equal(params.threadId, threadId);
+      return { data: [{ name: 'openmotion', serverInfo: { version: '0.0.1' },
+        tools: { openmotion_get_project: {}, openmotion_show_template_recommendations: presentation.tool } }] };
+    }
+    if (method === 'mcpServer/tool/call') {
+      assert.equal(params.threadId, threadId);
+      return { structuredContent: { dataDirectory: directory } };
+    }
+    throw new Error('Recovery must not reload or prepare anything: ' + method);
+  };
+  return { calls, request };
+}
+
+test('refresh recovery uses the exact installation selections and workspace without setup or another reload', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-install-receipt-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const saved = await persistInstallationOnboarding(receipt(), directory);
+  const original = await readFile(saved.detailsFile, 'utf8');
+  if (process.platform !== 'win32') assert.equal((await stat(saved.detailsFile)).mode & 0o777, 0o600);
+  assert(saved.recovery.args.includes(saved.detailsFile));
+  assert(saved.recovery.args.includes('--verify-only'));
+  const host = connectedHost();
+  const result = await resumeInstallationOnboarding(JSON.parse(original), { appRoot, threadId, request: host.request });
+  assert.equal(result.hostSessionVerified, true);
+  assert.equal(result.onboardingComplete, false, 'Connection verification is not visible welcome/card delivery');
+  assert.deepEqual(result.hostHandoff.presentation.arguments, { templateIds, language: 'zh', onboarding: true });
+  assert.deepEqual(result.preview, saved.preview);
+  assert.deepEqual(host.calls, ['thread/loaded/list', 'mcpServerStatus/list', 'mcpServer/tool/call']);
+  assert.equal(await readFile(saved.detailsFile, 'utf8'), original, 'Recovery must preserve original installation evidence');
+});
+
+test('recovery rejects a different chat, changed card bytes and an unsupported selection before contacting a host', async () => {
+  const host = connectedHost();
+  await assert.rejects(resumeInstallationOnboarding(receipt(), { appRoot, threadId: 'another-chat', request: host.request }), /original chat/);
+  const changed = receipt(); changed.inlinePresentation.resourceVersion = '0'.repeat(64);
+  await assert.rejects(resumeInstallationOnboarding(changed, { appRoot, threadId, request: host.request }), /card resource changed/);
+  const replaced = receipt(); replaced.hostHandoff.presentation.arguments.templateIds = ['product-promo', ...templateIds.slice(1)];
+  await assert.rejects(resumeInstallationOnboarding(replaced, { appRoot, threadId, request: host.request }), /curated template/);
+  assert.deepEqual(host.calls, []);
+});
+
+test('a different connected workspace cannot finish installation recovery', async () => {
+  const host = connectedHost('/workspace/another-data');
+  const result = await resumeInstallationOnboarding(receipt(), { appRoot, threadId, request: host.request });
+  assert.equal(result.hostHandoff.reason, 'HOST_WORKSPACE_MISMATCH');
+  assert.equal(result.hostHandoff.automaticActivation, 'blocked');
+  assert.equal(result.onboardingComplete, false);
+});
+
+test('recovery keeps a welcome already delivered and shows only the same three video cards', async () => {
+  const host = connectedHost();
+  const result = await resumeInstallationOnboarding(receipt(), { appRoot, threadId, request: host.request, welcomeDelivered: true });
+  assert.equal(result.hostHandoff.presentation.arguments.onboarding, false);
+  assert.equal(result.hostHandoff.welcomeMarkdown, '');
+  assert.deepEqual(result.hostHandoff.presentation.arguments.templateIds, templateIds);
+});
+
+test('an earlier source-install receipt retains its original chat from the recorded host request', async () => {
+  const legacy: any = receipt();
+  delete legacy.hostHandoff.threadId;
+  legacy.hostHandoff.hostRequests = [{ method: 'mcpServerStatus/list', params: { threadId } }];
+  const host = connectedHost();
+  const result = await resumeInstallationOnboarding(legacy, { appRoot, threadId, request: host.request });
+  assert.equal(result.hostSessionVerified, true);
+  assert.deepEqual(result.hostHandoff.presentation.arguments.templateIds, templateIds);
+});

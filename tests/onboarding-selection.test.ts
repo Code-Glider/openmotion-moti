@@ -48,10 +48,9 @@ test('one preparation freezes a random selection across inline cards and fallbac
   assert.equal(result.catalog.recommendedTemplateId, ids[0]);
   assert.equal(result.inlinePresentation.status, 'native_required');
   assert.equal(result.inlinePresentation.path, undefined);
-  assert.equal(result.inlinePresentation.presentation.arguments.onboarding, false);
+  assert.equal(result.inlinePresentation.presentation.arguments.onboarding, true);
   assert.match(result.inlinePresentation.welcomeMarkdown, /我是你的开源视频创作搭档/);
-  assert.match(result.inlinePresentation.welcomeMarkdown, /上方卡片/);
-  assert.doesNotMatch(result.inlinePresentation.welcomeMarkdown, /下方|👇/);
+  assert.match(result.inlinePresentation.welcomeMarkdown, /下方|👇/);
   const presentation = loadTemplatePresentation();
   const bootstrap = JSON.parse(presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s)![1]);
   const window = new Window(); t.after(() => window.happyDOM.abort());
@@ -59,7 +58,10 @@ test('one preparation freezes a random selection across inline cards and fallbac
   const root = window.document.createElement('main'); window.document.body.append(root);
   const ui = mountTemplateCards(root as unknown as HTMLElement, bootstrap, { sendMessage: async () => ({}), getHostCapabilities: () => ({}) });
   ui.update(showTemplateRecommendations(presentation, result.inlinePresentation.presentation.arguments));
-  assert.equal(window.document.querySelector('.omtc-welcome'), null, 'Welcome must stream as final reply text, outside the native App');
+  const welcome = root.querySelector('.omtc-welcome');
+  assert(welcome, 'Installation must include the welcome in the persistent conversation component');
+  assert.equal(root.firstElementChild, welcome, 'The welcome must precede the three template cards');
+  assert.match(welcome.textContent!, /我是你的开源视频创作搭档/);
   t.after(() => ui.destroy());
   const displayed = () => [...window.document.querySelectorAll('.omtc-card')].map(card => card.getAttribute('data-template-id'));
   assert.deepEqual(displayed(), ids);

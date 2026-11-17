@@ -107,7 +107,7 @@ export async function prepareInlineOnboarding({output, language}) { await fs.mkd
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.inlinePresentation.status, 'prepared');
     assert.equal(onboarding.onboardingComplete, false);
-    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery');
+    assert.equal(onboarding.onboardingStatus, 'host_action_required', 'Document preparation must not bypass current-chat activation');
     assert.equal(onboarding.callback, undefined);
     assert.equal(onboarding.preview.status, 'ready');
   });
