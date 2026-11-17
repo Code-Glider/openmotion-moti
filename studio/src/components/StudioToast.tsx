@@ -24,10 +24,10 @@ export function StudioToast({ message, tone, presentation, leaving, onDismiss, s
       role={isError ? "alert" : "status"}
       className={`pointer-events-none max-w-full motion-reduce:animate-none ${leaving ? "hf-toast-exit" : "hf-toast-enter"}`}
     >
-      {isError && presentation !== "feedback" ? <div className="flex max-w-[min(420px,calc(100vw-48px))] items-center gap-3 rounded-2xl bg-toast-feedback px-4 py-2 text-[12px] text-toast-feedback-ink shadow-popover">
+      {isError && presentation !== "feedback" ? <div className="hf-toast-surface flex max-w-[min(420px,calc(100vw-48px))] items-center gap-3">
         <span className="min-w-0 leading-5 [overflow-wrap:anywhere]">{systemMessage(toastErrorMessage(message), t)}</span>
         {onDismiss && <button type="button" className="pointer-events-auto grid h-6 w-6 shrink-0 place-items-center rounded hover:bg-white/10" aria-label={t('Dismiss error')} onClick={onDismiss}><RemixIcon name="close-line" size={14} /></button>}
-      </div> : <div className={`max-w-[min(420px,calc(100vw-48px))] overflow-hidden rounded-2xl px-4 py-2 text-[12px] shadow-popover bg-toast-feedback text-toast-feedback-ink`}>
+      </div> : <div className="hf-toast-surface max-w-[min(420px,calc(100vw-48px))] overflow-hidden">
         <div className={status || action ? "flex min-w-0 items-center gap-3" : undefined}>
           <span className={singleLine ? "block min-w-0 truncate leading-5" : "line-clamp-3 leading-5 [overflow-wrap:anywhere]"} title={systemMessage(message, t)}>{systemMessage(message, t)}</span>
           {status && <span className="shrink-0 leading-5 opacity-70">
