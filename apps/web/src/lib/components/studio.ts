@@ -371,6 +371,7 @@ export class Studio {
       this.context.scope,
     );
     this.axis = studioTimeline(document, {
+      identity: this.key,
       clips,
       selected: this.selected,
       blocked: blocked || !!this.pending || this.animations.dirty || this.editor.dirty,
