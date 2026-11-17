@@ -13,9 +13,11 @@ Branch new work from the latest `main` and target all pull requests at `main`. M
 Follow the mandatory [shared design system rules](AGENTS.md#shared-design-system--required-for-every-agent) for every style-related change. Read [packages/design-system/README.md](packages/design-system/README.md), reuse its tokens, styles and assets, and extend the package before adding a missing reusable visual role. Feature modules must reference this source rather than maintain independent palettes or copied styles. Apply the same rule when delegating or reviewing work; authored video and domain geometry retain their own styling boundary.
 For CI scope and local validation, follow [Local validation](AGENTS.md#local-validation), including the presentation-document allowlist and the full product-content gate.
 
-## Candidate and publication controls
+## Repository template contributions
 
 For repository template edits, follow [Template production and reuse](AGENTS.md#template-production-and-reuse): commit source and refresh manifests/file identities; repository/hosted files need no old CMS URL or uploaded ZIP. Maintainers use **Prepare and merge PR** after review, and main synchronization publishes hosted source automatically. Website CMS publication requires a separate explicit request.
+
+## Candidate and publication controls
 
 New repository installations use the source bootstrap in install.md by default. Published npm application installation is optional and requires an explicit user choice; follow docs/install.md for channel and host selection. Never silently substitute npm for source or mix installations. Preserve existing installations, projects, credentials and unrelated host settings. npm remains the source dependency/build tool.
 
