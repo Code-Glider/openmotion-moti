@@ -36,7 +36,7 @@ type Template = {
 };
 function Icon({ name = "play", size = 18 }: { name?: string; size?: number }) {
   const ids: Record<string, string> = {
-    play: "ri-play-line",
+    play: "ri-play-fill",
     arrow: "ri-arrow-right-line",
     grid: "ri-layout-grid-line",
     plus: "ri-add-line",
