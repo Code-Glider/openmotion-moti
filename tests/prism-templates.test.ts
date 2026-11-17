@@ -131,6 +131,8 @@ test('template files cannot escape the destination; known built-ins work without
   await assert.rejects(stat(path.join(directory, 'outside.html')), { code: 'ENOENT' });
   remote.offline();
   assert.equal((await catalog.get('product-promo')).kind, 'builtin');
+  const offlineDetail = await new TemplateCatalog(path.join(directory, 'cold'), { fetch: remote.request }).detail('product-promo');
+  assert.match(offlineDetail.instructions, /product-promo/);
 });
 
 test('reopening a template reuses verified files without sharing mutable project files', async t => {

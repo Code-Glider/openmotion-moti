@@ -33,9 +33,9 @@ function clearNativeEnvironment(t: any) {
 }
 async function setupFixture(t: any) {
   const directory = await fixture(t), application = path.join(directory, 'source'), home = path.join(directory, 'install'), skillsDirectory = path.join(directory, 'skills');
-  for (const name of ['scripts', 'shared', 'studio/build', 'skills/openmotion-production', 'docs']) await mkdir(path.join(application, name), { recursive: true });
+  for (const name of ['scripts', 'shared', 'studio/build', 'skills/openmotion-production', 'docs', 'mcp-ui/template-recommendations']) await mkdir(path.join(application, name), { recursive: true });
   for (const name of ['mcp.ts', 'scripts/npm-runtime.mjs', 'studio/build/index.html', 'README.md', 'AGENTS.md', 'CLAUDE.md']) await writeFile(path.join(application, name), 'fixture');
-  for (const file of ['docs/install-onboarding.md', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs', 'scripts/open-template-library.ts', 'shared/workspace-url.ts']) await cp(new URL('../' + file, import.meta.url), path.join(application, file));
+  for (const file of ['docs/install-onboarding.md', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs', 'scripts/open-template-library.ts', 'shared/workspace-url.ts', 'mcp-ui/template-recommendations/i18n.ts']) await cp(new URL('../' + file, import.meta.url), path.join(application, file));
   await writeFile(path.join(application, 'workspace.ts'), 'export class WorkspaceStore { constructor(directory = process.env.MOTION_DATA_DIR) { this.directory = directory; } }');
   await writeFile(path.join(application, 'preview.ts'), `export async function ensureService(store) { if (store.directory !== process.env.MOTION_DATA_DIR) throw new Error('Wrong workspace'); return { previewUrl: 'http://127.0.0.1:4173' }; }`);
   await writeFile(path.join(application, 'skills/openmotion-production/SKILL.md'), '---\nname: openmotion-production\ndescription: fixture\n---\nFixture');
@@ -69,10 +69,10 @@ test('successful setup hands the current Agent a project-free template library b
     assert.doesNotMatch(example, /打开并编辑|要用这个模板/);
   }
   assert.doesNotMatch(cards, /1\. \*\*产品宣传片|2\. \*\*动态图表|3\. \*\*决策树动画/);
-  assert.match(installed.onboarding.instructions, /onboarding: true/);
-  assert.match(installed.onboarding.instructions, /end without an additional text reply/);
+  assert.match(installed.onboarding.instructions, /onboarding: false/);
+  assert.match(installed.onboarding.instructions, /stream the separate welcomeMarkdown once as the final reply/);
   assert.match(cards, /不想自己找？先看看我挑的这 3 个/);
-  assert.match(cards, /你可以点击下方卡片上的「复刻模板」，然后补充/);
+  assert.match(cards, /你可以点击上方卡片上的「复刻模板」，然后补充/);
   assert.match(cards, /补充「我的要求」或添加附件，发送后就开始创作/);
   assert.doesNotMatch(library, /卡片|3 个推荐|填入输入框|回复.*[123]/);
   assert(Array.isArray(installed.onboarding.catalog.templates));

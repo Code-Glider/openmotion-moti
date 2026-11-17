@@ -4,9 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AssetComposer, type AssetDraft } from './AssetComposer';
 import type { Model } from '../../../shared/gateway';
-const { generate, loadGateway } = vi.hoisted(() => ({ generate: vi.fn(), loadGateway: vi.fn() }));
+const { generate, loadGateway, gatewayRequest } = vi.hoisted(() => ({ generate: vi.fn(), loadGateway: vi.fn(), gatewayRequest: vi.fn() }));
 vi.mock('./assetClient', () => ({ assetRequest: generate }));
-vi.mock('./gatewayClient', () => ({ loadGateway }));
+vi.mock('./gatewayClient', () => ({ loadGateway, gatewayRequest }));
 vi.mock('./AssetConversation', () => ({ AssetConversation: () => null }));
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string) => text }) }));
 vi.mock('./WorkspaceFrame', () => ({ useWorkspaceChrome: () => ({ openModelSettings: vi.fn() }) }));
@@ -78,7 +78,65 @@ it('sends one reference to an account image model that reports editing support',
   expect(container.textContent).toContain('This model cannot use asset references');
   expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
   await act(async () => root.render(<AssetComposer {...props} draft={{ ...draft, model: account.id }} />));
-  expect(container.textContent).toContain('This model edits one image reference.');
+  expect(container.textContent).toContain('This model edits up to {count} image references.');
   await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
   expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ action: 'generate', model: account.id, mode: 'text-to-image', references: [references[0].reference] }));
+});
+
+it.each(['image', 'video'] as const)('uses the model reference contract for Cloud %s', async modality => {
+  const cloud: Model = { id: 'opendesign:references', provider: 'opendesign', modelId: 'references', label: 'Cloud', modality,
+    source: 'live', mode: `text-to-${modality}`, supportsImageReference: modality === 'image', maxInputImages: modality === 'image' ? 20 : 1 };
+  loadGateway.mockResolvedValue({ models: [cloud], status: { providers: [{ id: 'opendesign', available: true }], routes: {} } });
+  generate.mockResolvedValue({ job: { id: 'cloud-reference-job' } });
+  const references = Array.from({ length: cloud.maxInputImages! }, (_, index) => ({ name: `Reference ${index}`, reference: { assetId: `asset-${index}`, versionId: 'version' } }));
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, modality, model: cloud.id, parameters: {}, references }} />));
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(false);
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-reference')?.disabled).toBe(true);
+  expect(container.textContent).toContain(modality === 'video' ? 'This video model uses one image as its first frame.' : 'This model edits up to {count} image references.');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ model: cloud.id, references: references.map(item => item.reference) }));
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, modality, model: cloud.id, references: [...references, references[0]] }} />));
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
+});
+
+const cloudImage: Model = { ...model, id: 'opendesign:sunburst', provider: 'opendesign', source: 'live', supportsImageReference: undefined };
+const cloudState = (models: Model[]) => ({ models, status: { providers: [{ id: 'opendesign', available: true }], routes: {} } });
+it('syncs unknown Cloud capability without remounting or losing the draft and references', async () => {
+  loadGateway.mockResolvedValue(cloudState([cloudImage])); gatewayRequest.mockResolvedValue({});
+  const draft = { ...props.draft, model: cloudImage.id, references: [{ name: 'Cup', reference: { assetId: 'a', versionId: 'v' } }] };
+  await act(async () => root.render(<AssetComposer {...props} draft={draft} />));
+  expect(container.textContent).toContain('Image editing capability is unknown');
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.disabled).toBe(true);
+  loadGateway.mockResolvedValue(cloudState([{ ...cloudImage, supportsImageReference: true, maxInputImages: 3 }]));
+  await act(async () => Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Sync models')!.click());
+  expect(gatewayRequest).toHaveBeenCalledExactlyOnceWith('settings/providers/opendesign/sync', 'POST', {});
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-reference')!.disabled).toBe(false);
+  expect(container.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(draft.prompt);
+  expect(container.textContent).toContain('Cup'); expect(props.setDraft).not.toHaveBeenCalled(); expect(generate).not.toHaveBeenCalled();
+});
+it('discards an earlier model response after settings change and keeps a removed model selected for validation', async () => {
+  let release!: (value: unknown) => void;
+  loadGateway.mockImplementationOnce(() => new Promise(resolve => { release = resolve; })).mockResolvedValue(cloudState([]));
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, model: cloudImage.id }} />));
+  await act(async () => window.dispatchEvent(new Event('motion:gateway-changed')));
+  await act(async () => release(cloudState([{ ...cloudImage, supportsImageReference: true }])));
+  expect(container.textContent).toContain('This task’s model is unavailable');
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.disabled).toBe(true);
+  expect(props.setDraft).not.toHaveBeenCalled();
+  gatewayRequest.mockResolvedValue({}); loadGateway.mockResolvedValue(cloudState([{ ...cloudImage, supportsImageReference: true }]));
+  await act(async () => Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Sync models')!.click());
+  expect(gatewayRequest).toHaveBeenCalledExactlyOnceWith('settings/providers/opendesign/sync', 'POST', {});
+  expect(container.textContent).not.toContain('This task’s model is unavailable');
+});
+it('distinguishes explicit unsupported capability from unknown and reports failed sync', async () => {
+  const draft = { ...props.draft, model: cloudImage.id, references: [{ name: 'Cup', reference: { assetId: 'a', versionId: 'v' } }] };
+  loadGateway.mockResolvedValue(cloudState([{ ...cloudImage, supportsImageReference: false }]));
+  await act(async () => root.render(<AssetComposer {...props} draft={draft} />));
+  expect(container.textContent).toContain('This model cannot use asset references');
+  expect(container.textContent).not.toContain('Sync models');
+  loadGateway.mockResolvedValue(cloudState([cloudImage]));
+  await act(async () => window.dispatchEvent(new Event('motion:gateway-changed')));
+  gatewayRequest.mockRejectedValue(new Error('Catalogue unavailable'));
+  await act(async () => Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Sync models')!.click());
+  expect(props.onError).toHaveBeenCalledWith('Catalogue unavailable'); expect(generate).not.toHaveBeenCalled();
 });

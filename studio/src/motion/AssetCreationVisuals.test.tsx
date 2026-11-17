@@ -88,3 +88,21 @@ it('removes save recovery for unavailable retained files and explains that nothi
   expect(container.textContent).not.toContain('Retry saving'); expect(container.textContent).not.toContain('SAVE_NOT_AVAILABLE');
   expect(retrySave).not.toHaveBeenCalled();
 });
+
+it('checks an eligible original Cloud task once and shows reconnection without new generation', async () => {
+  let complete!: () => void;
+  const resume = vi.fn(() => new Promise<void>(resolve => { complete = resolve; }));
+  const job: GenerationJob = { ...initial, model: { ...initial.model, provider: 'opendesign' }, state: 'failed', remoteId: 'original-task' };
+  await act(async () => root.render(<AssetGenerationCard job={job} onCancel={cancel} onView={view} onResume={resume} />));
+  const button = [...container.querySelectorAll('button')].find(node => node.textContent === 'Check original task')!;
+  await act(async () => { button.click(); button.click(); });
+  expect(resume).toHaveBeenCalledExactlyOnceWith(job); expect(button.disabled).toBe(true);
+  await act(async () => complete()); expect(button.disabled).toBe(false);
+  for (const patch of [{ state: 'cancelled' as const }, { state: 'running' as const }, { state: 'completed' as const }, { savePending: true }, { remoteTerminal: true }, { remoteId: undefined }, { remoteId: '../bad' }, { model: initial.model }]) {
+    await act(async () => root.render(<AssetGenerationCard job={{ ...job, ...patch }} onCancel={cancel} onView={view} onResume={resume} />));
+    expect(container.textContent).not.toContain('Check original task');
+  }
+  await render({ ...job, state: 'running', phase: 'reconnecting' });
+  expect(container.textContent).toContain('Reconnecting…');
+  expect(cancel).not.toHaveBeenCalled();
+});

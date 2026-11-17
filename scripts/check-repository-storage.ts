@@ -12,6 +12,16 @@ function git(cwd: string, args: string[], input?: string) {
   return result.stdout;
 }
 
+function checkoutBytesAtCommit(cwd: string, commit: string): number {
+  const entries = git(cwd, ['ls-tree', '-rlz', commit]).toString().split('\0').filter(Boolean);
+  let bytes = 0;
+  for (const entry of entries) {
+    const [, type, , size] = entry.slice(0, entry.indexOf('\t')).trim().split(/\s+/);
+    if (type === 'blob') bytes += Number(size);
+  }
+  return bytes;
+}
+
 /** Inspect the index and newly introduced history, without downloading LFS media. */
 export function checkRepositoryStorage(cwd: string, base?: string, options: { finalTreeOnly?: boolean } = {}) {
   if (base) assert(/^[a-f0-9]{40}$/.test(base), 'Use a full base commit SHA');
@@ -45,7 +55,7 @@ export function checkRepositoryStorage(cwd: string, base?: string, options: { fi
   for (const entry of entries) {
     const size = sizes.get(entry.oid)!;
     gitBytes += size;
-    if (size > maxGitFileBytes && changed.has(entry.name)) errors.push(`${entry.name}: staged ordinary Git file exceeds 1 MiB; use LFS or Prepare PR media`);
+    if (size > maxGitFileBytes && changed.has(entry.name)) errors.push(`${entry.name}: staged ordinary Git file exceeds 1 MiB; use LFS or Prepare and merge PR`);
     const bytes = contents.get(entry.oid), pointer = bytes && lfsPointer(bytes);
     if (filters.get(entry.name) !== 'lfs' && !pointer && !bytes?.toString().startsWith('version https://git-lfs.github.com/spec/v1')) continue;
     if (!pointer || filters.get(entry.name) !== 'lfs' || !['100644', '100755'].includes(entry.mode)) {
@@ -57,7 +67,8 @@ export function checkRepositoryStorage(cwd: string, base?: string, options: { fi
     lfsBytes += pointer.bytes;
     lfsFiles++;
   }
-  if (gitBytes > maxCheckoutBytes) errors.push('Ordinary Git checkout exceeds 128 MiB; move optional media to public storage or review the budget');
+  const checkoutLimit = base ? Math.max(maxCheckoutBytes, checkoutBytesAtCommit(cwd, base)) : maxCheckoutBytes;
+  if (gitBytes > checkoutLimit) errors.push('Ordinary Git checkout exceeds 128 MiB and any existing base size; move optional media to public storage or review the budget');
   if (base && !options.finalTreeOnly) {
     const objects = git(cwd, ['rev-list', '--objects', 'HEAD', '--not', base]).toString().trim().split('\n').filter(Boolean);
     if (objects.length) {

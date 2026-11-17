@@ -13,7 +13,7 @@ The provider management list hides connections whose declared capabilities and s
 | Connection | Configuration and discovery | Executable media |
 | --- | --- | --- |
 | fal.ai, Atlas Cloud, WaveSpeedAI | Existing keys, model catalogues and references | Their existing image/video/audio adapters |
-| OpenDesign Cloud | Separate workspace key and public HTTPS gateway origin | Existing image/video/speech contract |
+| OpenDesign Cloud | Separate workspace key and public HTTPS gateway origin | Image/video/speech/music; separate speech/music model modes and submit endpoints |
 | OpenAI-compatible API | Versioned base URL, Bearer key, `/models` or manual entries | `/images/generations` and binary `/audio/speech`; voice required for speech |
 | Anthropic / Google Gemini API | Provider-specific catalogue auth and pagination | Catalogue/default configuration only; no generic media adapter |
 | OpenDesign account | Browser authorization, subscription/balance, remote language/media catalogues | Connector image/video/speech/music tasks; one-image editing where the account's image model supports edits |

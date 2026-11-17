@@ -33,13 +33,14 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
   if (args.action === 'generate') {
     if (!args.provider || !args.model || !args.requestId || !args.modality || typeof args.prompt !== 'string') throw new Error('INVALID_ARGUMENT: provider, model, projectId, requestId, modality and prompt are required');
     const job = await gateway.submit({ projectId: args.projectId, model: `${args.provider}:${args.model}`, modality: args.modality,
-      prompt: args.prompt, parameters: args.parameters, mode: args.mode, idempotencyKey: args.requestId } as GenerateInput);
+      prompt: args.prompt, parameters: args.parameters, mode: args.mode, referenceAsset: args.referenceAsset, idempotencyKey: args.requestId } as GenerateInput);
     return { projectId: job.projectId, job, next: { action: 'status', projectId: job.projectId, jobId: job.id } };
   }
-  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {
+  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save' || args.action === 'resume') {
     const job = await gateway.getJob(args.jobId);
     if (job.projectId !== args.projectId || job.model.provider === 'codex') throw new Error('GENERATION_NOT_FOUND: job does not belong to this project');
     if (args.action !== 'status' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
+    if (args.action === 'resume') return { projectId: job.projectId, job: await gateway.resume(job.id, args.requestId) };
     return { projectId: job.projectId, job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
   throw new Error('INVALID_ARGUMENT: unsupported media action');

@@ -108,7 +108,7 @@ export async function prepareInstallationFlow(options) {
   if ((options.host || 'codex') === 'codex' && onboarding.inlinePresentation?.status !== 'prepared') {
     hostHandoff = await prepareCodexHostHandoff({ dataDirectory: options.dataDirectory,
       expectedVersion: options.expectedVersion || JSON.parse(await readFile(path.join(options.appRoot, 'package.json'), 'utf8')).version,
-      codex: options.codex, templateIds: options.templateIds });
+      codex: options.codex, templateIds: options.templateIds, language: onboarding.inlinePresentation?.language || options.language });
   }
   return { ...onboarding, installationStatus: 'installed', applicationRoot: options.appRoot,
     dataDirectory: options.dataDirectory, preview,
@@ -137,7 +137,9 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
         + '. Installation is registered; welcome/cards delivery remains unverified. '
         + (result.inlinePresentation?.status === 'prepared'
           ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
-          : 'Open the library and report the required host action. ')
+          : result.inlinePresentation?.status === 'native_required'
+            ? 'Show the exact prepared references with the compatible native presentation Tool in this conversation and onboarding:false; verify both images and full videos. Then stream inlinePresentation.welcomeMarkdown once as ordinary final reply text, outside the cards-only App. The native cards precede the final text. Refresh stale MCP discovery through the supported host action when needed. Do not replace inline cards with a right-hand browser page or resample the selection. '
+            : 'Open the library and report the required host action. ')
         + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
       if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
       console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined, detailsFile }, null, 2));

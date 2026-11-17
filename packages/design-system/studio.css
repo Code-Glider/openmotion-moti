@@ -10,6 +10,8 @@
 @import "./studio/application.css";
 @import "./studio/mcp.css";
 @import "./studio/template-cards.css";
+@import "./studio/discovery.css";
+@import "./studio/media-detail.css";
 
 /* Asset geometry is shared; currentColor follows the application's selected theme. */
 .motion-brand-lockup {

@@ -67,10 +67,10 @@ describe('WebMCP registration and invocation tracking', () => {
     expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE_ACTION');
   });
 
-  it('covers exactly the 19 public descriptors through the real registrar, preserving schema, signals and replies', async () => {
+  it('covers exactly the 21 public descriptors through the real registrar, preserving schema, signals and replies', async () => {
     const original = [...buildOpenMotionWebMcpTools(vi.fn()), ...buildStudioTools({ current: {} as never })];
     expect([...webMcpToolNames].sort()).toEqual(original.map(tool => tool.name).sort());
-    expect(webMcpToolNames).toHaveLength(19);
+    expect(webMcpToolNames).toHaveLength(21);
     expect(original.slice(0, phase1Tools.length).map(tool => tool.inputSchema)).toEqual(phase1Tools.map(tool => tool.inputSchema));
     const reply = { ok: true, privateResult: 'PRIVATE_CONTENT' };
     const handlers = original.map(() => vi.fn(async () => reply));
@@ -82,7 +82,7 @@ describe('WebMCP registration and invocation tracking', () => {
       registered.push(tool);
     } }, tools, controller.signal);
     await vi.dynamicImportSettled();
-    expect(reported('webmcp_registration_result')).toHaveLength(19);
+    expect(reported('webmcp_registration_result')).toHaveLength(original.length);
     const input = { prompt: 'PRIVATE_PROMPT', path: '/PRIVATE_PATH', token: 'PRIVATE_TOKEN' };
     for (const [i, tool] of registered.entries()) {
       expect(tool.inputSchema).toBe(tools[i].inputSchema);
@@ -93,8 +93,8 @@ describe('WebMCP registration and invocation tracking', () => {
     }
     await vi.dynamicImportSettled();
     const starts = reported('webmcp_tool_started'), finishes = reported('webmcp_tool_finished');
-    expect(starts).toHaveLength(19); expect(finishes).toHaveLength(19);
-    expect(new Set(starts.map(call => call.call_id)).size).toBe(19);
+    expect(starts).toHaveLength(original.length); expect(finishes).toHaveLength(original.length);
+    expect(new Set(starts.map(call => call.call_id)).size).toBe(original.length);
     for (const [i, call] of finishes.entries()) {
       expect(call).toMatchObject({ ...starts[i], outcome: 'success' });
       expect(call.duration_ms).toBeGreaterThanOrEqual(0);

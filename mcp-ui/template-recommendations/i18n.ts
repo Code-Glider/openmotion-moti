@@ -119,7 +119,9 @@ export const translations: Record<Language, Translation> = {
 };
 
 /** Plain reply text, kept outside the card document so the host can stream it. */
-export function welcomeMarkdown(language: Language): string {
+export function welcomeMarkdown(language: Language, cardsPosition: 'before' | 'after' = 'after'): string {
   const text = translations[language].welcome;
-  return [`**${text.heading}**`, text.introduction, text.discovery, `**${text.recommendations}**`, text.clipboardDraft].join("\n\n");
+  const recommendations = cardsPosition === 'before' ? text.recommendations.replace('👇', '👆') : text.recommendations;
+  const draft = cardsPosition === 'before' ? text.clipboardDraft.replace('下方', '上方') : text.clipboardDraft;
+  return [`**${text.heading}**`, text.introduction, text.discovery, `**${recommendations}**`, draft].join("\n\n");
 }

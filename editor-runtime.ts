@@ -1,4 +1,5 @@
 import { publicToolName, legacyToolName } from './shared/public-names.mjs';
+import { createConnection } from 'node:net';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { fstatSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -20,6 +21,22 @@ const service = 'opendesign-editor', protocol = 1;
 export type EditorRegistry = { service: string; protocol: number; version: string; build: string; instanceId: string; pid: number; dataDirectory: string; endpoint: string; token: string; mcp?: { protocol: number; tools: string[] } };
 export type Selection = { projectId?: string | null; sessionId?: string };
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// WorkBuddy gives each broker session its own local IPC address.
+function brokerIdentity(address: string | undefined) {
+  return address ? createHash('sha256').update(address).digest('hex') : undefined;
+}
+function brokerReachable(address: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const socket = createConnection({ path: address });
+    socket.once('connect', () => { socket.destroy(); resolve(true); });
+    socket.once('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT' || error.code === 'ECONNREFUSED') resolve(false);
+      else reject(Object.assign(error, { terminal: true }));
+    });
+    socket.setTimeout(1000, () => socket.destroy(new Error('Broker connection timed out')));
+  });
+}
 
 export async function editorDirectory(directory: string) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -48,6 +65,9 @@ export async function editorRequest(registry: EditorRegistry, route: string, bod
 }
 export async function ensureEditor(directory: string, mcpTool?: string): Promise<EditorRegistry> {
   const { data, runtime } = await editorDirectory(directory);
+  const broker = process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS;
+  const brokerId = brokerIdentity(broker);
+  let retiring: string | undefined;
   let launcher: ReturnType<typeof spawn> | undefined;
   for (let attempt = 0; attempt < 600; attempt++) {
     const registry = await readEditor(data);
@@ -63,6 +83,15 @@ export async function ensureEditor(directory: string, mcpTool?: string): Promise
             actual: { protocol: health.protocol, version: health.version, build: health.build },
           } },
         );
+        if (broker && health.brokerId && health.brokerId !== brokerId) {
+          if (retiring !== registry.instanceId) {
+            if (!await brokerReachable(broker)) throw Object.assign(new Error('Current WorkBuddy broker is unavailable'), { terminal: true });
+            await editorRequest(registry, '/editor-api/retire-broker', {});
+            retiring = registry.instanceId;
+          }
+          await pause(100);
+          continue;
+        }
         return { ...registry, version: health.version, build: health.build, mcp: health.mcp };
       } catch (error) { if ((error as any).terminal || (error as any).status) throw error; }
     }
@@ -113,7 +142,9 @@ export async function serveEditor(directory: string) {
   const { startServer } = await import('./server.ts');
   const { callTool, tools } = await import('./mcp-tools.ts');
   const { stopCommands } = await import('./hyperframes.ts');
-  const identity = () => ({ service, protocol, version, build: editorBuild, instanceId, pid: process.pid, dataDirectory: data, mcp: phase1McpCapabilities });
+  const broker = process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS;
+  const brokerId = brokerIdentity(broker);
+  const identity = () => ({ brokerId, service, protocol, version, build: editorBuild, instanceId, pid: process.pid, dataDirectory: data, mcp: phase1McpCapabilities });
   let active = 0, stopping = false, queue = Promise.resolve();
   const portFile = path.join(runtime, 'editor-port');
   let preferredPort = 0;
@@ -131,7 +162,9 @@ export async function serveEditor(directory: string) {
       if (!['localhost', '127.0.0.1'].includes(host.hostname) || host.port !== String(running.server.address() && (running.server.address() as any).port) || req.headers.origin) { json(403, { error: '仅允许本机私有调用' }); return true; }
       if (req.headers.authorization !== `Bearer ${token}`) { json(401, { error: '需要编辑器凭据' }); return true; }
       if (req.method === 'GET' && req.url === '/editor-api/health') { json(200, identity()); return true; }
-      if (req.method === 'POST' && req.url === '/editor-api/shutdown') {
+      if (req.method === 'POST' && (req.url === '/editor-api/shutdown' || req.url === '/editor-api/retire-broker')) {
+        if (stopping) { json(200, { stopping: true }); return true; }
+        if (req.url === '/editor-api/retire-broker' && (!broker || await brokerReachable(broker))) { json(409, { error: 'Editor belongs to another active WorkBuddy session' }); return true; }
         const job = await store.job();
         const { gatewayFor } = await import('./gateway/service.ts');
         const busy = (await gatewayFor(store).listJobs()).some(item => ['queued', 'running'].includes(item.state));

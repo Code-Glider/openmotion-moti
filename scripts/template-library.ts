@@ -20,7 +20,7 @@ export type FileLock = { path: string; bytes: number; sha256: string };
 type Entry = {
   templateId: string;
   original: Record<string, string>;
-  files: { path: string; url: string; bytes: number; sha256: string }[];
+  files: { path: string; url?: string; bytes: number; sha256: string }[];
   [field: string]: any;
 };
 export type ArchiveLock = { url: string; bytes: number; sha256: string };
@@ -132,7 +132,7 @@ export function validateRecord(record: TemplateRecord, id: string, locales: stri
     assert.equal(item.previewUrl, record.entry.previewUrl, 'Reference video must be shared across locales');
     for (const file of item.files) {
       safePath(file.path);
-      publicAssetUrl(file.url);
+      if (file.url) publicAssetUrl(file.url);
       assert(
         Number.isSafeInteger(file.bytes) && file.bytes > 0 && /^[a-f0-9]{64}$/.test(file.sha256),
         'Invalid project file lock',

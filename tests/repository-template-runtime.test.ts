@@ -158,3 +158,73 @@ test('the real stdio MCP resolves the loaded checkout from a different cwd witho
   assert.equal(detail.localSource.directory, path.join(repositoryCatalogRoot, firstId));
   assert.equal(detail.motionDocument.content, await readFile(detail.localSource.motionPath, 'utf8'));
 });
+
+test('registered project files with arbitrary extensions copy locally without CMS URLs', async t => {
+  const f = await fixture(t);
+  const contents = { 'index.html': Buffer.from('<html>Editable project</html>'), '工程.custom': Buffer.alloc(1024 * 1024 + 1, 37), 'manifest.json': Buffer.from(JSON.stringify({ files: [] })) };
+  const files = Object.entries(contents).filter(([name]) => name !== 'manifest.json').map(([name, bytes]) => ({ path: name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }));
+  Object.assign(f.record.entry, { files });
+  await f.save(f.id + '/template.json', f.record);
+  await f.save(f.id + '/source/manifest.json', { files });
+  for (const [name, bytes] of Object.entries(contents)) if (name !== 'manifest.json') await writeFile(path.join(f.folder, 'source', name), bytes);
+  assert.equal((await f.catalog.detail(f.id)).hasHtmlProject, true);
+  const output = path.join(f.work, 'editable');
+  await f.catalog.copy(await f.catalog.get(f.id), output, appRoot);
+  assert.deepEqual(await readFile(path.join(output, '工程.custom')), contents['工程.custom']);
+  assert.deepEqual(await f.catalog.sourceFile(f.id, 'manifest.json'), Buffer.from(JSON.stringify({ files })));
+  await writeFile(path.join(f.folder, 'source/工程.custom'), Buffer.alloc(contents['工程.custom'].length));
+  await assert.rejects(f.catalog.sourceFile(f.id, '工程.custom'), /does not match/);
+});
+
+test('unfetched project LFS assets use the matching published bytes and cache without replacing local files', async t => {
+  const f = await fixture(t), audio = Buffer.from('published soundtrack'), index = Buffer.from('<html>Editable local project</html>');
+  const audioFile = { path: 'assets/lfs/audio.m4a', bytes: audio.length, sha256: createHash('sha256').update(audio).digest('hex'), url: '' };
+  audioFile.url = 'https://r.open-design.ai/files/' + audioFile.sha256;
+  const files = [{ path: 'index.html', bytes: index.length, sha256: createHash('sha256').update(index).digest('hex') }, audioFile];
+  Object.assign(f.record.entry, { files });
+  await f.save(f.id + '/template.json', f.record);
+  await f.save(f.id + '/source/manifest.json', { files });
+  await mkdir(path.join(f.folder, 'source/assets/lfs'), { recursive: true });
+  await writeFile(path.join(f.folder, 'source/index.html'), index);
+  const filename = path.join(f.folder, 'source', audioFile.path);
+  const pointer = `version https://git-lfs.github.com/spec/v1\noid sha256:${audioFile.sha256}\nsize ${audio.length}\n`;
+  await writeFile(filename, pointer);
+  let requests = 0;
+  const client = new TemplateCatalog(f.work, { source: 'repository', repositoryRoot: f.root, fetch: async (input, init) => {
+    requests++; assert.equal(String(input), audioFile.url); assert.equal(init?.redirect, 'error'); return new Response(audio);
+  } });
+  const target = path.join(f.work, 'editable');
+  await client.copy(await client.get(f.id), target, appRoot);
+  assert.deepEqual(await readFile(path.join(target, audioFile.path)), audio);
+  assert.deepEqual(await readFile(path.join(target, 'index.html')), index);
+  assert.equal(await readFile(filename, 'utf8'), pointer);
+  assert.deepEqual(await client.sourceFile(f.id, audioFile.path), audio);
+  assert.equal(requests, 1);
+  await writeFile(filename, audio);
+  assert.deepEqual(await client.sourceFile(f.id, audioFile.path), audio);
+  await writeFile(filename, Buffer.alloc(audio.length));
+  await assert.rejects(client.sourceFile(f.id, audioFile.path), /does not match/);
+  assert.equal(requests, 1, 'Real local bytes, including corruption, must never trigger a remote replacement');
+});
+
+test('LFS fallback rejects mismatched pointers, URLs and corrupt or oversized downloads', async t => {
+  const f = await fixture(t), bytes = Buffer.from('expected audio');
+  const file = { path: 'audio.m4a', bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), url: '' };
+  file.url = 'https://r.open-design.ai/files/' + file.sha256;
+  Object.assign(f.record.entry, { files: [file] });
+  await f.save(f.id + '/source/manifest.json', { files: [file] });
+  const pointer = (sha256: string) => `version https://git-lfs.github.com/spec/v1\noid sha256:${sha256}\nsize ${bytes.length}\n`;
+  await writeFile(path.join(f.folder, 'source/audio.m4a'), pointer('0'.repeat(64)));
+  await f.save(f.id + '/template.json', f.record);
+  await assert.rejects(f.catalog.sourceFile(f.id, file.path), /pointer does not match/);
+  await writeFile(path.join(f.folder, 'source/audio.m4a'), pointer(file.sha256));
+  file.url = 'https://untrusted.invalid/files/' + file.sha256;
+  await f.save(f.id + '/template.json', f.record);
+  await assert.rejects(f.catalog.sourceFile(f.id, file.path), /URL must match/);
+  file.url = 'https://r.open-design.ai/files/' + file.sha256;
+  await f.save(f.id + '/template.json', f.record);
+  for (const payload of [Buffer.alloc(bytes.length), Buffer.alloc(bytes.length + 1)]) {
+    const client = new TemplateCatalog(f.work, { source: 'repository', repositoryRoot: f.root, fetch: async () => new Response(payload) });
+    await assert.rejects(client.sourceFile(f.id, file.path), /校验失败|exceeds/);
+  }
+});

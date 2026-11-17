@@ -10,12 +10,12 @@
 @media (prefers-reduced-motion: reduce) { [data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: none; } }
 [data-motion-studio] .motion-header-project :is(.motion-project-name-input, .motion-project-name-measure) { height: var(--motion-control-sm); padding: var(--motion-space-4) var(--motion-space-12); font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); line-height: var(--motion-space-18); }
 [data-motion-studio] .motion-project-name-measure { border: 1px solid transparent; }
-[data-motion-studio] .motion-studio-header-compact .motion-header-export { height: var(--motion-control-sm); padding-inline: var(--motion-space-16); border-radius: var(--motion-radius-md); flex-shrink: 0; }
+[data-motion-studio] .motion-studio-header-compact :is(.motion-header-export, .motion-project-agent-trigger) { height: var(--motion-control-sm); padding-inline: var(--motion-space-16); border-radius: var(--motion-radius-md); flex-shrink: 0; font-size: var(--motion-text-sm); font-weight: var(--motion-weight-semibold); }
 @container (max-width: 420px) {
-  [data-motion-studio] .motion-studio-header-compact .motion-header-export { padding-inline: var(--motion-space-12); }
+  [data-motion-studio] .motion-studio-header-compact :is(.motion-header-export, .motion-project-agent-trigger) { padding-inline: var(--motion-space-12); }
 }
 @container (max-width: 360px) {
-  [data-motion-studio] .motion-studio-header-compact .motion-header-export { padding-inline: var(--motion-space-8); }
+  [data-motion-studio] .motion-studio-header-compact :is(.motion-header-export, .motion-project-agent-trigger) { padding-inline: var(--motion-space-8); }
 }
 :root[data-motion-ui] .motion-studio-header-centered { border-bottom: 1px solid var(--motion-border-subtle); }
 :root[data-motion-ui] .hf-dock .dv-view:has(> .dv-groupview) { padding: 0; }

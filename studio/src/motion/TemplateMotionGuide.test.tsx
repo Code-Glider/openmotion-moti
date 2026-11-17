@@ -10,8 +10,12 @@ const appearance: GuideAppearance = { theme: 'light', background: '#f5f5f5', tex
 const source = '<html><head><link rel="stylesheet" href="guide.css"></head><body style="--paper:#96d93c"><h1>Guide</h1><iframe src="demo.html"></iframe><script src="runtime.js"></script></body></html>';
 const url = 'https://example.com/guides/one.html';
 let host: HTMLDivElement, root: Root;
+let blobs: Blob[];
 beforeEach(() => {
   window.happyDOM.settings.enableIframePageLoading = false;
+  blobs = [];
+  vi.spyOn(URL, 'createObjectURL').mockImplementation(blob => { blobs.push(blob); return 'blob:http://localhost/' + blobs.length; });
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   document.documentElement.dataset.theme = 'paper';
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
@@ -32,15 +36,18 @@ it('syncs theme without re-fetching or replacing the guide document and keeps th
   vi.stubGlobal('fetch', vi.fn(async () => new Response(source, { headers: { 'content-type': 'text/html' } })));
   await act(async () => root.render(<TemplateMotionGuide url={url} title="Guide" />));
   const frame = host.querySelector('iframe')!;
-  const html = frame.srcdoc;
-  const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
+  const src = frame.src;
+  const postMessage = vi.fn();
+  Object.defineProperty(frame, 'contentWindow', { value: { postMessage }, configurable: true });
   expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
   expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
-  expect(frame.hasAttribute('src')).toBe(false);
+  expect(src).toBe('blob:http://localhost/1');
+  expect(frame.hasAttribute('srcdoc')).toBe(false);
   expect(fetch).toHaveBeenCalledWith(url, expect.objectContaining({ credentials: 'omit', referrerPolicy: 'no-referrer' }));
   await act(async () => { document.documentElement.removeAttribute('data-theme'); });
   expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'openmotion:guide-appearance', appearance: expect.objectContaining({ theme: 'dark' }) }), '*');
-  expect(frame.srcdoc).toBe(html);
+  expect(frame.src).toBe(src);
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
@@ -62,7 +69,8 @@ it('aborts a stale guide and cannot overwrite a newer selection', async () => {
   await act(async () => root.render(<TemplateMotionGuide url="https://example.com/second.html" title="Second" />));
   expect(signal.aborted).toBe(true);
   await act(async () => resolveFirst(new Response(source, { headers: { 'content-type': 'text/html' } })));
-  expect(host.querySelector('iframe')?.srcdoc).toContain('<h1>Second</h1>');
+  expect(await blobs[0].text()).toContain('<h1>Second</h1>');
+  expect(blobs).toHaveLength(1);
 });
 
 it.each(['./assets/', '../assets/', '', 'https://cdn.example.com/assets/'])('resolves an existing base %j against the final response URL', async base => {
@@ -71,7 +79,17 @@ it.each(['./assets/', '../assets/', '', 'https://cdn.example.com/assets/'])('res
   Object.defineProperty(response, 'url', { value: finalUrl });
   vi.stubGlobal('fetch', vi.fn(async () => response));
   await act(async () => root.render(<TemplateMotionGuide url={url} title="Guide" />));
-  const doc = new DOMParser().parseFromString(host.querySelector('iframe')!.srcdoc, 'text/html');
+  const doc = new DOMParser().parseFromString(await blobs[0].text(), 'text/html');
   expect(doc.querySelector('base')?.getAttribute('href')).toBe(new URL(base, finalUrl).href);
   expect(doc.querySelector('img')?.getAttribute('src')).toBe('poster.png');
+});
+
+
+it('revokes prepared guide documents on selection changes and unmount', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(source, { headers: { 'content-type': 'text/html' } })));
+  await act(async () => root.render(<TemplateMotionGuide url={url} title="Guide" />));
+  await act(async () => root.render(<TemplateMotionGuide url="https://example.com/next.html" title="Next" />));
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/1');
+  await act(async () => root.render(null));
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/2');
 });
