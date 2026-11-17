@@ -34,13 +34,38 @@ Optional environment variables:
 | `MOTION_DATA_DIR` | Existing OpenMotion data directory to share; otherwise uses the integration home's `data/`. |
 | `MOTION_TEMPLATE_SOURCE` | Optional OpenMotion template source override, e.g. `hosted`. Unset uses OpenMotion's normal source-checkout behavior. |
 
-## Build and install the plugin package
+## Download and install the plugin
+
+Users do not need to build the plugin themselves. The maintained public entry is:
+
+<https://releases.open-design.ai/open-motion/integrations/dsh/main/latest.json>
+
+This small JSON records the plugin version, supported DSH version, exact OpenMotion `sourceCommit`, immutable `tarballUrl`, byte length and SHA-256. Download the `.tgz` at `tarballUrl`; no GitHub login is required. For a new installation, use a separate OpenMotion checkout at `sourceCommit`, install its root dependencies and build Studio as described in Prerequisites. Preserve an existing checkout and use the local build below when you want to keep its version. The tarball still requires that built source runtime; it does not contain the full OpenMotion application.
+
+From a prepared checkout, this helper downloads and verifies the published package before writing it to a new file:
 
 ```sh
+node integrations/dsh/download.ts /absolute/path/to/downloads
+```
+
+Use the returned `filename` with the DSH installation command below. It also returns `sourceCommit` and `dshVersion` so the Agent can check the runtime and host before enabling. A checksum, network or version mismatch must be reported rather than silently switching an existing installation. Existing downloads are not overwritten.
+
+**Availability:** the first public download appears after this PR merges to `main` and **DSH integration** succeeds. Before merging, download the `openmotion-dsh` artifact from the PR's successful [DSH integration run](https://github.com/nexu-io/openmotion/actions/workflows/dsh-integration.yml), extract GitHub's outer ZIP, and use the `.tgz` inside. GitHub artifact downloads require sign-in and expire; the public R2 download is the maintained user entry.
+
+### Build locally instead
+
+After the prerequisites, install the optional build dependencies and pack:
+
+```sh
+npm ci --prefix integrations/dsh
 npm run pack --prefix integrations/dsh
 ```
 
-This produces `integrations/dsh/dist/openmotion-dsh-0.1.0.tgz`. Copy the tarball to the target machine. With DSH installed, install it in the desired profile:
+This produces `integrations/dsh/dist/openmotion-dsh-0.1.0.tgz`. It can also be copied to another machine with the matching source runtime.
+
+### Install and enable in DSH
+
+With DSH installed, install the downloaded or locally built tarball in the desired profile:
 
 ```sh
 dsh plugin --profile web add /absolute/path/to/openmotion-dsh-0.1.0.tgz
@@ -60,6 +85,10 @@ Add this entry to that profile's `cordis.patch.yml`, preserving existing entries
 Replace both paths with your local locations. `root` must be a built source checkout containing this integration; the plugin does not download OpenMotion. `dataDirectory` chooses the shared project/asset store. Optional `node` selects the Node executable for OpenMotion; by default it uses DSH's Node. Optional `templateSource` selects `repository` or `hosted`.
 
 Restart DSH. Enabling this one plugin mounts its workspace UI, starts/reuses OpenMotion, and connects the MCP tools. Remove an existing `mcp-openmotion` entry before enabling it: two adapters cannot reserve the same `openmotion` tool namespace. Model configuration remains in DSH's normal settings/profile. Do not commit generated patches, model credentials, authenticated URLs or user data.
+
+### Distribution maintenance
+
+The path-scoped **DSH integration** workflow checks, packs and retains the tarball for PR testing. On trusted `main` pushes or a manual run on `main`, it additionally uploads a content-addressed tarball to R2, verifies the public bytes, and updates `main/latest.json` last. Old tarball URLs remain valid. A stale run cannot promote over a newer main commit; rerun the workflow on current `main` if main advanced during packaging. R2 credentials are provided only to that final trusted publishing step. This uses the existing release-bucket configuration, independently of npm and application release workflows. No plugin npm publication is performed.
 
 ## Verify and recover
 

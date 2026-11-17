@@ -5,6 +5,7 @@ on:
     paths:
       - 'integrations/dsh/**'
       - 'tests/dsh-integration.test.ts'
+      - 'tests/dsh-distribution.test.ts'
       - 'packages/design-system/**'
       - 'package.json'
       - 'package-lock.json'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'integrations/dsh/**'
       - 'tests/dsh-integration.test.ts'
+      - 'tests/dsh-distribution.test.ts'
       - 'packages/design-system/**'
       - 'package.json'
       - 'package-lock.json'
@@ -25,7 +27,7 @@ permissions:
 
 concurrency:
   group: dsh-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   plugin:
@@ -51,4 +53,20 @@ jobs:
         run: |
           npm run typecheck --prefix integrations/dsh
           npm run pack --prefix integrations/dsh
-          node --test tests/dsh-integration.test.ts
+          node --test tests/dsh-integration.test.ts tests/dsh-distribution.test.ts
+      - name: Retain the plugin for PR testing
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: openmotion-dsh
+          path: integrations/dsh/dist/*.tgz
+          if-no-files-found: error
+      - name: Publish verified main plugin downloads
+        if: github.repository == 'nexu-io/openmotion' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_RELEASES_AK }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_RELEASES_SK }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+          AWS_PAGER: ''
+          MOTION_R2_ENDPOINT: ${{ vars.CLOUDFLARE_R2_RELEASES_URL }}
+          MOTION_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_RELEASES_BUCKET }}
+        run: node integrations/dsh/publish.ts
