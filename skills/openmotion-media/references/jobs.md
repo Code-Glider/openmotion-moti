@@ -28,3 +28,7 @@ Classify failures from the actual status, error code and stage before deciding t
 - **Unexposed route vs missing resource (`404`)**: distinguish a gateway origin where `/api/v1/media/*` is not deployed on that environment from an unknown model slug or expired remote task ID.
 - **Timeouts and interrupted polling**: distinguish submit timeout, status-poll timeout and media-download timeout. After an unknown outcome, query `action: "status"` on the original `jobId` (or replay the exact `requestId` with identical inputs) before proposing any new billable submission. Changing prompt, model or parameters requires a new `requestId`.
 - **Tell the user the next step in plain language**: a `401` / `403` marks the saved key rejected, so ask them to replace it in **Model providers** / **模型供应商**; an error whose text names balance, credit, quota or insufficient funds means topping up in that provider's own console; for any other failure, relay the provider's message briefly without guessing a cause. Keep assets that already finished and offer the same choices as for a missing kind for the failed part.
+
+## Saved voices
+
+For existing Fish Audio or MiniMax Speech voices, read the [Fish Audio guide](providers/fishaudio.md) or [MiniMax Speech guide](providers/minimax-speech.md). Use `openmotion_assets_use` action `voice` to manage local records, and generate audio with an explicit `voiceRef`. Keep provider identity and revision pinned. Listing and attached samples do not prove successful synthesis. Do not automatically activate, clone or delete a remote voice.

@@ -16,6 +16,7 @@ import { compatibleProvider } from './compatible.ts';
 import { OpenDesignAccount } from './account.ts';
 import { AssetLibrary } from './asset-library.ts';
 import { requireLibraryMediaRuntime } from './asset-probe.ts';
+import { VoiceLibrary } from './voice-library.ts';
 import { generationOptions, resolveGenerationParameters, validateGenerationOptions } from '../shared/generation-options.ts';
 import { MAX_ASSET_BYTES } from '../shared/asset-limits.ts';
 
@@ -141,7 +142,7 @@ export class ModelGateway {
     if (input.refresh && input.provider === 'account') await this.account.models(true);
     if (input.refresh && typeof input.provider === 'string' && input.provider !== 'account' && !providerIds.includes(input.provider)) await this.connections.sync(input.provider);
     if (input.refresh) {
-      const selected = mediaProviders.filter(id => id !== 'opendesign').filter(id => !input.provider || input.provider === id);
+      const selected = mediaProviders.filter(id => id !== 'opendesign' && id !== 'fishaudio' && id !== 'minimax-speech' && id !== 'minimax-speech-cn').filter(id => !input.provider || input.provider === id);
       const discovered = await Promise.all(selected.map(async id => {
         try {
           if (id === 'wavespeed') {
@@ -194,11 +195,11 @@ export class ModelGateway {
       }
       const credentials = await this.credential(id);
       const definition = registeredProvider(id)!;
-      const baseUrl = definition.baseUrlEditable ? await this.connections.baseUrl(id) : undefined;
+      const baseUrl = definition.baseUrlEditable ? await this.connections.baseUrl(id) : definition.baseUrl;
       const active = !!credentials.key;
       const verification = credentials.key && saved.keyHash === hash(credentials.key) ? saved.verification ?? 'unverified' : 'unverified';
       return { id, label: providerLabels[id], enabled: active && enabled, configured: !!credentials.key, available: active && enabled && (!definition.baseUrlEditable || !!baseUrl) && verification !== 'rejected',
-        ...(definition.baseUrlEditable ? { baseUrl: baseUrl ?? '' } : {}),
+        ...(definition.group ? { group: definition.group, region: definition.region } : {}), baseUrl: baseUrl ?? '',
         credentialSource: credentials.source, verification, checkedAt: saved.checkedAt,
         reason: !active ? 'API key required' : !enabled ? 'Disabled' : definition.baseUrlEditable && !baseUrl ? `${definition.label} API origin required` : verification === 'rejected' ? 'Credentials or permissions rejected; update the key' : verification === 'verified' ? 'A generation request succeeded with this key' : 'Configured; availability and quota are checked when generating' };
     }));
@@ -244,6 +245,13 @@ export class ModelGateway {
     this.options.tracking?.track('media_generation_requested', { modality: input.modality }, undefined, 'worker');
     if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 20_000) throw new Error('Prompt must contain 1–20000 characters');
     const params = parameters(input.parameters);
+    const selectedProvider = (input.model ?? (await this.config()).routes[input.modality])?.split(':')[0];
+    const voice = input.voiceRef ? await new VoiceLibrary(this.store).resolve(input.voiceRef, selectedProvider ?? '') : undefined;
+    if (voice) {
+      if (input.modality !== 'audio' || input.mode && input.mode !== 'text-to-speech') throw new Error('Voices require speech generation');
+      if (params.voice !== undefined && params.voice !== voice.externalId || params.reference_id !== undefined || params.voice_setting !== undefined) throw new Error('Voice parameters conflict with the selected voice');
+      params.voice = voice.externalId;
+    }
     if (input.library && input.projectId) throw new Error('Choose either an asset library or a project destination');
     const library = new AssetLibrary(this.store);
     if (input.library?.references !== undefined && !Array.isArray(input.library.references)) throw new Error('Asset references must be an array');
@@ -267,7 +275,7 @@ export class ModelGateway {
     if (model && ['account', 'opendesign'].includes(model.provider) && input.mode && input.mode !== model.mode) throw new Error(`Generation mode does not match the selected ${model.provider === 'account' ? 'account' : 'Cloud'} model`);
     if (model && input.mode) model = { ...model, mode: input.mode };
     const projectId = input.library ? undefined : input.projectId ?? this.store.projectCatalog().activeId;
-    const requestHash = hash(JSON.stringify({ projectId, library: input.library, model: input.model ?? null, modality: input.modality, prompt: input.prompt, parameters: params, mode: input.mode, usage: input.usage, ...(input.referenceAsset ? { referenceAsset: input.referenceAsset } : {}) }));
+    const requestHash = hash(JSON.stringify({ voiceRef: input.voiceRef, projectId, library: input.library, model: input.model ?? null, modality: input.modality, prompt: input.prompt, parameters: params, mode: input.mode, usage: input.usage, ...(input.referenceAsset ? { referenceAsset: input.referenceAsset } : {}) }));
     return this.store.lock(async () => {
       if (!input.library) {
         if (!this.store.projectCatalog().projects.some(p => p.id === projectId)) throw new Error('Project not found');
@@ -297,7 +305,7 @@ export class ModelGateway {
         ...(model.provider === 'account' ? { providerOrigin: await this.account.identity() } : model.provider === 'opendesign' ? { providerOrigin: await this.cloudOrigin() }
           : !isGatewayProvider(model.provider) ? { providerOrigin: await this.connections.baseUrl(model.provider) } : {}),
         ...(!isGatewayProvider(model.provider) && model.provider !== 'account' ? { providerRevision: await this.connections.identity(model.provider) } : {}),
-        parameters: params, usage: input.usage, idempotencyKey: input.idempotencyKey, requestHash,
+        ...(voice ? { voiceRef: input.voiceRef, voice } : {}), parameters: params, usage: input.usage, idempotencyKey: input.idempotencyKey, requestHash,
         createdAt: Date.now(), updatedAt: Date.now(), phase: 'queued', assets: [] };
       const work = path.join(this.root, 'work', job.id);
       try {
@@ -459,6 +467,7 @@ export class ModelGateway {
         if (job.model.provider === 'opendesign' && job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the queued task was not submitted');
         if (job.model.provider !== 'account' && !isGatewayProvider(job.model.provider) && job.providerOrigin !== await this.connections.baseUrl(job.model.provider)) throw new Error('Provider API origin changed; the queued task was not submitted');
         if (job.model.provider !== 'account' && !isGatewayProvider(job.model.provider) && (job.providerRevision !== await this.connections.identity(job.model.provider) || !(await this.connections.mediaModels()).some(model => model.id === job.model.id))) throw new Error('Provider or model configuration changed; the queued task was not submitted');
+        if (job.voiceRef) await new VoiceLibrary(this.store).resolve(job.voiceRef, job.model.provider);
         await requireLibraryMediaRuntime();
         await mkdir(dir, { recursive: true, mode: 0o700 });
         let buffers: Buffer[];
@@ -518,7 +527,7 @@ export class ModelGateway {
             const asset = await library.addLocked(prepared[index], { assetId: existing?.id, createId: targetId,
               name: job.library?.title || job.prompt.replace(/\s+/g, ' ').trim().slice(0, 80), expectedModality: job.modality,
               version: { source: 'generated', prompt: job.prompt, model: job.model.id, parameters: job.parameters, references: job.library?.references ?? [],
-                parentVersionId: job.library?.parentVersionId, jobId: job.id, requestId: `${job.id}-${index}`, requestHash: file.sha256, conversationId: job.library?.conversationId, result: current.result } });
+                parentVersionId: job.library?.parentVersionId, jobId: job.id, requestId: `${job.id}-${index}`, requestHash: file.sha256, conversationId: job.library?.conversationId, result: { ...current.result, ...(job.voice ? { voice: job.voice } : {}) } } });
             const version = asset.versions.find(v => v.requestId === `${job.id}-${index}`)!;
             current.libraryAssets.push({ assetId: asset.id, versionId: version.id });
             current.updatedAt = Date.now(); await this.saveJob(current);

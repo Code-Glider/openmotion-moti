@@ -42,7 +42,7 @@ const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrd
 // Application pages that report their own views and clicks. The template library keeps page_name=studio.
 const pages = ['home', 'studio', 'skills', 'brand_kit', 'mcp', 'assets', 'settings', 'projects'] as const;
 // Workspace assets: which shelf the library shows and what kind of media an action is about.
-const assetKind = ['all', 'image', 'video', 'audio', 'trash'] as const;
+const assetKind = ['all', 'image', 'video', 'audio', 'voice', 'trash'] as const;
 const modality = ['image', 'video', 'audio'] as const;
 // Settings sections as routed in the workspace; providers and Agents are named by their built-in ids only.
 const settingsSection = ['account', 'subscription', 'providers', 'models', 'local', 'general', 'appearance', 'privacy', 'about', 'help', 'mcp', 'brand-kit'] as const;

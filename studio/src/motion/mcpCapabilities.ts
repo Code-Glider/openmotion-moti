@@ -1,3 +1,4 @@
+import { voicePrompt } from '../../../shared/voice-library.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
 import type { IntegrationInfo } from '../../../shared/integration.ts';
 
@@ -16,7 +17,9 @@ export const mcpCapabilities = [
 ] as const;
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
-export const mcpScenarios = [{
+export const mcpScenarios = [
+  { id: 'voices', icon: 'voiceprint-line', title: 'Voices', description: 'Save voices from your accounts. Generate narration as audio, then use it in your video.', tools: ['openmotion_assets_use', 'openmotion_media_use'], prompt: voicePrompt },
+{
   id: 'platform-export', icon: 'sparkling-line', title: 'Prepare a platform version',
   description: 'In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.',
   tools: ['openmotion_get_project', 'openmotion_manage_project', 'openmotion_edit_project', 'openmotion_open_preview', 'openmotion_export_request'],
