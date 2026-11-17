@@ -38,4 +38,8 @@ Play the complete six seconds and inspect the first frame, reveal at 1.5 seconds
 
 ## Provenance and license
 
-Original repository contribution under Apache-2.0. No third-party audiovisual material is incorporated. The silent MP4 and JPEG poster derive from this HTML example; their exact identities are recorded in `manifest.json` and, after maintainer preparation, `template.json.remoteAssets`.
+Original repository contribution under Apache-2.0. No third-party audiovisual material is incorporated. The silent WebM rendition and JPEG poster derive from this HTML example; their exact identities are recorded in `manifest.json` and, after maintainer preparation, `template.json.remoteAssets`.
+
+## Reference playback
+
+[Download the silent six-second preview](https://releases.open-design.ai/open-motion/media/sha256/15f3c61b5bba8cafb3c6d21cdc06ca1846720f3946e0d01f9dc3f9114cded3a8.webm). The 640 × 360 WebM is a lightweight viewing rendition of the 960 × 540 composition; keep the authored canvas and timing when adapting the source.

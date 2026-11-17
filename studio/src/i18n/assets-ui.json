@@ -287,6 +287,11 @@
     "View tasks": "查看任务",
     "{count} in progress": "{count} 个进行中",
     "{count} awaiting approval": "{count} 个待确认",
-    "Task status unavailable": "状态更新失败"
+    "Task status unavailable": "状态更新失败",
+    "This model edits up to {count} image references.": "此模型最多可使用 {count} 张参考图进行编辑。",
+    "This video model uses one image as its first frame.": "此视频模型使用一张图片作为首帧。",
+    "Image to video": "图生视频",
+    "Check original task": "查询原任务",
+    "Checking original task…": "正在查询原任务…"
   }
 }

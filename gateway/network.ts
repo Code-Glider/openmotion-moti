@@ -8,6 +8,27 @@ export class ProviderError extends Error {
   constructor(message: string, status?: number) { super(message); this.status = status; }
 }
 export type Fetcher = typeof fetch;
+/** Repeat a read-only request (task polling or media download) after transient failures; never used for paid submissions. */
+export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, attempts = 5, reconnecting?: () => Promise<void>, recovered?: () => Promise<void>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try { const result = await read(); if (attempt > 1) await recovered?.(); return result; }
+    catch (error) {
+      const status = (error as { status?: number }).status;
+      const code = String((error as any)?.code ?? (error as any)?.cause?.code ?? '');
+      const network = /^(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|UND_ERR_)/.test(code)
+        || (error as Error)?.name === 'TimeoutError' || /socket hang up|timed out|fetch failed/i.test(String((error as Error)?.message));
+      const transient = status === undefined ? network : status === 429 || status >= 500;
+      if (signal.aborted || !transient || attempt >= attempts) throw error;
+      await reconnecting?.();
+      signal.throwIfAborted();
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => { clearTimeout(timer); reject(signal.reason); };
+        const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, Math.min(2000 * attempt, 10_000));
+        signal.addEventListener('abort', abort, { once: true });
+      });
+    }
+  }
+}
 export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}) {
   const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(15_000) });
   // Do not forward provider response text: it may echo a key or user input.
@@ -80,7 +101,8 @@ export async function downloadMedia(raw: string, signal: AbortSignal, redirects 
         if (redirects >= 3) { reject(new Error('Too many media redirects')); return; }
         downloadMedia(new URL(res.headers.location, url).href, signal, redirects + 1).then(resolve, reject); return;
       }
-      if (res.statusCode !== 200) { res.resume(); reject(new Error(`Media download HTTP ${res.statusCode}`)); return; }
+      // Status is kept for retry decisions; this is not a provider credential rejection.
+      if (res.statusCode !== 200) { res.resume(); reject(Object.assign(new Error(`Media download HTTP ${res.statusCode}`), { status: res.statusCode })); return; }
       if (Number(res.headers['content-length'] || 0) > MAX_MEDIA_BYTES) { res.destroy(); reject(new Error('Generated media exceeds 256 MB')); return; }
       const chunks: Buffer[] = []; let size = 0;
       res.on('data', (chunk: Buffer) => { size += chunk.length; if (size > MAX_MEDIA_BYTES) res.destroy(new Error('Generated media exceeds 256 MB')); else chunks.push(chunk); });

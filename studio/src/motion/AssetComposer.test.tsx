@@ -78,7 +78,23 @@ it('sends one reference to an account image model that reports editing support',
   expect(container.textContent).toContain('This model cannot use asset references');
   expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
   await act(async () => root.render(<AssetComposer {...props} draft={{ ...draft, model: account.id }} />));
-  expect(container.textContent).toContain('This model edits one image reference.');
+  expect(container.textContent).toContain('This model edits up to {count} image references.');
   await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
   expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ action: 'generate', model: account.id, mode: 'text-to-image', references: [references[0].reference] }));
+});
+
+it.each(['image', 'video'] as const)('uses the model reference contract for Cloud %s', async modality => {
+  const cloud: Model = { id: 'opendesign:references', provider: 'opendesign', modelId: 'references', label: 'Cloud', modality,
+    source: 'live', mode: `text-to-${modality}`, supportsImageReference: modality === 'image', maxInputImages: modality === 'image' ? 20 : 1 };
+  loadGateway.mockResolvedValue({ models: [cloud], status: { providers: [{ id: 'opendesign', available: true }], routes: {} } });
+  generate.mockResolvedValue({ job: { id: 'cloud-reference-job' } });
+  const references = Array.from({ length: cloud.maxInputImages! }, (_, index) => ({ name: `Reference ${index}`, reference: { assetId: `asset-${index}`, versionId: 'version' } }));
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, modality, model: cloud.id, parameters: {}, references }} />));
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(false);
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-reference')?.disabled).toBe(true);
+  expect(container.textContent).toContain(modality === 'video' ? 'This video model uses one image as its first frame.' : 'This model edits up to {count} image references.');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ model: cloud.id, references: references.map(item => item.reference) }));
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, modality, model: cloud.id, references: [...references, references[0]] }} />));
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
 });
