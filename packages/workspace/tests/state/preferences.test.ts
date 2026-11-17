@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -96,6 +96,12 @@ it("upgrades schema5 without rewriting old preference JSON or receipt bytes, the
       // Reconstruct the accepted schema5 layout and original response, not a new-format replay.
       raw.exec("ALTER TABLE preferences DROP COLUMN locale; PRAGMA user_version=5");
       const original = { version: receipt.version, value: intent.value };
+      const originalFingerprint = createHash("sha256")
+        .update(JSON.stringify(["workspace_configure", intent]))
+        .digest("hex");
+      expect(raw.prepare("SELECT fingerprint FROM requests WHERE id=?").get(intent.requestId)?.fingerprint).toBe(
+        originalFingerprint,
+      );
       raw.prepare("UPDATE requests SET result=? WHERE id=?").run(JSON.stringify(original), intent.requestId);
       const receipts = raw.prepare("SELECT * FROM requests ORDER BY id").all();
       const stored = raw.prepare("SELECT version,value FROM preferences").get();
