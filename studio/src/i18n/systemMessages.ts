@@ -6,6 +6,12 @@ import { assetUploadMessage, parseAssetUploadMessage } from './assetUploadMessag
 // Only known system messages are interpreted. Captured names, paths and server
 // details are passed through as values, never translated as interface labels.
 const TEMPLATES = [
+  'Estimated loudness: {lufs} ({change}).',
+  'Estimated loudness: {lufs} ({change}); gain limit prevents reaching target.',
+  'Estimated loudness: {lufs} ({change}); peak protection prevents reaching target.',
+  'Estimated loudness: {lufs} ({change}); target not reached.',
+  'Adjusted {count} clips: {matched} expected to reach target; {unmatched} unable to reach target.',
+  'Get the HyperFrames desktop app at {url}',
   '"{name}" exceeds the size limit. Compress or replace the file.',
   'Cannot add "{name}". Re-export or replace the file.',
   "Copied element info for {name}. Paste it into any AI agent",
