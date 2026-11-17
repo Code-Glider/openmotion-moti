@@ -75,11 +75,12 @@ export function loadInlineProjectPreviews(templateIds: string[], options: { dire
     const record = JSON.parse(regularFile(appRoot, 'library/templates/catalog/' + id + '/template.json').toString('utf8'));
     requireValue(item.sourceFilesSha256 === digest(JSON.stringify(record.entry.files)), 'project source identity differs');
     requireValue(Number.isFinite(item.durationSeconds) && item.durationSeconds > 0, 'invalid project duration');
-    requireValue(item.video?.path === 'project-previews/' + id + '.mp4' && item.video.mimeType === 'video/mp4'
+    requireValue(item.video?.path === 'project-previews/' + id + '.webm' && item.video.mimeType === 'video/webm'
       && item.poster?.path === 'project-previews/' + id + '.jpg' && item.poster.mimeType === 'image/jpeg', 'invalid project media paths');
     const video = verifiedFile(directory, item.video), poster = verifiedFile(directory, item.poster);
-    requireValue(video.subarray(4, 8).toString() === 'ftyp' && poster[0] === 0xff && poster[1] === 0xd8, 'invalid project media bytes');
-    return { id, durationSeconds: item.durationSeconds, videoBase64: video.toString('base64'),
+    requireValue(video.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
+      && poster[0] === 0xff && poster[1] === 0xd8, 'invalid project media bytes');
+    return { id, durationSeconds: item.durationSeconds, videoBase64: video.toString('base64'), videoMimeType: 'video/webm' as const,
       posterBase64: poster.toString('base64'), posterMimeType: 'image/jpeg' };
   });
 }

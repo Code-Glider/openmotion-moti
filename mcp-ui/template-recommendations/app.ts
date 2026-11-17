@@ -306,7 +306,7 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       if (url === undefined) {
         const binary = win.atob(asset.videoBase64!), bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        url = win.URL.createObjectURL(new win.Blob([bytes.buffer], { type: 'video/mp4' }));
+        url = win.URL.createObjectURL(new win.Blob([bytes.buffer], { type: asset.videoMimeType ?? 'video/mp4' }));
       }
       const article = element('article', 'omtc-card'); article.dataset.templateId = card.templateId;
       const cover = element('button', 'omtc-cover'); cover.type = 'button';

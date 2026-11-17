@@ -37,7 +37,7 @@ Open the actual studioUrl or previewUrl printed at startup. Follow [manual MCP c
 
 ## Verify installation and deliver onboarding
 
-For the default nine-entry pool, `inlinePresentation.status=prepared` supplies an integrity-locked self-contained document containing only the selected three projects' prebuilt MP4/JPEG bytes and card metadata. Installation does no rendering or preview download. These labeled silent project renders are distinct from the original reference films. The native App remains an alternative for original-reference playback; explicit original-reference document requests return `native_required`. Preserve the frozen IDs and order for either adapter.
+For the default nine-entry pool, `inlinePresentation.status=prepared` supplies an integrity-locked self-contained document containing only the selected three projects' prebuilt WebM (VP9)/JPEG bytes and card metadata. Installation does no rendering or preview download. These labeled silent project renders are distinct from the original reference films. The native App remains an alternative for original-reference playback; explicit original-reference document requests return `native_required`. Preserve the frozen IDs and order for either adapter.
 
 Discover the installed tools and call openmotion_get_project to verify the expected workspace. Registration or an independent probe alone does not prove this chat loaded the tools. Record automatic activation separately from visible welcome/card delivery. Keep installed files, MCP access and host presentation results distinct.
 

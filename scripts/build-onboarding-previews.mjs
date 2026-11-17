@@ -1,5 +1,5 @@
 // Maintainer-only build: render the editable catalog projects, never download
-// their original reference films. Installation reads the committed MP4/JPEGs.
+// their original reference films. Installation reads the committed WebM/JPEGs.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, writeFile, stat } from 'node:fs/promises';
@@ -60,14 +60,16 @@ async function render(id) {
     await writeFile(path.join(scratch, id + '.log'), String(error.stdout) + String(error.stderr));
     throw new Error('Project render failed; see .artifacts/onboarding-preview-build/' + id + '.log', { cause: error });
   }
-  const videoPath = path.join(output, id + '.mp4'), posterPath = path.join(output, id + '.jpg');
-  for (const width of [512, 384, 320, 256]) {
-    await run('ffmpeg', ['-y', '-v', 'error', '-i', raw, '-an', '-vf', 'scale=' + width + ':-2',
-      '-c:v', 'libx264', '-preset', 'slow', '-crf', width === 256 ? '41' : '37', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', videoPath]);
-    await run('ffmpeg', ['-y', '-v', 'error', '-ss', '1', '-i', videoPath, '-frames:v', '1', '-q:v', '7', posterPath]);
-    if ((await stat(videoPath)).size + (await stat(posterPath)).size < 200_000) break;
-  }
-  assert((await stat(videoPath)).size + (await stat(posterPath)).size < 200_000, 'Preview exceeds the three-card document budget: ' + id);
+  const videoPath = path.join(output, id + '.webm'), posterPath = path.join(output, id + '.jpg');
+  // Share the document budget by duration instead of shrinking long films to 144p.
+  // Two-pass VP9 keeps complete 12 fps previews at up to 512 px without upscaling.
+  const encoding = ['-y', '-v', 'error', '-i', raw, '-an', '-vf', 'scale=min(512\\,iw):-2',
+    '-c:v', 'libvpx-vp9', '-b:v', '20k', '-threads', '3', '-row-mt', '1',
+    '-deadline', 'good', '-cpu-used', '2', '-pix_fmt', 'yuv420p', '-passlogfile', path.join(scratch, id + '-vp9')];
+  await run('ffmpeg', [...encoding, '-pass', '1', '-f', 'null', process.platform === 'win32' ? 'NUL' : '/dev/null']);
+  await run('ffmpeg', [...encoding, '-pass', '2', videoPath]);
+  await run('ffmpeg', ['-y', '-v', 'error', '-ss', '1', '-i', videoPath, '-frames:v', '1', '-q:v', '7', posterPath]);
+  assert((await stat(videoPath)).size + (await stat(posterPath)).size < 300_000, 'Preview exceeds its media budget: ' + id);
   const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'json', videoPath]);
   const probe = JSON.parse(stdout);
   const asset = async (filename, mimeType) => {
@@ -76,12 +78,15 @@ async function render(id) {
   };
   const result = { id, sourceFilesSha256: sha256(JSON.stringify(record.entry.files)),
     durationSeconds: Number(probe.format.duration), width: probe.streams[0].width, height: probe.streams[0].height,
-    video: await asset(videoPath, 'video/mp4'), poster: await asset(posterPath, 'image/jpeg') };
+    video: await asset(videoPath, 'video/webm'), poster: await asset(posterPath, 'image/jpeg') };
   records.push(result);
   console.log(JSON.stringify({ id, durationSeconds: result.durationSeconds, bytes: result.video.bytes }));
 }
 const queue = [...onboardingTemplateIds];
 await Promise.all(Array.from({ length: 2 }, async () => { while (queue.length) await render(queue.shift()); }));
+const largestThree = records.map(item => item.video.bytes + item.poster.bytes).sort((a, b) => b - a).slice(0, 3);
+assert(largestThree.reduce((sum, bytes) => sum + bytes, 0) < 620_000,
+  'Largest three previews exceed the inline budget; leave room for base64, metadata and the component');
 await writeFile(path.join(output, 'manifest.json'), JSON.stringify({ schemaVersion: 1, previewSource: 'project',
   silent: true, fps: 12, runtime: { hyperframes: '0.9.7' },
   templates: onboardingTemplateIds.map(id => records.find(item => item.id === id)) }, null, 2) + '\n');

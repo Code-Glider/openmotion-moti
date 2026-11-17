@@ -590,7 +590,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
     'mcp-ui/template-recommendations/project-previews/manifest.json',
-    ...onboardingTemplateIds.flatMap(id => ['mp4', 'jpg'].map(extension =>
+    ...onboardingTemplateIds.flatMap(id => ['webm', 'jpg'].map(extension =>
       `mcp-ui/template-recommendations/project-previews/${id}.${extension}`)),
     // The inline Node renderer streams the welcome from this shared translation source.
     'mcp-ui/template-recommendations/i18n.ts', 'mcp-ui/template-recommendations/types.ts',

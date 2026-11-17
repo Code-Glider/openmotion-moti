@@ -31,12 +31,14 @@ test('curated project previews are self-contained without native MCP activation'
   assert.doesNotMatch(fragment, /https:\/\/r\.open-design\.ai/);
   const window = new Window();
   t.after(() => window.happyDOM.abort());
-  window.URL.createObjectURL = () => 'blob:project-preview';
+  const videoTypes: string[] = [];
+  window.URL.createObjectURL = blob => { videoTypes.push(blob.type); return 'blob:project-preview'; };
   window.URL.revokeObjectURL = () => {};
   window.document.body.innerHTML = fragment;
   for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
   assert.equal(window.document.querySelectorAll('.omtc-card').length, 3);
   assert.equal(window.document.querySelectorAll('.omtc-card video[src^="blob:"]').length, 3);
+  assert.deepEqual(videoTypes, ['video/webm', 'video/webm', 'video/webm']);
   assert.match(window.document.querySelector('.omtc-description')!.textContent!, /^简介：/);
   assert.doesNotMatch(window.document.body.textContent!, /工程预览（静音）/);
 });
@@ -78,7 +80,8 @@ test('the inline renderer returns a streaming welcome separately from three real
   assert.doesNotMatch(fragment, /__OPENMOTION_INLINE_/);
   const window = new Window();
   t.after(() => window.happyDOM.abort());
-  window.URL.createObjectURL = () => 'blob:verified-template';
+  const videoTypes: string[] = [];
+  window.URL.createObjectURL = blob => { videoTypes.push(blob.type); return 'blob:verified-template'; };
   window.URL.revokeObjectURL = () => {};
   window.document.body.innerHTML = fragment;
   for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
@@ -86,6 +89,7 @@ test('the inline renderer returns a streaming welcome separately from three real
   assert.equal(window.document.querySelector('.omtc-welcome'), null);
   assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
   assert.equal(window.document.querySelectorAll('.omtc-card video[src^="blob:"]').length, 3);
+  assert.deepEqual(videoTypes, ['video/mp4', 'video/mp4', 'video/mp4']);
   let copied = '';
   Object.defineProperty(window.navigator, 'clipboard', {value: {writeText: async (text: string) => {copied = text;}}});
   (window.document.querySelector('.omtc-card .omtc-clone') as any).click();
@@ -149,6 +153,7 @@ test('all nine project previews and the largest three fit a self-contained docum
   for (const preview of previews) {
     assert(Buffer.from(preview.videoBase64, 'base64').length > 1000);
     assert(preview.durationSeconds > 10);
+    assert.equal(preview.videoMimeType, 'video/webm');
   }
   const largest = previews.sort((a, b) => (b.videoBase64.length + b.posterBase64.length) - (a.videoBase64.length + a.posterBase64.length)).slice(0, 3).map(item => item.id);
   for (const [index, templateIds] of [[...onboardingTemplateIds.slice(0, 3)], [...onboardingTemplateIds.slice(3, 6)], [...onboardingTemplateIds.slice(6)], largest].entries()) {
