@@ -197,7 +197,7 @@ for (const oversized of [false, true]) test(`a real cleanup commit passes policy
   await write(f.video, f.bytes); git(directory, ['add', f.video]); git(directory, ['commit', '-qm', 'Add reviewed reference']);
   const original = git(directory, ['rev-parse', 'HEAD']), rawOID = git(directory, ['rev-parse', 'HEAD:' + f.video]);
   const plan = await prepareMediaCleanup({ ...f.inputs(), sourceSHA: original }, f.read);
-  const commit = await commitCleanup(plan, async (args, input) => git(directory, args, input), directory, { login: 'Maintainer', id: 123 });
+  const commit = await commitCleanup(plan, async (args, input) => git(directory, args, input), directory, { login: 'Maintainer', id: 123 }, base);
   const storage = checkRepositoryStorage(directory, base, { finalTreeOnly: true });
   assert.deepEqual(storage.errors, []);
   if (oversized) assert(storage.gitBytes > 128 * 1024 * 1024);
@@ -208,6 +208,34 @@ for (const oversized of [false, true]) test(`a real cleanup commit passes policy
   assert.equal(git(directory, ['rev-parse', 'HEAD^']), base);
   assert(!git(directory, ['rev-list', '--objects', 'main']).split('\n').some(line => line.startsWith(rawOID)), 'Raw PR media must not be reachable from main');
   assert.equal(git(directory, ['show', original + ':library/templates/catalog/motion-demo/template.json']).includes('Demo'), true);
+});
+
+test('cleanup rejects remaining growth against the PR base before creating a cleanup commit', async t => {
+  const directory = await isolated(t), f = fixture(16 * 1024);
+  git(directory, ['-c', 'init.templateDir=', 'init', '-b', 'main']);
+  git(directory, ['config', 'user.name', 'Contributor']); git(directory, ['config', 'user.email', 'contributor@example.invalid']);
+  for (const [name, bytes] of f.contents) {
+    await mkdir(path.dirname(path.join(directory, name)), { recursive: true });
+    if (name !== f.video) await writeFile(path.join(directory, name), bytes);
+  }
+  git(directory, ['add', '.']); git(directory, ['commit', '-qm', 'Template source']);
+  const base = git(directory, ['rev-parse', 'HEAD']);
+  await writeFile(path.join(directory, f.video), f.bytes);
+  await writeFile(path.join(directory, 'shared.bin'), Buffer.alloc(1024 * 1024, 42));
+  git(directory, ['add', f.video, 'shared.bin']);
+  const oid = git(directory, ['rev-parse', ':shared.bin']);
+  for (let index = 0; index < 128; index++)
+    git(directory, ['update-index', '--add', '--cacheinfo', '100644', oid, `copy-${index}.bin`]);
+  git(directory, ['commit', '-qm', 'Add media and ordinary files']);
+  const original = git(directory, ['rev-parse', 'HEAD']);
+  const plan = await prepareMediaCleanup({ ...f.inputs(), sourceSHA: original }, f.read);
+  let created = false;
+  await assert.rejects(commitCleanup(plan, async (args, input) => {
+    if (args.includes('commit-tree')) created = true;
+    return git(directory, args, input);
+  }, directory, { login: 'Maintainer', id: 123 }, base), /checkout exceeds 128 MiB/);
+  assert.equal(created, false, 'Reject before any cleanup commit can be pushed or media uploaded');
+  assert.deepEqual(checkRepositoryStorage(directory, original, { finalTreeOnly: true }).errors, [], 'The raw-head ceiling would incorrectly accept this cleaned tree');
 });
 
 test('fork write access and workflow trust are checked before any media transfer', async t => {
