@@ -263,17 +263,20 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   await click("源码");
   await source.fill((await source.inputValue()).replace("</body>", "<!--unknown project receipt--></body>"));
   const projectRequests: unknown[] = [];
-  let projectLost = false;
+  let projectLost = false,
+    projectCommitted = false;
   await page.route("**/api/project_save", async (route) => {
     projectRequests.push(route.request().postDataJSON());
     if (!projectLost) {
       projectLost = true;
       await route.fetch();
+      projectCommitted = true;
       await route.abort("failed");
     } else await route.continue();
   });
   await page.getByRole("button", { name: "保存", exact: true }).click();
-  await page.getByRole("button", { name: "重试", exact: true }).waitFor();
+  await expect.poll(() => projectCommitted).toBe(true);
+  await expect.poll(() => page.getByRole("button", { name: "重试", exact: true }).isEnabled()).toBe(true);
   const savedUnknown = await client.execute("project_versions", owner);
   await apply("dark", "preview");
   expect(projectRequests).toHaveLength(1);
