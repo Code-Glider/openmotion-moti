@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { Window } from 'happy-dom';
 import { renderInlineOnboarding, prepareInlineOnboarding, publishInlineOnboarding } from '../scripts/inline-onboarding.mjs';
 import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs';
+import { welcomeMarkdown } from '../mcp-ui/template-recommendations/i18n.ts';
+import { runFile } from '../scripts/runtime-assets.mjs';
 
 import { onboardingTemplateIds, builtinRecommendationIds } from '../shared/onboarding-templates.ts';
 import { loadTemplatePresentation, loadInlineProjectPreviews } from '../shared/mcp-template-recommendations.ts';
@@ -128,6 +130,36 @@ test('host publication verifies and copies the real component to an explicitly s
   await writeFile(published.path, 'existing unrelated content');
   await assert.rejects(publishInlineOnboarding({ source: prepared.path, expectedSHA256: prepared.sha256, hostDirectory }), /Refusing to overwrite/);
   assert.equal(await readFile(published.path, 'utf8'), 'existing unrelated content');
+});
+
+test('publication hands off the complete localized reply and suppresses only an already-delivered welcome', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-welcome-reply-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const language of ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'] as const) {
+    const prepared = await renderInlineOnboarding({ appRoot, output: path.join(directory, 'runtime', language + '.html'), language });
+    const options = { source: prepared.path, expectedSHA256: prepared.sha256, hostDirectory: path.join(directory, 'host') };
+    const published = await publishInlineOnboarding(options);
+    assert.equal(published.language, language);
+    assert.equal(published.welcomeMarkdown, welcomeMarkdown(language));
+    assert.equal(published.finalReplyMarkdown, `${prepared.welcomeMarkdown}\n\n${published.contentReference}`);
+    assert.equal(published.nativeMcpSessionVerified, false);
+    const recovered = await publishInlineOnboarding({ ...options, welcomeDelivered: true });
+    assert.equal(recovered.welcomeMarkdown, '');
+    assert.equal(recovered.finalReplyMarkdown, published.contentReference);
+    assert.equal(await readFile(recovered.path, 'utf8'), await readFile(prepared.path, 'utf8'));
+  }
+});
+
+test('publication CLI returns a complete reply from the frozen document language', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-welcome-cli-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const prepared = await renderInlineOnboarding({ appRoot, output: path.join(directory, 'runtime/cards.html'), language: 'zh' });
+  const args = [path.join(appRoot, 'scripts/inline-onboarding.mjs'), '--publish-from', prepared.path,
+    '--sha256', prepared.sha256, '--host-directory', path.join(directory, 'host')];
+  const published = JSON.parse(await runFile(process.execPath, args, { env: { ...process.env, OPENMOTION_ONBOARDING_LANGUAGE: 'en' } }));
+  assert.equal(published.finalReplyMarkdown, `${welcomeMarkdown('zh')}\n\n${published.contentReference}`);
+  const recovered = JSON.parse(await runFile(process.execPath, [...args, '--welcome-delivered']));
+  assert.equal(recovered.finalReplyMarkdown, published.contentReference);
 });
 
 test('every three-reference selection requires native cards with image and video origin permission', async t => {

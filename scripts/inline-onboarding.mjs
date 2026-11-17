@@ -85,10 +85,10 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
     welcomeMarkdown: welcomeMarkdown(language),
     publicationRequired: true,
     draftBehavior: 'clipboard-copy; no task submission', nativeMcpSessionVerified: false,
-    instructions: 'Complete onboarding in this same installation turn; never enqueue a user message or defer presentation. Initialize the browser and finish file reads/checks first. This runtime document needs publication with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY using the active chat\'s explicitly permitted visualization directory; runtime write access alone is insufficient. With the returned reference ready, prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal the loaded tab and obtain its page state in one call. Do not reopen or inspect it again or repeat an open_in_codex opening. Complete mandatory browser bookkeeping next and immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. Preserve the production welcome/cards and full-duration videos. Recreate copies the brief to the clipboard with a floating copied/paste Toast; no extra textbox or task submission. Preparation/publication is not visible delivery or native MCP discovery.' };
+    instructions: 'Complete onboarding in this same installation turn; never enqueue a user message or defer presentation. Initialize the browser and finish file reads/checks first. This runtime document needs publication with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY using the active chat\'s explicitly permitted visualization directory; runtime write access alone is insufficient. With the returned reference ready, prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal the loaded tab and obtain its page state in one call. Do not reopen or inspect it again or repeat an open_in_codex opening. Complete mandatory browser bookkeeping next, then emit the published finalReplyMarkdown verbatim. Do not summarize or replace its welcome with an installation-status report. Report activation diagnostics separately in progress updates. For recovery after an actually delivered welcome, publish with --welcome-delivered to return cards only. The welcome streams as text; the document contains cards only. Preserve the production welcome/cards and full-duration videos. Recreate copies the brief to the clipboard with a floating copied/paste Toast; no extra textbox or task submission. Preparation/publication is not visible delivery or native MCP discovery.' };
 }
 
-export async function publishInlineOnboarding({ source, expectedSHA256, hostDirectory }) {
+export async function publishInlineOnboarding({ source, expectedSHA256, hostDirectory, welcomeDelivered = false }) {
   assert(typeof source === 'string' && path.isAbsolute(source) && source.endsWith('.html'), 'Pass an absolute prepared HTML source');
   assert(typeof hostDirectory === 'string' && path.isAbsolute(hostDirectory), 'Pass the active chat\'s explicitly permitted visualization directory');
   assert(/^[a-f0-9]{64}$/.test(expectedSHA256), 'Publication requires the prepared SHA256');
@@ -96,6 +96,16 @@ export async function publishInlineOnboarding({ source, expectedSHA256, hostDire
   assert(fragment.length < 1_000_000, 'Inline onboarding exceeds the host document budget');
   const sha256 = createHash('sha256').update(fragment).digest('hex');
   assert.equal(sha256, expectedSHA256, 'Prepared onboarding SHA256 mismatch');
+  // The generated, hash-verified document already freezes the request language.
+  // Read its JSON without executing scripts; this also supports saved documents
+  // prepared before the complete-reply handoff was added.
+  const recommendations = [...fragment.toString('utf8').matchAll(/^  const recommendation = (.+);$/gm)];
+  assert.equal(recommendations.length, 1, 'Prepared onboarding recommendation is missing or ambiguous');
+  const { language } = JSON.parse(recommendations[0][1]);
+  const { isLanguage, welcomeMarkdown: localizedWelcome } = await import('../mcp-ui/template-recommendations/i18n.ts');
+  assert(isLanguage(language), 'Prepared onboarding language is unsupported');
+  assert.equal(typeof welcomeDelivered, 'boolean', 'Use a boolean welcome-delivered flag');
+  const welcomeMarkdown = welcomeDelivered ? '' : localizedWelcome(language);
   await mkdir(hostDirectory, { recursive: true });
   const output = path.join(hostDirectory, path.basename(source));
   try { await writeFile(output, fragment, { flag: 'wx', mode: 0o600 }); }
@@ -104,18 +114,22 @@ export async function publishInlineOnboarding({ source, expectedSHA256, hostDire
     assert((await lstat(output)).isFile(), 'Refusing a non-regular host document');
     assert.equal(createHash('sha256').update(await readFile(output)).digest('hex'), sha256, 'Refusing to overwrite a different host document');
   }
+  const contentReference = 'visualize' + JSON.stringify({ path: output }) + '';
   return { status: 'published', path: output, sha256, bytes: fragment.length,
     publicationRequired: false, nativeMcpSessionVerified: false,
-    contentReference: 'visualize' + JSON.stringify({ path: output }) + '' };
+    language, welcomeMarkdown, contentReference,
+    finalReplyMarkdown: [welcomeMarkdown, contentReference].filter(Boolean).join('\n\n'),
+    instructions: 'After visibly opening the library and completing browser bookkeeping, emit finalReplyMarkdown verbatim. Do not summarize or replace the welcome with a status report. Report activation diagnostics separately in progress updates. Publication does not verify visible delivery or native MCP activation.' };
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const { values } = parseArgs({ options: { output: { type: 'string' }, language: { type: 'string' },
     'template-ids': { type: 'string' },
-    'publish-from': { type: 'string' }, sha256: { type: 'string' }, 'host-directory': { type: 'string' } } });
+    'publish-from': { type: 'string' }, sha256: { type: 'string' }, 'host-directory': { type: 'string' }, 'welcome-delivered': { type: 'boolean' } } });
+  assert(!values['welcome-delivered'] || values['publish-from'], 'Use --welcome-delivered only when publishing a prepared document');
   if (values['publish-from']) {
     console.log(JSON.stringify(await publishInlineOnboarding({ source: values['publish-from'], expectedSHA256: values.sha256,
-      hostDirectory: values['host-directory'] }), null, 2));
+      hostDirectory: values['host-directory'], welcomeDelivered: values['welcome-delivered'] }), null, 2));
   } else {
     assert(values.output && path.isAbsolute(values.output) && values.output.endsWith('.html'), 'Pass --output with an absolute .html path');
     console.log(JSON.stringify(await renderInlineOnboarding({ appRoot: fileURLToPath(new URL('../', import.meta.url)), output: values.output, language: values.language,

@@ -55,8 +55,9 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     assert.equal(catalog.recommendedTemplateId, prepared.templateIds[0]);
     assert(catalog.templates.every((item: any) => item.kind === 'reference'));
     assert.match(catalog.selectionGuide, /yes.*named recommendation/i);
-    const projectPublished = await publishInlineOnboarding({ source: prepared.path,
-      expectedSHA256: prepared.sha256, hostDirectory: path.join(directory, 'host') });
+    const projectPublished = JSON.parse(await runFile(process.execPath, [path.join(installedRoot, 'scripts/inline-onboarding.mjs'),
+      '--publish-from', prepared.path, '--sha256', prepared.sha256, '--host-directory', path.join(directory, 'host')]));
+    assert.equal(projectPublished.finalReplyMarkdown, `${prepared.welcomeMarkdown}\n\n${projectPublished.contentReference}`);
     const projectFragment = await readFile(projectPublished.path, 'utf8');
     assert.doesNotMatch(projectFragment, /https:\/\/r\.open-design\.ai/);
     assert(projectPublished.bytes < 1_000_000);
@@ -65,6 +66,7 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     const published = await publishInlineOnboarding({ source: bundled.path,
       expectedSHA256: bundled.sha256, hostDirectory: path.join(directory, 'host') });
     assert.equal(published.status, 'published');
+    assert.equal(published.finalReplyMarkdown, `${bundled.welcomeMarkdown}\n\n${published.contentReference}`);
     assert.equal(published.sha256, bundled.sha256);
     assert.equal(await readFile(published.path, 'utf8'), await readFile(bundled.path, 'utf8'));
   }
