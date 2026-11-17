@@ -1,3 +1,4 @@
+import { AssetQuickAdd } from "./AssetQuickAdd";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { OverflowText } from "../ui/OverflowText";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -20,6 +21,7 @@ let stopCurrentPreview: (() => void) | null = null;
 export function AudioRow({
   projectId,
   asset,
+  displayName,
   used,
   meta,
   onCopy,
@@ -30,6 +32,7 @@ export function AudioRow({
 }: {
   projectId: string;
   asset: string;
+  displayName?: string;
   used: boolean;
   meta?: { description?: string; duration?: number };
   onCopy: (path: string) => void;
@@ -49,7 +52,7 @@ export function AudioRow({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const animRef = useRef<number>(0);
-  const name = filename(asset);
+  const name = displayName ?? filename(asset);
   const subtype = getAudioSubtype(asset);
   const subtypeLabel = subtype === "Audio" ? "" : t(subtype);
   const serveUrl = resolveMediaPreviewUrl(asset, projectId);
@@ -238,7 +241,7 @@ export function AudioRow({
           e.preventDefault();
           setContextMenu({ x: e.clientX, y: e.clientY });
         }}
-        className={`motion-audio-row group w-full mb-1 rounded-md border border-panel-border text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer outline-hidden focus-visible:ring-1 focus-visible:ring-panel-border ${
+        className={`motion-audio-row om-asset-action-row group w-full mb-1 rounded-md border border-panel-border text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer outline-hidden focus-visible:ring-1 focus-visible:ring-panel-border ${
           isCopied
             ? "bg-panel-accent/10"
             : "bg-panel-surface hover:bg-panel-hover"
@@ -265,7 +268,7 @@ export function AudioRow({
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <OverflowText
+            {renaming && onRename ? <InlineAssetRename displayName={displayName} asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <OverflowText
               text={name}
               className={`min-w-0 max-w-full line-clamp-2 text-[12px] font-medium [overflow-wrap:anywhere] ${used ? "text-panel-text-1" : "text-panel-text-3"}`}
             />}
@@ -305,6 +308,7 @@ export function AudioRow({
             </div>
           )}
         </div>
+        {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} />}
         <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
       </div>
       {contextMenu && (
@@ -315,6 +319,7 @@ export function AudioRow({
           onClose={() => setContextMenu(null)}
           onCopy={onCopy}
           onDelete={onDelete}
+          displayName={displayName}
           onRename={onRename}
           onStartRename={() => setRenaming(true)}
           onAddAtPlayhead={onAddAssetToTimeline}
