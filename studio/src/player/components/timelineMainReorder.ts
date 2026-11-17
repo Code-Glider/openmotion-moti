@@ -1,5 +1,6 @@
 import type { TimelineElement } from "../store/playerStore";
 import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
+import { deriveTimelineTransitionSeams } from "./timelineTransitionSeams";
 import { mainVisualTrack } from "./timelineLinkage";
 import { linkedMembersOf } from "./audioClipLink";
 import { classifyZone } from "./timelineZones";
@@ -36,7 +37,7 @@ function prepareSource(elements: readonly TimelineElement[]) {
       owned.push(el); overlays.set(keyOf(host), owned);
     }
   }
-  return { main, lane, overlays, links };
+  return { main, lane, overlays, links, hasTransitions: deriveTimelineTransitionSeams(lane).length > 0 };
 }
 
 /** Insert a main clip between its peers, rather than looking for an empty gap.
@@ -69,6 +70,9 @@ export function planMainTrackReorder(
       slot = previous.slot;
   }
   if (slot === lane.findIndex(el => keyOf(el) === key)) return null;
+  // Compaction cannot preserve authored transition overlaps. Refuse the whole
+  // reorder rather than silently deleting a seam or separating its pair.
+  if (source.hasTransitions) return { slot, start: grabbed.start, changes: [] };
   const ordered = [...peers.slice(0, slot), grabbed, ...peers.slice(slot)];
   const starts = new Map<string, number>();
   let cursor = Math.max(0, ...lane.map(el => clampToHostStart(el, 0)));

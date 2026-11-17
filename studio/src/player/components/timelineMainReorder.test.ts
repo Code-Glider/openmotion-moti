@@ -162,3 +162,17 @@ it("refuses a companion floor crossing before saved timing can clamp away its sy
   expect(planMainTrackReorder([ease, a, clip("b", 10), clip("c", 15), audio], ease, 14,
     new Set(["ease"]), false)).toMatchObject({ start: 0, changes: [] });
 });
+
+
+it("preserves authored transition overlaps by refusing the complete reorder", () => {
+  const a = { ...clip("a", 0, 6), transitionLabel: "crossfade" };
+  const b = { ...clip("b", 5), transitionLabel: "crossfade" };
+  const ease = clip("ease", 10);
+  const elements = [a, b, ease];
+  const drag = preview(elements, 0);
+  expect(drag).toMatchObject({ previewStart: 10, mainTrackReorder: { changes: [] } });
+  const onMoveElements = vi.fn();
+  commitDraggedClipMove(drag, { elements, trackOrder: [0, 1], updateElement: vi.fn(), onMoveElements });
+  expect(onMoveElements).not.toHaveBeenCalled();
+  expect(b.start - a.start).toBe(5);
+});
