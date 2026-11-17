@@ -1,10 +1,14 @@
-import { StudioToast } from './StudioToast';
-import { StudioToastLayer } from './StudioToastLayer';
+import { useMountEffect } from '../hooks/useMountEffect';
+import { useToast } from '../hooks/useToast';
+import { StudioToastViewport } from './StudioToastViewport';
 
-/** A single live connection state, not a new notification on every failed poll. */
+/** Notify once per outage; the notice lifetime never controls reconnect polling. */
 export function StudioConnectionToast({ reconnecting }: { reconnecting: boolean }) {
-  if (!reconnecting) return null;
-  return <StudioToastLayer><div data-testid="motion-connection-toast">
-    <StudioToast message="Connection lost. Reconnecting…" tone="info" />
-  </div></StudioToastLayer>;
+  return reconnecting ? <ConnectionNotice /> : null;
+}
+
+function ConnectionNotice() {
+  const toast = useToast();
+  useMountEffect(() => { toast.showToast('Connection lost. Reconnecting…', 'info'); });
+  return <StudioToastViewport {...toast} />;
 }

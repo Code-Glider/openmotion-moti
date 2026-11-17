@@ -17,8 +17,7 @@ let nextToastId = 1;
 
 /**
  * Owner-local toasts (max 3), displayed in the shared StudioToastLayer layout.
- * Info toasts auto-dismiss after 3s; error toasts
- * persist until explicitly dismissed, unless explicitly marked brief feedback.
+ * Toasts without an action auto-dismiss after 3s, regardless of tone or presentation.
  * Optional actions stay available until completed, dismissed or displaced.
  * Feedback dismissal never changes the underlying operation or save guards.
  */
@@ -83,7 +82,7 @@ export function useToast() {
         }
         return next;
       });
-      if (!action && (tone !== "error" || presentation === "feedback")) {
+      if (!action) {
         const timer = setTimeout(() => dismissToast(id), AUTO_DISMISS_MS);
         timersRef.current.set(id, timer);
       }
