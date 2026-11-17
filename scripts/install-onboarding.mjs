@@ -121,7 +121,7 @@ export async function prepareInstallationFlow(options) {
     dataDirectory: options.dataDirectory, preview,
     ...(hostHandoff ? { hostHandoff } : {}),
     onboardingStatus: preview.status !== 'ready' ? 'preview_unavailable'
-      : hostHandoff?.status || 'awaiting_host_delivery',
+      : 'awaiting_host_delivery',
     onboardingComplete: false, hostSessionVerified: hostHandoff?.hostSessionVerified || false };
 }
 
@@ -167,7 +167,7 @@ export async function resumeInstallationOnboarding(saved, options = {}) {
       args: saved.recovery.args.includes('--welcome-delivered') ? saved.recovery.args : [...saved.recovery.args, '--welcome-delivered'] } } : {}),
     inlinePresentation: { ...saved.inlinePresentation, presentation: hostHandoff.presentation,
       ...(welcomeDelivered ? { welcomeMarkdown: '' } : {}) },
-    onboardingStatus: saved.preview?.status === 'ready' ? hostHandoff.status : 'preview_unavailable',
+    onboardingStatus: saved.preview?.status === 'ready' ? 'awaiting_host_delivery' : 'preview_unavailable',
     hostSessionVerified: hostHandoff.hostSessionVerified, onboardingComplete: false };
 }
 
@@ -197,13 +197,15 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
     // Keep the decision and handoff visible instead of burying them after a long
     // quoted success contract. The full contract remains available for the Agent.
     if (values.summary) {
-      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (hostHandoff?.reason || result.onboardingStatus)
+      if (hostHandoff) console.error('MCP_ACTIVATION: ' + hostHandoff.automaticActivation + (hostHandoff.reason ? ' (' + hostHandoff.reason + ')' : '')
+        + '. Accept automatic current-chat activation separately from welcome/card presentation.');
+      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + result.onboardingStatus
         + '. Installation is registered; welcome/cards delivery remains unverified. '
         + 'If native cards cannot be delivered, the entire final reply must be the top-level welcomeMarkdown verbatim: only its three paragraphs. Keep installation status, blockers, library URLs and recovery details in diagnostics and the receipt, outside that reply. '
         + (result.inlinePresentation?.status === 'prepared'
           ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
           : result.inlinePresentation?.status === 'native_required'
-            ? 'Open the library once, then invoke the exact prepared native arguments with onboarding:true: welcome above three full-video cards. Detailed library/playback validation is separate from installation. After a queued host refresh, run recovery.command/recovery.args in this same turn; never repeat preparation or resample. Missing automatic host activation remains a blocking integration dependency, not a successful installation experience or a request for the user to restart. '
+            ? 'Open the library once, then invoke the exact prepared native arguments with onboarding:true: welcome and three full-video cards arrive together in one persistent component, without a separate streamed welcome. Use a working native connection even when script host control is unavailable. After a queued host refresh, run recovery.command/recovery.args in this same turn; never repeat preparation or resample. Automatic MCP activation has separate acceptance; neither presentation nor registration proves it. '
             : 'Open the library and retain the required host action in diagnostics. ')
         + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
       if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);

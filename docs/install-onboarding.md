@@ -5,12 +5,15 @@ Used by source installation, npm application installation and plugin setup.
 <!-- installation-onboarding:start -->
 ## Installation-success reply
 
-Installation has four completion conditions in the same calling conversation:
+Accept presentation and automatic MCP activation independently.
+
+### Presentation acceptance
 
 1. Open the actual local template library once, without creating a project. Detailed library inspection is unnecessary.
-2. Display the maintained welcome in the persistent conversation flow.
-3. Put exactly three full-video recommendation cards below the welcome, sampled without replacement from the nine-entry pool in `shared/onboarding-templates.ts` (the catalog IDs referenced by PR #472).
-4. Automatically load OpenMotion's native tools and verify the installed workspace through this same chat's MCP connection. Registration, a separate process's handshake and a queued refresh do not satisfy this condition.
+2. Display the maintained welcome and exactly three full-video recommendation cards together in one persistent native conversation component, with the welcome above the cards. Do not require a separately streamed welcome or coordinated timing between a text reply and the component.
+3. Preserve the three IDs/order sampled without replacement from the nine-entry pool in `shared/onboarding-templates.ts` (the catalog IDs referenced by PR #472). Confirm that the welcome and all three cards are visible; full audiovisual review remains a separate user check.
+
+`onboardingStatus` and `onboardingComplete` describe presentation only. Setup and connection recovery leave it `awaiting_host_delivery` and incomplete until visible delivery is confirmed; library preparation failure remains `preview_unavailable`. `hostHandoff.automaticActivation`, its reason and `hostSessionVerified` report the independent connection check. A working native connection can present the component even when the installer's control socket is unavailable. Visible cards do not prove that installation loaded MCP automatically, and activation failure does not invalidate an otherwise verified presentation.
 
 ### Native reference cards
 
@@ -20,11 +23,13 @@ The reference posters and complete videos retain their content-addressed public 
 
 ### Automatic current-chat activation
 
+This is a separate acceptance track: installation must automatically load the native tools and verify the installed workspace in the installing chat. Registration, an independent handshake, a queued refresh or a later connected chat does not establish that result. Record the installation/chat identities and actual host recovery path; do not infer automatic activation from presentation acceptance.
+
 Source and npm setup use `prepareInstallationFlow`. After registration, an existing supported Codex control connection checks `thread/loaded/list` for the calling `CODEX_THREAD_ID`. A healthy native connection is reused. Missing/stale tool discovery, an outdated application version or a mismatching immutable card resource requests one `config/mcpServer/reload`. The refresh is queued for a host tool boundary; an immediate status read is not its completion.
 
 After that tool step finishes, execute the returned `recovery.command`/`recovery.args` in this same turn. The private immutable receipt preserves the chat, application, workspace, language, three IDs/order and library URL. Recovery performs verification only: no reinstall, library startup, resampling or additional reload. Native discovery and `openmotion_get_project` must verify the expected workspace through the calling thread before `hostSessionVerified` is true. They do not prove visible welcome/cards.
 
-`OPENMOTION_CODEX_SOCKET` may identify an explicitly known existing control socket. Do not guess endpoints, start another app-server to simulate this chat, alter host listeners/security, inject instructions through `codex queue`, restart Codex or substitute a user connection-restart instruction for automatic activation. A private-stdio host with no supported reload capability is a blocking host integration dependency. Keep onboarding incomplete and retain the accurate reason in diagnostics and the receipt. Already working native tools can supersede a missing script control socket; use them directly and preserve the receipt.
+`OPENMOTION_CODEX_SOCKET` may identify an explicitly known existing control socket. Do not guess endpoints, start another app-server to simulate this chat, alter host listeners/security, inject instructions through `codex queue`, restart Codex or substitute a user connection-restart instruction for automatic activation. A private-stdio host with no supported reload capability blocks automatic-activation acceptance. Retain that reason independently in diagnostics and the receipt. Use already working native tools directly to deliver the welcome/cards; do not withhold presentation because the script control socket is missing.
 
 Codex plugin setup reaches this contract through `extensions.com.openai.onboardingSkill`. Its directory must also be in the plugin's `skills` roots. CLI registration alone does not invoke the desktop install callback or create a current-chat refresh capability. Installed files, current-chat connection and visible native delivery are separate outcomes.
 
@@ -60,7 +65,7 @@ The top-level `welcomeMarkdown` supplies these paragraphs from the maintained lo
 
 ### Self-contained builtin compatibility
 
-Explicit builtin examples can still use the prepared document route: publish the verified fragment into this chat's permitted directory with `scripts/inline-onboarding.mjs --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY`, then stream `welcomeMarkdown` followed by its returned `contentReference` in the final reply. Keep the document cards-only. This is not the curated-reference default and does not satisfy current-chat MCP activation; Codex activation is required independently of presentation mode.
+Explicit builtin examples can still use the prepared document route: publish the verified fragment into this chat's permitted directory with `scripts/inline-onboarding.mjs --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY`, then stream `welcomeMarkdown` followed by its returned `contentReference` in the final reply. Keep the document cards-only. This compatibility route is not the curated-reference presentation acceptance above. Automatic MCP activation is assessed separately for either route.
 
 ### Accepted template selection
 

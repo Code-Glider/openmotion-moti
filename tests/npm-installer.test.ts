@@ -99,7 +99,8 @@ export async function prepareInlineOnboarding({output}) { await fs.mkdir(path.di
   const cli = await readFile(options.codex, 'utf8');
   await writeFile(options.codex, cli + `\nif(args[0]==='queue') {fs.writeFileSync(${JSON.stringify(queueLog)},JSON.stringify(args));console.log('Queued message 11111111-1111-4111-8111-111111111111 for thread '+args[2]+'.');}\n`);
   const installed = await setup(options);
-  assert.equal(installed.onboarding.onboardingStatus, 'host_action_required');
+  assert.equal(installed.onboarding.onboardingStatus, 'awaiting_host_delivery');
+  assert.equal(installed.onboarding.hostHandoff.automaticActivation, 'blocked');
   assert.equal(installed.onboarding.callback, undefined);
   assert.equal(installed.onboarding.inlinePresentation.status, 'prepared');
   assert.equal(installed.onboarding.preview.status, 'ready');

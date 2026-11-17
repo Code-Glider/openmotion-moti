@@ -56,6 +56,7 @@ test('refresh recovery uses the exact installation selections and workspace with
     '模板库支持搜索，也可以随意浏览，找到喜欢的点击「复刻模板」就能开始你的创作！',
   ].join('\n\n'));
   assert.equal(result.hostSessionVerified, true);
+  assert.equal(result.onboardingStatus, 'awaiting_host_delivery', 'MCP verification does not complete presentation acceptance');
   assert.equal(result.onboardingComplete, false, 'Connection verification is not visible welcome/card delivery');
   assert.deepEqual(result.hostHandoff.presentation.arguments, { templateIds, language: 'zh', onboarding: true });
   assert.deepEqual(result.preview, saved.preview);
@@ -78,6 +79,7 @@ test('a different connected workspace cannot finish installation recovery', asyn
   const result = await resumeInstallationOnboarding(receipt(), { appRoot, threadId, request: host.request });
   assert.equal(result.hostHandoff.reason, 'HOST_WORKSPACE_MISMATCH');
   assert.equal(result.hostHandoff.automaticActivation, 'blocked');
+  assert.equal(result.onboardingStatus, 'awaiting_host_delivery', 'Presentation and automatic activation have independent acceptance states');
   assert.equal(result.onboardingComplete, false);
 });
 

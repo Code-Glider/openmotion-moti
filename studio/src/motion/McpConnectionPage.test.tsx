@@ -37,7 +37,8 @@ it.each(['en', 'zh-CN'] as const)('explains welcome-above-cards delivery and the
   expect(faq.open).toBe(true);
   expect(faq.textContent).toContain(locale === 'en' ? 'native MCP Apps' : '原生 MCP Apps');
   expect(faq.textContent).toContain(locale === 'en' ? 'welcome above three' : '三张参考卡片上方');
-  expect(faq.textContent).toContain(locale === 'en' ? 'activate MCP automatically' : '自动激活 MCP');
+  expect(faq.textContent).toContain(locale === 'en' ? 'separate acceptance' : '分别验收');
+  expect(faq.textContent).toContain(locale === 'en' ? 'without a separately streamed welcome' : '无需单独流式输出欢迎语');
   expect(faq.textContent).toContain(locale === 'en' ? 'Builtin examples' : '内置示例');
 });
 
