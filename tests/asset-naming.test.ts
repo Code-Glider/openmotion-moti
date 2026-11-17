@@ -106,6 +106,7 @@ test('native deletion clears only deleted file or directory names before same-pa
     await upload('old bytes');
     await writeFile(index, JSON.stringify([{ path: target, name: 'Old red cover', nameSource: 'user' }]));
     assert.equal((await readProjectAssetNames(store)).assetNames[target], 'Old red cover');
+    assert.equal((await remove('../outside.svg')).status, 400);
     assert.equal((await remove('assets/missing.png')).status, 404);
     assert.equal(JSON.parse(await readFile(index, 'utf8'))[0].name, 'Old red cover');
     assert.equal((await remove(target)).status, 200);

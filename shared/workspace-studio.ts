@@ -194,7 +194,9 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
             return c.json({ ...data, fonts: projectFonts, ...await readProjectAssetNames(scoped, data.files ?? [], projectFonts) });
           }).delete('/api/projects/:id/files/*', c => {
             const pathname = new URL(c.req.url).pathname;
-            const assetPath = projectPath(decodeURIComponent(pathname.slice(pathname.indexOf('/files/') + '/files/'.length)));
+            let assetPath: string;
+            try { assetPath = projectPath(decodeURIComponent(pathname.slice(pathname.indexOf('/files/') + '/files/'.length))); }
+            catch { return c.json({ error: 'Invalid project path' }, 400); }
             return deleteProjectAsset(scoped, assetPath, () => nativeApp.fetch(c.req.raw));
           }).post('/api/projects/:id/upload', bodyLimit({
           maxSize: MAX_ASSET_BYTES,
