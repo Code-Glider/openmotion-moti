@@ -170,6 +170,27 @@ test('browser ingress rejects forged identity, worker events and oversized batch
   assert.equal((await send({ events: [packet()] })).status, 200); assert.equal(tracking.pending(), 0);
 }, false));
 
+test('browser ingress admits manual I/O pairs and rejects private or incomplete recovery properties', () => fixture(async store => {
+  const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
+  const request = transport(store, { tracking });
+  const send = (event: string, properties: Record<string, unknown>) => request('/motion-api/tracking', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ events: [{ ...packet(), event, properties }] }),
+  });
+  const shared = { action: 'download_render', attempt_id: crypto.randomUUID() };
+  const result = { ...shared, outcome: 'unknown', file_status: 'available', delivery_status: 'browser_save_requested' };
+  assert.equal((await send('studio_io_action', shared)).status, 200);
+  assert.equal((await send('studio_io_result', result)).status, 200);
+  for (const properties of [
+    { ...result, file_name: 'PRIVATE_FILE' }, { ...result, path: 'PRIVATE_PATH' }, { ...result, error: 'PRIVATE_ERROR' },
+    { ...result, action: 'automatic_refresh' }, { ...result, attempt_id: 'PRIVATE_TASK_ID' },
+    { ...result, outcome: 'saved' }, { ...result, delivery_status: 'saved' }, { ...result, requested_count: -1 },
+    { action: 'recheck_file', outcome: 'unknown' }, { ...shared },
+  ]) assert.equal((await send('studio_io_result', properties)).status, 400);
+  await tracking.flush();
+  assert.deepEqual(events.map(event => [event.event, event.properties]), [['studio_io_action', shared], ['studio_io_result', result]]);
+  tracking.close();
+}, false));
+
 test('domain events follow real commits, skip replay and retain safe failure without source contents', () => fixture(async store => {
   assert.deepEqual([...toolNames].sort(), [...new Set(phase1Tools.map(tool => legacyToolName(tool.name)))].sort());
   const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });

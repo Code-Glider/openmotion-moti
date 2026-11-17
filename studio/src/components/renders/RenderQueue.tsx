@@ -14,6 +14,7 @@ import { Select, type SelectOption } from "../ui/Select";
 import { Tooltip } from "../ui/Tooltip";
 import { Popover } from "../ui/Popover";
 import type { RenderJob, ResolutionPreset } from "./useRenderQueue";
+import { isPendingRender } from "./renderQueueState";
 import {
   FORMAT_INFO,
   resolveRenderFps,
@@ -47,6 +48,8 @@ export interface RenderQueueProps {
   projectId: string;
   onDelete: (jobId: string) => void;
   onCancel?: (jobId: string) => void;
+  onRecheck?: (jobId?: string) => void;
+  checking?: boolean;
   onClearCompleted: () => void;
   onStartRender: StartRenderHandler;
   isRendering: boolean;
@@ -354,6 +357,8 @@ export const RenderQueue = memo(function RenderQueue({
   projectId,
   onDelete,
   onCancel,
+  onRecheck,
+  checking,
   onClearCompleted,
   onStartRender,
   isRendering,
@@ -382,7 +387,7 @@ export const RenderQueue = memo(function RenderQueue({
     }
   }, [newestJobId]);
 
-  const completedCount = jobs.filter((j) => j.status !== "rendering").length;
+  const completedCount = jobs.filter((j) => !isPendingRender(j)).length;
   const lastRenderDurationMs = sortedJobs
     .find((j) => j.status === "complete" && j.durationMs !== undefined)?.durationMs;
 
@@ -401,7 +406,9 @@ export const RenderQueue = memo(function RenderQueue({
         />
       </div>
 
-      {actionError && <ErrorNotice key={actionError} message={actionError} onDismiss={onDismissActionError} />}
+      {actionError && <ErrorNotice key={actionError} message={actionError} context="export"
+        action={onRecheck ? { label: "Recheck", run: onRecheck, busy: checking } : undefined}
+        onDismiss={onDismissActionError} />}
 
       {/* Job list */}
       {/* MVP history fits its content up to the count header and about 3.5 standard rows. */}
@@ -436,6 +443,8 @@ export const RenderQueue = memo(function RenderQueue({
                 projectId={projectId}
                 onDelete={() => onDelete(job.id)}
                 onCancel={() => onCancel?.(job.id)}
+                onRecheck={onRecheck ? () => onRecheck(job.id) : undefined}
+                checking={checking}
               />
             ))}
           </div>
