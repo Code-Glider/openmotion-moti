@@ -753,3 +753,12 @@ OpenMotion のライセンスは [Apache-2.0](../LICENSE)です。第三者の�
 [素材の出典](readme/ASSETS.md) · [その他の展示素材の出典](readme/brand-showcase/README.md) · [フォントのライセンス](../web/design-system/fonts/NOTICES.txt) · [Studio のライセンス](../studio/LICENSE)
 
 旧 HTML Anything アプリは [`legacy` ブランチ](https://github.com/nexu-io/openmotion/tree/legacy)に保存されています。現在のブランチと配布範囲は[リポジトリ移行ガイド](repository-migration.md) を参照してください。
+
+## スター数の推移
+
+<a href="https://www.star-history.com/?repos=nexu-io%2Fopenmotion&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date&amp;theme=dark">
+    <img alt="GitHub での OpenMotion のスター数の推移" src="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date">
+  </picture>
+</a>

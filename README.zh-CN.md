@@ -753,3 +753,12 @@ OpenMotion 采用 [Apache-2.0](LICENSE)许可。第三方代码、模板、媒�
 [素材来源](docs/readme/ASSETS.md) · [其他展示素材来源](docs/readme/brand-showcase/README.md) · [字体声明](web/design-system/fonts/NOTICES.txt) · [Studio 许可证](studio/LICENSE)
 
 原 HTML Anything 应用保留在 [`legacy` 分支](https://github.com/nexu-io/openmotion/tree/legacy)。当前分支与分发边界参见[仓库迁移指南](docs/repository-migration.md) 。
+
+## Star 历史趋势
+
+<a href="https://www.star-history.com/?repos=nexu-io%2Fopenmotion&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date&amp;theme=dark">
+    <img alt="OpenMotion 的 GitHub Star 数量随时间的变化" src="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date">
+  </picture>
+</a>

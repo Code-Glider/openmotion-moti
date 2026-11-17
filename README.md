@@ -777,3 +777,12 @@ OpenMotion is licensed under [Apache-2.0](LICENSE). Third-party code, templates,
 [Asset sources](docs/readme/ASSETS.md) · [Skills page covers](docs/readme/ASSETS.md#skills-page-covers) · [Additional showcase sources](docs/readme/brand-showcase/README.md) · [Font notices](web/design-system/fonts/NOTICES.txt) · [Studio license](studio/LICENSE)
 
 The former HTML Anything application is preserved on the [`legacy` branch](https://github.com/nexu-io/openmotion/tree/legacy). See the [repository migration guide](docs/repository-migration.md) for the active branch and distribution boundaries.
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=nexu-io%2Fopenmotion&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date&amp;theme=dark">
+    <img alt="GitHub stars for OpenMotion over time" src="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date">
+  </picture>
+</a>
