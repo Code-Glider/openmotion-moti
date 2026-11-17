@@ -4,6 +4,9 @@ import { connectionBaseUrl } from './connections.ts';
 import { ProviderError, publicProviderFetch, type Fetcher } from './network.ts';
 
 export const TRANSCRIPTION_CHUNK_SECONDS = 600;
+const TRANSCRIPTION_TIMEOUT_MS = 10 * 60_000;
+// Non-streaming ASR can be silent for longer than the ordinary provider idle limit.
+const transcriptionFetch: Fetcher = (url, init) => publicProviderFetch(url, init, TRANSCRIPTION_TIMEOUT_MS);
 const formats = ['json', 'verbose_json', 'diarized_json'];
 /** Explicit, bounded options; neither credentials nor arbitrary destinations enter a job. */
 export function transcriptionParameters(modelId: string, defaults: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) {
@@ -27,7 +30,7 @@ export function transcriptionParameters(modelId: string, defaults: Record<string
 }
 
 /** One POST per chunk; transport uncertainty never causes a paid retry. */
-export async function transcribeAudio(input: { file: string; modelId: string; baseUrl: string; key: string; parameters: Record<string, unknown>; language?: string; offset: number; duration: number; signal: AbortSignal }, fetcher: Fetcher = publicProviderFetch) {
+export async function transcribeAudio(input: { file: string; modelId: string; baseUrl: string; key: string; parameters: Record<string, unknown>; language?: string; offset: number; duration: number; signal: AbortSignal }, fetcher: Fetcher = transcriptionFetch) {
   const size = (await stat(input.file)).size;
   if (!size || size > 25_000_000) throw new Error('Transcription audio must be between 1 byte and 25 MB');
   const form = new FormData();
@@ -46,7 +49,7 @@ export async function transcribeAudio(input: { file: string; modelId: string; ba
   const encoded = new Response(form);
   const response = await fetcher(connectionBaseUrl(input.baseUrl) + '/audio/transcriptions', {
     method: 'POST', headers: { Authorization: `Bearer ${input.key}`, 'Content-Type': encoded.headers.get('content-type')! },
-    body: new Uint8Array(await encoded.arrayBuffer()), redirect: 'error', signal: AbortSignal.any([input.signal, AbortSignal.timeout(10 * 60_000)]),
+    body: new Uint8Array(await encoded.arrayBuffer()), redirect: 'error', signal: AbortSignal.any([input.signal, AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS)]),
   });
   if (!response.ok) throw new ProviderError(`Transcription provider HTTP ${response.status}${[401, 403].includes(response.status) ? ': check credentials and model access in Settings' : ''}`, response.status);
   const text = await response.text();

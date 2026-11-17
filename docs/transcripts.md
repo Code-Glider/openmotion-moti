@@ -104,3 +104,11 @@ Add captions accepts pasted lines with an explicit duration per cue at the playh
 Default caption previews reuse the Inter stylesheet and bounded font-file downloads across text edits. Authored text subsets and large custom/CJK font families retain their existing subset behavior; failed downloads are retried on a later preview rather than retained as successful cache entries. This removes repeated default-font downloads without changing authored timing or fonts.
 
 Timeline clip movement uses a 5-pixel snap acquisition radius and releases within 7 pixels; ruler subdivisions no longer capture drags/trims. Main-track magnet defaults off while saved user choices remain respected. Cmd/Ctrl temporarily bypasses edge snapping and magnetic collision placement. Ordinary overlaps retain pointer time and open/use a compatible layer instead of moving the clip back to a distant gap.
+
+## Export the edited timeline
+
+**Export → Captions** downloads SRT or VTT directly. It waits for pending Studio saves and reads visible managed caption cues from the selected composition, including manual captions, corrected text, splits and trims. Multiple visible caption tracks are combined by default; the track selector can isolate a language or a legacy text track. Hidden cues are excluded. Contiguous word-highlight fragments with identical text are coalesced when adjacent. No media, model or transcription request is needed.
+
+The shared public operation is `openmotion_assets_use({action: "transcript", transcript: {command: "caption_export", projectId, compositionPath: "index.html", format: "srt"}})`. Optional `transcriptId` selects a managed track. It returns `content`, `mimeType`, `extension`, `cueCount` and the requested project/composition identity. `caption_tracks` discovers available identities. Missing tracks, empty visible captions and invalid timing report recoverable errors. Independent nested scenes must be exported from their own composition; this operation does not guess placement across scene references. SRT/VTT contain text and timing; authored appearance remains in video output and the editable project.
+
+Transcript **export** still downloads the reviewed source document; **caption_export** is the saved timeline result. The UI and public MCP call the same implementation. Editing remains version guarded; exporting subtitles is read only.

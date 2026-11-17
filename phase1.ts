@@ -323,11 +323,14 @@ export class Phase1Service {
       if (args.action === 'brand_kit') return brandKitOperation(brandKitsFor(this.store.directory), args.brandKit, this.context.origin());
       if (args.action === 'transcript') {
         const input = args.transcript;
-        if (input.command === 'caption_tracks') {
-          const { captionTracks } = await loadCaptionSourceOperations(this.runtimeRoot);
+        if (input.command === 'caption_tracks' || input.command === 'caption_export') {
+          const { captionTracks, exportCaptionSource } = await loadCaptionSourceOperations(this.runtimeRoot);
           const scoped = this.versions(input.projectId).store, name = projectPath(input.compositionPath);
           if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
-          return { tracks: captionTracks(await readFile(await scoped.safePath(name), 'utf8')) };
+          const source = await readFile(await scoped.safePath(name), 'utf8');
+          return input.command === 'caption_export'
+            ? { projectId: input.projectId, compositionPath: name, ...exportCaptionSource(source, input.format, input.transcriptId) }
+            : { tracks: captionTracks(source) };
         }
         if (!['captions', 'caption_update', 'caption_add'].includes(input.command)) return transcriptOperation(this.store, input);
         return this.writeRequest('transcript_captions', input, () => this.context.mutation(() => this.store.lock(async () => {
@@ -567,7 +570,7 @@ export class Phase1Service {
       if (!args.versionId || !args.expectedRevision) throw new Error('INVALID_ARGUMENT: versionId and expectedRevision are required');
       const detail = await this.detail(args.projectId);
       if (detail.currentVersionId !== args.versionId || detail.revision !== args.expectedRevision) throw new Error('VERSION_CONFLICT');
-      const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio,
+      const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio, compositionPath: args.compositionPath,
         trackingHost: this.context.tracking?.enabled() ? host : undefined });
       if (this.context.tracking) {
         this.context.tracking.track('task_accepted', { task_id: job.id, task_type: 'export', project_id: args.projectId,

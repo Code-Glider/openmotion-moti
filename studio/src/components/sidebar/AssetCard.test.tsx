@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePlayerStore, type TimelineElement } from "../../player/store/playerStore";
 import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
-import { AssetCard } from "./AssetCard";
+import { AssetCard, FontRow } from "./AssetCard";
 import { AudioRow } from "./AudioRow";
 import { InlineAssetRename } from "./InlineAssetRename";
 import { I18nProvider } from "../../i18n/I18n";
@@ -138,6 +138,52 @@ describe("AssetCard click behavior", () => {
     expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/logo.png");
     expect(useAssetPreviewStore.getState().previewProjectId).toBe("p1");
   });
+
+  it("adds from the thumbnail without opening preview or revealing a used clip", async () => {
+    const add = vi.fn().mockResolvedValue(true);
+    usePlayerStore.getState().setElements([clip({ id: "existing", src: "assets/logo.png" })]);
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used onAddAssetToTimeline={add} />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    const PointerCtor = window.PointerEvent ?? MouseEvent;
+    await act(async () => {
+      button.dispatchEvent(new PointerCtor("pointerdown", { bubbles: true, clientX: 5, clientY: 5 }));
+      button.dispatchEvent(new PointerCtor("pointerup", { bubbles: true, clientX: 5, clientY: 5 }));
+      button.click();
+    });
+    expect(add).toHaveBeenCalledExactlyOnceWith("assets/logo.png");
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+    expect(usePlayerStore.getState().selectedElementId).toBeNull();
+  });
+
+  it.each([false, new Error("Internal failure")])("keeps quick add retryable after failure: %s", async result => {
+    let finish!: () => void;
+    const add = vi.fn(() => new Promise<boolean>((resolve, reject) => {
+      finish = () => result instanceof Error ? reject(result) : resolve(result);
+    }));
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used={false} onAddAssetToTimeline={add} />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    act(() => { button.click(); button.click(); });
+    expect(add).toHaveBeenCalledOnce();
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    await act(async () => finish());
+    expect(button.disabled).toBe(false);
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.textContent).toBe("Failed to add media");
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+    act(() => button.click());
+    expect(add).toHaveBeenCalledTimes(2);
+    await act(async () => finish());
+  });
+
+  it("only offers quick add when insertion is available and leaves thumbnail dragging intact", () => {
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used={false} />);
+    expect(host.querySelector('button[aria-label="Add at playhead"]')).toBeNull();
+    const setData = vi.fn();
+    const event = new Event("dragstart", { bubbles: true });
+    Object.defineProperty(event, "dataTransfer", { value: { setData, effectAllowed: "none" } });
+    act(() => host.querySelector('[draggable="true"]')!.dispatchEvent(event));
+    expect(setData).toHaveBeenCalledWith(TIMELINE_ASSET_MIME, JSON.stringify({ path: "assets/logo.png" }));
+  });
 });
 
 describe("AudioRow click behavior", () => {
@@ -208,6 +254,50 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
   act(() => input.blur());
   expect(rename).toHaveBeenCalledWith('assets/music.wav', 'music 111.wav');
   expect(host.querySelector('input')).toBeNull();
+});
+
+describe("row quick insertion", () => {
+  it.each([
+    ["font", false], ["image", false], ["image", true], ["audio", false], ["audio", true],
+  ] as const)("dismisses failed quick-add feedback without activating the %s row (used=%s)", async (kind, used) => {
+    const add = vi.fn().mockResolvedValue(false);
+    const copy = vi.fn();
+    const asset = kind === "font" ? "assets/AlbertSans.ttf" : kind === "audio" ? "assets/music.mp3" : "assets/logo.png";
+    usePlayerStore.getState().setElements([clip({ id: "existing", src: asset })]);
+    useAssetPreviewStore.getState().setPreviewAsset("assets/other.png", "p1");
+    const props = { asset, used, onCopy: copy, copyFeedback: null, onAddAssetToTimeline: add };
+    const host = mount(kind === "font" ? <FontRow {...props} /> : kind === "audio" ? <AudioRow {...props} projectId="p1" /> : <AssetCard {...props} projectId="p1" />);
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!.click());
+    const dismiss = document.querySelector<HTMLButtonElement>('.hf-toast-viewport button[aria-label="Dismiss error"]')!;
+    expect(dismiss).not.toBeNull();
+    act(() => {
+      dismiss.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 5, clientY: 5 }));
+      dismiss.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 5, clientY: 5 }));
+      dismiss.click();
+    });
+    expect(copy).not.toHaveBeenCalled();
+    expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/other.png");
+    expect(usePlayerStore.getState().selectedElementId).toBeNull();
+    expect(add).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.classList.contains("hf-toast-exit")).toBe(true);
+  });
+
+  it.each(["font", "audio"])("adds %s without copying or opening preview", async kind => {
+    const add = vi.fn().mockResolvedValue(true);
+    const copy = vi.fn();
+    const asset = kind === "font" ? "assets/AlbertSans.ttf" : "assets/music.mp3";
+    const props = { asset, used: false, onCopy: copy, copyFeedback: null, onAddAssetToTimeline: add };
+    const host = mount(kind === "font" ? <FontRow {...props} /> : <AudioRow {...props} projectId="p1" />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      button.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+      button.click();
+    });
+    expect(add).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(copy).not.toHaveBeenCalled();
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+  });
 });
 
 it('shows the imported name while preview, drag and rename keep the immutable asset path', () => {

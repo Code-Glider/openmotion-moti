@@ -15,7 +15,7 @@ export const mcpCapabilities = [
   { id: 'assets', icon: 'folder-open-line', title: 'Bring your own material', description: 'Import local images, video, audio and font files. Keep selected fonts and their licenses with the editable project.', tools: ['openmotion_import_assets'], prompt: 'Help me choose fonts for my project’s language and brand using the OpenMotion font catalog. Download only the selected faces, import them with their licenses, then check the actual text in the project.' },
   { id: 'preview', icon: 'play-fill', title: 'Edit together in the same Studio', description: 'Preview and refine your Agent’s work in Studio, or ask the Agent to keep editing the same project.', tools: ['openmotion_get_project', 'openmotion_open_preview'], prompt: 'Read my current OpenMotion project and open its latest editable preview. Keep the project identity and verify the visible result before continuing.' },
   { id: 'history', icon: 'history-line', title: 'Keep every creative direction', description: 'Browse saved versions and restore an earlier direction as a new version. Keep the history while you refine the result.', tools: ['openmotion_list_versions', 'openmotion_restore_version'], prompt: 'List versions of my OpenMotion project and explain the differences. Wait for me to choose before restoring a version.' },
-  { id: 'export', icon: 'download-2-line', title: 'Deliver a finished video', description: 'Export the chosen project version to MP4 and follow its progress. Keep both the finished video and the editable project.', tools: ['openmotion_export_request', 'openmotion_export_cancel'], prompt: 'Export the agreed OpenMotion project version to MP4 with its audio. Track the same export job, review playback and give me the finished video and editable project.' },
+  { id: 'export', icon: 'download-2-line', title: 'Deliver a finished video', description: 'In Export, download the current video or an existing scene, download timeline captions as SRT/VTT, or prepare a platform version. Keep the editable project.', tools: ['openmotion_export_request', 'openmotion_export_cancel', 'openmotion_assets_use'], prompt: 'Read the selected project with openmotion_get_project. Export the agreed version with openmotion_export_request using versionId, expectedRevision, a stable requestId and the correct audio policy. Use compositionPath only when I select an existing scene; otherwise export the full video. Follow the same job and verify playback. For subtitles, call openmotion_assets_use with action=transcript and command=caption_export, projectId, compositionPath and format=srt or vtt. It exports saved visible timeline captions, including manual edits, without an ASR model. Use caption_tracks to choose one track via transcriptId when needed. If no visible captions exist, ask me to add or enable them; never fabricate speech. Return the files and editable project.' },
 ] as const;
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
@@ -26,12 +26,12 @@ export const mcpScenarios = [{
   prompt: assetNamingInstruction,
 }, {
   id: 'platform-export', icon: 'sparkling-line', title: 'Prepare a platform version',
-  description: 'In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.',
+  description: 'In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.',
   tools: ['openmotion_get_project', 'openmotion_manage_project', 'openmotion_edit_project', 'openmotion_open_preview', 'openmotion_export_request'],
   prompt: 'Prepare a platform version',
 }] as const;
 
-export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'shorten', locale, workspace });
+export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'adapt', locale, workspace });
 
 export const mcpBenefits = [
   { icon: 'movie-line', title: 'The workspace behind your Agent', description: 'Your Agent creates and edits through MCP. OpenMotion keeps the project, source files and assets together so each result can become the next starting point.' },

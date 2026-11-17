@@ -107,6 +107,12 @@ export function exportTranscript(document: TranscriptDocument, format: Transcrip
   if (format === 'json') return { content: JSON.stringify(document, null, 2), mimeType: 'application/json', extension: 'json' };
   if (format === 'txt') return { content: transcriptText(segments) + '\n', mimeType: 'text/plain', extension: 'txt' };
   if (segments.some(segment => !timedSegment(segment))) throw new Error('This model returned text without timestamps. Use a timestamp-capable model or add timings before exporting subtitles.');
+  return exportSubtitleSegments(segments, format);
+}
+
+/** Shared serializer for reviewed transcripts and saved timeline captions. */
+export function exportSubtitleSegments(segments: TranscriptSegment[], format: 'srt' | 'vtt') {
+  if (format !== 'srt' && format !== 'vtt') throw new Error('Choose SRT or VTT');
   const separator = format === 'vtt' ? '.' : ',';
   const cues = segments.map((s, index) => `${index + 1}\n${transcriptTimestamp(s.start!, separator)} --> ${transcriptTimestamp(s.end!, separator)}\n${s.text.replace(/\r?\n\s*\r?\n/g, '\n')}`);
   return { content: (format === 'vtt' ? 'WEBVTT\n\n' : '') + cues.join('\n\n') + '\n', mimeType: format === 'vtt' ? 'text/vtt' : 'application/x-subrip', extension: format };

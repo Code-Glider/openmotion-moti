@@ -1,3 +1,4 @@
+import { subtitleLanguages } from '../../../shared/subtitle-languages';
 import { useEffect, useRef, useState } from 'react';
 import type { TranscriptDocument } from '../../../shared/transcript';
 import { transcriptWorkflowPrompt } from '../../../shared/transcript-workflow';
@@ -9,14 +10,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { useIntegrationInfo } from './useIntegrationInfo';
 import { SettingsError, SettingsLoading } from './settingsPrimitives';
 
-const subtitleLanguages = [
-  { id: 'zh', label: '中文', name: 'Chinese' },
-  { id: 'en', label: 'English', name: 'English' },
-  { id: 'ja', label: '日本語', name: 'Japanese' },
-  { id: 'ko', label: '한국어', name: 'Korean' },
-  { id: 'es', label: 'Español', name: 'Spanish' },
-  { id: 'fr', label: 'Français', name: 'French' },
-] as const;
+
 
 export function TranscriptWorkflowBrief({ projectId, sourcePaths, transcript }: { projectId: string; sourcePaths: string[]; transcript: TranscriptDocument | null }) {
   const { t, locale } = useI18n(), shell = useStudioShellContext();

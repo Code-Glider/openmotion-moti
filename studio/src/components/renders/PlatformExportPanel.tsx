@@ -1,4 +1,4 @@
-import { useDockLayoutStore } from '../dock/dockLayoutStore';
+import { subtitleLanguages } from '../../../../shared/subtitle-languages';
 import { useEffect, useRef, useState } from 'react';
 import { defaultPlatformExportTarget, platformExportGoals, platformExportPrompt, platformExportTargets, platformExportCanvases, platformExportDurations, platformExportCaptions, platformExportSettings, type PlatformExportOptions, type PlatformExportGoal, type PlatformExportTarget } from '../../../../shared/platform-export';
 import { useStudioShellContext } from '../../contexts/StudioContext';
@@ -26,7 +26,7 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
   const { renderQueue } = useStudioShellContext();
   const { info, failed, retry } = useIntegrationInfo();
   const [target, setTarget] = useState<PlatformExportTarget>(() => defaultPlatformExportTarget(locale));
-  const [goal, setGoal] = useState<PlatformExportGoal>('shorten');
+  const [goal, setGoal] = useState<PlatformExportGoal>('adapt');
   const [notes, setNotes] = useState(''), [languages, setLanguages] = useState('');
   const [options, setOptions] = useState<PlatformExportOptions>({});
   const [copying, setCopying] = useState(false), [manualCopy, setManualCopy] = useState('');
@@ -47,7 +47,7 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
     try {
       await beforeViewChange();
       if (!alive.current || !availableNow.current) return;
-      const prompt = platformExportPrompt({ target, goal, locale, notes, languages, options, context: { info, project: { id: projectId, title } } });
+      const prompt = platformExportPrompt({ target, goal, locale, notes, languages: settings.captions === 'none' ? '' : languages, options, context: { info, project: { id: projectId, title } } });
       try {
         await navigator.clipboard.writeText(prompt);
         if (alive.current) toast.showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback');
@@ -75,6 +75,8 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
         <Select label={t('Goal')} value={goal} disabled={copying} options={platformExportGoals.map(item => ({ value: item.id, label: t(item.label), icon: <RemixIcon name={goalIcons[item.id]} size={16} /> }))} onCommit={value => setGoal(value as PlatformExportGoal)} />
         <p className="text-step-11 leading-relaxed text-text-3">{t(platformExportGoals.find(item => item.id === goal)!.description)}</p>
       </div>
+      <details><summary className="om-disclosure-summary">{t('Customize version')}<RemixIcon name="arrow-down-s-line" size={14} /></summary>
+      <div className="flex flex-col gap-3 pt-3">
       <div className="grid grid-cols-2 gap-2">
         <div className="flex min-w-0 flex-col gap-1"><span className="text-step-11 text-text-2">{t('Aspect ratio')}</span>
           <Select label={t('Aspect ratio')} value={options.canvas ?? 'platform'} disabled={copying} options={[
@@ -94,11 +96,11 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
           <Select label={t('Clip count')} value={String(settings.clipCount)} disabled={copying} options={[1, 2, 3].map(count => ({ value: String(count), label: t('Up to {count}', { count }) }))} onCommit={value => configure('clipCount', Number(value) as 1 | 2 | 3)} />
         </div>}
       </div>
-    <label className="flex flex-col gap-1 text-step-11 text-text-3">{t('Subtitle languages (optional)')}<input className="om-field w-full" aria-label={t('Subtitle languages (optional)')} value={languages} maxLength={500} disabled={copying} onChange={event => setLanguages(event.target.value)} /></label>
-    <Button size="sm" variant="ghost" onClick={() => { onClose(); useDockLayoutStore.getState().activatePanel('transcript'); }}>{t('Review captions')}</Button>
+      {settings.captions !== 'none' && <div className="flex flex-col gap-1"><span className="text-step-11 text-text-2">{t('Subtitle language')}</span><Select label={t('Subtitle language')} value={languages} disabled={copying} options={[{ value: '', label: t('Source language') }, ...subtitleLanguages.map(language => ({ value: language.name, label: language.label }))]} onCommit={setLanguages} /></div>}
       <details><summary className="om-disclosure-summary">{t('Additional requirements (optional)')}<RemixIcon name="arrow-down-s-line" size={14} /></summary>
         <textarea className="om-field min-h-16 w-full resize-y text-step-12" aria-label={t('Additional requirements (optional)')} placeholder={t('e.g. Keep the opening hook and original narration')} rows={2} maxLength={2000} disabled={copying} value={notes} onChange={event => setNotes(event.target.value)} />
       </details>
+      </div></details>
       <div className="om-handoff-summary" data-testid="platform-export-summary"><RemixIcon name="sparkling-line" size={20} /><div className="min-w-0">
         <p className="text-step-12 font-medium">{t('Editable copy + MP4')}</p>
         <p className="text-step-11 text-text-3">{settings.canvas.width} × {settings.canvas.height} · {goal === 'adapt' ? t('Original duration') : t('{duration} seconds', { duration: settings.duration })}{goal === 'highlights' ? ' · ' + t('Up to {count}', { count: settings.clipCount }) : ''}</p>
@@ -111,7 +113,7 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
       <div className="min-h-8">
         {failed ? <div role="alert" className="flex items-center justify-between gap-2 text-step-11 text-text-2"><span>{t('Could not load settings')}</span><Button size="sm" onClick={retry}>{t('Retry')}</Button></div>
           : !info ? <div role="status" aria-label={t('Loading settings…')}><Skeleton className="h-8 w-full" /></div>
-            : <p className="text-step-11 leading-relaxed text-text-3">{t('Copy to your Agent. It creates the version; you upload the video.')}</p>}
+            : <p className="text-step-11 leading-relaxed text-text-3">{t('Paste into your Agent to create and export this version.')}</p>}
       </div>
       <Button variant="primary" size="lg" loading={copying} disabled={!info || !available} icon={<RemixIcon name="file-copy-line" size={16} />} onClick={() => void copy()}>{t(copying ? 'Saving…' : 'Copy for Agent')}</Button>
       <Button variant="ghost" size="sm" className="self-center" onClick={() => { onClose(); openConnections('platform_export'); }}>{t('Connection help')}<RemixIcon name="arrow-right-up-line" size={12} /></Button>

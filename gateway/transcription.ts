@@ -34,6 +34,10 @@ export class TranscriptionService {
     this.root = path.join(store.directory, 'transcripts');
   }
   private jobFile(jobId: string) { return path.join(this.root, 'jobs', id(jobId), 'job.json'); }
+  private async cleanScratch(jobId: string) {
+    const folder = path.dirname(this.jobFile(jobId));
+    await Promise.all(['source', 'audio.wav'].map(file => rm(path.join(folder, file), { force: true })));
+  }
   private docFile(docId: string, revision?: number) { return path.join(this.root, 'documents', id(docId), revision === undefined ? 'current.json' : `${revision}.json`); }
   private async ids(folder: string) { return (await readdir(path.join(this.root, folder)).catch(error => { if (error.code === 'ENOENT') return []; throw error; })).filter(value => /^[a-f0-9-]{36}$/.test(value)); }
   async models() {
@@ -162,7 +166,7 @@ export class TranscriptionService {
       if (['queued', 'running'].includes(job.state)) {
         job.state = 'cancelled'; job.phase = 'Cancelled locally; provider processing may continue'; job.updatedAt = Date.now();
         await writeSettings(this.jobFile(jobId), job); this.running.get(jobId)?.abort();
-        if (!this.running.has(jobId)) await rm(path.join(path.dirname(this.jobFile(jobId)), 'source'), { force: true });
+        if (!this.running.has(jobId)) await this.cleanScratch(jobId);
       }
       return job;
     });
@@ -179,7 +183,11 @@ export class TranscriptionService {
         for (const jobId of candidates) {
           const current = await readSettings<TranscriptionJob | null>(this.jobFile(jobId), null);
           if (!current) continue;
-          if (current.state === 'running' && !alive(current.workerPid)) { await writeSettings(this.jobFile(jobId), { ...current, state: 'failed', phase: 'Interrupted', error: 'The worker stopped. No provider request was retried.', updatedAt: Date.now() }); continue; }
+          if (current.state === 'running' && !alive(current.workerPid)) {
+            await this.cleanScratch(jobId);
+            await writeSettings(this.jobFile(jobId), { ...current, state: 'failed', phase: 'Interrupted', error: 'The worker stopped. No provider request was retried.', updatedAt: Date.now() });
+            continue;
+          }
           if (current.state === 'running') return;
           if (current.state === 'queued') queued.push(current);
         }
@@ -241,7 +249,7 @@ export class TranscriptionService {
         const message = error instanceof Error && /^(Transcription|Provider|Choose|Configure|TRANSCRIPT_|The worker|This model|Invalid|Unsupported|Cancelled)/.test(error.message) ? error.message.slice(0, 500) : 'Transcription failed. Check the source audio, provider connection and model settings. No request was retried.';
         await writeSettings(this.jobFile(job.id), { ...current, state: 'failed', phase: 'Failed', error: message, updatedAt: Date.now() });
       });
-    } finally { this.running.delete(job.id); await rm(path.join(folder, 'audio.wav'), { force: true }); await rm(path.join(folder, 'source'), { force: true }); }
+    } finally { this.running.delete(job.id); await this.cleanScratch(job.id); }
   }
   async close() { this.closed = true; for (const controller of this.running.values()) controller.abort(); await this.pending; }
 }

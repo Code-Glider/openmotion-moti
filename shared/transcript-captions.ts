@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { placeTranscriptSegments, timedSegment, parseTranscriptSubtitles, type TranscriptDocument, type TranscriptPlacement, type TranscriptSegment } from './transcript.ts';
+import { exportCaptionSource } from './caption-export.ts';
 import { captionArtwork, captionSettings, type CaptionSettings } from './caption-style.ts';
 
 export type CaptionPlacement = TranscriptPlacement;
@@ -15,7 +16,10 @@ export async function loadCaptionSourceOperations(runtimeRoot: string) {
   const manifest = require.resolve('@hyperframes/parsers/package.json');
   const pkg = JSON.parse(await readFile(manifest, 'utf8'));
   const parser = await import(pathToFileURL(path.join(path.dirname(manifest), pkg.exports['./html-attribute-spans'].import)).href) as typeof HtmlParser;
-  return createCaptionSourceOperations(parser);
+  // Resolve the native parser's DOM dependency from its own installation.
+  const nativeRequire = createRequire(manifest);
+  const { parseHTML } = nativeRequire('linkedom') as typeof import('linkedom');
+  return { ...createCaptionSourceOperations(parser), exportCaptionSource: (html: string, format: 'srt' | 'vtt', trackId?: string) => exportCaptionSource(html, format, parseHTML, trackId) };
 }
 
 export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtmlOpeningTags }: typeof HtmlParser) {

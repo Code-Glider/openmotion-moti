@@ -140,8 +140,14 @@ test('active cancellation aborts the original request and restart never replays 
   const job = await service.submit({ projectId, sourcePath, requestId: 'active-cancel' }); const work = service.tick(); await started;
   await service.cancel(projectId, job.id); await work; assert.equal((await service.job(projectId, job.id)).state, 'cancelled'); assert.equal(calls, 1);
   const interrupted = await service.submit({ projectId, sourcePath, requestId: 'interrupted' });
-  await writeFile(path.join(service.root, 'jobs', interrupted.id, 'job.json'), JSON.stringify({ ...interrupted, state: 'running', workerPid: 99999999 }));
+  const folder = path.join(service.root, 'jobs', interrupted.id);
+  await writeFile(path.join(folder, 'audio.wav'), 'interrupted extracted audio');
+  await writeFile(path.join(folder, 'chunk-0.json'), JSON.stringify(result));
+  await writeFile(path.join(folder, 'job.json'), JSON.stringify({ ...interrupted, state: 'running', workerPid: 99999999 }));
   await service.tick(); assert.equal((await service.job(projectId, interrupted.id)).state, 'failed'); assert.equal(calls, 1);
+  for (const file of ['source', 'audio.wav']) await assert.rejects(readFile(path.join(folder, file)), { code: 'ENOENT' });
+  assert.deepEqual(JSON.parse(await readFile(path.join(folder, 'chunk-0.json'), 'utf8')), result);
+  await service.tick(); assert.equal(calls, 1);
   await service.close();
 }));
 

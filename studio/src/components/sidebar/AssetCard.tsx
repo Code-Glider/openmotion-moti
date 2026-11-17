@@ -1,4 +1,5 @@
 import { MediaDurationBadge } from "./MediaDurationBadge";
+import { AssetQuickAdd } from "./AssetQuickAdd";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
@@ -281,6 +282,7 @@ export function AssetCard({
 
           {/* Duration badge — top-right, media only */}
           <MediaDurationBadge duration={resolvedDuration} className="absolute top-1 right-1" />
+          {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} />}
         </div>
 
         {/* Match catalog caption spacing and typography; keep actions beside the name. */}
@@ -362,7 +364,7 @@ export function FontRow({
         }}
         onDragStart={(e) => writeAssetDragData(e, asset)}
         onContextMenu={(e) => openAssetContextMenu(e, setContextMenu)}
-        className={`px-2.5 py-1.5 flex items-center gap-2.5 cursor-pointer transition-colors outline-hidden focus-visible:bg-neutral-800/60 ${
+        className={`om-asset-action-row px-2.5 py-1.5 flex items-center gap-2.5 cursor-pointer transition-colors outline-hidden focus-visible:bg-neutral-800/60 ${
           isCopied
             ? "bg-studio-accent/10 border-l-2 border-studio-accent"
             : "border-l-2 border-transparent hover:bg-neutral-800/50"
@@ -386,6 +388,7 @@ export function FontRow({
             <CopyChip feedback={copyFeedback} asset={asset} />
           </div>
         </div>
+        {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} compact />}
       </div>
 
       {contextMenu && (
