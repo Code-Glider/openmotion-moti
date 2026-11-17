@@ -1,8 +1,8 @@
 export type WorkspacePresentation = { embedded: boolean; sidebar: boolean; conversation: boolean };
-/** Settings, MCP, Assets and Skills can open even when the retained project cannot start. */
+/** Settings, MCP, Assets, Skills and Brand Kit can open even when the retained project cannot start. */
 export function isWorkspaceSettingsPage(search: string) {
   const page = new URLSearchParams(search).get('page');
-  return page === 'settings' || page === 'mcp' || page === 'assets' || page === 'skills';
+  return page === 'settings' || page === 'mcp' || page === 'assets' || page === 'skills' || page === 'brand-kit';
 }
 export function workspacePresentation(search: string): WorkspacePresentation {
   const query = new URLSearchParams(search), embedded = query.get('embed') === '1';

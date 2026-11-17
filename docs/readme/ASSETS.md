@@ -391,6 +391,8 @@ All 38 full films used by the README, scenarios, comparisons and curated collect
 
 The README uses locally stored excerpts from the public template catalog. Each card links once to its online detail page. Source URLs and file hashes are recorded in [the template manifest](live-templates/manifest.json). Presenter references remain local and have no online-template link.
 
-The README screenshots show the editor, template library, Notion Custom Agents detail page and expanded copy instruction in the English, Simplified Chinese and Japanese interfaces. They were captured on 2026-11-16 from a clean workspace using the production catalog. The editor shows the bundled OpenMotion Sample Video. The handoff screenshots include the template preview, expanded instruction, recreate button and copy confirmation in one Studio viewport. The [capture manifest](live-product/manifest.json) records the source revision, catalog publication, template ID and file hashes.
+The English, Simplified Chinese and Japanese screenshots were captured on 2026-11-16 in a clean Studio workspace using the production catalog. Each image shows the complete Studio viewport inside the same light gray frame with a 56 px margin. Browser title bars are excluded.
+
+The editor shows the bundled OpenMotion Sample Video and its timeline. The library shows the full set of Notion search results. The Custom Agents detail image shows the template preview, and the handoff image shows the expanded instruction, recreate button and copy confirmation together. The [capture manifest](live-product/manifest.json) records the source revision, catalog publication, template ID and file hashes.
 
 The [earlier user-provided Studio capture](https://releases.open-design.ai/open-motion/media/sha256/f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073.png) is available in its original form.

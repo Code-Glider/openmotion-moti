@@ -27,6 +27,19 @@ async function mount(locale: Locale = 'en') {
   return { openLibrary, openProviders };
 }
 
+it.each(['en', 'zh-CN'] as const)('explains native reference cards and a separately streamed welcome in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  await mount(locale);
+  const faq = [...document.querySelectorAll<HTMLDetailsElement>('.om-mcp-faq details')]
+    .find(item => item.querySelector('summary')?.textContent?.includes(locale === 'en' ? 'Can I see templates' : '看模板'))!;
+  expect(faq).toBeDefined();
+  await act(async () => faq.querySelector('summary')!.click());
+  expect(faq.open).toBe(true);
+  expect(faq.textContent).toContain(locale === 'en' ? 'native MCP Apps' : '原生 MCP Apps');
+  expect(faq.textContent).toContain(locale === 'en' ? 'streams the welcome separately' : '单独流式输出欢迎文案');
+  expect(faq.textContent).toContain(locale === 'en' ? 'Builtin examples' : '内置示例');
+});
+
 it.each(['zh-CN', 'en', 'ja'] as const)('links the FAQ and footer to the README community for %s', async locale => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [template] } : info)));
   await mount(locale);

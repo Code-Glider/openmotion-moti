@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 
 export const MAX_TEMPLATE_PLAYERS = 8;
 /** One observer and a bounded decoder budget for the whole gallery. No offscreen video sources. */
-export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalogKey: string, enabled: boolean, autoplay: boolean, priority: string | null) {
+export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalogKey: string, enabled: boolean, autoplay: boolean, priority: string | null, priorityOnly = false) {
   const [active, setActive] = useState<Set<string>>(new Set());
   const controls = useRef({ autoplay, priority });
   const refresh = useRef<() => void>(() => {});
@@ -18,7 +18,11 @@ export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalog
       const { autoplay, priority } = controls.current;
       const allowed = autoplay && !document.hidden && !media.matches;
       const candidates = [...visible].sort((a, b) => Number(b[0] === priority) - Number(a[0] === priority) || b[1] - a[1]);
-      const ids = allowed ? candidates.filter(([id]) => !connection?.saveData || id === priority).slice(0, compact.matches ? 4 : MAX_TEMPLATE_PLAYERS).map(([id]) => id) : [];
+      // Brand Kit showcases are full HTML documents. Decode only the card the
+      // user is actively hovering/focusing instead of starting several iframe
+      // runtimes as soon as the masonry enters the viewport.
+      const scoped = priorityOnly ? (priority ? candidates.filter(([id]) => id === priority) : []) : candidates;
+      const ids = allowed ? scoped.filter(([id]) => !connection?.saveData || id === priority).slice(0, compact.matches ? 4 : MAX_TEMPLATE_PLAYERS).map(([id]) => id) : [];
       setActive(previous => previous.size === ids.length && ids.every(id => previous.has(id)) ? previous : new Set(ids));
     };
     refresh.current = update;

@@ -144,7 +144,19 @@ test('v5 to v3 creates v6, retains v4/v5, rejects stale writes and recovers afte
   const restored = await service.call('openmotion_restore_version', { projectId: p.projectId, requestId: 'restore-3', versionId: versions[2].version.versionId, expectedVersionId: p.version.versionId, expectedRevision: p.revision });
   assert.equal(restored.version.versionNumber, 6); assert.equal(restored.revision, versions[2].revision);
   assert.equal(await readFile(path.join(store.projectDirectoryFor(p.projectId), 'note.txt'), 'utf8'), 'version 3');
-  await assert.rejects(edit(service, versions[2], 'stale same hash'), /VERSION_CONFLICT/);
+  await assert.rejects(edit(service, versions[2], 'stale same hash'), (error: Error) => {
+    assert.match(error.message, /^VERSION_CONFLICT/);
+    assert.ok(error.message.includes(restored.revision) && error.message.includes(restored.version.versionId), 'The conflict reports the current revision and version');
+    assert.match(error.message, /openmotion_get_project/);
+    return true;
+  });
+  // v4 content differs from the current v6, so its revision is distinguishable from the live one.
+  assert.notEqual(versions[3].revision, restored.revision);
+  await assert.rejects(edit(service, versions[3], 'stale different hash'), (error: Error) => {
+    assert.ok(error.message.includes(restored.revision), 'The conflict reports the current revision, not the stale one');
+    assert.ok(!error.message.includes(versions[3].revision));
+    return true;
+  });
   const list = await service.call('openmotion_list_versions', { projectId: p.projectId });
   assert.deepEqual(list.versions.map((v: any) => v.versionNumber), [6, 5, 4, 3, 2]);
   assert.equal((await service.call('openmotion_list_versions', { projectId: p.projectId, cursor: list.nextCursor })).versions[0].versionId, original.version.versionId);

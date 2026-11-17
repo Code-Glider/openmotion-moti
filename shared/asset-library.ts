@@ -8,6 +8,7 @@ export type AssetVersion = {
   prompt?: string; model?: string; parameters?: Record<string, unknown>;
   references: AssetReference[]; parentVersionId?: string; jobId?: string; conversationId?: string;
   requestId?: string; requestHash?: string;
+  result?: Record<string, unknown>;
 };
 export type LibraryAsset = {
   id: string; name: string; modality: Modality; createdAt: number; updatedAt: number;

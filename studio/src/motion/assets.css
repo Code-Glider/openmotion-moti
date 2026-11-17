@@ -120,8 +120,6 @@
 
 /* Pane widths are user geometry; the separator appearance lives in the system. */
 .om-resizable-pane { position: relative; flex: 0 1 auto; min-width: var(--om-pane-min-width); min-height: 0; }
-/* Keep the preferred navigation width, with a smaller floor on narrow hosts. */
-.om-asset-filmstrip { max-width: clamp(112px, 20vw, 280px); }
 .om-creator-pane { display: flex; container-type: inline-size; container-name: asset-creator; }
 .om-creator-pane .om-asset-composer { width: 100%; max-width: none; flex: 1; }
 .om-pane-resizer { position: absolute; top: 0; bottom: 0; width: 10px; z-index: 3; display: flex; justify-content: center; align-items: center; }

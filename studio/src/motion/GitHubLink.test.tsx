@@ -26,7 +26,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it('preserves a safe, keyboard-accessible repository link while loading and on failure', async () => {
+it('shows the 10K baseline in a safe, keyboard-accessible link while loading and on failure', async () => {
   let resolve!: (value: number | null) => void;
   vi.mocked(readRepositoryStars).mockReturnValue(new Promise(done => { resolve = done; }));
   act(() => root.render(<GitHubLink />));
@@ -35,22 +35,25 @@ it('preserves a safe, keyboard-accessible repository link while loading and on f
   expect(link.target).toBe('_blank');
   expect(link.rel).toBe('noopener noreferrer');
   expect(link.getAttribute('aria-label')).toBe('OpenMotion on GitHub');
-  expect(link.textContent).toBe('');
+  expect(link.textContent).toBe('10K');
   link.focus();
   expect(document.activeElement).toBe(link);
   await act(async () => resolve(null));
-  expect(link.textContent).toBe('');
+  expect(link.textContent).toBe('10K');
   expect(link.querySelector('svg')).not.toBeNull();
 });
 
-it('refreshes visible counts, hides failures and stops polling after unmount', async () => {
+it('replaces the baseline with live counts, preserves them on failure and stops polling after unmount', async () => {
   vi.mocked(readRepositoryStars).mockResolvedValueOnce(9796).mockResolvedValueOnce(null).mockResolvedValueOnce(0);
-  await act(async () => root.render(<GitHubLink />));
+  act(() => root.render(<GitHubLink />));
   const link = container.querySelector('a')!;
+  expect(link.textContent).toBe('10K');
+  await act(async () => {});
   expect(link.textContent).toBe('9.8K');
   expect(link.getAttribute('aria-label')).toContain('9,796');
   await act(async () => vi.advanceTimersByTimeAsync(60_000));
-  expect(link.textContent).toBe('');
+  expect(link.textContent).toBe('9.8K');
+  expect(link.getAttribute('aria-label')).toContain('9,796');
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
   await act(async () => vi.advanceTimersByTimeAsync(60_000));
   expect(readRepositoryStars).toHaveBeenCalledTimes(2);

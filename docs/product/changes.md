@@ -1,5 +1,11 @@
 # 公开变更记录
 
+## 2026-11-17: Play a bounded preview for large final videos in chat
+
+- Codex's MCP stdio transport drops message lines above 16 MiB, so final videos over roughly 12 MiB never appeared in chat and the host waited indefinitely. The former 32 MiB inline cap was above that ceiling.
+- Verified exports up to 8 MiB still embed their own bytes. Larger exports embed a re-encoded H.264/AAC preview (720p, 540p, then 360p within 45 seconds) that must fit under 8 MiB and decode; it is cached per job and verified hash and discarded if the source changes while encoding. If no preview fits, the Agent hands over the verified MP4 file.
+- Verification, exports and the delivered MP4 are unchanged.
+
 ## 2026-11-16: Choose, prepare and retain fonts by text role
 
 - Add 40 curated font families with language, construction, role, conditional brand fit, phone-reading risks, pairing advice and pinned resource/license identities. Fill rounded, slab, stencil, comic, script, pixel and multilingual gaps while preserving the original 20 records.

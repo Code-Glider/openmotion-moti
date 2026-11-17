@@ -41,3 +41,11 @@ it('round-trips Assets with editor context and preserves it underneath the templ
   expect(readWorkspacePage(settings.search)).toMatchObject({ assets: false, settings: 'providers' });
   expect(workspacePageHref(assets.href, { assets: false })).toBe(new URL(source).pathname + new URL(source).search + new URL(source).hash);
 });
+
+it('preserves a Brand Kit selection behind template browsing and clears it when leaving', () => {
+  const source = 'http://localhost/?page=brand-kit&kit=one&embed=1#project/retained';
+  expect(readWorkspacePage(new URL(source).search)).toMatchObject({ settings: 'brand-kit', brandKit: 'one' });
+  const next = new URL(workspacePageHref(source, { templates: true }), source);
+  expect(readWorkspacePage(next.search)).toMatchObject({ settings: 'brand-kit', brandKit: 'one', templates: true });
+  expect(workspacePageHref(next.href, { settings: null, templates: false })).toBe('/?embed=1#project/retained');
+});
