@@ -117,3 +117,40 @@ it("localizes number fields, tabs, native track kinds and lane labels while keep
   language.dispose();
   root.remove();
 });
+
+it("localizes adjacent numeric feedback through every language without losing invalid drafts, focus or descriptions", () => {
+  const root = document.createElement("section"),
+    language = languageScope(root);
+  document.body.append(root);
+  const control = numberField(document, { label: m("音量"), unit: "", min: 0, max: 1, optional: true, change() {} });
+  root.append(control.element);
+  control.value(0.5);
+  control.input.focus();
+  control.input.value = "2";
+  control.input.dispatchEvent(new Event("input"));
+  const error = control.error;
+  try {
+    for (const locale of locales) {
+      language.set(locale);
+      expect(control.error).toBe(error);
+      expect(error.textContent).toBe(format(m("请输入不大于 {0} 的数值。", [1]), locale));
+      expect(error.hidden).toBe(false);
+      expect(control.input.value).toBe("2");
+      expect(document.activeElement).toBe(control.input);
+      expect(control.input.getAttribute("aria-errormessage")).toBe(error.id);
+    }
+    control.input.value = "";
+    control.input.dispatchEvent(new Event("input"));
+    control.value(0.5);
+    expect(error.hidden).toBe(false);
+    expect(control.input.value).toBe("");
+    expect(() => control.validate()).toThrow(format(m("请输入有效数值。"), "tr"));
+    control.input.value = "0";
+    control.input.dispatchEvent(new Event("input"));
+    expect(control.check()).toBe(true);
+    expect(error.hidden).toBe(true);
+  } finally {
+    language.dispose();
+    root.remove();
+  }
+});

@@ -134,9 +134,16 @@ export class Properties {
     );
     this.appearance = new AppearanceFields(document, () => changed("appearance"));
     this.start = numberField(document, { label: m("开始秒"), unit: "s", min: 0, change: () => changed("start") });
-    this.duration = numberField(document, { label: m("持续秒"), unit: "s", min: 0, change: () => changed("duration") });
+    this.duration = numberField(document, {
+      label: m("持续秒"),
+      unit: "s",
+      min: 0,
+      exclusiveMin: true,
+      change: () => changed("duration"),
+    });
     this.font = numberField(document, {
       label: m("字号"),
+      exclusiveMin: true,
       unit: "px",
       min: 0,
       max: 4096,
@@ -267,24 +274,19 @@ export class Properties {
     this.appearance.validate();
     if (this.audioTouched.has("inPoint")) {
       this.inPoint.validate();
-      if (!this.inPoint.input.value) throw Error("请输入有效源入点");
     }
     if (this.audioTouched.has("rate")) {
       this.rate.validate();
-      if (!this.rate.input.value) throw Error("请输入有效素材倍率");
     }
     if (this.audioTouched.has("volume")) {
       this.volume.validate();
-      if (!this.volume.input.value) throw Error("请输入有效音量");
     }
     if (this.touched.has("start")) this.start.validate();
     if (this.touched.has("duration")) {
       this.duration.validate();
-      if (!(this.duration.input.valueAsNumber > 0)) throw new Error("持续秒必须大于0");
     }
     if (this.touched.has("fontSize")) {
       this.font.validate();
-      if (!(this.font.input.valueAsNumber > 0)) throw new Error("字号必须大于0");
     }
   }
   update(options: Options) {

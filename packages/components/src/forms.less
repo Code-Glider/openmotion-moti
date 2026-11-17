@@ -4,6 +4,9 @@
   &--check { flex-direction: row; align-items: center; }
   &--inline { width: var(--om-seek-width); flex-shrink: 0; }
   &--hidden-label { gap: 0; }
+  &__body { display: flex; flex-direction: column; min-width: 0; gap: var(--om-field-gap); }
+  &__error { color: var(--om-text); font-size: var(--om-small-size); overflow-wrap: anywhere; }
+  &__error[hidden] { display: none; }
   &__label { font-size: var(--om-small-size); color: var(--om-muted); }
   &__label--hidden { position: absolute; width: var(--om-focus-width); height: var(--om-focus-width); overflow: hidden; clip-path: var(--om-visually-hidden); white-space: nowrap; }
   &__control {

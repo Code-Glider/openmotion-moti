@@ -1,9 +1,9 @@
 export { type ButtonOptions, button, setButton, setButtonSelected } from "./controls/button.js";
-export { numberField } from "./controls/number.js";
+export { type NumberIssue, numberField } from "./controls/number.js";
 export { menu, popover, tooltip } from "./controls/popup.js";
 export { tabs } from "./controls/tabs.js";
 export { type TreeItem, tree } from "./controls/tree.js";
-export { codeEditor, composerInput, field } from "./forms.js";
+export { codeEditor, composerInput, FieldValidationError, field, fieldFeedback } from "./forms.js";
 export { panelGrid, railLayout, slot, splitLayout } from "./studio/chrome.js";
 export { badge, brand, bubble, composer, disclosure, emptyState, pane } from "./studio/controls.js";
 export { type Icon, icon } from "./studio/icons.js";
