@@ -48,7 +48,7 @@ Speech:
 {"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-speech-01","model":"elevenlabs-v3","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"voice":"JBFqnCBsd6RMkjVDRZzb"}}
 ```
 
-A contract alternative is model `byteplus-tts-2` with voice `zh_female_vv_uranus_bigtts`; choose a voice belonging to the selected model. Neither example proves workspace access.
+For Chinese, use model `byteplus-tts-2` with voice `zh_female_vv_uranus_bigtts`. For `elevenlabs-v3` and `byteplus-tts-2`, the `models` action lists checked voices and the default voice in `generationOptions`, and another voice ID belonging to that model is passed through unchecked; other speech models require a voice ID belonging to that model. Neither example proves workspace access.
 
 Image edit and image-to-video take workspace library references through `openmotion_assets_use` (`references: [{assetId, versionId}]`), not provider asset IDs; OpenMotion uploads them. Check `supportsImageReference`, `maxInputImages` and `nativeOptions` from discovery first. For example, edit with two references:
 

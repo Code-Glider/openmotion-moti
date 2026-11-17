@@ -4,13 +4,19 @@ import { slug } from '../../../tracking/core.ts';
 import type { EventFields } from '../../../tracking/core.ts';
 import { studioEvents } from '../../../tracking/events.ts';
 import type { StudioEvent } from '../../../tracking/events.ts';
-import { trackMotion } from './tracking';
 
 export type Fields<E extends StudioEvent> = EventFields<typeof studioEvents[E]>;
 
 /** Fire and forget: reporting never interrupts browsing, copying or downloading. */
+// The transport is loaded on first use, so modules that only import a reporter (and tests without a browser) never start it.
+type Transport = typeof import('./tracking');
+let transport: Transport | undefined;
+export const loadReportingTransport = () => import('./tracking').then(module => { transport = module; return module; });
 export const send = <E extends StudioEvent>(event: E, properties: Fields<E>) => {
-  try { void trackMotion(event, properties).catch(() => {}); } catch { /* reporting never interrupts the page */ }
+  try {
+    if (transport) void transport.trackMotion(event, properties).catch(() => {});
+    else void loadReportingTransport().then(({ trackMotion }) => trackMotion(event, properties)).catch(() => {});
+  } catch { /* reporting never interrupts the page */ }
 };
 export const newTrackingId = () => crypto.randomUUID();
 /** The settled search-box value as it is reported: trimmed, control characters removed, at most 100 characters. */
@@ -20,3 +26,8 @@ export const slugField = <K extends string>(key: K, value: string | undefined): 
   value !== undefined && slug.test(value) ? { [key]: value } as Record<K, string> : {};
 /** Whether the application is shown inside a host (same rule as the studio page view). */
 export const embeddedView = () => new URLSearchParams(location.search).get('embed') === '1';
+/** A catalogue option as a stable id. Display text never leaves the browser; an option that cannot be reduced to a slug is left out. */
+export function optionId(value: string) {
+  const id = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64).replace(/-$/, '');
+  return slug.test(id) ? { filter_value: id } : {};
+}

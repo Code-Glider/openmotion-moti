@@ -62,7 +62,7 @@ for (const kind of ['image', 'video', 'audio', 'music'] as const) test(`Cloud ${
     if (init.method === 'POST') {
       assert.match(new Headers(init.headers).get('Idempotency-Key')!, /^[a-f0-9-]{36}$/);
       const body = JSON.parse(String(init.body));
-      if (kind === 'audio') { assert.equal(body.voice, 'voice-1'); assert.equal(body.parameters.text, 'hello'); assert.equal(body.parameters.speed, 1); }
+      if (kind === 'audio') { assert.equal(body.voice, '21m00Tcm4TlvDq8ikWAM'); assert.equal(body.parameters.text, 'hello'); assert.equal(body.parameters.speed, 1); }
       else if (kind === 'music') {
         assert.equal(new URL(target).pathname, '/api/v1/media/audio/music');
         assert.deepEqual(body, { model: 'workspace-music', parameters: { music_length_ms: 10000, force_instrumental: true, prompt: 'hello' } });
@@ -77,7 +77,7 @@ for (const kind of ['image', 'video', 'audio', 'music'] as const) test(`Cloud ${
   await gateway.configureProvider('opendesign', { apiKey: 'test-cloud-private', baseUrl: 'https://cloud.example/v1' });
   if (kind === 'music') await api.call('openmotion_media_use', { action: 'models', provider: 'opendesign', modality: 'audio', refresh: true });
   const args = { action: 'generate', provider: 'opendesign', projectId: store.projectId, requestId: `cloud-${kind}`, model: kind === 'music' ? 'workspace-music' : kind === 'audio' ? 'elevenlabs-v3' : 'test-model', modality: kind === 'music' ? 'audio' : kind,
-    ...(kind === 'music' ? {} : { mode: kind === 'audio' ? 'text-to-speech' : `text-to-${kind}` }), prompt: 'hello', parameters: kind === 'music' ? { music_length_ms: 10000, force_instrumental: true } : kind === 'audio' ? { voice: 'voice-1', speed: 1 } : { duration: 5 } };
+    ...(kind === 'music' ? {} : { mode: kind === 'audio' ? 'text-to-speech' : `text-to-${kind}` }), prompt: 'hello', parameters: kind === 'music' ? { music_length_ms: 10000, force_instrumental: true } : kind === 'audio' ? { speed: 1 } : { duration: 5 } };
   const queued = await api.call('openmotion_media_use', args);
   const job = await finish(store, queued.job.id); assert.equal(job.state, 'completed', job.error);
   assert.equal(job.remoteId, 'cloud-task'); assert.equal(job.providerOrigin, 'https://cloud.example');
@@ -122,10 +122,12 @@ test('Cloud discovery uses workspace credentials; origin changes stop queued cal
   assert(!models.models.some(m => m.modelId === 'language-model'));
   await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-music', modality: 'audio', mode: 'text-to-speech', prompt: 'calm music' }), /does not match the selected Cloud model/);
   await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-speech', modality: 'audio', mode: 'text-to-audio', prompt: 'hello' }), /does not match the selected Cloud model/);
+  // A live speech model without checked voices still requires one.
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-speech', modality: 'audio', prompt: 'hello' }), /Voice ID is required/);
   const first = await gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-image', modality: 'image', prompt: 'cup' });
   await gateway.configureProvider('opendesign', { baseUrl: 'https://changed.example' });
   assert.match((await finish(store, first.id)).error!, /origin changed/); assert.equal(calls, 1);
-  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-v3', modality: 'audio', prompt: 'hello' }), /Voice ID is required/);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:byteplus-tts-2', modality: 'audio', prompt: 'hello', parameters: { voice: '' } }), /Invalid Speech voice/);
   assert.equal(calls, 1);
   await gateway.configureProvider('opendesign', { apiKey: null });
   assert.equal((await gateway.status()).providers.find(p => p.id === 'opendesign')!.enabled, false);

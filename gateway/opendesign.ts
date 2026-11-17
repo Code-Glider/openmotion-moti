@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Model } from '../shared/gateway.ts';
+import { modelDefaults } from '../shared/generation-options.ts';
 import { apiJson, publicProviderFetch, ProviderError, retryRead, type Fetcher } from './network.ts';
 import type { ProviderAdapter, ProviderContext } from './providers.ts';
 
@@ -55,7 +56,7 @@ export const opendesign: ProviderAdapter = {
     const api = ctx.baseUrl + '/api/v1/media';
     const audio = job.modality === 'audio';
     const speech = audio && job.model.mode === 'text-to-speech';
-    const parameters = { ...job.model.defaults, ...job.parameters };
+    const parameters = { ...modelDefaults(job.model), ...job.parameters };
     let remoteId = job.remoteId;
     if (!remoteId) {
       const { voice, ...speechOptions } = parameters;
