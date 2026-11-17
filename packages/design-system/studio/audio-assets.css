@@ -1,8 +1,12 @@
 /* Audio library controls share the editor's theme roles in both appearances. */
 .motion-audio-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
   align-items: center;
-  gap: var(--motion-space-12);
+  column-gap: var(--motion-space-12);
+  row-gap: var(--motion-space-4);
   width: 100%;
   min-width: 0;
   min-height: 88px;
@@ -17,27 +21,30 @@
 }
 .motion-audio-row:is(:hover, [data-playing="true"]) { background: var(--motion-inset); }
 .motion-audio-play-button {
+  grid-row: 1 / 3;
   display: grid;
   place-items: center;
   flex: none;
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--motion-border-strong);
   border-radius: 50%;
   color: var(--motion-strong);
   background: var(--motion-hover);
   cursor: pointer;
-  transition: background var(--motion-duration-fast), transform var(--motion-duration-fast);
+  transition: background var(--motion-duration-fast), border-color var(--motion-duration-fast), transform var(--motion-duration-fast);
 }
-.motion-audio-play-button:hover { background: var(--motion-border); }
+.motion-audio-play-button:hover { background: var(--motion-border); border-color: var(--motion-muted); }
 .motion-audio-play-button:active { transform: scale(.95); }
 .motion-audio-play-button svg { pointer-events: none; }
-.motion-audio-content { flex: 1; min-width: 0; }
-.motion-audio-heading { display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; }
+.motion-audio-content { display: contents; }
+.motion-audio-heading { grid-column: 2; display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; }
 .motion-audio-heading > :first-child { flex: 1; min-width: 0; overflow: hidden; }
 .motion-audio-name {
   display: block;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -62,7 +69,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: var(--motion-space-2);
   padding: 0 var(--motion-space-6);
   border-radius: var(--motion-radius-sm);
   background: var(--motion-accent-soft);
@@ -71,12 +77,12 @@
   font-weight: var(--motion-weight-medium);
   line-height: 1.5;
 }
-.motion-audio-detail { display: flex; align-items: center; gap: var(--motion-space-12); margin-top: var(--motion-space-6); }
-.motion-audio-waveform { display: block; flex: 1; min-width: 0; height: var(--motion-space-20); color: var(--motion-dim); }
-.motion-audio-waveform svg { display: block; width: 100%; height: 100%; overflow: hidden; }
-.motion-audio-waveform line { stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; stroke-linecap: round; }
-.motion-audio-waveform-placeholder { display: block; height: 50%; border-bottom: 1px solid var(--motion-border); }
-.motion-audio-waveform-unavailable { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--motion-text-xs); line-height: var(--motion-space-20); }
+.motion-audio-detail { grid-column: 2; display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; }
+.motion-audio-usages { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--motion-space-4); }
+.motion-audio-unused { color: var(--motion-muted); font-size: var(--motion-text-xs); }
+.motion-audio-usage-range, .motion-audio-usage-toggle { padding: 0; border: 0; border-radius: var(--motion-radius-step-6); background: transparent; color: var(--motion-muted); font-size: var(--motion-text-xs); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; text-decoration: underline; text-decoration-color: var(--motion-border-strong); text-underline-offset: 2px; }
+.motion-audio-usage-list { display: flex; flex-basis: 100%; flex-wrap: wrap; gap: var(--motion-space-4); }
+.motion-audio-usage-list[hidden] { display: none; }
 .motion-audio-time { flex: none; color: var(--motion-muted); font-size: var(--motion-text-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .motion-audio-row:focus-visible,
 .motion-audio-row button:focus-visible { outline: 2px solid var(--motion-selected); outline-offset: 2px; }

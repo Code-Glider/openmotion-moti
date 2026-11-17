@@ -6,7 +6,6 @@ import { AudioRow } from "./AudioRow";
 import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
 import { usePlayerStore } from "../../player/store/playerStore";
 
-vi.mock("./AudioAssetWaveform", () => ({ AudioAssetWaveform: () => <span /> }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 class PreviewAudio {
@@ -118,14 +117,14 @@ describe("audio asset audition", () => {
     expect(document.querySelector('[role="alert"]')?.textContent).toContain("Preview");
   });
 
-  it("probes duration, shows elapsed time and restarts after natural completion", async () => {
+  it("keeps one duration for unused audio and restarts after natural completion", async () => {
     render();
     const audio = PreviewAudio.instances[0];
     act(() => audio.onloadedmetadata?.());
     expect(host.querySelector('.motion-audio-time')?.textContent).toBe("00:24");
     await toggle();
     act(() => { audio.currentTime = 7; audio.ontimeupdate?.(); });
-    expect(host.querySelector('.motion-audio-time')?.textContent).toBe("00:07 / 00:24");
+    expect(host.querySelector('.motion-audio-time')?.textContent).toBe("00:24");
     act(() => audio.onended?.());
     expect(button().getAttribute("aria-pressed")).toBe("false");
     expect(audio.currentTime).toBe(0);
@@ -142,4 +141,25 @@ describe("audio asset audition", () => {
     await toggle();
     expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
   });
+});
+
+it('shows usage ranges instead of waveforms and stops audition before locating a range', async () => {
+  const reveal = vi.fn();
+  const usages = [
+    { asset: props.asset, clipId: 'a', targetId: 'a', start: 8, end: 16, localStart: 8, compositionPath: 'index.html' },
+    { asset: props.asset, clipId: 'b', targetId: 'b', start: 25, end: 29, localStart: 25, compositionPath: 'index.html' },
+  ];
+  render(<AudioRow {...props} used usages={usages} onRevealUsage={reveal} />);
+  expect(host.querySelector('.motion-audio-waveform')).toBeNull();
+  expect(host.querySelector('.motion-audio-used')?.textContent).toBe('In use');
+  expect(host.querySelector('.motion-audio-time')).toBeNull();
+  expect(host.querySelector('.motion-audio-usage-range')).toBeNull();
+  act(() => host.querySelector<HTMLButtonElement>('.motion-audio-usage-toggle')!.click());
+  expect(host.querySelector('.motion-audio-usage-toggle')?.getAttribute('aria-expanded')).toBe('true');
+  expect([...host.querySelectorAll('.motion-audio-usage-range')].map(e => e.textContent)).toEqual(['00:08–00:16', '00:25–00:29']);
+  await toggle();
+  await act(async () => host.querySelectorAll<HTMLButtonElement>('.motion-audio-usage-range')[1].click());
+  expect(PreviewAudio.instances[0].paused).toBe(true);
+  expect(reveal).toHaveBeenCalledWith(usages[1]);
+  expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
 });

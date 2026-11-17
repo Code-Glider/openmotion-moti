@@ -14,11 +14,10 @@ export function useAudioAssetPreview(url: string, visible: boolean, onError: () 
   const [playing, setPlaying] = useState(false);
   const [pending, setPending] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [time, setTime] = useState(0);
   const stop = useCallback((reset = false) => {
     attempt.current++;
     audio.current?.pause();
-    if (reset && audio.current) { audio.current.currentTime = 0; setTime(0); }
+    if (reset && audio.current) { audio.current.currentTime = 0; }
     setPlaying(false);
     setPending(false);
     if (stopCurrentPreview === stop) stopCurrentPreview = null;
@@ -28,8 +27,7 @@ export function useAudioAssetPreview(url: string, visible: boolean, onError: () 
     const element = new Audio();
     element.preload = "metadata";
     element.onloadedmetadata = () => setDuration(Number.isFinite(element.duration) ? element.duration : 0);
-    element.ontimeupdate = () => setTime(Number.isFinite(element.currentTime) ? element.currentTime : 0);
-    element.onended = () => { stop(); element.currentTime = 0; setTime(0); };
+    element.onended = () => { stop(); element.currentTime = 0; };
     element.onerror = () => {
       const auditioning = stopCurrentPreview === stop;
       stop();
@@ -44,7 +42,6 @@ export function useAudioAssetPreview(url: string, visible: boolean, onError: () 
 
   useEffect(() => {
     setDuration(0);
-    setTime(0);
     return () => {
       stop();
       if (lastPreview === stop) lastPreview = null;
@@ -90,5 +87,5 @@ export function useAudioAssetPreview(url: string, visible: boolean, onError: () 
       if (attempt.current === id) { stop(); errorRef.current(); }
     }
   }, [ensureAudio, stop]);
-  return { playing, pending, duration, time, toggle };
+  return { playing, pending, duration, toggle, stop };
 }

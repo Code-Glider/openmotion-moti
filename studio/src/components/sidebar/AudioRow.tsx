@@ -2,7 +2,7 @@ import { RemixIcon } from "../../icons/RemixIcons";
 import { OverflowText } from "../ui/OverflowText";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { InlineAssetRename } from "./InlineAssetRename";
 import { ContextMenu } from "./AssetContextMenu";
 import { filename, formatDuration, type CopyFeedback } from "./assetHelpers";
@@ -13,7 +13,7 @@ import { findClipForAsset, isPointerClick } from "../../utils/assetClickBehavior
 import { resolveMediaPreviewUrl } from "../../player/components/thumbnailUtils";
 import { timelineClipFocusId } from "../../player/components/timelineNavigationIdentity";
 
-import { AudioAssetWaveform } from "./AudioAssetWaveform";
+import type { AssetUsage } from "./assetUsage";
 import { useAudioAssetPreview } from "../../hooks/useAudioAssetPreview";
 import { useNearViewport } from "../../hooks/useNearViewport";
 import { thumbnailRevisionOf } from "../../player/store/thumbnailSlice";
@@ -24,6 +24,8 @@ export function AudioRow({
   projectId,
   asset,
   used,
+  usages = [],
+  onRevealUsage,
   meta,
   onCopy,
   copyFeedback,
@@ -34,6 +36,8 @@ export function AudioRow({
   projectId: string;
   asset: string;
   used: boolean;
+  usages?: readonly AssetUsage[];
+  onRevealUsage?: (usage: AssetUsage) => void;
   meta?: { description?: string; duration?: number };
   onCopy: (path: string) => void;
   copyFeedback: CopyFeedback;
@@ -45,6 +49,9 @@ export function AudioRow({
   const mvp = useMvpEditor();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const [usageExpanded, setUsageExpanded] = useState(false);
+  const usageListId = useId();
+  useEffect(() => setUsageExpanded(false), [asset, projectId]);
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   const visible = useNearViewport(element);
   const sessionEpoch = usePlayerStore(s => s.timelineSessionEpoch);
@@ -53,9 +60,9 @@ export function AudioRow({
   const name = filename(asset);
   const sourceUrl = resolveMediaPreviewUrl(asset, projectId);
   const serveUrl = `${sourceUrl}${sourceUrl.includes("?") ? "&" : "?"}assetRevision=${revision}&session=${sessionEpoch}`;
-  const { playing, pending, time, duration, toggle } = useAudioAssetPreview(serveUrl, visible, () => showToast(t("Preview failed to load")));
+  const { playing, pending, duration, toggle, stop } = useAudioAssetPreview(serveUrl, visible, () => showToast(t("Preview failed to load")));
   const durationLabel = formatDuration(duration || meta?.duration || 0);
-  const timeLabel = time > 0 ? `${formatDuration(Math.floor(time)) || "00:00"} / ${durationLabel || "—"}` : durationLabel || "—";
+  const timeLabel = durationLabel || "—";
   const isCopied = copyFeedback?.path === asset && copyFeedback.ok;
   const copyFailed = copyFeedback?.path === asset && !copyFeedback.ok;
 
@@ -149,6 +156,7 @@ export function AudioRow({
           setContextMenu({ x: e.clientX, y: e.clientY });
         }}
         className="motion-audio-row"
+        data-used={used || undefined}
       >
         <button
           type="button"
@@ -169,10 +177,25 @@ export function AudioRow({
               <OverflowText text={name} className="motion-audio-name" />}
             <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
           </div>
-          {used && <span className="motion-audio-used">{t("In use")}</span>}
           <div className="motion-audio-detail">
-            <AudioAssetWaveform asset={asset} projectId={projectId} audioUrl={serveUrl} revision={revision} sessionEpoch={sessionEpoch} visible={visible} />
-            <span className="motion-audio-time">{timeLabel}</span>
+            <div className="motion-audio-usages">
+              <span className={used ? "motion-audio-used" : "motion-audio-unused"}>{t(used ? "In use" : "Unused")}</span>
+              {usages.length > 1 && <button type="button" className="motion-audio-usage-toggle" aria-expanded={usageExpanded} aria-controls={usageListId}
+                onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); setUsageExpanded(value => !value); }}>{t("{count} uses", { count: usages.length })}</button>}
+              <span id={usageListId} className={usages.length > 1 ? "motion-audio-usage-list" : "contents"} hidden={usages.length > 1 && !usageExpanded}>
+              {(usages.length > 1 && !usageExpanded ? [] : usages).map((usage, index) => {
+                const start = formatDuration(usage.start) || "00:00", end = formatDuration(usage.end) || "00:00";
+                return <button type="button" key={`${usage.clipId}-${index}`} className="motion-audio-usage-range"
+                  aria-label={t("Locate {name} at {start}–{end} on the timeline", { name, start, end })}
+                  onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); stop(); onRevealUsage?.(usage); }}>
+                  {start}–{end}
+                </button>;
+              })}
+              </span>
+            </div>
+            {!used && <span className="motion-audio-time">{timeLabel}</span>}
           </div>
         </div>
       </div>
