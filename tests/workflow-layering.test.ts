@@ -22,6 +22,18 @@ test('legacy director resources return the shared body while references use prod
   }
 });
 
+test('provider guides belong to the media Skill while older production resources return the same bodies', async () => {
+  for (const provider of ['account', 'compatible', 'fal', 'opendesign', 'atlascloud', 'wavespeed']) {
+    const current = await getWorkflow(provider, 'media');
+    const previous = JSON.parse((await readWorkflowResource(`openmotion://workflow/production/${provider}`, '/unused')).text);
+    assert.equal(current.documentId, `skills/openmotion-media/references/providers/${provider}.md`);
+    assert.equal(previous.documentId, current.documentId);
+    assert.equal(previous.contentHash, current.contentHash);
+    assert.deepEqual(workflowReferences(`[guide](references/providers/${provider}.md)`, 'skills/openmotion-media/SKILL.md'), [{ workflow: 'media', section: provider, documentId: current.documentId }]);
+    assert.doesNotMatch(current.content, /```bash|"projectId"/, `${provider} templates must use the asset Tool without shell wire examples`);
+  }
+});
+
 test('shared audio execution and review do not require original sound design or contributor evaluation', async () => {
   const sound = await getWorkflow('sound');
   const review = await getWorkflow('review');

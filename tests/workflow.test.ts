@@ -73,6 +73,7 @@ test('every workflow document and linked reference is reachable over MCP with ca
     const filesBefore = await readdir(directory, { recursive: true });
     const responses = stdio(directory, entries.map(({ workflow, section }, index) => workflowCall(index + 1, { workflow, section })));
     const returned = new Map<string, any>();
+    const byRoute = new Map<string, any>();
     for (const [index, entry] of entries.entries()) {
       const response = responses.get(index + 1);
       assert.ok(!response.isError, JSON.stringify(response));
@@ -88,13 +89,13 @@ test('every workflow document and linked reference is reachable over MCP with ca
       assert.deepEqual(result.sections, Object.keys(workflowRegistry[entry.workflow as keyof typeof workflowRegistry].sections));
       assert.equal(new Set(result.references.map((reference: { documentId: string }) => reference.documentId)).size, result.references.length);
       if (!returned.has(result.documentId)) returned.set(result.documentId, result);
+      byRoute.set(`${result.workflow}/${result.section}`, result);
     }
     for (const document of returned.values()) {
       for (const reference of document.references) {
-        const target = returned.get(reference.documentId);
+        const target = byRoute.get(`${reference.workflow}/${reference.section}`);
         assert.ok(target, `${document.documentId} links to an unreachable document`);
-        assert.equal(target.workflow, reference.workflow);
-        assert.equal(target.section, reference.section);
+        assert.equal(target.documentId, reference.documentId);
       }
     }
     assert.equal(returned.get('skills/openmotion-template-to-video/SKILL.md').status, 'ready');

@@ -17,12 +17,12 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
       defaults: status.routes,
       settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
       settingsHandoff: { tool: 'openmotion_open_preview', arguments: { target: 'providers' } },
-      references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
+      references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/media/${referenceSection(p.id)}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }
   if (args.action === 'reference') {
     if (!args.provider) throw new Error('INVALID_ARGUMENT: provider is required');
-    return getWorkflow(referenceSection(args.provider), 'production');
+    return getWorkflow(referenceSection(args.provider), 'media');
   }
   if (args.action === 'models') {
     const providers = (await gateway.status()).providers.filter(p => supported(p.id) && (!args.provider || p.id === args.provider) && p.enabled);

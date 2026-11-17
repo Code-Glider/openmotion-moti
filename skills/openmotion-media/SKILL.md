@@ -39,4 +39,4 @@ Read the applicable references before their operations; reuse complete bodies al
 | Submit a new asset, track/resume an existing job, recover a failure or regenerate | [Submission and job recovery](references/jobs.md); new generation uses assets_use, existing media_use jobs retain their original route |
 | Inspect completed candidates, import selected versions or deliver results | [Inspection, adoption and handback](references/inspection.md) |
 
-MCP-only clients read this entry at `openmotion://workflow/media/start`; the references are `media/planning`, `media/setup`, `media/jobs` and `media/inspection`. Provider schemas remain in the selected production provider reference linked by the job procedure.
+MCP-only clients read this entry at `openmotion://workflow/media/start`; the references are `media/planning`, `media/setup`, `media/jobs` and `media/inspection`, and each provider guide is `media/<provider ID>`, listed in the job procedure.

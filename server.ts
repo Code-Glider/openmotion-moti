@@ -571,7 +571,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }));
       const reference = url.pathname.match(/^\/api\/models\/providers\/([a-z0-9-]+)\/reference$/);
       if (reference && req.method === 'GET' && (isMediaProvider(reference[1]) || reference[1] === 'account' || reference[1] === 'compatible')) {
-        const guide = await getWorkflow(registeredProvider(reference[1])?.reference ?? 'compatible', 'production');
+        const guide = await getWorkflow(registeredProvider(reference[1])?.reference ?? 'compatible', 'media');
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(guide.content);
       }
       const provider = url.pathname.match(/^\/api\/models\/providers\/([a-z]+)$/);
