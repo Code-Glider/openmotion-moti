@@ -35,8 +35,9 @@ export interface DraggedClipState {
   snapEdge?: "start" | "end";
   started: boolean;
   altKey?: boolean;
-  mainTrackReorder?: import("./timelineMainReorder").MainTrackReorder;
   snapDisabled?: boolean;
+  /** Transient per-clip starts for making room between neighbours; committed as one move batch. */
+  insertion?: ReadonlyMap<string, number>;
 }
 
 export interface ResizingClipState {

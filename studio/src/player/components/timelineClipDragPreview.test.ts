@@ -123,21 +123,20 @@ function horizontalDrag(
 }
 
 describe("computeDragPreview — plain horizontal drag never arms a phantom insert (BUG 1)", () => {
-  it("holds the inserted slot through small reversals over an occupied clip", () => {
+  it("preserves pointer time over an occupied main track without nearest-gap jumps", () => {
     const dragged = clip("ease", 0, 24, 4, 1);
     const context = { ...ctx(undefined, [clip("left", 0, 0, 6, 1), clip("block", 0, 10, 10, 1), dragged]), trackOrder: [0], rippleEditEnabled: true };
     const { drag, clientY } = horizontalDrag(dragged, 0.5, 0);
     let current = drag;
     const move = (time: number) => {
       current = computeDragPreview(current, drag.originClientX + (time - dragged.start) * PPS, clientY, context);
-      return current.previewStart;
+      return current;
     };
-    expect(move(12.9)).toBe(6);
-    for (const time of [13.01, 12.99, 13.02, 12.98]) expect(move(time)).toBe(6);
-    expect(move(13.3)).toBe(6);
-    for (const time of [14.99, 15.01, 14.98]) expect(move(time)).toBe(6);
-    expect(move(15.3)).toBe(20);
-    expect(move(22)).toBe(22); // Free space still follows the pointer without a dead zone.
+    for (const time of [12.9, 13.01, 12.99, 13.3, 12.98, 12.7]) {
+      expect(move(time)).toMatchObject({ previewStart: time, insertRow: 0 });
+    }
+    expect(move(15)).toMatchObject({ previewStart: 15, insertRow: 0 });
+    expect(move(22)).toMatchObject({ previewStart: 22, insertRow: null });
   });
 
   it("keeps collision insertion when leaving a seam into an occupied ordinary lane", () => {
@@ -149,14 +148,16 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     const between = computeDragPreview(drag, clientX, 128, context);
     expect(between.insertRow).toBe(1);
     const inside = computeDragPreview(between, clientX, 150, context);
-    // This aim is inside the occupied secondary row: collision still requires an upper lane.
-    expect(inside.insertRow).toBe(1);
+    // A tight neighbouring pair previews making room on the aimed row.
+    expect(inside.insertRow).toBeNull();
+    expect(inside.previewTrack).toBe(1);
+    expect(inside.insertion?.get("v-globe")).toBe(28.5);
     const below = computeDragPreview(inside, clientX, 202, context);
     // Pointer seams do not expand rows: y=202 aims at row 2, also occupied.
-    // Returning to the vacated origin would cancel the user's layer move.
+    // OpenReel searches every free upper lane, including the vacated origin.
     expect(below.desiredTrack).toBe(2);
-    expect(below.previewTrack).toBe(2);
-    expect(below.insertRow).toBe(2);
+    expect(below.previewTrack).toBe(0);
+    expect(below.insertRow).toBeNull();
     expect(below.previewStart).toBe(21);
   });
 
@@ -983,9 +984,20 @@ describe("trimPreviewTime", () => {
 
 
 describe("magnet-aware collision preview and commit", () => {
+  it.each([10, 40, 100])("preserves target time regardless of main magnet at %s px/s", (pps) => {
+    const moving = clip("moving", 1, 5, 5, 1);
+    const elements = [clip("busy", 1, 0, 5, 1), moving, clip("upper", 0, 10, 20, 1)];
+    const { drag, clientY } = horizontalDrag(moving, 1.5, 0);
+    for (const magnet of [true, false]) {
+      const context = { ...ctx(undefined, elements), trackOrder: [0, 1], rippleEditEnabled: magnet, pps };
+      const preview = computeDragPreview(drag, drag.originClientX - 2.5 * pps, clientY, context);
+      expect(preview).toMatchObject({ previewStart: 2.5, previewTrack: 0, insertRow: null });
+    }
+  });
+
   it.each([
     { name: "secondary track", magnet: true, track: 0, start: 12, aim: 6, landing: 6, insertRow: 0 },
-    { name: "magnetic main track", magnet: true, track: 1, start: 5, aim: 2, landing: 0, insertRow: null },
+    { name: "main track with magnet enabled", magnet: true, track: 1, start: 5, aim: 4.9, landing: 4.9, insertRow: 1 },
     { name: "nonmagnetic main track", magnet: false, track: 1, start: 12, aim: 6, landing: 6, insertRow: 1 },
   ])("shares the resolved landing with commit on $name", ({ magnet, track, start, aim, landing, insertRow }) => {
     const moving = clip("moving", track, start, 5, 1);

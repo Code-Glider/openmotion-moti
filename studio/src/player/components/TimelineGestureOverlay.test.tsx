@@ -35,10 +35,27 @@ const drag: DraggedClipState = {
 afterEach(() => document.body.replaceChildren());
 
 describe("TimelineGestureOverlay", () => {
+  it("keeps the insertion actor under the pointer while the landing slot makes room separately", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const scroll = { scrollLeft: 0, scrollTop: 0, getBoundingClientRect: () => ({ left: 0, top: 0 }) } as HTMLDivElement;
+    act(() => root.render(<TimelineGestureOverlay
+      drag={{ ...drag, insertion: new Map([["hero", 4], ["next", 7]]) }}
+      scrollRef={{ current: scroll }} pixelsPerSecond={100} contentOrigin={132}
+      rowGeometry={createTimelineRowGeometry([0, 1, 2], [48, 48, 48])} rowHeight={42}
+      selectedElementId="hero" currentTime={0} theme={defaultTimelineTheme} getTrackStyle={getTrackStyle}
+    />));
+    const actor = host.querySelector<HTMLElement>("[data-timeline-gesture-actor]");
+    expect(actor?.style.left).toBe("330px");
+    expect(actor?.style.top).toBe("230px");
+    act(() => root.unmount());
+  });
+
   it.each([
-    { name: "magnetic main track", magnet: true, secondary: false, start: 6.9, insertRow: null },
-    { name: "secondary track", magnet: true, secondary: true, start: 9.87, insertRow: 1 },
-    { name: "nonmagnetic main track", magnet: false, secondary: false, start: 9.87, insertRow: 1 },
+    { name: "crossing into magnetic main track", magnet: true, secondary: false, start: 9.87, insertRow: null },
+    { name: "secondary track", magnet: true, secondary: true, start: 9.87, insertRow: null },
+    { name: "nonmagnetic main track", magnet: false, secondary: false, start: 9.87, insertRow: null },
   ])("shares the actor and committed collision landing on $name", ({ magnet, secondary, start, insertRow }) => {
     const host = document.createElement("div");
     document.body.append(host);
@@ -62,7 +79,7 @@ describe("TimelineGestureOverlay", () => {
     });
     expect(preview.previewStart).toBe(start);
     expect(preview.insertRow).toBe(insertRow);
-    expect(preview.previewTrack).toBe(1);
+    expect(preview.previewTrack).toBe(0);
     act(() => root.render(<TimelineGestureOverlay
       drag={preview} scrollRef={{ current: scroll }} pixelsPerSecond={100}
       contentOrigin={132} rowGeometry={geometry} rowHeight={42}
@@ -71,25 +88,25 @@ describe("TimelineGestureOverlay", () => {
     />));
     const actor = host.querySelector<HTMLElement>("[data-timeline-gesture-actor]");
     expect(actor?.style.left).toBe(`${132 + preview.previewStart * 100}px`);
-    expect(actor?.style.top).toBe(`${geometry.getRowTop(1) + 3}px`);
+    expect(actor?.style.top).toBe("84px");
     const onMoveElements = vi.fn();
+    const onMoveElement = vi.fn();
     commitDraggedClipMove(preview, {
-      elements, trackOrder: [0, 1, 2], updateElement: vi.fn(), onMoveElements,
+      elements, trackOrder: [0, 1, 2], updateElement: vi.fn(), onMoveElements, onMoveElement,
     });
-    const edits = onMoveElements.mock.calls[0]?.[0];
-    expect(edits?.find((edit: { element: { id: string } }) => edit.element.id === cut.id)?.updates)
-      .toMatchObject({ start: preview.previewStart, track: preview.previewTrack });
+    expect(onMoveElement).toHaveBeenCalledWith(cut, { start: preview.previewStart, track: 0 });
+    expect(onMoveElements).not.toHaveBeenCalled();
     act(() => root.unmount());
   });
 
-  it("anchors an insert actor inside the opened seam at its drop time", () => {
+  it("anchors a keyboard insert actor inside the opened seam", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
     act(() =>
       root.render(
         <TimelineGestureOverlay
-          drag={{ ...drag, insertRow: 1 }}
+          drag={{ ...drag, pointerId: null, insertRow: 1 }}
           scrollRef={{
             current: {
               scrollLeft: 0,
@@ -143,7 +160,7 @@ describe("TimelineGestureOverlay", () => {
     });
     const actor = host.querySelector<HTMLElement>('[data-timeline-gesture-actor="hero"]');
     expect(actor?.style.left).toBe("632px");
-    expect(actor?.style.top).toBe("131px");
+    expect(actor?.style.top).toBe("490px");
     expect(actor?.querySelector(".timeline-clip")).not.toBeNull();
     expect(actor?.querySelector("[data-el-id]")).toBeNull();
     expect(actor?.querySelector("[data-clip]")).toBeNull();

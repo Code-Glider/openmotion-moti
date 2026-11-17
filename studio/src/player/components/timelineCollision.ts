@@ -150,7 +150,7 @@ function groupHeaderAim(
   return { kind: "origin", ...input.origin };
 }
 
-// A deliberate seam opens a track. Only the magnetic main track resolves collisions in time.
+// OpenReel placement: keep pointer time and use a free upper lane on collision.
 export function resolveZoneDropPlacement(input: {
   order: number[];
   audioTracks: ReadonlySet<number>;
@@ -167,9 +167,8 @@ export function resolveZoneDropPlacement(input: {
   minStart?: number;
   /** Where the dragged clip sits now. */
   origin?: { track: number; start: number };
-  /** Enabled main track, resolved from the full gesture source before filtering movers. */
+  /** Compatibility fields; main-track magnet no longer changes drag time or lane placement. */
   magneticMainTrack?: number | null;
-  /** Gesture-local collision landing; ignored when changing rows or inserting. */
   previous?: { track: number; start: number; switchMargin: number };
 }): { track: number; insertRow: number | null; start: number } {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
@@ -203,31 +202,18 @@ export function resolveZoneDropPlacement(input: {
       insertRow--;
     return { track: desired, insertRow, start };
   }
-  if (!isAudio && input.magneticMainTrack === desired) {
-    const origin = input.origin?.track === desired ? input.origin.start : null;
-    const freeStart = resolveNearestFreeStart(
-      elements,
-      desired,
-      start,
-      duration,
-      dragKey,
-      minStart,
-      origin,
-      input.previous?.track === desired ? input.previous : undefined,
-    );
-    return { track: desired, insertRow: null, start: freeStart };
-  }
   // Collision changes the lane, never the pointer's horizontal time. Search
   // upward inside the same kind zone, then open a lane above the aimed row.
   const safeStart = Math.max(minStart ?? 0, start);
   if (input.origin?.track === desired && Math.abs(safeStart - input.origin.start) < 0.005)
     return { track: desired, insertRow: null, start: input.origin.start };
-  if (isLaneFree(elements, desired, safeStart, safeStart + duration, dragKey))
+  if (!elements.some(element => element.track === desired && element.timelineLocked) &&
+      isLaneFree(elements, desired, safeStart, safeStart + duration, dragKey))
     return { track: desired, insertRow: null, start: safeStart };
   const row = order.indexOf(desired);
   for (let index = row - 1; index >= 0; index--) {
     const track = order[index];
-    if (!zoneTracks.includes(track) || (input.origin?.track === track && track !== desired)) continue;
+    if (!zoneTracks.includes(track) || elements.some(element => element.track === track && element.timelineLocked)) continue;
     if (isLaneFree(elements, track, safeStart, safeStart + duration, dragKey))
       return { track, insertRow: null, start: safeStart };
   }

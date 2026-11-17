@@ -21,6 +21,7 @@ import { createRuntimeStartTimeResolver } from "@hyperframes/core/runtime/start-
 import { groupInfoFor } from "./timelineGroupInfo";
 import { transitionLabelsForDocument } from "./timelineTransitionMetadata";
 import {
+  readDurationAttribute,
   resolveMediaElement,
   applyMediaMetadataFromElement,
   getTimelineElementDisplayLabel,
@@ -277,7 +278,7 @@ function scanTimelineFromDOM(
         : masterStart.resolveStartForElement(el);
     if (Number.isFinite(rootDuration) && rootDuration > 0 && start >= rootDuration) return;
 
-    let dur = timing.duration ?? 0;
+    let dur = timing.duration ?? readDurationAttribute(el);
     if (dur <= 0) dur = Math.max(0, rootDuration - start);
     if (Number.isFinite(rootDuration) && rootDuration > 0) {
       dur = Math.min(dur, Math.max(0, rootDuration - start));

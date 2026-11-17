@@ -18,6 +18,7 @@ import { readMediaOffsetSeconds } from "@hyperframes/parsers/media-duration";
 import { usePlayerStore } from "../player/store/playerStore";
 import type { CommitMutationOptions } from "./gsapScriptCommitTypes";
 import { timelineKeyframeSelectionKey } from "../player/components/timelineKeyframeIdentity";
+import { parseTimelineFromDOM } from "../player/lib/timelineDOM";
 
 afterEach(() => {
   usePlayerStore.getState().reset();
@@ -148,6 +149,15 @@ describe("applyTimelineStackingReorder", () => {
 });
 
 describe("patchIframeDomTiming", () => {
+  it.each(["2.5", "7.25"])("keeps a composition trim of %ss after runtime rebind strips public timing", duration => {
+    const iframe = makeIframeWith('<div data-composition-id="root"><div id="scene" data-composition-id="scene" data-start="0" data-hf-authored-duration="5"></div></div>');
+    const host = iframe.contentDocument!.getElementById("scene")!;
+    patchIframeDomTiming(iframe, el({ id: "scene", domId: "scene", tag: "div", kind: "composition" }), [["data-duration", duration]]);
+    host.removeAttribute("data-duration");
+    expect(host.getAttribute("data-hf-authored-duration")).toBe(duration);
+    expect(parseTimelineFromDOM(iframe.contentDocument!, 20).find(el => el.domId === "scene")?.duration).toBe(Number(duration));
+  });
+
   it("patches a top-level composition host in its parent source file", () => {
     const iframe = makeIframeWith(`
       <div data-composition-id="root">

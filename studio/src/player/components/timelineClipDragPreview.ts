@@ -1,4 +1,3 @@
-import { planMainTrackReorder } from "./timelineMainReorder";
 import { resolveTimelineMove, resolveTimelineResize } from "./timelineEditing";
 import {
   applyClipStartTrimDelta,
@@ -19,9 +18,7 @@ import {
   isStillImageTimelineElement,
 } from "../../utils/timelineInspector";
 import {
-  TIMELINE_SNAP_PX,
   stickyTimelineTime,
-  snapMoveToTargets,
   type TimelineSnapTarget,
   type TimelineSnapType,
 } from "./timelineSnapping";
@@ -34,13 +31,15 @@ import { groupMoveFloor, resolveGroupMovers } from "./timelineMultiDragPreview";
 import type { DraggedClipState, ResizingClipState } from "./timelineClipDragTypes";
 import { useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
 import { heldAudioShiftRange, heldPartnerVideoBounds } from "./audioClipLink";
-import { mainVisualTrack } from "./timelineLinkage";
+import { snapOpenReelMove } from "./timelineDragSnap";
 import { isPendingTimelineRow } from "./timelinePendingRows";
+import { previewClipInsert } from "./timelineClipInsert";
 
 /** Snap-target builder closure supplied by the hook (closes over refs + store). */
 type BuildSnapTargets = (
   excludeElementKey: string | null,
   includeBeats: boolean,
+  includePlayhead?: boolean,
 ) => TimelineSnapTarget[];
 
 export interface DragPreviewContext {
@@ -64,10 +63,8 @@ export interface DragPreviewContext {
   audioTracks?: ReadonlySet<number>;
   /** Seconds between the ruler's lines; 0 or absent when snapping is off. */
   gridStep?: number;
-  /** Main-track magnet preference; omitted contexts use ordinary lane placement. */
+  /** Compatibility preference; pointer placement now uses the same free-move rule on every lane. */
   rippleEditEnabled?: boolean;
-  timelineLinkageEnabled?: boolean;
-  linkedSelectionEnabled?: boolean;
 }
 
 export function createKeyboardClipDrag(
@@ -176,7 +173,6 @@ function resolveDropPlacement(
     order: trackOrder,
     audioTracks,
     elements: group.obstacles,
-    magneticMainTrack: ctx.rippleEditEnabled ? mainVisualTrack(elements) : null,
     desiredTrack,
     deliberateInsertRow: aim.insertRow,
     allowedInsertRows: ctx.allowedInsertRows,
@@ -187,9 +183,6 @@ function resolveDropPlacement(
     isAudio: isAudioTimelineElement(drag.element),
     minStart: group.floor,
     origin: { track: drag.element.track, start: drag.element.start },
-    previous: drag.started && drag.insertRow === null && ctx.pps > 0
-      ? { track: drag.previewTrack, start: drag.previewStart, switchMargin: TIMELINE_SNAP_PX / ctx.pps }
-      : undefined,
   });
 }
 
@@ -271,23 +264,14 @@ export function computeDragPreview(
     clientX,
     currentRow,
   );
-  // The music track defines the beats, so it must not snap to them —
-  // but it still snaps to the playhead and other clip edges.
+  // OpenReel drag rules: the pointer owns time; edge snapping never grabs the playhead.
   const targets = drag.snapDisabled ? [] : buildSnapTargets(
     drag.element.key ?? drag.element.id,
     !isMusicTrack(drag.element),
+    false,
   );
-  const snapped = snapMoveToTargets(
-    nextMove.start,
-    drag.element.duration,
-    targets,
-    pps,
-    // Relaxed clamp: allow the snapped start past the content, up to the
-    // rendered extent (see dragMaxStart) — the composition grows on commit.
-    dragMaxStart + drag.element.duration,
-    drag.snapDisabled ? 0 : ctx.gridStep,
-    drag,
-  );
+  const snapped = snapOpenReelMove(nextMove.start, drag.element.duration, targets, pps,
+    drag.snapDisabled ? 0 : ctx.gridStep);
   // A snap the saved clip would miss jumps on release, so the clip stays where the pointer put it.
   const target = snapTarget(snapped);
   const missed =
@@ -299,21 +283,18 @@ export function computeDragPreview(
   const origin = drag.element.start;
   const floored = Math.max(snap.start, group.floor);
   const previewStart = origin + Math.max(shift.min, Math.min(floored - origin, shift.max));
-  const placement = resolveDropPlacement(drag, aim, previewStart, nextMove.track, ctx, group);
-  const reorder = ctx.rippleEditEnabled && aim.insertRow === null && nextMove.track === drag.element.track
-    ? planMainTrackReorder(ctx.elements, drag.element, previewStart, group.moving,
-        ctx.timelineLinkageEnabled ?? false,
-        drag.mainTrackReorder && ctx.pps > 0
-          ? { slot: drag.mainTrackReorder.slot, margin: TIMELINE_SNAP_PX / ctx.pps } : undefined,
-        (ctx.linkedSelectionEnabled ?? true) && !drag.altKey)
-    : null;
-  if (reorder) placement.start = reorder.start;
+  const insertion = aim.insertRow === null && !ctx.groupTracks?.has(nextMove.track) &&
+    !isPendingTimelineRow(nextMove.track, ctx.elements)
+    ? previewClipInsert(ctx.elements, drag.element, group.moving, nextMove.track,
+      Math.max(group.floor, nextMove.start), nextMove.start + drag.pointerOffsetX / Math.max(pps, 1), !drag.altKey) : null;
+  const placement = insertion
+    ? { track: nextMove.track, insertRow: null, start: insertion.start }
+    : resolveDropPlacement(drag, aim, previewStart, nextMove.track, ctx, group);
   const { track: previewTrack, insertRow } = placement;
   const guide = placement.start === snap.start ? snapTarget(snap) : null;
   return {
     ...drag,
     started: true,
-    mainTrackReorder: reorder ?? undefined,
     pointerClientX: clientX - (floored - previewStart) * pps,
     pointerClientY: clientY,
     previewStart: placement.start,
@@ -322,6 +303,7 @@ export function computeDragPreview(
     // tell a deliberate vertical lane change from a horizontal drag.
     desiredTrack: nextMove.track,
     insertRow,
+    insertion: insertion?.insertion,
     snapTime: guide?.time ?? null,
     snapType: guide?.type ?? null,
     snapEdge: guide ? snapped.snapEdge : undefined,
