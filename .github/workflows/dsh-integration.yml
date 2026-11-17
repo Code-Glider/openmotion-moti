@@ -1,0 +1,54 @@
+name: DSH integration
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/dsh/**'
+      - 'tests/dsh-integration.test.ts'
+      - 'packages/design-system/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/dsh-integration.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/dsh/**'
+      - 'tests/dsh-integration.test.ts'
+      - 'packages/design-system/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/dsh-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsh-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plugin:
+    name: Optional DSH plugin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            integrations/dsh/package-lock.json
+      - name: Install application build tools
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install optional host dependencies
+        run: npm ci --prefix integrations/dsh --ignore-scripts --no-audit --no-fund
+      - name: Check and package the optional plugin
+        run: |
+          npm run typecheck --prefix integrations/dsh
+          npm run pack --prefix integrations/dsh
+          node --test tests/dsh-integration.test.ts

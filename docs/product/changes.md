@@ -1,5 +1,12 @@
 # 公开变更记录
 
+## 2026-11-17: Optional DSH workspace plugin
+
+- Package a source-checkout integration as an installable `openmotion-dsh` tarball. Enabling it starts/reuses local OpenMotion and connects DSH's native MCP adapter to the same project data.
+- Add project/template browsing, embedded Brand Kits/Assets and a native Studio tab alongside Agent chat. Focus mode preserves the mounted editor; narrow windows switch between editor and conversation.
+- Keep DSH dependencies optional, model configuration in DSH, runtime state outside the checkout and standalone Studio navigation intact. No npm publication or release-workflow change.
+- New-project handoff remains manual; validation distinguishes plugin installation, browser layout and read-only model/tool calls from video creation/export acceptance. See `integrations/dsh/README.md` in the source checkout.
+
 ## 2026-11-17: Add the Growth Teardown library Skill
 
 - Add optional [`openmotion-growth-teardown`](../../library/skills/openmotion-growth-teardown/SKILL.md): name a company, research its dated growth moves and metric points with sources, and generate an editable nine-scene HyperFrames film (map, three plays with real evidence, plays to copy).
