@@ -24,7 +24,7 @@ import {
   resolveMediaPreviewUrl,
 } from "../player/components/thumbnailUtils";
 import { usePlayerStore } from "../player/store/playerStore";
-import { thumbnailRevisionOf } from "../player/store/thumbnailSlice";
+import { mediaThumbnailRevisionOf, thumbnailRevisionOf } from "../player/store/thumbnailSlice";
 import { effectiveThumbnailMode } from "../player/lib/thumbnailPolicy";
 import { useMvpEditor } from "../motion/StudioHost";
 
@@ -237,7 +237,7 @@ export function useRenderClipContent({
           const mediaUrl = new URL(mediaSrc, window.location.origin);
           // A visibility edit changes the composition, but the original media frames stay valid.
           const assetPath = authoredSrcPath(mediaUrl.pathname.slice(previewPrefix.length));
-          const revision = thumbnailRevisions["file:" + assetPath];
+          const revision = mediaThumbnailRevisionOf(thumbnailRevisions, assetPath);
           if (revision) {
             mediaUrl.searchParams.set("revision", String(revision));
             mediaSrc = mediaUrl.href;

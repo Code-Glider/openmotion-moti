@@ -6,8 +6,24 @@ import { defaultThumbnailMode, type ThumbnailMode } from "../lib/thumbnailPolicy
 const EVERY_COMPOSITION = "*";
 
 /** Mounts may be written `./scene.html`; the server reports `scene.html`. */
+function normalizeFilePath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/^\.?\//, "");
+}
+
 function revisionKey(path: string): string {
-  return (path.split(/[?#]/)[0] ?? "").replace(/\\/g, "/").replace(/^\.?\//, "");
+  return normalizeFilePath(path.split(/[?#]/)[0] ?? "");
+}
+
+// Accept decoded project-relative filenames from the watcher or the preview URL.
+function mediaFileRevisionKey(path: string): string {
+  return "file:" + normalizeFilePath(path);
+}
+
+export function mediaThumbnailRevisionOf(
+  revisions: Readonly<Record<string, number>>,
+  assetPath: string,
+): number {
+  return (revisions[mediaFileRevisionKey(".")] ?? 0) + (revisions[mediaFileRevisionKey(assetPath)] ?? 0);
 }
 
 export interface ThumbnailSlice {
@@ -15,7 +31,9 @@ export interface ThumbnailSlice {
   /** Monotonic identity, per composition path, for persisted content shown by mounted thumbnails. */
   thumbnailRevisions: Readonly<Record<string, number>>;
   setThumbnailMode: (mode: ThumbnailMode) => void;
-  /** `null` moves every composition, e.g. after a root or asset change. */
+  /** `null` refreshes all composition thumbnails. Media strips refresh for the
+   * changed file only, or for every media file when a merged/reconnect event
+   * reports "." and the individual filenames are unavailable. */
   bumpThumbnailRevisions: (compositions: readonly string[] | null, changedFile?: string) => void;
 }
 
@@ -41,7 +59,7 @@ export function createThumbnailSlice(set: StoreApi<ThumbnailSlice>["setState"]):
           next[path] = (next[path] ?? 0) + 1;
         }
         if (changedFile) {
-          const key = "file:" + changedFile.replace(/\\/g, "/").replace(/^\.?\//, "");
+          const key = mediaFileRevisionKey(changedFile);
           next[key] = (next[key] ?? 0) + 1;
         }
         return { thumbnailRevisions: next };
