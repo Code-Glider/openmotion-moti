@@ -5,8 +5,11 @@ import { zip } from '../scripts/package.ts';
 import { distributionFiles } from '../scripts/distribution.ts';
 import { getWorkflow, workflowRegistry } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, copyFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 test('onboarding Skill is discoverable from the registered plugin roots', async () => {
   const manifest = JSON.parse(await readFile(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8'));
@@ -122,4 +125,26 @@ test('asset naming contracts and runtime dependencies survive lightweight distri
     const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|ts|json|ya?ml)$/.test(file)));
     for (const file of ['project-asset-names.ts', 'shared/asset-names.ts', 'shared/asset-name-ui.json', 'skills/openmotion-production/references/materials.md']) assert.ok(files.has(file), file);
   }
+});
+
+test('packaged server imports without local dependencies and captions use the separate native runtime', async () => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const extracted = await mkdtemp(path.join(tmpdir(), 'motion-caption-package-'));
+  try {
+    const files = await distributionFiles('phase1', file => /\.(?:md|mjs|js|ts|json|ya?ml|txt|svg)$/.test(file));
+    await Promise.all(files.map(async file => {
+      const target = path.join(extracted, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.join(root, file), target);
+    }));
+    const script = `
+      await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'server.ts')).href)});
+      const { loadCaptionSourceOperations } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/transcript-captions.ts')).href)});
+      const { manualCaptionSource, captionTracks } = await loadCaptionSourceOperations(${JSON.stringify(root)});
+      const result = manualCaptionSource('<div data-composition-id="main" data-duration="3"></div>', '11111111-1111-4111-8111-111111111111', { segments: [{ id: 'cue', text: 'Packaged caption', start: 0, end: 2 }] });
+      if (captionTracks(result.content)[0]?.cueCount !== 1) throw new Error('Packaged caption operation failed');
+    `;
+    const result = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', script], { cwd: extracted, encoding: 'utf8', timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+  } finally { await rm(extracted, { recursive: true, force: true }); }
 });

@@ -11,7 +11,7 @@ import { mediaUse } from './gateway/media-use.ts';
 import { assetOperation } from './gateway/asset-operations.ts';
 import { transcriptOperation } from './gateway/transcript-operations.ts';
 import { transcriptsFor } from './gateway/transcription.ts';
-import { captionTracks, transcriptCaptionSource, updateCaptionTrackSource, manualCaptionSource } from './shared/transcript-captions.ts';
+import { loadCaptionSourceOperations } from './shared/transcript-captions.ts';
 import { brandKitOperation } from './gateway/brand-kit-operation.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from './shared/asset-limits.ts';
@@ -324,6 +324,7 @@ export class Phase1Service {
       if (args.action === 'transcript') {
         const input = args.transcript;
         if (input.command === 'caption_tracks') {
+          const { captionTracks } = await loadCaptionSourceOperations(this.runtimeRoot);
           const scoped = this.versions(input.projectId).store, name = projectPath(input.compositionPath);
           if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
           return { tracks: captionTracks(await readFile(await scoped.safePath(name), 'utf8')) };
@@ -334,6 +335,7 @@ export class Phase1Service {
           const name = projectPath(input.compositionPath);
           if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
           const file = await scoped.safePath(name), source = await readFile(file, 'utf8');
+          const { manualCaptionSource, updateCaptionTrackSource, transcriptCaptionSource } = await loadCaptionSourceOperations(this.runtimeRoot);
           let captions;
           const trackId = input.command === 'caption_add' ? crypto.randomUUID() : input.transcriptId;
           if (input.command === 'caption_add') {

@@ -8,10 +8,13 @@ import { verificationBinaries } from '../scripts/verify-export.ts';
 import { TranscriptionService, transcriptsFor, closeTranscripts } from '../gateway/transcription.ts';
 import { transcriptionParameters } from '../gateway/transcription-provider.ts';
 import { exportTranscript, normalizeTranscript, parseTranscriptSubtitles, type TranscriptDocument } from '../shared/transcript.ts';
-import { transcriptCaptionSource } from '../shared/transcript-captions.ts';
+import { createCaptionSourceOperations } from '../shared/transcript-captions.ts';
+import * as htmlParser from '@hyperframes/parsers/html-attribute-spans';
 import { Phase1Service } from '../phase1.ts';
 import { validateInput, phase1Tools } from '../shared/phase1-tools.ts';
 import type { Fetcher } from '../gateway/network.ts';
+
+const { transcriptCaptionSource, captionTracks, updateCaptionTrackSource, manualCaptionSource } = createCaptionSourceOperations(htmlParser);
 
 const api = (store: any) => new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
 async function source(store: any, duration = 3, video = false) {
@@ -171,7 +174,6 @@ test('edited-video sidecars reuse the caption clock for trim, placement and spee
 });
 
 test('caption styles and visibility preserve edited timing, content and track identity', async () => {
-  const { captionTracks, updateCaptionTrackSource } = await import('../shared/transcript-captions.ts');
   const base = '<div data-composition-id="main" data-duration="9" data-width="640" data-height="360"><audio data-track-index="2"></audio></div>';
   const doc = document(); doc.language = 'English & Chinese';
   let html = transcriptCaptionSource(base, doc, { sourceStart: 0, sourceEnd: 3, timelineStart: 4, playbackRate: 1 }).content;
@@ -248,7 +250,6 @@ test('manual text and subtitle import need no media or model and retain native h
 }));
 
 test('legacy managed text participates in caption controls without changing its native role or cues', async () => {
-  const { manualCaptionSource, captionTracks, updateCaptionTrackSource } = await import('../shared/transcript-captions.ts');
   const id = '18d41022-bca4-4cd1-9417-5440ff0a6473';
   const original = '<div data-composition-id="main" data-duration="10" data-width="1920" data-height="1080"><p id="user-title">Keep custom artwork</p></div>';
   const generated = manualCaptionSource(original, id, { textKind: 'text', timelineStart: 2, segments: [{ id: 'one', text: 'Keep my title', start: 0, end: 3 }] }).content;
