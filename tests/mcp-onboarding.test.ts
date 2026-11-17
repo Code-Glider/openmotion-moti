@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq } from '../studio/src/motion/mcpCapabilities.ts';
+import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
 
@@ -62,4 +62,19 @@ test('media example preserves setup and task continuation across supported langu
   assert.match(setup, /MCP handbook media-generation example/);
   assert.match(setup, /read-only `inspect`/);
   assert.match(skill, /MCP handbook example \| \[Discovery and setup\]/);
+});
+
+test('final-video selection and recovery are localized throughout the handbook', () => {
+  const answer = mcpFaq.find(([question]) => question === 'What if the final video cannot load?')![1];
+  const matrix = mcpClientComparison.find(([capability]) => capability === 'Inline template cards and final video')!;
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  assert.match(answer, /Codex normally shows it in the final reply/);
+  assert.match(answer, /never both for the same video/);
+  assert.match(answer, /without rendering again/);
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [answer, matrix[1], matrix[2]]) {
+      assert.ok(values[key]?.trim(), `${language}: missing final-video guidance`);
+      assert.notEqual(values[key], key, `${language}: English fallback`);
+    }
+  }
 });

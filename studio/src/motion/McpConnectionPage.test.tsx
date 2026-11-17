@@ -190,3 +190,20 @@ it.each(['en', 'zh-CN'] as const)('copies the maintained platform workflow with 
   expect(card.querySelector('textarea')?.value).toBe(copy.mock.calls[1][0]);
   expect(document.querySelector('.motion-feedback-layer')).not.toBeNull();
 });
+
+it.each([
+  ['en', 'Prefer the host’s video preview', 'never both for the same video'],
+  ['zh-CN', '优先使用宿主自带的视频预览', '同一成片不同时展示两种预览'],
+  ['ja', 'ホストの動画プレビューを優先', '同じ動画を両方に表示しません'],
+] as const)('renders native-first final-video guidance in the real handbook component for %s', async (locale, priority, exclusive) => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  await mount(locale);
+  const faq = [...document.querySelectorAll<HTMLDetailsElement>('.om-mcp-faq details')]
+    .find(item => item.textContent?.includes(priority))!;
+  expect(faq).toBeDefined();
+  await act(async () => faq.querySelector('summary')!.click());
+  expect(faq.open).toBe(true);
+  expect(faq.textContent).toContain(exclusive);
+  expect(faq.textContent).toContain('Codex');
+  expect(faq.textContent).toContain('OpenMotion');
+});

@@ -62,6 +62,27 @@ test('template orchestration depends on shared execution without reverse overrid
   assert.ok(!catalog.content.includes('## `product-proof`'));
 });
 
+test('shared delivery prefers native playback and forbids uncertain duplicate previews', async () => {
+  const runtime = await getWorkflow('production');
+  const verification = await getWorkflow('verification');
+  const templates = await getWorkflow('templates');
+  const template = await getWorkflow('start', 'template');
+  assert.match(runtime.content, /In Codex, the default is one video embed in the final reply/);
+  assert.match(runtime.content, /do not call `openmotion_show_video` on this route/);
+  assert.match(runtime.content, /Only when native preview is unavailable and the connection exposes/);
+  assert.match(runtime.content, /If neither route is usable, deliver an accessible verified file\/link/);
+  assert.match(runtime.content, /mutually exclusive for the same completed export/);
+  assert.match(runtime.content, /uncertain rendering result does not authorize another preview/);
+  assert.match(runtime.content, /same SHA-256/);
+  assert.match(runtime.content, /Never overwrite a path already embedded for an earlier version/);
+  assert.match(runtime.content, /Use a plain link, not another video embed/);
+  for (const document of [verification, templates]) {
+    assert.ok(document.references.some(reference => reference.section === 'production'));
+    assert.match(document.content, /production\.md#choose-one-final-video-preview/);
+  }
+  assert.match(template.content, /selects the final preview independently of download requests/);
+});
+
 test('final presentation timeout preserves file verification and pending editor evidence', async () => {
   const runtime = await getWorkflow('production');
   const verification = await getWorkflow('verification');
@@ -78,7 +99,7 @@ test('final presentation timeout preserves file verification and pending editor 
 test('recreation delivers the same final version once and limits file supplementation', async () => {
   const recreate = await getWorkflow('start', 'recreate');
   assert.match(recreate.content, /same version's verified final video once/);
-  assert.match(recreate.content, /explicit file\/download request or that workflow's presentation timeout/);
+  assert.match(recreate.content, /host-native embedding without a download request/);
   assert.match(recreate.content, /Playback recovery reuses the completed export/);
   const delivery = await getWorkflow('verification', 'recreate');
   assert.match(delivery.content, /openmotion_export_request\(\{projectId,workId,requestId,versionId,expectedRevision,audio\}\)/);
