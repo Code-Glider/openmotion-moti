@@ -64,6 +64,16 @@ test('final presentation timeout preserves file verification and pending editor 
   assert.match(native.content, /only a visible preview with the latest content actually inspected can be `confirmed`/);
 });
 
+test('recreation delivers the same final version once and limits file supplementation', async () => {
+  const recreate = await getWorkflow('start', 'recreate');
+  assert.match(recreate.content, /same version's verified final video once/);
+  assert.match(recreate.content, /explicit file\/download request or that workflow's presentation timeout/);
+  assert.match(recreate.content, /Playback recovery reuses the completed export/);
+  const delivery = await getWorkflow('verification', 'recreate');
+  assert.match(delivery.content, /openmotion_export_request\(\{projectId,workId,requestId,versionId,expectedRevision,audio\}\)/);
+  assert.match(delivery.content, /same editor version and workId, presenting the final chat video once/);
+});
+
 test('cold-start scoped examples expose only the shared methods needed by each request', async () => {
   const context = await getWorkflow('context');
   const cases = [

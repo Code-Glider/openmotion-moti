@@ -82,7 +82,7 @@ Numeric reference comparisons, full playback-review sessions, reviewer delegatio
 
 ## 7. Deliver
 
-The project open in the editor is the deliverable. Do not copy, link or attach the exported MP4 or other files unless the user asks for them.
+Deliver the editable project in the editor and present the same version's verified final video once through the [shared final-video delivery workflow](../openmotion-production/references/production.md#final-video-delivery). Copy, link or attach the exported MP4 only for an explicit file/download request or that workflow's presentation timeout. Playback recovery reuses the completed export.
 
 Reply briefly in the user's language. Give the `previewUrl` returned by `openmotion_open_preview` and say the editor is open only after confirming visible latest content through the shared handoff; otherwise state the display failure or confirmed inactive-chat deferral, even if the MP4 exported successfully. Say in one or two sentences what changed, which assumptions you made from the workspace material, and any limitation the user would notice. When the reference, analysis or tools fall short, name the specific gap and its effect; never claim a faithful result that was not achieved.
 

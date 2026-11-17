@@ -47,3 +47,102 @@ test('bad or missing final media remains compact with recovery, never a fake rea
     assert.equal(root.querySelector<HTMLElement>('.screen')!.hidden, true);
   } finally { ui.destroy(); await window.happyDOM.abort(); }
 });
+
+test('malformed first result can retry the tool-input work without exporting or changing version', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  const calls: any[] = [];
+  const ui = mountFinalVideo(root, { callServerTool: async (call: any) => { calls.push(call); return reply(); } });
+  try {
+    ui.setInput({ arguments: { projectId: work.projectId, workId: work.id } });
+    ui.update({ content: [{ type: 'text', text: '{bad' }] });
+    const retry = root.querySelector<HTMLButtonElement>('.retry')!;
+    assert.equal(retry.hidden, false);
+    retry.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls, [{ name: 'openmotion_get_project', arguments: {
+      projectId: work.projectId, workId: work.id, includeVideo: true,
+    } }]);
+    assert.match(root.querySelector('video')!.src, /^blob:/);
+    ui.update(reply({ id: 'another-round' }));
+    assert.match(root.querySelector('.status')!.textContent!, /不匹配/);
+    retry.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls[1], calls[0]);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
+
+test('retry failures remain recoverable and repeated clicks share one read', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  let rejectRead: (error: Error) => void = () => {};
+  let calls = 0;
+  const ui = mountFinalVideo(root, { callServerTool: () => {
+    calls++;
+    return new Promise((resolve, reject) => { rejectRead = reject; });
+  } });
+  try {
+    ui.setInput({ arguments: { projectId: work.projectId, workId: work.id } });
+    ui.update({ content: [] });
+    const retry = root.querySelector<HTMLButtonElement>('.retry')!;
+    retry.click(); retry.click();
+    assert.equal(calls, 1);
+    assert.equal(retry.disabled, true);
+    rejectRead(new Error('disconnected'));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(retry.disabled, false);
+    assert.equal(retry.hidden, false);
+    assert.match(root.querySelector('.status')!.textContent!, /读取失败/);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
+
+test('the first result must match the presentation tool input', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  const ui = mountFinalVideo(root, { callServerTool: async () => reply() });
+  try {
+    ui.setInput({ arguments: { projectId: work.projectId, workId: work.id } });
+    ui.update(reply({ id: 'unrelated-round' }));
+    assert.equal(root.querySelector('video')!.src, '');
+    assert.match(root.querySelector('.status')!.textContent!, /不匹配/);
+    assert.equal(root.querySelector<HTMLButtonElement>('.retry')!.hidden, false);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
+
+test('media loading timeout exposes retry and ignores late decoding until recovery', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  let expire: () => void = () => {};
+  window.setTimeout = ((callback: () => void) => { expire = callback; return 1; }) as any;
+  const ui = mountFinalVideo(root, { callServerTool: async () => reply() });
+  try {
+    ui.update(reply());
+    expire();
+    assert.match(root.querySelector('.status')!.textContent!, /加载超时/);
+    assert.equal(root.querySelector<HTMLButtonElement>('.retry')!.hidden, false);
+    const video = root.querySelector('video')!;
+    for (const [name, value] of Object.entries({ duration: 15, videoWidth: 1920, videoHeight: 1080 }))
+      Object.defineProperty(video, name, { configurable: true, value });
+    video.dispatchEvent(new window.Event('loadeddata'));
+    assert.equal(root.querySelector<HTMLElement>('.screen')!.hidden, true);
+    root.querySelector<HTMLButtonElement>('.retry')!.click();
+    await new Promise(resolve => setImmediate(resolve));
+    video.dispatchEvent(new window.Event('loadeddata'));
+    assert.equal(root.querySelector<HTMLElement>('.screen')!.hidden, false);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
+
+test('status plus JSON loads once and duplicate delivery preserves playback position', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  const ui = mountFinalVideo(root, { callServerTool: async () => reply() });
+  try {
+    ui.setInput({ arguments: { projectId: work.projectId, workId: work.id } });
+    const envelope = { content: [ { type: 'text', text: 'Script completed\nOutput:\n' },
+      { type: 'text', text: JSON.stringify(reply()) } ] };
+    ui.update(envelope);
+    const video = root.querySelector('video')!;
+    assert.match(video.src, /^blob:/);
+    const original = video.src;
+    video.currentTime = 4;
+    ui.update(envelope);
+    assert.equal(video.src, original);
+    assert.equal(video.currentTime, 4);
+    assert.equal(root.querySelectorAll('video').length, 1);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
