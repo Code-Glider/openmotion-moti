@@ -4,10 +4,8 @@ description: >-
   Generate, poll and inspect individual image, video, speech or music assets through
   openmotion_assets_use after openmotion_media_use discovery (configured Atlas Cloud, fal.ai, WaveSpeedAI or OpenDesign Cloud BYOK
   providers, or a signed-in OpenDesign account), either when delegated by an OpenMotion film workflow or for a standalone
-  asset-generation request. Native-only tasks with no new speech or music stay outside generation unless explicitly requested. Not a whole-film entry point: route original video creation to openmotion-director,
-  template adaptation to openmotion-template-to-video, reference-video recreation to openmotion-recreate,
-  reusable template packaging to openmotion-video-to-template, and existing-project edits or exports to
-  openmotion-production.
+  asset-generation request. Native-only tasks with no new speech or music stay outside generation unless explicitly requested. Not a whole-film entry point: creating, recreating, templating, editing or exporting a whole video
+  belongs to the OpenMotion video entries.
 ---
 
 # OpenMotion Media Generation

@@ -29,7 +29,7 @@ Use OpenMotion for an original video on the user's topic, including a request to
 
 ## 接入与共享职责
 
-首次触发本 Skill 时先读取 [共享上下文](../openmotion-production/references/context.md)，按其清单补齐本次所需正文，并记录已读文档。复用已有决定，不返回 production 重新选路。下文各阶段的“读取”均指补齐缺口：正文仍在上下文时直接应用，不再重复 `cat` 或请求同一工作流；阶段切换不是重读理由。已有片的修改或重编应用 [共享修改流程](../openmotion-production/references/edit.md)，原创以外的局部任务仅展开相关范围。进入实现前确保已读 [运行规范](../openmotion-production/references/production.md)、[Native authoring](../openmotion-production/references/native.md) 及工具返回的固定版本引擎指南；补读结果先返回模型，后续调用再执行依赖操作。导出或成片交付时补读 [验证](../openmotion-production/references/verification.md)。这些是工程接入要求，不替代下面的创作判断。
+首次触发本 Skill 时先读取 [共享上下文](../openmotion-production/references/context.md)，按其清单补齐本次所需正文，并记录已读文档。复用已有决定，不返回 production 重新选路。下文各阶段的“读取”均指补齐缺口：正文仍在上下文时直接应用，不再重复 `cat` 或请求同一工作流；阶段切换不是重读理由。已有片的修改或重编应用 [共享修改流程](../openmotion-production/references/edit.md)，原创以外的局部任务仅展开相关范围。进入实现前确保已读 [运行规范](../openmotion-production/references/production.md)、[Native authoring](../openmotion-production/references/native.md) 及工具返回的固定版本引擎指南。导出或成片交付时补读 [验证](../openmotion-production/references/verification.md)。这些是工程接入要求，不替代下面的创作判断。
 
 MCP-only 使用 resources/read `openmotion://workflow/director/start` 读取本页，按链接读取共享及质量参考，复用仍完整可用的正文。
 

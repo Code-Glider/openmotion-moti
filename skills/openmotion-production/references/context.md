@@ -80,7 +80,7 @@ Hyperframes 指引只在 [原生引擎边界](native.md#engine-guidance-boundary
 
 ## 共享质量，按职责应用
 
-An entry that states it owns its delivery and review scope applies that scope, including its preview pass and repair limits, instead of the broader review below. Other routes apply the review requirements below.
+声明自行负责交付与审片范围的入口，审片和导出都按该范围执行，包括它的预览检查和修复上限，不套用下面更宽的审片要求。其他入口按下面的要求审片；需要新渲染的导出或成片交付另读 [验证](verification.md)。
 
 Motion 质量是基础职责，不以用户是否说“丝滑”作为加载条件。模板也需要落实变化、接点和状态，不能只通过包装形式验收。声音用实际音轨检查，画面锁定时不得改动视觉内容。动态审片检查实际受影响区间及邻接关系，全片交付前检查全片；共享质量不意味着重新进入 director 完整创作流程。
 
@@ -91,8 +91,6 @@ Motion 质量是基础职责，不以用户是否说“丝滑”作为加载条�
 由当前 Agent 执行一次操作链；Skills 是同一任务的指导文档，不是互相调用的独立执行进程。进入另一份文档不会授权再次创建项目、应用模板、导入同一素材或发起相同导出。
 
 工程操作前读 [运行规范](production.md)；编写原生内容前读 [Native authoring](native.md) 及返回的固定版本引擎指南。复用已有工程，只有任务确实需要时创建或切换项目。
-
-声明自行负责交付与审片范围的入口，导出按该入口执行；其他需要新渲染的导出/成片交付读 [验证](verification.md)。
 
 已有适用的导出任务时先查询，不重复提交；验证依据须对应实际 revision 和文件。已确认内容默认停在编辑器交付；本次明确要求文件时按文件范围执行，明确要求 MP4 就包括导出和实际文件检查。 starter 默认停在可编辑草稿，但用户本次明确要求成片或导出时，以用户范围为准。
 
