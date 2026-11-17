@@ -1,3 +1,6 @@
+import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
+import type { IntegrationInfo } from '../../../shared/integration.ts';
+
 /** Maintained product descriptions; coverage is checked against the public MCP contract. */
 export const mcpCapabilities = [
   { id: 'projects', icon: 'folder-open-line', title: 'Manage local projects', description: 'Rename, duplicate, locate, share, trash, restore and permanently delete projects from each project menu.', tools: ['openmotion_manage_project'], prompt: 'Duplicate this project as an independent editable copy.' },
@@ -11,6 +14,16 @@ export const mcpCapabilities = [
   { id: 'history', icon: 'history-line', title: 'Keep every creative direction', description: 'Browse saved versions and restore an earlier direction as a new version. Keep the history while you refine the result.', tools: ['openmotion_list_versions', 'openmotion_restore_version'], prompt: 'List versions of my OpenMotion project and explain the differences. Wait for me to choose before restoring a version.' },
   { id: 'export', icon: 'download-2-line', title: 'Deliver a finished video', description: 'Export the chosen project version to MP4 and follow its progress. Keep both the finished video and the editable project.', tools: ['openmotion_export_request', 'openmotion_export_cancel'], prompt: 'Export the agreed OpenMotion project version to MP4 with its audio. Track the same export job, review playback and give me the finished video and editable project.' },
 ] as const;
+
+/** Scenarios compose existing tools; keep atomic tool discovery unique above. */
+export const mcpScenarios = [{
+  id: 'platform-export', icon: 'sparkling-line', title: 'Prepare a platform version',
+  description: 'In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.',
+  tools: ['openmotion_get_project', 'openmotion_manage_project', 'openmotion_edit_project', 'openmotion_open_preview', 'openmotion_export_request'],
+  prompt: 'Prepare a platform version',
+}] as const;
+
+export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'shorten', locale, workspace });
 
 export const mcpBenefits = [
   { icon: 'movie-line', title: 'The workspace behind your Agent', description: 'Your Agent creates and edits through MCP. OpenMotion keeps the project, source files and assets together so each result can become the next starting point.' },
@@ -31,6 +44,7 @@ export const mcpFaq = [
   ['How long does a video take?', 'It depends on the film, the Agent, the selected models and your computer. Generation queues and rendering have separate progress. Keep following the existing job instead of submitting the same request again.'],
   ['Will my Agent use another video platform?', 'Your Agent chooses material sources to fit the content: real events call for original material; original visuals may use generation. It prefers OpenMotion when its available capabilities fit the operation, and can use other tools, including video platforms, to fill capability gaps. Your existing permissions and source preferences still apply.'],
   ['Can a team work on the same project?', 'Use All projects to export one project, checked projects or all projects as ZIP files. Import projects creates independent copies with local assets and fonts. Cloud collaboration, conversation history and provider credentials are not included. Linked online resources still need the internet.'],
+  ['Does platform export publish my video?', 'Your Agent chooses edits using your media, captions or confirmed timecodes, then uses MCP to duplicate, edit, preview and export. Speech analysis needs host tools or your input. You upload the finished file yourself.'],
   ['Who makes OpenMotion?', 'OpenMotion is an independent open-source project. The supported Agent and model names identify integrations, not ownership or endorsement. Visit the repository for the source, licenses and contribution guide.'],
 
   ['Do I need an OpenMotion API key?', 'Local MCP setup does not require an OpenMotion API key. Cloud generation uses your configured provider credentials or OpenDesign account. Keep keys in Model providers, not in chat.'],

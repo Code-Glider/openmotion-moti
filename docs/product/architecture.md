@@ -61,7 +61,7 @@ Codex plugin metadata and generated adapters provide the existing brand symbol i
 
 AI 剪辑的当前路径是：用户提供素材、脚本或确认的时间码，外部 Agent 根据选段、删改、排序、字幕、声画与节奏要求修改真实工程，用户在 Studio 预览并继续调整；自动语音理解仍取决于宿主工具与输入材料。对外介绍以 OpenMotion 本身与创作者的完整工作流为主，Hyperframes 作为技术来源在文末致谢，具体依赖继续在技术专题中准确记录。OpenMotion is a standalone application. External Agents use Skills, MCP and the pinned CLI to operate the same local project; the Assets surface additionally supports an in-app Codex conversation runner through shared asset operations. Full-film orchestration remains in external clients. 核心原则是人和 Agent 共用作品、经验沉淀为规范和模板、源文件可检查与可延续。仓库已采用 [Apache-2.0](../../LICENSE)，保留上游组件与字体声明；这取代此前“统一许可证待确认”的过时状态，依据见 2026-11-06 的公开记录。
 
-README 正文先展示场景与复刻效果，再介绍核心特性，最后说明安装与技术架构。创作流程仍是 **Input → Process → Output**：本地视频/录音/图片、在线参考、文本和 SRT/VTT → Agent 按脚本或已确认时间码剪辑、设计动效、通过 Studio 采用声音与媒体 → 固定版本 MP4 与可编辑工程。在线获取和语音分析依赖宿主能力或用户提供的素材/字幕；原生文本存储不等于字幕自动导入器。通过修改工程画幅可制作竖屏、横屏、方形版本；当前没有各社交平台的专用导出预设或直接发布，公开导出容器仍为 MP4。
+README 正文先展示场景与复刻效果，再介绍核心特性，最后说明安装与技术架构。创作流程仍是 **Input → Process → Output**：本地视频/录音/图片、在线参考、文本和 SRT/VTT → Agent 按脚本或已确认时间码剪辑、设计动效、通过 Studio 采用声音与媒体 → 固定版本 MP4 与可编辑工程。在线获取和语音分析依赖宿主能力或用户提供的素材/字幕；原生文本存储不等于字幕自动导入器。Platform export is an Agent handoff in the Export panel: users choose an icon-labelled platform and a shortening, highlights or full-video adaptation goal, configure canvas, duration, highlight count and caption policy, then copy a brief bound to the saved project and workspace. The Agent duplicates the source, edits independent copies through the existing MCP operations, previews them and exports fixed-version MP4s. Suggested canvases are editorial targets; dedicated platform encoder presets and direct publishing remain unimplemented. File export remains the default native workflow. The MCP main handbook exposes the same shared brief with explicit source selection, dependencies and the manual upload boundary. See [platform export stories and verification](platform-export.md).
 
 [媒体事实包](../media-kit.md) 是面向报道、演示与内容 Agent 的可引用入口，区分可验证能力、产品方向和待验证主张。现有资料不能证明“99% 还原”或“覆盖 Claude Motion 几乎全部核心模板”；资源数量与来源仍以目录快照及逐条出处为准。
 
@@ -111,7 +111,7 @@ README 参考 OpenDesign 的产品导览和 HTML Anything 的贡献、来源表�
 | --- | --- | --- |
 | 智能剪辑与组织 | 导入、排列素材，Agent 根据脚本/时间码落实选段删改与节奏要求，用户在时间轴调整 | 自动理解并选择内容、去除无关段落、按发布目标自动适配画幅 |
 | 素材生成与搜索 | 配置 Model Gateway 后生成图片、视频、音乐和语音；参考图编辑、候选入库与显式替换保留时长和动画 | 跨媒体、配音、音乐与 Avatar 服务的资源搜索和统一选用 |
-| 多平台输入与输出 | 支持的本地媒体、宿主获取的参考与文本输入；改编构图，固定版本导出 MP4 并保留源工程 | 更广的平台解析/导入、自动格式适配与平台导出预设 |
+| Multi-platform input and output | Local media and host-supplied references; platform briefs copied to Agents for shortening, highlights or reframing in independent projects; fixed-version MP4 delivery | 更广的平台解析/导入、自动格式适配与平台导出预设 |
 
 图片编辑的现有实现仅承诺支持参考图的模型路径，不将图片替换泛化为任意视频、音频或人物替换。模型配置与真实生成效果分别验证；搜索目录、Avatar、语音分析和发布平台能力以后按独立需求落地。
 

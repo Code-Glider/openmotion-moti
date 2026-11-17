@@ -174,3 +174,19 @@ it.each(['en', 'zh-CN'] as const)('copies the complete media onboarding flow in 
   expect(instruction).toContain(locale === 'en' ? 'original request' : '原来的需求');
   expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toContain(locale === 'en' ? 'Copied to clipboard' : '已复制');
 });
+
+it.each(['en', 'zh-CN'] as const)('copies the maintained platform workflow with explicit source selection in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const card = [...document.querySelectorAll<HTMLElement>('.om-mcp-feature')].find(node => node.textContent?.includes(locale === 'en' ? 'Prepare a platform version' : '制作平台适配版本'))!;
+  await act(async () => card.querySelector('button')!.click());
+  const { platformExportExample } = await import('./mcpCapabilities');
+  expect(copy.mock.calls[0][0]).toBe(platformExportExample(locale, info));
+  expect(copy.mock.calls[0][0]).toContain('/fixture/data');
+  expect(copy.mock.calls[0][0]).not.toContain('Project ID:');
+  copy.mockRejectedValue(new Error('Denied'));
+  await act(async () => card.querySelector('button')!.click());
+  expect(card.querySelector('textarea')?.value).toBe(copy.mock.calls[1][0]);
+  expect(document.querySelector('.motion-feedback-layer')).not.toBeNull();
+});
