@@ -83,4 +83,4 @@ Default installation guides use floating npm tags (`@test` for DEV, `@latest` fo
 
 ## Active version series
 
-The active stable series starts at 0.0.1; 0.6.x is reserved for historical packages. Follow the release manual for publication ordering. Stable still requires both exact prod native checks before latest and the default guide advance. Existing ^0.6.x dependencies and lockfiles require an explicit version migration; use the latest-tag guide or an exact new version. No old package or snapshot is overwritten.
+The active stable series was originally planned to start at 0.0.1; publishing that version first is not required. An explicitly selected 0.1.0 is valid; prepare its own exact-version description rather than reusing docs/CHANGELOG/v0.0.1. The 0.6.x namespace remains reserved for historical packages. Follow the release manual for publication ordering. Stable still requires both exact prod native checks before latest and the default guide advance. Existing ^0.6.x dependencies and lockfiles require an explicit version migration; use the latest-tag guide or an exact new version. No old package or snapshot is overwritten.

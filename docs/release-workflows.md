@@ -136,11 +136,13 @@ Builds have no publication lock, so another version can build during acceptance.
 Actions artifacts and attempt records expire after **30 days**. R2 snapshots follow the separately managed bucket lifecycle. Acceptance does not extend artifact retention. Different builds of an unpublished version coexist; publication explicitly selects the accepted build run ID. Expired/deleted artifacts fail closed; retain internal evidence before expiry and create a fresh candidate when needed. Once npm contains a version, different bytes require a new version.
 
 
-## Publishing the first active stable version
+## Publishing a selected active stable version
 
 Before cutover, ensure no historical publication or recovery run is queued or running. After the policy is merged, start new manual runs from the latest main; do not rerun pre-reset publication/recovery runs, whose frozen control scripts still use the old ordering. Existing candidate artifacts may be consumed by the new controller with their original identity.
 
 After this policy change is reviewed and merged, prepare the selected stable version's English/Chinese description, then run **Motion candidate build** from `main`, choose `stable` and enter that version (for example `0.1.0`). Inspect that exact prod package and its sealed Notes. When separately authorized, run **Motion npm publication** from `main`, choose `stable` and enter the same version and accepted candidate build run ID.
+
+The `0.0.1` examples describe the original series-reset plan, not a required first publication. An explicitly selected `0.1.0` is valid without publishing `0.0.1` first. Author the description for the selected version; `docs/CHANGELOG/v0.0.1` is not its description. Do not rename or rewrite a retained candidate to change its version or Notes.
 
 The existing sequence stays **public stage → both native checks → latest → immutable snapshots → default guide → GitHub Release notes**. Source/hash verification, native-check gating, conditional R2 writes, race/supersession protection, retry identity and archive-only boundaries are unchanged. Stable publication preserves the test tag. Later `0.0.2` can advance `0.0.1`; an older `0.0.1` cannot replace `0.0.2`. Historical snapshots are never deleted or rewritten. The ordering policy needs no force flag, manual pre-move of npm tags or new permission. Publication selects its accepted build through the `candidate_run_id` input described above.
 
