@@ -31,8 +31,6 @@ export interface PanelDefinition {
   reopen: { near: PanelId; direction: Direction };
   /** Content stays mounted while its tab is hidden (the preview iframe must not reload). */
   keepMounted?: true;
-  /** Reading/editing surfaces can request room on first activation; sashes remain user controlled. */
-  preferredWidth?: number;
 }
 
 export const PANEL_DEFINITIONS = {
@@ -54,8 +52,8 @@ export const PANEL_DEFINITIONS = {
     reopen: { near: "preview", direction: "left" },
   },
   assets: { title: "Assets", zone: "left", reopen: { near: "compositions", direction: "within" } },
-  transcript: { title: "Transcript", zone: "left", reopen: { near: "assets", direction: "within" }, keepMounted: true, preferredWidth: 560 },
-  captions: { title: "Captions", zone: "left", reopen: { near: "transcript", direction: "within" }, keepMounted: true, preferredWidth: 420 },
+  transcript: { title: "Transcript", zone: "left", reopen: { near: "assets", direction: "within" }, keepMounted: true },
+  captions: { title: "Captions", zone: "left", reopen: { near: "transcript", direction: "within" }, keepMounted: true },
   code: { title: "Code", zone: "left", reopen: { near: "compositions", direction: "within" } },
   catalog: {
     title: "Catalog",

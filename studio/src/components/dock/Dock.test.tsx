@@ -1345,29 +1345,38 @@ it.each([648, 703, 720])("keeps both column dividers draggable after repeated re
   }
 });
 
-it("opens transcript as a reading workspace and retains a later user resize", async () => {
+it.each([
+  ["captions", "transcript"],
+  ["transcript", "captions"],
+] as const)("keeps column widths stable when switching from %s to %s", async (first, second) => {
   let width = 1400;
-  mount("transcript-reading", {}, { panels: MVP_PANEL_IDS, fixedLayout: true, dockWidth: () => width });
+  mount("stable-caption-tabs", {}, { panels: MVP_PANEL_IDS, fixedLayout: true, dockWidth: () => width });
   const api = dockApi!;
-  await act(async () => {
-    resizeDock(api, width);
-    useDockLayoutStore.getState().activatePanel("transcript");
+  await act(async () => { resizeDock(api, width); await Promise.resolve(); });
+  const left = api.getPanel(first)!.group;
+  const columns = () => ({ left: left.width, preview: api.getPanel("preview")!.group.width, right: api.getPanel("design")!.group.width });
+  const activate = async (id: typeof first | typeof second | "assets") => act(async () => {
+    useDockLayoutStore.getState().activatePanel(id);
     await Promise.resolve();
   });
-  const left = api.getPanel("transcript")!.group;
-  expect(left.width).toBe(560);
-  expect(api.getPanel("preview")!.group.width).toBeGreaterThanOrEqual(360);
-  await act(async () => { left.api.setSize({ width: 460 }); await Promise.resolve(); });
-  await act(async () => {
-    useDockLayoutStore.getState().activatePanel("preview");
-    useDockLayoutStore.getState().activatePanel("transcript");
-    await Promise.resolve();
-  });
-  expect(left.width).toBe(460);
-  await act(async () => { width = 700; resizeDock(api, width); await Promise.resolve(); });
-  expect(api.getPanel("preview")!.group.width).toBeGreaterThanOrEqual(240);
-  await act(async () => { width = 1400; resizeDock(api, width); await Promise.resolve(); });
-  expect(left.width).toBe(460);
+  const initial = columns();
+  await activate(first);
+  expect(columns()).toEqual(initial);
+  // A deliberate narrow sash adjustment must survive the other tab's first activation.
+  await act(async () => { left.api.setSize({ width: 280 }); await Promise.resolve(); });
+  const custom = columns();
+  await activate(second);
+  expect(columns()).toEqual(custom);
+  for (const hostWidth of [700, 1400]) {
+    await act(async () => { width = hostWidth; resizeDock(api, width); await Promise.resolve(); });
+    const fitted = columns();
+    for (const tab of [first, second, "assets", first, second] as const) {
+      await activate(tab);
+      expect(columns()).toEqual(fitted);
+    }
+    expect(api.getPanel("preview")!.group.width).toBeGreaterThanOrEqual(240);
+  }
+  expect(left.width).toBe(280);
 });
 
 it.each(["captions", "transcript"] as const)("retains %s and custom widths while the editor is hidden by settings", async (panel) => {

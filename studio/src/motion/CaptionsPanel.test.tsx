@@ -185,3 +185,16 @@ it('does no recurring caption discovery and refreshes visible consumers after ed
  await act(async () => { visibility.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange')); });
  expect(state.calls.map(c => c.command)).toEqual(['caption_tracks']);
 });
+
+it('a late created-clip refresh does not replace a newer manual-caption draft', async () => {
+  await render();
+  await act(async () => useCaptionWorkspace.getState().open('project', { compositionPath: 'index.html', mode: 'style', trackId: 'doc', selectClip: true }));
+  await act(async () => button('Add captions').click());
+  const input = document.querySelector<HTMLTextAreaElement>('[aria-label="Caption text"]')!;
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'Keep this draft'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  state.elements = [{ id: 'created', domId: 'transcript-doc-cue', tag: 'div', track: 4, sourceFile: 'index.html' }];
+  await render();
+  expect(document.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Add captions');
+  expect(document.querySelector<HTMLTextAreaElement>('[aria-label="Caption text"]')?.value).toBe('Keep this draft');
+  expect(usePlayerStore.getState().selectedElementId).toBeNull();
+});

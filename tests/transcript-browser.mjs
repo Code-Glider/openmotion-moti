@@ -105,6 +105,51 @@ try {
   await page.$eval('button[aria-label="Expand left panel"]', node => node.click());
   console.log('Expand action sent');
   await page.waitForSelector('button[aria-label="Collapse left panel"]');
+  const columnGeometry = () => page.evaluate(async () => {
+    const measure = () => ['left', 'center', 'right'].map(zone => {
+      const group = document.querySelector(`.hf-dock-tab[data-panel-zone="${zone}"]`).closest('.dv-groupview');
+      const { x, width } = group.getBoundingClientRect(); return { x, width };
+    });
+    let previous = '', stable = 0;
+    for (let frame = 0; frame < 120; frame++) {
+      await new Promise(requestAnimationFrame);
+      const next = measure(), serialized = JSON.stringify(next);
+      stable = previous === serialized ? stable + 1 : 0; previous = serialized;
+      if (stable >= 4) return next;
+    }
+    throw new Error('Dock column geometry did not settle');
+  });
+  const resizeLeft = async width => {
+    const [left] = await columnGeometry();
+    const sash = await page.evaluate(edge => [...document.querySelectorAll('.dv-sash[aria-orientation="vertical"]')].map(n => n.getBoundingClientRect()).find(r => r.height > 0 && Math.abs(r.x + r.width / 2 - edge) < 8)?.toJSON(), left.x + left.width);
+    assert(sash, 'Left column divider is available');
+    const x = sash.x + sash.width / 2, y = sash.y + sash.height / 2;
+    await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + width - left.width, y, { steps: 12 }); await page.mouse.up();
+    assert(Math.abs((await columnGeometry())[0].width - width) <= 1, 'The divider respects the requested width');
+  };
+  const tabWidths = [];
+  const checkTabWidths = async context => {
+    const before = await columnGeometry();
+    for (const tab of ['Captions', 'Transcript', 'Captions', 'Transcript']) {
+      await click('.hf-dock-tab-label', tab);
+      assert.deepEqual(await columnGeometry(), before, `${context}: ${tab} must preserve all column positions and widths`);
+    }
+    tabWidths.push({ context, columns: before });
+  };
+  await checkTabWidths('First activation');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(theme => { if (theme === 'light') document.documentElement.dataset.theme = 'paper'; else delete document.documentElement.dataset.theme; }, theme);
+    for (const width of [280, 420]) {
+      await resizeLeft(width);
+      await checkTabWidths(`${theme}, user width ${width}`);
+      await capture({ path: path.join(output, `stable-transcript-${width}-${theme}.png`) });
+    }
+    await page.setViewport({ width: 860, height: 900 });
+    await checkTabWidths(`${theme}, narrow window`);
+    assert((await columnGeometry())[1].width >= 240, 'Narrow layouts preserve the preview minimum');
+    await page.setViewport({ width: 1440, height: 1000 });
+  }
+  await writeFile(path.join(output, 'tab-widths.json'), JSON.stringify(tabWidths, null, 2));
   await click('.hf-dock-tab-label', 'Transcript');
   await page.waitForFunction(() => document.querySelector('section[aria-label="Transcript"]')?.getBoundingClientRect().width > 150);
   console.log('Transcript panel opened');
@@ -324,6 +369,7 @@ try {
   await capture({ path: path.join(output, 'transcript-scrolled.png') });
   await page.$eval(reading, n => n.scrollTop = 0);
   await page.setViewport({ width: 1920, height: 1080 });
+  await resizeLeft(560);
   await page.waitForFunction(() => document.querySelector('section[aria-label="Transcript"]').getBoundingClientRect().width >= 520);
   for (const theme of ['light', 'dark']) {
     await page.evaluate(theme => { if (theme === 'light') document.documentElement.dataset.theme = 'paper'; else delete document.documentElement.dataset.theme; }, theme);
@@ -338,7 +384,8 @@ try {
   // Basic editing: real pointer gestures and persisted native text, not mocked UI actions.
   await click('button', 'Manual captions');
   await page.waitForSelector('section[aria-label="Manual captions"] textarea');
-  await page.type('section[aria-label="Manual captions"] textarea', 'Manual title');
+  await click('section[aria-label="Manual captions"] textarea', 'Caption text');
+  await page.keyboard.type('Manual title');
   await click('section[aria-label="Manual captions"] button', 'Add captions');
   await page.waitForFunction(() => document.querySelector('section[aria-label="Captions"] [role=tab][aria-selected="true"]')?.textContent === 'Style');
   const sceneStarts = async () => page.evaluate(html => [...new DOMParser().parseFromString(html, 'text/html').querySelectorAll('[data-composition-src]')].map(node => [node.id, node.dataset.start]), await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'));
@@ -391,7 +438,8 @@ try {
   assert.equal(paidCalls, callsBeforeAuto + 1);
   assert.match(await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'), /data-caption-label="video.mp4"/);
   await click(`${captionPanel} [role=tab]`, 'Add captions');
-  await page.type('section[aria-label="Manual captions"] textarea', 'First manual caption\nSecond manual caption');
+  await click('section[aria-label="Manual captions"] textarea', 'Caption text');
+  await page.keyboard.type('First manual caption\nSecond manual caption');
   await click('section[aria-label="Manual captions"] button', 'Add captions');
   await page.waitForFunction(() => document.querySelector('section[aria-label="Captions"] [role=tab][aria-selected="true"]')?.textContent === 'Style');
   assert.match(await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'), /Second manual caption/);

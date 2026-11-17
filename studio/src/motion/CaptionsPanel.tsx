@@ -36,6 +36,12 @@ function CaptionControls() {
   const epoch = useCaptionWorkspace(s => s.epoch);
   const [mode, setMode] = useState<'auto' | 'manual' | 'style'>('auto');
   const initialMode = useRef(false);
+  const chooseMode = (next: typeof mode) => {
+    // A newer user action supersedes selection waiting for a created clip to load.
+    pendingClip.current = undefined;
+    initialMode.current = true;
+    setMode(next);
+  };
   const [documents, setDocuments] = useState<TranscriptList['documents']>([]), [source, setSource] = useState(''), [target, setTarget] = useState('');
   const [settings, setSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS), [working, setWorking] = useState(false), [listFailed, setListFailed] = useState(false);
   const alive = useRef(true), active = useRef(false), latest = useRef(shell); latest.current = shell;
@@ -108,7 +114,7 @@ function CaptionControls() {
   const replacing = !current && tracks.some(track => track.id === source);
   return <section aria-label={t('Captions')} className="@container flex h-full min-h-0 flex-col overflow-hidden text-step-12 text-text-1" onKeyDown={event => event.stopPropagation()}>
     <div className="flex shrink-0 flex-wrap gap-1 border-b border-border p-2" role="tablist" aria-label={t('Caption tools')}>
-      {(['auto', 'manual', 'style'] as const).map((item, i) => <Button key={item} size="sm" role="tab" aria-selected={mode === item} variant={mode === item ? 'secondary' : 'ghost'} onClick={() => setMode(item)}>{t(['Auto captions', 'Add captions', 'Style'][i])}</Button>)}
+      {(['auto', 'manual', 'style'] as const).map((item, i) => <Button key={item} size="sm" role="tab" aria-selected={mode === item} variant={mode === item ? 'secondary' : 'ghost'} onClick={() => chooseMode(item)}>{t(['Auto captions', 'Add captions', 'Style'][i])}</Button>)}
     </div>
     <div className={mode === 'auto' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}><AutoCaptionsPanel visible={mode === 'auto'} /></div>
     {mode === 'manual' ? <ManualTextPanel kind="caption" /> : mode === 'style' ? <>
@@ -134,8 +140,8 @@ function CaptionControls() {
           <h2 className="text-step-13 font-semibold">{t(listFailed ? 'Could not load transcripts' : 'No caption tracks yet')}</h2>
           <p className="text-step-11 text-text-3">{t('Generate or add captions, then choose their style here.')}</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={listFailed ? () => void loadDocuments() : () => setMode('auto')}>{t(listFailed ? 'Retry' : 'Auto captions')}</Button>
-            <Button variant="secondary" onClick={() => setMode('manual')}>{t('Add captions')}</Button>
+            <Button onClick={listFailed ? () => void loadDocuments() : () => chooseMode('auto')}>{t(listFailed ? 'Retry' : 'Auto captions')}</Button>
+            <Button variant="secondary" onClick={() => chooseMode('manual')}>{t('Add captions')}</Button>
           </div>
         </div> : <div className="flex flex-col gap-4">
           {!current && <div className="flex flex-col gap-2 border-b border-border pb-3">
