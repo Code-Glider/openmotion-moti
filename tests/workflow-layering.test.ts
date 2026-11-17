@@ -90,3 +90,33 @@ test('cold-start scoped examples expose only the shared methods needed by each r
   assert.match(unchanged.content, /Read the engine authoring guide, creative review, material selection and edit references when the task actually needs authoring or a detected defect/);
   assert.match(context.content, /`references` 是发现索引，不代表每个目标都必读/);
 });
+
+test('reference-video routes share one reading and measurement method and keep only their own rules', async () => {
+  const shared = await getWorkflow('reference');
+  assert.equal(shared.documentId, 'skills/openmotion-production/references/reference-video.md');
+  assert.ok(!shared.references.some(reference => reference.workflow !== 'production'));
+  assert.ok(!/openmotion-(recreate|video-to-template)|TEMPLATE\.md/.test(shared.content), 'Shared reading must not name a selecting entry or its record format');
+  for (const phrase of ['never evidence of motion', 'measure probe', 'two consecutive fixes', 'Restore a missing original hard cut', 'distinctive lettering', 'runtime/media/bin']) {
+    assert.ok(shared.content.includes(phrase), phrase);
+  }
+  const routes = [
+    ['recreate', ['start', 'rebuild']],
+    ['video-to-template', ['start', 'measure', 'rebuild']],
+  ] as const;
+  for (const [workflow, sections] of routes) {
+    for (const section of sections) {
+      const document = await getWorkflow(section, workflow);
+      for (const phrase of ['navigation only', 'measure probe', 'Google Fonts', 'runtime/media/bin', 'one clip per object', 'mouse pointer with an inset']) {
+        assert.ok(!document.content.includes(phrase), `${workflow}/${section} repeats shared method: ${phrase}`);
+      }
+    }
+    const start = await getWorkflow('start', workflow);
+    const rebuild = await getWorkflow('rebuild', workflow);
+    assert.ok([...start.references, ...rebuild.references].some(reference => reference.workflow === 'production' && reference.section === 'reference'), workflow);
+  }
+  const context = await getWorkflow('context');
+  for (const request of ['| 复刻视频', '| 明确要求视频转可复用模板']) {
+    const row = context.content.split('\n').find(line => line.startsWith(request));
+    assert.ok(row && workflowReferences(row, context.documentId).some(reference => reference.section === 'reference'), request);
+  }
+});

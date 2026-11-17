@@ -44,8 +44,8 @@ Read Hyperframes guidance within the [native engine boundary](native.md#engine-g
 | 按既定声音决定执行或工程音轨调整，含画面锁定 | [声音执行与声画锚点](sound.md)、声音相关的 [审片](review.md)；不加载原创声音构思。需要新设计声音叙事时，由所选 director 入口按需读取声音设计参考。 |
 | 原样使用模板、不做修改 | Editor-only uses the [editable preview handoff](native.md#editable-preview-handoff). Explicit file delivery applies [delivery scope](production.md#delivery-scope), [source pinning](native.md#pin-source-for-independent-deliverables) and [verification scope](verification.md#verification-scope). The selected entry owns its sequence; no authoring/creative read is required solely to export. An edited project cannot reuse an old preview. |
 | 使用／适配可编辑模板，需要创建、编辑或渲染工程 | ID／来源尚未明确时读取 [模板能力说明](templates.md)；内容修改按影响审片，原样渲染按上面的文件交付范围执行，不因请求渲染而加载创作规范。 |
-| 明确要求视频转可复用模板 | 所选入口负责自己的分阶段读集并检查实际参考视频；按影响应用共享 [制作决策](decisions.md)、[审片](review.md) 与 [可移植工程](portable-project.md)。 |
-| 复刻视频 | [制作决策](decisions.md) 及实际参考视频；审片范围由所选入口的交付流程决定，明确要求审片、评估或画面修改时再读取 [审片](review.md)。 |
+| 明确要求视频转可复用模板 | 所选入口负责自己的分阶段读集；按 [参考视频读取与测量](reference-video.md) 检查实际参考视频；按影响应用共享 [制作决策](decisions.md)、[审片](review.md) 与 [可移植工程](portable-project.md)。 |
+| 复刻视频 | [参考视频读取与测量](reference-video.md)、[制作决策](decisions.md) 及实际参考视频；审片范围由所选入口的交付流程决定，明确要求审片、评估或画面修改时再读取 [审片](review.md)。 |
 | 局部文字／视觉修改或动态审片 | 审片；沿用已有结构，不补读整套原创流程 |
 | 修改已有内容，含声音、模板内容替换和大幅重编 | 追加 [共享修改流程](edit.md)；首次创作、仅查看／审片／导出无需因此加载 |
 | 制作／修改多段画面、截图、复现对象或状态延续 | 追加制作决策；多段模板草稿也适用，不能因使用默认内容省略 |
