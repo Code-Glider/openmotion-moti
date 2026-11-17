@@ -92,7 +92,7 @@ function RecordingActions({ onAddToTimeline }: { onAddToTimeline: (path: string)
         <div className="flex items-center gap-2"><RemixIcon name="mic-line" size={18} /><h2 className="text-step-14 font-semibold">{t('Record voiceover')}</h2></div>
         <p className="text-step-11 text-text-3">{t('Record, listen back, then add it at the playhead. Your recording stays local.')}</p>
         {capturing ? <>
-          <span className="text-step-20 font-mono text-center" role="status">{recorder.state === 'recording' ? `${Math.floor(recorder.seconds / 60).toString().padStart(2, '0')}:${(recorder.seconds % 60).toString().padStart(2, '0')}` : t(recorder.state === 'encoding' ? 'Preparing recording…' : 'Waiting for microphone…')}</span>
+          <span className="text-step-18 font-mono text-center" role="status">{recorder.state === 'recording' ? `${Math.floor(recorder.seconds / 60).toString().padStart(2, '0')}:${(recorder.seconds % 60).toString().padStart(2, '0')}` : t(recorder.state === 'encoding' ? 'Preparing recording…' : 'Waiting for microphone…')}</span>
           <Button variant="primary" disabled={recorder.state === 'encoding'} onClick={recorder.stop}>{t(recorder.state === 'requesting' ? 'Cancel microphone request' : 'Stop recording')}</Button>
         </> : recorder.file ? <>
           <audio ref={media} src={url} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
