@@ -11,7 +11,7 @@ Accept presentation and automatic MCP activation independently.
 
 1. Open the actual local template library once, without creating a project. Detailed library inspection is unnecessary.
 2. Deliver the maintained welcome and exactly three full-duration project-preview cards. On Codex, publish the self-contained HTML fragment and place its returned content reference directly after the welcome in the final reply. Native MCP Apps remain an alternative for original reference films when native tools are available.
-3. Preserve the three IDs/order sampled without replacement from the nine-entry pool in `shared/onboarding-templates.ts` (the catalog IDs referenced by PR #472). Confirm that the welcome and all three cards are visible; full audiovisual review remains a separate user check.
+3. Preserve the three IDs/order sampled without replacement from the five-entry pool in `shared/onboarding-templates.ts` (the catalog IDs referenced by PR #472). Confirm that the welcome and all three cards are visible; full audiovisual review remains a separate user check.
 
 `onboardingStatus` and `onboardingComplete` describe presentation only. Setup and connection recovery leave it `awaiting_host_delivery` and incomplete until visible delivery is confirmed; library preparation failure remains `preview_unavailable`. `hostHandoff.automaticActivation`, its reason and `hostSessionVerified` report the independent connection check. A working native connection can present the component even when the installer's control socket is unavailable. Visible cards do not prove that installation loaded MCP automatically, and activation failure does not invalidate an otherwise verified presentation.
 
@@ -19,7 +19,7 @@ Accept presentation and automatic MCP activation independently.
 
 Default preparation freezes three IDs/order once across `catalog`, `inlinePresentation`, `hostHandoff` and recovery. It returns `prepared` with an integrity-locked HTML path, SHA256 and the selected IDs. The fragment embeds only those three projects' prebuilt WebM (VP9)/JPEG bytes. Complete silent videos retain 12 fps, with widths up to 512 px and two-pass 20 kbit/s encoding. The builder checks the largest three-media combination, and the renderer enforces the complete document's 1,000,000-byte limit; changing codecs does not guarantee fine-text or full-screen fidelity. Explicit builtin examples retain their existing MP4 previews. It needs neither external media origins nor current-chat MCP activation. Publish it with `scripts/inline-onboarding.mjs --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY` using the current chat's explicitly permitted visualization directory. After opening the library, stream `inlinePresentation.welcomeMarkdown` followed by the returned `contentReference` in the final reply. The document itself contains cards only. A prepared/published file does not establish visible delivery.
 
-These are **silent renders of the repository's editable projects**, labeled as project previews, not original reference films or a claim of verified recreation fidelity. All nine previews are prebuilt by maintainers with `node scripts/build-onboarding-previews.mjs`; installation does no rendering or media download. The builder uses pinned Hyperframes, Chrome and FFmpeg, strips audio only in scratch copies, preserves complete project duration, and records source/media hashes. `--hydrate-fonts` may retrieve hash-verified project fonts missing from a source checkout. Original reference videos are never downloaded for embedding. No source project is changed by the build.
+These are **silent renders of the repository's editable projects**, labeled as project previews, not original reference films or a claim of verified recreation fidelity. All five previews are prebuilt by maintainers with `node scripts/build-onboarding-previews.mjs`; installation does no rendering or media download. The builder uses pinned Hyperframes, Chrome and FFmpeg, strips audio only in scratch copies, preserves complete project duration, and records source/media hashes. `--hydrate-fonts` may retrieve hash-verified project fonts missing from a source checkout. Original reference videos are never downloaded for embedding. No source project is changed by the build.
 
 ### Native original reference cards (alternative)
 
@@ -69,7 +69,7 @@ The top-level `welcomeMarkdown` supplies these paragraphs from the maintained lo
 
 ### Explicit builtin compatibility
 
-Explicit builtin examples can still use the same prepared document route. They never replace the nine-entry pool's selected projects. Automatic MCP activation is assessed separately for either route.
+Explicit builtin examples can still use the same prepared document route. They never replace the five-entry pool's selected projects. Automatic MCP activation is assessed separately for either route.
 
 ### Accepted template selection
 
@@ -80,7 +80,7 @@ Use the exact accepted ID and scope through [accepted template selection](../ski
 
 ## Maintained recommendation selection
 
-`shared/onboarding-templates.ts` owns a curated pool of nine references: **Bolt Skills｜团队能力展示**, **A New Era of No-Code**, **Magic Share**, **Glean Agents 发布**, **HyperOS 官网界面动效 1**, **Salsa｜音乐主题 Doodle**, **功能更新｜Voice mode**, **Dia 开放给 Arc 会员**, and **免费语音输入**. Each onboarding preparation samples three distinct entries without replacement. Inline cards, native handoff and the fallback catalog share that exact selection and order. The prepared document keeps its selection while playing, returning from detail or changing host context; only a new preparation draws again. Independent preparations may overlap.
+`shared/onboarding-templates.ts` owns a curated pool of five references: **Bolt Skills｜团队能力展示**, **Glean Agents 发布**, **功能更新｜Voice mode**, **Dia 开放给 Arc 会员**, and **免费语音输入**. Each onboarding preparation samples three distinct entries without replacement. Inline cards, native handoff and the fallback catalog share that exact selection and order. The prepared document keeps its selection while playing, returning from detail or changing host context; only a new preparation draws again. Independent preparations may overlap.
 
 Use the three prepared IDs returned in `inlinePresentation.templateIds`, the ordered `catalog.templates`, or the native handoff arguments. Do not draw a separate set for another surface. Every selected entry is a reference video with motion guidance, not a directly copyable builtin project; read its exact ID through `openmotion_get_template` and follow `openmotion-recreate` after the user submits their brief.
 

@@ -9,7 +9,7 @@ import { loadTemplatePresentation } from '../shared/mcp-template-recommendations
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const templateIds = ['motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b',
-  'motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc', 'motion-dac924da-010f-4445-baf3-a39cb033e48f'];
+  'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044', 'motion-dac924da-010f-4445-baf3-a39cb033e48f'];
 const threadId = 'installing-chat', dataDirectory = '/workspace/existing-motion-data';
 const presentation = loadTemplatePresentation();
 function receipt() {

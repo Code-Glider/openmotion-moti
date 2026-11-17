@@ -135,7 +135,7 @@ test('every three-reference selection requires native cards with image and video
   t.after(() => rm(directory, { recursive: true, force: true }));
   const presentation = loadTemplatePresentation();
   assert.deepEqual(presentation.content._meta.ui.csp.resourceDomains, ['blob:', 'https://r.open-design.ai']);
-  for (let start = 0; start < 9; start += 3) {
+  for (let start = 0; start <= onboardingTemplateIds.length - 3; start++) {
     const templateIds = onboardingTemplateIds.slice(start, start + 3);
     const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, start + '.html'), language: 'zh', templateIds, previewSource: 'reference' });
     assert.equal(result.status, 'native_required');
@@ -146,7 +146,7 @@ test('every three-reference selection requires native cards with image and video
   }
 });
 
-test('all nine project previews and the largest three fit a self-contained document', async t => {
+test('all approved project previews and the largest three fit a self-contained document', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-all-project-previews-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const previews = loadInlineProjectPreviews([...onboardingTemplateIds]);
@@ -156,7 +156,7 @@ test('all nine project previews and the largest three fit a self-contained docum
     assert.equal(preview.videoMimeType, 'video/webm');
   }
   const largest = previews.sort((a, b) => (b.videoBase64.length + b.posterBase64.length) - (a.videoBase64.length + a.posterBase64.length)).slice(0, 3).map(item => item.id);
-  for (const [index, templateIds] of [[...onboardingTemplateIds.slice(0, 3)], [...onboardingTemplateIds.slice(3, 6)], [...onboardingTemplateIds.slice(6)], largest].entries()) {
+  for (const [index, templateIds] of [...Array.from({ length: onboardingTemplateIds.length - 2 }, (_, start) => onboardingTemplateIds.slice(start, start + 3)), largest].entries()) {
     const result = await renderInlineOnboarding({ appRoot, templateIds, output: path.join(directory, index + '.html') });
     assert.equal(result.status, 'prepared');
     assert(result.bytes < 1_000_000);
