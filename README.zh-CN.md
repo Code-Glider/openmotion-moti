@@ -756,9 +756,4 @@ OpenMotion 采用 [Apache-2.0](LICENSE)许可。第三方代码、模板、媒�
 
 ## Star 历史趋势
 
-<a href="https://www.star-history.com/?repos=nexu-io%2Fopenmotion&amp;type=date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date&amp;theme=dark">
-    <img alt="OpenMotion 的 GitHub Star 数量随时间的变化" src="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date">
-  </picture>
-</a>
+[![截至 2026 年 11 月 17 日的 OpenMotion GitHub Star 趋势。点击查看最新曲线。](docs/readme/star-history.svg)](https://www.star-history.com/?repos=nexu-io%2Fopenmotion&type=date)

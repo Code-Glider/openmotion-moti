@@ -756,9 +756,4 @@ OpenMotion のライセンスは [Apache-2.0](../LICENSE)です。第三者の�
 
 ## スター数の推移
 
-<a href="https://www.star-history.com/?repos=nexu-io%2Fopenmotion&amp;type=date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date&amp;theme=dark">
-    <img alt="GitHub での OpenMotion のスター数の推移" src="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date">
-  </picture>
-</a>
+[![2026年11月17日までの OpenMotion の GitHub スター数の推移。クリックすると最新のグラフを表示します。](readme/star-history.svg)](https://www.star-history.com/?repos=nexu-io%2Fopenmotion&type=date)

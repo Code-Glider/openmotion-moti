@@ -206,6 +206,7 @@ const localReadmeResourceFiles = [
   'docs/readme/openmotion-logo.svg',
   'docs/readme/community-star.svg', 'docs/readme/community-star.zh-CN.svg', 'docs/readme/community-star.ja.svg',
   'docs/readme/community-star.gif',
+  'docs/readme/star-history.svg',
   'docs/readme/capcut-claude-motion-cover.webp',
   'docs/readme/capcut-claude-motion-cover.ja.webp',
   'docs/readme/capcut-claude-motion-cover.zh-CN.webp',

@@ -780,9 +780,4 @@ The former HTML Anything application is preserved on the [`legacy` branch](https
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=nexu-io%2Fopenmotion&amp;type=date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date&amp;theme=dark">
-    <img alt="GitHub stars for OpenMotion over time" src="https://api.star-history.com/chart?repos=nexu-io/openmotion&amp;type=date">
-  </picture>
-</a>
+[![OpenMotion GitHub stars through November 17, 2026. Open the live chart on Star History.](docs/readme/star-history.svg)](https://www.star-history.com/?repos=nexu-io%2Fopenmotion&type=date)
