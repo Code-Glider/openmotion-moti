@@ -122,11 +122,12 @@ test('Cloud discovery uses workspace credentials; origin changes stop queued cal
   assert(!models.models.some(m => m.modelId === 'language-model'));
   await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-music', modality: 'audio', mode: 'text-to-speech', prompt: 'calm music' }), /does not match the selected Cloud model/);
   await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-speech', modality: 'audio', mode: 'text-to-audio', prompt: 'hello' }), /does not match the selected Cloud model/);
+  // A live speech model without checked voices still requires one.
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-speech', modality: 'audio', prompt: 'hello' }), /Voice ID is required/);
   const first = await gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-image', modality: 'image', prompt: 'cup' });
   await gateway.configureProvider('opendesign', { baseUrl: 'https://changed.example' });
   assert.match((await finish(store, first.id)).error!, /origin changed/); assert.equal(calls, 1);
-  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-speech', modality: 'audio', prompt: 'hello' }), /Voice ID is required/);
-  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:byteplus-tts-2', modality: 'audio', prompt: 'hello', parameters: { voice: 'zh_female_cancan_mars_bigtts' } }), /Invalid Speech voice/);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:byteplus-tts-2', modality: 'audio', prompt: 'hello', parameters: { voice: '' } }), /Invalid Speech voice/);
   assert.equal(calls, 1);
   await gateway.configureProvider('opendesign', { apiKey: null });
   assert.equal((await gateway.status()).providers.find(p => p.id === 'opendesign')!.enabled, false);

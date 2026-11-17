@@ -55,19 +55,24 @@ test('Kokoro sends spoken text in prompt alongside native voice and speed, witho
   assert.deepEqual(urls, ['https://cdn.example/voice.wav']);
 });
 
-test('OpenDesign speech offers checked voices with a default, and keeps a free voice ID for other models', () => fixture(async store => {
+test('OpenDesign speech offers checked voices with a default, accepts other voice IDs, and keeps a free voice ID for other models', () => fixture(async store => {
   const byteplus = builtinModels.find(m => m.id === 'opendesign:byteplus-tts-2')!, eleven = builtinModels.find(m => m.id === 'opendesign:elevenlabs-v3')!;
   const [voice] = generationOptions(byteplus)!.fields;
-  assert.deepEqual([voice.key, voice.kind, voice.default, voice.required], ['voice', 'choice', 'zh_female_vv_uranus_bigtts', undefined]);
+  assert.deepEqual([voice.key, voice.kind, voice.default, voice.required, voice.allowCustom], ['voice', 'choice', 'zh_female_vv_uranus_bigtts', undefined, true]);
   assert.equal(generationOptions(eleven)!.fields[0].choices!.length, 6);
-  // A Seed TTS 1.0 speaker fails upstream after submission, so it is rejected locally.
-  assert.throws(() => validateGenerationOptions(byteplus, { voice: 'zh_female_cancan_mars_bigtts' }), /Invalid Speech voice/);
+  // The list is a checked subset: an unlisted voice ID still reaches the provider, but a blank or non-string one does not.
+  assert.doesNotThrow(() => validateGenerationOptions(byteplus, { voice: 'zh_female_xiaohe_uranus_bigtts' }));
+  assert.throws(() => validateGenerationOptions(byteplus, { voice: ' ' }), /Invalid Speech voice/);
+  assert.throws(() => validateGenerationOptions(eleven, { voice: 1 }), /Invalid Speech voice/);
   assert.deepEqual(modelDefaults({ ...eleven, id: 'account:elevenlabs-v3', provider: 'account' }), { voice: '21m00Tcm4TlvDq8ikWAM' });
   // A saved override still wins over the built-in default.
   assert.deepEqual(modelDefaults({ ...eleven, defaults: { voice: 'JBFqnCBsd6RMkjVDRZzb' } }), { voice: 'JBFqnCBsd6RMkjVDRZzb' });
   const other = { ...byteplus, id: 'opendesign:other-tts', modelId: 'other-tts' };
   assert.deepEqual(modelDefaults(other), {});
   assert.throws(() => validateGenerationOptions(other, {}), /Voice ID is required/);
+  const prototypeName = { ...byteplus, id: 'opendesign:constructor', modelId: 'constructor' };
+  assert.deepEqual(modelDefaults(prototypeName), {});
+  assert.throws(() => validateGenerationOptions(prototypeName, {}), /Voice ID is required/);
   assert.deepEqual(modelDefaults({ ...byteplus, mode: 'text-to-audio' }), {});
   // Discovery shows the default through the schema; the model's saved defaults stay empty for Settings.
   const gateway = gatewayFor(store);
