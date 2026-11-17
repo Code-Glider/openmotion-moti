@@ -9,6 +9,7 @@ import {
   codeEditor,
   text as copyText,
   display,
+  FieldValidationError,
   field,
   languageScope,
   m,
@@ -104,7 +105,9 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
         (error) => {
           busy = false;
           if (editor.needsRefresh && !creation.pending) retry = () => run(() => editor.retryRefresh());
-          if (!disposed) render((error as Error).message);
+          if (error instanceof FieldValidationError) retry = undefined;
+          if (!disposed)
+            render(error instanceof FieldValidationError ? m("请检查标记的字段。") : (error as Error).message);
         },
       )
       .then(() => {

@@ -12,7 +12,7 @@ it("retains an incomplete numeric draft across controlled updates and rejects it
   control.readonly(true);
   control.value(3);
   expect(control.input.value).toBe("");
-  expect(() => control.validate()).toThrow("有效数值");
+  expect(() => control.validate()).toThrow("Enter a valid value");
   control.readonly(false);
   control.input.value = "2";
   control.input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", shiftKey: true }));
@@ -69,4 +69,48 @@ it("navigates a collapsed hierarchy without selecting hidden descendants or losi
   key("Home");
   key("Enter");
   expect(select).toHaveBeenCalledTimes(2);
+});
+
+it("describes invalid bounds, focuses the field and clears only its own accessibility description on correction", () => {
+  const control = numberField(document, {
+    label: "Duration",
+    unit: "s",
+    min: 0,
+    exclusiveMin: true,
+    max: 5,
+    message: (issue) => `Duration: ${issue}`,
+    change() {},
+  });
+  document.body.append(control.element);
+  control.input.setAttribute("aria-describedby", "existing-help");
+  control.input.value = "0";
+  control.input.dispatchEvent(new Event("input"));
+  expect(control.input.getAttribute("aria-invalid")).toBe("true");
+  expect(control.error.textContent).toBe("Duration: exclusiveMinimum");
+  expect(control.input.getAttribute("aria-describedby")).toBe(`existing-help ${control.error.id}`);
+  expect(() => control.validate()).toThrow("exclusiveMinimum");
+  expect(document.activeElement).toBe(control.input);
+  control.input.value = "6";
+  control.input.dispatchEvent(new Event("input"));
+  expect(control.error.textContent).toBe("Duration: maximum");
+  control.input.value = "0.001";
+  control.input.dispatchEvent(new Event("input"));
+  expect(control.check()).toBe(true);
+  expect(control.error.hidden).toBe(true);
+  expect(control.input.getAttribute("aria-describedby")).toBe("existing-help");
+  expect(control.input.hasAttribute("aria-errormessage")).toBe(false);
+});
+
+it("retains a required touched optional draft during controlled refresh and resets feedback on a new context", () => {
+  const control = numberField(document, { label: "Inherited value", unit: "", optional: true, change() {} });
+  document.body.append(control.element);
+  expect(control.check()).toBe(true);
+  expect(control.check(true)).toBe(false);
+  control.input.focus();
+  control.value(2);
+  expect(control.input.value).toBe("");
+  expect(control.error.hidden).toBe(false);
+  control.value(undefined, true);
+  expect(control.error.hidden).toBe(true);
+  expect(control.input.getAttribute("aria-invalid")).toBe("false");
 });

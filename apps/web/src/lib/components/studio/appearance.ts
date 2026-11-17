@@ -1,5 +1,16 @@
 import type { Appearance } from "@open-motion/motion/contract";
-import { attr, text as copyText, disclosure, field, m, note, numberField, slot } from "../../locale/index.js";
+import {
+  attr,
+  text as copyText,
+  disclosure,
+  display,
+  field,
+  fieldFeedback,
+  m,
+  note,
+  numberField,
+  slot,
+} from "../../locale/index.js";
 export class AppearanceFields {
   readonly element: HTMLElement;
   readonly textElement: HTMLElement;
@@ -7,6 +18,7 @@ export class AppearanceFields {
   private textFields = new Map<"align" | "decoration", HTMLSelectElement>();
   private touched = new Set<keyof Appearance>();
   private color: HTMLInputElement;
+  private colorFeedback: ReturnType<typeof fieldFeedback>;
   constructor(document: Document, changed: () => void) {
     const view = disclosure(document, m("外观与静态位移")),
       grid = slot(document, "pair");
@@ -72,7 +84,9 @@ export class AppearanceFields {
     this.color = document.createElement("input");
     attr(this.color, "aria-label", m("文字颜色"));
     attr(this.color, "placeholder", "#RRGGBB");
+    this.colorFeedback = fieldFeedback(this.color);
     this.color.oninput = () => {
+      this.checkColor();
       this.touched.add("color");
       changed();
     };
@@ -80,6 +94,7 @@ export class AppearanceFields {
       note(document, m("位移与旋转是静态基值；关键帧偏移独立叠加。未修改项保留原生继承与表达式。")),
       grid,
       field(document, m("文字颜色"), this.color),
+      this.colorFeedback.element,
     );
   }
   read(): Appearance {
@@ -90,14 +105,16 @@ export class AppearanceFields {
       if (this.touched.has(key)) Object.assign(value, { [key]: select.value || null });
     return value;
   }
+  private checkColor() {
+    const valid = /^#[0-9a-fA-F]{6}$/.test(this.color.value);
+    this.colorFeedback.show(valid ? "" : display(this.color, m("请输入 #RRGGBB 格式的颜色。")));
+    copyText(this.colorFeedback.element, valid ? "" : m("请输入 #RRGGBB 格式的颜色。"));
+    return valid;
+  }
   validate() {
-    for (const [key, control] of this.fields)
-      if (this.touched.has(key)) {
-        control.validate();
-        if (!control.input.value) throw new Error(`${control.input.getAttribute("aria-label")}请输入有效数值`);
-      }
-    if (this.touched.has("color") && !/^#[0-9a-fA-F]{6}$/.test(this.color.value))
-      throw new Error("文字颜色需要 #RRGGBB");
+    for (const [key, control] of this.fields) if (this.touched.has(key)) control.validate();
+    if (this.touched.has("color") && !this.checkColor())
+      this.colorFeedback.reject(display(this.color, m("请输入 #RRGGBB 格式的颜色。")));
   }
   block(value: boolean, text = false) {
     for (const control of this.fields.values()) control.readonly(value);
@@ -106,7 +123,11 @@ export class AppearanceFields {
     for (const select of this.textFields.values()) select.disabled = value || !text;
   }
   update(value: Appearance, pending: Appearance | undefined, reset: boolean) {
-    if (reset || !pending) this.touched.clear();
+    if (reset || !pending) {
+      this.touched.clear();
+      this.colorFeedback.show("");
+      copyText(this.colorFeedback.element, "");
+    }
     for (const [key, select] of this.textFields)
       select.value = (pending && Object.hasOwn(pending, key) ? pending[key] : value[key]) ?? "";
     for (const [key, control] of this.fields) control.value(pending?.[key] ?? value[key], reset);

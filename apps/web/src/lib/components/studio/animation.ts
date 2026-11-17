@@ -89,7 +89,7 @@ export class AnimationEditor {
     };
     this.runEase.onchange = change;
     this.start = numberField(document, { label: m("动画开始秒"), unit: "s", min: 0, change });
-    this.duration = numberField(document, { label: m("动画持续秒"), unit: "s", min: 0, change });
+    this.duration = numberField(document, { label: m("动画持续秒"), unit: "s", min: 0, exclusiveMin: true, change });
     timing.append(
       field(document, m("动画开始秒"), this.start.element),
       field(document, m("动画持续秒"), this.duration.element),

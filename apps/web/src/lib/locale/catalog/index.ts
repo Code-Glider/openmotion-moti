@@ -9,6 +9,7 @@ import { feedback3 } from "./feedback/context.js";
 import { feedback1 } from "./feedback/exports.js";
 import { feedback5 } from "./feedback/media.js";
 import { feedback4 } from "./feedback/tasks.js";
+import { validation } from "./feedback/validation.js";
 import { library2 } from "./library/catalog.js";
 import { library1 } from "./library/detail.js";
 import { library4 } from "./library/navigation.js";
@@ -18,6 +19,7 @@ import { library0 } from "./library/templates.js";
 import { workspace1 } from "./workspace/controls.js";
 import { workspace0 } from "./workspace/history.js";
 export const catalog = {
+  ...validation,
   ...recovery,
   ...feedback0,
   ...feedback1,

@@ -39,7 +39,7 @@ export function playerControls(
     variant: "ghost",
     compact: true,
     onClick: () => {
-      seek.validate();
+      if (!seek.check()) return;
       options.control("seek", seek.input.valueAsNumber);
     },
   });

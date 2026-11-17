@@ -1,5 +1,5 @@
 import * as atoms from "@open-motion/components";
-import { attr, text } from "./bindings.js";
+import { attr, display, text } from "./bindings.js";
 import { type Copy, m, original } from "./messages.js";
 export function numberField(
   document: Document,
@@ -9,10 +9,26 @@ export function numberField(
     ...options,
     label: original(options.label),
     unit: original(options.unit),
+    message: (issue) => {
+      const message =
+        issue === "minimum"
+          ? m("请输入不小于 {0} 的数值。", [options.min ?? 0])
+          : issue === "exclusiveMinimum"
+            ? m("请输入大于 {0} 的数值。", [options.min ?? 0])
+            : issue === "maximum"
+              ? m("请输入不大于 {0} 的数值。", [options.max ?? 0])
+              : m("请输入有效数值。");
+      text(view.error, message);
+      return display(view.input, message);
+    },
+    change: (value) => {
+      view.check(true, false);
+      options.change(value);
+    },
   });
   attr(view.input, "aria-label", options.label);
   text(view.element.querySelector(".om-number__unit")!, options.unit);
-  return view;
+  return { ...view, validate: () => view.validate(true), check: () => view.check(true) };
 }
 export function tooltip(document: Document, trigger: HTMLButtonElement, label: Copy) {
   const view = atoms.tooltip(document, trigger, original(label));
