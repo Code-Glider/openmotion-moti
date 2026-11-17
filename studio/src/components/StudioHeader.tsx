@@ -151,6 +151,8 @@ export const StudioHeader = memo(function StudioHeader({
         {host?.windowMenu ?? <Dock.WindowMenu />}
         {host?.desktopLink !== false && <OpenInDesktopButton />}
         {!host?.mvpEditor && host?.communityAction}
+        <div className={host?.projectAction ? "motion-header-project-actions" : "contents"}>
+        {host?.projectAction}
         <Tooltip
           disabled={host?.mvpEditor}
           label={
@@ -186,6 +188,7 @@ export const StudioHeader = memo(function StudioHeader({
             {isRendering ? t("Rendering…") : t("Export")}
           </Button>
         </Tooltip>
+        </div>
       </div>
     </div>
     {host?.mvpEditor && <ExportDialog open={exportOpen} onOpenChange={setExportOpen} triggerRef={exportTriggerRef} />}

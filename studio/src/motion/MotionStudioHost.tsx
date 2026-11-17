@@ -14,6 +14,7 @@ import { MediaGatewayProvider } from './MediaGatewayContext';
 import { usePlayerStore } from '../player/store/playerStore';
 import { workspacePresentation } from '../../../shared/workspace-url';
 import { WorkspaceProject } from './WorkspaceProject';
+import { ProjectAgentAction } from './ProjectAgentAction';
 import { WorkspaceSaveStatus } from './WorkspaceSaveStatus';
 import { trackMotion } from './tracking';
 import { OpenMotionAgentTools } from './OpenMotionAgentTools';
@@ -78,6 +79,7 @@ const host: StudioHost = {
   historyActions: <WorkspaceHistoryActions />,
   previewAction: <></>,
   windowMenu: <EditorLayoutMenu />,
+  projectAction: <ProjectAgentAction />,
   themeToggle: false,
 
   AppFrame: MotionEditorFrame,
