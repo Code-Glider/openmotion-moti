@@ -7,7 +7,7 @@ import { filename } from "./assetHelpers";
 export function InlineAssetRename({ asset, displayName, onRename, onDone }: {
   asset: string;
   displayName?: string;
-  onRename: (oldPath: string, newPath: string) => void;
+  onRename: (assetPath: string, displayName: string) => void;
   onDone: () => void;
 }) {
   const { t } = useI18n();
@@ -18,26 +18,24 @@ export function InlineAssetRename({ asset, displayName, onRename, onDone }: {
   const finished = useRef(false);
   useEffect(() => {
     input.current?.focus({ preventScroll: true });
-    const dot = original.lastIndexOf(".");
-    input.current?.setSelectionRange(0, displayName === undefined && dot > 0 ? dot : original.length);
+    input.current?.setSelectionRange(0, original.length);
   }, [original, displayName]);
   const finish = () => {
     if (finished.current) return;
     const name = draft.trim();
-    if (name && (displayName === undefined ? /[/\\]/.test(name) || name.includes("..") : name.length > 200 || /[\x00-\x1f\x7f]/.test(name))) {
+    if (name && (name.length > 200 || /[\x00-\x1f\x7f]/.test(name))) {
       setInvalid(true);
       return;
     }
     finished.current = true;
     // Empty or unchanged names simply restore the existing caption.
     if (name && name !== original) {
-      const dir = asset.slice(0, asset.lastIndexOf("/") + 1);
-      onRename(asset, displayName === undefined ? `${dir}${name}` : name);
+      onRename(asset, name);
     }
     onDone();
   };
   return <div className="min-w-0 flex-1" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => e.stopPropagation()} onDragStart={e => { e.preventDefault(); e.stopPropagation(); }} onContextMenu={e => e.stopPropagation()}>
-    <input ref={input} value={draft} maxLength={displayName === undefined ? undefined : 200} aria-label={t("Rename {value0}", { value0: original })} aria-invalid={invalid || undefined}
+    <input ref={input} value={draft} maxLength={200} aria-label={t("Rename {value0}", { value0: original })} aria-invalid={invalid || undefined}
       className="motion-asset-name-input"
       onChange={e => { setDraft(e.target.value); setInvalid(false); }}
       onBlur={finish}
@@ -47,6 +45,6 @@ export function InlineAssetRename({ asset, displayName, onRename, onDone }: {
         if (e.key === "Enter") { e.preventDefault(); finish(); }
         if (e.key === "Escape") { e.preventDefault(); finished.current = true; onDone(); }
       }} />
-    {invalid && <span role="alert" className="text-[10px] text-danger-ink">{t(displayName === undefined ? "Name cannot contain slashes or two consecutive dots." : ASSET_NAME_ERROR)}</span>}
+    {invalid && <span role="alert" className="text-[10px] text-danger-ink">{t(ASSET_NAME_ERROR)}</span>}
   </div>;
 }

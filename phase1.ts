@@ -1,5 +1,5 @@
 import { readProjectAssetNames } from './project-asset-names.ts';
-import { namingLanguage, validateAssetDisplayName } from './shared/asset-names.ts';
+import { namingLanguage, projectAssetKind, validateAssetDisplayName } from './shared/asset-names.ts';
 import { projectArchive } from './project-archive.ts';
 import { manageProject } from './project-management.ts';
 import { probeLibraryMedia } from './gateway/asset-probe.ts';
@@ -488,7 +488,7 @@ export class Phase1Service {
           renamed.add(assetPath);
           const displayName = validateAssetDisplayName(item.name);
           const file = await stat(await scoped.safePath(assetPath));
-          if (!file.isFile() || !/\.(?:png|jpe?g|webp|gif|svg|avif|mp4|mov|webm|mkv|m4v|mp3|wav|m4a|aac|ogg|flac|aiff?|ttf|otf|ttc|woff2?)$/i.test(assetPath)) throw new Error('INVALID_ASSET_PATH');
+          if (!file.isFile() || projectAssetKind(assetPath) < 0) throw new Error('INVALID_ASSET_PATH');
           const record = records.find(asset => asset.path === assetPath);
           if (record) Object.assign(record, { originalName: record.originalName ?? record.name ?? path.basename(assetPath), name: displayName, nameSource: 'user' });
           else records.push({ path: assetPath, originalName: path.basename(assetPath), name: displayName, nameSource: 'user' });

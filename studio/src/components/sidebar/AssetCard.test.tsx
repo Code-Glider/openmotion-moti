@@ -52,10 +52,10 @@ describe("inline asset rename", () => {
     });
     return { input, host, rename, done };
   }
-  it("saves on blur in the original directory", () => {
+  it("saves a display name on blur even without a resolved caption", () => {
     const { input, rename, done } = setup("new.mp4");
     act(() => input.blur());
-    expect(rename).toHaveBeenCalledWith("assets/video.mp4", "assets/new.mp4");
+    expect(rename).toHaveBeenCalledWith("assets/video.mp4", "new.mp4");
     expect(done).toHaveBeenCalledOnce();
   });
   it("commits Enter once even if followed by blur", () => {
@@ -71,14 +71,14 @@ describe("inline asset rename", () => {
     expect(rename).not.toHaveBeenCalled();
     expect(done).toHaveBeenCalledOnce();
   });
-  it("restores empty names and blocks path traversal", () => {
+  it("restores empty names and blocks control characters", () => {
     const empty = setup("   ");
     act(() => empty.input.blur());
     expect(empty.rename).not.toHaveBeenCalled();
     expect(empty.done).toHaveBeenCalledOnce();
     act(() => root?.unmount());
     root = null;
-    const invalid = setup("../other.mp4");
+    const invalid = setup("bad\u0001name");
     act(() => invalid.input.blur());
     expect(invalid.rename).not.toHaveBeenCalled();
     expect(invalid.done).not.toHaveBeenCalled();
@@ -206,7 +206,7 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
   });
   expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
   act(() => input.blur());
-  expect(rename).toHaveBeenCalledWith('assets/music.wav', 'assets/music 111.wav');
+  expect(rename).toHaveBeenCalledWith('assets/music.wav', 'music 111.wav');
   expect(host.querySelector('input')).toBeNull();
 });
 
