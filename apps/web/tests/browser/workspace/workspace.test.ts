@@ -164,6 +164,19 @@ afterEach(async (context) => {
       context.task.result.errors?.map((error) => error.message).join("\n") ?? "failed",
     );
     try {
+      const bounded = (value: string) => value.replace(/https?:\/\/\S+/gi, "[url]").slice(0, 400);
+      report.diagnostics = {
+        stage: report.stage,
+        preview: (await driver.page.getByLabel("预览状态", { exact: true }).allTextContents()).map(bounded),
+        operation: (await driver.page.locator("[aria-live]").allTextContents()).map(bounded),
+        frameCount: await driver.page.locator("iframe").count(),
+        errors: driver.errors.slice(-8).map(bounded),
+      };
+      console.info("[workspace failure diagnostics]", JSON.stringify(report.diagnostics));
+    } catch {
+      console.info("[workspace failure diagnostics] page observation unavailable");
+    }
+    try {
       await driver.capture("failure");
     } catch (error) {
       report.captureFailure = String(error);
