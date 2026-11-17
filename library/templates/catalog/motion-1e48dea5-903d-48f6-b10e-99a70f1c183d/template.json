@@ -106,13 +106,6 @@
         "url": "https://r.open-design.ai/files/bc7667dd48041110956c8cd724e8119b91de7d3a6a6daedfb91bdbbce0a5fde1"
       },
       {
-        "path": "hyperframes.json",
-        "mimeType": "application/json",
-        "bytes": 69,
-        "sha256": "b8ea4fad1e3681ba66e121d8a033e7194a6e9ea345f3f5122fe8a9824e8f9d04",
-        "url": "https://r.open-design.ai/files/b8ea4fad1e3681ba66e121d8a033e7194a6e9ea345f3f5122fe8a9824e8f9d04"
-      },
-      {
         "path": "index.html",
         "mimeType": "text/html",
         "bytes": 2117,

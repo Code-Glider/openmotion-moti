@@ -17,7 +17,7 @@ Reference guidance with an editable project candidate. Human visual acceptance i
 git lfs pull --include="library/templates/catalog/motion-1e48dea5-903d-48f6-b10e-99a70f1c183d/source/assets/lfs/**" --exclude=""
 ```
 
-- Edit copy in the HTML/composition and its project scripts; preserve timing, relative asset paths and attribution. Refresh the source manifest after changes. Updated public project-file hashes and URLs are required before automatic catalog creation can consume a revised source.
+- Edit copy in the HTML/composition and its project scripts; preserve timing, relative asset paths and attribution. Refresh the source manifest after changes. Keep the project-file paths, byte lengths and hashes in `template.json.entry.files` aligned with the revised source. Local and hosted project creation read the registered source; a manual CMS upload or new ZIP URL is not required.
 - Packaging adjustments move audio/large fonts into `assets/lfs/`; the Lark Three.js core is minified with its license retained. Source loading and file-integrity checks do not establish full playback, adaptation or human visual acceptance.
 
 ## Acknowledgements

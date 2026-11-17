@@ -98,13 +98,13 @@
     },
     {
       "path": "assets/lfs/original-audio.m4a",
-      "bytes": 187282,
-      "sha256": "e7ad834b163a1f3ec696c9cecfbbba3d25d7e011358712f14a759219a29fe51f"
+      "sha256": "e7ad834b163a1f3ec696c9cecfbbba3d25d7e011358712f14a759219a29fe51f",
+      "bytes": 187282
     },
     {
       "path": "assets/motion.js",
-      "bytes": 973,
-      "sha256": "08a9a3c7a0f864cb023c4bb3a349924b8b687ebd7ff28b0e198425c7048e8763"
+      "bytes": 1013,
+      "sha256": "f068224e6b3274ba05b23181a261ec678f13f4ad0bf1b97dc5dda5aab1e510d2"
     },
     {
       "path": "assets/OFL-inter.txt",

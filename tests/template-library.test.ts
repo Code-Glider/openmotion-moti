@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { runInNewContext } from 'node:vm';
 import { zip } from '../scripts/package.ts';
 import { lfsPointer } from '../shared/repository-template-catalog.ts';
 import { checkTemplateLibrary, git, scope } from '../scripts/check-template-library.ts';
@@ -66,6 +67,17 @@ test('imported templates preserve IDs, eleven locales and filtering data while d
   const { images, remoteImages } = await inspectCatalogAssets(catalogRoot, manifest.templateIds);
   assert(images >= 1419 && remoteImages >= 236, 'Small images are local; large originals have CMS rendition links');
 });
+test('voice mode registers its timeline without replacing existing engine timelines', async () => {
+  const source = await readFile(path.join(catalogRoot, 'motion-dac924da-010f-4445-baf3-a39cb033e48f/source/assets/motion.js'), 'utf8');
+  const existing: Record<string, unknown> = { engine: {} };
+  const window = { __timelines: existing };
+  const node = { style: {}, textContent: '', querySelector: () => ({ style: {} }) };
+  const timeline = { to() { return this; } };
+  runInNewContext(source, { window, document: { querySelector: () => node }, gsap: { timeline: () => timeline } });
+  assert.equal(window.__timelines, existing, 'Keep the shared engine/composition registry');
+  assert.equal(window.__timelines['main'], timeline);
+});
+
 test('editable catalog project locks match checked-in source and optional LFS media', async () => {
   const publication = await exportCatalog();
   const entries = publication.content[publication.defaultLocale].templates.filter(item => item.files.length > 0);
@@ -79,7 +91,6 @@ test('editable catalog project locks match checked-in source and optional LFS me
       const source = await readFile(path.join(directory, file.path));
       const identity = lfsPointer(source) ?? { bytes: source.length, sha256: digest(source) };
       assert.deepEqual(identity, { bytes: file.bytes, sha256: file.sha256 }, `${entry.templateId}/${file.path}`);
-      assert.equal(file.url, `https://r.open-design.ai/files/${file.sha256}`);
       const lock = manifest.files.find((item: { path: string }) => item.path === file.path);
       assert.deepEqual(lock, { path: file.path, ...identity });
     }
