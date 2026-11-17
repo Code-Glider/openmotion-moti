@@ -433,44 +433,6 @@
       ]
     },
     {
-      "id": "motion-dac924da-010f-4445-baf3-a39cb033e48f",
-      "kind": "reference",
-      "title": "功能更新｜Voice mode",
-      "description": "同一中心圆从按钮扩张为影像窗口，再收回按钮；保持空间身份连续。",
-      "durationSeconds": 11.458333,
-      "width": 1280,
-      "height": 720,
-      "videoUrl": "https://r.open-design.ai/files/9c917b1f71d6e3d95682b968d7254b4fe52e81dc6d9e89f5ff1c5d147ab0d27a",
-      "posterUrl": "https://r.open-design.ai/files/df553b34b4d715a159a64ca5332b38e46c0b7ccee5d1dd8867e6146bd70487c6",
-      "sourceFiles": [
-        {
-          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/template.json",
-          "sha256": "760fe1c5b589d6e6a2c83a64634693bd8f8e01f4bdbb1589161f1a53f1c8beeb",
-          "bytes": 25552
-        },
-        {
-          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/TEMPLATE.md",
-          "sha256": "a743dace03591c0c403208efa291161e50312ab587bcfeecd52d958b3f76dd45",
-          "bytes": 2324
-        },
-        {
-          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/source/motion.md",
-          "sha256": "7e95e271aa9e2e4d2d5a8ee7384b5df3a8877f09f8ea68ca0063c3222d30e8d1",
-          "bytes": 5976
-        },
-        {
-          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/source/preview.html",
-          "sha256": "1db2661b900788477158a90efce27b1938a0fbf69363d58fe4d268292aaa93bd",
-          "bytes": 20138
-        },
-        {
-          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/source/manifest.json",
-          "sha256": "10610d57a9223d94cb298b60544533750c356e5e98b0c7aac9c85cb3c120133b",
-          "bytes": 8163
-        }
-      ]
-    },
-    {
       "id": "motion-0ad92fd0-b2fb-4885-957c-b71152df15fd",
       "kind": "reference",
       "title": "Dia 开放给 Arc 会员",
