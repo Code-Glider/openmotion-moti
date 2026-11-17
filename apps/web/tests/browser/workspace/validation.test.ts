@@ -174,7 +174,7 @@ it("keeps numeric/color drafts and localized adjacent errors until explicit corr
         {
           path: "index.html",
           content:
-            '<html><body><main data-composition-id="main" data-width="160" data-height="90" data-duration="5"><p data-hf-id="title" data-start="0" data-duration="4">Original</p></main><script>window.__timelines={main:gsap.timeline({paused:true}).to({},{duration:5})};</script></body></html>',
+            '<html><body><main data-composition-id="main" data-width="160" data-height="90" data-duration="5"><p data-hf-id="title" data-start="0" data-duration="4">Original</p></main><script>const tl=gsap.timeline({paused:true});tl.to({},{duration:5});window.__timelines={main:tl};</script></body></html>',
         },
       ],
     }),
