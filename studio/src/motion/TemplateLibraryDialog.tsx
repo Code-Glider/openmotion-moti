@@ -1,4 +1,5 @@
 import { GalleryIntro } from './GalleryIntro';
+import { GalleryCategoryStrip } from './GalleryCategoryStrip';
 import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { GitHubLink } from './GitHubLink';
 import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
@@ -373,12 +374,12 @@ export function TemplateLibraryDialog(props: Props) {
           <Tooltip label={t('Close template library')}><button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button></Tooltip>
         </div>
       </header>
-      <div className={styles.toolbar}>
-        <div className={`om-control-row ${styles.categories}`} role="group" aria-label={t('Video purpose')}>
+      <div className={styles.toolbar} data-single-row>
+        <GalleryCategoryStrip label={t('Video purpose')}>
           <button className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
           <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
           {categories.map(value => <button className="om-button om-filter-pill" key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</button>)}
-        </div>
+        </GalleryCategoryStrip>
         <div className={styles.controls}>
           {industries.length > 0 && <Menu modal={false} container={null} align="start" aria-label={t('By industry')} className={styles.discoveryMenu}
             trigger={<button className={styles.dropdownButton}><span>{selected.industries?.length === 1 ? t(selected.industries[0]) : t('By industry')}</span>{(selected.industries?.length ?? 0) > 1 && <span className={styles.filterCount}>{selected.industries!.length}</span>}<MotionIcon name="chevron-down" size={16} /></button>}>

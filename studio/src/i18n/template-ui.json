@@ -1,5 +1,7 @@
 {
   "zh-CN": {
+    "Scroll categories left": "向左滚动标签",
+    "Scroll categories right": "向右滚动标签",
     "Made to move.": "让灵感动起来",
     "Find your next motion.": "发现下一份创作灵感",
     "Explore the details. Find a direction. Make it your own.": "探索每个细节，找到喜欢的风格，创作属于你的作品。",
@@ -54,6 +56,8 @@
     "No matching options.": "没有匹配的选项。"
   },
   "ja": {
+    "Scroll categories left": "カテゴリを左にスクロール",
+    "Scroll categories right": "カテゴリを右にスクロール",
     "Made to move.": "動き出すアイデア",
     "Find your next motion.": "次のモーションを見つけよう",
     "Explore the details. Find a direction. Make it your own.": "細部を探り、方向性を見つけ、自分らしい作品に。",
@@ -108,6 +112,8 @@
     "No matching options.": "一致する選択肢がありません。"
   },
   "ko": {
+    "Scroll categories left": "카테고리를 왼쪽으로 스크롤",
+    "Scroll categories right": "카테고리를 오른쪽으로 스크롤",
     "Made to move.": "움직이는 아이디어",
     "Find your next motion.": "새로운 모션을 발견하세요",
     "Explore the details. Find a direction. Make it your own.": "디테일을 살펴보고 원하는 스타일로 나만의 작품을 만드세요.",
@@ -162,6 +168,8 @@
     "No matching options.": "일치하는 옵션이 없습니다."
   },
   "de": {
+    "Scroll categories left": "Kategorien nach links scrollen",
+    "Scroll categories right": "Kategorien nach rechts scrollen",
     "Made to move.": "Für Bewegung gemacht",
     "Find your next motion.": "Entdecke deine nächste Animation",
     "Explore the details. Find a direction. Make it your own.": "Entdecke die Details. Finde deinen Stil. Mach etwas Eigenes daraus.",
@@ -216,6 +224,8 @@
     "No matching options.": "Keine passenden Optionen."
   },
   "fr": {
+    "Scroll categories left": "Faire défiler les catégories vers la gauche",
+    "Scroll categories right": "Faire défiler les catégories vers la droite",
     "Made to move.": "Place au mouvement",
     "Find your next motion.": "Trouvez votre prochaine animation",
     "Explore the details. Find a direction. Make it your own.": "Explorez les détails. Trouvez votre style. Créez votre version.",
@@ -270,6 +280,8 @@
     "No matching options.": "Aucune option correspondante."
   },
   "ru": {
+    "Scroll categories left": "Прокрутить категории влево",
+    "Scroll categories right": "Прокрутить категории вправо",
     "Made to move.": "Создано для движения",
     "Find your next motion.": "Найдите новую идею для анимации",
     "Explore the details. Find a direction. Make it your own.": "Изучите детали. Найдите свой стиль. Создайте свою версию.",
@@ -324,6 +336,8 @@
     "No matching options.": "Подходящих вариантов нет."
   },
   "es": {
+    "Scroll categories left": "Desplazar categorías a la izquierda",
+    "Scroll categories right": "Desplazar categorías a la derecha",
     "Made to move.": "Ideas en movimiento",
     "Find your next motion.": "Encuentra tu próxima animación",
     "Explore the details. Find a direction. Make it your own.": "Explora los detalles. Encuentra tu estilo. Hazlo tuyo.",
@@ -378,6 +392,8 @@
     "No matching options.": "No hay opciones coincidentes."
   },
   "pt-BR": {
+    "Scroll categories left": "Rolar categorias para a esquerda",
+    "Scroll categories right": "Rolar categorias para a direita",
     "Made to move.": "Feito para se mover",
     "Find your next motion.": "Encontre sua próxima animação",
     "Explore the details. Find a direction. Make it your own.": "Explore os detalhes. Encontre seu estilo. Crie sua versão.",
@@ -432,6 +448,8 @@
     "No matching options.": "Nenhuma opção correspondente."
   },
   "it": {
+    "Scroll categories left": "Scorri le categorie a sinistra",
+    "Scroll categories right": "Scorri le categorie a destra",
     "Made to move.": "Idee in movimento",
     "Find your next motion.": "Trova la tua prossima animazione",
     "Explore the details. Find a direction. Make it your own.": "Esplora i dettagli. Trova il tuo stile. Crea la tua versione.",
@@ -486,6 +504,8 @@
     "No matching options.": "Nessuna opzione corrispondente."
   },
   "tr": {
+    "Scroll categories left": "Kategorileri sola kaydır",
+    "Scroll categories right": "Kategorileri sağa kaydır",
     "Made to move.": "Hareket için tasarlandı",
     "Find your next motion.": "Bir sonraki animasyonunu keşfet",
     "Explore the details. Find a direction. Make it your own.": "Ayrıntıları keşfet. Tarzını bul. Kendine özgü bir eser yarat.",
