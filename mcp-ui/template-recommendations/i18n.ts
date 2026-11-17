@@ -127,8 +127,7 @@ export function welcomeMarkdown(language: Language, cardsPosition: 'before' | 'a
 }
 
 /** A plain reply remains available even when the host cannot mount native cards. */
-export function installationFallbackWelcome(language: Language, libraryUrl?: string): string {
-  const text = translations[language];
-  return ['**OpenMotion**', text.welcome.introduction,
-    ...(libraryUrl ? [text.welcome.discovery, `[${text.ui.listLabel}](${libraryUrl})`] : [])].join('\n\n');
+export function installationFallbackWelcome(language: Language): string {
+  const text = translations[language].welcome;
+  return [text.heading, text.introduction, text.discovery].join('\n\n');
 }

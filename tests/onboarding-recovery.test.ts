@@ -50,6 +50,11 @@ test('refresh recovery uses the exact installation selections and workspace with
   assert(saved.recovery.args.includes('--verify-only'));
   const host = connectedHost();
   const result = await resumeInstallationOnboarding(JSON.parse(original), { appRoot, threadId, request: host.request });
+  assert.equal(result.welcomeMarkdown, [
+    '🎉 OpenMotion 安装好啦，右侧就是模板库！',
+    '我是你的开源视频创作搭档，我有丰富的高水准视频模板，也支持从参考视频或一个灵感出发，和你一起创作精彩的视频。',
+    '模板库支持搜索，也可以随意浏览，找到喜欢的点击「复刻模板」就能开始你的创作！',
+  ].join('\n\n'));
   assert.equal(result.hostSessionVerified, true);
   assert.equal(result.onboardingComplete, false, 'Connection verification is not visible welcome/card delivery');
   assert.deepEqual(result.hostHandoff.presentation.arguments, { templateIds, language: 'zh', onboarding: true });

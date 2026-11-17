@@ -24,7 +24,7 @@ Source and npm setup use `prepareInstallationFlow`. After registration, an exist
 
 After that tool step finishes, execute the returned `recovery.command`/`recovery.args` in this same turn. The private immutable receipt preserves the chat, application, workspace, language, three IDs/order and library URL. Recovery performs verification only: no reinstall, library startup, resampling or additional reload. Native discovery and `openmotion_get_project` must verify the expected workspace through the calling thread before `hostSessionVerified` is true. They do not prove visible welcome/cards.
 
-`OPENMOTION_CODEX_SOCKET` may identify an explicitly known existing control socket. Do not guess endpoints, start another app-server to simulate this chat, alter host listeners/security, inject instructions through `codex queue`, restart Codex or substitute a user connection-restart instruction for automatic activation. A private-stdio host with no supported reload capability is a blocking host integration dependency. Keep onboarding incomplete and report it accurately. Already working native tools can supersede a missing script control socket; use them directly and preserve the receipt.
+`OPENMOTION_CODEX_SOCKET` may identify an explicitly known existing control socket. Do not guess endpoints, start another app-server to simulate this chat, alter host listeners/security, inject instructions through `codex queue`, restart Codex or substitute a user connection-restart instruction for automatic activation. A private-stdio host with no supported reload capability is a blocking host integration dependency. Keep onboarding incomplete and retain the accurate reason in diagnostics and the receipt. Already working native tools can supersede a missing script control socket; use them directly and preserve the receipt.
 
 Codex plugin setup reaches this contract through `extensions.com.openai.onboardingSkill`. Its directory must also be in the plugin's `skills` roots. CLI registration alone does not invoke the desktop install callback or create a current-chat refresh capability. Installed files, current-chat connection and visible native delivery are separate outcomes.
 
@@ -46,7 +46,17 @@ The native component uses the shared localized welcome dictionary. The Chinese w
 不想自己找？先看看我挑的这 3 个 👇
 ```
 
-If native cards are blocked, the Agent must still output the maintained introduction as ordinary final-reply text and the exact usable library link, followed by the concrete blocker. Match the opening claim to what actually opened; omit invitations pointing to cards that are absent. Do not replace the welcome with a status-only reply, claim successful onboarding, or discard the receipt. For later recovery after that welcome, append `--welcome-delivered` to the saved recovery command so it returns cards-only arguments. A lack of native full-video presentation has no equivalent text-card fallback.
+If native recommendation cards cannot be displayed, open the library and make the entire final reply exactly these three paragraphs for Chinese requests:
+
+```text
+🎉 OpenMotion 安装好啦，右侧就是模板库！
+
+我是你的开源视频创作搭档，我有丰富的高水准视频模板，也支持从参考视频或一个灵感出发，和你一起创作精彩的视频。
+
+模板库支持搜索，也可以随意浏览，找到喜欢的点击「复刻模板」就能开始你的创作！
+```
+
+The top-level `welcomeMarkdown` supplies these paragraphs from the maintained localized welcome dictionary; other supported languages use the same heading/introduction/discovery fields. Output it verbatim once, with its paragraph breaks. Keep status, source revisions, verification results, blockers, library links, recovery details and card invitations outside this reply. Diagnostics and the immutable receipt retain the real incomplete onboarding state and blocker; the concise welcome does not mark native delivery or activation complete. Only use the right-hand-library heading after the library visibly opens; a library-opening failure remains a separate installation failure. For later recovery after the welcome, append `--welcome-delivered` to the saved recovery command so it returns cards-only arguments.
 
 ### Self-contained builtin compatibility
 

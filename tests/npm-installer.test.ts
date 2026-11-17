@@ -58,10 +58,14 @@ test('setup retains the welcome/card contract and project-free library without c
   assert.equal(installed.onboarding.hostSessionVerified, false);
   assert.match(installed.onboarding.welcomeMarkdown, /open-source video creation partner/);
   assert.doesNotMatch(installed.onboarding.welcomeMarkdown, /👇|👆|three|cards/);
+  assert.equal(installed.onboarding.welcomeMarkdown.split('\n\n').length, 3);
+  assert.doesNotMatch(installed.onboarding.welcomeMarkdown, /https?:|\]\(|HOST_|MCP|receipt/);
   assert.deepEqual(installed.onboarding.directAccess.toolsArgs, [path.join(installed.appRoot, 'scripts/npm-installer.mjs'), 'tools', '--home', installed.launcher.replace(/[/\\]run-mcp.mjs$/, ''), '--host', 'codex', '--codex', options.codex]);
   const examples = [...installed.onboarding.instructions.matchAll(/```text\n([\s\S]*?)```/g)].map(([, text]) => text);
-  assert.equal(examples.length, 1);
-  const [cards] = examples;
+  assert.equal(examples.length, 2);
+  const [cards, fallback] = examples;
+  assert.equal(fallback.trim().split('\n\n').length, 3);
+  assert.doesNotMatch(fallback, /👇|👆|这 3 个|https?:/);
   for (const raw of examples) {
     const example = raw.replaceAll('**', '');
     assert(example.startsWith('🎉 OpenMotion 安装好啦，右侧就是模板库！\n\n'));

@@ -117,7 +117,7 @@ export async function prepareInstallationFlow(options) {
   }
   const language = onboarding.inlinePresentation?.language || options.language || process.env.OPENMOTION_ONBOARDING_LANGUAGE || 'en';
   return { ...onboarding, installationStatus: 'installed', applicationRoot: options.appRoot,
-    welcomeMarkdown: installationFallbackWelcome(isLanguage(language) ? language : 'en', preview.status === 'ready' ? preview.previewUrl : undefined),
+    welcomeMarkdown: installationFallbackWelcome(isLanguage(language) ? language : 'en'),
     dataDirectory: options.dataDirectory, preview,
     ...(hostHandoff ? { hostHandoff } : {}),
     onboardingStatus: preview.status !== 'ready' ? 'preview_unavailable'
@@ -161,7 +161,8 @@ export async function resumeInstallationOnboarding(saved, options = {}) {
     dataDirectory: saved.dataDirectory, templateIds: args.templateIds, language: args.language,
     expectedResourceUri: presentation.uri,
     expectedVersion: JSON.parse(await readFile(path.join(appRoot, 'package.json'), 'utf8')).version });
-  return { ...saved, hostHandoff, welcomeDelivered, welcomeMarkdown: welcomeDelivered ? '' : saved.welcomeMarkdown,
+  return { ...saved, hostHandoff, welcomeDelivered,
+    welcomeMarkdown: welcomeDelivered ? '' : installationFallbackWelcome(isLanguage(args.language) ? args.language : 'en'),
     ...(welcomeDelivered && saved.recovery ? { recovery: { ...saved.recovery,
       args: saved.recovery.args.includes('--welcome-delivered') ? saved.recovery.args : [...saved.recovery.args, '--welcome-delivered'] } } : {}),
     inlinePresentation: { ...saved.inlinePresentation, presentation: hostHandoff.presentation,
@@ -198,12 +199,12 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
     if (values.summary) {
       if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (hostHandoff?.reason || result.onboardingStatus)
         + '. Installation is registered; welcome/cards delivery remains unverified. '
-        + 'If native cards cannot be delivered, output the top-level welcomeMarkdown once as ordinary final-reply text and report the actual blocker; do not omit the welcome or point to absent cards. '
+        + 'If native cards cannot be delivered, the entire final reply must be the top-level welcomeMarkdown verbatim: only its three paragraphs. Keep installation status, blockers, library URLs and recovery details in diagnostics and the receipt, outside that reply. '
         + (result.inlinePresentation?.status === 'prepared'
           ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
           : result.inlinePresentation?.status === 'native_required'
             ? 'Open the library once, then invoke the exact prepared native arguments with onboarding:true: welcome above three full-video cards. Detailed library/playback validation is separate from installation. After a queued host refresh, run recovery.command/recovery.args in this same turn; never repeat preparation or resample. Missing automatic host activation remains a blocking integration dependency, not a successful installation experience or a request for the user to restart. '
-            : 'Open the library and report the required host action. ')
+            : 'Open the library and retain the required host action in diagnostics. ')
         + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
       if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
       console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined }, null, 2));
