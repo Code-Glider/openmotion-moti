@@ -8,6 +8,7 @@ import { inspectContext } from "@open-motion/motion/project";
 import { Fault, type Input, type Operation, Workspace } from "@open-motion/workspace";
 import { expect, it, vi } from "vitest";
 import { mount, type Transport } from "@";
+import { studioTimeline } from "@/lib/components/studio/timeline.js";
 
 function required<T>(value: T | null | undefined): T {
   if (value === null || value === undefined) throw new Error("missing fixture element");
@@ -115,6 +116,68 @@ async function fixture(fail: boolean, inspect?: () => Promise<void>) {
 }
 it("drains real native SDK fields into the shared save before a project switch", () => fixture(false));
 it("keeps transformed native draft and original selection when the actual transaction aborts", () => fixture(true));
+
+it("keeps the same timeline projection and active trim through an unchanged render", async () => {
+  const model = await inspectContext({
+    instance: null,
+    files: [
+      {
+        path: "index.html",
+        content:
+          '<main data-composition-id="main" data-duration="5"><p data-hf-id="title" data-start="0" data-duration="5">Title</p></main>',
+      },
+    ],
+  });
+  const root = document.createElement("div"),
+    actions = document.createElement("div"),
+    commit = vi.fn();
+  document.body.replaceChildren(root, actions);
+  Object.defineProperty(root, "clientWidth", { value: 1000 });
+  const options = {
+    identity: "revision-one",
+    clips: model.clips,
+    selected: "title",
+    blocked: false,
+    time: 0,
+    duration: 5,
+    root,
+    actions,
+    canUndo: false,
+    canRedo: false,
+    undo: vi.fn(),
+    redo: vi.fn(),
+    choose: vi.fn(),
+    seek: vi.fn(),
+    retime: vi.fn(),
+    commit,
+  };
+  const first = studioTimeline(document, options),
+    svg = required(root.querySelector("svg")),
+    track = required(root.querySelector<SVGElement>("[data-clip-id]")),
+    handle = required(track.querySelector(".om-time__handle"));
+  Object.defineProperty(track, "setPointerCapture", { value: vi.fn() });
+  vi.spyOn(svg, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1000, 100));
+  const pointer = (type: string, clientX: number) =>
+    handle.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX }));
+  try {
+    pointer("pointerdown", 500);
+    pointer("pointermove", 418);
+    const next = studioTimeline(document, { ...options, clips: structuredClone(model.clips), time: 1.5 });
+    expect(next.element).toBe(first.element);
+    pointer("pointermove", 172);
+    pointer("pointerup", 172);
+    expect(commit).toHaveBeenCalledExactlyOnceWith("title", 0, 3);
+    const changed = studioTimeline(document, { ...options, identity: "revision-two" });
+    expect(changed.element).not.toBe(first.element);
+    expect(root.contains(first.element)).toBe(false);
+    const blocked = studioTimeline(document, { ...options, identity: "revision-two", blocked: true });
+    expect(blocked.element).not.toBe(changed.element);
+    expect(root.querySelector("[data-clip-id]")?.getAttribute("tabindex")).toBe("-1");
+  } finally {
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  }
+});
 
 it("retains a timeline trim through fractional observer delivery for the same client width", async () => {
   let notify: (() => void) | undefined;

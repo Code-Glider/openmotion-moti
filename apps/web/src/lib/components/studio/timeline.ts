@@ -1,9 +1,20 @@
 import type { Clip } from "@open-motion/motion/contract";
 import { timeAtProgress } from "@open-motion/motion/protocol";
 import { badge, button, m, note, timeTracks } from "../../locale/index.js";
+
+const mounted = new WeakMap<
+  HTMLElement,
+  {
+    identity: string;
+    key: string;
+    axis: ReturnType<typeof timeTracks>;
+    actions: HTMLElement;
+  }
+>();
 export function studioTimeline(
   document: Document,
   options: {
+    identity: string;
     clips: Clip[];
     selected: string;
     blocked: boolean;
@@ -21,6 +32,26 @@ export function studioTimeline(
     commit(id: string, start: number, duration: number): void;
   },
 ) {
+  // The exact editable binding fences callback reuse; playback time alone never replaces a gesture's nodes.
+  const key = JSON.stringify([
+      options.clips,
+      options.selected,
+      options.blocked,
+      options.duration,
+      options.canUndo,
+      options.canRedo,
+    ]),
+    current = mounted.get(options.root);
+  if (
+    current?.identity === options.identity &&
+    current.key === key &&
+    current.actions === options.actions &&
+    options.root.contains(current.axis.element)
+  ) {
+    current.axis.resize(options.root.clientWidth);
+    current.axis.time(options.time);
+    return current.axis;
+  }
   const startFocus = document.activeElement?.hasAttribute("data-start-edge");
   const focus = document.activeElement?.closest("[data-keyframe-focus],[data-clip-id]");
   const focusKey = focus?.getAttribute("data-keyframe-focus"),
@@ -123,5 +154,6 @@ export function studioTimeline(
     );
     (startFocus ? (target?.querySelector<SVGElement>("[data-start-edge]") ?? target) : target)?.focus();
   }
+  mounted.set(options.root, { identity: options.identity, key, axis, actions: options.actions });
   return axis;
 }
