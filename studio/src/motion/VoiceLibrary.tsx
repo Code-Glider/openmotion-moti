@@ -113,7 +113,7 @@ function VoiceDetail({ voice, active, busy, navigation, onClose, onCheck, onUse,
         {voice.preview && active && !failed ? <AssetAudioPreview src={assetMediaUrl(voice.preview.assetId, voice.preview.versionId)} onError={() => { setFailed(true); onError(t('Preview unavailable')); }} /> : <div className="om-empty"><div className="om-asset-media-symbol"><RemixIcon name="voiceprint-line" size={40} /></div><p className="om-muted">{t(failed ? 'Preview unavailable' : 'No audio sample attached')}</p></div>}
       </div></div><footer className="om-asset-viewer-caption om-muted"><span>{t(registeredProvider(voice.provider)?.label ?? voice.provider)}</span><span>{t(voiceKindLabel(voice.kind))}</span></footer></main>
       <ResizablePane className="om-asset-inspector-pane" storageKey="motion-asset-inspector-width" initial={360} min={280} max={600} edge="left" label={t('Resize asset details')}>
-        <aside className="om-asset-inspector om-voice-detail" aria-label={t('Voice details')}>
+        <aside className="om-asset-inspector" data-voice-detail aria-label={t('Voice details')}>
           <AssetNameEditor name={voice.name} saving={busy} onRename={name => onSave({ name })} />
           <dl className="om-asset-metadata"><dt>{t('Provider')}</dt><dd>{t(registeredProvider(voice.provider)?.label ?? voice.provider)}</dd><dt>{t('Voice type')}</dt><dd>{t(voiceKindLabel(voice.kind))}</dd><dt>{t('Created')}</dt><dd>{formatDate(voice.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</dd>{voice.checkedAt && <><dt>{t('Last checked')}</dt><dd>{formatDate(voice.checkedAt, { dateStyle: 'short', timeStyle: 'short' })}</dd></>}</dl>
           <p className="om-muted" role="status">{t(voiceStatus(voice))}</p>

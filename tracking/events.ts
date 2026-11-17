@@ -5,7 +5,7 @@ export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_temp
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
-export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit'] as const;
+export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit', 'voice'] as const;
 export function assetToolAction(tool: string, input: unknown): typeof assetActions[number] | undefined {
   if (!['openmotion_assets_use', 'openmotion_assets', 'motion_assets_use', 'motion_assets'].includes(tool)) return;
   const action = input && typeof input === 'object' && 'action' in input ? input.action : undefined;
