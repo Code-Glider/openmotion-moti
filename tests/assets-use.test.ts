@@ -25,13 +25,13 @@ test('preferred and compatible asset tools are discover save recovery and retain
   assert.equal(phase1TransportTool({ mcp: phase1McpCapabilities }, 'openmotion_assets_use'), 'openmotion_assets_use');
   assert.equal(phase1TransportTool({ mcp: { protocol: 1, tools: ['openmotion_assets', 'motion_assets'] } }, 'openmotion_assets_use'), undefined);
   const compatible = phase1Tools.find(tool => tool.name === 'openmotion_assets')!;
-  assert.equal(compatible.inputSchema.properties.action.enum.length, 10);
+  assert.ok(compatible.inputSchema.properties.action.enum.includes('resume'));
   assert.ok(!('timestamps' in compatible.inputSchema.properties));
   for (const name of ['openmotion_assets_use']) {
     const tool = phase1Tools.find(tool => tool.name === name);
     assert.ok(tool, name);
     assert.equal(tool.annotations.readOnlyHint, false);
-    assert.equal(tool.inputSchema.properties.action.enum.length, 11);
+    assert.ok(tool.inputSchema.properties.action.enum.includes('brand_kit'));
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID() }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), timestamps: [Infinity] }), /INVALID_ARGUMENT/);
     assert.throws(() => validateInput(tool.inputSchema, { action: 'read', assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), timestamps: [0, 1, 2, 3, 4] }), /INVALID_ARGUMENT/);

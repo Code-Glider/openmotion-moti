@@ -100,7 +100,9 @@ describe("Timeline trackPadding", () => {
     const clip = host.querySelector('[data-clip][data-el-id="c0"]')!;
     pointer(clip, "pointerdown", RULER_H + TRACK_H / 2);
     pointer(window, "pointermove", ROW1_MID);
-    const ghost = host.querySelector<HTMLElement>('[data-testid="timeline-drag-landing"]');
+    await act(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
+    // The occupied row opens an insertion preview, whose actor shares the host geometry.
+    const ghost = host.querySelector<HTMLElement>('[data-timeline-gesture-actor="c0"]');
     expect(top(ghost)).toBe(`${RULER_H + TRACK_H + CLIP_Y}px`);
     const committedTops = [0, 1, 2].map((row) =>
       top(host.querySelector(`[data-timeline-row="${row}"]`)),

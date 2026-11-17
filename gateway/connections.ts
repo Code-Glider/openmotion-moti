@@ -14,7 +14,7 @@ type Config = { providers: Record<string, SavedConnection>; models: DirectoryMod
 const emptyConfig = (): Config => ({ providers: {}, models: [], defaults: {} });
 const definitions = providerRegistry.filter(provider => provider.integration === 'compatible');
 const protocols = ['openai', 'anthropic', 'google'];
-export type GatewayConfig = { version: 1; providers: Record<string, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number }>;
+export type GatewayConfig = { version: 1; providers: Record<string, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number; catalogRevision?: string }>;
   routes: Partial<Record<Modality, string>>; customModels: Model[] };
 const hash = (key: string) => createHash('sha256').update(key).digest('hex');
 
@@ -117,6 +117,7 @@ export class ProviderConnections {
     if (baseUrl && !definition.baseUrlEditable) throw new Error('This provider uses its built-in API origin');
     await this.store.lock(async () => {
       const config = await this.gatewayConfig(), state = config.providers[id] ?? {};
+      if (id === 'opendesign' && (input.apiKey !== undefined || baseUrl && baseUrl !== state.baseUrl)) state.catalogRevision = randomUUID();
       if (baseUrl) { state.baseUrl = baseUrl; delete state.verification; delete state.keyHash; delete state.checkedAt; }
       if (input.apiKey !== undefined) {
         const keys = await this.gatewayKeys();

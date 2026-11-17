@@ -50,27 +50,34 @@ test('public media tool reads guides, generates fal media once and binds job que
   await gateway.close();
 }));
 
-for (const kind of ['image', 'video', 'audio'] as const) test(`Cloud ${kind} preserves authentication, task identity and downloads into the project`, () => fixture(async store => {
+for (const kind of ['image', 'video', 'audio', 'music'] as const) test(`Cloud ${kind} preserves authentication, task identity and downloads into the project`, () => fixture(async store => {
   const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
   gateway.options.download = async () => kind === 'image' ? png : audio;
   const methods: string[] = [];
   gateway.options.fetcher = (async (url, init = {}) => {
     const target = String(url); assert(target.startsWith('https://cloud.example/api/v1/media/'));
     assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer test-cloud-private');
+    if (kind === 'music' && target.endsWith('/models')) return Response.json({ models: [{ model: 'workspace-music', kind: 'audio_music' }] });
     methods.push(`${init.method ?? 'GET'} ${new URL(target).pathname}`);
     if (init.method === 'POST') {
       assert.match(new Headers(init.headers).get('Idempotency-Key')!, /^[a-f0-9-]{36}$/);
       const body = JSON.parse(String(init.body));
       if (kind === 'audio') { assert.equal(body.voice, 'voice-1'); assert.equal(body.parameters.text, 'hello'); assert.equal(body.parameters.speed, 1); }
+      else if (kind === 'music') {
+        assert.equal(new URL(target).pathname, '/api/v1/media/audio/music');
+        assert.deepEqual(body, { model: 'workspace-music', parameters: { music_length_ms: 10000, force_instrumental: true, prompt: 'hello' } });
+      }
       else assert.equal(body.prompt, 'hello');
       return Response.json({ task_id: 'cloud-task' }, { status: 202 });
     }
     if (target.endsWith('/content')) return new Response(mp4);
+    assert.equal(new URL(target).pathname, `/api/v1/media/${kind === 'music' || kind === 'audio' ? 'audio' : kind + 's'}/tasks/cloud-task`);
     return Response.json({ status: 'succeeded', assets: [{ url: 'https://cdn.example/output' }] });
   }) as Fetcher;
   await gateway.configureProvider('opendesign', { apiKey: 'test-cloud-private', baseUrl: 'https://cloud.example/v1' });
-  const args = { action: 'generate', provider: 'opendesign', projectId: store.projectId, requestId: `cloud-${kind}`, model: kind === 'audio' ? 'elevenlabs-v3' : 'test-model', modality: kind,
-    mode: kind === 'audio' ? 'text-to-speech' : `text-to-${kind}`, prompt: 'hello', parameters: kind === 'audio' ? { voice: 'voice-1', speed: 1 } : { duration: 5 } };
+  if (kind === 'music') await api.call('openmotion_media_use', { action: 'models', provider: 'opendesign', modality: 'audio', refresh: true });
+  const args = { action: 'generate', provider: 'opendesign', projectId: store.projectId, requestId: `cloud-${kind}`, model: kind === 'music' ? 'workspace-music' : kind === 'audio' ? 'elevenlabs-v3' : 'test-model', modality: kind === 'music' ? 'audio' : kind,
+    ...(kind === 'music' ? {} : { mode: kind === 'audio' ? 'text-to-speech' : `text-to-${kind}` }), prompt: 'hello', parameters: kind === 'music' ? { music_length_ms: 10000, force_instrumental: true } : kind === 'audio' ? { voice: 'voice-1', speed: 1 } : { duration: 5 } };
   const queued = await api.call('openmotion_media_use', args);
   const job = await finish(store, queued.job.id); assert.equal(job.state, 'completed', job.error);
   assert.equal(job.remoteId, 'cloud-task'); assert.equal(job.providerOrigin, 'https://cloud.example');
@@ -80,16 +87,41 @@ for (const kind of ['image', 'video', 'audio'] as const) test(`Cloud ${kind} pre
   await gateway.close();
 }));
 
+test('Cloud built-in music model is discoverable without a catalogue entry and submits to the music endpoint', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1; gateway.options.download = async () => audio;
+  const posts: [string, any][] = [];
+  gateway.options.fetcher = (async (url, init = {}) => {
+    const target = new URL(String(url)).pathname;
+    if (target.endsWith('/models')) return Response.json({ models: [{ model: 'workspace-image', kind: 'image' }] });
+    if (init.method === 'POST') { posts.push([target, JSON.parse(String(init.body))]); return Response.json({ task_id: 'music-task' }, { status: 202 }); }
+    return Response.json({ status: 'succeeded', assets: [{ url: 'https://cdn.example/output' }] });
+  }) as Fetcher;
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  const music = (await gateway.listModels({ provider: 'opendesign', refresh: true })).models.find(m => m.modelId === 'elevenlabs-music-v2');
+  assert.deepEqual([music?.modality, music?.mode, music?.source], ['audio', 'text-to-audio', 'builtin']);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-music-v2', modality: 'audio', mode: 'text-to-speech', prompt: 'calm music' }), /does not match the selected Cloud model/);
+  const job = await finish(store, (await gateway.submit({ projectId: store.projectId, model: 'opendesign:elevenlabs-music-v2', modality: 'audio', prompt: 'calm piano', parameters: { music_length_ms: 10000 } })).id);
+  assert.equal(job.state, 'completed', job.error);
+  assert.deepEqual(posts, [['/api/v1/media/audio/music', { model: 'elevenlabs-music-v2', parameters: { music_length_ms: 10000, prompt: 'calm piano' } }]]);
+  await gateway.close();
+}));
+
 test('Cloud discovery uses workspace credentials; origin changes stop queued calls and missing voice fails before charging', () => fixture(async store => {
   const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
   let calls = 0;
   gateway.options.fetcher = (async (_url, init = {}) => {
     calls++; assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer cloud-key');
-    return Response.json({ models: [{ model: 'workspace-image', kind: 'image' }, { model: 'workspace-video', kind: 'video' }] });
+    return Response.json({ models: [{ model: 'workspace-image', kind: 'image' }, { model: 'workspace-video', kind: 'video' },
+      { model: 'workspace-speech', kind: 'audio_speech' }, { model: 'workspace-music', kind: 'audio_music' }, { model: 'legacy-speech', kind: 'audio' }, { model: 'language-model', kind: 'text' }] });
   }) as Fetcher;
   await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
   const models = await gateway.listModels({ provider: 'opendesign', refresh: true });
   assert(models.models.some(m => m.modelId === 'workspace-image')); assert.equal(calls, 1);
+  assert.deepEqual(models.models.filter(m => m.source === 'live' && m.modality === 'audio').map(m => [m.modelId, m.mode]),
+    [['workspace-speech', 'text-to-speech'], ['workspace-music', 'text-to-audio'], ['legacy-speech', 'text-to-speech']]);
+  assert(!models.models.some(m => m.modelId === 'language-model'));
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-music', modality: 'audio', mode: 'text-to-speech', prompt: 'calm music' }), /does not match the selected Cloud model/);
+  await assert.rejects(gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-speech', modality: 'audio', mode: 'text-to-audio', prompt: 'hello' }), /does not match the selected Cloud model/);
   const first = await gateway.submit({ projectId: store.projectId, model: 'opendesign:workspace-image', modality: 'image', prompt: 'cup' });
   await gateway.configureProvider('opendesign', { baseUrl: 'https://changed.example' });
   assert.match((await finish(store, first.id)).error!, /origin changed/); assert.equal(calls, 1);
@@ -104,6 +136,41 @@ test('custom Cloud origins reject credentials, private IPs, paths and non-HTTPS 
   assert.equal(providerOrigin('https://cloud.example/v1/'), 'https://cloud.example');
   for (const raw of ['http://cloud.example', 'https://localhost', 'https://127.0.0.1', 'https://[::1]', 'https://10.0.0.1', 'https://user:pass@cloud.example', 'https://cloud.example/path', 'https://cloud.example?key=secret']) assert.throws(() => providerOrigin(raw));
 });
+
+for (const [model, category, field, parameters] of [
+  ['fal-ai/elevenlabs/tts/eleven-v3', 'text-to-speech', 'text', { voice: 'narrator' }],
+  ['fal-ai/elevenlabs/music', 'text-to-audio', 'prompt', { music_length_ms: 10000 }],
+  ['fal-ai/elevenlabs/sound-effects/v2', 'text-to-audio', 'text', { duration_seconds: 2, loop: true }],
+  ['elevenlabs/sound-effects/v3', 'text-to-audio', 'text', { duration_seconds: 2, loop: true }],
+  ['fal-ai/elevenlabs/sound-effects/v3', 'text-to-audio', 'text', { duration_seconds: 2, loop: true }],
+] as const) test(`fal discovers and runs ${model} with its native audio input`, () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  gateway.options.download = async () => audio;
+  let submissions = 0;
+  gateway.options.fetcher = (async (url, init = {}) => {
+    if (String(url).startsWith('https://api.fal.ai/v1/models')) return Response.json({ models: [{ endpoint_id: model, metadata: { category } }] });
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Key audio-fixture');
+    if (init.method === 'POST') {
+      submissions++;
+      assert.equal(String(url), `https://queue.fal.run/${model}`);
+      assert.deepEqual(JSON.parse(String(init.body)), { ...parameters, [field]: 'audio brief' });
+      return Response.json({ request_id: 'audio-original', status_url: 'https://queue.fal.run/audio/status', response_url: 'https://queue.fal.run/audio/result' });
+    }
+    return Response.json(String(url).endsWith('/status') ? { status: 'COMPLETED' } : { audio: { url: 'https://cdn.example/audio.wav' } });
+  }) as Fetcher;
+  await gateway.configureProvider('fal', { apiKey: 'audio-fixture' });
+  const found = await api.call('openmotion_media_use', { action: 'models', provider: 'fal', modality: 'audio', refresh: true });
+  const selected = found.catalogs[0].models.find((m: any) => m.modelId === model);
+  assert.equal(selected.mode, category);
+  const args = { action: 'generate', provider: 'fal', projectId: store.projectId, requestId: 'audio-once', model, modality: 'audio', prompt: 'audio brief', parameters };
+  const queued = await api.call('openmotion_media_use', args);
+  const completed = await finish(store, queued.job.id);
+  assert.equal(completed.state, 'completed', completed.error);
+  assert.equal((await api.call('openmotion_media_use', args)).job.id, queued.job.id);
+  assert.equal(submissions, 1);
+  assert.deepEqual(await readFile(path.join(store.projectDirectory, completed.assets[0].path)), audio);
+  await gateway.close();
+}));
 
 for (const provider of ['atlascloud', 'wavespeed'] as const) for (const kind of ['image', 'video', 'audio'] as const) {
   test(`${provider} ${kind} uses the public tool, one authenticated submit and project-owned output`, () => fixture(async store => {

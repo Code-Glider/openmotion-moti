@@ -7,6 +7,7 @@ import { callTool } from '../mcp.ts';
 import { pluginRoot, inspectProject } from '../hyperframes.ts';
 import { transport } from './http.ts';
 import { fixture, legacyProject } from './fixtures.ts';
+import { copyTemplate } from '../template-library.ts';
 
 test('Studio source changes are visible to MCP; MCP source writes reach the same native files', () => fixture(async store => {
   const first = await store.get();
@@ -67,6 +68,49 @@ test('render snapshots include scene sources and assets and survive later Studio
   await store.finishExport(job.id, claimed!.token!, 'renderer failed');
   assert.equal((await store.status()).exportJob!.state, 'failed');
 }));
+test('export snapshots freeze template vendor dist files while native revisions and runtime exclusions stay unchanged', () => fixture(async store => {
+  await copyTemplate('decision-tree', store.projectDirectory, pluginRoot);
+  const dependency = 'vendor/gsap-3.14.2/dist/gsap.min.js';
+  const original = await readFile(path.join(store.projectDirectory, dependency));
+  for (const name of ['dist/build.js', 'renders/old.mp4', 'output/export.mp4', 'vendor/node_modules/private.js', 'vendor/.cache/private.js']) {
+    await mkdir(path.dirname(path.join(store.projectDirectory, name)), { recursive: true });
+    await writeFile(path.join(store.projectDirectory, name), 'excluded');
+  }
+  const before = await store.get();
+  assert.ok(!before.project!.files.some(file => file.path === dependency), 'native history keeps its existing inventory policy');
+  assert.ok(!before.project!.files.some(file => file.path.includes('private') || /^(dist|renders|output)\//.test(file.path)));
+  for (const invalid of ['dist/build.js', 'renders/old.mp4', 'output/export.mp4', 'vendor/node_modules/private.js', 'vendor/.cache/private.js']) {
+    await assert.rejects(store.writeFiles(before.revision, [{ path: invalid, content: 'blocked' }]));
+  }
+  const job = await store.requestExport(before.revision);
+  assert.deepEqual(await readFile(path.join(store.snapshotDirectory(job.id), dependency)), original);
+  for (const excluded of ['dist/build.js', 'renders/old.mp4', 'output/export.mp4', 'vendor/node_modules/private.js', 'vendor/.cache/private.js']) {
+    await assert.rejects(readFile(path.join(store.snapshotDirectory(job.id), excluded)), /ENOENT/);
+  }
+  await writeFile(path.join(store.projectDirectory, dependency), original.toString() + '\n// later edit');
+  const changed = await store.writeFiles(before.revision, [{ path: 'notes.md', content: 'Later edit' }]);
+  assert.notEqual(changed.revision, before.revision);
+  assert.deepEqual(await readFile(path.join(store.snapshotDirectory(job.id), dependency)), original);
+}, false));
+test('a vendored dependency changed while freezing an export rejects the snapshot', () => fixture(async store => {
+  await copyTemplate('decision-tree', store.projectDirectory, pluginRoot);
+  const dependency = 'vendor/gsap-3.14.2/dist/gsap.min.js';
+  const source = path.join(store.projectDirectory, dependency), original = await readFile(source);
+  const before = await store.get(), fileInfo = store.fileInfo.bind(store);
+  let changed = false;
+  store.fileInfo = async filename => {
+    const info = await fileInfo(filename);
+    if (!changed && filename.startsWith(path.join(store.directory, 'jobs') + path.sep) && filename.endsWith(path.join(...dependency.split('/')))) {
+      changed = true;
+      await writeFile(source, original.toString() + '\n// concurrent dependency edit');
+    }
+    return info;
+  };
+  await assert.rejects(store.requestExport(before.revision), Conflict);
+  assert.equal(changed, true, 'the dependency changed after it had been copied');
+  assert.equal((await store.get()).revision, before.revision, 'the complete render fingerprint catches changes outside native history');
+  assert.equal(await store.job(), null, 'the rejected snapshot never becomes an export job');
+}, false));
 test('native Studio motion manifests participate in revisions and snapshots; preview caches do not', () => fixture(async store => {
   const before = await store.get();
   await mkdir(path.join(store.projectDirectory, '.hyperframes/preview'), { recursive: true });

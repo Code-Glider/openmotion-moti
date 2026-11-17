@@ -196,18 +196,18 @@
     }
   },
   "localMedia": {
-    "preview": "assets/lfs/preview.mp4",
+    "preview": "assets/preview.webm",
     "poster": "assets/poster.jpg"
   },
   "remoteAssets": [
     {
-      "url": "https://releases.open-design.ai/open-motion/media/sha256/a9a1423f00ece6880e542125b98f7d3d6b214f2f02e31666d6361d19e3c0d737.mp4",
-      "bytes": 62916,
-      "sha256": "a9a1423f00ece6880e542125b98f7d3d6b214f2f02e31666d6361d19e3c0d737",
+      "url": "https://releases.open-design.ai/open-motion/media/sha256/15f3c61b5bba8cafb3c6d21cdc06ca1846720f3946e0d01f9dc3f9114cded3a8.webm",
+      "bytes": 49629,
+      "sha256": "15f3c61b5bba8cafb3c6d21cdc06ca1846720f3946e0d01f9dc3f9114cded3a8",
       "source": {
-        "path": "assets/lfs/preview.mp4",
-        "bytes": 62916,
-        "sha256": "a9a1423f00ece6880e542125b98f7d3d6b214f2f02e31666d6361d19e3c0d737"
+        "path": "assets/preview.webm",
+        "bytes": 49629,
+        "sha256": "15f3c61b5bba8cafb3c6d21cdc06ca1846720f3946e0d01f9dc3f9114cded3a8"
       }
     }
   ]

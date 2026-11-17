@@ -240,6 +240,8 @@ test('account music and one-image editing run the matching connector commands', 
   await signIn(account); await account.models(true);
   await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
   const models = (await providerDirectory(gateway)).models;
+  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
   assert.equal(models.find(m => m.modelId === 'fixture-image')?.supportsImageReference, true);
   assert.equal(models.find(m => m.modelId === 'fixture-image-basic')?.supportsImageReference, undefined);
   const submissions = async () => JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')) as string[][];
@@ -258,8 +260,13 @@ test('account music and one-image editing run the matching connector commands', 
   assert.equal((await submissions()).length, 1);
 
   await writeFile(path.join(store.projectDirectoryFor(store.projectId), 'cup.png'), png);
-  await assert.rejects(gateway.submit({ model: 'account:fixture-image-basic', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' }), /does not support reference image editing/);
-  const edit = await gateway.submit({ model: 'account:fixture-image', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' });
+  const editInputProject = { action: 'generate', provider: 'account', model: 'fixture-image', projectId: store.projectId, modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png', requestId: 'account-project-edit' };
+  await assert.rejects(api.call('openmotion_media_use', { ...editInputProject, model: 'fixture-image-basic' }), /does not support reference image editing/);
+  await assert.rejects(api.call('openmotion_media_use', { ...editInputProject, referenceAsset: '../cup.png' }));
+  const { job: edit } = await api.call('openmotion_media_use', editInputProject);
+  await writeFile(path.join(store.projectDirectoryFor(store.projectId), 'cup.png'), 'changed after queueing');
+  assert.deepEqual(await readFile(path.join(gateway.root, 'work', edit.id, 'reference.png')), png);
+  assert.equal((await api.call('openmotion_media_use', editInputProject)).job.id, edit.id);
   const edited = await finish(store, edit.id);
   assert.equal(edited.state, 'completed', edited.error); assert.equal(edited.reference?.path, 'cup.png');
   const call = (await submissions()).at(-1)!;
@@ -271,8 +278,6 @@ test('account music and one-image editing run the matching connector commands', 
   const source = path.join(store.directory, 'cup-source.png'); await writeFile(source, png);
   const cup = await new AssetLibrary(store).importFile(source, { requestId: 'account-cup', name: 'Cup' });
   const reference = { assetId: cup.id, versionId: cup.currentVersionId };
-  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
-    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
   const editInput = { action: 'generate', requestId: 'account-library-edit', model: 'account:fixture-image', modality: 'image', mode: 'text-to-image', prompt: 'make it blue', assetId: cup.id, parentVersionId: cup.currentVersionId, references: [reference] };
   const queued = await api.call('openmotion_assets_use', editInput);
   assert.equal((await api.call('openmotion_assets', editInput)).job.id, queued.job.id, 'Compatibility replay must not submit another account edit');

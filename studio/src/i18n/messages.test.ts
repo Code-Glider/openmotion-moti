@@ -4,10 +4,23 @@ import mvpUi from './mvp-ui.json';
 import errorUi from './error-ui.json';
 import settingsUi from './settings-ui.json';
 import templateUi from './template-ui.json';
+import mcpUi from './mcp-ui.json';
+import { mcpFaq } from '../motion/mcpCapabilities';
 import { errorNoticeMessage } from '../components/ui/errorNoticeMessage';
 import { historyEntryLabel } from './historyMessages';
 
 describe('editor language resources', () => {
+  it('translates the current recreation FAQ without retaining its superseded answer', () => {
+    const answer = mcpFaq.find(([question]) => question === 'Can I recreate a reference video?')![1];
+    for (const { locale } of languages.filter(language => language.locale !== 'en')) {
+      const messages = mcpUi[locale as keyof typeof mcpUi] as Record<string, string>;
+      expect(Object.keys(messages).filter(key => key.startsWith('Yes. Give your Agent the reference and your brand.')), locale).toEqual([answer]);
+      expect(messages[answer]?.trim(), locale).toBeTruthy();
+      expect(translate(locale, answer), locale).toBe(messages[answer]);
+      expect(translate(locale, answer), locale).not.toBe(answer);
+    }
+  });
+
   it('offers the eleven requested languages and a complete vocabulary in each dictionary', () => {
     expect(languages.map(language => language.locale)).toEqual(['en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']);
     const keys = Object.keys(dictionaries['zh-CN']).sort();

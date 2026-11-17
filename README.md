@@ -89,6 +89,12 @@ npm start
 Open the actual `studioUrl` or `previewUrl` printed at startup, then choose **Template library**. Studio and MCP read the templates in this checkout. To connect your agent to this same copy, follow [source setup and MCP configuration](#agent-setup). [Clone size and optional media](docs/repository-storage.md)
 
 
+### Start from an existing project
+
+Import a **HyperFrames project ZIP** into OpenMotion to continue editing its composition and local assets. Compress the project folder, open **All projects → Import projects**, then select the imported copy to edit in Studio or with your Agent. Import creates an independent copy and requires a supported native project structure.
+
+[Step-by-step import guide, required files and compatibility](docs/project-archives.md#import-from-hyperframes)
+
 <a id="agent-wall"></a>
 
 **22 local agents** · [Choose your agent](#choose-agent)
@@ -309,7 +315,7 @@ If historical media are unavailable, an Agent restore is refused before changing
 
 <a id="studio-in-use"></a>
 
-<img src="https://releases.open-design.ai/open-motion/media/sha256/f20ae0f17f9db97f1950f8fd4624e296caf014eb5f774d6cb005afa344900073.png" width="100%" alt="Studio in use: imported media on the left, video preview in the center, and an editable timeline below.">
+<img src="docs/readme/live-product/editor.en.jpg" width="100%" alt="The sample project in Studio with its compositions, video preview, scene timeline and audio waveform.">
 
 Review your video, arrange clips and export from the same Studio workspace.
 
@@ -401,7 +407,7 @@ Browse by **reference brand, use case and video type**, or search for a specific
 
 Reference-only entries start a reconstruction workflow. When editable source is available, your agent can adapt the project directly.
 
-![Find a template, then make it yours](https://releases.open-design.ai/open-motion/media/sha256/b54075cdc0f0e7a46da035afecd1c39afd9596ebbe6fe52d13f6f19c8df3c495.jpg)
+![Find a template, then make it yours](docs/readme/live-product/library.en.jpg)
 
 [Browse the template library](https://open-design.ai/templates/)
 
@@ -540,7 +546,7 @@ This copies instructions; it does not install the runtime or register MCP. Keep 
 }
 ```
 
-The **fourteen public MCP names (including one asset compatibility alias)** cover template discovery and details, project creation and reading, editing, preview, media import and BYOK generation, reusable asset versions, export, version restoration and cancellation. Shared workflow and engine guides are available through MCP resources. [Tool contract](docs/mcp-phase1-tools.md)
+The **sixteen public MCP names (including one asset compatibility alias)** cover template discovery and details, project creation and reading, editing, preview, media import and BYOK generation, reusable asset versions, project management and ZIP sharing, export, version restoration and cancellation. Shared workflow and engine guides are available through MCP resources. [Tool contract](docs/mcp-phase1-tools.md)
 
 Find a template with `openmotion_list_templates`, inspect it with `openmotion_get_template`, then create an editable copy with `openmotion_create_project`. [Template catalog](docs/template-catalog.md)
 
@@ -578,17 +584,15 @@ export an MP4 and retain the source for the next edit.
 
 <a id="ai-video-editing"></a> <a id="keep-editing-after-the-remake"></a>
 
-#### Review the template and its Motion.md
-
-Open a template to watch the reference and read its visual style and production notes. Download Motion.md when you want the guide as a reusable file.
-
-![Review the template and its Motion.md](docs/readme/live-product/detail.en.jpg)
+<a id="review-the-template-and-its-motionmd"></a>
 
 #### Send the template to your agent
 
-Choose **Recreate template**, copy the instruction and add your brand kit, copy and creative requirements. Your agent installs or connects OpenMotion if needed, then works from the selected template. Open the resulting project in Studio to review the timing, continue editing and export.
+1. Watch the reference video. Expand **Visual style** or **Production notes** for details, or choose **Download motion.md** to save the guide.
+2. Choose **Show instruction** to read the prompt, then **Recreate template** to copy it. Paste it into your agent with your brand kit and creative brief.
+3. Open the project your agent creates in Studio to edit and export.
 
-![Send the template to your agent](docs/readme/live-product/remix.en.jpg)
+![Template preview beside the expanded instruction and Recreate template button, with a confirmation that the instruction was copied.](docs/readme/live-product/remix.en.jpg)
 
 <a id="open-projects-reusable-knowledge"></a> <a id="developer-architecture"></a>
 
@@ -660,7 +664,7 @@ Version-linked outcomes -> team memory / RAG -> evaluated Skill improvements
 
 </details>
 
-BYOA connects your existing Agent client; the Assets workspace supports direct model generation and reusable media. BYOK connects your supported model accounts. Studio and the local service manage the editable work, while provider credentials remain outside project files. The public phase-one MCP surface contains **fourteen names: nine project tools, two template catalog tools, one BYOK media-use tool and two names for the same workspace asset capability**. Configure provider keys in Studio, then use `openmotion_media_use` for model discovery and media generation through the local Gateway service. Use `openmotion_assets_use` (`openmotion_assets` remains compatible) to upload, inspect or generate reusable assets, retain versions and import a chosen version into a film. [Asset library guide](docs/assets.md). Keys remain in the service; the public MCP contract does not include publishing.
+BYOA connects your existing Agent client; the Assets workspace supports direct model generation and reusable media. BYOK connects your supported model accounts. Studio and the local service manage the editable work, while provider credentials remain outside project files. The public phase-one MCP surface contains **sixteen names: nine project tools, two template catalog tools, a project archive tool, a project management tool, one BYOK media-use tool and two names for the same workspace asset capability**. Configure provider keys in Studio, then use `openmotion_media_use` for model discovery and media generation through the local Gateway service. Use `openmotion_assets_use` (`openmotion_assets` remains compatible) to upload, inspect or generate reusable assets, retain versions and import a chosen version into a film. [Asset library guide](docs/assets.md). Keys remain in the service; the public MCP contract does not include publishing.
 
 #### Stack and source map
 
@@ -770,6 +774,6 @@ OpenMotion is licensed under [Apache-2.0](LICENSE). Third-party code, templates,
 | [OpusClip](https://www.opus.pro/calendar) | Product reference for distribution and [external scheduling](https://www.opus.pro/tools/instagram-reels-scheduler); no built-in connector |
 | [GSAP](https://github.com/greensock/GSAP) / [FFmpeg](https://ffmpeg.org/) | Animation and media dependencies with versions retained in [package.json](package.json) and the [runtime lock](scripts/runtime-lock.json) |
 
-[Asset sources](docs/readme/ASSETS.md) · [Additional showcase sources](docs/readme/brand-showcase/README.md) · [Font notices](web/design-system/fonts/NOTICES.txt) · [Studio license](studio/LICENSE)
+[Asset sources](docs/readme/ASSETS.md) · [Skills page covers](docs/readme/ASSETS.md#skills-page-covers) · [Additional showcase sources](docs/readme/brand-showcase/README.md) · [Font notices](web/design-system/fonts/NOTICES.txt) · [Studio license](studio/LICENSE)
 
 The former HTML Anything application is preserved on the [`legacy` branch](https://github.com/nexu-io/openmotion/tree/legacy). See the [repository migration guide](docs/repository-migration.md) for the active branch and distribution boundaries.

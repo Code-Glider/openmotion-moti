@@ -1,3 +1,4 @@
+import { mainVisualTrack } from "../player/components/timelineLinkage";
 // Asset-drop handlers for the timeline: drop an existing project asset at a
 // placement, or upload dragged-in OS files and place them sequentially.
 // Extracted verbatim from useTimelineEditing.ts to keep it under the studio
@@ -6,7 +7,7 @@ import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject }
 import { compositionInsertionFailureMessage } from "../i18n/editorErrors";
 import type { TimelineElement } from "../player";
 import type { TimelineDropPlacement } from "../player/components/timelineCallbacks";
-import { resolveDropTrack, topTrackZIndex } from "../utils/timelineDropTrackInsert";
+import { mainTrackAppendStart, resolveDropTrack, topTrackZIndex } from "../utils/timelineDropTrackInsert";
 import {
   buildTimelineAssetId,
   buildTimelineAssetInsertHtml,
@@ -142,6 +143,15 @@ export function useTimelineAssetDropOps({
         return undefined;
       }
 
+      const fileElements = elementsRef.current.filter(element =>
+        (element.sourceFile || activeCompPath || "index.html") === targetPath);
+      if (kind !== "audio" && placement.insertRow == null && !placement.newTrack &&
+          usePlayerStore.getState().rippleEditEnabled && placement.track === mainVisualTrack(fileElements)) {
+        const awaitingPreview = usePlayerStore.getState().pendingAssetDrops.flatMap(drop => drop.element ? [drop.element] : []);
+        placement = { ...placement, start: mainTrackAppendStart([...fileElements, ...gesture.placed, ...awaitingPreview], placement.track) };
+        if (existingPendingId) updatePendingAssetDrop(existingPendingId, { placement });
+      }
+
       const pendingId = existingPendingId ?? beginPendingAssetDrop(assetPath, placement, durationOverride);
       const stillActive = () => isPendingAssetDropActive(pendingId);
       try {
@@ -179,6 +189,7 @@ export function useTimelineAssetDropOps({
           );
           if (placement.newTrack) newElementZIndex = topTrackZIndex(originalContent, [...fileElements, ...gesture.placed, ...awaitingPreview]);
           const resolved = resolveDropTrack({
+            magneticMainTrack: usePlayerStore.getState().rippleEditEnabled && placement.track === mainVisualTrack(fileElements),
             source: originalContent,
             // Rows and insertRow count the rows the timeline shows; a track this drop opened has no others.
             elements: gesture.onNewTrack ? [] : fileElements,

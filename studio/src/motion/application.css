@@ -17,6 +17,12 @@
 .motion-studio-header.motion-studio-header-compact > .motion-header-leading { gap: var(--motion-space-12); }
 .motion-studio-header.motion-studio-header-compact > .motion-header-trailing { justify-self: end; gap: var(--motion-space-12); margin-left: 0; }
 .motion-header-project { display: flex; justify-content: center; }
+.motion-header-project-actions { display: grid; grid-template-columns: repeat(2, 1fr); width: max-content; align-items: center; gap: var(--motion-space-4); flex-shrink: 0; }
+.motion-header-project-actions :is(.motion-project-agent-trigger, .motion-header-export) { width: auto; min-width: 0; justify-self: stretch; justify-content: center; }
+.motion-project-handoff-actions .motion-project-handoff-button { flex: 1 1 0; justify-content: center; min-width: 0; font-weight: var(--motion-weight-semibold); }
+@container (max-width: 420px) {
+  .motion-studio-header.motion-studio-header-compact { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; }
+}
 .motion-header-project .om-app-project-title { position: relative; display: inline-grid; flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .motion-project-name-measure { visibility: hidden; overflow: hidden; white-space: pre; min-width: var(--motion-space-64); }
 .om-app-project-title .motion-project-name-input { position: absolute; inset: 0; width: 100%; min-width: 0; text-align: center; text-overflow: ellipsis; }
@@ -46,7 +52,6 @@
 .om-application .motion-sidebar { flex-basis: var(--om-project-navigation-width); width: var(--om-project-navigation-width); height: 100%; padding: var(--motion-space-12); }
 .om-application .motion-sidebar-brand { justify-content: space-between; margin-bottom: var(--motion-space-16); }
 .om-application .motion-workspace-content[hidden] { display: none; }
-.om-application .motion-sidebar [aria-current="page"] { color: var(--motion-strong); background: var(--motion-hover); }
 .om-application .motion-session-dot { display: none; }
 .om-application .motion-sidebar-footer { border-top: 1px solid var(--motion-border-subtle); }
 .om-settings-center { --om-settings-nav-width: clamp(216px, 18vw, 248px); display: flex; flex: 1; min-width: 0; min-height: 0; }
@@ -211,4 +216,24 @@
 .om-agent-choice-fields > .om-label { min-width: 0; }
 @media (max-width: 680px) {
   .om-agent-choice-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Project navigation and manager share the same row surface. */
+.om-project-sidebar-row, .om-project-manager-row { display: flex; align-items: center; min-width: 0; flex-shrink: 0; padding-inline-end: var(--motion-space-4); }
+.om-project-sidebar-row .motion-session, .om-project-manager-row > .om-nav-row-link, .om-project-trashed-label { flex: 1; min-width: 0; }
+.om-project-manager-row { gap: var(--motion-space-4); padding-inline-start: var(--motion-space-4); }
+.om-project-trashed-label { padding-inline: var(--motion-space-10); font-size: var(--motion-text-md); }
+.om-settings-dialog.om-project-manager-dialog { display: flex; flex-direction: column; width: min(620px, calc(100vw - var(--motion-space-24))); max-height: min(72dvh, 560px); padding: var(--motion-space-16); overflow: clip; }
+.om-settings-dialog.om-project-manager-dialog > header { flex: none; margin-bottom: var(--motion-space-12); }
+.om-project-manager, .om-project-manager-panel { min-height: 0; display: flex; flex-direction: column; gap: var(--motion-space-8); }
+.om-project-manager-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-8); }
+.om-project-manager-panel > :not(.om-project-manager-list) { flex: none; }
+.om-project-selection .om-muted { font-size: var(--motion-text-sm); }
+.om-project-manager-list { display: flex; flex-direction: column; gap: var(--motion-space-2); min-height: 0; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; padding: var(--motion-space-4); }
+.om-project-manager-list > p { margin: var(--motion-space-16) var(--motion-space-4); }
+.om-project-edit-form, .om-project-import-help { display: grid; gap: var(--motion-space-12); }
+.om-project-edit-form > p, .om-project-import-help > p { margin: 0; }
+.om-project-import-help { width: min(340px, calc(100vw - var(--motion-space-24))); max-height: var(--available-height); overflow: auto; padding: var(--motion-space-12); }
+@media (max-height: 430px) {
+  .om-settings-dialog.om-project-manager-dialog { max-height: calc(100dvh - var(--motion-space-24)); }
 }

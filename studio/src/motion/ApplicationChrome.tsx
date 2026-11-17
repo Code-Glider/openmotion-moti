@@ -24,22 +24,24 @@ export function ApplicationHeader({ settings }: { settings: SettingsSection | nu
       <Tooltip label={t('Back to home')}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={t('Back to home')}><BrandLogo compact /></button></Tooltip>
     </div>
     <div className="om-app-navigation">{settings ? <button className="om-nav-item" onClick={openHome} aria-label={t('Back to home')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Back to home')}</span></button> : null}</div>
-    <div className="om-app-header-actions"><div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>{!settings && <ModelSwitcher openSettings={openModelSettings} />}{settings && <button className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}</div>
+    <div className="om-app-header-actions"><div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>{!settings && <ModelSwitcher openSettings={openModelSettings} />}{settings && <button className="motion-icon-button" aria-label={t(settings === 'brand-kit' ? 'Close Brand Kit' : 'Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}</div>
   </header>;
 }
 export function ApplicationRail({ settings, openSettings, home }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void; home: ReactNode }) {
   const { t, locale, setLocale } = useI18n(), { account } = useAccountSummary();
-  const { openLibrary, openConnections, openAssets, assetsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
+  const { openLibrary, openConnections, openAssets, assetsOpen, openSkills, skillsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
   const userName = account?.user?.name || account?.user?.email || t('Account');
   const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false, disabled = false) => <Tooltip label={t(label)} side="right"><button className="om-nav-item om-rail-button" aria-label={t(label)} aria-pressed={active} onClick={action} disabled={disabled}><RemixIcon name={icon} size={18} /></button></Tooltip>;
   return <nav id="om-application-navigation" className="om-app-rail om-collapsible" data-collapsed={navigationCollapsed} aria-label={t('Application navigation')} aria-hidden={navigationCollapsed} inert={navigationCollapsed}>
     {home}
     {item('Workspace assets', 'folder-open-line', openAssets, assetsOpen)}
     {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), false, switchingDisabled)}
+    {item('Brand Kit', 'palette-line', () => openSettings('brand-kit'), settings === 'brand-kit')}
+    {item('Skills', 'flashlight-line', openSkills, skillsOpen)}
     {item('MCP · Connect Agent', 'plug-line', openConnections, settings === 'mcp')}
     <div className="om-rail-spacer" />
     {item('Help', 'question-line', () => openSettings('help'), settings === 'help')}
-    {item('Settings', 'settings-3-line', () => openSettings('general'), Boolean(settings && !['mcp', 'providers', 'help', 'account', 'subscription'].includes(settings)))}
+    {item('Settings', 'settings-3-line', () => openSettings('general'), Boolean(settings && !['mcp', 'brand-kit', 'providers', 'help', 'account', 'subscription'].includes(settings)))}
     {item('Model providers', 'sparkling-line', () => openSettings('providers'), settings === 'providers')}
     <Menu tooltip={t('Account menu')} modal={false} side="top" align="start" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<button className="om-nav-item om-rail-button om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar">{account?.state === 'signed-in' ? userName.slice(0, 2).toUpperCase() : <RemixIcon name="user-3-line" size={18} />}</span></button>}>
       <MenuItem onClick={() => openSettings('account')}><span className="om-menu-label"><RemixIcon name="user-3-line" size={16} /><strong>{userName}</strong></span></MenuItem><MenuSeparator />

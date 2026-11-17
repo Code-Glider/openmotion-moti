@@ -1,6 +1,6 @@
 # Read, measure and rebuild the reference
 
-This page carries the reconstruction method for openmotion-recreate. It is guidance for the host Agent; the native source is written by the Agent and saved through the project Tools.
+This page carries the reconstruction method for openmotion-recreate. The host Agent writes native source and saves it through the project Tools. During default creation, use reference observations to plan and implement the complete film, then follow [export and requested review](verify.md). Default creation uses the single focused preview pass defined in delivery. Detailed unit validation and further visual repair apply to explicitly requested review or revision. Source analysis and material preparation belong to authoring.
 
 ## Read the whole reference
 
@@ -35,9 +35,9 @@ Also look for texture where the reference has it: how much a back layer blurs an
 
 Choose source and component boundaries through shared behaviour. Objects sharing geometry, state, layout or motion can form one SVG, Canvas, Three.js scene or native composition; independent contributions can stay separate. There is no requirement for one clip per object, one composition per cut, one tween per move or a fixed number of poses. Keep relative scene time distinct from the root timeline.
 
-Before flattening a region into one material, identify the changes that make it recognizable through time. A stationary frame can contain scrolling content, changing illumination or a deforming surface. Follow both its outer boundary and an internal feature to choose the controls. Preserve independently changing contributions inside a shared renderer or through separate layers. A crop provides spatial material. Reconstruct its observed temporal behavior with local paths, content updates, deformation or exposure controls.
+Choose the representation from the appearance and behavior that make each region recognizable. Use clear source views and adjacent frames to obtain visible bounds, texture, typical and extreme feature sizes, motion direction and travel, holds and event timing. Keep these observations with the responsible source controls in existing implementation notes. Fit the complete mechanism from this evidence in the first implementation.
 
-Inspect a close consecutive-frame sequence of each proposed material region before treating it as static. Inventory its independently changing contents, including small regions inside a larger background. Carry each region, its observed change or hold, and its responsible source control into local and integrated review. Compare each changing region's actual output with its reference sequence and record the result separately.
+A stationary boundary can contain scrolling content, changing illumination or a deforming surface. Preserve recovered texture with local-coordinate transport, masks, aligned content fields or deformation, according to that source behavior. Derive procedural marks from observed shape, size, spacing, colour and exposure. Carry these properties through movement and transitions. A material crop has a source position and visible pixel bounds. Preserve its crop offset and transparent padding when placing, scaling and reusing it in scene coordinates.
 
 Keep content the user will change easy to locate: wording, brand, images, named objects and their motion. Use meaningful source names and declare common edits as root variables so the Studio Variables panel shows them. Variables are shortcuts, not an editing whitelist.
 
@@ -49,7 +49,7 @@ Do not pass off playback of the entire reference, a full-frame image sequence, e
 
 ## Establish a difficult visual system
 
-Dense multi-shot work, unfamiliar visual mechanisms and movement that still differs after a repair follow [difficult visual reconstruction](reconstruction.md). Read it before authoring those passages. It covers [Plan shot and action units](reconstruction.md#plan-shot-and-action-units), [Turn observations into driving data](reconstruction.md#turn-observations-into-driving-data), [Prepare material in its actual use states](reconstruction.md#prepare-material-in-its-actual-use-states), [Validate and repair the local implementation](reconstruction.md#validate-and-repair-the-local-implementation) and [Integrate the inspected units](reconstruction.md#integrate-the-inspected-units).
+Dense multi-shot work, unfamiliar visual mechanisms and movement under requested revision that still differs after a repair follow [difficult visual reconstruction](reconstruction.md). Read it before authoring those passages. It covers [Plan shot and action units](reconstruction.md#plan-shot-and-action-units), [Turn observations into driving data](reconstruction.md#turn-observations-into-driving-data), [Prepare material in its actual use states](reconstruction.md#prepare-material-in-its-actual-use-states), [Validate and repair the local implementation](reconstruction.md#validate-and-repair-the-local-implementation) and [Integrate the units](reconstruction.md#integrate-the-units).
 
 ## Assets, text and fonts in this package
 
@@ -61,7 +61,7 @@ Dense multi-shot work, unfamiliar visual mechanisms and movement that still diff
 
 ## Rebuild and compare while working
 
-Compare actual frames with the reference while developing. Fix concrete issues such as omitted content, wrong text, broken assets and incorrect timing. When two consecutive fixes for the same issue do not visibly reduce the difference at the same moment, change the approach once; if that also fails, record the issue and move on.
+For an explicitly requested visual revision, compare affected frames with the reference. Fix concrete issues such as omitted content, wrong text, broken assets and incorrect timing. When two consecutive fixes for the same issue do not visibly reduce the difference at the same moment, change the approach once; if that also fails, record the issue and move on.
 
 Verify hard cuts against adjacent source frames. Restore a missing original hard cut unless the user requested a change; do not accept accidental smoothing or a detector's false positive as intended behaviour.
 

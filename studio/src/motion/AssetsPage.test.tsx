@@ -54,30 +54,13 @@ beforeEach(() => {
   });
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 async function flush() { await act(async () => { await vi.advanceTimersByTimeAsync(0); }); }
 async function render(active = true) { await act(async () => root.render(<AssetsPage active={active} />)); await flush(); }
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text || node.getAttribute('aria-label') === text)!;
 async function click(text: string) { await act(async () => button(text).click()); await flush(); }
 const previewName = () => container.querySelector('.om-asset-workspace-header strong')?.textContent;
 const updates = () => vi.mocked(assetRequest).mock.calls.map(([args]) => args).filter(args => args.action === 'update');
-
-it('opens the compact asset navigation during creation and selects a category without losing the draft', async () => {
-  await render(); await click('AI Create');
-  const draft = container.querySelector<HTMLInputElement>('[aria-label="Creation draft"]')!;
-  draft.value = 'Keep this draft';
-  await click('Asset types');
-  expect(button('Asset types').getAttribute('aria-expanded')).toBe('true');
-  const drawer = document.querySelector('[role="dialog"]')!;
-  expect(drawer.textContent).toContain('Trash');
-  const audio = [...drawer.querySelectorAll('nav button')].find(node => node.textContent === 'Audio') as HTMLButtonElement;
-  await act(async () => audio.click()); await flush();
-  expect(button('Asset types').getAttribute('aria-expanded')).toBe('false');
-  expect(container.querySelector('.om-assets-main h2')?.textContent).toBe('Audio');
-  expect(container.querySelector('.om-assets-page')?.getAttribute('data-mobile-view')).toBe('library');
-  expect(container.querySelector('[aria-label="Creation draft"]')).toBe(draft);
-  expect(draft.value).toBe('Keep this draft');
-});
 
 it('switches between the narrow gallery and creator without remounting the draft or losing gallery state', async () => {
   await render(); await click('AI Create');
@@ -95,6 +78,209 @@ it('switches between the narrow gallery and creator without remounting the draft
   expect(draft.value).toBe('Keep this draft');
   expect(gallery.scrollTop).toBe(240);
   expect(vi.mocked(assetRequest).mock.calls.filter(([args]) => args.action === 'list')).toHaveLength(listCount);
+});
+
+it('keeps the existing combined filters and ordering when using the gallery toolbar and returning from preview', async () => {
+  await render();
+  const choose = async (menu: string, label: string) => {
+    await click(menu);
+    const option = [...document.querySelectorAll<HTMLElement>('[role=menuitemradio]')].find(node => node.textContent === label)!;
+    expect(option).toBeDefined();
+    await act(async () => option.click()); await flush();
+  };
+  const latestList = () => vi.mocked(assetRequest).mock.calls.map(([args]) => args).filter(args => args.action === 'list').at(-1);
+  await click('Images');
+  await choose('Source', 'Local upload');
+  await choose('Sort', 'Name');
+  const input = container.querySelector<HTMLInputElement>('input[type=search]')!;
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Picture'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(180); }); await flush();
+  expect(latestList()).toMatchObject({ modality: 'image', source: 'upload', sort: 'name', query: 'Picture', trash: false });
+  await click('Picture A'); await click('All assets');
+  expect(button('Images').getAttribute('aria-current')).toBe('page');
+  expect(button('Source').textContent).toBe('Local upload');
+  expect(button('Sort').textContent).toBe('Name');
+  expect(container.querySelector<HTMLInputElement>('input[type=search]')?.value).toBe('Picture');
+  await click('Clear filters');
+  expect(latestList()).toMatchObject({ modality: 'image', sort: 'name', query: '', trash: false });
+  expect(latestList()).not.toHaveProperty('source');
+  await click('Trash');
+  expect(latestList()).toMatchObject({ sort: 'name', trash: true });
+  expect(latestList()).not.toHaveProperty('modality');
+  await click('All');
+  expect(latestList()).toMatchObject({ sort: 'name', trash: false });
+  expect(latestList()).not.toHaveProperty('modality');
+});
+
+it('extracts a gallery video cover from the current immutable version using the editor frame timing', async () => {
+  const asset = fixture('video');
+  asset.modality = 'video';
+  Object.assign(asset.versions[0], { filename: 'clip.mov', mimeType: 'video/quicktime', duration: 24 });
+  records = new Map([[asset.id, asset]]);
+  const createElement = document.createElement.bind(document), videos: HTMLVideoElement[] = [];
+  vi.spyOn(document, 'createElement').mockImplementation(((tag: string, options?: ElementCreationOptions) => {
+    const element = createElement(tag, options);
+    if (tag === 'video') {
+      videos.push(element as HTMLVideoElement);
+      Object.defineProperties(element, { duration: { value: 24 }, videoWidth: { value: 640 }, videoHeight: { value: 360 } });
+    }
+    return element;
+  }) as typeof document.createElement);
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  const drawImage = vi.fn();
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,AAAA');
+
+  await render();
+  expect(videos).toHaveLength(1);
+  expect(videos[0].getAttribute('src')).toBe('/motion-api/assets/video/versions/video-v1/file');
+  await act(async () => videos[0].dispatchEvent(new Event('loadedmetadata')));
+  expect(videos[0].currentTime).toBe(2);
+  await act(async () => videos[0].dispatchEvent(new Event('seeked')));
+  expect(drawImage).toHaveBeenCalledWith(videos[0], 0, 0);
+  expect(container.querySelector('.om-asset-preview img')?.getAttribute('src')).toBe('data:image/jpeg;base64,AAAA');
+  expect(container.querySelector('.om-asset-preview')?.textContent).toContain('00:24');
+  expect(videos[0].getAttribute('src')).toBe('');
+});
+
+function prepareGalleryVideos() {
+  for (const asset of records.values()) {
+    asset.modality = 'video';
+    Object.assign(asset.versions[0], { filename: `${asset.id}.mp4`, mimeType: 'video/mp4', duration: 10 });
+  }
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  return { pause, play };
+}
+async function hoverCard(name: string, pointerType = 'mouse') {
+  await act(async () => button(name).dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType })));
+}
+const hoverVideo = () => container.querySelector<HTMLVideoElement>('.om-asset-hover-video');
+
+it('plays one silent gallery hover preview over the retained poster and preserves click-to-open', async () => {
+  const { play, pause } = prepareGalleryVideos();
+  await render();
+  expect(hoverVideo()).toBeNull();
+  expect(play).not.toHaveBeenCalled();
+  const poster = button('Picture A').querySelector('[data-thumbnail-loading]');
+  await hoverCard('Picture A');
+  const first = hoverVideo()!;
+  expect(first.src).toContain('/motion-api/assets/A/versions/A-v1/file');
+  expect(first.muted).toBe(true);
+  expect(first.loop).toBe(true);
+  expect(first.hasAttribute('playsinline')).toBe(true);
+  expect(first.controls).toBe(false);
+  expect(first.style.visibility).toBe('hidden');
+  await act(async () => first.dispatchEvent(new Event('playing')));
+  expect(first.style.visibility).toBe('visible');
+  expect(button('Picture A').querySelector('[data-thumbnail-loading]')).toBe(poster);
+  await hoverCard('Picture B');
+  expect(container.querySelectorAll('.om-asset-hover-video')).toHaveLength(1);
+  expect(first.getAttribute('src')).toBeNull();
+  expect(pause.mock.instances).toContain(first);
+  const second = hoverVideo()!;
+  await act(async () => button('Picture B').dispatchEvent(new PointerEvent('pointerout', { bubbles: true, relatedTarget: document.body })));
+  expect(hoverVideo()).toBeNull();
+  expect(second.getAttribute('src')).toBeNull();
+  await hoverCard('Picture A');
+  const clicked = hoverVideo()!;
+  await click('Picture A');
+  expect(previewName()).toBe('Picture A');
+  expect(clicked.getAttribute('src')).toBeNull();
+  expect(hoverVideo()).toBeNull();
+  expect(container.querySelector('video[controls]')?.getAttribute('src')).toContain('/A/versions/A-v1/file');
+  await hoverCard('Picture B');
+  expect(hoverVideo()).toBeNull();
+});
+
+it('releases gallery hover media on scrolling, backgrounding and leaving the Assets surface', async () => {
+  prepareGalleryVideos();
+  await render();
+  await hoverCard('Picture A');
+  const scrolling = hoverVideo()!;
+  await act(async () => container.querySelector('.om-assets-main')!.dispatchEvent(new Event('scroll')));
+  expect(hoverVideo()).toBeNull();
+  expect(scrolling.getAttribute('src')).toBeNull();
+  await hoverCard('Picture A');
+  const backgrounded = hoverVideo()!;
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(hoverVideo()).toBeNull();
+  expect(backgrounded.getAttribute('src')).toBeNull();
+  await hoverCard('Picture A');
+  expect(hoverVideo()).toBeNull();
+  hidden.mockReturnValue(false);
+  await hoverCard('Picture A');
+  const inactive = hoverVideo()!;
+  await render(false);
+  expect(hoverVideo()).toBeNull();
+  expect(inactive.getAttribute('src')).toBeNull();
+  await render(true);
+  expect(hoverVideo()).toBeNull();
+});
+
+it('keeps gallery posters on touch, reduced motion and failed hover playback', async () => {
+  const { play } = prepareGalleryVideos();
+  await render();
+  await hoverCard('Picture A', 'touch');
+  expect(hoverVideo()).toBeNull();
+  const preference = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+  await hoverCard('Picture A');
+  expect(hoverVideo()).toBeNull();
+  preference.mockRestore();
+  play.mockRejectedValueOnce(new Error('Playback unavailable'));
+  await hoverCard('Picture A');
+  expect(hoverVideo()?.getAttribute('src')).toBeNull();
+  expect(hoverVideo()?.style.visibility).toBe('hidden');
+  expect(button('Picture A').querySelector('[data-thumbnail-loading]')).not.toBeNull();
+  await hoverCard('Picture B');
+  const failed = hoverVideo()!;
+  await act(async () => failed.dispatchEvent(new Event('playing')));
+  await act(async () => failed.dispatchEvent(new Event('error')));
+  expect(failed.getAttribute('src')).toBeNull();
+  expect(failed.style.visibility).toBe('hidden');
+  await hoverCard('Picture A');
+  const stalled = hoverVideo()!;
+  await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+  expect(stalled.getAttribute('src')).toBeNull();
+  expect(stalled.style.visibility).toBe('hidden');
+});
+
+it('shows the complete card title on hover only while it overflows, including after resizing', async () => {
+  const observers: ResizeObserverStub[] = [];
+  class ResizeObserverStub {
+    targets = new Set<Element>();
+    constructor(public callback: ResizeObserverCallback) { observers.push(this); }
+    observe(target: Element) { this.targets.add(target); }
+    unobserve(target: Element) { this.targets.delete(target); }
+    disconnect() { this.targets.clear(); }
+  }
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+  const name = 'A complete asset filename that needs more room.mp4';
+  records.get('A')!.name = name;
+  await render();
+  const title = container.querySelector<HTMLElement>('.om-asset-tile-caption strong')!;
+  let width = 400;
+  Object.defineProperties(title, { clientWidth: { get: () => width }, scrollWidth: { get: () => 300 } });
+  const observer = observers.find(item => item.targets.has(title))!;
+  const resize = () => observer.callback([], observer as unknown as ResizeObserver);
+  const hover = async () => {
+    await act(async () => {
+      title.parentElement!.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false, composed: true }));
+      title.parentElement!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false, composed: true }));
+      title.parentElement!.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, composed: true }));
+      await vi.advanceTimersByTimeAsync(250);
+    });
+  };
+  await act(async () => resize()); await hover();
+  expect(document.querySelector('[role=tooltip]')).toBeNull();
+  await act(async () => { width = 120; resize(); }); await hover();
+  expect(document.querySelector('[role=tooltip]')?.textContent).toBe(name);
+  await act(async () => { width = 400; resize(); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+  expect(document.querySelector('[role=tooltip]')).toBeNull();
+  expect(title.hasAttribute('aria-describedby')).toBe(false);
 });
 
 it('removes only the selected asset, exits its preview and restores the exact asset with Undo', async () => {
@@ -242,7 +428,7 @@ it('restores from Trash without switching the filmstrip into the active library'
   expect(previewName()).toBeUndefined();
   expect(container.textContent).toContain('Trash is empty');
   expect(document.querySelector('[role=status]')?.textContent).toContain('Asset restored');
-  await click('All assets');
+  await click('All');
   expect(container.querySelector('[aria-label="Picture A"]')).not.toBeNull();
   expect(container.querySelector('[aria-label="Picture B"]')).not.toBeNull();
 });
