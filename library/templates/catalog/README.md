@@ -50,13 +50,17 @@ Submit PRs against `main`. CI runs **Template library policy** without CMS publi
 
 ## Publishing boundary
 
-Source Studio and MCP load this directory directly. See [local startup and plugin paths](../../../docs/template-repository.md#run-from-a-local-clone). The website and installed applications without the repository catalog continue to consume CMS publications. A merged source change does not publish CMS content. To export metadata for review:
+Source Studio and MCP load this directory directly. See [local startup and plugin paths](../../../docs/template-repository.md#run-from-a-local-clone). For editable projects, commit unpacked source and keep `template.json.entry.files` paths, byte lengths and SHA-256 hashes aligned with `source/manifest.json`. Project-file URLs and a ZIP download are optional for repository/hosted entries; contributors do not need to upload files to the old CMS service. See [the editable-project checklist](../../../docs/template-repository.md#contribute-editable-project-files).
+
+After final review, a maintainer runs **Prepare and merge PR** to transfer eligible media and merge the prepared change. Merging to `main` automatically publishes source objects and hosted metadata, then updates `https://releases.open-design.ai/open-motion/templates/main/catalog.json` for hosted NPM consumers. The website and explicit CMS-mode clients continue to consume CMS publications; updating them is a separate internal task. A merged source change does not publish CMS content.
+
+To export CMS-compatible metadata for review:
 
 ```sh
 npm run templates:export -- .artifacts/catalog-candidate.json
 ```
 
-This writes a CMS-compatible file, including all locale overrides and collection facets. It does not upload or publish. The imported publication identity is retained for comparison and must not be reused for changed content. After editing source, package and upload it through the existing CMS workflow, update `sourceArchive` and affected download URLs, and publish a new content revision. Existing translated downloads do not silently change with local source edits.
+This writes a file with all locale overrides and collection facets; it does not upload or publish. The imported publication identity is retained for comparison. Only an explicitly requested website CMS publication requires packaging/uploading source and updating CMS archive identities and download links. Repository PRs use the automatic hosted workflow above. Existing translated CMS downloads do not silently change with local source edits.
 
 See [the contribution and publication workflow](../../../docs/template-repository.md). The catalog and developer tools are excluded from application/npm packages.
 
