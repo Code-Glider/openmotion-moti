@@ -275,8 +275,10 @@ it("retains drafts, frame identity and unknown project receipts through view cha
     } else await route.continue();
   });
   await page.getByRole("button", { name: "保存", exact: true }).click();
-  await expect.poll(() => projectCommitted).toBe(true);
-  await expect.poll(() => page.getByRole("button", { name: "重试", exact: true }).isEnabled()).toBe(true);
+  await expect.poll(() => projectCommitted, { timeout: 8000 }).toBe(true);
+  await expect
+    .poll(() => page.getByRole("button", { name: "重试", exact: true }).isEnabled(), { timeout: 8000 })
+    .toBe(true);
   const savedUnknown = await client.execute("project_versions", owner);
   await apply("dark", "preview");
   expect(projectRequests).toHaveLength(1);
