@@ -129,9 +129,7 @@ export class Studio {
     options.source.hidden = true;
     root.replaceChildren(this.toolbar, this.context.element, areas.element);
     const Resize = document.defaultView?.ResizeObserver;
-    const observer = Resize
-      ? new Resize(() => this.axis?.resize(this.timelineRoot.clientWidth))
-      : undefined;
+    const observer = Resize ? new Resize(() => this.axis?.resize(this.timelineRoot.clientWidth)) : undefined;
     observer?.observe(this.timelineRoot);
     const hide = () => {
       this.enabled = false;
