@@ -68,7 +68,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: source/.git/lfs/objects
-          key: optional-lfs-${{ runner.os }}-${{ hashFiles('source/**/*.mp4', 'source/**/*.motion', '!source/library/templates/catalog/**') }}
+          key: optional-lfs-${{ runner.os }}-${{ hashFiles('source/**/*.mp4', 'source/**/*.motion', 'source/library/templates/catalog/**') }}
           restore-keys: optional-lfs-${{ runner.os }}-
       - name: Download full-bundle media explicitly
         working-directory: source
