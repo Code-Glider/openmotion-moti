@@ -37,7 +37,7 @@
 
 # OpenMotion
 
-OpenMotion 由 [OpenDesign](https://github.com/nexu-io) 开发，是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **Claude Motion 与 CapCut 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
+OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **Claude Motion 与 CapCut 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
 
 - 🎬 **全栈视频复刻。** Agent 拆解参考片，用 HTML 重建镜头和转场，并生成缺少的素材。你可以在同一工程里用 Studio 调整剪辑节奏，再渲染导出 MP4。
 - 🔑 **BYOA（自带 Agent）与 BYOK（自带 API 密钥）。** OpenMotion 开源免费。直接在[常用的本地 Agent](#agent-wall) 里复刻视频，每一层都能用自己的 API 密钥。
@@ -733,7 +733,7 @@ OpenMotion 采用 [Apache-2.0](LICENSE)许可。第三方代码、模板、媒�
 
 | 来源 | 关联 |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | 界面来源、资源结构和品牌方向；[设计体系](docs/design-system.md) 和 [Motion 展示](https://open-design.ai/zh/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | OpenMotion 的开发团队，负责界面设计、资源结构和品牌方向。[设计体系](docs/design-system.md) 和 [Motion 展示](https://open-design.ai/zh/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML 视频合成、Studio 和渲染基础，固定为 0.9.7；创作者参考、外部改编演示与组件源码；[引擎说明](docs/hyperframes.md)、[模板声明](template-library/NOTICE.md) 和[目录来源](docs/template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech 源码以 Presenter Tech 打包；[许可与署名](library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | Agent 主导热门视频复刻与可编辑版本的灵感来源；未引入运行时 |
