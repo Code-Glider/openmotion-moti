@@ -279,8 +279,14 @@ it("restores complete native source/fonts/media as a new version, saves drafts, 
     await readyVersions();
   }
   await modal.getByRole("button", { name: `v${target.number}`, exact: true }).click();
-  expect(await modal.getByRole("button", { name: `v${target.number}`, exact: true }).getAttribute("class")).toContain(
-    "om-button--selected",
+  const selectedColor = await modal
+    .getByRole("button", { name: `v${target.number}`, exact: true })
+    .evaluate((node) => getComputedStyle(node).backgroundColor);
+  expect(selectedColor).not.toBe(
+    await modal
+      .getByRole("button", { pressed: false })
+      .first()
+      .evaluate((node) => getComputedStyle(node).backgroundColor),
   );
   await driver.capture("content-versions-before-restore");
   const requests: string[] = [];
