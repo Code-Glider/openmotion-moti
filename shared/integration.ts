@@ -1,6 +1,13 @@
 import { templatePrompts } from './template-prompts.ts';
 import { catalogLocale } from './template-locale.ts';
 import { workflowEntryGuide } from './workflow-entry.js';
+import { transcriptWorkflowPrompt } from './transcript-workflow.ts';
+
+export function transcriptExamplePrompt(info?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'> | null, locale = 'en') {
+  return `First list projects with openmotion_get_project and ask the user to identify the source project and media. Replace SELECTED_PROJECT_ID with that confirmed identity before any operation.\n\n` + transcriptWorkflowPrompt({
+    projectId: 'SELECTED_PROJECT_ID', sourcePaths: [], sourceLinks: '', targets: 'YouTube Shorts and Instagram Reels', languages: 'English and Chinese', goal: 'highlights', notes: 'Review speech and pictures, preserve the original and deliver editable projects with subtitle files.',
+  }, info ?? undefined, locale);
+}
 
 export const integrationHosts = ['codex', 'claude', 'deepseek', 'chatgpt', 'mcp'] as const;
 export type IntegrationHost = typeof integrationHosts[number];

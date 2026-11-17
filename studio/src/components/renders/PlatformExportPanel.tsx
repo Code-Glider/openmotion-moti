@@ -1,3 +1,4 @@
+import { useDockLayoutStore } from '../dock/dockLayoutStore';
 import { useEffect, useRef, useState } from 'react';
 import { defaultPlatformExportTarget, platformExportGoals, platformExportPrompt, platformExportTargets, platformExportCanvases, platformExportDurations, platformExportCaptions, platformExportSettings, type PlatformExportOptions, type PlatformExportGoal, type PlatformExportTarget } from '../../../../shared/platform-export';
 import { useStudioShellContext } from '../../contexts/StudioContext';
@@ -26,14 +27,14 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
   const { info, failed, retry } = useIntegrationInfo();
   const [target, setTarget] = useState<PlatformExportTarget>(() => defaultPlatformExportTarget(locale));
   const [goal, setGoal] = useState<PlatformExportGoal>('shorten');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(''), [languages, setLanguages] = useState('');
   const [options, setOptions] = useState<PlatformExportOptions>({});
   const [copying, setCopying] = useState(false), [manualCopy, setManualCopy] = useState('');
   const alive = useRef(true), busy = useRef(false);
   const available = Boolean(projectId && workspace.status?.projectId === projectId && !switchingDisabled && !renderQueue.emptyComposition);
   const availableNow = useRef(available); availableNow.current = available;
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  useEffect(() => setManualCopy(''), [target, goal, notes, locale, options]);
+  useEffect(() => setManualCopy(''), [target, goal, notes, languages, locale, options]);
   const title = workspace.projects.find(item => item.id === projectId)?.title || workspace.status?.projectTitle || t('Untitled');
   const platform = platformExportTargets.find(item => item.id === target)!;
   const settings = platformExportSettings(target, options);
@@ -46,7 +47,7 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
     try {
       await beforeViewChange();
       if (!alive.current || !availableNow.current) return;
-      const prompt = platformExportPrompt({ target, goal, locale, notes, options, context: { info, project: { id: projectId, title } } });
+      const prompt = platformExportPrompt({ target, goal, locale, notes, languages, options, context: { info, project: { id: projectId, title } } });
       try {
         await navigator.clipboard.writeText(prompt);
         if (alive.current) toast.showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback');
@@ -93,6 +94,8 @@ function PlatformExportContent({ projectId, onClose }: { projectId: string | nul
           <Select label={t('Clip count')} value={String(settings.clipCount)} disabled={copying} options={[1, 2, 3].map(count => ({ value: String(count), label: t('Up to {count}', { count }) }))} onCommit={value => configure('clipCount', Number(value) as 1 | 2 | 3)} />
         </div>}
       </div>
+    <label className="flex flex-col gap-1 text-step-11 text-text-3">{t('Subtitle languages (optional)')}<input className="om-field w-full" aria-label={t('Subtitle languages (optional)')} value={languages} maxLength={500} disabled={copying} onChange={event => setLanguages(event.target.value)} /></label>
+    <Button size="sm" variant="ghost" onClick={() => { onClose(); useDockLayoutStore.getState().activatePanel('transcript'); }}>{t('Review captions')}</Button>
       <details><summary className="om-disclosure-summary">{t('Additional requirements (optional)')}<RemixIcon name="arrow-down-s-line" size={14} /></summary>
         <textarea className="om-field min-h-16 w-full resize-y text-step-12" aria-label={t('Additional requirements (optional)')} placeholder={t('e.g. Keep the opening hook and original narration')} rows={2} maxLength={2000} disabled={copying} value={notes} onChange={event => setNotes(event.target.value)} />
       </details>

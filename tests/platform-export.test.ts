@@ -65,3 +65,16 @@ test('invalid configuration cannot silently fall back to a different brief', () 
     assert.throws(() => platformExportPrompt({ target: 'shorts', goal: 'shorten', options: options as any }), /Unknown platform export settings/);
   }
 });
+
+test('platform subtitle language requests use shared transcript operations and preserve timing and voice', () => {
+  const text = platformExportPrompt({ target: 'shorts', goal: 'highlights', languages: 'English, French', context });
+  for (const value of ['English, French', 'action=transcript', 'expectedTranscriptRevision', 'source-relative', 'original voice']) assert.ok(text.includes(value));
+});
+
+test('handoff edit and export tracking calls name all required identities', () => {
+  for (const locale of ['en', 'zh-CN']) {
+    const text = platformExportPrompt({ target: 'shorts', goal: 'adapt', locale, context });
+    assert.match(text, /4\.[^\n]*openmotion_edit_project[^\n]*requestId[^\n]*expectedRevision[^\n]*expectedVersionId/);
+    assert.match(text, /openmotion_get_project\(projectId, exportJobId\)/);
+  }
+});

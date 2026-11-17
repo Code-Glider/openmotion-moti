@@ -42,7 +42,7 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
   const selected = visibleProviders.some(provider => provider.id === requestedProvider) ? requestedProvider : 'account';
   const providers = visibleProviders.filter(provider => {
     const matches = category === 'all' || category === 'configured' && provider.configured || category === 'multimodal' && provider.kinds.length > 1
-      || category === 'language' && provider.kinds.includes('text') || category === 'media' && provider.kinds.some(kind => ['image', 'video', 'audio'].includes(kind))
+      || category === 'language' && provider.kinds.includes('text') || category === 'media' && provider.kinds.some(kind => ['image', 'video', 'audio', 'transcription'].includes(kind))
       || category === 'local' && provider.category === 'local' || category === 'custom' && provider.custom;
     return matches && (status === 'all' || status === 'enabled' && provider.enabled || status === 'disabled' && !provider.enabled || status === 'configured' && provider.configured || status === 'unconfigured' && !provider.configured) && (protocol === 'all' || provider.protocol === protocol) && `${provider.label} ${provider.id}`.toLowerCase().includes(query.toLowerCase());
   }) ?? [];

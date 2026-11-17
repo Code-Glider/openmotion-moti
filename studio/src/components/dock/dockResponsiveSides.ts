@@ -1,7 +1,7 @@
 import type { DockviewApi } from "dockview-react";
 import { COLLAPSED_SIDE_WIDTH, DOCK_GAPS, MIN_COMPACT_PREVIEW_WIDTH, MIN_PREVIEW_W, preferredSideWidths, isSideCollapsed, isSideRequestedCollapsed, previewMinimumWidth, sideMinimumWidth } from "./dockLayout";
 import { fitPreviewFirstSides, type SideWidths } from "./dockSideSizing";
-import { PANEL_DEFINITIONS, type PanelId } from "./panelRegistry";
+import { PANEL_DEFINITIONS, isPanelId, type PanelDefinition, type PanelId } from "./panelRegistry";
 import type { createSidePanelMotion } from "./dockSidePanelMotion";
 
 export const previewIsEnabled = (api: DockviewApi) => !api.getPanel("preview")?.group.element.classList.contains("hf-dock-preview-hidden");
@@ -11,6 +11,7 @@ type Side = typeof zones[number];
 /** Keep preview stable through host resizes; temporary rails never replace user preferences. */
 export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => number, motion: ReturnType<typeof createSidePanelMotion>, sync: () => void, savedWidths: Partial<SideWidths> = {}, fixedLayout = false) {
   const widths = new Map<Side, number>();
+  const openedReadingPanels = new Set<PanelId>();
   let previewWidth: number | undefined;
   let lastWidth = 0;
   let lastFitted: SideWidths | undefined;
@@ -38,6 +39,17 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
       const width = dockWidth() - DOCK_GAPS;
       const enabled = previewIsEnabled(api);
       const collapsed = { left: isSideRequestedCollapsed(groups.left), right: isSideRequestedCollapsed(groups.right) };
+      for (const zone of zones) {
+        const id = groups[zone]!.activePanel?.id;
+        const preferredWidth = isPanelId(id) ? (PANEL_DEFINITIONS[id] as PanelDefinition).preferredWidth : undefined;
+        if (!collapsed[zone] && isPanelId(id) && preferredWidth && !openedReadingPanels.has(id)) {
+          openedReadingPanels.add(id);
+          widths.set(zone, Math.max(widths.get(zone) ?? 0, preferredWidth));
+          // Let the preview yield space once when opening a reading surface.
+          // Later sash changes and ordinary focus changes retain the chosen width.
+          previewWidth = undefined;
+        }
+      }
       const minimum = (zone: Side) => collapsed[zone] ? COLLAPSED_SIDE_WIDTH : sideMinimumWidth(width, true, zone);
       // Preserve the most recently opened side for as long as one readable column fits.
       if (enabled) {
@@ -102,6 +114,12 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
     responsiveFit = zones.some(zone => !isSideCollapsed(groups[zone]!) && Math.abs(groups[zone]!.width - (widths.get(zone) ?? preferredSideWidths()[zone])) > 1);
   };
   const sizeSubscription = api.onDidLayoutChange(() => rememberSizes());
+  const activeSubscription = api.onDidActivePanelChange(({ panel }) => {
+    const id = panel?.id;
+    if (fixedLayout && isPanelId(id) && (PANEL_DEFINITIONS[id] as PanelDefinition).preferredWidth && !openedReadingPanels.has(id)) {
+      reflow();
+    }
+  });
   // Dockview reports a sash layout after release, while ResizeObserver can run
   // between pointer moves. Until release, the live sash owns the geometry;
   // fitting the last remembered sizes here would snap it back under the cursor.
@@ -170,10 +188,11 @@ export function createResponsiveDockSides(api: DockviewApi, dockWidth: () => num
   const hasResponsiveFit = () => responsiveFit || !previewIsEnabled(api);
   return { setCollapsed, reflow, setPreviewVisible, canExpand, hasResponsiveFit, dispose: () => {
     sizeSubscription.dispose();
+    activeSubscription.dispose();
     root?.removeEventListener("pointerdown", startDrag, true);
     doc?.removeEventListener("pointerup", endDrag);
     doc?.removeEventListener("pointercancel", endDrag);
     doc?.removeEventListener("contextmenu", endDrag);
   },
-    resetWidths: () => { widths.clear(); resizedSide = undefined; previewWidth = undefined; lastWidth = 0; reflow(); } };
+    resetWidths: () => { widths.clear(); openedReadingPanels.clear(); resizedSide = undefined; previewWidth = undefined; lastWidth = 0; reflow(); } };
 }

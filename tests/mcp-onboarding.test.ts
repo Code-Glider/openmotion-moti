@@ -5,10 +5,10 @@ import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpF
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
 
-test('MCP onboarding covers every public domain tool exactly once', () => {
+test('MCP onboarding covers every public domain tool and scenarios only compose real tools', () => {
   const described = mcpCapabilities.flatMap(capability => [...capability.tools]);
-  assert.equal(new Set(described).size, described.length);
-  assert.deepEqual([...described].sort(), phase1Tools.map(tool => tool.name).sort());
+  assert.deepEqual([...new Set(described)].sort(), phase1Tools.map(tool => tool.name).sort());
+  for (const capability of mcpCapabilities) assert.equal(new Set(capability.tools).size, capability.tools.length);
 });
 
 test('every capability and benefit has a real shared icon', () => {

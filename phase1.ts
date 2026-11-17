@@ -7,6 +7,9 @@ import { requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { recordDiagnostic } from './scripts/diagnostics.mjs';
 import { mediaUse } from './gateway/media-use.ts';
 import { assetOperation } from './gateway/asset-operations.ts';
+import { transcriptOperation } from './gateway/transcript-operations.ts';
+import { transcriptsFor } from './gateway/transcription.ts';
+import { captionTracks, transcriptCaptionSource, updateCaptionTrackSource, manualCaptionSource } from './shared/transcript-captions.ts';
 import { brandKitOperation } from './gateway/brand-kit-operation.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from './shared/asset-limits.ts';
@@ -314,6 +317,38 @@ export class Phase1Service {
     }
     if (name === 'motion_assets') {
       if (args.action === 'brand_kit') return brandKitOperation(brandKitsFor(this.store.directory), args.brandKit, this.context.origin());
+      if (args.action === 'transcript') {
+        const input = args.transcript;
+        if (input.command === 'caption_tracks') {
+          const scoped = this.versions(input.projectId).store, name = projectPath(input.compositionPath);
+          if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
+          return { tracks: captionTracks(await readFile(await scoped.safePath(name), 'utf8')) };
+        }
+        if (!['captions', 'caption_update', 'caption_add'].includes(input.command)) return transcriptOperation(this.store, input);
+        return this.writeRequest('transcript_captions', input, () => this.context.mutation(() => this.store.lock(async () => {
+          const versions = this.versions(input.projectId), scoped = versions.store;
+          const name = projectPath(input.compositionPath);
+          if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
+          const file = await scoped.safePath(name), source = await readFile(file, 'utf8');
+          let captions;
+          const trackId = input.command === 'caption_add' ? crypto.randomUUID() : input.transcriptId;
+          if (input.command === 'caption_add') {
+            captions = manualCaptionSource(source, trackId, input);
+          } else if (input.command === 'caption_update') {
+            if (!input.remove && !input.captionSettings) throw new Error('Supply caption settings or remove');
+            captions = updateCaptionTrackSource(source, input.transcriptId, input.captionSettings || {}, input.remove);
+          } else {
+            const service = transcriptsFor(this.store), doc = await service.document(input.projectId, input.transcriptId);
+            if (doc.revision !== input.expectedTranscriptRevision) throw new Error('TRANSCRIPT_CONFLICT: reload the latest transcript');
+            await service.assertSource(doc.source);
+            captions = transcriptCaptionSource(source, doc, input, input.captionSettings);
+          }
+          return versions.withHistory(async history => ({ projectId: input.projectId, trackId, captionCount: captions.count,
+            ...await versions.transaction(history, input.expectedRevision, input.expectedVersionId, input.requestId,
+              [{ path: name, content: captions.content }], { label: input.command === 'caption_add' ? (input.textKind === 'text' ? 'Add text' : 'Add captions') : input.command === 'caption_update' ? (input.remove ? 'Remove caption track' : 'Update caption track') : 'Apply transcript captions' }),
+            changedFiles: [name], previewSync: this.context.nativeUrl(input.projectId) ? 'file_watcher_notified' : 'not_open' }));
+        })));
+      }
       return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
     }
     if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);

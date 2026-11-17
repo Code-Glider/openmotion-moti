@@ -50,3 +50,7 @@ Read only the selected provider's document for model queries, request templates,
 - [OpenDesign Cloud](media-providers/opendesign.md)
 - [OpenDesign account](media-providers/account.md)
 - [Registered compatible APIs](media-providers/compatible.md)
+
+## Recorded speech, transcript review and captions
+
+For speech-led material, use `openmotion_assets_use` with `action=transcript` to discover configured transcription models and source-matched saved transcripts. Submit only missing sources with a stable request ID and follow the original job. Correct actual text/timing before editing cuts; transcript edits do not themselves cut footage. Real timestamps support SRT/VTT and editable captions with explicit source-to-timeline mapping and version guards. The [compatible API reference](media-providers/compatible.md#speech-to-text-and-editable-captions) describes setup and wire behavior; the [user workflow](../../../docs/transcripts.md) covers recordings, language variants, independent platform projects and export. Visual observations still require actual source inspection. Preserve the five creative entry points and use the existing native edit and delivery workflow.

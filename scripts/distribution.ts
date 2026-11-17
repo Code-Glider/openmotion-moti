@@ -10,6 +10,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // New documentation and developer scripts require an explicit distribution decision.
 const motionPackageFiles = [
   'docs/brand-kits.md',
+  'docs/transcripts.md',
   'docs/motion-package-spec.md',
   'packages/motion-package/README.md',
   'packages/motion-package/package.json',
