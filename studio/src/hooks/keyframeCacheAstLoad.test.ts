@@ -93,6 +93,27 @@ describe("fetchParsedAnimations — in-flight sharing", () => {
     expect(fetchStub.calls()).toBe(2);
   });
 
+  it("shares a project-relative parse with the runtime's absolute preview URL", async () => {
+    vi.stubGlobal("location", { origin: "http://localhost:4173" });
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({ animations: [] }));
+    vi.stubGlobal("fetch", fetch);
+    await Promise.all([
+      fetchParsedAnimations("p", "compositions/clip.html"),
+      fetchParsedAnimations("p", "http://localhost:4173/api/projects/p/preview/compositions/clip.html"),
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0]?.[0]).toBe("/api/projects/p/gsap-animations/compositions%2Fclip.html");
+  });
+
+  it("does not reinterpret a foreign project or origin as a local composition", async () => {
+    vi.stubGlobal("location", { origin: "http://localhost:4173" });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    expect(await fetchParsedAnimations("p", "http://localhost:4173/api/projects/q/preview/clip.html")).toBeNull();
+    expect(await fetchParsedAnimations("p", "https://foreign.invalid/api/projects/p/preview/clip.html")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("re-requests once the previous read has settled", async () => {
     const fetchStub = stubFetch();
 
