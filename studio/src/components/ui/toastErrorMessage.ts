@@ -1,8 +1,10 @@
 import { isKnownMessage, sourceMessage } from '../../i18n/messages';
+import { parseAssetUploadMessage } from '../../i18n/assetUploadMessages';
 
 /** Toasts show recognized causes, never raw diagnostics or a details affordance. */
 export function toastErrorMessage(raw: string): string {
   const message = sourceMessage(raw);
+  if (parseAssetUploadMessage(message)) return message;
   // These authored templates contain filenames, not server diagnostics. Match
   // before cause detection so words in a filename cannot change the feedback.
   if (/^"[\s\S]+" exceeds the size limit\. Compress or replace the file\.$/.test(message)

@@ -1,6 +1,7 @@
 import { historyFailureMessage } from "./editorErrors";
 import type { Translate } from './I18n';
 import { historyEntryLabel } from './historyMessages';
+import { assetUploadMessage, parseAssetUploadMessage } from './assetUploadMessages';
 
 // Only known system messages are interpreted. Captured names, paths and server
 // details are passed through as values, never translated as interface labels.
@@ -74,6 +75,8 @@ const patterns = TEMPLATES.map(template => {
 });
 
 export function systemMessage(message: string, t: Translate): string {
+  const upload = parseAssetUploadMessage(message);
+  if (upload) return assetUploadMessage(upload, t);
   const restore = /^VERSION_NOT_RESTORABLE: (Historical files are missing, unreadable or corrupt|Cannot stage historical file): (.+)$/s.exec(message);
   if (restore) return t(restore[1] === 'Cannot stage historical file'
     ? 'Could not prepare historical files for restoration: {files}. Your current project is unchanged.'
