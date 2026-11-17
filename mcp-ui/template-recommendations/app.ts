@@ -317,9 +317,9 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       categoryLabel.dataset.videoCategory = ''; categoryLabel.hidden = true;
       cover.append(poster, video, categoryLabel, previewLabel);
       const info = element('div', 'omtc-info'), heading = element('div', 'omtc-heading');
-      const position = element('span', 'omtc-position', String(card.position)), titleButton = element('button', 'omtc-title', card.title);
+      const titleButton = element('button', 'omtc-title', card.title);
       titleButton.type = 'button'; titleButton.title = card.title; titleButton.dataset.templateTitle = '';
-      heading.append(position, titleButton);
+      heading.append(titleButton);
       const description = element('p', 'omtc-description', card.description), status = element('p', 'omtc-status', t('loading'));
       const cloneButton = element('button', 'omtc-clone'), cardFeedback = element('p', 'omtc-feedback');
       label(status, 'loading'); cloneButton.type = 'button'; cardFeedback.hidden = true; cardFeedback.setAttribute('role', 'status');
