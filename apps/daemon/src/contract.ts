@@ -102,6 +102,8 @@ export const descriptions: Record<Operation, string> = {
     "Idempotently create an independent editable artifact from an exact template version; never changes current selection.",
   export_create:
     "Queue a film from an explicitly owned immutable source revision; requestId makes acceptance idempotent.",
+  export_lookup:
+    "Read the exact original create/cancel/retry receipt and current job state without submitting or controlling work. A missing receipt remains unconfirmed, not proof of failure.",
   export_list: "List the artifact's durable export jobs, including revision, progress and verified output facts.",
   export_read: "Read one owned export job without affecting its execution lifetime.",
   export_cancel: "Request cancellation; only actual process drain completes a running cancellation.",

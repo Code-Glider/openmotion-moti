@@ -26,6 +26,7 @@ import { Creation } from "./workspace/create.js";
 import { Library } from "./workspace/library.js";
 import { Preferences } from "./workspace/navigation/preferences.js";
 import { Navigation } from "./workspace/navigation/projects.js";
+import { Recovery } from "./workspace/navigation/recovery.js";
 import { Pages } from "./workspace/pages.js";
 import { WorkspaceSync } from "./workspace/sync.js";
 import { Versions } from "./workspace/versions.js";
@@ -197,7 +198,8 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   shell.rail.append(settings);
   shell.element.append(preferences.view.element);
   const exports = new Exports(document, editor, client, (action) => run(action));
-  shell.editor.append(exports.element, archives.element);
+  const recovery = new Recovery(document, client, (action) => run(action));
+  shell.editor.append(recovery.element, exports.element, archives.element);
   const newProject = button(document, {
     label: m("新建项目"),
     icon: "plus",
@@ -337,6 +339,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     navigation.update(editor, blocked, busy);
     creation.update(busy, blocked, message);
     archives.update(editor, blocked);
+    recovery.update(blocked);
     library.update(blocked, creation.pending, busy);
     versions.update(busy || creation.pending || !!editor.incoming);
     newProject.disabled = busy || (blocked && !creation.pending);

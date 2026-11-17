@@ -1,5 +1,6 @@
 import type { Environment } from "@odsuite/carrier";
 import { Client, type Transport } from "./api.js";
+import { Receipts } from "./io.js";
 import { workspace } from "./lib/components/workspace.js";
 import { Editor } from "./lib/editor.js";
 export interface Config {
@@ -17,6 +18,7 @@ export function mount(root: HTMLElement, config: Config, transport?: Transport):
   if (views.has(root)) throw new Error("root already has a Web view; await dispose before remounting");
   const client = new Client(config.daemon, config.token, transport),
     editor = new Editor(client);
+  client.receipts = new Receipts(root.ownerDocument.defaultView);
   if (config.environment) root.setAttribute("data-carrier", config.environment.carrier);
   const view = workspace(root, editor, client, config.entry);
   const handle: WebView = {

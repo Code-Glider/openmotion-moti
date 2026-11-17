@@ -52,3 +52,43 @@ it("bounds retried intent as well as new submissions and preserves unknown recei
     await rm(root, { recursive: true, force: true });
   }
 });
+
+it("looks up exact durable receipts without replaying controls or changing the journal", async () => {
+  const root = await mkdtemp(join(tmpdir(), "export-lookup-")),
+    owner = { sessionId: randomUUID(), artifactId: randomUUID() },
+    input = { ...owner, requestId: randomUUID(), revision: digest("source"), fps: { num: 30, den: 1 } },
+    projection = { digest: digest("projection"), bytes: 100 };
+  let store = new Store(root);
+  try {
+    expect(store.lookup({ operation: "export_create", ...input })).toEqual({ job: null });
+    expect(store.scan(["queued"])).toEqual([]);
+    const created = store.create({ ...input, projection }),
+      cancel = { ...owner, id: created.id, requestId: randomUUID(), expectedVersion: created.version },
+      cancelled = store.control("export_cancel", cancel),
+      retry = { ...cancel, requestId: randomUUID(), expectedVersion: cancelled.version },
+      retried = store.control("export_retry", retry);
+    store.close();
+    store = new Store(root);
+    for (const request of [
+      { operation: "export_create" as const, ...input },
+      { operation: "export_cancel" as const, ...cancel },
+      { operation: "export_retry" as const, ...retry },
+    ])
+      expect(store.lookup(request)).toEqual({ job: retried });
+    expect(store.create({ ...input, projection })).toEqual(created);
+    expect(store.control("export_cancel", cancel)).toEqual(cancelled);
+    expect(store.control("export_retry", retry)).toEqual(retried);
+    expect(() => store.lookup({ operation: "export_create", ...input, fps: { num: 60, den: 1 } })).toThrow(
+      "identity reused",
+    );
+    expect(() => store.lookup({ operation: "export_retry", ...cancel })).toThrow("identity reused");
+    expect(() => store.lookup({ operation: "export_create", ...input, artifactId: randomUUID() })).toThrow(
+      "does not belong",
+    );
+    expect(store.scan(["queued"])).toHaveLength(1);
+    expect(store.read(created.id).job).toEqual(retried);
+  } finally {
+    store.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

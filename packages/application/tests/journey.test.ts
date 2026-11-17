@@ -382,6 +382,52 @@ it("continues installed MCP projects in the actual Web, retains history and reop
       .filter({ hasText: "界面设置已保存并同步" })
       .waitFor();
     await page.keyboard.press("Escape");
+    const archiveTicket = await mcp.call("archive_export", {
+      ...owner,
+      requestId: randomUUID(),
+      revision: continued.revision,
+    });
+    const archiveBytes = Buffer.from(await (await fetch(archiveTicket.url)).arrayBuffer());
+    await mcp.call("archive_release", { id: archiveTicket.id });
+    let lostArchive = false,
+      archiveUploads = 0;
+    const archiveRequests: { requestId: string; uploadId?: string }[] = [];
+    await page.route("**/api/archive_upload", async (route) => {
+      archiveUploads++;
+      await route.continue();
+    });
+    await page.route("**/api/archive_import", async (route) => {
+      const input = route.request().postDataJSON();
+      archiveRequests.push(input);
+      if (input.uploadId && !lostArchive) {
+        lostArchive = true;
+        await route.fetch();
+        await route.abort("failed");
+      } else await route.continue();
+    });
+    await page
+      .locator("summary")
+      .filter({ hasText: /^工程 ZIP$/ })
+      .click();
+    await page.getByLabel("ZIP 工程标题", { exact: true }).fill("Installed recovered ZIP");
+    await page
+      .getByLabel("导入 ZIP", { exact: true })
+      .setInputFiles({ name: "project.zip", mimeType: "application/zip", buffer: archiveBytes });
+    await page.getByRole("button", { name: "导入 ZIP 工程", exact: true }).click();
+    await expect.poll(() => page.getByRole("button", { name: "重试", exact: true }).isEnabled()).toBe(true);
+    await page.reload();
+    await ready();
+    const selectedBeforeCheck = (await mcp.call("workspace_state", {})).selection;
+    await click("检查原操作");
+    expect(archiveUploads).toBe(1);
+    expect(archiveRequests.filter((input) => input.uploadId)).toHaveLength(1);
+    expect(new Set(archiveRequests.map((input) => input.requestId)).size).toBe(1);
+    expect((await mcp.call("session_get", { sessionId: session.id })).artifacts).toHaveLength(3);
+    expect((await mcp.call("workspace_state", {})).selection).toEqual(selectedBeforeCheck);
+    expect(await mcp.call("project_read", owner)).toEqual(continued);
+    await driver.capture("installed-io-recovery");
+    await page.unroute("**/api/archive_import");
+    await page.unroute("**/api/archive_upload");
     if (film) {
       expect(await mcp.call("export_read", { ...owner, id: film.id })).toEqual(film);
       const info = await mcp.call("export_download", { ...owner, id: film.id }),
@@ -409,6 +455,7 @@ it("continues installed MCP projects in the actual Web, retains history and reop
           native: film
             ? { job: film.id, digest: filmDigest, frames: film.result?.verification.frames }
             : "not-qualified",
+          ioRecovery: { archiveUploads, originalRequest: archiveRequests[0]?.requestId, selectionPreserved: true },
           archive: f.archive,
         },
         null,
