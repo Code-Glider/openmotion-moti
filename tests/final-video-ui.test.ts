@@ -7,6 +7,62 @@ const work = { id: 'round', projectId: 'project', versionId: 'v4', jobId: 'job',
   title: 'Final film', state: 'completed', playable: true };
 const reply = (changes = {}) => ({ structuredContent: { projectId: work.projectId, inlineWork: { ...work, ...changes } },
   _meta: { inlineVideo: { video: 'data:video/mp4;base64,YQ==' } } });
+const presentation = () => ({ structuredContent: { ...reply().structuredContent, inlineVideoTransport: 'server-tool' } });
+
+test('bounded presentation reads complete media directly once, then preserves duplicate playback', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  const calls: any[] = [];
+  const bytes = Buffer.alloc(2 * 1024 * 1024, 97);
+  const full = { ...reply(), _meta: { inlineVideo: { video: 'data:video/mp4;base64,' + bytes.toString('base64') } } };
+  const ui = mountFinalVideo(root, { callServerTool: async (call: any) => { calls.push(call); return full; } });
+  try {
+    ui.setInput({ arguments: { projectId: work.projectId, workId: work.id } });
+    const envelope = { content: [{ type: 'text', text: 'Script completed' }, { type: 'text', text: JSON.stringify(presentation()) }] };
+    assert.ok(JSON.stringify(envelope).length < 8192);
+    ui.update(envelope); ui.update(envelope);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls, [{ name: 'openmotion_get_project', arguments: { projectId: work.projectId, workId: work.id, includeVideo: true } }]);
+    const video = root.querySelector('video')!, original = video.src;
+    assert.match(original, /^blob:/);
+    assert.deepEqual(Buffer.from(await (await fetch(original)).arrayBuffer()), bytes);
+    video.currentTime = 4;
+    ui.update(envelope);
+    assert.equal(video.src, original); assert.equal(video.currentTime, 4); assert.equal(calls.length, 1);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
+
+test('initial direct read failure exposes retry and never starts a render', async () => {
+  const window = new Window(), root = window.document.createElement('main');
+  const calls: any[] = [];
+  const ui = mountFinalVideo(root, { callServerTool: async (call: any) => {
+    calls.push(call); if (calls.length === 1) throw new Error('disconnected'); return reply();
+  } });
+  try {
+    ui.update(presentation());
+    await new Promise(resolve => setImmediate(resolve));
+    assert.match(root.querySelector('.status')!.textContent!, /读取失败/);
+    const retry = root.querySelector<HTMLButtonElement>('.retry')!;
+    assert.equal(retry.hidden, false); assert.equal(retry.disabled, false);
+    ui.update(presentation()); assert.equal(calls.length, 1, 'No automatic retry loop');
+    retry.click(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 2); assert.deepEqual(calls[0], calls[1]);
+    assert.equal(calls[1].name, 'openmotion_get_project'); assert.match(root.querySelector('video')!.src, /^blob:/);
+  } finally { ui.destroy(); await window.happyDOM.abort(); }
+});
+
+test('direct reads reject another export and cannot recursively request missing media', async () => {
+  for (const response of [reply({ jobId: 'other-export' }), presentation()]) {
+    const window = new Window(), root = window.document.createElement('main');
+    let calls = 0;
+    const ui = mountFinalVideo(root, { callServerTool: async () => { calls++; return response; } });
+    try {
+      ui.update(presentation()); await new Promise(resolve => setImmediate(resolve));
+      assert.equal(calls, 1); assert.equal(root.querySelector('video')!.src, '');
+      assert.equal(root.querySelector<HTMLButtonElement>('.retry')!.hidden, false);
+      assert.match(root.querySelector('.status')!.textContent!, /不匹配|未收到/);
+    } finally { ui.destroy(); await window.happyDOM.abort(); }
+  }
+});
 
 test('only a completed decoded MP4 expands the final player and shows actual duration', async () => {
   const window = new Window(), root = window.document.createElement('main');

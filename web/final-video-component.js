@@ -6,7 +6,7 @@ export function mountFinalVideo(root, app) {
   root.innerHTML = '<header><strong class="title">最终视频</strong><span class="duration"></span></header><div class="screen" hidden><video controls playsinline preload="metadata"></video></div><footer><span class="status" role="status" aria-live="polite">正在加载成片…</span><button class="retry" hidden>重新加载</button></footer>';
   const video = root.querySelector('video'), screen = root.querySelector('.screen');
   const status = root.querySelector('.status'), retry = root.querySelector('.retry');
-  let identity, work, target, closed = false, loading = false, validSource = false, url, loadTimer;
+  let identity, work, target, closed = false, loading = false, validSource = false, initialRead = false, url, loadTimer;
   const clearLoadTimer = () => { document.defaultView.clearTimeout(loadTimer); };
   const error = message => {
     clearLoadTimer(); validSource = false; video.pause();
@@ -23,7 +23,7 @@ export function mountFinalVideo(root, app) {
     target = { projectId: args.projectId, workId: args.workId };
     if (!validSource && status.textContent !== '正在加载成片…') retry.hidden = false;
   }
-  function update(input) {
+  function update(input, allowDeferred = true) {
     if (closed) return;
     try {
       const result = normalizeInlineResult(input), next = result.structuredContent.inlineWork;
@@ -37,6 +37,10 @@ export function mountFinalVideo(root, app) {
       identity = key; work = next;
       root.querySelector('.title').textContent = next.title;
       const media = result._meta?.inlineVideo;
+      if (allowDeferred && !media?.video && result.structuredContent.inlineVideoTransport === 'server-tool') {
+        if (!initialRead) { initialRead = true; void refresh(); }
+        return;
+      }
       if (!media?.video) throw new Error('未收到成片文件，请重新加载。');
       if (url) URL.revokeObjectURL(url);
       clearLoadTimer();
@@ -46,6 +50,7 @@ export function mountFinalVideo(root, app) {
       video.src = url;
       if (media.poster) video.poster = media.poster;
       validSource = true;
+      console.info('openmotion.final_video.media_received', JSON.stringify({ workId: next.id, jobId: next.jobId, bytes: bytes.length }));
       loadTimer = document.defaultView.setTimeout(() => error('视频加载超时，请重新加载。'), 15000);
       video.load();
     } catch (reason) { error(reason.message.startsWith('INLINE_RESULT_INVALID:') ? '成片返回格式异常，请重新加载。' : reason.message); }
@@ -54,7 +59,7 @@ export function mountFinalVideo(root, app) {
     const pinned = target || (work && { projectId: work.projectId, workId: work.id });
     if (!pinned || closed || loading) return;
     loading = true; retry.disabled = true; status.textContent = '正在加载成片…';
-    try { update(await app.callServerTool({ name: 'openmotion_get_project', arguments: { ...pinned, includeVideo: true } }, { timeout: 15000 })); }
+    try { update(await app.callServerTool({ name: 'openmotion_get_project', arguments: { ...pinned, includeVideo: true } }, { timeout: 15000 }), false); }
     catch { error('成片读取失败，请重新加载。'); }
     finally { loading = false; retry.disabled = false; }
   }
@@ -62,6 +67,8 @@ export function mountFinalVideo(root, app) {
     if (closed || !validSource || !Number.isFinite(video.duration) || video.duration <= 0 || !video.videoWidth || !video.videoHeight) return;
     clearLoadTimer();
     screen.hidden = false; status.textContent = '成片可播放'; retry.hidden = true;
+    console.info('openmotion.final_video.ready', JSON.stringify({ workId: work.id, jobId: work.jobId, duration: video.duration,
+      width: video.videoWidth, height: video.videoHeight }));
     const seconds = Math.round(video.duration);
     root.querySelector('.duration').textContent = `片长 ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   };
