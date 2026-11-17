@@ -33,7 +33,7 @@ test('local adapters share one runtime, launch outside its cwd and preserve prev
       for (const file of ['references/typography.md', 'references/fonts.md', 'fonts/catalog.json']) {
         assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-production', file), 'utf8'), await readFile(path.join(source, 'skills/openmotion-production', file), 'utf8'));
       }
-      for (const name of ['SKILL.md', 'references/rebuild.md', 'references/verify.md', 'scripts/measure_frame.mjs', 'scripts/register_motion.py', 'scripts/measure_motion.py']) {
+      for (const name of ['SKILL.md', 'references/rebuild.md', 'references/verify.md', 'references/rendering.md', 'assets/reconstruction.js', 'scripts/measure_frame.mjs', 'scripts/register_motion.py', 'scripts/measure_motion.py', 'scripts/observe_marks.py', 'scripts/vision-tools.mjs']) {
         assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-recreate', name), 'utf8'), await readFile(path.join(source, 'skills/openmotion-recreate', name), 'utf8'));
       }
     }

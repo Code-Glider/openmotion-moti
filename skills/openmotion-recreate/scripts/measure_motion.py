@@ -129,7 +129,7 @@ def main():
         parser.error('--output-roi requires an output video.')
     reference = measure_video(args.reference, args.start, args.end, args.roi, args.max_width)
     report = {'reference': reference, 'output': None, 'comparisonPerformed': False, 'possibleSuppressedMotion': None,
-              'limits': 'Source-only observations require an output comparison after rendering. Comparisons use corresponding continuous intervals on the same clock. Select a region belonging to the feature being checked. Mixed stationary and moving content, occlusion, material changes and uncertain tracking need visual review. Object identity and semantic fidelity require visual inspection.'}
+              'limits': 'Source-only observations describe reference motion. For a requested output review, comparisons use corresponding continuous intervals on the same clock. Select a region belonging to the feature being checked. Mixed stationary and moving content, occlusion, material changes and uncertain tracking can invalidate these measurements. Object identity and semantic fidelity are assessed through visual review when that scope is requested.'}
     summary = {'output': str(args.out), 'referenceStatus': reference['status'], 'outputStatus': None,
                'referenceSpanPx': reference.get('spanPx'), 'outputSpanPx': None,
                'comparisonPerformed': False, 'possibleSuppressedMotion': None}
