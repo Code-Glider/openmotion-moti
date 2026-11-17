@@ -74,8 +74,9 @@ test('UI and MCP asset dispatcher share voice records and speech job snapshots, 
     const job = await gateway.submit(generation);
     assert.equal(job.voice?.externalId, input.externalId); assert.equal(job.parameters.voice, input.externalId);
     assert.equal((await gateway.submit(generation)).id, job.id);
-    await assert.rejects(gateway.submit({ ...generation, model: 'minimax-speech:speech-2.8-hd' }), /same provider/);
-    await assert.rejects(gateway.submit({ ...generation, parameters: { voice: 'a-different-voice' } }), /conflict/);
+    await library.connections.configure('minimax-speech', { apiKey: 'synthetic-cross-provider' });
+    await assert.rejects(gateway.submit({ ...generation, idempotencyKey: 'cross-provider', model: 'minimax-speech:speech-2.8-hd' }), /same provider/);
+    await assert.rejects(gateway.submit({ ...generation, idempotencyKey: 'conflicting-options', parameters: { voice: 'a-different-voice' } }), /conflict/);
     const directory = await providerDirectory(gateway);
     assert.deepEqual(directory.providers.find(p => p.id === 'fishaudio')?.kinds, ['audio']);
     assert.deepEqual(directory.providers.find(p => p.id === 'minimax-speech')?.kinds, ['audio']);
@@ -184,3 +185,53 @@ test('MiniMax regions isolate keys, catalogues and identical remote voice IDs wh
     assert.equal(calls.length, 4);
   } finally { await gateway.close(); }
 }, false));
+
+test('speech adapters retain native settings and the explicit speed alias wins only when supplied', async () => {
+  const base = { key: 'synthetic-key', signal: new AbortController().signal, progress: async () => {} };
+  const job: any = { modality: 'audio', prompt: 'Narration', model: { provider: 'fishaudio', mode: 'text-to-speech', modelId: 's2-pro' }, parameters: { voice: 'chosen', prosody: { speed: 1.6, volume: -4 } } };
+  await fishAudio.generate(job, { ...base, fetcher: async (_url, init) => {
+    assert.deepEqual(JSON.parse(String(init?.body)).prosody, job.parameters.prosody);
+    return new Response('audio', { headers: { 'Content-Type': 'audio/mpeg' } });
+  } });
+  const voice_setting = { voice_id: 'chosen', speed: 1.3, vol: 2, pitch: 4, emotion: 'happy' };
+  const audio_setting = { format: 'mp3', sample_rate: 44100, bitrate: 192000, channel: 2 };
+  for (const speed of [undefined, 0.9]) await miniMaxSpeech.generate({ ...job, model: { ...job.model, provider: 'minimax-speech', modelId: 'speech-2.8-hd' }, parameters: { voice: 'chosen', voice_setting, audio_setting, ...(speed ? { speed } : {}) } }, { ...base, fetcher: async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(body.voice_setting, { ...voice_setting, speed: speed ?? voice_setting.speed });
+    assert.deepEqual(body.audio_setting, audio_setting);
+    return Response.json({ base_resp: { status_code: 0 }, data: { audio: '6162' } });
+  } });
+});
+
+test('saved voice retries return the original task after rename, trash or key removal and retain native emotion', () => fixture(async store => {
+  const library = new VoiceLibrary(store), gateway = new ModelGateway(store, { detect: async () => [] });
+  try {
+    await library.connections.configure('minimax-speech', { apiKey: 'synthetic-replay-key' });
+    const voice = await library.add({ ...input, requestId: 'replay-voice', provider: 'minimax-speech' });
+    const request = { modality: 'audio' as const, mode: 'text-to-speech', model: 'minimax-speech:speech-2.8-hd', library: {}, prompt: 'A script', voiceRef: { voiceId: voice.id, revision: voice.revision }, parameters: { voice_setting: { emotion: 'happy' } }, idempotencyKey: 'original-speech' };
+    const job = await gateway.submit(request);
+    assert.deepEqual(job.parameters.voice_setting, { emotion: 'happy' });
+    await assert.rejects(gateway.submit({ ...request, idempotencyKey: 'conflicting-voice', parameters: { voice_setting: { voice_id: 'another-voice' } } }), /conflict/);
+    const renamed = await library.update(voice.id, voice.revision, { name: 'Renamed' });
+    assert.equal((await gateway.submit(request)).id, job.id);
+    await library.update(voice.id, renamed.revision, { trashed: true });
+    await library.connections.configure('minimax-speech', { apiKey: null });
+    assert.equal((await gateway.submit(request)).id, job.id);
+    await assert.rejects(gateway.submit({ ...request, prompt: 'Changed script' }), /Idempotency/);
+    assert.equal((await gateway.listJobs()).length, 1);
+  } finally { await gateway.close(); }
+}, false));
+
+test('MiniMax synchronous speech uses the job budget and accepts hex audio beyond catalogue response sizes', async t => {
+  const timeouts: number[] = [];
+  t.mock.method(AbortSignal, 'timeout', (ms: number) => { timeouts.push(ms); return new AbortController().signal; });
+  const bytes = 9 * 1024 * 1024;
+  let submissions = 0;
+  const output = await miniMaxSpeech.generate({ modality: 'audio', prompt: 'Long narration', parameters: { voice: 'chosen' }, model: { provider: 'minimax-speech-cn', mode: 'text-to-speech', modelId: 'speech-2.8-hd' } } as any, {
+    key: 'synthetic-long-speech', signal: new AbortController().signal, progress: async () => {}, fetcher: async (_url, init) => {
+      submissions++; assert.equal(init?.signal?.aborted, false);
+      return Response.json({ base_resp: { status_code: 0 }, data: { audio: Buffer.alloc(bytes, 1).toString('hex') } });
+    },
+  });
+  assert.deepEqual(timeouts, [15 * 60_000]); assert.equal(output[0].length, bytes); assert.equal(submissions, 1);
+});

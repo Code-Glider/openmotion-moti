@@ -244,14 +244,7 @@ export class ModelGateway {
     modality(input.modality);
     this.options.tracking?.track('media_generation_requested', { modality: input.modality }, undefined, 'worker');
     if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 20_000) throw new Error('Prompt must contain 1–20000 characters');
-    const params = parameters(input.parameters);
-    const selectedProvider = (input.model ?? (await this.config()).routes[input.modality])?.split(':')[0];
-    const voice = input.voiceRef ? await new VoiceLibrary(this.store).resolve(input.voiceRef, selectedProvider ?? '') : undefined;
-    if (voice) {
-      if (input.modality !== 'audio' || input.mode && input.mode !== 'text-to-speech') throw new Error('Voices require speech generation');
-      if (params.voice !== undefined && params.voice !== voice.externalId || params.reference_id !== undefined || params.voice_setting !== undefined) throw new Error('Voice parameters conflict with the selected voice');
-      params.voice = voice.externalId;
-    }
+    const params = { ...parameters(input.parameters) };
     if (input.library && input.projectId) throw new Error('Choose either an asset library or a project destination');
     const library = new AssetLibrary(this.store);
     if (input.library?.references !== undefined && !Array.isArray(input.library.references)) throw new Error('Asset references must be an array');
@@ -286,6 +279,14 @@ export class ModelGateway {
       const previous = input.idempotencyKey ? jobs.find(j => j.idempotencyKey === input.idempotencyKey && j.projectId === projectId) : undefined;
       if (previous) { if (previous.requestHash !== requestHash) throw new Error('Idempotency key was already used for another request'); return previous; }
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
+      const voice = input.voiceRef ? await new VoiceLibrary(this.store).resolve(input.voiceRef, model.provider) : undefined;
+      if (voice) {
+        if (model.modality !== 'audio' || model.mode !== 'text-to-speech') throw new Error('Voices require speech generation');
+        const nativeVoice = params.voice_setting as Record<string, unknown> | undefined;
+        if (params.voice !== undefined && params.voice !== voice.externalId || params.reference_id !== undefined && params.reference_id !== voice.externalId
+          || nativeVoice?.voice_id !== undefined && nativeVoice.voice_id !== voice.externalId) throw new Error('Voice parameters conflict with the selected voice');
+        params.voice = voice.externalId;
+      }
       if (model.provider === 'opendesign' && (await this.cloudContext()).identity !== cloudIdentity) throw new Error('Cloud configuration changed; reload models before generating');
       const referenceCount = (input.library?.references?.length ?? 0) + (input.referenceAsset ? 1 : 0);
       const resolvedParameters = resolveGenerationParameters(model, params, referenceCount > 0);

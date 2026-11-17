@@ -29,12 +29,13 @@ export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, 
     }
   }
 }
-export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}) {
-  const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(15_000) });
+export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}, limits: { timeoutMs?: number; maxBytes?: number } = {}) {
+  const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(limits.timeoutMs ?? 30_000)]) : AbortSignal.timeout(limits.timeoutMs ?? 15_000) });
   // Do not forward provider response text: it may echo a key or user input.
   if (!response.ok) throw new ProviderError(`Provider HTTP ${response.status}${response.status === 401 || response.status === 403 ? ': credentials or permissions rejected' : ''}`, response.status);
   const body = await response.text();
-  if (body.length > 16 * 1024 * 1024) throw new Error('Provider response exceeds 16 MB');
+  const maxBytes = limits.maxBytes ?? 16 * 1024 * 1024;
+  if (Buffer.byteLength(body) > maxBytes) throw new Error(`Provider response exceeds ${maxBytes / 1024 / 1024} MB`);
   try { return JSON.parse(body); } catch { throw new Error('Provider returned invalid JSON'); }
 }
 function publicAddress(address: string) {
@@ -55,7 +56,7 @@ export function providerOrigin(raw: unknown): string {
   return url.origin;
 }
 /** Custom Cloud origins use pinned public DNS and never forward credentials on redirects. */
-export const publicProviderFetch: Fetcher = async (raw, init: RequestInit = {}) => {
+export async function publicProviderFetch(raw: Parameters<Fetcher>[0], init: RequestInit = {}, timeoutMs = 60_000): Promise<Response> {
   const url = new URL(String(raw)); providerOrigin(url.origin);
   const addresses = await lookup(url.hostname, { all: true });
   if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new Error('Provider points to a non-public address');
@@ -74,7 +75,7 @@ export const publicProviderFetch: Fetcher = async (raw, init: RequestInit = {}) 
           headers: Object.fromEntries(Object.entries(res.headers).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) }));
       });
     });
-    req.setTimeout(60_000, () => req.destroy(new Error('Provider request timed out'))); req.on('error', reject);
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('Provider request timed out'))); req.on('error', reject);
     if (init.body) req.write(init.body); req.end();
   });
 };
