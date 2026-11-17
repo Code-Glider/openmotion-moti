@@ -58,6 +58,8 @@ export class ModelGateway {
   connections: ProviderConnections;
   account: OpenDesignAccount;
   active = new Map<string, { controller: AbortController; done: Promise<void> }>();
+  private cloudFailure?: { identity: string; time: number };
+  private cloudReads = new Map<string, Promise<string | undefined>>();
   private detecting?: Promise<Agent[]>;
   private agentCache?: { time: number; agents: Agent[] };
   private ticking = false;
@@ -80,11 +82,52 @@ export class ModelGateway {
     if (!this.detecting) this.detecting = (this.options.detect ?? detectAgents)().then(agents => { this.agentCache = { time: Date.now(), agents }; return agents; }).finally(() => { this.detecting = undefined; });
     return this.detecting;
   }
+  /** Bind private catalogue metadata to its effective credential, origin and configuration generation. */
+  private async cloudContext() {
+    const key = (await this.credential('opendesign')).key, baseUrl = await this.cloudOrigin();
+    const state = (await this.config()).providers.opendesign;
+    return { key, baseUrl, identity: key && baseUrl && state?.enabled !== false ? hash(JSON.stringify([baseUrl, key, state?.catalogRevision])) : undefined };
+  }
+  private async cachedCloudModels(): Promise<Model[]> {
+    const context = await this.cloudContext();
+    const cached = await readJson<{ identity?: string; models?: Model[] }>(path.join(this.root, 'cloud-catalog.json'), {});
+    return context.identity && cached.identity === context.identity && Array.isArray(cached.models) && (await this.cloudContext()).identity === context.identity ? cached.models : [];
+  }
+  private async syncCloudModels(refresh: boolean): Promise<string | undefined> {
+    const context = await this.store.lock(() => this.cloudContext());
+    if (!context.identity) return;
+    const cached = await readJson<{ identity?: string; models?: Model[] }>(path.join(this.root, 'cloud-catalog.json'), {});
+    if (!refresh && cached.identity === context.identity && Array.isArray(cached.models)) return;
+    if (!refresh && this.cloudFailure?.identity === context.identity && Date.now() - this.cloudFailure.time < 30_000) return 'OpenDesign Cloud catalogue unavailable; sync models to retry';
+    const current = this.cloudReads.get(context.identity);
+    if (current) return current;
+    const read = (async (): Promise<string | undefined> => {
+      try {
+        const models = await cloudModels(context.baseUrl!, context.key, this.options.fetcher ?? publicProviderFetch);
+        return await this.store.lock(async () => {
+          if ((await this.cloudContext()).identity !== context.identity) return undefined;
+          await atomic(path.join(this.root, 'cloud-catalog.json'), { identity: context.identity, models });
+          this.cloudFailure = undefined;
+          return undefined;
+        });
+      } catch {
+        if ((await this.cloudContext()).identity !== context.identity) return;
+        this.cloudFailure = { identity: context.identity, time: Date.now() };
+        return 'OpenDesign Cloud catalogue unavailable; only cached models for the current connection and built-in models are shown';
+      }
+    })();
+    this.cloudReads.set(context.identity, read);
+    try { return await read; } finally { this.cloudReads.delete(context.identity); }
+  }
   private async models(): Promise<Model[]> {
     const cached = await readJson<Model[]>(path.join(this.root, 'catalog.json'), []);
     const overrides = await this.connections.modelOverrides();
-    return [...new Map([...builtinModels, ...cached, ...(await this.config()).customModels, ...await this.connections.mediaModels(), ...await this.account.mediaModels()].map(model => [model.id, model])).values()].map(model => {
-      const merged = { ...model, ...overrides[model.id] };
+    const custom = (await this.config()).customModels, compatible = await this.connections.mediaModels(), account = await this.account.mediaModels();
+    // Read bound Cloud rows last: no asynchronous work may revive them after this identity check.
+    const cloud = await this.cachedCloudModels();
+    return [...new Map([...builtinModels, ...cached.filter(model => model.provider !== 'opendesign'), ...cloud, ...custom, ...compatible, ...account].map(model => [model.id, model])).values()].map(model => {
+      const live = cloud.find(row => row.id === model.id);
+      const merged = { ...model, ...overrides[model.id], ...(live ? { supportsImageReference: live.supportsImageReference, maxInputImages: live.maxInputImages, nativeOptions: live.nativeOptions } : {}) };
       return { ...merged, generationOptions: generationOptions(merged) };
     });
   }
@@ -94,17 +137,13 @@ export class ModelGateway {
     if (input.query !== undefined && (typeof input.query !== 'string' || input.query.length > 200)) throw new Error('Invalid model search');
     if (input.refresh !== undefined && typeof input.refresh !== 'boolean') throw new Error('refresh must be boolean');
     const warnings: string[] = [];
+    if (input.provider === 'opendesign' || input.refresh === true && !input.provider) { const warning = await this.syncCloudModels(input.refresh === true); if (warning) warnings.push(warning); }
     if (input.refresh && input.provider === 'account') await this.account.models(true);
     if (input.refresh && typeof input.provider === 'string' && input.provider !== 'account' && !providerIds.includes(input.provider)) await this.connections.sync(input.provider);
     if (input.refresh) {
-      const selected = mediaProviders.filter(id => !input.provider || input.provider === id);
+      const selected = mediaProviders.filter(id => id !== 'opendesign').filter(id => !input.provider || input.provider === id);
       const discovered = await Promise.all(selected.map(async id => {
         try {
-          if (id === 'opendesign') {
-            const key = (await this.credential(id)).key, baseUrl = await this.cloudOrigin();
-            if (!key || !baseUrl) return [];
-            return await cloudModels(baseUrl, key, this.options.fetcher ?? publicProviderFetch);
-          }
           if (id === 'wavespeed') {
             const key = (await this.credential(id)).key;
             return key ? await waveSpeedModels(key, this.options.fetcher ?? fetch) : [];
@@ -115,7 +154,7 @@ export class ModelGateway {
       }));
       await this.store.lock(async () => {
         const cached = await readJson<Model[]>(path.join(this.root, 'catalog.json'), []);
-        const merged = [...new Map([...cached, ...discovered.flat()].map(model => [model.id, model])).values()].slice(-5000);
+        const merged = [...new Map([...cached.filter(model => model.provider !== 'opendesign'), ...discovered.flat()].map(model => [model.id, model])).values()].slice(-5000);
         await atomic(path.join(this.root, 'catalog.json'), merged);
       });
     }
@@ -211,6 +250,7 @@ export class ModelGateway {
     if (input.referenceAsset !== undefined && (typeof input.referenceAsset !== 'string' || !input.referenceAsset || input.referenceAsset.length > 1024)) throw new Error('Invalid reference image path');
     if (input.idempotencyKey !== undefined && (typeof input.idempotencyKey !== 'string' || !/^[\w-]{1,100}$/.test(input.idempotencyKey))) throw new Error('Invalid idempotency key');
     if (input.usage && (typeof input.usage !== 'object' || Object.entries(input.usage).some(([key, value]) => !['compositionId', 'elementId', 'property'].includes(key) || typeof value !== 'string' || value.length > 240))) throw new Error('Invalid editor usage context');
+    const cloudIdentity = await this.store.lock(async () => (await this.cloudContext()).identity);
     const status = await this.status();
     const selected = input.model ?? status.routes[input.modality] ?? status.capabilities.find(c => c.modality === input.modality)?.selectedModelId;
     let model = (await this.models()).find(m => m.id === selected && m.modality === input.modality);
@@ -238,10 +278,12 @@ export class ModelGateway {
       const previous = input.idempotencyKey ? jobs.find(j => j.idempotencyKey === input.idempotencyKey && j.projectId === projectId) : undefined;
       if (previous) { if (previous.requestHash !== requestHash) throw new Error('Idempotency key was already used for another request'); return previous; }
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
+      if (model.provider === 'opendesign' && (await this.cloudContext()).identity !== cloudIdentity) throw new Error('Cloud configuration changed; reload models before generating');
       validateGenerationOptions(model, { ...model.defaults, ...params });
       const referenceCount = (input.library?.references?.length ?? 0) + (input.referenceAsset ? 1 : 0);
       // Video sends only a first frame; the project-direct referenceAsset route stays image-only as before.
       const referenceLimit = input.referenceAsset && input.modality !== 'image' ? 0 : modelReferenceLimit(model);
+      if (referenceCount && model.provider === 'opendesign' && model.modality === 'image' && model.supportsImageReference === undefined) throw new Error('Image editing capability is unknown. Sync Cloud models before using references.');
       if (referenceCount && !referenceLimit) throw new Error(input.modality === 'video' ? 'This video model does not accept an input image. Choose a video model with maxInputImages, or remove the reference.'
         : input.referenceAsset ? 'Selected model does not support reference image editing' : 'This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
       if (referenceCount > referenceLimit) throw new Error(`This model accepts at most ${referenceLimit} input image${referenceLimit === 1 ? '' : 's'}`);

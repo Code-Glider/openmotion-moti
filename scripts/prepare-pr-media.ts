@@ -229,7 +229,7 @@ export async function preparePullRequest(pullNumber: number, apply: boolean) {
   }
   assert(pr.head.repo.full_name === repository || pr.maintainer_can_modify, 'Ask the contributor to enable Allow edits by maintainers on the original PR');
   // Finish validation/planning first. Failed uploads leave the PR unchanged.
-  const preparedSHA = await pushCleanup(plan, pr.head.repo.full_name, pr.head.ref, token, async push => finalizeMediaCleanup(plan, async () => {
+  const preparedSHA = await pushCleanup(plan, pr.base.sha, pr.head.repo.full_name, pr.head.ref, token, async push => finalizeMediaCleanup(plan, async () => {
     for (const lock of plan.media) await transfer(lock, await read(inputs.head.find((file: TreeFile) => file.path === lock.path)!));
   }, async () => (await api('pulls/' + pullNumber)).head.sha, push));
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `head_sha=${preparedSHA}\n`);
@@ -240,8 +240,9 @@ export async function preparePullRequest(pullNumber: number, apply: boolean) {
 
 type GitRunner = (args: string[], input?: string, authenticated?: boolean) => Promise<string>;
 
-export async function commitCleanup(plan: CleanupPlan, git: GitRunner, directory: string, identity: { login: string; id: number }) {
+export async function commitCleanup(plan: CleanupPlan, git: GitRunner, directory: string, identity: { login: string; id: number }, baseSHA: string) {
   assert(/^[a-f0-9]{40}$/.test(plan.sourceSHA), 'Invalid PR source SHA');
+  assert(/^[a-f0-9]{40}$/.test(baseSHA), 'Invalid PR base SHA');
   await git(['update-ref', 'HEAD', plan.sourceSHA]);
   await git(['read-tree', plan.sourceSHA]);
   for (const change of plan.changes) {
@@ -253,7 +254,9 @@ export async function commitCleanup(plan: CleanupPlan, git: GitRunner, directory
       await git(['update-index', '--add', '--cacheinfo', mode, oid, change.path]);
     }
   }
-  const errors = [...checkTemplateLibrary(directory), ...checkRepositoryStorage(directory).errors];
+  const storage = checkRepositoryStorage(directory, baseSHA, { finalTreeOnly: true });
+  for (const warning of storage.warnings) console.warn('Repository storage warning:', warning);
+  const errors = [...checkTemplateLibrary(directory), ...storage.errors];
   assert.deepEqual(errors, [], 'Sanitized PR failed final-tree validation: ' + errors.join('\n'));
   const tree = await git(['write-tree']);
   assert(/^[\w-]+$/.test(identity.login) && Number.isSafeInteger(identity.id) && identity.id > 0, 'Invalid maintainer identity');
@@ -261,7 +264,8 @@ export async function commitCleanup(plan: CleanupPlan, git: GitRunner, directory
     'commit-tree', tree, '-p', plan.sourceSHA], 'chore: replace reviewed media with verified public links\n');
 }
 
-async function pushCleanup(plan: CleanupPlan, headRepository: string, branch: string, token: string, finish: (push: () => Promise<void>) => Promise<void>) {
+async function pushCleanup(plan: CleanupPlan, baseSHA: string, headRepository: string, branch: string, token: string, finish: (push: () => Promise<void>) => Promise<void>) {
+  assert(/^[a-f0-9]{40}$/.test(baseSHA), 'Invalid PR base SHA');
   assert(/^[\w.-]+\/[\w.-]+$/.test(headRepository), 'Invalid contributor repository');
   const directory = await mkdtemp(path.join(tmpdir(), 'openmotion-media-commit-'));
   const git = async (args: string[], input?: string, authenticated = false) => {
@@ -279,10 +283,12 @@ async function pushCleanup(plan: CleanupPlan, headRepository: string, branch: st
     await git(['-c', 'init.templateDir=', 'init', '-q']);
     await git(['fetch', '--depth=1', 'https://github.com/' + repository + '.git', `refs/pull/${plan.pullNumber}/head`], undefined, true);
     assert.equal(await git(['rev-parse', 'FETCH_HEAD']), plan.sourceSHA, 'PR changed before cleanup commit');
+    await git(['fetch', '--depth=1', 'https://github.com/' + repository + '.git', baseSHA], undefined, true);
+    assert.equal(await git(['rev-parse', 'FETCH_HEAD']), baseSHA, 'PR base unavailable before cleanup commit');
     const response = await fetch('https://api.github.com/user', { headers: { authorization: 'Bearer ' + token }, redirect: 'error' });
     assert(response.ok, 'Cannot resolve the maintainer identity');
     const identity: any = await response.json();
-    const commit = await commitCleanup(plan, git, directory, identity);
+    const commit = await commitCleanup(plan, git, directory, identity, baseSHA);
     // This also checks fork write access before storage is touched. Nothing is pushed.
     await git(['push', '--dry-run', 'https://github.com/' + headRepository + '.git', `${commit}:refs/heads/${branch}`], undefined, true);
     await finish(async () => { await git(['push', 'https://github.com/' + headRepository + '.git', `${commit}:refs/heads/${branch}`], undefined, true); });

@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import { Tooltip } from "../components/ui/Tooltip";
 import { useEffect, useRef, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import type { AssetReference, LibraryAsset } from '../../../shared/asset-library';
@@ -6,7 +7,7 @@ import { useI18n } from '../i18n/I18n';
 import { Select } from '../components/ui/Select';
 import { Skeleton } from '../components/ui/Skeleton';
 import { RemixIcon } from '../icons/RemixIcons';
-import { loadGateway, type GatewayStatus, type Model, type Modality } from './gatewayClient';
+import { gatewayRequest, loadGateway, type GatewayStatus, type Model, type Modality } from './gatewayClient';
 import { assetRequest } from './assetClient';
 import { IconButton } from '../components/ui/IconButton';
 import { AssetTaskHistory } from './AssetTaskHistory';
@@ -15,6 +16,7 @@ import { AssetConversation } from './AssetConversation';
 import { AssetGenerationCard, creationKinds } from './AssetCreationVisuals';
 import { ModelAvatar } from './settingsPrimitives';
 import { GenerationParameters, emptyParameters, requestParameters, type ParameterDraft } from './GenerationParameters';
+import { notifyProvidersChanged } from './useProviderDirectory';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 export interface AssetDraft { modality: Modality; prompt: string; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
 export function AssetComposer({ active, draft, setDraft, agentReferences, setAgentReferences, jobs, mode, onMode, taskIds, history, selectingTask, onNew, onChatChanged, onChatStarted, onCancel, onView, onRetrySave, onResume, onReference, onCreated, onError, onClose }: {
@@ -31,16 +33,32 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
   const [parameterDrafts, setParameterDrafts] = useState<Record<string, ParameterDraft>>(() => draft.model && draft.parameters ? { [draft.model]: { values: {}, advanced: JSON.stringify(draft.parameters, null, 2) } } : {});
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const gatewaySequence = useRef(0);
+  const [syncing, setSyncing] = useState(false);
+  useEffect(() => {
+    const changed = () => { gatewaySequence.current++; setGateway(undefined); setRetry(value => value + 1); };
+    window.addEventListener('motion:gateway-changed', changed);
+    return () => window.removeEventListener('motion:gateway-changed', changed);
+  }, []);
   const selectedTask = history.tasks.find(task => task.key === history.selectedKey);
   const switching = busy || agentSending || selectingTask;
   useEffect(() => {
-    if (!active) return; let current = true; setFailed(false);
-    void loadGateway().then(data => { if (current) setGateway(data); }).catch(() => { if (current) setFailed(true); });
+    if (!active) return; const sequence = ++gatewaySequence.current; let current = true; setFailed(false); setGateway(undefined);
+    void loadGateway().then(data => { if (current && sequence === gatewaySequence.current) setGateway(data); }).catch(() => { if (current && sequence === gatewaySequence.current) setFailed(true); });
     return () => { current = false; };
   }, [active, retry]);
   const models = gateway?.models.filter(m => m.modality === draft.modality && gateway.status.providers.some(p => p.id === m.provider && p.available)) ?? [];
   const selected = draft.model ? models.find(m => m.id === draft.model) : models.find(m => m.id === gateway?.status.routes[draft.modality]) ?? models[0];
   const maximumReferences = selected ? modelReferenceLimit(selected) : 0;
+  const unknownReferences = selected?.provider === 'opendesign' && selected.modality === 'image' && selected.supportsImageReference === undefined;
+  const cloudModelMissing = !!gateway && !!draft.model?.startsWith('opendesign:') && !selected;
+  const syncModels = async () => {
+    const provider = selected?.provider ?? (cloudModelMissing ? 'opendesign' : undefined);
+    if (!provider || syncing) return; setSyncing(true);
+    try { await gatewayRequest(`settings/providers/${provider}/sync`, 'POST', {}); notifyProvidersChanged(); }
+    catch (error) { onError((error as Error).message); }
+    finally { if (mounted.current) setSyncing(false); }
+  };
   const invalidReferences = draft.references.length > 0 && (maximumReferences === 0 || draft.references.length > maximumReferences);
   const parameters = selected ? parameterDrafts[selected.id] ?? emptyParameters : emptyParameters;
   const kind = creationKinds.find(k => k.id === draft.modality)!;
@@ -55,7 +73,11 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
         setDraft(current => current === draft ? { ...current, model: selected.id, parameters: parsed } : current);
         onCreated(result.job);
       }
-    } catch (error) { if (mounted.current) onError((error as Error).message); } finally { if (mounted.current) setBusy(false); }
+      tracking.reportAssetGenerationSubmit(draft.modality, 'success', draft.references.length, Boolean(draft.target));
+    } catch (error) {
+      tracking.reportAssetGenerationSubmit(draft.modality, 'failure', draft.references.length, Boolean(draft.target));
+      if (mounted.current) onError((error as Error).message);
+    } finally { if (mounted.current) setBusy(false); }
   };
   const referenceControls = (items: AssetDraft['references'], update: (references: AssetDraft['references']) => void, maximum = Infinity) => <div className="om-asset-references"><button className="om-nav-item om-creation-reference" onClick={onReference} disabled={items.length >= maximum}><RemixIcon name="add-line" size={16} />{t('Reference asset')}</button>{items.map(item => <button key={`${item.reference.assetId}/${item.reference.versionId}`} className="om-badge om-nav-item" onClick={() => update(items.filter(r => r !== item))} aria-label={t('Remove reference: {name}', { name: item.name })}><RemixIcon name="image-line" size={14} /><span>{item.name}</span><RemixIcon name="close-line" size={14} /></button>)}</div>;
   const references = referenceControls(draft.references, references => setDraft({ ...draft, references }), maximumReferences);
@@ -81,7 +103,7 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
       <div className="om-creation-scene"><span className="om-badge"><RemixIcon name={selected?.mode === 'text-to-speech' ? 'voiceprint-line' : kind.icon} size={14} />{t(selected?.mode === 'text-to-speech' ? 'Text to speech' : draft.modality === 'audio' ? 'Music & sound' : draft.modality === 'video' ? draft.references.length ? 'Image to video' : 'Text to video' : draft.references.length && selected?.supportsImageReference ? 'Image editing' : 'Text to image')}</span><span className="om-eyebrow">{t('Settings follow your model')}</span></div>
       <div className="om-creation-prompt"><label className="om-eyebrow" htmlFor="asset-creation-prompt"><RemixIcon name="pen-nib-line" size={14} />{t(selected?.mode === 'text-to-speech' ? 'Speech text' : 'Your idea')}</label><textarea id="asset-creation-prompt" maxLength={20000} aria-label={t('Asset prompt')} placeholder={t(selected?.mode === 'text-to-speech' ? 'Write the words you want spoken.' : kind.hint)} value={draft.prompt} onChange={e => setDraft({ ...draft, prompt: e.target.value })} />{references}<div className="om-creation-prompt-footer"><span className="om-eyebrow">{t(draft.references.length ? 'References stay linked to their versions' : 'Start with a few words. Make it your own.')}</span><span className="om-eyebrow">{draft.prompt.length.toLocaleString()} / 20k</span></div></div>
       {!draft.prompt && selected?.mode !== 'text-to-speech' && <div className="om-creation-ideas" aria-label={t('Try an idea')}>{kind.ideas.map(idea => <button key={idea} className="om-nav-item" onClick={() => setDraft({ ...draft, prompt: t(idea + ' prompt') })}><RemixIcon name="add-line" size={13} />{t(idea)}</button>)}</div>}
-      {draft.references.length > 0 && <p className="om-muted">{t(maximumReferences ? draft.modality === 'video' ? 'This video model uses one image as its first frame.' : 'This model edits up to {count} image references.' : 'This model cannot use asset references. Choose an image model that supports editing, or remove the references.', { count: maximumReferences })}</p>}
+      {unknownReferences || cloudModelMissing ? <p className="om-muted" role="status">{unknownReferences && t('Image editing capability is unknown. Sync models to check reference support.')} <button className="om-button" disabled={syncing} onClick={() => void syncModels()}>{t(syncing ? 'Working…' : 'Sync models')}</button></p> : draft.references.length > 0 && <p className="om-muted">{t(maximumReferences ? draft.modality === 'video' ? 'This video model uses one image as its first frame.' : 'This model edits up to {count} image references.' : 'This model cannot use asset references. Choose an image model that supports editing, or remove the references.', { count: maximumReferences })}</p>}
 
     </div><div className="om-creation-submit">{selected && <GenerationParameters key={selected.id} model={selected} draft={parameters} onChange={value => { setParameterDrafts(current => ({ ...current, [selected.id]: value })); try { setDraft({ ...draft, model: selected.id, parameters: requestParameters(value) }); } catch { /* Keep invalid JSON in the local editor until corrected. */ } }} />}<button className="om-button om-creation-submit-button" data-primary disabled={busy || !selected || !draft.prompt.trim() || invalidReferences} onClick={() => void submit()}><RemixIcon name="sparkling-fill" size={19} />{t(busy ? 'Submitting your idea…' : kind.action)}<RemixIcon name="arrow-right-line" size={18} /></button><p className="om-creation-save-note"><RemixIcon name="stack-line" size={13} />{t('Saved automatically to your library')}</p><p className="om-eyebrow om-creation-billing">{t('Model usage is billed to your configured account.')}</p></div>
     </>}

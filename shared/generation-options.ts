@@ -5,12 +5,34 @@ export type GenerationOption = {
   choices?: { value: string | number; label: string; requires?: Record<string, string | number> }[];
   default?: string | number | boolean; min?: number; max?: number; step?: number;
   presentation?: 'ratio' | 'count'; required?: boolean;
+  /** The choices are suggestions: any other non-empty string is also accepted. */
+  allowCustom?: boolean;
 };
 export type GenerationOptions = { delivery: 'provider' | 'prompt'; fields: GenerationOption[] };
 const choice = (key: string, label: string, values: (string | number)[], value?: string | number, presentation?: GenerationOption['presentation']): GenerationOption => ({ key, label, kind: 'choice', choices: values.map(value => ({ value, label: String(value) })), default: value, presentation });
 const number = (key: string, label: string, value?: number, min?: number, max?: number, step = 1): GenerationOption => ({ key, label, kind: 'number', default: value, min, max, step });
 const toggle = (key: string, label: string, value = false): GenerationOption => ({ key, label, kind: 'boolean', default: value });
 const text = (key: string, label: string, required = false): GenerationOption => ({ key, label, kind: 'text', required });
+
+/** OpenDesign speech voices that produced audio through the media API on 2026-11-16; the first is the default.
+ * Other voice IDs pass through unchecked: the media API publishes no voice list. Seed TTS 2.0 accepts only its
+ * 2.0 (`*_uranus_bigtts`) speakers; 1.0 speakers fail upstream with a resource mismatch. */
+const cloudSpeechVoices: Record<string, { value: string; label: string }[]> = {
+  'byteplus-tts-2': [{ value: 'zh_female_vv_uranus_bigtts', label: 'Vivi · Chinese female' }],
+  'elevenlabs-v3': [
+    ['21m00Tcm4TlvDq8ikWAM', 'Rachel · Female'], ['JBFqnCBsd6RMkjVDRZzb', 'George · Male'], ['EXAVITQu4vr4xnSDxMaL', 'Sarah · Female'],
+    ['pNInz6obpgDQGcFmaJgB', 'Adam · Male'], ['nPczCjzI2devNBz1zQrb', 'Brian · Male'], ['pFZP5JQG7iQjIQuC4Bku', 'Lily · Female'],
+  ].map(([value, label]) => ({ value, label })),
+};
+const cloudSpeech = (model: Model) => ['opendesign', 'account'].includes(model.provider) && model.mode === 'text-to-speech';
+// Own keys only: a model ID such as `constructor` must not resolve to an Object prototype member.
+const checkedVoices = (model: Model) => Object.hasOwn(cloudSpeechVoices, model.modelId) ? cloudSpeechVoices[model.modelId] : undefined;
+/** Parameters a request starts from: the model's saved defaults, and for OpenDesign speech its first checked voice.
+ * The voice stays out of `model.defaults`, so Settings never shows or saves it as a user override. */
+export function modelDefaults(model: Model): Record<string, unknown> {
+  const voice = cloudSpeech(model) ? checkedVoices(model)?.[0].value : undefined;
+  return voice ? { voice, ...model.defaults } : { ...model.defaults };
+}
 
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
  * An unknown catalogue model deliberately gets no guessed schema. */
@@ -48,7 +70,8 @@ export function generationOptions(model: Model): GenerationOptions | undefined {
     choice('voice', 'Speech voice', ['af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa'], 'af_heart'),
     number('speed', 'Speech speed', 1, undefined, undefined, 0.1),
   ];
-  if (['opendesign', 'account'].includes(model.provider) && model.mode === 'text-to-speech') fields = [text('voice', 'Voice ID', true)];
+  // Speech models without checked voices keep a free voice ID: the API publishes no voice list.
+  if (cloudSpeech(model)) { const voices = checkedVoices(model); fields = [voices ? { key: 'voice', label: 'Speech voice', kind: 'choice', choices: voices, default: voices[0].value, allowCustom: true } : text('voice', 'Voice ID', true)]; }
   // The connector's `audio music --duration` takes whole seconds; music models publish no duration range.
   if (model.provider === 'account' && model.modality === 'audio' && model.mode === 'text-to-audio') fields = [number('duration', 'Duration (seconds)', undefined, 1)];
   return fields ? { delivery: 'provider', fields } : undefined;
@@ -64,6 +87,7 @@ export function validateGenerationOptions(model: Model, parameters: Record<strin
       const { width, height } = value as Record<string, unknown>;
       if ([width, height].every(n => typeof n === 'number' && Number.isInteger(n) && n > 0)) continue;
     }
+    if (field.allowCustom && typeof value === 'string' && value.trim() && !field.choices?.some(c => c.value === value)) continue;
     const valid = field.kind === 'choice' ? field.choices?.some(c => c.value === value)
       : field.kind === 'boolean' ? typeof value === 'boolean'
       : field.kind === 'text' ? typeof value === 'string' && (!field.required || !!value.trim())

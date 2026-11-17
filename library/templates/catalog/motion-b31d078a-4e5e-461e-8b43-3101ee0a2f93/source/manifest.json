@@ -87,6 +87,41 @@
   },
   "files": [
     {
+      "path": "assets/DEPENDENCIES.md",
+      "bytes": 527,
+      "sha256": "e43ecea3a3611dd9df1f859540b1d7121e66758dac9bc3698b751cf72111f0f6"
+    },
+    {
+      "path": "assets/fonts/Inter-400.woff2",
+      "bytes": 23664,
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+      "path": "assets/fonts/Inter-700.woff2",
+      "bytes": 24356,
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+      "path": "assets/fonts/OFL.txt",
+      "bytes": 4380,
+      "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
+    },
+    {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/lfs/original-soundtrack.m4a",
+      "bytes": 1722720,
+      "sha256": "1225291a49acb0fc730bf9747aae7361d7fdf16c810c561bdb22cf969ab72054"
+    },
+    {
+      "path": "assets/materials.js",
+      "bytes": 10336,
+      "sha256": "8f371c1ec0c89b2796b1bc64fc6fcfe519cb0525cc8da3067affe774f059a010"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 9356,
       "sha256": "706dbddcf7a33e59fc3b09e9fad92ed96e430eab393ea78a7eb4d9cfab10e4a3"
@@ -117,6 +152,36 @@
       "sha256": "e96f59e84f685ccc7ca7e61a215b3137c0c4fd0ac28b73801a5f92573de3bbcb"
     },
     {
+      "path": "assets/story-scenes.js",
+      "bytes": 23444,
+      "sha256": "a329573efcc424d5a2a2858a6313983a7ef3cd64f293be0dd301a8ccf969d26b"
+    },
+    {
+      "path": "assets/THREE-LICENSE.txt",
+      "bytes": 1081,
+      "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
+    },
+    {
+      "path": "assets/three.min.js",
+      "bytes": 669884,
+      "sha256": "170c6789f43217c96b3170f4b42fafe135de7f7cd48497a4218f9757ee1d49fa"
+    },
+    {
+      "path": "assets/world.js",
+      "bytes": 15752,
+      "sha256": "1a054d5a141feb938523841d84e52f9e9ee41483ff18f2873e036d0d38a87808"
+    },
+    {
+      "path": "compositions/webflow-endcard.html",
+      "bytes": 1530,
+      "sha256": "c8cf620dc2372a64f5b5f65b6f1e492ad4390818d04a9a14dfe68489285b7a20"
+    },
+    {
+      "path": "compositions/webflow-world.html",
+      "bytes": 698,
+      "sha256": "0de7747fc3d86eb47022b67e8626802eb8a6fa97e13367e473905f63ceb69c54"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -145,6 +210,16 @@
       "path": "demos/sequence.html",
       "bytes": 539,
       "sha256": "8ca757ccbd92198610e40571b687a0208054f7ba3eb25895799d3c17bd035dcd"
+    },
+    {
+      "path": "hyperframes.json",
+      "bytes": 50,
+      "sha256": "9a1181b6a728e7c8efc5c85a17ae6f72662302396793914b14c56a30a33912a5"
+    },
+    {
+      "path": "index.html",
+      "bytes": 2381,
+      "sha256": "4eef88a21aa45b14ad1ad4b7b12d17726455ab4e4ab986d839ea7672621a9df6"
     },
     {
       "path": "motion.md",

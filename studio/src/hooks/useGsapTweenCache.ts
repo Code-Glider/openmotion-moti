@@ -20,6 +20,7 @@ import {
 } from "./gsapTweenSynth";
 import { fetchParsedAnimations, populateKeyframeCacheFromAst } from "./keyframeCacheAstLoad";
 import { getAnimationsForElement } from "./gsapElementMatch";
+import { projectCompositionPath } from "../utils/projectCompositionPath";
 
 // Re-exported so callers keep importing the GSAP cache surface from one module.
 export { resolveClipTimingBasis } from "./gsapShared";
@@ -290,7 +291,11 @@ export function usePopulateKeyframeCacheForFile(
     // its own cache entries, so the order just decides who writes the bare
     // `id` alias last.
     const files = Array.from(
-      new Set([sourceFile, ...(compositionSrcKey ? compositionSrcKey.split("|") : [])]),
+      new Set(
+        [sourceFile, ...(compositionSrcKey ? compositionSrcKey.split("|") : [])]
+          .map((source) => projectCompositionPath(source, projectId))
+          .filter((source): source is string => source !== null),
+      ),
     );
     const sameData = loadedRef.current.dataKey === dataKey;
     const stale = sameData ? files.filter((sf) => !loadedRef.current.files.has(sf)) : files;

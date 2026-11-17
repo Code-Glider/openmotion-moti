@@ -11,6 +11,7 @@ import { useFileTree } from "./useFileTree";
 import { useEditorSave } from "./useEditorSave";
 import { useProjectFileWriter } from "./useProjectFileWriter";
 import { studioApiFetch } from "../utils/studioApiFetch";
+import { importErrorCategory, reportAssetImport, reportEdit, setProjectInventory, type ImportEntryPoint, type ImportErrorCategory } from "../motion/editorTracking";
 import { encodeUrlPath } from "@hyperframes/parsers";
 import { prepareFontImport } from "../components/editor/fontImport";
 
@@ -70,6 +71,11 @@ export function useFileManager({
     assets,
     fontAssets,
   } = useFileTree({ projectId, projectIdRef });
+  // Counts Studio already holds, for bucketed project-scale fields. Unknown until the tree loads.
+  useEffect(() => {
+    setProjectInventory(fileTreeLoaded ? { assets: assets.length, compositions: compositions.length } : null);
+    return () => setProjectInventory(null);
+  }, [fileTreeLoaded, assets.length, compositions.length]);
 
   useEffect(() => { importedFontAssetsRef.current = []; }, [projectId]);
 
@@ -200,10 +206,13 @@ export function useFileManager({
   // ── Upload ──
 
   const uploadProjectFiles = useCallback(
-    async (files: Iterable<File>, dir?: string): Promise<string[]> => {
+    async (files: Iterable<File>, dir?: string, entryPoint?: ImportEntryPoint): Promise<string[]> => {
       const pid = projectIdRef.current;
       const fileList = Array.from(files);
       if (!pid || fileList.length === 0) return [];
+      // One result per upload request, after the server has answered (or could not).
+      const report = (added: number, category?: ImportErrorCategory) =>
+        reportAssetImport({ projectId: pid, entryPoint, requested: fileList.length, added, category });
 
       const formData = new FormData();
       for (const file of fileList) {
@@ -229,19 +238,32 @@ export function useFileManager({
             const names = data.unchecked.map((entry: { name: string }) => entry.name).join(", ");
             showToast(t("Added {name}, {message}", { name: names, message: importValidationMessage(data.unchecked[0].reason, t) }), "info");
           }
+          const added: string[] = Array.isArray(data.files) ? data.files : [];
+          report(
+            added.length,
+            data.skipped?.length
+              ? "too_large"
+              : data.invalid?.length
+                ? importErrorCategory(String(data.invalid[0].reason))
+                : "other",
+          );
           setPendingImport(previous => previous?.projectId === pid && previous.dir === dir && previous.files.length === fileList.length && previous.files.every((file, index) => file === fileList[index]) ? null : previous);
           await refreshFileTree();
           setRefreshKey((k) => k + 1);
-          return Array.isArray(data.files) ? data.files : [];
+          return added;
         } else if (res.status === 409 && (await res.clone().json().catch(() => null))?.code === 'NATIVE_RUNTIME_NOT_READY') {
           if (projectIdRef.current === pid) setPendingImport({ projectId: pid, files: fileList, dir });
+          report(0, "runtime_not_ready");
           showToast(t('Media components are preparing. Selected files are kept for retry.'), 'info');
         } else if (res.status === 413) {
+          report(0, "too_large");
           showToast("Upload rejected: payload too large");
         } else {
+          report(0, "other");
           showToast(`Upload failed (${res.status})`);
         }
       } catch {
+        report(0, "other");
         showToast("Upload failed: network error");
       }
       return [];
@@ -313,6 +335,7 @@ export function useFileManager({
           method: "DELETE",
         },
       );
+      if (isMediaFile(path) || FONT_EXT.test(path)) reportEdit("asset_delete", "assets", res.ok, pid);
       if (res.ok) {
         if (editingPathRef.current === path) setEditingFile(null);
         await refreshFileTree();
@@ -337,6 +360,7 @@ export function useFileManager({
           body: JSON.stringify({ newPath }),
         },
       );
+      if (isMediaFile(oldPath) || FONT_EXT.test(oldPath)) reportEdit("asset_rename", "assets", res.ok, pid);
       if (res.ok) {
         if (editingPathRef.current === oldPath) {
           handleFileSelect(newPath);
@@ -380,8 +404,8 @@ export function useFileManager({
     ? uploadProjectFiles(pendingImport.files, pendingImport.dir) : Promise.resolve([]), [pendingImport, uploadProjectFiles]);
 
   const handleImportFiles = useCallback(
-    async (files: FileList | File[], dir?: string) => {
-      return uploadProjectFiles(Array.from(files), dir);
+    async (files: FileList | File[], dir?: string, entryPoint?: ImportEntryPoint) => {
+      return uploadProjectFiles(Array.from(files), dir, entryPoint);
     },
     [uploadProjectFiles],
   );
@@ -403,7 +427,7 @@ export function useFileManager({
         const prepared: Awaited<ReturnType<typeof prepareFontImport>>[] = [];
         for (const file of Array.from(files).filter((file) => FONT_EXT.test(file.name))) prepared.push(await prepareFontImport(file));
         if (projectIdRef.current !== pid) throw new Error("Active project changed before font import");
-        const uploaded = await uploadProjectFiles(prepared.map(font => font.file), "assets/fonts");
+        const uploaded = await uploadProjectFiles(prepared.map(font => font.file), "assets/fonts", "properties");
         if (uploaded.length !== prepared.length) throw new Error("Font import did not complete");
         imported = uploaded.map((asset, index) => ({ ...prepared[index].metadata,
           path: asset, url: `/api/projects/${encodeURIComponent(pid)}/preview/${encodeUrlPath(asset)}`,

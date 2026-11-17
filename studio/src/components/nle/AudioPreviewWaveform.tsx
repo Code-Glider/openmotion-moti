@@ -3,7 +3,7 @@ import { useI18n } from "../../i18n/I18n";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { acquireAudioPreviewAnalyser, AUDIO_PREVIEW_BARS } from "./audioPreviewAnalyser";
 
-/** Mirrored live spectrum from this dialog's media, with no duplicate download or playback clock. */
+/** Mirrored live spectrum from the preview's media, with no duplicate download or playback clock. */
 export function AudioPreviewWaveform({ media, playing }: {
   media: RefObject<HTMLMediaElement | null>; playing: boolean;
 }) {
@@ -24,7 +24,7 @@ export function AudioPreviewWaveform({ media, playing }: {
       return;
     }
     const resume = () => { void lease.resume(); };
-    const dialog = element.closest('[role="dialog"]');
+    const dialog = element.closest('[role="dialog"], .om-asset-audio-player');
     element.addEventListener("play", resume);
     dialog?.addEventListener("pointerdown", resume);
     dialog?.addEventListener("keydown", resume);

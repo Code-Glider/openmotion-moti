@@ -2,6 +2,7 @@ import { Tooltip } from "../ui/Tooltip";
 import { PanelEmptyState } from "../ui/PanelEmptyState";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";
+import { trackStudioClick } from "../../motion/editorTracking";
 import { useI18n } from "../../i18n/I18n";
 import { useLivePreviewIframe } from "../../player/store/previewIframeStore";
 import { onPreviewContentReplaced } from "../../player/sceneSwap";
@@ -250,6 +251,7 @@ export const LayersPanel = memo(function LayersPanel({ host }: { host?: LayersPa
           usePlayerStore.getState().requestSeek(clip.start);
         }
       }
+      trackStudioClick("layers", "locate_layer");
       applyDomSelection(selection, { revealPanel: false });
       // Force-reveal AFTER the seek's runtime visibility sync has had a beat:
       // a clip made active by the seek shows naturally and needs no override,

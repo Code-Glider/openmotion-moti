@@ -15,6 +15,7 @@ import {
   type MergeableKeyframe,
 } from "./gsapTweenSynth";
 import { studioApiFetch } from "../utils/studioApiFetch";
+import { projectCompositionPath } from "../utils/projectCompositionPath";
 
 export { resolveSelectorElementIds };
 
@@ -62,11 +63,13 @@ export function fetchParsedAnimations(
   sourceFile: string,
   options: { fresh?: boolean } = {},
 ): Promise<ParsedGsapAnimations | null> {
-  const key = parseCacheKey(projectId, sourceFile);
+  const path = projectCompositionPath(sourceFile, projectId);
+  if (!path) return Promise.resolve(null);
+  const key = parseCacheKey(projectId, path);
   if (options.fresh) inFlightParses.delete(key);
   const inFlight = inFlightParses.get(key);
   if (inFlight) return inFlight;
-  const request = requestParsedAnimations(projectId, sourceFile).finally(() => {
+  const request = requestParsedAnimations(projectId, path).finally(() => {
     // A superseded pre-write request must not evict the fresh post-write one.
     if (inFlightParses.get(key) === request) inFlightParses.delete(key);
   });
@@ -105,9 +108,11 @@ async function requestParsedAnimations(
 // fallow-ignore-next-line complexity
 export async function populateKeyframeCacheFromAst(
   projectId: string,
-  sf: string,
+  sourceFile: string,
   doc: Document | null | undefined,
 ): Promise<boolean> {
+  const sf = projectCompositionPath(sourceFile, projectId);
+  if (!sf) return false;
   const parsed = await fetchParsedAnimations(projectId, sf);
   if (!parsed) return false;
   const { elements, domClipChildren } = usePlayerStore.getState();

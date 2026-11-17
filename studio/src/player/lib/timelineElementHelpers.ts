@@ -16,6 +16,7 @@ import { HF_AUDIO_GROUP_TAG } from "@hyperframes/core/audio-groups";
 import { readElementFades } from "@hyperframes/core/audio-fade";
 import { isHtmlElement, isImageElement, isMediaElement } from "@hyperframes/core/runtime/dom-realm";
 import { elementVolume } from "./storedVolume";
+import { projectCompositionIdentity } from "../../utils/projectCompositionPath";
 import {
   type AttrReader,
   clampPlaybackRate,
@@ -327,7 +328,10 @@ export function buildTimelineElementKey(params: {
   selectorIndex?: number;
   sourceFile?: string;
 }): string {
-  const scope = params.sourceFile ?? "index.html";
+  const source = params.sourceFile ?? "index.html";
+  // Match AST-cache ownership for authored ./ paths and native preview URLs.
+  // Keep foreign/unresolvable sources distinct instead of aliasing local rows.
+  const scope = projectCompositionIdentity(source);
   if (params.domId) return `${scope}#${params.domId}`;
   if (params.selector) return `${scope}:${params.selector}:${params.selectorIndex ?? 0}`;
   return `${scope}:${params.id}:${params.fallbackIndex}`;

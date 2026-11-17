@@ -10,6 +10,12 @@ export function useTimelineMultiDragActorWindows(
   rowsVirtualized: boolean,
   renderTimeRange: TimelineTimeRange,
 ) {
+  if (rowsVirtualized && multiDragPreview?.offsets) {
+    return [...multiDragPreview.offsets].map(([key, delta]) => ({
+      range: { start: renderTimeRange.start - delta, end: renderTimeRange.end - delta },
+      identities: new Set([key]),
+    }));
+  }
   const multiDragDelta =
     multiDragPreview && isMultiDragActive(multiDragPreview)
       ? multiDragDeltaSeconds(multiDragPreview)

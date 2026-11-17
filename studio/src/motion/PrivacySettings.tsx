@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { trackStudioClick } from './editorTracking';
 import { useI18n } from '../i18n/I18n';
 import { motionApi } from './useWorkspace';
 import { setMotionTrackingEnabled } from './tracking';
@@ -26,6 +27,8 @@ export function PrivacySettings({ onClose, embedded = false }: { onClose: () => 
       const next = await motionApi<Status>('/tracking/preferences', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled }) });
       setStatus(next); setMotionTrackingEnabled(next.enabled);
       toast.showToast(t('Privacy settings saved'), 'info');
+      // Reported after the saved preference applies, so turning sharing off sends nothing.
+      trackStudioClick('project_drawer', 'usage_data_toggle', undefined, undefined, next.enabled ? 'on' : 'off');
     } catch { toast.showToast(t('Could not save privacy settings.'), 'error'); }
     finally { setBusy(false); }
   }

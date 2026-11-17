@@ -11,6 +11,7 @@ import type { EventFields } from '../tracking/core.ts';
 import { accountErrorKinds, accountStages, type omEvents } from '../tracking/events.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
 import { registeredProvider } from '../shared/provider-registry.ts';
+import { modelDefaults } from '../shared/generation-options.ts';
 
 const execute = promisify(execFile);
 const consoleUrl = registeredProvider('account')!.website!;
@@ -39,14 +40,47 @@ const failureMessages: Record<AccountErrorCode, string> = {
 const hasCredentials = (profile?: Profile) => Boolean(profile?.controlKey && profile.controlKeyId && profile.runtimeKey && profile.user?.id);
 const signedInProfile = (profile?: Profile) => hasCredentials(profile) && !profile!.pendingLogin;
 
+// Service error codes the connector reports, mapped to fixed (translatable) messages.
+const requestMessages: Record<string, string> = {
+  // A media 401 does not change the account state, so the user has to sign out before signing in again.
+  unauthorized: 'Your OpenDesign sign-in is no longer accepted. Sign out, then sign in again.',
+  invalid_request: 'OpenDesign rejected this request for the selected model. Choose another model or change the options, then try again.',
+  tier_model_not_entitled: 'Your OpenDesign plan does not include this model. Choose another model or upgrade your plan.',
+  tier_request_kind_not_entitled: 'Your OpenDesign plan does not include this model. Choose another model or upgrade your plan.',
+  model_access_denied: 'Your OpenDesign plan does not include this model. Choose another model or upgrade your plan.',
+  insufficient_balance: 'Your OpenDesign balance is too low for this request. Top up, then try again.',
+  tier_limit_exceeded: 'OpenDesign media rate or concurrency limit reached. Wait for running tasks to finish, then try again.',
+  provider_error: 'The model provider could not complete this request. Try again later or choose another model.',
+  request_state_unknown: 'OpenDesign could not confirm whether this request ran, so it was not resubmitted. Check your OpenDesign history before retrying.',
+  media_execution_unknown: 'OpenDesign could not confirm whether this request ran, so it was not resubmitted. Check your OpenDesign history before retrying.',
+  asset_too_large: 'The reference image is larger than the 2 MiB OpenDesign upload limit.',
+  unsupported_media_type: 'OpenDesign does not accept this reference image format.',
+};
+const jobMessages = {
+  connection: 'OpenDesign account request failed. Check your connection and sign in again if needed.',
+  service: 'OpenDesign could not complete this request. Try again later, and contact us if this keeps happening.',
+  resultUnreadable: 'OpenDesign accepted this task, but its result could not be read. Check the original task before retrying.',
+  resultUnauthorized: 'OpenDesign accepted this task, but your sign-in was rejected while reading its result. Sign out, then sign in again, and check the original task before retrying.',
+  taskFailed: 'Account media task failed. Check the original task before retrying.',
+  accountChangedBeforeSubmit: 'Account changed; the queued task was not submitted',
+  accountChangedAfterSubmit: 'Account changed; check the original task before retrying',
+  unknownTaskStatus: 'OpenDesign reported a task status this version does not recognize. Check the original task before retrying.',
+};
+/** Account media failures from the service or an accepted task (submit validates parameters earlier). Studio translates them by exact text, so each must stay a dictionary key. */
+export const accountMediaMessages = [...new Set([...Object.values(requestMessages), ...Object.values(jobMessages)])];
 /** Connector request failure. Keeps only the HTTP status and service error code; CLI stderr can contain account data. */
 export class AccountRequestError extends Error {
   readonly status?: number;
   readonly code?: string;
   constructor(stderr: string) {
-    super('OpenDesign account request failed. Check your connection and sign in again if needed.');
-    const match = /API request failed with status (\d{3})(?:: ([a-z0-9_]{1,64})(?=\s|$))?/.exec(stderr);
-    if (match) { this.status = Number(match[1]); this.code = match[2]; }
+    // Generic API errors read `API request failed with status 403: code`; media commands read `<text> (code, HTTP 400)`.
+    const api = /API request failed with status (\d{3})(?:: ([a-z0-9_]{1,64})(?=\s|$))?/.exec(stderr);
+    // A response without a JSON body has an empty code: `(, HTTP 502)`.
+    const media = api ? undefined : [...stderr.matchAll(/\(([^,()]{0,64}), HTTP (\d{3})\)/g)].at(-1);
+    const status = api ? Number(api[1]) : media ? Number(media[2]) : undefined;
+    const code = api ? api[2] : media && /^[a-z0-9_]{1,64}$/.test(media[1]) ? media[1] : undefined;
+    super((code && requestMessages[code]) || (status === 401 ? requestMessages.unauthorized : status ? jobMessages.service : jobMessages.connection));
+    this.status = status; this.code = code;
   }
 }
 class SignInFailure extends Error {
@@ -429,8 +463,8 @@ export class OpenDesignAccount {
   }
   /** `reference` is the job's snapshotted input image; it turns an image job into an edit of that image. */
   async generate(job: GenerationJob, directory: string, signal: AbortSignal, progress: (phase: string, id?: string) => Promise<void>, reference?: string) {
-    if (job.providerOrigin !== await this.identity() || (await this.summary()).state !== 'signed-in') throw new Error('Account changed; the queued task was not submitted');
-    const kind = job.modality, params = { ...job.model.defaults, ...job.parameters };
+    if (job.providerOrigin !== await this.identity() || (await this.summary()).state !== 'signed-in') throw new Error(jobMessages.accountChangedBeforeSubmit);
+    const kind = job.modality, params = { ...modelDefaults(job.model), ...job.parameters };
     const music = kind === 'audio' && job.model.mode === 'text-to-audio';
     if (reference && kind !== 'image') throw new Error('Account reference images are supported for image editing only');
     const allowed = kind === 'image' ? ['aspect_ratio', 'resolution', 'quality', 'size'] : kind === 'video' ? ['ratio', 'resolution', 'duration', 'generate_audio'] : music ? ['duration'] : ['voice'];
@@ -450,8 +484,13 @@ export class OpenDesignAccount {
     const output = path.join(directory, 'account-output.bin');
     for (;;) {
       await delay(this.options.pollMs ?? 2000, undefined, { signal });
-      if (job.providerOrigin !== await this.identity()) throw new Error('Account changed; check the original task before retrying');
-      const task = JSON.parse(await this.run([kind, 'get', taskId, '--output', output, '--json'], signal));
+      if (job.providerOrigin !== await this.identity()) throw new Error(jobMessages.accountChangedAfterSubmit);
+      // The task already exists and may be billed; a failed read or download must not suggest submitting it again.
+      const task = JSON.parse(await this.run([kind, 'get', taskId, '--output', output, '--json'], signal).catch(error => {
+        // A rejected sign-in still needs its sign-out hint: the account keeps reporting signed-in after a media 401.
+        if (error instanceof AccountRequestError) throw new Error(error.status === 401 || error.code === 'unauthorized' ? jobMessages.resultUnauthorized : jobMessages.resultUnreadable);
+        throw error;
+      }));
       // `image get` prints the task while it runs, then the downloaded asset (no task ID) once it has succeeded.
       const imageReady = kind === 'image' && task.task_id === undefined && typeof task.asset_id === 'string' && task.status === 'ready';
       if (task.task_id !== taskId && !imageReady) throw new Error('Account provider returned an unexpected task');
@@ -460,8 +499,8 @@ export class OpenDesignAccount {
         if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024 * 1024) throw new Error('Invalid account media output');
         return [await readFile(output)];
       }
-      if (['failed', 'cancelled', 'canceled'].includes(task.status)) throw new Error('Account media task failed. Check the original task before retrying.');
-      if (!['queued', 'pending', 'running', 'processing', 'submitted'].includes(task.status)) throw new Error('Unknown account media task status');
+      if (['failed', 'cancelled', 'canceled'].includes(task.status)) throw new Error(jobMessages.taskFailed);
+      if (!['queued', 'pending', 'running', 'processing', 'submitted'].includes(task.status)) throw new Error(jobMessages.unknownTaskStatus);
       await progress('generating');
     }
   }

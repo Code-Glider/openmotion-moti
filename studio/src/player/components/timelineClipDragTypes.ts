@@ -35,6 +35,7 @@ export interface DraggedClipState {
   snapEdge?: "start" | "end";
   started: boolean;
   altKey?: boolean;
+  mainTrackReorder?: import("./timelineMainReorder").MainTrackReorder;
   snapDisabled?: boolean;
 }
 

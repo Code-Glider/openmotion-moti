@@ -2,6 +2,7 @@ import { Tooltip } from "../components/ui/Tooltip";
 import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { useWorkspaceChrome } from './WorkspaceFrame';
+import { reportEdit } from './editorTracking';
 
 export function WorkspaceProject() {
   const { t } = useI18n();
@@ -18,7 +19,12 @@ export function WorkspaceProject() {
     const nextTitle = title.trim() || t('Untitled');
     if (!project || nextTitle === project.title) { finishEditing(); return; }
     savingRef.current = true;
-    try { if (await workspace.rename(project.id, nextTitle)) finishEditing(); }
+    try {
+      // The committed rename, not each keystroke; the title itself is never reported.
+      const renamed = Boolean(await workspace.rename(project.id, nextTitle));
+      reportEdit('project_rename', 'header', renamed, project.id);
+      if (renamed) finishEditing();
+    }
     finally { savingRef.current = false; }
   };
   return <span className="motion-project-control om-app-project-title">

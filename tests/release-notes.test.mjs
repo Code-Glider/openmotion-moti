@@ -4,6 +4,7 @@ import { readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { candidateFixture } from './release-fixture.mjs';
 import { publishReleaseNotes, prepareCandidateNotes } from '../.github/scripts/motion-release-notes.mjs';
+import { sha256 } from '../scripts/runtime-assets.mjs';
 
 async function fixture(t, version = '0.6.8') {
   const f = await candidateFixture(t, 'main', { version });
@@ -99,6 +100,7 @@ for (const version of ['0.6.8', '0.6.8-test.14']) test(`${version} candidate not
   const commits = Array.from({ length: 101 }, (_, i) => ({ sha: (i + 1).toString(16).padStart(40, '0'), commit: { message: i === 0 ? 'Fix ![external](https://bad.invalid) <script> (#447)\nprivate body is excluded' : `Change ${i}` } }));
   const body = await prepareCandidateNotes(f.build, { env: { MOTION_VERSION: version, MOTION_SOURCE_SHA: source }, fetcher: async (url, init) => {
     assert.equal(init.method, 'GET'); assert(!init.headers.Authorization); calls.push(String(url));
+    if (url.includes('/contents/')) return new Response('', { status: 404 });
     if (url.includes('/releases?')) return Response.json([
       { tag_name: 'v0.6.8-test.13', prerelease: true, draft: false }, { tag_name: 'v0.6.7', prerelease: false, draft: false },
       { tag_name: 'v0.6.8-test.99', prerelease: true, draft: true }, { tag_name: 'v0.6.9', prerelease: false, draft: false }]);
@@ -121,6 +123,7 @@ test('first-channel notes disclose their bounded history; API failures never wri
   await assert.rejects(readFile(path.join(f.build, 'release-notes.md')), { code: 'ENOENT' });
   const body = await prepareCandidateNotes(f.build, { env, fetcher: async (url, init) => {
     assert.equal(init.method, 'GET');
+    if (url.includes('/contents/')) return new Response('', { status: 404 });
     if (url.includes('/releases?')) return Response.json([]);
     assert(url.includes(`sha=${f.candidate.sourceCommit}`)); return Response.json([]);
   } });
@@ -182,6 +185,110 @@ test('notes are sealed before upload, displayed in the summary and never require
   const prepare = build.indexOf('motion-release-notes.mjs prepare'), seal = build.indexOf('motion-release.mjs seal');
   assert(prepare > build.indexOf('motion-scan.mjs package') && prepare < seal && seal < build.indexOf('actions/upload-artifact'));
   assert(build.includes("/candidate/release-notes.md") && build.includes('Candidate release notes (unpublished)'));
+});
+
+function noteResponse(filename, text) {
+  const bytes = Buffer.from(text);
+  return Response.json({ type: 'file', path: filename, encoding: 'base64', size: bytes.length, content: bytes.toString('base64') });
+}
+
+test('stable candidates freeze exact-source bilingual notes and publication reuses them unchanged', async t => {
+  const f = await fixture(t);
+  await rm(path.join(f.build, 'release-notes.md'));
+  const calls = [], env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  const body = await prepareCandidateNotes(f.build, { env, fetcher: async (url, init) => {
+    assert.equal(init.method, 'GET');
+    const parsed = new URL(url), filename = parsed.pathname.split('/contents/')[1];
+    assert.equal(parsed.searchParams.get('ref'), f.candidate.sourceCommit);
+    assert(filename.startsWith('docs/CHANGELOG/v0.6.8/')); calls.push(filename);
+    return noteResponse(filename, '# OpenMotion 0.6.8\n\n## ' + (filename.endsWith('/en.md') ? 'Fixed\n\n- Restore Windows installation.' : '修复\n\n- 恢复 Windows 安装。'));
+  } });
+  assert.deepEqual(calls.sort(), ['docs/CHANGELOG/v0.6.8/en.md', 'docs/CHANGELOG/v0.6.8/zh-CN.md']);
+  assert(body.includes('## English') && body.includes('## 简体中文') && body.includes('恢复 Windows 安装'));
+  assert(body.includes(f.candidate.sourceCommit) && body.includes(f.candidate.tgzSHA256));
+  assert(!body.includes('NOT PROVIDED') && !body.includes('automatic draft'));
+  await writeFile(path.join(f.directory, 'release-notes.md'), body);
+  f.candidate.files['release-notes.md'] = await sha256(path.join(f.directory, 'release-notes.md'));
+  await writeFile(path.join(f.directory, 'candidate.json'), JSON.stringify(f.candidate));
+  await publishReleaseNotes(f.directory, f);
+  assert(f.getRelease().body.includes(body), 'Publication adds delivery links around the exact frozen notes');
+  f.changeRelease({ body: f.getRelease().body + '\nMaintainer correction\n' });
+  const count = f.writes.length;
+  await publishReleaseNotes(f.directory, f);
+  assert.equal(f.writes.length, count);
+  assert.equal(await readFile(path.join(f.directory, 'release-notes.md'), 'utf8'), body);
+});
+
+test('missing stable copy warns and keeps the automatic draft; English-only copy warns without blocking', async t => {
+  const f = await fixture(t);
+  const warnings = []; t.mock.method(console, 'warn', message => warnings.push(message));
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  for (const english of [false, true]) {
+    await rm(path.join(f.build, 'release-notes.md'), { force: true });
+    const body = await prepareCandidateNotes(f.build, { env, fetcher: async url => {
+      if (url.includes('/contents/')) {
+        const filename = new URL(url).pathname.split('/contents/')[1];
+        return english && filename.endsWith('/en.md') ? noteResponse(filename, '# OpenMotion 0.6.8\n\n## Known issues\n\nTemplate acceptance is pending.') : new Response('', { status: 404 });
+      }
+      assert(!english, 'Authored copy does not depend on mutable Release history');
+      if (url.includes('/releases?')) return Response.json([]);
+      return Response.json([]);
+    } });
+    assert(body.includes(english ? 'Template acceptance is pending.' : 'This is an automatic draft.'));
+    assert(body.includes(english ? 'Simplified Chinese release notes have not been provided.' : 'NOT PROVIDED'));
+  }
+  assert.equal(warnings.length, 2);
+  assert(warnings.every(message => message.startsWith('::warning title=Stable release notes missing::')));
+});
+
+test('invalid authored stable copy fails before sealing instead of silently using different content', async t => {
+  const f = await fixture(t);
+  await rm(path.join(f.build, 'release-notes.md'));
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  for (const invalid of ['version', 'empty', 'utf8', 'size', 'symlink', 'default-locale']) {
+    await assert.rejects(prepareCandidateNotes(f.build, { env, fetcher: async url => {
+      const filename = new URL(url).pathname.split('/contents/')[1];
+      if (filename.endsWith('/zh-CN.md')) return noteResponse(filename, '# OpenMotion 0.6.8\n\n## 修复\n\n- 安装修复。');
+      if (invalid === 'default-locale') return new Response('', { status: 404 });
+      if (invalid === 'version') return noteResponse(filename, '# OpenMotion 0.6.9\n\nWrong version.');
+      if (invalid === 'empty') return noteResponse(filename, '# OpenMotion 0.6.8\n');
+      if (invalid === 'utf8') return noteResponse(filename, Buffer.from([0xff]));
+      if (invalid === 'size') return Response.json({ type: 'file', path: filename, encoding: 'base64', size: 512 * 1024 + 1 });
+      return Response.json({ type: 'symlink', path: filename });
+    } }), /version|empty|encoded data|512 KiB|Invalid stable|require en.md/);
+    await assert.rejects(readFile(path.join(f.build, 'release-notes.md')), { code: 'ENOENT' });
+  }
+  await assert.rejects(prepareCandidateNotes(f.build, { env, fetcher: async () => new Response('', { status: 403 }) }), /HTTP 403/);
+});
+
+test('the maintained bilingual drafts can be archived for an exact version without changing application bytes', async t => {
+  const f = await fixture(t);
+  await rm(path.join(f.build, 'release-notes.md'));
+  const body = await prepareCandidateNotes(f.build, {
+    env: { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit },
+    fetcher: async url => {
+      const filename = new URL(url).pathname.split('/contents/')[1], locale = path.basename(filename);
+      const draft = await readFile(new URL('../docs/CHANGELOG/unreleased/' + locale, import.meta.url), 'utf8');
+      assert(draft.startsWith('# OpenMotion Unreleased\n'));
+      return noteResponse(filename, draft.replace('# OpenMotion Unreleased', '# OpenMotion 0.6.8'));
+    },
+  });
+  assert(body.includes('## Highlights') && body.includes('## 亮点'));
+  assert(body.includes('Known issues') && body.includes('已知问题'));
+  assert.equal(await sha256(path.join(f.build, f.candidate.tgz)), f.candidate.tgzSHA256);
+});
+
+test('combined bilingual copy must fit the sealed candidate limit', async t => {
+  const f = await fixture(t);
+  await rm(path.join(f.build, 'release-notes.md'));
+  await assert.rejects(prepareCandidateNotes(f.build, {
+    env: { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit },
+    fetcher: async url => {
+      const filename = new URL(url).pathname.split('/contents/')[1], heading = '# OpenMotion 0.6.8\n\n';
+      return noteResponse(filename, heading + 'x'.repeat(512 * 1024 - heading.length));
+    },
+  }), /Candidate notes exceed 1 MiB/);
+  await assert.rejects(readFile(path.join(f.build, 'release-notes.md')), { code: 'ENOENT' });
 });
 
 for (const scenario of ['full-300', 'empty-page', 'repeated-page']) test(`comparison ${scenario} never duplicates rows or invents an empty release delta`, async t => {

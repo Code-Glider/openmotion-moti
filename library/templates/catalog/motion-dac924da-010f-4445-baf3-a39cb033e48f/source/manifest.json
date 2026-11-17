@@ -87,6 +87,31 @@
   },
   "files": [
     {
+      "path": "assets/gsap.min.js",
+      "bytes": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "assets/Inter-variable-latin.woff2",
+      "bytes": 31388,
+      "sha256": "a7578810fc5ca3ccdb1c56ce077b47f7db921c1860dfb054408d95eb5f9016f9"
+    },
+    {
+      "path": "assets/lfs/original-audio.m4a",
+      "sha256": "e7ad834b163a1f3ec696c9cecfbbba3d25d7e011358712f14a759219a29fe51f",
+      "bytes": 187282
+    },
+    {
+      "path": "assets/motion.js",
+      "bytes": 1013,
+      "sha256": "f068224e6b3274ba05b23181a261ec678f13f4ad0bf1b97dc5dda5aab1e510d2"
+    },
+    {
+      "path": "assets/OFL-inter.txt",
+      "bytes": 4477,
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345"
+    },
+    {
       "path": "assets/reference-1.webp",
       "bytes": 2256,
       "sha256": "90231ba7d234a15b0bbd847e18e665ad9f8a10652edd2fb37188f7b15560cdd9"
@@ -117,6 +142,11 @@
       "sha256": "1942c34b0a64c04dafd96842d1e2844be270acb9671f2a671765f6af77f27cde"
     },
     {
+      "path": "assets/style.css",
+      "bytes": 1780,
+      "sha256": "32af16dd8ca965e246426fdaf02d2c9e98c37b7953fb388930bf84a540ff40e4"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -145,6 +175,16 @@
       "path": "demos/sequence.html",
       "bytes": 544,
       "sha256": "cc5eab376edb2dcf6abfe8ab4c6b4f8e1be0679c880578ef8ae55cb84f3c72fc"
+    },
+    {
+      "path": "hyperframes.json",
+      "bytes": 93,
+      "sha256": "4a9aa5eb3b23b45e8045c8790de96ebf3af8ed6e319075c29685653fa3ec7e73"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1283,
+      "sha256": "031fe4dc62e181ff165b3ea7d7335dd0d90f918a00ec9025fb987712555dfef1"
     },
     {
       "path": "motion.md",

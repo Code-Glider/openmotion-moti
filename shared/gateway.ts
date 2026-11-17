@@ -10,6 +10,7 @@ export type Model = {
   id: string; provider: ProviderId; modelId: string; label: string; modality: Modality;
   source: 'builtin' | 'live' | 'custom'; mode: string;
   defaults?: Record<string, unknown>; description?: string;
+  /** Cloud: true/false is explicit provider evidence; absent means editing capability is unknown. */
   supportsImageReference?: boolean;
   /** Most input images the provider accepts: edit references for images, a first frame for video. */
   maxInputImages?: number;

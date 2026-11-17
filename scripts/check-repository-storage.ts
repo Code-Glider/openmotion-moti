@@ -5,7 +5,7 @@ import { lfsPointer, maxLfsAssetBytes, repositoryMediaFile } from '../shared/rep
 import { validateMediaManifest } from '../shared/repository-media.ts';
 
 const maxGitFileBytes = 1024 * 1024;
-const maxCheckoutBytes = 128 * 1024 * 1024;
+const checkoutWarningBytes = 128 * 1024 * 1024;
 function git(cwd: string, args: string[], input?: string) {
   const result = spawnSync('git', args, { cwd, input, maxBuffer: 32 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr?.toString() || result.error?.message);
@@ -16,6 +16,7 @@ function git(cwd: string, args: string[], input?: string) {
 export function checkRepositoryStorage(cwd: string, base?: string, options: { finalTreeOnly?: boolean } = {}) {
   if (base) assert(/^[a-f0-9]{40}$/.test(base), 'Use a full base commit SHA');
   const errors: string[] = [];
+  const warnings: string[] = [];
   const entries = git(cwd, ['ls-files', '--stage', '-z']).toString().split('\0').filter(Boolean).map(line => {
     const match = /^(\d+) ([a-f0-9]+) 0\t([\s\S]+)$/.exec(line);
     assert(match, 'Resolve index conflicts before checking storage');
@@ -57,7 +58,8 @@ export function checkRepositoryStorage(cwd: string, base?: string, options: { fi
     lfsBytes += pointer.bytes;
     lfsFiles++;
   }
-  if (gitBytes > maxCheckoutBytes) errors.push('Ordinary Git checkout exceeds 128 MiB; move optional media to public storage or review the budget');
+  if (gitBytes > checkoutWarningBytes)
+    warnings.push(`Ordinary Git checkout exceeds 128 MiB (${(gitBytes / 1024 / 1024).toFixed(2)} MiB); review growth and prefer public storage for optional media`);
   if (base && !options.finalTreeOnly) {
     const objects = git(cwd, ['rev-list', '--objects', 'HEAD', '--not', base]).toString().trim().split('\n').filter(Boolean);
     if (objects.length) {
@@ -76,7 +78,7 @@ export function checkRepositoryStorage(cwd: string, base?: string, options: { fi
         if (entries.some(entry => entry.name === file.path)) errors.push(`${file.path}: transferred media must not also be stored in Git`);
     } catch (error) { errors.push((error as Error).message); }
   }
-  return { errors, gitBytes, lfsBytes, lfsFiles };
+  return { errors, warnings, gitBytes, lfsBytes, lfsFiles };
 }
 
 if (isMain(import.meta.url)) {

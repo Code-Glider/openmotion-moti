@@ -239,12 +239,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .git/lfs/objects
-          key: optional-lfs-${{ runner.os }}-${{ hashFiles('**/*.mp4', '**/*.motion', '!library/templates/catalog/**') }}
+          key: optional-lfs-${{ runner.os }}-${{ hashFiles('**/*.mp4', '**/*.motion', 'library/templates/catalog/**') }}
           restore-keys: optional-lfs-${{ runner.os }}-
       - name: Download full-bundle media explicitly
         if: steps.scope.outputs.full == 'true'
         run: |
-          git lfs pull --include="docs/readme/**,library/**,examples/**" --exclude="library/templates/catalog/**"
+          # Hosted-catalog packaging tests also need the real template audio/font bytes.
+          git lfs pull --include="docs/readme/**,library/**,examples/**" --exclude=""
           npm run media:pull
       - name: Select rendering package cache version
         if: steps.scope.outputs.full == 'true'

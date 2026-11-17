@@ -18,6 +18,7 @@ import { ApplicationHeader, ApplicationRail } from './ApplicationChrome';
 import { SettingsCenter, type SettingsSection } from './SettingsCenter';
 import { SettingsSurfaceBoundary } from './SettingsSurfaceBoundary';
 import { McpConnectionPage } from './McpConnectionPage';
+import type { McpEntry } from './pageTracking';
 import { WorkspaceHomeButton } from './WorkspaceHomeButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
@@ -25,6 +26,7 @@ import { WORKSPACE_LOCATION_CHANGED, writeWorkspaceHistory } from '../utils/work
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { BrandKitPage } from './BrandKitPage';
+import { clickMethod, searchStarted, trackStudioClick } from './editorTracking';
 
 // Settings shares the model-picker dependencies. Keep it in the loaded shell so
 // an open editor never requests a removed Settings chunk after a local rebuild.
@@ -79,6 +81,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     const id = navigationToast.showToast(workspace.navigationError.message, 'error', 'feedback');
     return () => navigationToast.dismissToast(id);
   }, [workspace.navigationError, navigationToast.showToast, navigationToast.dismissToast]);
+  const connectionEntry = useRef<McpEntry>('direct_link');
+  // A later visit through history or a pasted link has no control behind it.
+  useEffect(() => { if (settings !== 'mcp') connectionEntry.current = 'direct_link'; }, [settings]);
   const libraryTrigger = useRef<HTMLElement | null>(null);
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
@@ -145,7 +150,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
   const value: WorkspaceChrome = { workspace, switchingDisabled, saveState: editorState?.saveState || saveState, registerEditor, beforeViewChange,
     openLibrary: (trigger, templateId) => { libraryTrigger.current = trigger ?? null; workspace.clearError(); navigatePage({ templates: true, template: templateId ?? null }); },
-    openConnections: () => openSettings('mcp'),
+    openConnections: entry => { connectionEntry.current = entry; openSettings('mcp'); },
     openModelSettings: () => openSettings('providers'),
     openHome, openAssets, assetsOpen: assetsOpen && !settings, openSkills, skillsOpen: skillsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
     toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || pageOpen };
@@ -178,16 +183,16 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
           onDismiss={() => { setDismissedNotice(noticeKey); if (workspaceNotice) workspace.clearError(); }} />}
         {children}
       </div>
-      {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings)} inert={!assetsOpen || Boolean(settings)}><AssetsPage active={assetsOpen && !settings} /></div>}
-      {skillsOpen && !settings && <div className="om-skills-host"><SkillsPage skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} /></div>}
+      {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings)} inert={!assetsOpen || Boolean(settings)}><AssetsPage hasProject={Boolean(projectId)} active={assetsOpen && !settings} /></div>}
+      {skillsOpen && !settings && <div className="om-skills-host"><SkillsPage skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} hasProject={Boolean(projectId)} /></div>}
       {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'brand-kit'
-        ? <BrandKitPage onClose={() => navigatePage({ settings: null })} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} /> : settings === 'mcp'
-        ? <McpConnectionPage previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
-        : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
+        ? <BrandKitPage onClose={() => navigatePage({ settings: null })} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} hasProject={Boolean(projectId)} /> : settings === 'mcp'
+        ? <McpConnectionPage entry={connectionEntry.current} hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
+        : <SettingsCenter hasProject={Boolean(projectId)} navigationCollapsed={navigationCollapsed} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
       </div>
     </div>
     </Dialog.Root>
-    {connectionsOpen && <ConnectionDialog open returnFocus={libraryTrigger.current} section="templates" templateId={page.template} onTemplateChange={template => navigatePage({ template })} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => navigatePage({ templates: false })} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
+    {connectionsOpen && <ConnectionDialog open projectId={projectId} returnFocus={libraryTrigger.current} section="templates" templateId={page.template} onTemplateChange={template => navigatePage({ template })} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => navigatePage({ templates: false })} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />}
   </WorkspaceChromeContext.Provider>;
 }
 
@@ -217,7 +222,7 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
         </button>
       </Tooltip>
     </div>
-    <label className="motion-session-search"><MotionIcon name="search" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
+    <label className="motion-session-search"><MotionIcon name="search" /><input type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
     <nav className="motion-session-list" aria-label={t('Project list')} aria-busy={loadingProjects}>
       {loadingProjects && ['75%', '55%', '65%'].map(width => <div key={width} className="motion-session pointer-events-none" data-testid="project-list-skeleton" aria-hidden="true">
         <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
@@ -242,9 +247,9 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
 
 export function WorkspaceMenuButton() {
   const { t } = useI18n();
-  const { toggleSidebar, sidebarOpen, navigationCollapsed } = useWorkspaceChrome();
+  const { toggleSidebar, sidebarOpen, navigationCollapsed, workspace } = useWorkspaceChrome();
   const visible = sidebarOpen && !navigationCollapsed;
   // Collapsing the docked navigation is a toggle, not a dismiss, so the icon-only
   // control keeps its tooltip in both states like the app-sidebar toggle.
-  return <Tooltip label={t(visible ? 'Collapse project list' : 'Open project list')} wrap><button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button></Tooltip>;
+  return <Tooltip label={t(visible ? 'Collapse project list' : 'Open project list')} wrap><button className="motion-icon-button motion-workspace-menu" onClick={event => { if (!visible) trackStudioClick('header', 'open_project_drawer', workspace.status?.projectId, clickMethod(event)); toggleSidebar(); }} aria-expanded={visible} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button></Tooltip>;
 }
