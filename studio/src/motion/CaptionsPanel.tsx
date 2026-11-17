@@ -70,7 +70,7 @@ function CaptionControls() {
   }, [loading, failed, tracks, target]);
   useEffect(() => { if (visible && selection?.transcriptId) { setMode('style'); setSource(selection.transcriptId); setTarget(tracks.some(track => track.id === selection.transcriptId) ? selection.transcriptId : 'new'); } }, [visible, selection?.nonce]);
   useEffect(() => { if (current) { setSettings(current.settings); setSource(current.id); } }, [target, current?.id]);
-  useEffect(() => { if (visible && selectedTrackId) { setMode('style'); setTarget(selectedTrackId); } }, [visible, selectedTrackId]);
+  useEffect(() => { if (visible && selectedTrackId && !pendingClip.current) { setMode('style'); setTarget(selectedTrackId); } }, [visible, selectedTrackId]);
   useEffect(() => {
     if (!visible || !request || request.compositionPath !== (shell.activeCompPath || 'index.html') || appliedRequest.current === request.nonce) return;
     appliedRequest.current = request.nonce; initialMode.current = true;
@@ -106,7 +106,11 @@ function CaptionControls() {
       const detail = await gatewayRequest<{ revision: string; currentVersionId: string }>('phase1/call', 'POST', { name: 'openmotion_get_project', arguments: { projectId } });
       if (!valid()) return;
       await transcriptRequest({ command: 'captions', projectId, transcriptId: source, expectedTranscriptRevision: result.document.revision, compositionPath, ...placement, captionSettings: settings, expectedRevision: detail.revision, expectedVersionId: detail.currentVersionId, requestId: crypto.randomUUID() });
-      if (valid()) { await files.refreshFileTree(); await refresh(); setTarget(source); useCaptionWorkspace.getState().changed(); shell.showToast(t('Captions added to the video'), 'info'); }
+      if (valid()) {
+        // Keep the new caption selected while the preview replaces its old clip list.
+        useCaptionWorkspace.getState().open(projectId, { compositionPath, mode: 'style', trackId: source, selectClip: true });
+        await files.refreshFileTree(); await refresh(); setTarget(source); useCaptionWorkspace.getState().changed(); shell.showToast(t('Captions added to the video'), 'info');
+      }
     } catch (error) { if (valid()) shell.showToast(t(error instanceof Error ? error.message : 'Caption update failed'), 'error'); }
     finally { active.current = false; if (alive.current) setWorking(false); }
   }

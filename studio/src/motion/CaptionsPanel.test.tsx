@@ -82,6 +82,24 @@ it('recreating a track is explicit, exposes replacement semantics and allows new
   expect(document.body.textContent).toContain('including manual edits'); expect(state.calls.some(c => c.command === 'captions')).toBe(false);
   await act(async () => button('Recreate captions').click()); expect(state.calls.find(c => c.command === 'captions').captionSettings.pacing).toBe('word');
 });
+it('new transcript captions stay selected through an old preview refresh and select their new clip', async () => {
+  const oldClip = { id: 'old-clip', domId: 'transcript-doc-cue', tag: 'div', sourceFile: 'index.html' };
+  const newClip = { id: 'new-clip', domId: 'transcript-recording-cue', tag: 'div', sourceFile: 'index.html' };
+  state.elements = [oldClip]; usePlayerStore.setState({ selectedElementId: oldClip.id });
+  state.documents.push({ id: 'recording', source: { path: 'recording.wav', duration: 3 }, segmentCount: 1 });
+  await render(); await choose('Caption track', 'Create from transcript'); await choose('Caption transcript', 'Original · recording.wav');
+  await act(async () => button('Word highlight').click());
+  state.refresh.mockImplementation(async () => { state.tracks.push({ ...state.tracks[0], id: 'recording', track: 5, label: 'Recording', settings: { ...DEFAULT_CAPTION_SETTINGS, pacing: 'word' } }); });
+  await act(async () => button('Add captions to video').click());
+  state.elements = []; await render(); state.elements = [oldClip]; await render();
+  expect(button('Word highlight').getAttribute('aria-pressed')).toBe('true');
+  state.elements = [oldClip, newClip]; await render();
+  expect(usePlayerStore.getState().selectedElementId).toBe('new-clip');
+  await act(async () => button('By sentence').click());
+  expect(button('Cancel')).toBeDefined(); await act(async () => button('Cancel').click());
+  expect(button('Word highlight').getAttribute('aria-pressed')).toBe('true');
+  await act(async () => button('By sentence').click()); expect(button('Recreate captions')).toBeDefined();
+});
 it('selecting a native caption clip selects its track without confusing display-lane numbers', async () => {
   state.tracks.push({ ...state.tracks[0], id: 'second', track: 8, label: 'French' });
   state.elements = [{ id: 'render-key', domId: 'transcript-second-cue', tag: 'div', track: 0, sourceFile: 'index.html' }];

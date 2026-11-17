@@ -292,6 +292,7 @@ try {
   await click(`${captionPanel} button`, 'Word highlight');
   await click(`${captionPanel} button`, 'Add captions to video');
   await page.waitForFunction(() => [...document.querySelectorAll('.motion-track-badge')].some(n => n.textContent === 'C2'));
+  await page.waitForFunction(() => document.querySelector('section[aria-label="Captions"] button[aria-label="Caption track"]')?.textContent.includes('recording-'));
   assert.match(await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'), /data-caption-pacing="word"/);
   await capture({ path: path.join(output, 'captions-word-highlight.png') });
   // Pacing stages a reversible draft; native cues change only on explicit recreation.
@@ -461,6 +462,6 @@ try {
 } catch (error) {
   await page?.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {});
   console.log('Captured browser failure', errors);
-  await writeFile(path.join(output, 'dom.json'), JSON.stringify(await page?.evaluate(() => ({ buttons: [...document.querySelectorAll('button')].map(b=>({label:b.getAttribute('aria-label'),text:b.textContent,disabled:b.disabled})), transcript: document.querySelector('section[aria-label="Transcript"]')?.outerHTML, alerts: [...document.querySelectorAll('[role=status],[role=alert]')].map(n=>n.textContent) })).catch(() => ({})) || {}, null, 2));
+  await writeFile(path.join(output, 'dom.json'), JSON.stringify(await page?.evaluate(() => ({ buttons: [...document.querySelectorAll('button')].map(b=>({label:b.getAttribute('aria-label'),text:b.textContent,disabled:b.disabled})), transcript: document.querySelector('section[aria-label="Transcript"]')?.outerHTML, captions: document.querySelector('section[aria-label="Captions"]')?.outerHTML, alerts: [...document.querySelectorAll('[role=status],[role=alert]')].map(n=>n.textContent) })).catch(() => ({})) || {}, null, 2));
   await writeFile(path.join(output, 'failure.txt'), String(error.stack)); throw error;
 } finally { releaseRecognition(); await browser?.close(); await running?.close(); await rm(data, { recursive: true, force: true, maxRetries: 5 }); await rm(lock, { recursive: true, force: true }); }
