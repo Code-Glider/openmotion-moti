@@ -1,4 +1,5 @@
 import { fontFamilyFromAssetPath, importedFontFaceCss } from "../components/editor/fontAssets";
+import designTokens from "../../../packages/design-system/tokens.json";
 import { encodeUrlPath } from "@hyperframes/parsers";
 export { buildTimelineAssetId } from "@hyperframes/core/timeline-asset-id";
 import { AUDIO_EXT, FONT_EXT, IMAGE_EXT, VIDEO_EXT } from "./mediaTypes";
@@ -132,7 +133,10 @@ export function buildTimelineAssetInsertHtml(input: {
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     })[char]!);
     const fontSize = Math.max(16, Math.round(geometry.height / 10));
-    return `<style>${face}</style><p id="${input.id}" data-hf-id="${input.hfId}" class="clip" data-start="${input.start}" data-duration="${input.duration}" data-track-index="${input.track}" style="position: absolute; left: ${geometry.left + geometry.width * 0.1}px; top: ${geometry.top + geometry.height * 0.4}px; width: ${geometry.width * 0.8}px; margin: 0; text-align: center; font-family: '${family}'; font-size: ${fontSize}px; line-height: 1.2; color: #fff; text-shadow: 0 1px 3px #000; z-index: ${input.zIndex}">${label}</p>`;
+    // Persist concrete neutral defaults: authored text must not depend on editor theme variables.
+    const color = designTokens.shared["neutral-n0"];
+    const shadow = designTokens.shared["neutral-n11"];
+    return `<style>${face}</style><p id="${input.id}" data-hf-id="${input.hfId}" class="clip" data-start="${input.start}" data-duration="${input.duration}" data-track-index="${input.track}" style="position: absolute; left: ${geometry.left + geometry.width * 0.1}px; top: ${geometry.top + geometry.height * 0.4}px; width: ${geometry.width * 0.8}px; margin: 0; text-align: center; font-family: '${family}'; font-size: ${fontSize}px; line-height: 1.2; color: ${color}; text-shadow: 0 1px 3px ${shadow}; z-index: ${input.zIndex}">${label}</p>`;
   }
 
   if (input.kind === "image") {
