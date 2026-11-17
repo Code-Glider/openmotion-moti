@@ -229,6 +229,7 @@ test('history files remain bound to the original attempt for HEAD, viewing, down
     const file = origin() + '/api/projects/project/renders/file/' + encodeURIComponent(receipt.filename);
     assert.equal((await fetch(file, {method: 'HEAD'})).status, 200);
     assert.equal(await (await fetch(file)).text(), bytes);
+    assert.equal((await fetch(origin() + '/api/render/' + receipt.jobId + '/view?projectId=project', {method: 'HEAD'})).status, 200);
     assert.equal(await (await fetch(origin() + '/api/render/' + receipt.jobId + '/view?projectId=project')).text(), bytes);
     const download = await fetch(origin() + '/api/render/' + receipt.jobId + '/download?projectId=project');
     assert.equal(await download.text(), bytes);

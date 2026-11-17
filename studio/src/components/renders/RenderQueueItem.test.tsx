@@ -33,13 +33,13 @@ describe('export task recovery', () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     render();
-    expect(host.querySelector('img')?.getAttribute('src')).toBe('/api/projects/demo/renders/file/j1.gif');
+    expect(host.querySelector('img')?.getAttribute('src')).toBe('/api/render/native-1/view?projectId=demo');
     expect(host.querySelector('video')).toBeNull();
     expect(host.querySelector('[aria-label="Open j1.gif in a new tab"]')).not.toBeNull();
     expect(download().disabled).toBe(false);
     await act(async () => download().click());
-    expect(fetch).toHaveBeenCalledWith('/api/projects/demo/renders/file/j1.gif', expect.objectContaining({ method: 'HEAD', cache: 'no-store' }));
-    expect(click.mock.instances[0].getAttribute('href')).toBe('/api/projects/demo/renders/file/j1.gif?download=1');
+    expect(fetch).toHaveBeenCalledWith('/api/render/native-1/view?projectId=demo', expect.objectContaining({ method: 'HEAD', cache: 'no-store' }));
+    expect(click.mock.instances[0].getAttribute('href')).toBe('/api/render/native-1/download?projectId=demo');
     expect(io.begin).toHaveBeenCalledExactlyOnceWith('download_render');
     expect(io.finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'unknown', file_status: 'available', delivery_status: 'browser_save_requested' });
     expect(document.querySelector('.motion-feedback-layer [role=status]')).toBeNull();
@@ -47,6 +47,16 @@ describe('export task recovery', () => {
     expect(onDelete).not.toHaveBeenCalled();
     act(() => button('Delete?').click());
     expect(onDelete).toHaveBeenCalledOnce();
+  });
+
+  it('retains filename access only for legacy history without a native attempt identity', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render({ nativeJobId: undefined });
+    expect(host.querySelector('img')?.getAttribute('src')).toBe('/api/projects/demo/renders/file/j1.gif');
+    await act(async () => download().click());
+    expect(fetch).toHaveBeenCalledWith('/api/projects/demo/renders/file/j1.gif', expect.objectContaining({ method: 'HEAD' }));
+    expect(click.mock.instances[0].getAttribute('href')).toBe('/api/projects/demo/renders/file/j1.gif?download=1');
   });
 
   it('keeps an unknown result, last confirmed information and an action that only rechecks the original task', () => {
@@ -132,9 +142,9 @@ describe('export task recovery', () => {
     expect(download().disabled).toBe(false);
     await act(async () => download().click());
     expect(click).toHaveBeenCalledOnce();
-    expect(click.mock.instances[0].getAttribute('href')).toBe('/api/projects/demo/renders/file/j1.gif?download=1');
+    expect(click.mock.instances[0].getAttribute('href')).toBe('/api/render/native-1/download?projectId=demo');
     expect(fetch.mock.calls).toHaveLength(3);
-    expect(fetch.mock.calls.every(([path, init]) => path === '/api/projects/demo/renders/file/j1.gif' && init?.method === 'HEAD')).toBe(true);
+    expect(fetch.mock.calls.every(([path, init]) => path === '/api/render/native-1/view?projectId=demo' && init?.method === 'HEAD')).toBe(true);
   });
 
   it('does not turn an access-check connection error into a deleted-file claim', async () => {
@@ -168,7 +178,7 @@ describe('export task recovery', () => {
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Open j1.gif in a new tab"]')!.click());
     expect(open).toHaveBeenCalledWith('', '_blank');
     expect(tab.opener).toBeNull();
-    expect(tab.location.href).toBe('/api/projects/demo/renders/file/j1.gif');
+    expect(tab.location.href).toBe('/api/render/native-1/view?projectId=demo');
     expect(io.begin).toHaveBeenCalledExactlyOnceWith('open_render');
     expect(io.finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'success', file_status: 'available', delivery_status: 'opened' });
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Open j1.gif in a new tab"]')!.click());

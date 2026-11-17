@@ -9,7 +9,7 @@ import { IconButton } from "../ui/IconButton";
 import { Tooltip } from "../ui/Tooltip";
 import { ErrorNotice } from "../ui/ErrorNotice";
 import type { RenderJob } from "./useRenderQueue";
-import { studioApiFetch } from "../../utils/studioApiFetch";
+import { studioApiFetch, studioProjectUrl } from "../../utils/studioApiFetch";
 import { redactDiagnostic } from "../../../../scripts/diagnostic-redaction.mjs";
 import { useToast } from "../../hooks/useToast";
 import { StudioToastViewport } from "../StudioToastViewport";
@@ -67,8 +67,15 @@ export const RenderQueueItem = memo(function RenderQueueItem({
   const toast = useToast();
   const diagnostic = exportDiagnostic(job, projectId);
 
-  // Direct file URL — serves from disk, survives server restarts
-  const fileSrc = buildProjectApiPath(projectId, `/renders/file/${encodeURIComponent(job.filename)}`);
+  // Managed attempts retain task-bound URLs after refresh or restart. A name
+  // alone could resolve to another export after its original record is deleted.
+  const legacyFileSrc = buildProjectApiPath(projectId, `/renders/file/${encodeURIComponent(job.filename)}`);
+  const fileSrc = job.nativeJobId
+    ? studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/view`, projectId)
+    : legacyFileSrc;
+  const downloadSrc = job.nativeJobId
+    ? studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/download`, projectId)
+    : legacyFileSrc + "?download=1";
 
   useEffect(() => {
     setFileAccess(job.fileAvailable === false ? 'unavailable' : 'unchecked');
@@ -143,7 +150,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
     }
     try {
       const a = document.createElement("a");
-      a.href = fileSrc + "?download=1";
+      a.href = downloadSrc;
       a.download = "";
       a.click();
       // The browser does not report whether the user saved the file.
