@@ -281,10 +281,10 @@ export function useFileManager({
           // Manual batches already show each result and its reason. Repeating
           // legacy notices can imply that the entire batch failed.
           if (!attempt) {
-            if (data.skipped?.length) showToast(t('The server did not add: {names}', { names: data.skipped.join(', ') }));
+            if (data.skipped?.length) showToast(`"${data.skipped.join(', ')}" exceeds the size limit. Compress or replace the file.`, 'error');
             if (data.invalid?.length) {
-              const why = data.invalid.map(entry => `${entry.name} (${importValidationMessage(entry.reason, t)})`).join(', ');
-              showToast(t('Not added: {message}', { message: why }));
+              const names = data.invalid.map(entry => entry.name).join(', ');
+              showToast(`Cannot add "${names}". Re-export or replace the file.`, 'error');
             }
             if (data.unchecked?.length) {
               const names = data.unchecked.map(entry => entry.name).join(', ');

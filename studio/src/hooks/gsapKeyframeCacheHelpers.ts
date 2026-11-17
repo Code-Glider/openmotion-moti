@@ -6,6 +6,7 @@ import type { GsapAnimation } from "@hyperframes/core/gsap-parser";
 import { usePlayerStore, type KeyframeCacheEntry } from "../player/store/playerStore";
 import { trackStudioEvent } from "../utils/studioTelemetry";
 import { sameData } from "../utils/sameData";
+import { projectCompositionIdentity } from "../utils/projectCompositionPath";
 import { resolveClipTimingBasis, resolveSelectorElementIds, toClipKeyframes } from "./gsapShared";
 import {
   deduplicateKeyframes,
@@ -183,6 +184,7 @@ function cachedElementIdsForFile(
   keyframeCache: ReadonlyMap<string, KeyframeCacheEntry>,
   gsapAnimations: ReadonlyMap<string, GsapAnimation[]>,
 ): Set<string> {
+  sourceFile = projectCompositionIdentity(sourceFile);
   const sfPrefix = `${sourceFile}#`;
   const ids = new Set<string>();
   for (const key of [...keyframeCache.keys(), ...gsapAnimations.keys()]) {
@@ -211,7 +213,7 @@ function cachedElementIdsForFile(
  * would reintroduce the empty-cache flash that repopulate was made to avoid.
  */
 export function pruneKeyframeCacheToFiles(files: readonly string[]): void {
-  const keep = new Set(files);
+  const keep = new Set(files.map(projectCompositionIdentity));
   const { keyframeCache, gsapAnimations } = usePlayerStore.getState();
   const stale = new Map<string, Set<string>>();
   for (const key of [...keyframeCache.keys(), ...gsapAnimations.keys()]) {
@@ -243,7 +245,7 @@ export function scopedElementKey(element: {
   sourceFile?: string | null;
   id?: string | null;
 }): string {
-  return `${element.sourceFile || "index.html"}#${element.id}`;
+  return `${projectCompositionIdentity(element.sourceFile || "index.html")}#${element.id}`;
 }
 
 /**
@@ -262,6 +264,7 @@ export function scopedElementKey(element: {
  * names its own producer.
  */
 export function elementCacheKeys(sourceFile: string, elementId: string): string[] {
+  sourceFile = projectCompositionIdentity(sourceFile);
   const id = typeof elementId === "string" ? elementId : coerceCacheKeyId(elementId, sourceFile);
   return sourceFile === "index.html"
     ? [`index.html#${id}`, id]
@@ -314,7 +317,7 @@ export function writeGsapAnimationsForElement(
 }
 
 function buildCacheKey(sourceFile: string, elementId: string): string {
-  return `${sourceFile}#${elementId}`;
+  return `${projectCompositionIdentity(sourceFile)}#${elementId}`;
 }
 
 export function readKeyframeSnapshot(
