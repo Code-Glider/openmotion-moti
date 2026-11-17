@@ -48,6 +48,6 @@ export function AssetGenerationCard({ job, onCancel, onView, onRetrySave, onResu
     </div>
     {(working || done) && <ol className="om-creation-steps" aria-label={t('Generation progress')}>{['Submitted', 'Creating', 'Saved to assets'].map((label, i) => <li key={label} data-complete={done || i === 0 && job.state === 'running' || i === 1 && saving} data-current={working && (i === 0 && job.state === 'queued' || i === 1 && job.state === 'running' && !saving || i === 2 && saving)}><span>{done || i === 0 && job.state === 'running' || i === 1 && saving ? <RemixIcon name="check-line" size={12} /> : i + 1}</span>{t(label)}</li>)}</ol>}
     {job.savePending && !working && <p className="om-muted">{t('Generated files are kept locally. Retry saving without generating again.')}</p>}
-    {error && <details className="om-creation-job-error"><summary>{t('Failure details')}</summary><p>{error}</p></details>}
+    {error && <details className="om-creation-job-error"><summary>{t('Failure details')}</summary><p>{t(error)}</p></details>}
   </section>;
 }
