@@ -52,6 +52,11 @@ export const projectCursor = z.strictObject({
   id,
   query: z.string().max(120),
 });
+export const versionCursor = z.strictObject({
+  projectId: id,
+  ceiling: z.number().int().positive().safe(),
+  before: z.number().int().positive().safe(),
+});
 export const schemas = {
   workspace_state: z.strictObject({}),
   workspace_observe: z.strictObject({}),
@@ -68,6 +73,8 @@ export const schemas = {
   artifact_open: z.strictObject({ ...request, ...owner, ...selection }),
   session_open: z.strictObject({ ...request, sessionId: id, ...selection }),
   project_read: z.strictObject(owner),
+  project_versions: z.strictObject({ ...owner, cursor: versionCursor.optional() }),
+  project_restore: z.strictObject({ ...request, ...entry, versionId: id, expectedVersionId: id }),
   project_list: z.strictObject({ query: z.string().trim().max(120).optional(), cursor: projectCursor.optional() }),
   project_entry: z.strictObject(entry),
   artifact_enter: z.strictObject({ ...request, ...entry, ...selection }),
@@ -145,6 +152,22 @@ export interface Project {
   resources: Resource[];
   history: { version: number; canUndo: boolean; canRedo: boolean };
 }
+/** Occurrence identity is independent of source equality and ordinary undo positions. */
+export interface ContentVersion {
+  id: string;
+  number: number;
+  revision: string;
+  kind: "create" | "edit" | "undo" | "redo" | "restore" | "legacy";
+  createdAt: number | null;
+  restoredFromVersionId: string | null;
+}
+export interface VersionPage {
+  current: ContentVersion;
+  historyVersion: number;
+  versions: (ContentVersion & { restorable: boolean; unavailableFiles: string[] })[];
+  nextCursor: z.infer<typeof versionCursor> | null;
+  newerAvailable: boolean;
+}
 export type ProjectSnapshot = Omit<Project, "history">;
 export interface Selection {
   revision: number;
@@ -183,6 +206,8 @@ export interface Outputs {
   artifact_open: Selection;
   session_open: Selection;
   project_read: Project;
+  project_versions: VersionPage;
+  project_restore: Project;
   project_list: { projects: Artifact[]; nextCursor: z.infer<typeof projectCursor> | null };
   project_entry: ProjectEntry;
   artifact_enter: Selection;
@@ -200,6 +225,7 @@ export class Fault extends Error {
   constructor(
     readonly code: FaultCode,
     message: string,
+    readonly current?: { revision: string; historyVersion: number; versionId: string },
   ) {
     super(message);
     this.name = "WorkspaceFault";
@@ -225,6 +251,10 @@ export const descriptions: Record<Operation, string> = {
   project_list:
     "List five project metadata entries per page, newest creation first, with a query-bound stable cursor; never reads source or changes selection.",
   project_read: "Read native source, resource manifest, content revision and authoritative history state.",
+  project_versions:
+    "List five immutable owned content-version occurrences per stable cursor page, including current identity and verified restorability. Legacy inventory has unknown time/order; page size is not retention. Reads never change selection or source.",
+  project_restore:
+    "Restore an explicitly owned content version as a new occurrence after checking current revision, history and version identity. Atomically verify all retained source/media bytes, preserve later versions, and replay the original request after response loss. Never changes selection; read project_entry separately for presentation.",
   project_snapshot: "Reopen an explicitly owned immutable source revision without changing current content or history.",
   resource_import:
     "Confirm the original resource import receipt from immutable metadata; returns project:null before a verified byte commit. Format facts are derived from bytes by the workspace owner.",

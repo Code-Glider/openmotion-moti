@@ -25,7 +25,13 @@ export function register(server: McpServer, execute: Execute, host?: { web(): Pr
         annotations: {
           readOnlyHint:
             !["archive_release", "resource_release"].includes(operation) && !("requestId" in schemas[operation].shape),
-          destructiveHint: ["project_save", "project_undo", "project_redo", "resource_remove"].includes(operation),
+          destructiveHint: [
+            "project_save",
+            "project_undo",
+            "project_redo",
+            "project_restore",
+            "resource_remove",
+          ].includes(operation),
           idempotentHint: true,
           openWorldHint: ["generation_create", "generation_cancel"].includes(operation),
         },
@@ -75,7 +81,11 @@ export function register(server: McpServer, execute: Execute, host?: { web(): Pr
             isError: true,
             content: [{ type: "text", text: (error as Error).message }],
             structuredContent: {
-              error: { code: error instanceof Fault ? error.code : "transport", message: (error as Error).message },
+              error: {
+                code: error instanceof Fault ? error.code : "transport",
+                message: (error as Error).message,
+                ...(error instanceof Fault && error.current ? { current: error.current } : {}),
+              },
             },
           };
         }

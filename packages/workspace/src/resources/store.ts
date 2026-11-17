@@ -49,12 +49,26 @@ export class Resources {
   read(input: Input<"resource_read">) {
     const resource = this.projects.snapshot(input).resources.find((entry) => entry.path === input.path);
     if (!resource) throw new Fault("missing", "resource does not belong to this revision");
+    return { resource, data: this.bytes(resource).toString("base64") };
+  }
+  /** Historical manifests retain membership; every actual byte is verified before restoration. */
+  verify(resources: Resource[]): string[] {
+    return resources.flatMap((resource) => {
+      try {
+        this.bytes(resource);
+        return [];
+      } catch {
+        return [resource.path];
+      }
+    });
+  }
+  private bytes(resource: Resource): Buffer {
     const entry = this.db.one("SELECT bytes FROM resources WHERE digest=?", resource.digest);
     if (!entry) throw new Fault("integrity", "persistent resource bytes are missing");
     const bytes = Buffer.from(entry.bytes as Uint8Array);
     if (bytes.length !== resource.bytes || checksum(bytes) !== resource.digest)
       throw new Fault("integrity", "persistent resource bytes are corrupt");
-    return { resource, data: bytes.toString("base64") };
+    return bytes;
   }
   private current(input: Pick<Input<"resource_import">, "sessionId" | "artifactId" | "expectedRevision">) {
     const project = this.projects.read(input);

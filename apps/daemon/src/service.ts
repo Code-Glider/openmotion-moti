@@ -225,7 +225,12 @@ export async function serve(options: Options): Promise<Service> {
       const status = { invalid: 400, missing: 404, ownership: 403, conflict: 409, idempotency: 409, integrity: 500 }[
         fault.code
       ];
-      reply(response, status, { error: { code: fault.code, message: fault.message } }, origin);
+      reply(
+        response,
+        status,
+        { error: { code: fault.code, message: fault.message, ...(fault.current ? { current: fault.current } : {}) } },
+        origin,
+      );
     });
     const pending = Promise.allSettled([handled, finished]);
     requests.add(pending);

@@ -165,6 +165,14 @@ export class Workspace {
         return this.projects.list(input as Input<"project_list">);
       case "project_read":
         return this.projects.read(input as Input<"project_read">);
+      case "project_versions":
+        return this.projects.versions(input as Input<"project_versions">, (snapshot) =>
+          this.resources.verify(snapshot.resources),
+        );
+      case "project_restore":
+        return this.projects.restore(input as Input<"project_restore">, (snapshot) =>
+          this.resources.verify(snapshot.resources),
+        );
       case "project_undo":
         return this.projects.move(input as Input<"project_undo">, -1);
       case "project_redo":

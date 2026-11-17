@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
@@ -18,7 +18,7 @@ export class Database {
       this.sql.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;");
       this.transaction(() => {
         const version = Number(this.one("PRAGMA user_version")?.user_version);
-        if (version !== 0 && version !== 3) throw new Fault("integrity", "unsupported workspace database schema");
+        if (![0, 3, 4].includes(version)) throw new Fault("integrity", "unsupported workspace database schema");
         if (version === 0) {
           if (this.one("SELECT name FROM sqlite_master WHERE type='table'"))
             throw new Fault("integrity", "unknown workspace database");
@@ -34,6 +34,36 @@ export class Database {
           INSERT INTO selection VALUES(1,0,NULL,NULL);
           CREATE TABLE requests(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,result TEXT NOT NULL);
           PRAGMA user_version=3;`);
+        }
+        if (version !== 4) {
+          if (
+            this.one(
+              "SELECT id FROM projects p WHERE NOT EXISTS(SELECT 1 FROM revisions r WHERE r.project_id=p.id AND r.revision=p.current_revision)",
+            )
+          )
+            throw new Fault("integrity", "existing project revision is missing");
+          this.sql.exec(`CREATE TABLE versions(
+            id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id),number INTEGER NOT NULL,
+            revision TEXT NOT NULL,kind TEXT NOT NULL,created_at INTEGER,restored_from TEXT REFERENCES versions(id),
+            UNIQUE(project_id,number),FOREIGN KEY(project_id,revision) REFERENCES revisions(project_id,revision));`);
+          // Format3 retained content but not complete chronology. Preserve all snapshots as an
+          // explicitly unordered inventory; current is last so subsequent occurrences have a real head.
+          for (const project of this.all("SELECT id,current_revision FROM projects")) {
+            let number = 0;
+            for (const row of this.all(
+              "SELECT revision FROM revisions WHERE project_id=? ORDER BY revision=? ASC,revision ASC",
+              project.id!,
+              project.current_revision!,
+            ))
+              this.run(
+                "INSERT INTO versions VALUES(?,?,?,?, 'legacy',NULL,NULL)",
+                randomUUID(),
+                project.id!,
+                ++number,
+                row.revision!,
+              );
+          }
+          this.sql.exec("PRAGMA user_version=4;");
         }
       });
     } catch (error) {

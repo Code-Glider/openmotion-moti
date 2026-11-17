@@ -13,6 +13,7 @@ import { Library } from "./workspace/library.js";
 import { Navigation } from "./workspace/navigation.js";
 import { Pages } from "./workspace/pages.js";
 import { WorkspaceSync } from "./workspace/sync.js";
+import { Versions } from "./workspace/versions.js";
 export function workspace(root: HTMLElement, editor: Editor, client: Client, entry?: string) {
   const document = root.ownerDocument,
     shell = workspaceLayout(document),
@@ -153,7 +154,8 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     },
   });
   const archives = new Archives(document, editor, client, run);
-  shell.element.append(navigation.view.element, creation.view.element);
+  const versions = new Versions(document, editor, client, run);
+  shell.element.append(navigation.view.element, creation.view.element, versions.view.element);
   const studio = new Studio(studioRoot, editor, client, run, {
     source: sourceView,
     sourceInput: () => source,
@@ -195,6 +197,10 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   navigationToggle.setAttribute("aria-expanded", "false");
   left.append(navigationToggle, title, saved);
   actions.append(newProject);
+  const history = button(document, { label: "版本历史", compact: true, onClick: () => versions.open(history) });
+  history.setAttribute("aria-haspopup", "dialog");
+  history.setAttribute("aria-expanded", "false");
+  actions.append(history);
   shell.header.append(left, actions);
   const undo = button(document, {
       label: "撤销",
@@ -287,6 +293,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     redo.disabled = blocked || !editor.project?.history.canRedo || editor.dirty || !!editor.drafts?.dirty();
     refresh.disabled = blocked;
     save.disabled = blocked || !editor.project;
+    history.disabled = busy || !editor.project;
     again.hidden = !retry;
     again.disabled = busy;
     source.disabled = !editor.project;
@@ -305,6 +312,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     creation.update(busy, blocked, message);
     archives.update(editor, blocked);
     library.update(blocked, creation.pending, busy);
+    versions.update(busy || creation.pending || !!editor.incoming);
     newProject.disabled = busy || (blocked && !creation.pending);
     if (!editor.sources.some((f) => f.path === file)) file = "index.html";
     source.setAttribute("aria-label", file);
@@ -352,6 +360,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
         await creation.dispose();
         await navigation.dispose();
         await library.dispose();
+        await versions.dispose();
         pages.dispose();
         await studio.dispose();
         archives.dispose();
