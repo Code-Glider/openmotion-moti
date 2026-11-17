@@ -44,7 +44,34 @@ export async function prepareCandidateNotes(directory, { env = process.env, fetc
   assert.match(source, /^[a-f0-9]{40}$/);
   assert.equal(manifest.installer.url, `./openmotion-app-${manifest.version}.tgz`);
   assert.equal(await sha256(path.join(directory, manifest.installer.url)), manifest.installer.sha256);
-  const api = githubApi(env, fetcher), previous = previousRelease(await listReleases(api), manifest.version, channel === 'test');
+  const api = githubApi(env, fetcher);
+  const save = async content => {
+    const body = `# OpenMotion ${manifest.version}\n\nChannel: ${channel}; templates: ${manifest.templateEnvironment}.\nSource: [${source}](https://github.com/${repository}/commit/${source}).\n\n${content}\n\n${candidateNoteIdentity({ version: manifest.version, sourceCommit: source, tgzSHA256: manifest.installer.sha256 })}\n`;
+    assert(Buffer.byteLength(body) <= 1024 * 1024, 'Candidate notes exceed 1 MiB');
+    await writeFile(path.join(directory, 'release-notes.md'), body, { flag: 'wx' });
+    return body;
+  };
+  if (channel === 'stable') {
+    const locales = ['en', 'zh-CN'];
+    const entries = await Promise.all(locales.map(async locale => {
+      const filename = `docs/CHANGELOG/v${manifest.version}/${locale}.md`;
+      const file = await api(`/contents/${filename}?ref=${source}`, 'GET', undefined, true);
+      if (!file) return null;
+      assert(file.type === 'file' && file.path === filename && file.encoding === 'base64', 'Invalid stable release note file: ' + filename);
+      assert(Number.isSafeInteger(file.size) && file.size > 0 && file.size <= 512 * 1024, 'Stable release note exceeds 512 KiB: ' + filename);
+      const bytes = Buffer.from(file.content, 'base64');
+      assert.equal(bytes.length, file.size, 'Stable release note size mismatch');
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes).trim();
+      assert.equal(text.split(/\r?\n/, 1)[0], `# OpenMotion ${manifest.version}`, 'Stable release note heading must match its exact version');
+      const content = text.slice(text.indexOf('\n') + 1).trim();
+      assert(text.includes('\n') && content, 'Stable release note body is empty');
+      return `## ${locale === 'en' ? 'English' : '简体中文'}\n\n[Source](https://github.com/${repository}/blob/${source}/${filename})\n\n${content}`;
+    }));
+    assert(entries[0] || !entries[1], 'Stable release notes require en.md when zh-CN.md is provided');
+    if (!entries[0] || !entries[1]) console.warn(`::warning title=Stable release notes missing::${!entries[0] ? 'No exact-version stable notes; using an automatic draft.' : 'zh-CN.md is missing; using the English notes only.'}`);
+    if (entries[0]) return save(entries.filter(Boolean).join('\n\n') + (!entries[1] ? '\n\n> Simplified Chinese release notes have not been provided.' : ''));
+  }
+  const previous = previousRelease(await listReleases(api), manifest.version, channel === 'test');
   let base, commits, link, warning = '';
   if (previous) {
     let object = (await api(`/git/ref/tags/${previous.tag_name}`)).object;
@@ -83,10 +110,7 @@ export async function prepareCandidateNotes(directory, { env = process.env, fetc
     const title = escape(commit.commit.message.split(/\r?\n/, 1)[0]);
     return `- ${title} ([${commit.sha.slice(0, 7)}](https://github.com/${repository}/commit/${commit.sha}))`;
   });
-  const body = `# OpenMotion ${manifest.version}\n\nChannel: ${channel}; templates: ${manifest.templateEnvironment}.\nSource: [${source}](https://github.com/${repository}/commit/${source}).\nBaseline: ${previous ? `${previous.tag_name} (${base})` : 'not available'}.\n\n## Changes\n\n${warning ? warning + '\n\n' : ''}${rows.join('\n') || (previous && !warning ? 'No source commits since the baseline.' : 'No complete commit list is available; inspect the full history/comparison.')}\n\n[Full source comparison/history](${link})\n\n## Acceptance focus\n\nNOT PROVIDED — maintainers record the required checks and actual results in their private acceptance.md copy. No acceptance is implied.\n\n## Known issues\n\nNOT PROVIDED — review before distribution; this does not mean there are no known issues. Maintainers may edit the published GitHub Release prose.\n\n${candidateNoteIdentity({ version: manifest.version, sourceCommit: source, tgzSHA256: manifest.installer.sha256 })}\n`;
-  assert(Buffer.byteLength(body) <= 1024 * 1024, 'Candidate notes exceed 1 MiB');
-  await writeFile(path.join(directory, 'release-notes.md'), body, { flag: 'wx' });
-  return body;
+  return save(`${channel === 'stable' ? '> Maintainer-authored notes for this exact stable version are missing. This is an automatic draft.\n\n' : ''}Baseline: ${previous ? `${previous.tag_name} (${base})` : 'not available'}.\n\n## Changes\n\n${warning ? warning + '\n\n' : ''}${rows.join('\n') || (previous && !warning ? 'No source commits since the baseline.' : 'No complete commit list is available; inspect the full history/comparison.')}\n\n[Full source comparison/history](${link})\n\n## Acceptance focus\n\nNOT PROVIDED — maintainers record the required checks and actual results in their private acceptance.md copy. No acceptance is implied.\n\n## Known issues\n\nNOT PROVIDED — review before distribution; this does not mean there are no known issues. Maintainers may edit the published GitHub Release prose.`);
 }
 
 export async function publishReleaseNotes(directory, { env = process.env, fetcher = fetch } = {}) {

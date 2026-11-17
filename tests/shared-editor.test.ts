@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request as httpRequest } from 'node:http';
 import { spawn } from 'node:child_process';
+import { createServer as createSocketServer } from 'node:net';
 import { once } from 'node:events';
 import { cp, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +13,38 @@ import { editorDirectory, ensureEditor, readEditor, editorRequest, sharedEditorE
 import { Client } from './shared-editor-client.mjs';
 
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+test('WorkBuddy replaces an idle editor on a retired broker and keeps its port', { skip: !sharedEditorEnabled }, async () => {
+  const directory = await realpath(await mkdtemp(path.join(tmpdir(), 'broker-')));
+  const original = process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS;
+  const servers = [createSocketServer(socket => socket.end()), createSocketServer(socket => socket.end())];
+  const paths = ['a', 'b'].map(name => path.join(directory, name));
+  try {
+    for (const [i, server] of servers.entries()) {
+      server.listen(paths[i]); await once(server, 'listening');
+    }
+    process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS = paths[0];
+    const first = await ensureEditor(directory);
+    assert.equal((await ensureEditor(directory)).instanceId, first.instanceId);
+    process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS = path.join(directory, 'missing');
+    await assert.rejects(ensureEditor(directory), /Current WorkBuddy broker is unavailable/);
+    assert.equal((await readEditor(directory))?.instanceId, first.instanceId);
+    process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS = paths[1];
+    await assert.rejects(ensureEditor(directory), /another active WorkBuddy session/);
+    servers[0].close(); await once(servers[0], 'close');
+    const second = await ensureEditor(directory);
+    assert.notEqual(second.instanceId, first.instanceId);
+    assert.equal(second.endpoint, first.endpoint);
+    assert.equal((await ensureEditor(directory)).instanceId, second.instanceId);
+  } finally {
+    if (original === undefined) delete process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS;
+    else process.env.CODEBUDDY_SANDBOX_BROKER_IPC_ADDRESS = original;
+    for (const server of servers) if (server.listening) server.close();
+    const editor = await readEditor(directory);
+    if (editor) await editorRequest(editor, '/editor-api/shutdown', {});
+    await pause(200); await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test('macOS startup retries after the previous lock owner finishes cleanup', { skip: !sharedEditorEnabled, timeout: 25_000 }, async () => {
   const directory = await realpath(await mkdtemp(path.join(tmpdir(), 'opendesign-lock-handoff-')));

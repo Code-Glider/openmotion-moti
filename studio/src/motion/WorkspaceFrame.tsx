@@ -1,4 +1,6 @@
+import { useProjectArchives, ProjectArchiveMenu, type ProjectArchiveActions } from './ProjectArchives';
 import { AssetsPage } from './AssetsPage';
+import { SkillsPage } from './SkillsPage';
 import { FeedbackLayer } from "../components/FeedbackLayer";
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -23,6 +25,7 @@ import { readWorkspacePage, workspacePageHref, type WorkspacePage } from './work
 import { WORKSPACE_LOCATION_CHANGED, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
+import { BrandKitPage } from './BrandKitPage';
 
 // Settings shares the model-picker dependencies. Keep it in the loaded shell so
 // an open editor never requests a removed Settings chunk after a local rebuild.
@@ -35,7 +38,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
 }) {
   const { t } = useI18n();
   const [page, setPage] = useState(() => readWorkspacePage(location.search));
-  const { settings, assets: assetsOpen, templates: connectionsOpen } = page;
+  const { settings, assets: assetsOpen, skills: skillsOpen, templates: connectionsOpen } = page;
+  // Skills is a full page like Assets: it covers the editor without unmounting it.
+  const pageOpen = assetsOpen || skillsOpen;
   const libraryOpen = useRef(connectionsOpen);
   const libraryClosed = useRef(onLibraryClose); libraryClosed.current = onLibraryClose;
   useEffect(() => {
@@ -93,13 +98,14 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [navigationCollapsed]);
   const [assetsVisited, setAssetsVisited] = useState(assetsOpen);
   useEffect(() => { if (assetsOpen) setAssetsVisited(true); }, [assetsOpen]);
-  const openAssets = useCallback(() => { navigatePage({ assets: true, settings: null, templates: false }); }, [navigatePage]);
+  const openAssets = useCallback(() => { navigatePage({ assets: true, skills: false, settings: null, templates: false }); }, [navigatePage]);
+  const openSkills = useCallback(() => { navigatePage({ skills: true, assets: false, settings: null, templates: false }); }, [navigatePage]);
   const openSettings = useCallback((section: SettingsSection) => {
-    navigatePage({ settings: section, assets: false, templates: false }); if (narrow) setSidebarOpen(false);
+    navigatePage({ settings: section, assets: false, skills: false, templates: false }); if (narrow) setSidebarOpen(false);
   }, [narrow, navigatePage]);
   const homeRef = useRef<HTMLDivElement>(null);
   const openHome = useCallback(() => {
-    navigatePage({ settings: null, assets: false, templates: false });
+    navigatePage({ settings: null, assets: false, skills: false, templates: false });
     setNavigationCollapsed(false);
     setSidebarOpen(true);
     // Returning home keeps the current editor mounted. The mobile drawer owns
@@ -107,9 +113,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (!narrow) requestAnimationFrame(() => homeRef.current?.querySelector<HTMLButtonElement>('.om-app-rail [aria-pressed="true"]')?.focus());
   }, [narrow, navigatePage]);
   const toggleHome = useCallback(() => {
-    if (settings || assetsOpen) openHome();
+    if (settings || pageOpen) openHome();
     else toggleSidebar();
-  }, [settings, assetsOpen, openHome, toggleSidebar]);
+  }, [settings, pageOpen, openHome, toggleSidebar]);
   useEffect(() => {
     const open = () => openSettings('local');
     window.addEventListener('motion:agents-open', open);
@@ -123,12 +129,13 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === ',') { event.preventDefault(); openSettings('general'); }
-      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); navigatePage({ settings: null, assets: false, templates: false }); toggleSidebar(); }
+      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); navigatePage({ settings: null, assets: false, skills: false, templates: false }); toggleSidebar(); }
     };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
   }, [openSettings, toggleSidebar, navigatePage]);
   const libraryBusy = workspace.busy || blocked || Boolean(editorState?.blocked);
   const switchingDisabled = libraryBusy || !workspace.status;
+  const archives = useProjectArchives(workspace, beforeViewChange, switchingDisabled, () => { if (narrow) setSidebarOpen(false); });
   const notice = workspace.error || message || editorState?.message || "";
   const [dismissedNotice, setDismissedNotice] = useState<string | null>(null);
   const noticeKey = `${workspace.error ? workspace.errorSource : 'editor'}:${notice || ''}`;
@@ -139,31 +146,32 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     openLibrary: (trigger, templateId) => { libraryTrigger.current = trigger ?? null; workspace.clearError(); navigatePage({ templates: true, template: templateId ?? null }); },
     openConnections: () => openSettings('mcp'),
     openModelSettings: () => openSettings('providers'),
-    openHome, openAssets, assetsOpen: assetsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
-    toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || assetsOpen };
+    openHome, openAssets, assetsOpen: assetsOpen && !settings, openSkills, skillsOpen: skillsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
+    toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || pageOpen };
   return <WorkspaceChromeContext.Provider value={value}>
     <StudioToastViewport {...navigationToast} />
-    <Dialog.Root open={sidebarOpen && narrow && !settings && !assetsOpen && !navigationCollapsed} onOpenChange={setSidebarOpen}>
+    {archives.manager}
+    <Dialog.Root open={sidebarOpen && narrow && !settings && !pageOpen && !navigationCollapsed} onOpenChange={setSidebarOpen}>
     <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
       <ApplicationHeader settings={settings} />
       <ApplicationRail settings={settings} openSettings={openSettings} home={<WorkspaceHomeButton
         applicationRef={homeRef}
-        active={!settings && !assetsOpen} expanded={sidebarOpen && !settings && !assetsOpen && !navigationCollapsed}
-        previewEnabled={!narrow && !sidebarOpen && !settings && !assetsOpen && !navigationCollapsed && !connectionsOpen}
+        active={!settings && !pageOpen} expanded={sidebarOpen && !settings && !pageOpen && !navigationCollapsed}
+        previewEnabled={!narrow && !sidebarOpen && !settings && !pageOpen && !navigationCollapsed && !connectionsOpen}
         onToggle={toggleHome}>
-        {close => <WorkspaceSidebar currentId={projectId} close={close} expand={() => { close(); toggleSidebar(); }} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
+        {close => <WorkspaceSidebar archives={archives} currentId={projectId} close={close} expand={() => { close(); toggleSidebar(); }} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
       </WorkspaceHomeButton>} />
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
         <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
-          <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
+          <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
         </Dialog.Popup>
       </Dialog.Portal>
-      {!narrow && !settings && !assetsOpen && <div id="om-project-navigation" className="om-project-navigation om-collapsible" data-collapsed={!sidebarOpen || navigationCollapsed} aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
-        <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
+      {!narrow && !settings && !pageOpen && <div id="om-project-navigation" className="om-project-navigation om-collapsible" data-collapsed={!sidebarOpen || navigationCollapsed} aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
+        <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
       </div>}
-      <div className="motion-workspace-content" hidden={Boolean(settings) || assetsOpen} inert={Boolean(settings) || assetsOpen}>
+      <div className="motion-workspace-content" hidden={Boolean(settings) || pageOpen} inert={Boolean(settings) || pageOpen}>
         {visibleNotice && (workspace.error && workspace.errorSource === 'connection' && isConnectionFailure(notice)
           ? <FeedbackLayer><div data-testid="motion-connection-toast" className="pointer-events-none absolute top-16 left-1/2 z-91 flex max-w-[calc(100%-32px)] -translate-x-1/2 justify-center">
               <StudioToast message="Connection lost." tone="error" presentation="feedback" singleLine
@@ -174,7 +182,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         {children}
       </div>
       {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings)} inert={!assetsOpen || Boolean(settings)}><AssetsPage active={assetsOpen && !settings} /></div>}
-      {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'mcp'
+      {skillsOpen && !settings && <div className="om-skills-host"><SkillsPage skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} /></div>}
+      {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'brand-kit'
+        ? <BrandKitPage onClose={() => navigatePage({ settings: null })} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} /> : settings === 'mcp'
         ? <McpConnectionPage previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
         : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
       </div>
@@ -184,8 +194,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   </WorkspaceChromeContext.Provider>;
 }
 
-function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigate }: {
-  currentId?: string; close: () => void; expand?: () => void; query: string; setQuery: (query: string) => void; onNavigate?: () => void;
+function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery, onNavigate }: {
+  archives: ProjectArchiveActions; currentId?: string; close: () => void; expand?: () => void; query: string; setQuery: (query: string) => void; onNavigate?: () => void;
 }) {
   const { t } = useI18n();
   const { workspace, switchingDisabled } = useWorkspaceChrome();
@@ -196,7 +206,7 @@ function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigat
     <div className="motion-sidebar-brand">
       <strong className="om-subtitle">{t('Home')}</strong>
       {/* Collapsing the docked navigation toggles it back with the workspace menu button, so this icon-only control keeps a state-aware tooltip in both states. */}
-      <button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')} title={t(expand ? 'Open project list' : 'Close project list')}><MotionIcon name="sidebar" size={16} /></button>
+      <Tooltip label={t(expand ? 'Open project list' : 'Close project list')} wrap><button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')}><MotionIcon name="sidebar" size={16} /></button></Tooltip>
     </div>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
@@ -216,16 +226,20 @@ function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigat
         <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
       </div>)}
       {workspace.status && !filtered.length && <p className="motion-session-empty">{t(query ? 'No matching projects' : 'Create a project with your Agent to start editing.')}</p>}
-      {filtered.map(project => <button key={project.id} className="motion-session" aria-current={currentId === project.id ? 'page' : undefined}
-        title={project.title} disabled={switchingDisabled} onClick={event => {
+      {filtered.map(project => <div key={project.id} className="om-project-sidebar-row om-nav-row" data-active={currentId === project.id}><Tooltip label={project.title} wrap><button aria-label={project.title} className="motion-session om-nav-row-link" aria-current={currentId === project.id ? 'page' : undefined}
+        disabled={switchingDisabled} onClick={event => {
           if (project.id === currentId) return;
           void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'open_project', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
           void workspace.open('projects', project.id);
           onNavigate?.();
         }}>
         <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>
-      </button>)}
+      </button></Tooltip><ProjectArchiveMenu projectId={project.id} title={project.title} archives={archives} /></div>)}
     </nav>
+    <div className="motion-sidebar-footer">
+      <button className="om-nav-item" type="button" onClick={archives.showManager}><RemixIcon name="folder-open-line" size={18} />{t('All projects')}</button>
+      <button className="om-nav-item" type="button" disabled={archives.locked} onClick={archives.chooseImport}><RemixIcon name="upload-2-line" size={18} />{t(archives.busy === 'import' ? 'Importing…' : 'Import projects')}</button>
+    </div>
   </aside>;
 }
 
@@ -235,5 +249,5 @@ export function WorkspaceMenuButton() {
   const visible = sidebarOpen && !navigationCollapsed;
   // Collapsing the docked navigation is a toggle, not a dismiss, so the icon-only
   // control keeps its tooltip in both states like the app-sidebar toggle.
-  return <button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} title={t(visible ? 'Collapse project list' : 'Open project list')} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button>;
+  return <Tooltip label={t(visible ? 'Collapse project list' : 'Open project list')} wrap><button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button></Tooltip>;
 }

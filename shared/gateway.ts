@@ -10,7 +10,12 @@ export type Model = {
   id: string; provider: ProviderId; modelId: string; label: string; modality: Modality;
   source: 'builtin' | 'live' | 'custom'; mode: string;
   defaults?: Record<string, unknown>; description?: string;
+  /** Cloud: true/false is explicit provider evidence; absent means editing capability is unknown. */
   supportsImageReference?: boolean;
+  /** Most input images the provider accepts: edit references for images, a first frame for video. */
+  maxInputImages?: number;
+  /** Provider-published native options (durations, resolutions, ratios, quality, sizes) shown during discovery. */
+  nativeOptions?: Record<string, unknown>;
   /** Maintained, provider-native controls, shared by Studio and MCP discovery. */
   generationOptions?: GenerationOptions;
 };
@@ -42,5 +47,27 @@ export type GenerationJob = { id: string; projectId?: string; library?: LibraryG
   modality: Modality; prompt: string; model: Model; parameters: Record<string, unknown>;
   usage?: GenerateInput['usage']; idempotencyKey?: string; requestHash: string;
   reference?: { path: string; sha256: string; mimeType: string; bytes: number };
+  /** Every snapshotted input image in submission order; `reference` remains the first one for older readers. */
+  references?: { path: string; sha256: string; mimeType: string; bytes: number }[];
+  /** Provider result metadata kept with the job, such as speech timestamps. */
+  result?: Record<string, unknown>;
+  /** Cloud confirmed failure/cancellation; polling cannot recover this task. */
+  remoteTerminal?: boolean;
   createdAt: number; updatedAt: number; startedAt?: number; workerPid?: number;
   phase: string; error?: string; remoteId?: string; assets: GeneratedAsset[] };
+
+/** Effective adapter input contract, shared by service validation and existing Studio controls. */
+export function modelReferenceLimit(model: Model): number {
+  if (model.modality === 'image' && model.supportsImageReference) return ['account', 'codex'].includes(model.provider) ? 1 : model.maxInputImages ?? 1;
+  return model.modality === 'video' ? Math.min(model.maxInputImages ?? 0, 1) : 0;
+}
+/** Local eligibility; the service additionally rechecks project, origin and credentials. */
+export function resumableJob(job: GenerationJob): boolean {
+  return job.model.provider === 'opendesign' && typeof job.remoteId === 'string' && /^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)
+    && job.state === 'failed' && !job.savePending && !job.remoteTerminal
+    && !legacyRemoteTerminal(job);
+}
+/** Earlier adapters recorded a Cloud-confirmed failure/cancellation only in the error message. */
+export function legacyRemoteTerminal(job: GenerationJob): boolean {
+  return /^OpenDesign Cloud task (failed|cancelled)\b/.test(job.error ?? '');
+}

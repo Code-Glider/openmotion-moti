@@ -19,6 +19,9 @@ export const workflowRegistry = {
       edit: 'skills/openmotion-production/references/edit.md',
       portable: 'skills/openmotion-production/references/portable-project.md',
       materials: 'skills/openmotion-production/references/materials.md',
+      decisions: 'skills/openmotion-production/references/decisions.md',
+      review: 'skills/openmotion-production/references/review.md',
+      sound: 'skills/openmotion-production/references/sound.md',
       account: 'skills/openmotion-production/references/media-providers/account.md',
       compatible: 'skills/openmotion-production/references/media-providers/compatible.md',
       fal: 'skills/openmotion-production/references/media-providers/fal.md',
@@ -36,19 +39,21 @@ export const workflowRegistry = {
       actions: 'skills/openmotion-director/references/action-script.md',
       craft: 'skills/openmotion-director/references/motion-craft.md',
       phrases: 'skills/openmotion-director/references/motion-phrases.md',
-      decisions: 'skills/openmotion-director/references/production-decisions.md',
+      decisions: 'skills/openmotion-production/references/decisions.md',
       sound: 'skills/openmotion-director/references/sound-narrative.md',
-      review: 'skills/openmotion-director/references/motion-review.md',
+      review: 'skills/openmotion-production/references/review.md',
       examples: 'skills/openmotion-director/references/examples.md',
     },
   },
-  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md' } },
+  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md', firstuse: 'skills/openmotion-template-to-video/references/first-use.md', recipes: 'skills/openmotion-template-to-video/references/recipes.md' } },
   recreate: {
     status: 'ready',
     sections: {
       start: 'skills/openmotion-recreate/SKILL.md',
       rebuild: 'skills/openmotion-recreate/references/rebuild.md',
       reconstruction: 'skills/openmotion-recreate/references/reconstruction.md',
+      rendering: 'skills/openmotion-recreate/references/rendering.md',
+      rendercode: 'skills/openmotion-recreate/assets/reconstruction.js',
       verification: 'skills/openmotion-recreate/references/verify.md',
     },
   },
@@ -67,6 +72,10 @@ export const workflowRegistry = {
     status: 'ready',
     sections: {
       start: 'skills/openmotion-media/SKILL.md',
+      planning: 'skills/openmotion-media/references/planning.md',
+      setup: 'skills/openmotion-media/references/setup.md',
+      jobs: 'skills/openmotion-media/references/jobs.md',
+      inspection: 'skills/openmotion-media/references/inspection.md',
     },
   },
 } as const;
@@ -101,6 +110,18 @@ export async function readWorkflowResource(uri: unknown, dataDirectory: string) 
 const documents = new Map<string, { workflow: string; section: string; documentId: string }>();
 for (const [workflow, definition] of Object.entries(workflowRegistry)) for (const [section, documentId] of Object.entries(definition.sections)) {
   if (!documents.has(documentId)) documents.set(documentId, { workflow, section, documentId });
+}
+
+// Old installed Markdown paths resolve to the maintained production body. Keep the
+// requested director route on direct reads, but canonical production identity in references.
+export const workflowDocumentAliases = {
+  'skills/openmotion-director/references/production-decisions.md': 'skills/openmotion-production/references/decisions.md',
+  'skills/openmotion-director/references/motion-review.md': 'skills/openmotion-production/references/review.md',
+} as const;
+for (const [legacy, canonical] of Object.entries(workflowDocumentAliases)) {
+  const target = documents.get(canonical);
+  if (!target) throw new Error('Unknown canonical workflow document: ' + canonical);
+  documents.set(legacy, target);
 }
 
 // A fence closes only on a run of the same character at least as long as its opener; an unclosed fence runs to the end of the document.

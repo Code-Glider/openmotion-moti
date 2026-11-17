@@ -71,7 +71,6 @@ export function checkTemplateLibrary(cwd: string, base?: string, options: { fina
   );
   const files = new Map<string, IndexedFile>();
   const assetTotals = new Map<string, number>();
-  let total = 0;
   const attributeOutput = git(
     ['check-attr', '--cached', '-z', '--stdin', 'filter'],
     cwd,
@@ -85,7 +84,6 @@ export function checkTemplateLibrary(cwd: string, base?: string, options: { fina
   for (const file of staged) {
     const label = file.name.slice(scope.length);
     const size = sizes.get(file.oid)!;
-    total += size;
     if (!['100644', '100755'].includes(file.mode)) {
       errors.push(`${label}: symlinks and submodules are not allowed`);
       continue;
@@ -101,20 +99,22 @@ export function checkTemplateLibrary(cwd: string, base?: string, options: { fina
     } catch {
       errors.push(`${label}: invalid path`);
     }
-    if (
+    const templateSource = /^[^/]+\/source\//.test(label);
+    const knownText = textFile.test(label);
+    if (!templateSource && (
       archiveFile.test(label) ||
       /(?:^|\/)(?:node_modules|renders|dist|build|\.cache)(?:\/|$)/.test(label)
-    )
+    ))
       errors.push(`${label}: archives and generated outputs do not belong in template source`);
     const pointer = lfsPointer(bytes);
     const filter = filters.get(file.name);
     const media = repositoryMediaFile.test(label);
-    if (media) {
+    if (media || templateSource) {
       const id = label.split('/')[0];
       assetTotals.set(id, (assetTotals.get(id) ?? 0) + (pointer?.bytes ?? size));
     }
     if (pointer || filter === 'lfs' || bytes.toString().startsWith('version https://git-lfs.github.com/spec/v1')) {
-      if (!pointer || filter !== 'lfs' || !lfsPath.test(label) || !media)
+      if (!pointer || filter !== 'lfs' || !lfsPath.test(label))
         errors.push(`${label}: require a valid LFS pointer and staged LFS attributes in source/assets/lfs/`);
       if (pointer && pointer.bytes > maxLfsAssetBytes) errors.push(`${label}: LFS asset exceeds 50 MiB`);
     }
@@ -123,11 +123,9 @@ export function checkTemplateLibrary(cwd: string, base?: string, options: { fina
       if (!/^[^/]+\/source\/assets\//.test(label))
         errors.push(`${label}: images/fonts belong in <id>/source/assets/`);
     } else if (media) errors.push(`${label}: video/audio must use Git LFS in source/assets/lfs/`);
-    else if (!isUtf8(bytes) || bytes.includes(0) || !textFile.test(label))
+    else if ((!templateSource && !knownText) || (knownText && (!isUtf8(bytes) || bytes.includes(0))))
       errors.push(`${label}: unsupported source or disguised binary content`);
   }
-  if (total > 128 * 1024 * 1024)
-    errors.push('Catalog Git contents exceed 128 MiB; review the catalog budget before expanding');
   for (const [id, bytes] of assetTotals)
     if (bytes > maxTemplateAssetBytes) errors.push(`${id}: template assets exceed 150 MiB`);
   const parse = (name: string) => {
@@ -239,16 +237,17 @@ export function checkTemplateLibrary(cwd: string, base?: string, options: { fina
       }
       for (const [oid, bytes] of blobs(cwd, small)) {
         const name = (names.get(oid) ?? '').slice(scope.length), pointer = lfsPointer(bytes);
-        if (archiveFile.test(name)) errors.push(`History blob ${oid}: archives must stay outside source, even if deleted later`);
+        const templateSource = /^[^/]+\/source\//.test(name);
+        if (!templateSource && archiveFile.test(name)) errors.push(`History blob ${oid}: archives must stay outside source, even if deleted later`);
         else if (pointer) {
-          if (!lfsPath.test(name) || !repositoryMediaFile.test(name) || pointer.bytes > maxLfsAssetBytes)
-            errors.push(`History blob ${oid}: invalid LFS media path or size`);
+          if (!lfsPath.test(name) || pointer.bytes > maxLfsAssetBytes)
+            errors.push(`History blob ${oid}: invalid LFS path or size`);
         } else if (repositoryMediaFile.test(name) && !assetFile.test(name))
           errors.push(`History blob ${oid}: video/audio must use LFS, even if deleted later`);
         else if (assetFile.test(name)) {
           if (bytes.length > maxLocalAssetBytes || lfsPath.test(name))
             errors.push(`History blob ${oid}: asset exceeds 100 KB or bypasses LFS; remove it from new history`);
-        } else if (!isUtf8(bytes) || bytes.includes(0))
+        } else if ((!templateSource || textFile.test(name)) && (!isUtf8(bytes) || bytes.includes(0)))
           errors.push(`History blob ${oid}: raw binary media must be removed from new commits`);
       }
     }

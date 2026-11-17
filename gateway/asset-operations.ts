@@ -29,10 +29,11 @@ export async function assetOperation(store: WorkspaceStore, args: any, importPro
     return { job, next: { action: 'status', jobId: job.id } };
   }
   if (args.action === 'jobs') return { jobs: (await gateway.listJobs()).filter(job => (job.library || job.saveToLibrary) && (!args.conversationId || job.library?.conversationId === args.conversationId)).slice(0, 100) };
-  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {
+  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save' || args.action === 'resume') {
     const job = await gateway.getJob(args.jobId);
     if (!job.library && !job.saveToLibrary) throw new Error('ASSET_JOB_NOT_FOUND');
-    if (args.action === 'retry_save' && !args.requestId) throw new Error('A stable requestId is required');
+    if (['retry_save', 'resume'].includes(args.action) && !args.requestId) throw new Error('A stable requestId is required');
+    if (args.action === 'resume') return { job: await gateway.resume(job.id, args.requestId) };
     return { job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
   if (args.action === 'import_to_project') {

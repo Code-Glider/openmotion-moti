@@ -18,7 +18,7 @@ export function lfsPointer(bytes: Buffer): { sha256: string; bytes: number } | n
 export type PublishedTemplate = {
   templateId: string;
   original: Record<string, string>;
-  files: { path: string; url: string; bytes: number; sha256: string }[];
+  files: { path: string; url?: string; bytes: number; sha256: string }[];
   [field: string]: any;
 };
 export type TemplatePublication = {

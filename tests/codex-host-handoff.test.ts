@@ -9,14 +9,14 @@ import { prepareCodexHostHandoff } from '../scripts/codex-host-handoff.mjs';
 
 const threadId = 'current-chat';
 const dataDirectory = '/workspace/openmotion-data';
-function host({ tools = true, directory = dataDirectory, loaded = true, denied = false } = {}) {
+function host({ tools = true, directory = dataDirectory, loaded = true, denied = false, acceptedIds = undefined as string[] | undefined } = {}) {
   const calls: any[] = [];
   const request = async (method: string, params: any) => {
     calls.push({ method, params });
     if (method === 'thread/loaded/list') return { data: loaded ? [threadId] : [], nextCursor: null };
     if (method === 'config/mcpServer/reload') return {};
     if (method === 'mcpServerStatus/list') return { data: [{ name: 'openmotion',
-      tools: tools ? { openmotion_get_project: {}, openmotion_show_template_recommendations: {} } : {},
+      tools: tools ? { openmotion_get_project: {}, openmotion_show_template_recommendations: { inputSchema: { properties: { templateIds: { items: { enum: acceptedIds } } } } } } : {},
       serverInfo: { name: 'openmotion', version: '0.0.1' } }], nextCursor: null };
     if (method === 'mcpServer/tool/call') {
       if (denied) throw Object.assign(new Error('Host denied the read'), { code: -32000 });
@@ -39,7 +39,17 @@ test('CLI handoff refreshes the existing host and verifies this chat before nati
   assert.equal(calls[3].params.threadId, threadId);
   assert.equal(calls[3].params.tool, 'openmotion_get_project');
   assert.deepEqual(result.presentation.arguments, { templateIds: onboardingTemplateIds.slice(-3),
-    onboarding: true, language: 'zh' });
+    onboarding: false, language: 'zh' });
+  assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
+});
+
+test('builtin-only stale native discovery cannot accept curated reference cards', async () => {
+  const { request, calls } = host({ acceptedIds: ['product-promo', 'nyt-graph', 'decision-tree'] });
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request, templateIds: onboardingTemplateIds.slice(0, 3) });
+  assert.equal(result.status, 'host_action_required');
+  assert.equal(result.reason, 'NATIVE_PRESENTATION_SELECTION_UNSUPPORTED');
+  assert.deepEqual(result.presentation.arguments.templateIds, onboardingTemplateIds.slice(0, 3));
+  assert.equal(calls.some(call => call.method === 'mcpServer/tool/call'), false);
 });
 
 test('queued refresh is incomplete; a later verification never reloads or presents again', async () => {

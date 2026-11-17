@@ -11,7 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
 import { gatewayFor, ModelGateway } from '../gateway/service.ts';
 import { ProviderConnections, connectionBaseUrl } from '../gateway/connections.ts';
-import { OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
+import { AccountRequestError, OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
 import { validProperties } from '../tracking/core.ts';
 import { omEvents } from '../tracking/events.ts';
 import { providerDirectory, setDefaultModel } from '../gateway/settings.ts';
@@ -240,6 +240,8 @@ test('account music and one-image editing run the matching connector commands', 
   await signIn(account); await account.models(true);
   await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
   const models = (await providerDirectory(gateway)).models;
+  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
   assert.equal(models.find(m => m.modelId === 'fixture-image')?.supportsImageReference, true);
   assert.equal(models.find(m => m.modelId === 'fixture-image-basic')?.supportsImageReference, undefined);
   const submissions = async () => JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')) as string[][];
@@ -258,8 +260,13 @@ test('account music and one-image editing run the matching connector commands', 
   assert.equal((await submissions()).length, 1);
 
   await writeFile(path.join(store.projectDirectoryFor(store.projectId), 'cup.png'), png);
-  await assert.rejects(gateway.submit({ model: 'account:fixture-image-basic', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' }), /does not support reference image editing/);
-  const edit = await gateway.submit({ model: 'account:fixture-image', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' });
+  const editInputProject = { action: 'generate', provider: 'account', model: 'fixture-image', projectId: store.projectId, modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png', requestId: 'account-project-edit' };
+  await assert.rejects(api.call('openmotion_media_use', { ...editInputProject, model: 'fixture-image-basic' }), /does not support reference image editing/);
+  await assert.rejects(api.call('openmotion_media_use', { ...editInputProject, referenceAsset: '../cup.png' }));
+  const { job: edit } = await api.call('openmotion_media_use', editInputProject);
+  await writeFile(path.join(store.projectDirectoryFor(store.projectId), 'cup.png'), 'changed after queueing');
+  assert.deepEqual(await readFile(path.join(gateway.root, 'work', edit.id, 'reference.png')), png);
+  assert.equal((await api.call('openmotion_media_use', editInputProject)).job.id, edit.id);
   const edited = await finish(store, edit.id);
   assert.equal(edited.state, 'completed', edited.error); assert.equal(edited.reference?.path, 'cup.png');
   const call = (await submissions()).at(-1)!;
@@ -271,8 +278,6 @@ test('account music and one-image editing run the matching connector commands', 
   const source = path.join(store.directory, 'cup-source.png'); await writeFile(source, png);
   const cup = await new AssetLibrary(store).importFile(source, { requestId: 'account-cup', name: 'Cup' });
   const reference = { assetId: cup.id, versionId: cup.currentVersionId };
-  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
-    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
   const editInput = { action: 'generate', requestId: 'account-library-edit', model: 'account:fixture-image', modality: 'image', mode: 'text-to-image', prompt: 'make it blue', assetId: cup.id, parentVersionId: cup.currentVersionId, references: [reference] };
   const queued = await api.call('openmotion_assets_use', editInput);
   assert.equal((await api.call('openmotion_assets', editInput)).job.id, queued.job.id, 'Compatibility replay must not submit another account edit');
@@ -285,6 +290,37 @@ test('account music and one-image editing run the matching connector commands', 
   assert.deepEqual(libraryCall.slice(0, 2), ['image', 'edit']);
   assert.match(libraryCall[libraryCall.indexOf('--image') + 1], /reference\.png$/);
   assert.equal((await submissions()).length, 3, 'The replay submits no additional paid operation');
+}));
+
+test('account media failures report the service reason without connector output', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
+  t.after(() => gateway.close());
+  await signIn(account); await account.models(true);
+  const cases: [string, RegExp][] = [
+    ['media-invalid', /^OpenDesign rejected this request for the selected model\./],
+    ['media-plan', /^Your OpenDesign plan does not include this model\./],
+    ['media-401', /^Your OpenDesign sign-in is no longer accepted\. Sign out/],
+    ['media-unknown-code', /^OpenDesign could not complete this request\. Try again later/],
+    ['media-empty-code', /^OpenDesign could not complete this request\. Try again later/],
+    // The task was accepted; a failed download must not suggest choosing another model and paying again.
+    ['media-get-502', /^OpenDesign accepted this task, but its result could not be read\./],
+    // A rejected sign-in while reading the task keeps the sign-out hint; the account still reports signed-in.
+    ['media-get-401', /^OpenDesign accepted this task, but your sign-in was rejected while reading its result\. Sign out, then sign in again/],
+  ];
+  for (const [scenario, expected] of cases) {
+    await writeFile(path.join(account.home, 'fixture-mode'), scenario);
+    const failed = await finish(store, (await gateway.submit({ model: 'account:fixture-video', modality: 'video', prompt: scenario })).id);
+    assert.equal(failed.state, 'failed', scenario); assert.match(failed.error!, expected, scenario);
+    assert.doesNotMatch(failed.error!, /private|fixture-user-id|HTTP/, scenario);
+  }
+  // Generic API errors keep their status and code; a bodiless media response keeps only its status.
+  const generic = new AccountRequestError('Error: fetch billing summary: API request failed with status 401: invalid_api_key');
+  assert.deepEqual([generic.status, generic.code], [401, 'invalid_api_key']); assert.match(generic.message, /Sign out, then sign in again/);
+  const bodiless = new AccountRequestError('Error: media API request failed (, HTTP 504)');
+  assert.deepEqual([bodiless.status, bodiless.code], [504, undefined]);
+  assert.equal(new AccountRequestError('spawn failed').status, undefined);
 }));
 
 test('source installations use the connector locked with their dependencies instead of installing one at runtime', async t => {

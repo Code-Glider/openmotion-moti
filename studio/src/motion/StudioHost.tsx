@@ -10,6 +10,7 @@ export interface StudioHost {
   communityAction?: ReactNode;
   previewAction?: ReactNode;
   historyActions?: ReactNode;
+  projectAction?: ReactNode;
   windowMenu?: ReactNode;
   languageMenu?: ReactNode;
   panels?: ReactNode;
