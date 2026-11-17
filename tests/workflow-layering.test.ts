@@ -37,7 +37,7 @@ test('shared audio execution and review do not require original sound design or 
 test('template orchestration depends on shared execution without reverse overrides', async () => {
   for (const section of ['context', 'native', 'production', 'templates', 'verification']) {
     const document = await getWorkflow(section);
-    assert.ok(!document.references.some(reference => reference.workflow === 'template'), section);
+    assert.ok(!document.references.some(reference => reference.workflow === 'template' || reference.workflow === 'recreate'), section);
   }
   const unchanged = await getWorkflow('unchanged', 'template');
   for (const section of ['native', 'production', 'verification']) {
