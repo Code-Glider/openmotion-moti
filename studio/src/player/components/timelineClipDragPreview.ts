@@ -1,3 +1,4 @@
+import { planMainTrackReorder } from "./timelineMainReorder";
 import { resolveTimelineMove, resolveTimelineResize } from "./timelineEditing";
 import {
   applyClipStartTrimDelta,
@@ -65,6 +66,7 @@ export interface DragPreviewContext {
   gridStep?: number;
   /** Main-track magnet preference; omitted contexts use ordinary lane placement. */
   rippleEditEnabled?: boolean;
+  timelineLinkageEnabled?: boolean;
 }
 
 export function createKeyboardClipDrag(
@@ -297,11 +299,19 @@ export function computeDragPreview(
   const floored = Math.max(snap.start, group.floor);
   const previewStart = origin + Math.max(shift.min, Math.min(floored - origin, shift.max));
   const placement = resolveDropPlacement(drag, aim, previewStart, nextMove.track, ctx, group);
+  const reorder = ctx.rippleEditEnabled && aim.insertRow === null && nextMove.track === drag.element.track
+    ? planMainTrackReorder(ctx.elements, drag.element, previewStart, group.moving,
+        ctx.timelineLinkageEnabled ?? false,
+        drag.mainTrackReorder && ctx.pps > 0
+          ? { slot: drag.mainTrackReorder.slot, margin: TIMELINE_SNAP_PX / ctx.pps } : undefined)
+    : null;
+  if (reorder) placement.start = reorder.start;
   const { track: previewTrack, insertRow } = placement;
   const guide = placement.start === snap.start ? snapTarget(snap) : null;
   return {
     ...drag,
     started: true,
+    mainTrackReorder: reorder ?? undefined,
     pointerClientX: clientX - (floored - previewStart) * pps,
     pointerClientY: clientY,
     previewStart: placement.start,
