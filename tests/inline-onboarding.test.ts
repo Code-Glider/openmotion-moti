@@ -37,7 +37,8 @@ test('curated project previews are self-contained without native MCP activation'
   for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
   assert.equal(window.document.querySelectorAll('.omtc-card').length, 3);
   assert.equal(window.document.querySelectorAll('.omtc-card video[src^="blob:"]').length, 3);
-  assert.match(window.document.body.textContent!, /工程预览/);
+  assert.match(window.document.querySelector('.omtc-description')!.textContent!, /^简介：/);
+  assert.doesNotMatch(window.document.body.textContent!, /工程预览（静音）/);
 });
 test('onboarding locale tags normalize to a supported language and other languages fall back to English', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-onboarding-language-'));
