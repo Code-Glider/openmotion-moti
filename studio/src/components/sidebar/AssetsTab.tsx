@@ -23,7 +23,7 @@ import {
 } from "./assetHelpers";
 import { AudioRow } from "./AudioRow";
 import { AssetCard, FontRow } from "./AssetCard";
-import { studioApiFetch } from "../../utils/studioApiFetch";
+import { useProjectAssetManifest } from "../../hooks/useProjectAssetManifest";
 import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
 
 interface AssetsTabProps {
@@ -176,9 +176,7 @@ export const AssetsTab = memo(function AssetsTab({
   useEffect(() => {
     setCollapsedCategories((previous) => (previous.size ? new Set() : previous));
   }, [projectId, searchQuery, activeFilter]);
-  const [manifest, setManifest] = useState<
-    Map<string, { description?: string; duration?: number; width?: number; height?: number }>
-  >(new Map());
+  const manifest = useProjectAssetManifest(projectId, assets);
 
   const handleLibraryImport = useCallback(async (owner: string, paths: string[]) => {
     await onLibraryImport!({ projectId: owner, requiredPaths: paths });
@@ -190,42 +188,6 @@ export const AssetsTab = memo(function AssetsTab({
   useEffect(() => {
     if (importedPath && listRef.current) listRef.current.scrollTop = 0;
   }, [latestImport, importedPath]);
-
-  const manifest404Ref = useRef<Set<string>>(new Set());
-  const assetsKey = assets.join("|");
-  useEffect(() => {
-    if (manifest404Ref.current.has(projectId)) return;
-    let cancelled = false;
-    studioApiFetch(buildProjectApiPath(projectId, `/preview/.media/manifest.jsonl`))
-      .then((r) => {
-        if (!r.ok) {
-          manifest404Ref.current.add(projectId);
-          return "";
-        }
-        return r.text();
-      })
-      .then((text) => {
-        if (cancelled || !text) return;
-        const m = new Map<
-          string,
-          { description?: string; duration?: number; width?: number; height?: number }
-        >();
-        for (const line of text.split("\n")) {
-          if (!line.trim()) continue;
-          try {
-            const rec = JSON.parse(line);
-            if (rec.path) m.set(rec.path, rec);
-          } catch {
-            /* skip */
-          }
-        }
-        setManifest(m);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, assetsKey]);
 
   const handleImport = useCallback(
     async (files: FileList, entryPoint: "assets_button" | "assets_drop") => {
