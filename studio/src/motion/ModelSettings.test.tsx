@@ -118,6 +118,25 @@ it('validates a custom provider at its fields and only writes corrected values',
   expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
   await submit(); expect(writes).toEqual([{ label: 'Test', baseUrl: 'https://api.example.com/v1', protocol: 'openai' }]);
 });
+it.each(['', 'not-a-url', 'https://api.example.com/v1'])('allows editing a stored-key provider with no parseable origin or an unchanged origin (%s)', async baseUrl => {
+  const writes: unknown[] = [];
+  const provider = { ...account, id: 'new-api', label: 'New API', protocol: 'openai', category: 'multimodal', baseUrl, configured: true, credentialSource: 'stored' };
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') {
+      const body = JSON.parse(String(init.body)); writes.push(body); provider.baseUrl = body.baseUrl;
+      return Response.json({});
+    }
+    return Response.json({ providers: [provider], models: [], defaults: {} });
+  }));
+  await mount('new-api');
+  await act(async () => type('API base URL', 'https://api.example.com/v2'));
+  expect(document.querySelector<HTMLInputElement>('[aria-label="API base URL"]')?.value).toBe('https://api.example.com/v2');
+  await act(async () => click('Save settings'));
+  expect(writes).toEqual([{ baseUrl: 'https://api.example.com/v2' }]);
+  expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+  expect(document.querySelector<HTMLInputElement>('[aria-label="New API API key"]')?.value).toBe('');
+  expect(document.body.textContent).toContain('Provider settings saved');
+});
 it('shows origin-change key requirements inline and keeps operational save failures in Toasts', async () => {
   const writes: unknown[] = [];
   const custom = { ...account, id: 'custom', label: 'Custom', custom: true, protocol: 'openai', category: 'custom', baseUrl: 'https://old.example.com/v1', configured: true, credentialSource: 'stored' };
