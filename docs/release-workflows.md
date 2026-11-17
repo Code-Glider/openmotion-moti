@@ -136,6 +136,8 @@ Actions artifacts and attempt records expire after **30 days**. R2 snapshots fol
 
 ## Publishing the first active stable version
 
+Before cutover, ensure no historical publication or recovery run is queued or running. After the policy is merged, start new manual runs from the latest main; do not rerun pre-reset publication/recovery runs, whose frozen control scripts still use the old ordering. Existing candidate artifacts may be consumed by the new controller with their original identity.
+
 After this policy change is reviewed and merged, prepare the `0.0.1` English/Chinese description, then run **Motion candidate build** from `main`, choose `stable` and enter `0.0.1`. Inspect that exact prod package and its sealed Notes. When separately authorized, run **Motion npm publication** from `main`, choose `stable` and enter the same `0.0.1`.
 
 The existing sequence stays **public stage → both native checks → latest → immutable snapshots → default guide → GitHub Release notes**. Source/hash verification, native-check gating, conditional R2 writes, race/supersession protection, retry identity and archive-only boundaries are unchanged. Stable publication preserves the test tag. Later `0.0.2` can advance `0.0.1`; an older `0.0.1` cannot replace `0.0.2`. Historical snapshots are never deleted or rewritten. No force flag, new workflow input, manual pre-move of npm tags, or new permission is needed.
