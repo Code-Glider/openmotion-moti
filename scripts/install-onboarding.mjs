@@ -149,17 +149,20 @@ export async function resumeInstallationOnboarding(saved, options = {}) {
   assert(threadId && savedThreadId === threadId, 'Resume onboarding in its original chat');
   assert(typeof saved.dataDirectory === 'string' && path.isAbsolute(saved.dataDirectory), 'The saved workspace must be absolute');
   const args = saved.hostHandoff.presentation.arguments;
-  const requirePresentation = saved.inlinePresentation?.status !== 'prepared';
-  const allowed = requirePresentation ? onboardingTemplateIds : recommendationTemplateIds;
+  const requirePresentation = saved.inlinePresentation?.status === 'native_required';
+  const allowed = saved.inlinePresentation?.status === 'prepared' ? recommendationTemplateIds : onboardingTemplateIds;
   assert(Array.isArray(args.templateIds) && args.templateIds.length === 3 && new Set(args.templateIds).size === 3
     && args.templateIds.every(id => allowed.includes(id)), 'Preserve three distinct curated template IDs or explicitly prepared builtin IDs');
-  const { loadTemplatePresentation } = await import('../shared/mcp-template-recommendations.ts');
-  const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory: path.join(appRoot, 'mcp-ui/template-recommendations') });
-  assert(saved.inlinePresentation?.resourceVersion === presentation.resourceVersion, 'The saved card resource changed');
+  let presentation;
+  if (['prepared', 'native_required'].includes(saved.inlinePresentation?.status)) {
+    const { loadTemplatePresentation } = await import('../shared/mcp-template-recommendations.ts');
+    presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory: path.join(appRoot, 'mcp-ui/template-recommendations') });
+    assert(saved.inlinePresentation.resourceVersion === presentation.resourceVersion, 'The saved card resource changed');
+  }
   const welcomeDelivered = options.welcomeDelivered || saved.welcomeDelivered || false;
   const hostHandoff = await prepareCodexHostHandoff({ ...options, threadId, verifyOnly: true, welcomeDelivered, requirePresentation,
     dataDirectory: saved.dataDirectory, templateIds: args.templateIds, language: args.language,
-    expectedResourceUri: presentation.uri,
+    expectedResourceUri: presentation?.uri,
     expectedVersion: JSON.parse(await readFile(path.join(appRoot, 'package.json'), 'utf8')).version });
   return { ...saved, hostHandoff, welcomeDelivered,
     welcomeMarkdown: welcomeDelivered ? '' : installationFallbackWelcome(isLanguage(args.language) ? args.language : 'en'),
@@ -201,7 +204,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
         + '. Accept automatic current-chat activation separately from welcome/card presentation.');
       if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + result.onboardingStatus
         + '. Installation is registered; welcome/cards delivery remains unverified. '
-        + 'If native cards cannot be delivered, the entire final reply must be the top-level welcomeMarkdown verbatim: only its three paragraphs. Keep installation status, blockers, library URLs and recovery details in diagnostics and the receipt, outside that reply. '
+        + 'If neither inline nor native cards can be delivered, the entire final reply must be the top-level welcomeMarkdown verbatim: only its three paragraphs. Keep installation status, blockers, library URLs and recovery details in diagnostics and the receipt, outside that reply. '
         + (result.inlinePresentation?.status === 'prepared'
           ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
           : result.inlinePresentation?.status === 'native_required'

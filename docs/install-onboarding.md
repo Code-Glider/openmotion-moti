@@ -10,16 +10,20 @@ Accept presentation and automatic MCP activation independently.
 ### Presentation acceptance
 
 1. Open the actual local template library once, without creating a project. Detailed library inspection is unnecessary.
-2. Display the maintained welcome and exactly three full-video recommendation cards together in one persistent native conversation component, with the welcome above the cards. Do not require a separately streamed welcome or coordinated timing between a text reply and the component.
+2. Deliver the maintained welcome and exactly three full-duration project-preview cards. On Codex, publish the self-contained HTML fragment and place its returned content reference directly after the welcome in the final reply. Native MCP Apps remain an alternative for original reference films when native tools are available.
 3. Preserve the three IDs/order sampled without replacement from the nine-entry pool in `shared/onboarding-templates.ts` (the catalog IDs referenced by PR #472). Confirm that the welcome and all three cards are visible; full audiovisual review remains a separate user check.
 
 `onboardingStatus` and `onboardingComplete` describe presentation only. Setup and connection recovery leave it `awaiting_host_delivery` and incomplete until visible delivery is confirmed; library preparation failure remains `preview_unavailable`. `hostHandoff.automaticActivation`, its reason and `hostSessionVerified` report the independent connection check. A working native connection can present the component even when the installer's control socket is unavailable. Visible cards do not prove that installation loaded MCP automatically, and activation failure does not invalidate an otherwise verified presentation.
 
-### Native reference cards
+### Self-contained project previews (default)
 
-Default preparation freezes three IDs/order once across `catalog`, `inlinePresentation`, `hostHandoff` and recovery. It returns `native_required`, the immutable `resourceUri`/`resourceVersion`, and native Tool arguments with `onboarding:true`. Open the library, then call the natively discovered `openmotion_show_template_recommendations` with those exact arguments and the latest request's language. The existing component displays its maintained welcome above the three cards. Do not repeat that welcome in the final reply or put it only in collapsed commentary. Ordinary recommendations omit onboarding; `onboarding:false` is for cards after a welcome already delivered.
+Default preparation freezes three IDs/order once across `catalog`, `inlinePresentation`, `hostHandoff` and recovery. It returns `prepared` with an integrity-locked HTML path, SHA256 and the selected IDs. The fragment embeds only those three projects' prebuilt MP4/JPEG bytes. It needs neither external media origins nor current-chat MCP activation. Publish it with `scripts/inline-onboarding.mjs --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY` using the current chat's explicitly permitted visualization directory. After opening the library, stream `inlinePresentation.welcomeMarkdown` followed by the returned `contentReference` in the final reply. The document itself contains cards only. A prepared/published file does not establish visible delivery.
 
-The reference posters and complete videos retain their content-addressed public URLs and native App media policy. The fixed-CSP document renderer cannot inherit that policy. It cannot guarantee these video cards independently of native discovery. Do not replace them with text cards, a right-hand browser page, builtin examples, downloaded-media embedding or a security change. A shell presentation call does not mount a native conversation component. Reference playback requires network access; actual audiovisual acceptance is separate from basic installation checks.
+These are **silent renders of the repository's editable projects**, labeled as project previews, not original reference films or a claim of verified recreation fidelity. All nine previews are prebuilt by maintainers with `node scripts/build-onboarding-previews.mjs`; installation does no rendering or media download. The builder uses pinned Hyperframes, Chrome and FFmpeg, strips audio only in scratch copies, preserves complete project duration, and records source/media hashes. `--hydrate-fonts` may retrieve hash-verified project fonts missing from a source checkout. Original reference videos are never downloaded for embedding. No source project is changed by the build.
+
+### Native original reference cards (alternative)
+
+Native MCP Apps retain the original reference films and their declared media origin. For a working native connection, call `openmotion_show_template_recommendations` with the exact prepared IDs/order, request language and `onboarding:true`. This displays the maintained welcome above the three cards; do not duplicate it in the final reply. Use `onboarding:false` after a welcome already delivered. Explicit `renderInlineOnboarding({previewSource:'reference', ...})` returns `native_required`, since the document renderer cannot inherit native App media policy. Preserve the selection; do not substitute builtins or alter host security. A shell presentation call does not mount a native component. Original reference playback requires network access.
 
 ### Automatic current-chat activation
 
@@ -51,7 +55,7 @@ The native component uses the shared localized welcome dictionary. The Chinese w
 不想自己找？先看看我挑的这 3 个 👇
 ```
 
-If native recommendation cards cannot be displayed, open the library and make the entire final reply exactly these three paragraphs for Chinese requests:
+If neither the prepared inline document nor native recommendation cards can be displayed, open the library and make the entire final reply exactly these three paragraphs for Chinese requests:
 
 ```text
 🎉 OpenMotion 安装好啦，右侧就是模板库！
@@ -63,11 +67,13 @@ If native recommendation cards cannot be displayed, open the library and make th
 
 The top-level `welcomeMarkdown` supplies these paragraphs from the maintained localized welcome dictionary; other supported languages use the same heading/introduction/discovery fields. Output it verbatim once, with its paragraph breaks. Keep status, source revisions, verification results, blockers, library links, recovery details and card invitations outside this reply. Diagnostics and the immutable receipt retain the real incomplete onboarding state and blocker; the concise welcome does not mark native delivery or activation complete. Only use the right-hand-library heading after the library visibly opens; a library-opening failure remains a separate installation failure. For later recovery after the welcome, append `--welcome-delivered` to the saved recovery command so it returns cards-only arguments.
 
-### Self-contained builtin compatibility
+### Explicit builtin compatibility
 
-Explicit builtin examples can still use the prepared document route: publish the verified fragment into this chat's permitted directory with `scripts/inline-onboarding.mjs --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY`, then stream `welcomeMarkdown` followed by its returned `contentReference` in the final reply. Keep the document cards-only. This compatibility route is not the curated-reference presentation acceptance above. Automatic MCP activation is assessed separately for either route.
+Explicit builtin examples can still use the same prepared document route. They never replace the nine-entry pool's selected projects. Automatic MCP activation is assessed separately for either route.
 
 ### Accepted template selection
+
+For creation, directly editable sources use openmotion-template-to-video; curated references use openmotion-recreate. A project-rendered preview does not change that routing or authorize creation.
 
 Use the exact accepted ID and scope through [accepted template selection](../skills/openmotion-production/references/templates.md#accepted-template-selection). A named choice retains that recommendation; a generic agreement to several equal choices still needs a selection. Recreate only fills an unsent editable brief through a negotiated composer bridge, or copies it to the clipboard with a floating Toast. Browsing, playback and copying do not authorize creation/export; the user-sent brief does. Preserve customized requirements and any existing GUI-created project, and never create a duplicate during recovery.
 <!-- installation-onboarding:end -->
@@ -78,6 +84,6 @@ Use the exact accepted ID and scope through [accepted template selection](../ski
 
 Use the three prepared IDs returned in `inlinePresentation.templateIds`, the ordered `catalog.templates`, or the native handoff arguments. Do not draw a separate set for another surface. Every selected entry is a reference video with motion guidance, not a directly copyable builtin project; read its exact ID through `openmotion_get_template` and follow `openmotion-recreate` after the user submits their brief.
 
-Full reference videos and posters load from existing immutable public `r.open-design.ai` URLs, with the same playback controls, visibility pauses and error fallback as bundled previews. Playback requires network access; installation preparation performs no media download or generation. The three previous builtin examples remain available for explicit recommendations and offline preview. Existing chats retain their frozen presentation; source changes do not update an installed host or previously prepared onboarding document.
+Default inline cards embed prebuilt project previews from `mcp-ui/template-recommendations/project-previews`, with the same playback controls, visibility pauses and error fallback as native cards. The separate native adapter retains original reference films at their immutable public `r.open-design.ai` URLs. Installation preparation performs no media download or generation. The three previous builtin examples remain available for explicit recommendations and never replace the current default selection. Existing chats retain their frozen presentation; source changes do not update an installed host or previously prepared onboarding document.
 
 Cards show the selected reference's localized `original.promotionalUseCases` value in a persistent top-left media badge, without a field-name prefix. This purpose category stays visible while the video plays and at narrow widths; the bottom-right preview action remains separate. Empty/missing values are omitted. The category does not use the separate `visualPresentation` field or infer a value from the title. The shared design-system media-label recipe supplies its translucent surface and typography.

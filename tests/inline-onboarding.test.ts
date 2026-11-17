@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,7 @@ import { renderInlineOnboarding, prepareInlineOnboarding, publishInlineOnboardin
 import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs';
 
 import { onboardingTemplateIds, builtinRecommendationIds } from '../shared/onboarding-templates.ts';
-import { loadTemplatePresentation } from '../shared/mcp-template-recommendations.ts';
+import { loadTemplatePresentation, loadInlineProjectPreviews } from '../shared/mcp-template-recommendations.ts';
 
 function assertSelection(ids: string[]) {
   assert.equal(ids.length, 3); assert.equal(new Set(ids).size, 3);
@@ -17,12 +17,34 @@ function assertSelection(ids: string[]) {
 }
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
+test('curated project previews are self-contained without native MCP activation', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-curated-inline-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const templateIds = ['motion-dac924da-010f-4445-baf3-a39cb033e48f',
+    'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd', 'motion-664184d9-593e-4984-b473-701248b69cfe'];
+  const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, 'cards.html'), language: 'zh', templateIds });
+  assert.equal(result.status, 'prepared');
+  assert.equal(result.nativeMcpSessionVerified, false);
+  assert.deepEqual(result.templateIds, templateIds);
+  assert.equal(result.previewSource, 'project');
+  const fragment = await readFile(result.path, 'utf8');
+  assert.doesNotMatch(fragment, /https:\/\/r\.open-design\.ai/);
+  const window = new Window();
+  t.after(() => window.happyDOM.abort());
+  window.URL.createObjectURL = () => 'blob:project-preview';
+  window.URL.revokeObjectURL = () => {};
+  window.document.body.innerHTML = fragment;
+  for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
+  assert.equal(window.document.querySelectorAll('.omtc-card').length, 3);
+  assert.equal(window.document.querySelectorAll('.omtc-card video[src^="blob:"]').length, 3);
+  assert.match(window.document.body.textContent!, /工程预览/);
+});
 test('onboarding locale tags normalize to a supported language and other languages fall back to English', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-onboarding-language-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   for (const [language, expected] of [['zh-CN', 'zh'], ['FR-ca', 'fr'], ['ja_JP', 'ja'], ['ko', 'ko'], ['es', 'es'], ['pt-BR', 'pt'], ['de', 'en'], ['it', 'en']]) {
     const result = await prepareInlineOnboarding({ appRoot, output: path.join(directory, language + '.html'), language });
-    assert.equal(result.status, 'native_required');
+    assert.equal(result.status, 'prepared');
     assert.equal(result.language, expected);
     assert.equal(typeof result.welcomeMarkdown, 'string');
     assert.match(result.welcomeMarkdown, /👇/);
@@ -34,12 +56,12 @@ test('default installation prepares all three production cards in its own worksp
   const directory = await mkdtemp(path.join(tmpdir(), 'om-default-onboarding-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const result = await prepareInstallationOnboarding({ appRoot, dataDirectory: directory, templateEnvironment: 'prod', language: 'zh' });
-  assert.equal(result.inlinePresentation?.status, 'native_required');
+  assert.equal(result.inlinePresentation?.status, 'prepared');
   assertSelection(result.inlinePresentation.templateIds);
   assert.deepEqual(result.catalog.templates.map((item: any) => item.templateId), result.inlinePresentation.templateIds);
   assert.equal(result.inlinePresentation.language, 'zh');
-  assert.equal(result.inlinePresentation.path, undefined, 'Do not publish a fragment whose media the host blocks');
-  assert.deepEqual(result.inlinePresentation.presentation.arguments.templateIds, result.inlinePresentation.templateIds);
+  assert.equal(typeof result.inlinePresentation.path, 'string');
+  assert.equal(result.inlinePresentation.previewSource, 'project');
   assert.equal(result.hostSessionVerified, false, 'Preparing content is not a host delivery acknowledgment');
 });
 test('the inline renderer returns a streaming welcome separately from three real media cards', async t => {
@@ -79,10 +101,10 @@ test('the Node CLI renderer works from the installed runtime without development
   t.after(() => rm(directory, { recursive: true, force: true }));
   const output = path.join(directory, 'welcome.html');
   const result = await prepareInlineOnboarding({ appRoot, output, language: 'fr' });
-  assert.equal(result.status, 'native_required'); assert.equal(result.language, 'fr');
-  assert.equal(result.publicationRequired, false);
+  assert.equal(result.status, 'prepared'); assert.equal(result.language, 'fr');
+  assert.equal(result.publicationRequired, true);
   assert.equal(result.contentReference, undefined, 'A runtime path is not a host-authorized visualization reference');
-  assert.equal(result.path, undefined);
+  assert.equal(result.path, output);
 });
 
 test('host publication verifies and copies the real component to an explicitly supplied readable directory', async t => {
@@ -110,11 +132,45 @@ test('every three-reference selection requires native cards with image and video
   assert.deepEqual(presentation.content._meta.ui.csp.resourceDomains, ['blob:', 'https://r.open-design.ai']);
   for (let start = 0; start < 9; start += 3) {
     const templateIds = onboardingTemplateIds.slice(start, start + 3);
-    const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, start + '.html'), language: 'zh', templateIds });
+    const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, start + '.html'), language: 'zh', templateIds, previewSource: 'reference' });
     assert.equal(result.status, 'native_required');
     assert.equal(result.path, undefined);
     assert.deepEqual(result.presentation.arguments, { templateIds, language: 'zh', onboarding: true });
     assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
     assert.match(result.instructions, /does not satisfy native delivery/);
   }
+});
+
+test('all nine project previews and the largest three fit a self-contained document', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-all-project-previews-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const previews = loadInlineProjectPreviews([...onboardingTemplateIds]);
+  for (const preview of previews) {
+    assert(Buffer.from(preview.videoBase64, 'base64').length > 1000);
+    assert(preview.durationSeconds > 10);
+  }
+  const largest = previews.sort((a, b) => (b.videoBase64.length + b.posterBase64.length) - (a.videoBase64.length + a.posterBase64.length)).slice(0, 3).map(item => item.id);
+  for (const [index, templateIds] of [[...onboardingTemplateIds.slice(0, 3)], [...onboardingTemplateIds.slice(3, 6)], [...onboardingTemplateIds.slice(6)], largest].entries()) {
+    const result = await renderInlineOnboarding({ appRoot, templateIds, output: path.join(directory, index + '.html') });
+    assert.equal(result.status, 'prepared');
+    assert(result.bytes < 1_000_000);
+    const fragment = await readFile(result.path, 'utf8');
+    assert.doesNotMatch(fragment, /https:\/\/r\.open-design\.ai/);
+    assert.deepEqual(result.templateIds, templateIds);
+  }
+});
+
+test('inline project previews reject changed media and source identities', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-project-identity-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await cp(path.join(appRoot, 'mcp-ui/template-recommendations/project-previews'), path.join(directory, 'project-previews'), { recursive: true });
+  const manifestPath = path.join(directory, 'project-previews/manifest.json');
+  const original = await readFile(manifestPath, 'utf8');
+  const manifest = JSON.parse(original), id = manifest.templates[0].id;
+  manifest.templates[0].sourceFilesSha256 = '0'.repeat(64);
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  assert.throws(() => loadInlineProjectPreviews([id], { directory }), /source identity differs/);
+  await writeFile(manifestPath, original);
+  await writeFile(path.join(directory, manifest.templates[0].video.path), 'invalid');
+  assert.throws(() => loadInlineProjectPreviews([id], { directory }), /asset identity differs/);
 });

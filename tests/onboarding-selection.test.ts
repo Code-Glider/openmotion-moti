@@ -46,9 +46,9 @@ test('one preparation freezes a random selection across inline cards and fallbac
   assert(ids.every((id: string) => (onboardingTemplateIds as readonly string[]).includes(id)));
   assert.deepEqual(result.catalog.templates.map((item: any) => item.templateId), ids);
   assert.equal(result.catalog.recommendedTemplateId, ids[0]);
-  assert.equal(result.inlinePresentation.status, 'native_required');
-  assert.equal(result.inlinePresentation.path, undefined);
-  assert.equal(result.inlinePresentation.presentation.arguments.onboarding, true);
+  assert.equal(result.inlinePresentation.status, 'prepared');
+  assert.equal(typeof result.inlinePresentation.path, 'string');
+  assert.equal(result.inlinePresentation.previewSource, 'project');
   assert.match(result.inlinePresentation.welcomeMarkdown, /我是你的开源视频创作搭档/);
   assert.match(result.inlinePresentation.welcomeMarkdown, /下方|👇/);
   const presentation = loadTemplatePresentation();
@@ -57,7 +57,7 @@ test('one preparation freezes a random selection across inline cards and fallbac
   window.URL.createObjectURL = () => 'blob:verified'; window.URL.revokeObjectURL = () => {};
   const root = window.document.createElement('main'); window.document.body.append(root);
   const ui = mountTemplateCards(root as unknown as HTMLElement, bootstrap, { sendMessage: async () => ({}), getHostCapabilities: () => ({}) });
-  ui.update(showTemplateRecommendations(presentation, result.inlinePresentation.presentation.arguments));
+  ui.update(showTemplateRecommendations(presentation, { templateIds: ids, language: 'zh', onboarding: true }));
   const welcome = root.querySelector('.omtc-welcome');
   assert(welcome, 'Installation must include the welcome in the persistent conversation component');
   assert.equal(root.firstElementChild, welcome, 'The welcome must precede the three template cards');

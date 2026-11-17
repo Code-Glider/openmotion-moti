@@ -21,7 +21,7 @@ function receipt() {
       arguments: { templateIds, language: 'zh', onboarding: true } } },
     preview: { status: 'ready', previewUrl: 'http://127.0.0.1:4173/?templates=1&embed=1', projectCreated: false } };
 }
-function connectedHost(directory = dataDirectory) {
+function connectedHost(directory = dataDirectory, withPresentation = true) {
   const calls: string[] = [];
   const request = async (method: string, params: any) => {
     calls.push(method);
@@ -29,7 +29,7 @@ function connectedHost(directory = dataDirectory) {
     if (method === 'mcpServerStatus/list') {
       assert.equal(params.threadId, threadId);
       return { data: [{ name: 'openmotion', serverInfo: { version: '0.0.1' },
-        tools: { openmotion_get_project: {}, openmotion_show_template_recommendations: presentation.tool } }] };
+        tools: { openmotion_get_project: {}, ...(withPresentation ? { openmotion_show_template_recommendations: presentation.tool } : {}) } }] };
     }
     if (method === 'mcpServer/tool/call') {
       assert.equal(params.threadId, threadId);
@@ -81,6 +81,17 @@ test('a different connected workspace cannot finish installation recovery', asyn
   assert.equal(result.hostHandoff.automaticActivation, 'blocked');
   assert.equal(result.onboardingStatus, 'awaiting_host_delivery', 'Presentation and automatic activation have independent acceptance states');
   assert.equal(result.onboardingComplete, false);
+});
+
+test('activation-only recovery works when card preparation was unavailable', async () => {
+  const saved: any = receipt();
+  saved.inlinePresentation = { status: 'unavailable', warning: 'Preview assets unavailable' };
+  const host = connectedHost(dataDirectory, false);
+  const result = await resumeInstallationOnboarding(saved, { appRoot, threadId, request: host.request });
+  assert.equal(result.hostSessionVerified, true);
+  assert.equal(result.onboardingComplete, false);
+  assert.equal(result.inlinePresentation.status, 'unavailable');
+  assert.equal(result.onboardingStatus, 'awaiting_host_delivery');
 });
 
 test('recovery keeps a welcome already delivered and shows only the same three video cards', async () => {

@@ -16,10 +16,11 @@ export async function prepareInlineOnboarding({ appRoot, output, language = 'en'
     '--output', output, '--language', language, '--template-ids', JSON.stringify(templateIds)], { cwd: appRoot }));
 }
 
-export async function renderInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds() }) {
+export async function renderInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds(), previewSource = 'project' }) {
+  assert(['project', 'reference'].includes(previewSource), 'Unknown preview source');
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
-  const { loadTemplatePresentation, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
+  const { loadTemplatePresentation, loadInlineProjectPreviews, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
   const { welcomeMarkdown } = await import('../mcp-ui/template-recommendations/i18n.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });
@@ -29,6 +30,25 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   const recommendation = showTemplateRecommendations(presentation, {
     templateIds, language, ...(templateIds.some(id => id.startsWith('motion-')) ? { onboarding: true } : {}),
   });
+  // Only the selected three enter the document budget. Native recommendations
+  // retain the original reference films; this adapter embeds local project renders.
+  bootstrap.templates = bootstrap.templates.filter(template => templateIds.includes(template.id));
+  const references = bootstrap.templates.filter(template => template.kind === 'reference');
+  if (references.length && previewSource === 'project') {
+    const previews = loadInlineProjectPreviews(references.map(item => item.id), { applicationRoot: appRoot, directory });
+    const labels = { zh: '工程预览（静音）', en: 'Project preview (silent)', ja: 'プロジェクトプレビュー（無音）',
+      ko: '프로젝트 미리보기 (무음)', fr: 'Aperçu du projet (muet)', es: 'Vista previa del proyecto (sin sonido)', pt: 'Prévia do projeto (sem som)' };
+    for (const template of references) {
+      const preview = previews.find(item => item.id === template.id);
+      delete template.videoUrl; delete template.posterUrl;
+      Object.assign(template, preview);
+      template.description = labels[language] + ' · ' + template.description;
+      for (const locale of Object.keys(template.descriptions)) template.descriptions[locale] = labels[locale] + ' · ' + template.descriptions[locale];
+      const card = recommendation.cards.find(item => item.templateId === template.id);
+      card.durationSeconds = preview.durationSeconds;
+      card.description = template.description;
+    }
+  }
   // Native MCP Apps carry ui.csp.resourceDomains; a visualization fragment
   // cannot inherit it. Never mark remote-reference fragments as displayable.
   if (bootstrap.templates.some(template => templateIds.includes(template.id) && (template.posterUrl || template.videoUrl))) {
@@ -45,7 +65,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   const parts = {
     '__OPENMOTION_INLINE_ROOT__': 'openmotion-onboarding-' + randomUUID(),
     '/*__OPENMOTION_INLINE_STYLE__*/': (await readFile(path.join(directory, 'build/app.css'), 'utf8')).replace(/<\/style/gi, '<\\/style'),
-    '/*__OPENMOTION_INLINE_APP__*/': (await readFile(path.join(directory, 'build/app.js'), 'utf8')).replace(/<\/script/gi, '<\\/script'),
+    '/*__OPENMOTION_INLINE_APP__*/': (await readFile(path.join(directory, 'build/inline.js'), 'utf8')).replace(/<\/script/gi, '<\\/script'),
     '/*__OPENMOTION_INLINE_BOOTSTRAP__*/': json(bootstrap),
     '/*__OPENMOTION_INLINE_RECOMMENDATION__*/': json({ ...recommendation, onboarding: false }),
   };
@@ -59,6 +79,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, fragment, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
   return { status: 'prepared', mode: 'inline-document', path: output, bytes,
+    previewSource: references.length ? 'project' : 'builtin',
     sha256: createHash('sha256').update(fragment).digest('hex'), resourceVersion: presentation.resourceVersion,
     templateIds: recommendation.cards.map(card => card.templateId), language,
     welcomeMarkdown: welcomeMarkdown(language),
