@@ -111,6 +111,13 @@ The existing installation identity and collection controls apply. No account ID,
 email, activation URL, authorization code or credential is added. These fields
 describe the local OM result; AMR handoff attribution is a separate integration.
 
+The account and subscription settings' **Manage subscription** link carries
+`od_origin=openmotion`, `od_entry_source=openmotion_manage_subscription`, and a
+fresh `od_entry_id` / UTC `od_entry_at` for each primary or middle click. The link
+retains `billing=plan` and contains no account, installation or credential data.
+AMR must accept the OpenMotion origin and entry source in its attribution
+validation before these parameters can reach its subscription/payment events.
+
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.
 Different data directories remain separate installations.
