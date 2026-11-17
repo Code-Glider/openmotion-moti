@@ -81,5 +81,5 @@ export const mcpClientComparison = [
   ['Local material', 'Explicit local file paths', 'Host file access required', 'Not available'],
   ['Version history and restoration', 'Supported', 'Requires tools and resource support', 'Not available'],
   ['Preview and MP4 export', 'Local Studio and export links', 'Local Studio and export links', 'Not available'],
-  ['Inline template cards and final video', 'Native video preview first; MCP Apps for reference cards or fallback playback', 'Host-native video when available; MCP Apps otherwise', 'Not available'],
+  ['Inline template cards and final video', 'Codex: native video and HTML onboarding cards; others depend on host support', 'Host-native video when available; MCP Apps otherwise', 'Not available'],
 ] as const;

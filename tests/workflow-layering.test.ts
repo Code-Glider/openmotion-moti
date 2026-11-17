@@ -81,6 +81,11 @@ test('shared delivery prefers native playback and forbids uncertain duplicate pr
     assert.match(document.content, /production\.md#choose-one-final-video-preview/);
   }
   assert.match(template.content, /selects the final preview independently of download requests/);
+  for (const route of ['production', 'director', 'template', 'recreate']) {
+    const entry = await getWorkflow('start', route);
+    assert.doesNotMatch(entry.content, /只有用户明确要 MP4|否则导出只用于自检|Do not copy, link or attach MP4s/);
+    assert.match(entry.content, /choose-one-final-video-preview|shared final-video delivery workflow|shared delivery flow/);
+  }
 });
 
 test('final presentation timeout preserves file verification and pending editor evidence', async () => {

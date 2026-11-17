@@ -14,6 +14,12 @@ The optional `openmotion_show_video({projectId,workId})` is read-only. When need
 
 Existing domain Tools keep their names and non-App contract; the preferred openmotion_assets_use name is additive alongside its openmotion_assets compatibility name. An MCP Apps connection additionally discovers the final-video presentation Tool; the independent template-card extension remains optional. Ordinary preview/open, save, review and display-receipt operations have no video UI binding. The legacy begin action remains available without presenting progress UI.
 
+## Codex native-preview acceptance
+
+On 2026-11-17, the real macOS Codex desktop conversation (app version `26.1106.51428`, build `26605`) rendered `![Dia 模板视频](/absolute/path/to/Dia.mp4)` as its native video player, with a 24-second duration, playback position, sound, seeking and fullscreen controls visible in user-provided screenshots. The delivery log bound that file to the same SHA-256 as the verified Dia export. This was an actual host rendering observation, not an HTML mock or an inference from Markdown syntax. The duplicate shown above it came from an additional `openmotion_show_video` call.
+
+This MP4 image-reference syntax is a Codex host feature, not standard Markdown video support or a guarantee for every Codex client/version. Use the native route where the installed host supports it; other clients must be checked before selection. A regular file link is the truthful fallback when neither player is available. A pending or unconfirmed presentation must not trigger a second preview.
+
 ## Playback and identity
 
 On the plugin-player route, the presentation Tool returns only the completed work identity and `inlineVideoTransport: server-tool`. The App then reads MP4/poster metadata directly with `openmotion_get_project({projectId,workId,includeVideo:true})`; large data URLs never pass through the Agent execution-result envelope. The Tool still validates the completed export and playback availability before presentation. The v2 resource and result binding select this loading protocol; the v1 resource remains readable for existing chats. It supports the observed canonical and bounded wrapped MCP result shapes while keeping media out of visible content. A malformed or conflicting result shows a compact recoverable error rather than silently retaining an obsolete state.
