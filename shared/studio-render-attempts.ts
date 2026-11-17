@@ -18,11 +18,13 @@ export type StudioRenderAttempt = {
   audioLoweredDb?: number;
   lastCheckedAt?: number;
   settings?: Record<string, unknown>;
+  /** Current host activity, independent of whether the result is known. */
+  workerActive?: boolean;
   fileAvailable: boolean;
   size?: number;
 };
 type FileIdentity = { dev: number; ino: number; birthtimeMs: number; size: number; mtimeMs: number };
-type SavedAttempt = Omit<StudioRenderAttempt, 'fileAvailable' | 'size'> & { fileIdentity?: FileIdentity | null };
+type SavedAttempt = Omit<StudioRenderAttempt, 'fileAvailable' | 'size' | 'workerActive'> & { fileIdentity?: FileIdentity | null };
 type NativeState = { status: string; progress: number; stage?: string; error?: string; durationMs?: number; audioLoweredDb?: number; cancel?: () => void };
 type RenderOptions = { jobId: string; outputPath: string; [key: string]: any };
 const extensions = ['.mp4', '.mov', '.webm', '.gif'];
@@ -31,6 +33,11 @@ const statuses = new Set(['rendering', 'cancelling', 'complete', 'failed', 'canc
 const safeId = (value: unknown): value is string => typeof value === 'string' && !!value && !/[\/\\\x00]/.test(value) && value !== '.' && value !== '..';
 const safeFilename = (value: unknown): value is string => safeId(value) && extensions.includes(path.extname(value).toLowerCase());
 const fileStat = (filename: string) => lstatSync(filename, { throwIfNoEntry: false });
+
+export class StudioRenderBusy extends Error {
+  readonly code = 'EXPORT_BUSY';
+  constructor() { super('An export is already in progress. Check the original task.'); this.name = 'StudioRenderBusy'; }
+}
 
 /** Reconcile native worker facts without creating or restarting render work. */
 export class StudioRenderAttempts {
@@ -79,7 +86,13 @@ export class StudioRenderAttempts {
     } finally { if (fileStat(temporary)) unlinkSync(temporary); }
   }
 
+  hasActiveWorker(): boolean {
+    this.reconcile();
+    return [...this.live.values()].some(state => !terminal.has(state.status));
+  }
+
   start<T extends NativeState>(options: RenderOptions, title: string | undefined, startRender: (options: RenderOptions) => T, requestId?: string): { state: T; attempt: StudioRenderAttempt } {
+    if (this.hasActiveWorker()) throw new StudioRenderBusy();
     if (!safeId(options.jobId) || this.saved.has(options.jobId) || this.deleted.has(options.jobId)) throw new Error('Render attempt identity already exists or is invalid');
     this.checkDirectory();
     mkdirSync(this.directory, { recursive: true });
@@ -178,7 +191,9 @@ export class StudioRenderAttempts {
     const fileAvailable = attempt.status === 'complete' && !!stat?.isFile() && !!fileIdentity
       && stat.dev === fileIdentity.dev && stat.ino === fileIdentity.ino && stat.birthtimeMs === fileIdentity.birthtimeMs
       && stat.size === fileIdentity.size && stat.mtimeMs === fileIdentity.mtimeMs;
-    return { ...record, fileAvailable, ...(fileAvailable ? { size: stat!.size } : {}) };
+    const state = this.live.get(attempt.id);
+    const workerActive = !!state && !terminal.has(state.status);
+    return { ...record, workerActive, fileAvailable, ...(fileAvailable ? { size: stat!.size } : {}) };
   }
 
   get(id: string): StudioRenderAttempt | undefined {
@@ -212,7 +227,7 @@ export class StudioRenderAttempts {
           if (Number.isFinite(meta.audioLoweredDb)) audioLoweredDb = meta.audioLoweredDb;
         } catch { status = 'unknown'; }
       }
-      legacy.push({ id, filename, createdAt: stat.mtimeMs, status, progress: status === 'complete' ? 100 : 0,
+      legacy.push({ id, filename, workerActive: false, createdAt: stat.mtimeMs, status, progress: status === 'complete' ? 100 : 0,
         fileAvailable: status === 'complete', size: stat.size, durationMs, ...(audioLoweredDb === undefined ? {} : { audioLoweredDb }) });
     }
     return [...managed, ...legacy].sort((a, b) => b.createdAt - a.createdAt);

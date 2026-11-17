@@ -4,6 +4,12 @@ export function isPendingRender(job: Pick<RenderJob, "status">): boolean {
   return job.status === "rendering" || job.status === "cancelling" || job.status === "unknown";
 }
 
+/** A lost progress connection does not prove that the worker stopped. */
+export function blocksProjectWork(job: Pick<RenderJob, "status" | "workerActive">): boolean {
+  return job.status === "rendering" || job.status === "cancelling"
+    || job.status === "unknown" && job.workerActive !== false;
+}
+
 export function readRenderStatus(value: unknown): RenderJob["status"] | undefined {
   return ["rendering", "cancelling", "unknown", "complete", "failed", "cancelled"].includes(String(value))
     ? value as RenderJob["status"] : undefined;
@@ -19,6 +25,7 @@ export function serverRenderJobs(value: unknown): RenderJob[] {
       id: record.id,
       nativeJobId: typeof record.nativeJobId === "string" ? record.nativeJobId : undefined,
       requestId: typeof record.requestId === "string" ? record.requestId : undefined,
+      workerActive: typeof record.workerActive === "boolean" ? record.workerActive : undefined,
       filename: record.filename,
       createdAt: typeof record.createdAt === "number" ? record.createdAt : Date.now(),
       status,

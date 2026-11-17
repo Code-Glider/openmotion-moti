@@ -44,6 +44,7 @@ export function useRenderProgress(projectId: string | null, jobs: RenderJob[], u
             lastCheckedAt: Date.now(),
             durationMs: status === "complete" ? data.durationMs ?? Date.now() - old.createdAt : old.durationMs,
             fileAvailable: typeof data.fileAvailable === "boolean" ? data.fileAvailable : old.fileAvailable,
+            workerActive: typeof data.workerActive === "boolean" ? data.workerActive : old.workerActive,
           }));
           if (status === "complete" || status === "failed" || status === "cancelled") closeProgress(job.id);
         } catch { /* A malformed progress event is not an execution result. */ }
@@ -52,7 +53,7 @@ export function useRenderProgress(projectId: string | null, jobs: RenderJob[], u
         if (!current()) return;
         closeProgress(job.id);
         updateJobs(previous => previous.map(old => old.id === job.id && (old.status === "rendering" || old.status === "cancelling")
-          ? { ...old, status: "unknown", error: "Progress connection lost. Check the original export." } : old));
+          ? { ...old, status: "unknown", workerActive: undefined, requestNotFound: false, error: "Progress connection lost. Check the original export." } : old));
       };
     }
   }, [projectId, jobs, updateJobs, closeProgress]);

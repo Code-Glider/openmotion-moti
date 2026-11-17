@@ -79,6 +79,35 @@ describe('export task recovery', () => {
     expect(recheck).toHaveBeenCalledOnce();
   });
 
+  it('keeps a confirmed inactive worker result unknown with no download or deletion', () => {
+    const recheck = vi.fn();
+    render({ status: 'unknown', workerActive: false }, { onRecheck: recheck });
+    expect(host.textContent).toContain('No active worker is attached. A new export keeps this unknown record.');
+    expect(host.textContent).toContain('Result needs checking');
+    expect(button('Copy diagnostics')).not.toBeUndefined();
+    expect(button('Recheck')).not.toBeUndefined();
+    expect(button('Reload editor')).toBeUndefined();
+    expect(host.querySelector('[aria-label="Download j1.gif"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Delete j1.gif"]')).toBeNull();
+    expect(recheck).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('reloads only on user request when an unconfirmed request has no matching native task', () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    render({ status: 'unknown', nativeJobId: undefined, requestNotFound: true });
+    expect(host.textContent).toContain('No matching task was found. Copy diagnostics, then reload the editor before exporting again.');
+    expect(reload).not.toHaveBeenCalled();
+    expect(io.begin).not.toHaveBeenCalled();
+    expect(button('Copy diagnostics')).not.toBeUndefined();
+    act(() => button('Reload editor').click());
+    expect(reload).toHaveBeenCalledOnce();
+    expect(io.begin).toHaveBeenCalledExactlyOnceWith('reload_editor');
+    expect(io.finish).toHaveBeenCalledExactlyOnceWith({ outcome: 'unknown' });
+    render({ status: 'unknown', nativeJobId: 'native-1', requestNotFound: true });
+    expect(button('Reload editor')).toBeUndefined();
+  });
+
   it('does not expose a targetless recheck or terminal actions while cancellation is unconfirmed', () => {
     render({ status: 'cancelling', stage: 'Encoding frame 46/100', progress: 46 });
     expect(host.textContent).toContain('Cancelling…');

@@ -18,7 +18,7 @@ async function observeHelper() {
   return { track, ...(await import('./ioRecovery')) };
 }
 
-it.each(['import_files', 'replace_failed_import', 'refresh_import_list', 'recheck_render', 'recheck_file', 'open_render', 'download_render'] as const)(
+it.each(['import_files', 'replace_failed_import', 'refresh_import_list', 'recheck_render', 'recheck_file', 'open_render', 'download_render', 'reload_editor'] as const)(
   'correlates the manual %s action and one result', async action => {
     const { track, beginStudioIo } = await observeHelper();
     const finish = beginStudioIo(action, { requested_count: 2 });

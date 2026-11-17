@@ -188,6 +188,7 @@ const QUALITY_OPTIONS: SelectOption[] = [
 function FormatExportButton({
   onStartRender,
   isRendering,
+  separateExport = false,
   emptyComposition = false,
   compositionDimensions,
   lastRenderDurationMs,
@@ -197,6 +198,7 @@ function FormatExportButton({
 }: {
   onStartRender: StartRenderHandler;
   isRendering: boolean;
+  separateExport?: boolean;
   emptyComposition?: boolean;
   compositionDimensions?: CompositionDimensions | null;
   lastRenderDurationMs?: number;
@@ -344,7 +346,7 @@ function FormatExportButton({
         // (AE3), which is exactly what it used to do.
         className="w-full"
       >
-        {isRendering ? t("Rendering…") : t("Export")}
+        {isRendering ? t("Rendering…") : t(separateExport ? "Export current version as a new task" : "Export")}
       </Button>
       {emptyComposition && <p className="text-step-10 text-text-5 text-center">{t("No content to export. Add media first.")}</p>}
       {!mvp && <RenderDurationNote durationMs={lastRenderDurationMs} isRendering={isRendering} />}
@@ -398,6 +400,7 @@ export const RenderQueue = memo(function RenderQueue({
           emptyComposition={emptyComposition}
           onStartRender={onStartRender}
           isRendering={isRendering}
+          separateExport={!isRendering && jobs.some(job => job.status === "unknown" && job.workerActive === false)}
           compositionDimensions={compositionDimensions}
           lastRenderDurationMs={lastRenderDurationMs}
           ffmpeg={ffmpeg}

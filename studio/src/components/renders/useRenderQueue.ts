@@ -11,7 +11,7 @@ import { readServerError } from "./serverError";
 import { ffmpegInstallMessage, useFfmpegStatus } from "./useFfmpegStatus";
 import { requestStudioFeedback, type FeedbackContext } from "../feedback/feedbackTrigger";
 import { studioApiFetch, studioProjectUrl } from "../../utils/studioApiFetch";
-import { isPendingRender, mergeRenderJobs, readRenderStatus, serverRenderJobs } from "./renderQueueState";
+import { blocksProjectWork, isPendingRender, mergeRenderJobs, readRenderStatus, serverRenderJobs } from "./renderQueueState";
 import { useRenderProgress } from "./useRenderProgress";
 import { beginStudioIo } from "../../telemetry/ioRecovery";
 
@@ -19,6 +19,8 @@ export interface RenderJob {
   id: string;
   nativeJobId?: string;
   requestId?: string;
+  workerActive?: boolean;
+  requestNotFound?: boolean;
   status: "rendering" | "cancelling" | "unknown" | "complete" | "failed" | "cancelled";
   progress: number;
   stage?: string;
@@ -198,9 +200,13 @@ export function useRenderQueue(
       const requestId = jobId && jobsRef.current.find(old => old.id === jobId)?.requestId;
       const target = jobId ? incoming?.find(job => job.id === jobId || Boolean(requestId && requestId === job.requestId))
         : incoming?.toSorted((a, b) => b.createdAt - a.createdAt)[0];
+      if (incoming && jobId && !target) {
+        setJobs(previous => previous.map(job => job.id === jobId && job.status === "unknown" && !job.nativeJobId
+          ? { ...job, requestNotFound: true } : job));
+      }
       finish({ outcome: incoming ? "success" : "unknown", ...(target ? { state_after: target.status } : {}) });
     } finally { rechecking.current = false; }
-  }, [projectId, loadRenders]);
+  }, [projectId, loadRenders, setJobs]);
 
   // Start a render and track progress via SSE
   // Pre-existing branchy fetch/poll flow — the variables passthrough added one branch.
@@ -231,7 +237,7 @@ export function useRenderQueue(
         return;
       }
 
-      if (startingRef.current === projectId || jobsRef.current.some(isPendingRender)) {
+      if (startingRef.current === projectId || jobsRef.current.some(blocksProjectWork)) {
         setActionError("An export is already in progress. Check the original task.");
         return;
       }
@@ -239,6 +245,20 @@ export function useRenderQueue(
       setStartingProject(projectId);
       setActionError(null);
       try {
+      // A separate export is a new explicit action, never a replay. Recheck
+      // the service before proceeding past an unresolved but inactive record.
+      if (jobsRef.current.some(job => job.status === "unknown")) {
+        const confirmed = await loadRenders();
+        if (currentProject.current !== projectId) return;
+        if (!confirmed) {
+          setActionError("Couldn't check the original export. Check the connection before starting another export.");
+          return;
+        }
+        if (confirmed.some(blocksProjectWork)) {
+          setActionError("An export is already in progress. Check the original task.");
+          return;
+        }
+      }
       const requestId = generateId();
       const fps = opts.fps ?? 30;
       const quality = opts.quality ?? "standard";
@@ -487,7 +507,7 @@ export function useRenderQueue(
     }
   }, [jobs]);
 
-  const isRendering = Boolean(projectId && (startingProject === projectId || jobs.some(isPendingRender)));
+  const isRendering = Boolean(projectId && (startingProject === projectId || jobs.some(blocksProjectWork)));
   return useMemo(
     () => ({
       jobs,

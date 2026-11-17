@@ -14,7 +14,7 @@ vi.mock("../../telemetry/ioRecovery", () => ({ beginStudioIo: vi.fn(() => vi.fn(
 const { useRenderQueue } = await import("./useRenderQueue");
 const { requestStudioFeedback } = await import("../feedback/feedbackTrigger");
 const { beginStudioIo } = await import("../../telemetry/ioRecovery");
-type ServerJob = { id: string; nativeJobId: string; filename: string; status: string; progress: number; createdAt: number; requestId?: string };
+type ServerJob = { id: string; nativeJobId: string; filename: string; status: string; progress: number; createdAt: number; requestId?: string; workerActive?: boolean };
 
 class ProgressStream {
   static instances: ProgressStream[] = [];
@@ -130,6 +130,52 @@ describe("export attempt recovery", () => {
     expect(queue.api().jobs.map(job => [job.id, job.status])).toEqual([["old", "cancelled"], ["new", "rendering"]]);
     expect(queue.api().isRendering).toBe(true);
     expect(ProgressStream.instances.some(stream => stream.url.includes("new"))).toBe(true);
+  });
+
+  it("preserves write protection after a disconnected stream until the service confirms no worker", async () => {
+    const mounted = await start();
+    act(() => { ProgressStream.instances.at(-1)!.onerror?.(); });
+    expect(mounted.api().isRendering).toBe(true);
+    await act(async () => { await mounted.api().startRender({}); });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    history[0] = { ...history[0], status: "unknown", workerActive: false };
+    await act(async () => { await mounted.api().recheckRender("native-1"); });
+    expect(mounted.api().isRendering).toBe(false);
+    expect(mounted.api().jobs[0].status).toBe("unknown");
+    fetchMock.mockResolvedValueOnce(json({ renders: history })).mockResolvedValueOnce(json({ jobId: "native-2", filename: "Another.mp4" }));
+    await act(async () => { await mounted.api().startRender({}); });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(2);
+    expect(mounted.api().jobs).toHaveLength(2);
+    expect(mounted.api().jobs.find(job => job.id === "native-1")?.status).toBe("unknown");
+  });
+
+  it("rechecks an inactive unknown and refuses a separate export if the original worker is now active", async () => {
+    history = [{ id: "old", nativeJobId: "old", filename: "old.mp4", createdAt: 1, status: "unknown", progress: 10, workerActive: false }];
+    queue = mountRenderQueue(useRenderQueue); await act(async () => {});
+    expect(queue.api().isRendering).toBe(false);
+    history[0] = { ...history[0], status: "rendering", workerActive: true };
+    await act(async () => { await queue!.api().startRender({}); });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    expect(queue.api().isRendering).toBe(true);
+  });
+
+  it("does not submit a separate export when the original task cannot be checked", async () => {
+    history = [{ id: "old", nativeJobId: "old", filename: "old.mp4", createdAt: 1, status: "unknown", progress: 10, workerActive: false }];
+    queue = mountRenderQueue(useRenderQueue); await act(async () => {});
+    fetchMock.mockRejectedValue(new TypeError("offline"));
+    await act(async () => { await queue!.api().startRender({}); });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    expect(queue.api().jobs[0].status).toBe("unknown");
+  });
+
+  it("provides reload guidance only after a client-only receipt cannot be found", async () => {
+    const real = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => init?.method === "POST" ? Promise.reject(new TypeError("lost")) : real(url, init));
+    const mounted = await start();
+    expect(mounted.api().jobs[0].requestNotFound).toBeUndefined();
+    await act(async () => { await mounted.api().recheckRender(mounted.api().jobs[0].id); });
+    expect(mounted.api().jobs[0]).toMatchObject({ status: "unknown", requestNotFound: true });
+    expect(mounted.api().isRendering).toBe(true);
   });
 
   it("shows cancelling until the renderer confirms a terminal state", async () => {

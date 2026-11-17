@@ -12,7 +12,7 @@ import { isMain } from './entry.ts';
 import { withAvailableHistorySteps } from './studio-history-availability.ts';
 import { MAX_ASSET_BYTES } from './asset-limits.ts';
 import { repairCodeExtrudeMaterial } from './registry-material-compat.ts';
-import { StudioRenderAttempts } from './studio-render-attempts.ts';
+import { StudioRenderAttempts, StudioRenderBusy } from './studio-render-attempts.ts';
 
 import { createFontCatalog, prepareFont, preparedFontResponse } from './studio-fonts.ts';
 
@@ -73,24 +73,34 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
         const attempts = new StudioRenderAttempts(scoped.projectDirectory);
         const shutdown = host.shutdown.bind(host);
         host.shutdown = async () => { try { await shutdown(); } finally { attempts.close(); } };
-        const renderRequest = new AsyncLocalStorage<{ filename?: string; createdAt?: number; requestId?: string }>();
+        const renderRequest = new AsyncLocalStorage<{ filename?: string; createdAt?: number; requestId?: string; busy?: boolean }>();
         const startRender = host.adapter.startRender.bind(host.adapter);
         host.adapter.startRender = (options: { outputPath: string; jobId: string }) => {
           const request = renderRequest.getStore();
           if (!request) return startRender(options);
           const title = scoped.projectCatalog().projects.find(project => project.id === id)?.title;
-          const { state, attempt } = attempts.start(options, title, startRender, request.requestId);
-          request.filename = attempt.filename;
-          request.createdAt = attempt.createdAt;
-          return state;
+          try {
+            const { state, attempt } = attempts.start(options, title, startRender, request.requestId);
+            request.filename = attempt.filename;
+            request.createdAt = attempt.createdAt;
+            return state;
+          } catch (error) {
+            if (error instanceof StudioRenderBusy) request.busy = true;
+            throw error;
+          }
         };
         host.app = new Hono().get('/api/fonts', async c => c.json({ fonts: await fonts.families() }))
           .post('/api/projects/:id/render', async c => {
+            const busy = () => c.json({ code: 'EXPORT_BUSY', applied: false, error: 'An export is already in progress. Check the original task.' }, 409);
+            if (attempts.hasActiveWorker()) return busy();
             const body = await c.req.raw.clone().json().catch(() => null);
-            const result: { filename?: string; createdAt?: number; requestId?: string } = {};
+            const result: { filename?: string; createdAt?: number; requestId?: string; busy?: boolean } = {};
             if (typeof body?.requestId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(body.requestId)) result.requestId = body.requestId;
             return renderRequest.run(result, async () => {
               const response = await nativeApp.fetch(c.req.raw);
+              // Native handlers may turn adapter errors into a 500 response.
+              // Keep a racing refusal distinct from an accepted render.
+              if (result.busy) return busy();
               if (!response.ok || !result.filename) return response;
               return c.json({ ...await response.json(), filename: result.filename, createdAt: result.createdAt });
             });

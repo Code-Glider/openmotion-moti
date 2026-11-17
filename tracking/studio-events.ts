@@ -13,7 +13,7 @@ const sdk = { family: ['dom', 'timing', 'gsap-animation', 'gsap-keyframe', 'life
 const desktop = { os: ['darwin', 'win32', 'linux', 'macos', 'windows', 'unknown'], app_installed: 'boolean', download_available: 'boolean' } as const;
 const audio = { track_kind: ['voice', 'music', 'sfx', 'unknown'] } as const;
 const studioIo = {
-  action: ['import_files', 'replace_failed_import', 'refresh_import_list', 'recheck_render', 'recheck_file', 'open_render', 'download_render'],
+  action: ['import_files', 'replace_failed_import', 'refresh_import_list', 'recheck_render', 'recheck_file', 'open_render', 'download_render', 'reload_editor'],
   attempt_id: 'uuid', requested_count: 'integer', added_count: 'integer', failed_count: 'integer', unknown_count: 'integer', pending_count: 'integer',
   listing_status: ['ready', 'loading', 'failed'], state_after: ['rendering', 'cancelling', 'complete', 'failed', 'cancelled', 'unknown'],
   file_status: ['available', 'unavailable', 'unknown'], delivery_status: ['browser_save_requested', 'opened', 'popup_blocked'],

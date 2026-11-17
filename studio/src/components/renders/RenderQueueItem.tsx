@@ -40,7 +40,7 @@ function exportDiagnostic(job: RenderJob, projectId: string): string {
   }));
   return redactDiagnostic(JSON.stringify({
     projectId, taskId: job.id, nativeTaskId: job.nativeJobId, requestId: job.requestId, filename: job.filename,
-    status: job.status, stage: job.stage, progress: job.progress,
+    status: job.status, workerActive: job.workerActive, requestNotFound: job.requestNotFound, stage: job.stage, progress: job.progress,
     startedAt: new Date(job.createdAt).toISOString(),
     lastCheckedAt: job.lastCheckedAt === undefined ? undefined : new Date(job.lastCheckedAt).toISOString(),
     settings, ...(job.error ? { error: job.error.slice(0, 8192) } : {}),
@@ -311,8 +311,17 @@ export const RenderQueueItem = memo(function RenderQueueItem({
         </div>
       </div>
       {job.status === 'unknown' && <div className="mt-2">
-        <p className="text-step-11 text-text-4">{t('The export result is not confirmed. Recheck the original task.')}</p>
+        <p className="text-step-11 text-text-4">{t(job.requestNotFound && !job.nativeJobId
+          ? 'No matching task was found. Copy diagnostics, then reload the editor before exporting again.'
+          : job.workerActive === false
+            ? 'No active worker is attached. A new export keeps this unknown record.'
+            : 'The export result is not confirmed. Recheck the original task.')}</p>
         <div className="flex flex-wrap gap-1.5 mt-1">
+          {job.requestNotFound && !job.nativeJobId && <Button size="sm" variant="secondary" onClick={() => {
+            const finish = beginStudioIo('reload_editor');
+            finish({ outcome: 'unknown' });
+            window.location.reload();
+          }}>{t('Reload editor')}</Button>}
           <Button size="sm" variant="ghost" onClick={() => void copyDiagnostic()}>{t('Copy diagnostics')}</Button>
           <Button size="sm" variant="ghost" aria-expanded={showDiagnostic} aria-controls={diagnosticId} onClick={() => setShowDiagnostic(value => !value)}>{t(showDiagnostic ? 'Hide diagnostics' : 'Diagnostic information')}</Button>
         </div>

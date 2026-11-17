@@ -17,4 +17,6 @@ it('registers all recovery controls and persistent states in every supported lan
   }
   expect(translate('zh-CN', 'Result needs checking')).toBe('结果待核对');
   expect(translate('zh-CN', 'Cancelling…')).toBe('取消中…');
+  expect(translate('zh-CN', 'Export current version as a new task')).toBe('将当前版本导出为新任务');
+  expect(translate('zh-CN', 'Reload editor')).toBe('刷新编辑器');
 });

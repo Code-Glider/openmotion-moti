@@ -9,7 +9,7 @@ import { StudioRenderAttempts } from '../shared/studio-render-attempts.ts';
 
 const require = createRequire(import.meta.url);
 const dependencies = path.dirname(path.dirname(require.resolve('hyperframes/package.json')));
-const hosts = new Map<string, { states: any[] }>();
+const hosts = new Map<string, { states: any[]; beforeStart?: () => Promise<void> }>();
 (globalThis as any).__studioRenderTestHosts = hosts;
 let sequence = 0;
 
@@ -33,7 +33,8 @@ async function fixture(run: (context: any) => Promise<void>) {
     import path from 'node:path';
     export function createStudioServer({projectDir, projectName}) {
       const states = [];
-      globalThis.__studioRenderTestHosts.set(projectDir, {states});
+      const host = {states, beforeStart: undefined};
+      globalThis.__studioRenderTestHosts.set(projectDir, host);
       const adapter = {
         startRender(options) {
           const state = {id: options.jobId, status: 'rendering', progress: 0,
@@ -50,6 +51,7 @@ async function fixture(run: (context: any) => Promise<void>) {
           const directory = path.join(projectDir, 'renders');
           mkdirSync(directory, {recursive: true});
           const jobId = body.testJobId;
+          await host.beforeStart?.();
           const state = adapter.startRender({jobId, outputPath: path.join(directory, jobId + '.mp4'),
             project: {id: projectName, dir: projectDir}, format: 'mp4',
             fps: {num: 30, den: 1}, quality: 'standard', ...body});
@@ -74,11 +76,12 @@ async function fixture(run: (context: any) => Promise<void>) {
     }
   `);
   let studio = await startWorkspaceStudio(runtime, data, project, 0);
-  const post = async (requestId?: string) => {
-    const response = await fetch(studio.origin + '/api/projects/project/render', {
+  const request = async (requestId?: string) => fetch(studio.origin + '/api/projects/project/render', {
       method: 'POST', headers: {Origin: studio.origin, 'Content-Type': 'application/json'},
       body: JSON.stringify({testJobId: 'native-' + ++sequence, requestId}),
     });
+  const post = async (requestId?: string) => {
+    const response = await request(requestId);
     assert.equal(response.status, 200, await response.clone().text());
     return response.json();
   };
@@ -91,7 +94,7 @@ async function fixture(run: (context: any) => Promise<void>) {
     method: 'POST', headers: {Origin: studio.origin},
   })).json();
   try {
-    await run({project, post, list, cancel, states: () => hosts.get(project)!.states,
+    await run({project, post, request, list, cancel, beforeStart: (run: () => Promise<void>) => { hosts.get(project)!.beforeStart = run; }, states: () => hosts.get(project)!.states,
       origin: () => studio.origin,
       restart: async () => { await studio.close(); studio = await startWorkspaceStudio(runtime, data, project, 0); },
     });
@@ -110,6 +113,7 @@ test('refresh reconciles the original native attempt and never classifies a part
   assert.equal(records[0].nativeJobId, receipt.jobId);
   assert.equal(records[0].filename, receipt.filename);
   assert.equal(records[0].status, 'rendering');
+  assert.equal(records[0].workerActive, true);
   assert.equal(records[0].progress, 42);
   assert.equal(records[0].fileAvailable, false);
   assert.deepEqual(records[0].settings.fps, {num: 30, den: 1});
@@ -145,17 +149,19 @@ test('cancel remains pending until renderer confirmation and keeps a distinct re
 test('a lost execution becomes unknown while failed and missing-file completion facts survive restart', () => fixture(async ({post, list, states, restart}) => {
   const running = await post();
   states()[0].progress = 23;
+  await restart();
   const failed = await post();
-  states()[1].status = 'failed'; states()[1].error = 'Audio validation failed';
+  states()[0].status = 'failed'; states()[0].error = 'Audio validation failed';
   const completed = await post();
-  states()[2].status = 'complete'; states()[2].progress = 100;
-  await writeFile(states()[2].outputPath, 'original');
+  states()[1].status = 'complete'; states()[1].progress = 100;
+  await writeFile(states()[1].outputPath, 'original');
   await list();
-  await unlink(states()[2].outputPath);
+  await unlink(states()[1].outputPath);
   await restart();
   const records = await list();
   const unknown = records.find(record => record.id === running.jobId);
   assert.equal(unknown.status, 'unknown');
+  assert.equal(unknown.workerActive, false, 'A missing worker does not turn its unknown result into an active execution');
   assert.equal(unknown.progress, 23);
   assert.ok(unknown.lastCheckedAt);
   assert.equal(records.find(record => record.id === failed.jobId).error, 'Audio validation failed');
@@ -164,6 +170,10 @@ test('a lost execution becomes unknown while failed and missing-file completion 
   assert.equal(records.find(record => record.id === completed.jobId).fileAvailable, false);
   const next = await post();
   assert.notEqual(next.filename, completed.filename, 'A deleted output must not let a later attempt replace a historical result');
+  const recovered = await list();
+  assert.equal(recovered.find(record => record.id === running.jobId).status, 'unknown');
+  assert.equal(recovered.find(record => record.id === running.jobId).workerActive, false);
+  assert.equal(recovered.find(record => record.id === next.jobId).workerActive, true);
 }));
 
 test('a disconnected progress stream does not lose the worker result or submit more work', () => fixture(async ({project, post, list, states, origin, restart}) => {
@@ -175,6 +185,7 @@ test('a disconnected progress stream does not lose the worker result or submit m
   assert.match(new TextDecoder().decode(first.value), /"status":"rendering"/);
   controller.abort();
   await reader.cancel().catch(() => {});
+  assert.equal((await list())[0].workerActive, true, 'Disconnecting observation must not unlock a live worker');
   const state = states()[0];
   await writeFile(state.outputPath, 'completed-without-stream');
   state.status = 'complete'; state.progress = 100;
@@ -185,12 +196,48 @@ test('a disconnected progress stream does not lose the worker result or submit m
     await new Promise(resolve => setTimeout(resolve, 25));
   }
   assert.equal(states().length, 1);
+  assert.equal(Object.hasOwn(JSON.parse(await readFile(snapshot, 'utf8')).attempts[0], 'workerActive'), false, 'Activity is derived, never retained as a stale snapshot fact');
   await restart();
   const records = await list();
   assert.equal(records[0].id, receipt.jobId);
   assert.equal(records[0].requestId, 'receipt-lost-request');
   assert.equal(records[0].status, 'complete');
   assert.equal(records[0].fileAvailable, true);
+}));
+
+test('concurrent render submissions accept one worker and return a definite busy refusal for the other', () => fixture(async ({request, list, states, beforeStart}) => {
+  await list();
+  let entered = 0, release!: () => void;
+  const bothEntered = new Promise<void>(resolve => { release = resolve; });
+  beforeStart(async () => {
+    if (++entered === 2) release();
+    await bothEntered;
+  });
+  const responses = await Promise.all([request('race-first'), request('race-second')]);
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 409]);
+  const refusal = await responses.find(response => response.status === 409)!.json();
+  assert.equal(refusal.code, 'EXPORT_BUSY');
+  assert.equal(refusal.applied, false);
+  assert.equal(states().length, 1);
+  const records = await list();
+  assert.equal(records.length, 1, 'The rejected submission must not reserve a filename or create an accepted attempt');
+  assert.equal(records[0].workerActive, true);
+}));
+
+test('a pending cancellation stays busy until the renderer confirms it stopped', () => fixture(async ({post, request, cancel, list, states}) => {
+  const first = await post();
+  const activeRefusal = await request();
+  assert.equal(activeRefusal.status, 409);
+  assert.equal((await activeRefusal.json()).code, 'EXPORT_BUSY');
+  await cancel(first.jobId);
+  const cancellingRefusal = await request();
+  assert.equal(cancellingRefusal.status, 409);
+  assert.equal((await cancellingRefusal.json()).applied, false);
+  assert.equal(states().length, 1);
+  assert.equal((await list())[0].workerActive, true);
+  states()[0].status = 'cancelled';
+  await post();
+  assert.equal(states().length, 2);
 }));
 
 test('cancelled SSE waits for confirmation and completion wins either cancellation race', () => fixture(async ({post, cancel, states, list, origin}) => {
@@ -263,7 +310,7 @@ test('a replaced or symlinked output cannot impersonate a completed historical f
   assert.equal((await fetch(file)).status, 404);
 }));
 
-test('legacy history retains ids while empty or failed metadata cannot claim a complete video', () => fixture(async ({project, list, origin}) => {
+test('legacy history retains ids while empty or failed metadata cannot claim a complete video', () => fixture(async ({project, post, list, states, origin}) => {
   const renders = path.join(project, 'renders');
   await mkdir(renders);
   await writeFile(path.join(renders, 'legacy.mp4'), 'legacy-output');
@@ -276,10 +323,16 @@ test('legacy history retains ids while empty or failed metadata cannot claim a c
   assert.equal(records.length, 3);
   assert.equal(records.find(record => record.id === 'legacy').status, 'complete');
   assert.equal(records.find(record => record.id === 'reserved').status, 'unknown');
+  assert.equal(records.find(record => record.id === 'reserved').workerActive, false);
   assert.equal(records.find(record => record.id === 'failed').status, 'failed');
   assert.equal(await (await fetch(origin() + '/api/render/legacy/download?projectId=project')).text(), 'legacy-output');
   assert.equal((await fetch(origin() + '/api/projects/project/renders/file/reserved.mp4', {method: 'HEAD'})).status, 404);
   assert.equal((await fetch(origin() + '/api/projects/project/renders/file/linked.mp4')).status, 404);
+  const next = await post();
+  assert.equal(states().length, 1, 'A legacy unknown without a worker must not permanently block a new export');
+  const after = await list();
+  assert.equal(after.find(record => record.id === 'reserved').status, 'unknown');
+  assert.equal(after.find(record => record.id === next.jobId).workerActive, true);
 }));
 
 test('existing request-origin and project-scope protections also cover attempt recovery and cancel', () => fixture(async ({post, origin}) => {

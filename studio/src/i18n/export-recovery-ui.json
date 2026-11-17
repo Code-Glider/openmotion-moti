@@ -20,7 +20,11 @@
     "Recheck file": "重新检查文件",
     "An export is already in progress. Check the original task.": "已有导出正在进行，请检查原任务。",
     "Couldn't confirm cancellation. Check the original export.": "取消结果尚未确认，请检查原导出任务。",
-    "Export result pending": "导出结果待核对"
+    "Export result pending": "导出结果待核对",
+    "Export current version as a new task": "将当前版本导出为新任务",
+    "No active worker is attached. A new export keeps this unknown record.": "原任务当前未运行。新导出会保留这条待核对记录。",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "未找到对应任务。请先复制诊断，再刷新编辑器后重新导出。",
+    "Reload editor": "刷新编辑器"
   },
   "ja": {
     "Export completed": "書き出し完了",
@@ -43,7 +47,11 @@
     "Recheck file": "ファイルを再確認",
     "An export is already in progress. Check the original task.": "書き出しがすでに進行中です。元のタスクを確認してください。",
     "Couldn't confirm cancellation. Check the original export.": "キャンセルを確認できませんでした。元の書き出しを確認してください。",
-    "Export result pending": "書き出し結果の確認待ち"
+    "Export result pending": "書き出し結果の確認待ち",
+    "Export current version as a new task": "現在のバージョンを新規タスクで書き出す",
+    "No active worker is attached. A new export keeps this unknown record.": "元のタスクは現在実行されていません。新しく書き出しても、この未確認の記録は保持されます。",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "対応するタスクが見つかりません。診断情報をコピーし、エディターを再読み込みしてから再度書き出してください。",
+    "Reload editor": "エディターを再読み込み"
   },
   "ko": {
     "Export completed": "내보내기 완료",
@@ -66,7 +74,11 @@
     "Recheck file": "파일 다시 확인",
     "An export is already in progress. Check the original task.": "이미 내보내기가 진행 중입니다. 원래 작업을 확인하세요.",
     "Couldn't confirm cancellation. Check the original export.": "취소 여부를 확인할 수 없습니다. 원래 내보내기를 확인하세요.",
-    "Export result pending": "내보내기 결과 확인 대기"
+    "Export result pending": "내보내기 결과 확인 대기",
+    "Export current version as a new task": "현재 버전을 새 작업으로 내보내기",
+    "No active worker is attached. A new export keeps this unknown record.": "원래 작업은 현재 실행 중이 아닙니다. 새로 내보내도 이 미확인 기록은 유지됩니다.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "일치하는 작업을 찾지 못했습니다. 진단 정보를 복사한 다음 편집기를 새로고침하고 다시 내보내세요.",
+    "Reload editor": "편집기 새로고침"
   },
   "de": {
     "Export completed": "Export abgeschlossen",
@@ -89,7 +101,11 @@
     "Recheck file": "Datei erneut prüfen",
     "An export is already in progress. Check the original task.": "Ein Export läuft bereits. Prüfe den ursprünglichen Auftrag.",
     "Couldn't confirm cancellation. Check the original export.": "Der Abbruch konnte nicht bestätigt werden. Prüfe den ursprünglichen Export.",
-    "Export result pending": "Exportergebnis ausstehend"
+    "Export result pending": "Exportergebnis ausstehend",
+    "Export current version as a new task": "Aktuelle Version neu exportieren",
+    "No active worker is attached. A new export keeps this unknown record.": "Der ursprüngliche Auftrag läuft derzeit nicht. Ein neuer Export behält diesen ungeklärten Eintrag bei.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "Kein passender Auftrag gefunden. Kopieren Sie die Diagnosedaten und laden Sie den Editor vor einem neuen Export neu.",
+    "Reload editor": "Editor neu laden"
   },
   "fr": {
     "Export completed": "Export terminé",
@@ -112,7 +128,11 @@
     "Recheck file": "Vérifier le fichier",
     "An export is already in progress. Check the original task.": "Un export est déjà en cours. Vérifiez la tâche d’origine.",
     "Couldn't confirm cancellation. Check the original export.": "L’annulation n’a pas pu être confirmée. Vérifiez l’export d’origine.",
-    "Export result pending": "Résultat de l’export en attente"
+    "Export result pending": "Résultat de l’export en attente",
+    "Export current version as a new task": "Exporter cette version comme nouvelle tâche",
+    "No active worker is attached. A new export keeps this unknown record.": "La tâche initiale ne s’exécute plus. Une nouvelle exportation conserve cet enregistrement au résultat inconnu.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "Aucune tâche correspondante trouvée. Copiez les diagnostics, puis rechargez l’éditeur avant de réexporter.",
+    "Reload editor": "Recharger l’éditeur"
   },
   "ru": {
     "Export completed": "Экспорт завершён",
@@ -135,7 +155,11 @@
     "Recheck file": "Проверить файл снова",
     "An export is already in progress. Check the original task.": "Экспорт уже выполняется. Проверьте исходную задачу.",
     "Couldn't confirm cancellation. Check the original export.": "Не удалось подтвердить отмену. Проверьте исходный экспорт.",
-    "Export result pending": "Результат экспорта ожидает проверки"
+    "Export result pending": "Результат экспорта ожидает проверки",
+    "Export current version as a new task": "Экспортировать текущую версию новой задачей",
+    "No active worker is attached. A new export keeps this unknown record.": "Исходная задача сейчас не выполняется. Новый экспорт сохранит эту запись с неизвестным результатом.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "Соответствующая задача не найдена. Скопируйте диагностику и перезагрузите редактор перед повторным экспортом.",
+    "Reload editor": "Перезагрузить редактор"
   },
   "es": {
     "Export completed": "Exportación completada",
@@ -158,7 +182,11 @@
     "Recheck file": "Volver a comprobar el archivo",
     "An export is already in progress. Check the original task.": "Ya hay una exportación en curso. Comprueba la tarea original.",
     "Couldn't confirm cancellation. Check the original export.": "No se pudo confirmar la cancelación. Comprueba la exportación original.",
-    "Export result pending": "Resultado de exportación pendiente"
+    "Export result pending": "Resultado de exportación pendiente",
+    "Export current version as a new task": "Exportar esta versión como nueva tarea",
+    "No active worker is attached. A new export keeps this unknown record.": "La tarea original no está en ejecución. Una nueva exportación conserva este registro de resultado desconocido.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "No se encontró la tarea correspondiente. Copia el diagnóstico y recarga el editor antes de volver a exportar.",
+    "Reload editor": "Recargar editor"
   },
   "pt-BR": {
     "Export completed": "Exportação concluída",
@@ -181,7 +209,11 @@
     "Recheck file": "Verificar arquivo novamente",
     "An export is already in progress. Check the original task.": "Uma exportação já está em andamento. Verifique a tarefa original.",
     "Couldn't confirm cancellation. Check the original export.": "Não foi possível confirmar o cancelamento. Verifique a exportação original.",
-    "Export result pending": "Resultado da exportação pendente"
+    "Export result pending": "Resultado da exportação pendente",
+    "Export current version as a new task": "Exportar versão atual como nova tarefa",
+    "No active worker is attached. A new export keeps this unknown record.": "A tarefa original não está em execução. Uma nova exportação mantém este registro com resultado desconhecido.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "Nenhuma tarefa correspondente foi encontrada. Copie o diagnóstico e recarregue o editor antes de exportar novamente.",
+    "Reload editor": "Recarregar editor"
   },
   "it": {
     "Export completed": "Esportazione completata",
@@ -204,7 +236,11 @@
     "Recheck file": "Verifica di nuovo il file",
     "An export is already in progress. Check the original task.": "Un’esportazione è già in corso. Controlla l’attività originale.",
     "Couldn't confirm cancellation. Check the original export.": "Impossibile confermare l’annullamento. Controlla l’esportazione originale.",
-    "Export result pending": "Risultato dell’esportazione in attesa"
+    "Export result pending": "Risultato dell’esportazione in attesa",
+    "Export current version as a new task": "Esporta questa versione come nuovo lavoro",
+    "No active worker is attached. A new export keeps this unknown record.": "Il lavoro originale non è attualmente in esecuzione. Una nuova esportazione conserva questo risultato non confermato.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "Nessun lavoro corrispondente trovato. Copia la diagnostica e ricarica l’editor prima di esportare di nuovo.",
+    "Reload editor": "Ricarica editor"
   },
   "tr": {
     "Export completed": "Dışa aktarma tamamlandı",
@@ -227,6 +263,10 @@
     "Recheck file": "Dosyayı yeniden kontrol et",
     "An export is already in progress. Check the original task.": "Bir dışa aktarma zaten sürüyor. Asıl görevi kontrol edin.",
     "Couldn't confirm cancellation. Check the original export.": "İptal doğrulanamadı. Asıl dışa aktarmayı kontrol edin.",
-    "Export result pending": "Dışa aktarma sonucu bekleniyor"
+    "Export result pending": "Dışa aktarma sonucu bekleniyor",
+    "Export current version as a new task": "Geçerli sürümü yeni görevle dışa aktar",
+    "No active worker is attached. A new export keeps this unknown record.": "Önceki görev şu anda çalışmıyor. Yeni bir dışa aktarma, sonucu belirsiz bu kaydı korur.",
+    "No matching task was found. Copy diagnostics, then reload the editor before exporting again.": "Eşleşen görev bulunamadı. Tanılama bilgilerini kopyalayın, ardından yeniden dışa aktarmadan önce düzenleyiciyi yenileyin.",
+    "Reload editor": "Düzenleyiciyi yenile"
   }
 }
