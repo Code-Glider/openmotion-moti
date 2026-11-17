@@ -13,16 +13,17 @@
       "durationSeconds": 43,
       "width": 512,
       "height": 288,
+      "targetBitrate": 28000,
       "video": {
         "path": "project-previews/motion-664184d9-593e-4984-b473-701248b69cfe.webm",
-        "bytes": 111886,
-        "sha256": "ac988eccea2e69550a7ea5b418909a6e7407c3c8345d721cd09319fd2f79e0d4",
+        "bytes": 153689,
+        "sha256": "8a035e80c25854a83bf4956eed1b0c7d249eb7be065dc496c4ddcff524eb5cea",
         "mimeType": "video/webm"
       },
       "poster": {
         "path": "project-previews/motion-664184d9-593e-4984-b473-701248b69cfe.jpg",
-        "bytes": 1852,
-        "sha256": "a669aa7433e5caf705b08b3e7197ca81c949366763ae42bb318b73c2e0825cda",
+        "bytes": 2415,
+        "sha256": "8e538c874380e5b4500a6e6801ded1e15e5fa72e26251a971738bfee5cbe5c71",
         "mimeType": "image/jpeg"
       }
     },
@@ -32,35 +33,17 @@
       "durationSeconds": 61,
       "width": 512,
       "height": 288,
+      "targetBitrate": 46000,
       "video": {
         "path": "project-previews/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044.webm",
-        "bytes": 158839,
-        "sha256": "6f7c326c33022dc301d489c65b819900985c0902c8f6fde367069b5259f83bc6",
+        "bytes": 354264,
+        "sha256": "3bfdf1daf0b328eb08f3438c07f8377f54fbb44114c1716560e0535dd54fdd06",
         "mimeType": "video/webm"
       },
       "poster": {
         "path": "project-previews/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044.jpg",
-        "bytes": 6605,
-        "sha256": "f9047ab8d8a8d7b36f77e7f3d6c51f183ba11b4171b5b77f09d2129d993d8980",
-        "mimeType": "image/jpeg"
-      }
-    },
-    {
-      "id": "motion-dac924da-010f-4445-baf3-a39cb033e48f",
-      "sourceFilesSha256": "fe39e46fdd0a6f2c20a1cccd279a0025814807926ee83bb59a5ba3c84d76f6ce",
-      "durationSeconds": 11.666,
-      "width": 512,
-      "height": 288,
-      "video": {
-        "path": "project-previews/motion-dac924da-010f-4445-baf3-a39cb033e48f.webm",
-        "bytes": 18363,
-        "sha256": "061e55b3c1c0f927ac02974b7d3b77ad8d6a860a2f95cde9aec8d3a72b505f93",
-        "mimeType": "video/webm"
-      },
-      "poster": {
-        "path": "project-previews/motion-dac924da-010f-4445-baf3-a39cb033e48f.jpg",
-        "bytes": 3594,
-        "sha256": "2472a66cedd8765147da741c3f28a4715e27ddcc4f7744a3806174f11b10645b",
+        "bytes": 11528,
+        "sha256": "bda698cf6c565ad09cd6bbd6bc85520ddcd0e5313d77d9299cd0f0c7ef3c906e",
         "mimeType": "image/jpeg"
       }
     },
@@ -70,16 +53,17 @@
       "durationSeconds": 24.083,
       "width": 512,
       "height": 318,
+      "targetBitrate": 48000,
       "video": {
         "path": "project-previews/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd.webm",
-        "bytes": 58400,
-        "sha256": "fd02bc8d959eafbe2a4a12324beea84b20ff3889b092544ac60d577513686bbb",
+        "bytes": 136445,
+        "sha256": "a0b20c3e39f1068b0eb59894fcaa563b82d939c50e67efbcb5fb8653d78f812e",
         "mimeType": "video/webm"
       },
       "poster": {
         "path": "project-previews/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd.jpg",
-        "bytes": 7737,
-        "sha256": "b019024d06d3576b5278258a5bd44e3af5759501d6fac5eb0a7e958feb712e24",
+        "bytes": 13936,
+        "sha256": "bde4903bf14431713c0ca06754d5552a41621a27f9d6220f62988a50ede3ad08",
         "mimeType": "image/jpeg"
       }
     },
@@ -89,16 +73,17 @@
       "durationSeconds": 21.083,
       "width": 512,
       "height": 288,
+      "targetBitrate": 48000,
       "video": {
         "path": "project-previews/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b.webm",
-        "bytes": 49087,
-        "sha256": "f6f04268a030a3a839ba5875f4e470fd5b18ffb359a790d42d852320ff027901",
+        "bytes": 107123,
+        "sha256": "ea06953891e8f7d39108f4090c9d3724ac555416fa01363480d3b7929735b9d5",
         "mimeType": "video/webm"
       },
       "poster": {
         "path": "project-previews/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b.jpg",
-        "bytes": 3392,
-        "sha256": "04161f0eced9d1f559a4d647cab91eceba2de617491857df13911958dfaac742",
+        "bytes": 5030,
+        "sha256": "381e464ff74ed2e13043c32fd7f621e775ab0e82b012e94427464431d7f38657",
         "mimeType": "image/jpeg"
       }
     }

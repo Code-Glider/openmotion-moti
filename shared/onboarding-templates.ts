@@ -2,7 +2,6 @@
 export const onboardingTemplateIds = [
   'motion-664184d9-593e-4984-b473-701248b69cfe',
   'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044',
-  'motion-dac924da-010f-4445-baf3-a39cb033e48f',
   'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd',
   'motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b',
 ] as const;

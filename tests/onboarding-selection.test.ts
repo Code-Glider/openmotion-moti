@@ -19,21 +19,23 @@ const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const selected = [
   'motion-664184d9-593e-4984-b473-701248b69cfe',
   'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044',
-  'motion-dac924da-010f-4445-baf3-a39cb033e48f',
+  'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd',
 ];
-const titles = ['Bolt Skills｜团队能力展示', 'Glean Agents 发布', '功能更新｜Voice mode'];
+const titles = ['Bolt Skills｜团队能力展示', 'Glean Agents 发布', 'Dia 开放给 Arc 会员'];
 
-test('curated random selection covers all five approved references without replacement or pool mutation', () => {
-  const expectedTitles = ['Bolt Skills｜团队能力展示', 'Glean Agents 发布', '功能更新｜Voice mode', 'Dia 开放给 Arc 会员', '免费语音输入'];
+test('curated random selection covers all four approved references without replacement or pool mutation', () => {
+  const expectedTitles = ['Bolt Skills｜团队能力展示', 'Glean Agents 发布', 'Dia 开放给 Arc 会员', '免费语音输入'];
   assert.deepEqual(onboardingTemplateIds.map(id => JSON.parse(requireRecord(id)).entry.original.templateName), expectedTitles);
+  assert.equal(JSON.parse(requireRecord('motion-dac924da-010f-4445-baf3-a39cb033e48f')).entry.original.templateName, '功能更新｜Voice mode',
+    'Removing an onboarding candidate must retain its library template');
   const original = [...onboardingTemplateIds], seen = new Set<string>();
-  for (let index = 0; index < 5; index++) {
-    const cards = selectOnboardingTemplateIds(() => (index + 0.5) / 5);
+  for (let index = 0; index < 4; index++) {
+    const cards = selectOnboardingTemplateIds(() => (index + 0.5) / 4);
     assert.equal(cards.length, 3); assert.equal(new Set(cards).size, 3);
     assert(cards.every(id => (onboardingTemplateIds as readonly string[]).includes(id)));
     seen.add(cards[0]);
   }
-  assert.equal(seen.size, 5); assert.deepEqual([...onboardingTemplateIds], original);
+  assert.equal(seen.size, 4); assert.deepEqual([...onboardingTemplateIds], original);
   assert.notDeepEqual(selectOnboardingTemplateIds(() => 0), selectOnboardingTemplateIds(() => 0.99));
 });
 
@@ -70,17 +72,17 @@ test('one preparation freezes a random selection across inline cards and fallbac
   assert.deepEqual(displayed(), ids, 'Detail navigation must not redraw the selection');
 });
 
-test('random selection has all 60 ordered outcomes with equal candidate exposure', () => {
+test('random selection has all 24 ordered outcomes with equal candidate exposure', () => {
   const outcomes = new Set<string>(), counts = new Map(onboardingTemplateIds.map(id => [id, [0, 0, 0]]));
-  for (let first = 0; first < 5; first++) for (let second = 0; second < 4; second++) for (let third = 0; third < 3; third++) {
-    const draws = [(first + 0.5) / 5, (second + 0.5) / 4, (third + 0.5) / 3];
+  for (let first = 0; first < 4; first++) for (let second = 0; second < 3; second++) for (let third = 0; third < 2; third++) {
+    const draws = [(first + 0.5) / 4, (second + 0.5) / 3, (third + 0.5) / 2];
     const result = selectOnboardingTemplateIds(() => draws.shift()!);
     assert.equal(new Set(result).size, 3);
     outcomes.add(result.join(','));
     result.forEach((id, position) => counts.get(id as typeof onboardingTemplateIds[number])![position]++);
   }
-  assert.equal(outcomes.size, 5 * 4 * 3);
-  for (const positions of counts.values()) assert.deepEqual(positions, [12, 12, 12]);
+  assert.equal(outcomes.size, 4 * 3 * 2);
+  for (const positions of counts.values()) assert.deepEqual(positions, [6, 6, 6]);
 });
 
 test('native onboarding rejects builtin shortcuts while ordinary explicit recommendations retain them', () => {
