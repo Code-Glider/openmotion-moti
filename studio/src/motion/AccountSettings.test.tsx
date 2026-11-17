@@ -88,7 +88,10 @@ it('passes a fresh subscription entry on ordinary and middle clicks without acco
   const ids = new Set<string>();
   for (const [type, mouseButton] of [['click', 0], ['click', 0], ['auxclick', 1]] as const) {
     const before = Date.now();
-    await act(async () => { link.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: mouseButton })); });
+    await act(async () => { link.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: mouseButton })); });
+    const prepared = link.href;
+    await act(async () => { link.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: mouseButton, detail: 1 })); });
+    expect(link.href).toBe(prepared);
     const url = new URL(link.href), params = url.searchParams;
     expect(url.origin + url.pathname).toBe('https://open-design.ai/cloud/dashboard');
     expect([...params.keys()].sort()).toEqual(['billing', 'od_entry_at', 'od_entry_id', 'od_entry_source', 'od_origin']);
@@ -103,6 +106,8 @@ it('passes a fresh subscription entry on ordinary and middle clicks without acco
     ids.add(params.get('od_entry_id')!);
   }
   expect(ids.size).toBe(3);
+  await act(async () => { link.click(); });
+  expect(ids.has(new URL(link.href).searchParams.get('od_entry_id')!)).toBe(false);
   expect(link.target).toBe('_blank'); expect(link.rel).toBe('noreferrer');
 });
 
