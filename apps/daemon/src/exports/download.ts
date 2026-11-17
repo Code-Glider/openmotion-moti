@@ -24,14 +24,17 @@ export class Downloads {
     this.tickets.set(token, { job: structuredClone(job), expiresAt });
     return {
       url: `${this.endpoint}/exports/files/${token}`,
+      playbackUrl: `${this.endpoint}/exports/files/${token}?inline=1`,
       digest: job.result.verification.digest,
       bytes: job.result.verification.bytes,
       filename: `open-motion-${job.id}.mp4`,
       expiresAt,
+      film: { ...structuredClone(job.result), jobId: job.id, attempt: job.attempt },
     };
   }
-  async serve(url: string, response: ServerResponse, head = false) {
-    const token = /^\/exports\/files\/([a-f0-9]{64})$/.exec(url)?.[1],
+  async serve(url: string, response: ServerResponse, head = false, range?: string, ifRange?: string | string[]) {
+    const matchUrl = /^\/exports\/files\/([a-f0-9]{64})(\?inline=1)?$/.exec(url),
+      token = matchUrl?.[1],
       entry = token && this.tickets.get(token);
     if (!entry || entry.expiresAt <= Date.now() || !this.root || !entry.job.result) {
       response.writeHead(404, { "cache-control": "no-store" });
@@ -48,16 +51,50 @@ export class Downloads {
       for await (const chunk of file.createReadStream({ autoClose: false })) hash.update(chunk);
       if (`sha256:${hash.digest("hex")}` !== result.verification.digest)
         throw new Fault("integrity", "export film integrity mismatch");
-      response.writeHead(200, {
+      const etag = `"${result.verification.digest}"`;
+      let start = 0,
+        end = info.size - 1,
+        partial = false;
+      if (range && !head && (ifRange === undefined || ifRange === etag)) {
+        const match = /^bytes=(\d*)-(\d*)$/.exec(range),
+          first = match?.[1],
+          last = match?.[2];
+        start = first ? Number(first) : last ? Math.max(0, info.size - Number(last)) : Number.NaN;
+        end = first && last ? Math.min(Number(last), info.size - 1) : info.size - 1;
+        if (
+          !match ||
+          (first !== "" && !Number.isSafeInteger(Number(first))) ||
+          (last !== "" && !Number.isSafeInteger(Number(last))) ||
+          !Number.isSafeInteger(start) ||
+          !Number.isSafeInteger(end) ||
+          start < 0 ||
+          start >= info.size ||
+          end < start ||
+          (!first && Number(last) <= 0)
+        ) {
+          response.writeHead(416, {
+            "content-range": `bytes */${info.size}`,
+            "content-length": 0,
+            "cache-control": "no-store",
+          });
+          response.end();
+          return;
+        }
+        partial = true;
+      }
+      response.writeHead(partial ? 206 : 200, {
         "content-type": "video/mp4",
-        "content-length": info.size,
+        "content-length": end - start + 1,
+        "accept-ranges": "bytes",
+        ...(partial ? { "content-range": `bytes ${start}-${end}/${info.size}` } : {}),
+        etag,
         "cache-control": "no-store",
         "x-content-type-options": "nosniff",
         "referrer-policy": "no-referrer",
-        "content-disposition": `attachment; filename="open-motion-${entry.job.id}.mp4"`,
+        "content-disposition": `${matchUrl?.[2] ? "inline" : "attachment"}; filename="open-motion-${entry.job.id}.mp4"`,
       });
       if (head) response.end();
-      else await pipeline(file.createReadStream({ start: 0, autoClose: false }), response);
+      else await pipeline(file.createReadStream({ start, end, autoClose: false }), response);
     } finally {
       await file.close();
     }

@@ -81,10 +81,12 @@ export interface Job {
 }
 export interface Download {
   url: string;
+  playbackUrl: string;
   digest: string;
   bytes: number;
   filename: string;
   expiresAt: number;
+  film: Film & { jobId: string; attempt: string };
 }
 export type ExportOutput<K extends ExportOperation> = K extends "export_list"
   ? { jobs: Job[]; next: string | null }

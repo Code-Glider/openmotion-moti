@@ -108,7 +108,8 @@ export const descriptions: Record<Operation, string> = {
   export_read: "Read one owned export job without affecting its execution lifetime.",
   export_cancel: "Request cancellation; only actual process drain completes a running cancellation.",
   export_retry: "Retry a failed, cancelled or interrupted job with its original immutable input.",
-  export_download: "Issue a temporary read-only link to the verified film of a successful owned export.",
+  export_download:
+    "Issue a temporary seekable read-only MP4 link bound to a successful job, attempt, immutable source revision and verified film. Reading or renewing it never renders. A link does not prove host playback or display.",
 };
 
 /** A product entry binds content identity; it carries no capability, host path or display receipt. */
