@@ -16,9 +16,7 @@ test('legacy director resources return the shared body while references use prod
     assert.deepEqual(previous.references, current.references);
     const linked = workflowReferences(`[legacy](../openmotion-director/references/${legacy.split('/').at(-1)})`, 'skills/openmotion-recreate/SKILL.md');
     assert.deepEqual(linked, [{ workflow: 'production', section, documentId: canonical }]);
-    const forwarding = await readFile(new URL('../' + legacy, import.meta.url), 'utf8');
-    assert.deepEqual(workflowReferences(forwarding, legacy), linked);
-    assert.ok(!forwarding.includes(current.content), 'Old local paths must not maintain another rule body');
+    await assert.rejects(readFile(new URL('../' + legacy, import.meta.url), 'utf8'), { code: 'ENOENT' }, 'Old local paths must not keep a forwarding copy');
   }
 });
 
