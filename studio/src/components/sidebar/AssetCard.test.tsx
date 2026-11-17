@@ -11,6 +11,11 @@ import { InlineAssetRename } from "./InlineAssetRename";
 import { I18nProvider } from "../../i18n/I18n";
 import { TIMELINE_ASSET_MIME } from "../../utils/timelineAssetDrop";
 
+// These tests exercise names and row actions; audition and peak loading have
+// their own media-aware suites, so this mount must not fetch audio metadata.
+vi.mock("../../hooks/useAudioAssetPreview", () => ({ useAudioAssetPreview: () => ({ playing: false, pending: false, duration: 0, time: 0, toggle: vi.fn() }) }));
+vi.mock("./AudioAssetWaveform", () => ({ AudioAssetWaveform: () => <span /> }));
+
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root | null = null;
@@ -153,7 +158,7 @@ describe("AudioRow click behavior", () => {
     const rows = [...host.querySelectorAll('.motion-audio-row')];
     expect(rows).toHaveLength(names.length);
     rows.forEach((row, index) => {
-      expect(row.textContent).toBe(`${names[index]}2s`);
+      expect(row.textContent).toBe(`${names[index]}00:02`);
       expect(row.getAttribute('aria-label')).toContain(names[index]);
       expect(row.querySelector('button')?.getAttribute('aria-label')).toContain(names[index]);
     });
