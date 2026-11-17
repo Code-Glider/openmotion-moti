@@ -204,3 +204,20 @@ it.each(['en', 'zh-CN', 'ja'] as const)('copies the asset naming scenario in %s 
   for (const token of ['openmotion_get_project', 'namingLanguage', 'openmotion_edit_project', 'assetNames']) expect(instruction).toContain(token);
   if (locale === 'zh-CN') expect(instruction).toContain('保留已有可读名称');
 });
+
+it.each([
+  ['en', 'Prefer the host’s video preview', 'never both for the same video'],
+  ['zh-CN', '优先使用宿主自带的视频预览', '同一成片不同时展示两种预览'],
+  ['ja', 'ホストの動画プレビューを優先', '同じ動画を両方に表示しません'],
+] as const)('renders native-first final-video guidance in the real handbook component for %s', async (locale, priority, exclusive) => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  await mount(locale);
+  const faq = [...document.querySelectorAll<HTMLDetailsElement>('.om-mcp-faq details')]
+    .find(item => item.textContent?.includes(priority))!;
+  expect(faq).toBeDefined();
+  await act(async () => faq.querySelector('summary')!.click());
+  expect(faq.open).toBe(true);
+  expect(faq.textContent).toContain(exclusive);
+  expect(faq.textContent).toContain('Codex');
+  expect(faq.textContent).toContain('OpenMotion');
+});

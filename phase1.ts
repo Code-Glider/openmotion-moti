@@ -144,7 +144,7 @@ export class Phase1Service {
           revision: result.revision, versionId: result.version.versionId }, args.presentation);
         if (args.workId && args.presentation !== 'now' && args.presentation !== 'background') {
           result.previewHandoff = { ...result.previewHandoff, state: 'deferred', hostActionRequired: false, nextAction: null,
-            instructions: 'Production is still in progress. Keep the editor closed until the final authored video is complete and ready for preview. Then prepare and present the latest version with openmotion_open_preview; after MP4 export verification, present only the final video with the discovered openmotion_show_video.' };
+            instructions: 'Production is still in progress. Keep the editor closed until the final authored video is complete and ready for preview. Then prepare and present the latest version with openmotion_open_preview; after MP4 export verification, use the host-native video preview first (Codex: one final-reply embed). Only if native preview is unavailable, use the discovered openmotion_show_video instead; never present the same export through both routes.' };
         }
       }
       return result;
