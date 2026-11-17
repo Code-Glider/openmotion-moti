@@ -24,7 +24,7 @@ function inputImages(row: any): Partial<Model> {
   if (row.kind === 'image' && capabilities.edits === true) return { nativeOptions: capabilities, supportsImageReference: true, maxInputImages: max ?? 1 };
   // Only the first-frame role is implemented; the provider maximum stays visible in nativeOptions.
   if (row.kind === 'video' && max) return { nativeOptions: capabilities, maxInputImages: 1 };
-  return { nativeOptions: capabilities };
+  return { nativeOptions: capabilities, ...(row.kind === 'image' && capabilities.edits === false ? { supportsImageReference: false } : {}) };
 }
 
 /** Three-step Cloud upload: create, PUT the bytes without credentials, then commit. */

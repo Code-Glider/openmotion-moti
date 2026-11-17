@@ -100,7 +100,7 @@ test('reference counts follow each model: the published maximum, no edits, no vi
   await gateway.listModels({ provider: 'opendesign', refresh: true });
   const a = await libraryRef(store, 'a.png', 'red'), b = await libraryRef(store, 'b.png', 'blue');
   await assert.rejects(gateway.submit({ library: { references: [a, b] }, model: 'opendesign:one-ref', modality: 'image', prompt: 'x' }), /at most 1 input image$/);
-  await assert.rejects(gateway.submit({ library: { references: [a] }, model: 'opendesign:gen-only', modality: 'image', prompt: 'x' }), /does not support asset references/);
+  await assert.rejects(gateway.submit({ library: { references: [a] }, model: 'opendesign:gen-only', modality: 'image', prompt: 'x' }), /capability is unknown/);
   await assert.rejects(gateway.submit({ library: { references: [a] }, model: 'opendesign:t2v-only', modality: 'video', prompt: 'x' }), /does not accept an input image/);
   await assert.rejects(gateway.submit({ library: { references: [a, b] }, model: 'opendesign:i2v', modality: 'video', prompt: 'x' }), /at most 1 input image$/);
   assert.equal(submitted, 0);
@@ -452,4 +452,147 @@ test('a failed save-only retry keeps an earlier Cloud-terminal job non-resumable
   }
   assert.equal(posts, 1); assert.equal(gateway.active.size, 0);
   await gateway.close();
+}));
+
+test('Cloud discovery replaces legacy and removed rows, preserves unknown versus unsupported, and binds the current key', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'catalogue-fixture-key', baseUrl: 'https://cloud.example' });
+  await writeFile(path.join(gateway.root, 'catalog.json'), JSON.stringify([
+    { id: 'opendesign:legacy', provider: 'opendesign', modelId: 'legacy', modality: 'image', supportsImageReference: true },
+    { id: 'fal:retained', provider: 'fal', modelId: 'retained', modality: 'image' },
+  ]));
+  let rows = [
+    { model: 'edit', kind: 'image', capabilities: { edits: true, max_input_images: 3 } },
+    { model: 'no-edit', kind: 'image', capabilities: { edits: false } },
+    { model: 'unknown', kind: 'image', capabilities: {} },
+  ];
+  let reads = 0;
+  gateway.options.fetcher = (async (url, init) => {
+    assert.equal(String(url), 'https://cloud.example/api/v1/media/models');
+    assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer catalogue-fixture-key'); reads++;
+    return Response.json({ models: rows });
+  }) as Fetcher;
+  const first = await gateway.listModels({ provider: 'opendesign', modality: 'image' });
+  assert.deepEqual(first.models.map(model => [model.modelId, model.supportsImageReference]), [['edit', true], ['no-edit', false], ['unknown', undefined]]);
+  assert.equal(first.models[0].maxInputImages, 3);
+  assert.equal((await gateway.listModels({ provider: 'opendesign' })).warnings.length, 0); assert.equal(reads, 1);
+  rows = [rows[1]];
+  assert.deepEqual((await gateway.listModels({ provider: 'opendesign', modality: 'image', refresh: true })).models.map(model => model.modelId), ['no-edit']);
+  assert.equal((await gateway.listModels({ provider: 'fal' })).models.some(model => model.id === 'fal:retained'), true);
+  const saved = await readFile(path.join(gateway.root, 'cloud-catalog.json'), 'utf8');
+  assert.equal(saved.includes('catalogue-fixture-key'), false);
+  assert.equal(JSON.stringify(first).includes('identity'), false);
+  await gateway.close();
+}));
+
+test('Cloud catalogue coalesces reads and discards responses from a previous credential generation', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'key-A', baseUrl: 'https://cloud.example' });
+  let release!: () => void, started!: () => void, reads = 0;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  const begun = new Promise<void>(resolve => { started = resolve; });
+  gateway.options.fetcher = (async (_url, init) => {
+    reads++; const key = new Headers(init?.headers).get('Authorization');
+    if (key === 'Bearer key-A') { started(); await waiting; }
+    return Response.json({ models: [{ model: key === 'Bearer key-A' ? 'old-model' : 'new-model', kind: 'image', capabilities: { edits: true } }] });
+  }) as Fetcher;
+  const first = gateway.listModels({ provider: 'opendesign' }); await begun;
+  const second = gateway.listModels({ provider: 'opendesign' });
+  // Let the second caller reach the in-flight read before rotating the key.
+  await new Promise(resolve => setTimeout(resolve, 20)); assert.equal(reads, 1);
+  await gateway.configureProvider('opendesign', { apiKey: 'key-B' });
+  assert.equal((await gateway.listModels({ provider: 'opendesign', modality: 'image' })).models[0].modelId, 'new-model');
+  release(); const stale = await Promise.all([first, second]);
+  for (const result of stale) { assert.deepEqual(result.warnings, []); assert.equal(result.models.some(model => model.modelId === 'old-model'), false); }
+  assert.equal(reads, 2);
+  const saved = JSON.parse(await readFile(path.join(gateway.root, 'cloud-catalog.json'), 'utf8'));
+  assert.deepEqual(saved.models.map((model: any) => model.modelId), ['new-model']);
+  await gateway.close();
+}));
+
+test('Cloud catalogue failures retain only the current connection cache and never reuse it after an origin change', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  gateway.options.fetcher = (async () => Response.json({ models: [{ model: 'editing', kind: 'image', capabilities: { edits: true } }] })) as Fetcher;
+  await gateway.listModels({ provider: 'opendesign' });
+  gateway.options.fetcher = (async () => new Response(null, { status: 503 })) as Fetcher;
+  const retained = await gateway.listModels({ provider: 'opendesign', modality: 'image', refresh: true });
+  assert.equal(retained.models.length, 1); assert.match(retained.warnings.join(), /unavailable/);
+  await gateway.configureProvider('opendesign', { baseUrl: 'https://other.example' });
+  const changed = await gateway.listModels({ provider: 'opendesign', modality: 'image' });
+  assert.deepEqual(changed.models, []); assert.match(changed.warnings.join(), /unavailable/);
+  await gateway.close();
+}));
+
+test('Cloud live capabilities survive custom labels/defaults and disappear on a successful empty catalogue', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  await gateway.registerModel({ provider: 'opendesign', modelId: 'edit', label: 'My image', modality: 'image', mode: 'text-to-image', defaults: { quality: 'high' } });
+  let rows: unknown[] = [{ model: 'edit', kind: 'image', capabilities: { edits: true, max_input_images: 4 } }, { model: 'bad', kind: 'image', capabilities: { edits: 'true' } }];
+  gateway.options.fetcher = (async () => Response.json({ models: rows })) as Fetcher;
+  const result = await gateway.listModels({ provider: 'opendesign', modality: 'image' });
+  const custom = result.models.find(m => m.modelId === 'edit')!;
+  assert.equal(custom.label, 'My image'); assert.deepEqual(custom.defaults, { quality: 'high' }); assert.equal(custom.supportsImageReference, true); assert.equal(custom.maxInputImages, 4);
+  assert.equal(result.models.find(m => m.modelId === 'bad')!.supportsImageReference, undefined);
+  rows = []; const empty = await gateway.listModels({ provider: 'opendesign', modality: 'image', refresh: true });
+  assert.equal(empty.models.length, 1); assert.equal(empty.models[0].source, 'custom'); assert.equal(empty.models[0].supportsImageReference, undefined);
+  await gateway.close();
+}));
+
+test('Cloud automatic failure cooldown is bypassed by explicit sync', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  let reads = 0, fail = true;
+  gateway.options.fetcher = (async () => { reads++; return fail ? new Response(null, { status: 503 }) : Response.json({ models: [] }); }) as Fetcher;
+  await gateway.listModels({ provider: 'opendesign' }); await gateway.listModels({ provider: 'opendesign' }); assert.equal(reads, 1);
+  fail = false; assert.deepEqual((await gateway.listModels({ provider: 'opendesign', refresh: true })).warnings, []); assert.equal(reads, 2);
+  await gateway.close();
+}));
+
+test('Cloud configuration A to B to A does not accept an old A discovery response', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'key-A', baseUrl: 'https://cloud.example' });
+  let release!: () => void, started!: () => void, reads = 0;
+  const wait = new Promise<void>(resolve => { release = resolve; }), begun = new Promise<void>(resolve => { started = resolve; });
+  gateway.options.fetcher = (async () => { const first = ++reads === 1; if (first) { started(); await wait; } return Response.json({ models: [{ model: first ? 'obsolete' : 'current', kind: 'image', capabilities: { edits: true } }] }); }) as Fetcher;
+  const old = gateway.listModels({ provider: 'opendesign' }); await begun;
+  await gateway.configureProvider('opendesign', { apiKey: 'key-B' }); await gateway.configureProvider('opendesign', { apiKey: 'key-A' });
+  await gateway.listModels({ provider: 'opendesign' }); release();
+  assert.equal((await old).models.some(m => m.modelId === 'obsolete'), false);
+  assert.equal((await gateway.listModels({ provider: 'opendesign', modality: 'image' })).models[0].modelId, 'current');
+  await gateway.close();
+}));
+
+test('Cloud credential changes during submission reject before resolving any references or submitting', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'key-A', baseUrl: 'https://cloud.example' });
+  let calls = 0;
+  gateway.options.fetcher = (async () => { calls++; return Response.json({ models: [{ model: 'edit', kind: 'image', capabilities: { edits: true } }] }); }) as Fetcher;
+  await gateway.listModels({ provider: 'opendesign' });
+  const original = (gateway as any).models.bind(gateway); let reads = 0;
+  (gateway as any).models = async () => { const models = await original(); if (++reads === 2) await gateway.configureProvider('opendesign', { apiKey: 'key-B' }); return models; };
+  await assert.rejects(gateway.submit({ modality: 'image', prompt: 'x', model: 'opendesign:edit', library: { references: [{ assetId: 'missing', versionId: 'missing' }] } }), /Cloud configuration changed/);
+  assert.equal(calls, 1); assert.deepEqual(await gateway.listJobs(), []); await gateway.close();
+}));
+
+test('Cloud rows cannot survive credential rotation while other model sources are loading', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'key-A', baseUrl: 'https://cloud.example' });
+  gateway.options.fetcher = (async () => Response.json({ models: [{ model: 'old', kind: 'image', capabilities: { edits: true } }] })) as Fetcher;
+  await gateway.listModels({ provider: 'opendesign' });
+  const original = gateway.account.mediaModels.bind(gateway.account); let rotate = true;
+  gateway.account.mediaModels = async () => { if (rotate) { rotate = false; await gateway.configureProvider('opendesign', { apiKey: 'key-B' }); } return original(); };
+  const result = await gateway.listModels({ provider: 'opendesign', modality: 'image' });
+  assert.deepEqual(result.models, []); await gateway.close();
+}));
+
+test('general model discovery never waits for a pending Cloud discovery', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  await gateway.configureProvider('opendesign', { apiKey: 'fixture', baseUrl: 'https://cloud.example' });
+  let release!: () => void, started!: () => void;
+  const wait = new Promise<void>(resolve => { release = resolve; }), begun = new Promise<void>(resolve => { started = resolve; });
+  gateway.options.fetcher = (async () => { started(); await wait; return Response.json({ models: [] }); }) as Fetcher;
+  const pending = gateway.listModels({ provider: 'opendesign' }); await begun;
+  try { assert.equal((await gateway.listModels()).models.some(m => m.provider === 'codex'), true); }
+  finally { release(); await pending; await gateway.close(); }
 }));

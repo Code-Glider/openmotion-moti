@@ -228,8 +228,33 @@ try {
   await page.waitForFunction(() => document.documentElement.lang === 'zh-CN');
   await settings('模型供应商'); await page.waitForSelector('.om-provider-item'); await shot('providers-chinese-light');
   await page.setViewport({ width: 390, height: 844 }); await settings('账户'); await noOverflow(); await shot('account-chinese-mobile');
+  // Real Assets UI with a synthetic Cloud catalogue; no generation endpoint is accepted.
+  await gateway.configureProvider('opendesign', { apiKey: 'synthetic-cloud-key', baseUrl: 'https://cloud.fixture.example' });
+  let edits;
+  gateway.options.fetcher = async (url, init = {}) => {
+    assert.equal(String(url), 'https://cloud.fixture.example/api/v1/media/models');
+    assert.equal(init.method ?? 'GET', 'GET');
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer synthetic-cloud-key');
+    return Response.json({ models: [{ model: 'cloud-image-fixture', kind: 'image', capabilities: edits === undefined ? {} : { edits, max_input_images: 2 } }] });
+  };
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  await gateway.setRoute('image', 'opendesign:cloud-image-fixture');
+  await page.setViewport({ width: 1440, height: 1000 });
+  const assetsUrl = new URL(origin); assetsUrl.searchParams.set('page', 'assets');
+  await page.goto(assetsUrl.href, { waitUntil: 'domcontentloaded' });
+  await clickText('.om-asset-actions button', 'AI Create');
+  await page.waitForFunction(() => document.querySelector('.om-asset-composer')?.textContent.includes('Image editing capability is unknown'));
+  assert.equal(await page.$eval('.om-asset-direct .om-creation-reference', node => node.disabled), true);
+  await page.type('#asset-creation-prompt', 'Keep this draft while syncing');
+  await shot('cloud-reference-unknown');
+  edits = true;
+  await clickText('.om-asset-composer button', 'Sync models');
+  await page.waitForFunction(() => document.querySelector('.om-asset-direct .om-creation-reference')?.disabled === false);
+  assert.equal(await page.$eval('#asset-creation-prompt', node => node.value), 'Keep this draft while syncing');
+  await shot('cloud-reference-supported');
+  assert.deepEqual(await gateway.listJobs(), []);
   assert.deepEqual(errors, []);
-  await writeFile(path.join(output, 'result.json'), JSON.stringify({ status: 'passed', lane, checks: ['persistent editor shell and paused background playback', 'account menu', 'provider and capability filters', 'custom provider CRUD', 'private saved credentials', 'live protocol fixture discovery', 'manual model', 'reload-persisted model and default', 'account/BYOK provider and model switching', 'real subprocess authorization fixture', 'billing and registered account models', 'sign out', 'both themes', 'English and Chinese', '390px responsive settings and dialogs', 'loading and error recovery in both themes', 'dismissible floating errors above dialogs', 'keyboard settings shortcut'], paidCalls: false, liveAccount: false }, null, 2));
+  await writeFile(path.join(output, 'result.json'), JSON.stringify({ status: 'passed', lane, checks: ['persistent editor shell and paused background playback', 'account menu', 'provider and capability filters', 'custom provider CRUD', 'private saved credentials', 'live protocol fixture discovery', 'manual model', 'reload-persisted model and default', 'account/BYOK provider and model switching', 'real subprocess authorization fixture', 'billing and registered account models', 'sign out', 'both themes', 'English and Chinese', '390px responsive settings and dialogs', 'loading and error recovery in both themes', 'dismissible floating errors above dialogs', 'keyboard settings shortcut', 'Cloud unknown-to-supported reference sync preserves the draft without generation'], paidCalls: false, liveAccount: false }, null, 2));
   console.log('Settings browser end-to-end checks passed. No live account or paid provider was used.');
 } catch (error) {
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ status: 'failed', lane, error: String(error), paidCalls: false, liveAccount: false }, null, 2));
