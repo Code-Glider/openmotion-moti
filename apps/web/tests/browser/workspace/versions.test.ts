@@ -279,6 +279,9 @@ it("restores complete native source/fonts/media as a new version, saves drafts, 
     await readyVersions();
   }
   await modal.getByRole("button", { name: `v${target.number}`, exact: true }).click();
+  expect(await modal.getByRole("button", { name: `v${target.number}`, exact: true }).getAttribute("class")).toContain(
+    "om-button--selected",
+  );
   await driver.capture("content-versions-before-restore");
   const requests: string[] = [];
   let lost = true;

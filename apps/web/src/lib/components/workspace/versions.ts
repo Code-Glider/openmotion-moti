@@ -149,6 +149,7 @@ export class Versions {
       const row = slot(document, "stack"),
         select = button(document, {
           label: this.label(version),
+          selected: version.id === this.selected,
           onClick: () => {
             this.selected = version.id;
             this.paint();
@@ -157,7 +158,6 @@ export class Versions {
         }),
         current = version.id === this.page?.current.id,
         kinds = { create: "创建", edit: "编辑", undo: "撤销", redo: "重做", restore: "恢复", legacy: "既有快照" };
-      select.setAttribute("aria-pressed", String(version.id === this.selected));
       row.setAttribute("role", "listitem");
       row.append(
         select,
