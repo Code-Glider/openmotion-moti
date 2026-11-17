@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { inputModalities, modelCapabilities, modelKinds, type DirectoryModel, type ModelKind, type ProviderConnection } from '../../../shared/provider-directory';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -14,19 +14,40 @@ const limits = [
   { key: 'maxOutputTokens', label: 'Max output tokens', presets: [16384, 32768, 65536, 128000, 256000] },
 ] as const;
 
-export function ModelEditor({ provider, model, onClose, save, onError }: { provider: ProviderConnection; model?: DirectoryModel; onClose: () => void; save: (input: unknown) => Promise<boolean>; onError: (message: string) => void }) {
+function parseDefaults(value: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch { return null; }
+}
+
+export function ModelEditor({ provider, model, onClose, save }: { provider: ProviderConnection; model?: DirectoryModel; onClose: () => void; save: (input: unknown) => Promise<boolean> }) {
   const { t } = useI18n();
   const [id, setId] = useState(model?.modelId ?? ''), [label, setLabel] = useState(model?.label ?? ''), [group, setGroup] = useState(model?.group ?? '');
   const [kind, setKind] = useState<ModelKind>(model?.kind ?? (provider.protocol === 'media' ? 'image' : 'text'));
   const [capabilities, setCapabilities] = useState(model?.capabilities ?? []), [inputs, setInputs] = useState(model?.inputs ?? []);
   const [tokens, setTokens] = useState(Object.fromEntries(limits.map(({ key }) => [key, model?.[key]?.toString() ?? ''])));
   const [defaults, setDefaults] = useState(JSON.stringify(model?.defaults ?? {}, null, 2)), [advanced, setAdvanced] = useState(Boolean(model)), [busy, setBusy] = useState(false);
+  const [defaultsInvalid, setDefaultsInvalid] = useState(false);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const defaultsRef = useRef<HTMLTextAreaElement>(null);
+  const defaultsId = useId();
+  useEffect(() => {
+    if (!focusRequest) return;
+    defaultsRef.current?.focus();
+    defaultsRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [focusRequest]);
   const field = (title: string, value: string, change: (value: string) => void, required = false, disabled = false) => <label className="om-label">{t(title)}<span className="om-field"><input aria-label={t(title)} value={value} onChange={e => change(e.target.value)} required={required} disabled={disabled} autoComplete="off" spellCheck={false} /></span></label>;
   return <SettingsDialog title={t(model ? 'Edit model' : 'Add model')} onClose={onClose}><form className="om-provider-form" onSubmit={async event => {
     event.preventDefault();
-    let parameters: unknown;
-    try { parameters = JSON.parse(defaults); if (!parameters || Array.isArray(parameters) || typeof parameters !== 'object') throw new Error(); }
-    catch { onError(t('Default parameters must be a JSON object')); return; }
+    const parameters = parseDefaults(defaults);
+    if (!parameters) {
+      setDefaultsInvalid(true);
+      setAdvanced(true);
+      setFocusRequest(value => value + 1);
+      return;
+    }
+    setDefaultsInvalid(false);
     setBusy(true);
     try { if (await save({ id: model?.id, modelId: id.trim(), label: label.trim() || id.trim(), kind, group, capabilities, inputs, ...Object.fromEntries(limits.map(({ key }) => [key, tokens[key] ? Number(tokens[key]) : null])), defaults: parameters })) onClose(); }
     finally { setBusy(false); }
@@ -42,7 +63,11 @@ export function ModelEditor({ provider, model, onClose, save, onError }: { provi
         <div className="om-label">{t('Input modalities')}<div className="om-settings-tags">{inputModalities.map(value => <button type="button" className="om-button" key={value} aria-pressed={inputs.includes(value)} onClick={() => setInputs(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}><RemixIcon name={capabilityIcons[value]} size={14} />{t(capabilityLabels[value])}</button>)}</div></div>
       </div>
       <div className="om-card om-card-stack">{limits.map(({ key, label: title, presets }) => <label className="om-label" key={key}>{t(title)}<span className="om-settings-tags">{presets.map(value => <button key={value} type="button" className="om-button" aria-label={`${t(title)}: ${value}`} aria-pressed={tokens[key] === String(value)} onClick={() => setTokens(current => ({ ...current, [key]: String(value) }))}>{value >= 1000000 ? `${value / 1000000}M` : `${[262144, 524288, 16384, 32768, 65536].includes(value) ? value / 1024 : value / 1000}K`}</button>)}</span><span className="om-field"><input aria-label={t(title)} type="number" min="1" max="100000000" step="1" value={tokens[key]} onChange={event => setTokens(current => ({ ...current, [key]: event.target.value }))} /></span></label>)}<p className="om-muted">{t('Token limits describe this model. They do not change the provider’s actual limits.')}</p></div>
-      <label className="om-label">{t('Default request parameters (JSON)')}<span className="om-field om-code-field"><textarea aria-label={t('Default request parameters (JSON)')} rows={5} spellCheck={false} value={defaults} onChange={event => setDefaults(event.target.value)} /></span><small className="om-muted">{t('Use the provider’s parameter names. Per-request values override these defaults. Language model settings are saved for integrations; local Agents manage their own parameters.')}</small></label>
+      <label className="om-label">{t('Default request parameters (JSON)')}<span className="om-field om-code-field"><textarea ref={defaultsRef} aria-label={t('Default request parameters (JSON)')} aria-invalid={defaultsInvalid || undefined} aria-describedby={`${defaultsId}-help${defaultsInvalid ? ` ${defaultsId}-error` : ''}`} rows={5} spellCheck={false} value={defaults} onChange={event => {
+        const value = event.target.value;
+        setDefaults(value);
+        if (defaultsInvalid && parseDefaults(value)) setDefaultsInvalid(false);
+      }} /></span><small id={`${defaultsId}-error`} className="om-field-error" role={defaultsInvalid ? 'alert' : undefined}>{defaultsInvalid ? t('Enter a valid JSON object.') : null}</small><small id={`${defaultsId}-help`} className="om-muted">{t('Use the provider’s parameter names. Per-request values override these defaults. Language model settings are saved for integrations; local Agents manage their own parameters.')}</small></label>
     </div>}
     <div className="om-dialog-actions"><button className="om-button" type="button" disabled={busy} onClick={onClose}>{t('Cancel')}</button><button className="om-button" data-primary disabled={busy || !id.trim()}>{t(busy ? 'Saving…' : model ? 'Save model' : 'Add model')}</button></div>
   </form></SettingsDialog>;

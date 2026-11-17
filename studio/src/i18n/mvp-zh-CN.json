@@ -1232,5 +1232,6 @@
   "No overlapping voice to duck under.": "没有重叠的人声可供避让。",
   "Could not group the voices to duck under.": "未能将要避让的人声分组。",
   "This clip's volume is automated. Remove its volume automation to normalize it.": "此片段的音量由自动化控制，请先移除音量自动化，再统一响度。",
+  "Enter a valid JSON object.": "请输入有效的 JSON 对象。",
   "Could not measure this clip": "未能测量此片段的响度"
 }

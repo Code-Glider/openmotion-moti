@@ -115,8 +115,8 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     </section>
     {provider.custom && <div className="om-settings-row om-provider-remove"><span className="om-muted">{t('Remove this provider and its saved models from this workspace.')}</span><button className="om-button" disabled={busy} onClick={() => setRemoving(true)}>{t('Delete provider')}</button></div>}
     {removing && <SettingsDialog title={t('Delete provider')} onClose={() => setRemoving(false)}><p className="om-muted">{t('This removes the saved key and models. Existing project media is kept.')}</p><div className="om-settings-actions"><button className="om-button" onClick={() => setRemoving(false)}>{t('Cancel')}</button><button className="om-button" data-primary disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'DELETE'), 'Provider deleted').then(ok => { if (ok) onRemoved(); })}>{t('Delete')}</button></div></SettingsDialog>}
-    {editing && <ModelEditor provider={provider} model={editing} onClose={() => setEditing(null)} onError={message => showToast(message, 'error')} save={input => change(() => gatewayRequest('settings/models', 'PATCH', input), 'Model updated')} />}
-    {addModel && <ModelEditor onError={message => showToast(message, 'error')} provider={provider} onClose={() => setAddModel(false)} save={input => change(() => gatewayRequest(`settings/providers/${provider.id}/models`, 'POST', input), 'Model added')} />}
+    {editing && <ModelEditor provider={provider} model={editing} onClose={() => setEditing(null)} save={input => change(() => gatewayRequest('settings/models', 'PATCH', input), 'Model updated')} />}
+    {addModel && <ModelEditor provider={provider} onClose={() => setAddModel(false)} save={input => change(() => gatewayRequest(`settings/providers/${provider.id}/models`, 'POST', input), 'Model added')} />}
   </div>;
 }
 

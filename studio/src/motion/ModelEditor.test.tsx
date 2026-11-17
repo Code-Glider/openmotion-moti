@@ -9,13 +9,13 @@ import type { DirectoryModel, ProviderConnection } from '../../../shared/provide
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
 afterEach(() => { act(() => root?.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); });
-async function mount(child: React.ReactNode) { const host = document.createElement('div'); document.body.append(host); root = createRoot(host); await act(async () => root.render(<I18nProvider initialLocale="en">{child}</I18nProvider>)); }
+async function mount(child: React.ReactNode, locale: 'en' | 'zh-CN' = 'en') { const host = document.createElement('div'); document.body.append(host); root = createRoot(host); await act(async () => root.render(<I18nProvider initialLocale={locale}>{child}</I18nProvider>)); }
 function button(label: string) { const value = [...document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.getAttribute('aria-label') === label || item.textContent?.trim() === label); expect(value).toBeTruthy(); return value!; }
 async function fill(label: string, value: string) { await act(async () => { const input = document.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value); input.dispatchEvent(new Event('input', { bubbles: true })); }); }
 const provider = { id: 'test', label: 'Test', protocol: 'openai', kinds: ['text'] } as ProviderConnection;
 it('saves grouping, classification, exact token limits and default parameters through one model form', async () => {
   const save = vi.fn(async () => true), close = vi.fn();
-  await mount(<ModelEditor provider={provider} save={save} onClose={close} onError={vi.fn()} />);
+  await mount(<ModelEditor provider={provider} save={save} onClose={close} />);
   await fill('Model ID', 'test-model'); await fill('Display name', 'My model'); await fill('Group name', 'Research');
   await act(async () => button('More settings').click());
   await act(async () => button('Reasoning').click()); await act(async () => button('Vision').click());
@@ -35,4 +35,72 @@ it('combines independent model filters, removes chips and retains group expansio
   await act(async () => button('Clear filters').click());
   await act(async () => button('Collapse all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(0);
   await act(async () => button('Expand all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(3);
+});
+
+async function fillDefaults(value: string) {
+  await act(async () => {
+    const input = document.querySelector('textarea')!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+async function submitModel() {
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+}
+it.each(['{', '[]', 'null', '42', '"text"', 'true', ''])('keeps invalid JSON %j beside its field without saving', async value => {
+  const save = vi.fn(async () => true), close = vi.fn();
+  await mount(<ModelEditor provider={provider} save={save} onClose={close} />);
+  await fill('Model ID', 'test-model');
+  await act(async () => button('More settings').click());
+  await fillDefaults(value);
+  await submitModel();
+  const input = document.querySelector('textarea')!;
+  const error = document.querySelector('[role="alert"]')!;
+  expect(error.textContent).toBe('Enter a valid JSON object.');
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(input.getAttribute('aria-describedby')?.split(' ')).toContain(error.id);
+  expect(input.value).toBe(value);
+  expect(document.activeElement).toBe(input);
+  expect(save).not.toHaveBeenCalled();
+  expect(close).not.toHaveBeenCalled();
+});
+it.each([false, true])('expands and focuses hidden invalid JSON on every submit (editing: %s)', async editing => {
+  const save = vi.fn(async () => true), close = vi.fn();
+  const model = editing ? { id: 'test:model', modelId: 'model', defaults: {} } as DirectoryModel : undefined;
+  await mount(<ModelEditor provider={provider} model={model} save={save} onClose={close} />);
+  if (!editing) {
+    await fill('Model ID', 'model');
+    await act(async () => button('More settings').click());
+  }
+  await fillDefaults('{"temperature":');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await act(async () => button('More settings').click());
+    expect(document.querySelector('textarea')).toBeNull();
+    await submitModel();
+    expect(button('More settings').getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(document.querySelector('textarea'));
+    expect(document.querySelector('textarea')!.value).toBe('{"temperature":');
+    expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  }
+  await fillDefaults('[]');
+  expect(document.querySelector('[role="alert"]')).not.toBeNull();
+  await fillDefaults('{"temperature":0.7}');
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect(document.querySelector('textarea')!.hasAttribute('aria-invalid')).toBe(false);
+  await submitModel();
+  expect(save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ defaults: { temperature: 0.7 } }));
+  expect(close).toHaveBeenCalledOnce();
+});
+it('localizes the inline error in Chinese and retains valid input when saving fails', async () => {
+  const save = vi.fn(async () => false), close = vi.fn();
+  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={save} onClose={close} />, 'zh-CN');
+  await fillDefaults('null');
+  await submitModel();
+  expect(document.querySelector('[role="alert"]')!.textContent).toBe('请输入有效的 JSON 对象。');
+  await fillDefaults('{"temperature":0.5}');
+  await submitModel();
+  expect(save).toHaveBeenCalledOnce();
+  expect(close).not.toHaveBeenCalled();
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect(document.querySelector('textarea')!.value).toBe('{"temperature":0.5}');
 });
