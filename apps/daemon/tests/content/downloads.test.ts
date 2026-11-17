@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,9 +6,14 @@ import { channel, digest, namespace } from "@odsuite/protocol";
 import { managerEndpoint, observeProcesses, serve } from "@odsuite/sidecar";
 import type { Job, RenderMethods } from "@open-motion/render/contract";
 import { initialFiles } from "@open-motion/workspace";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { serve as daemonServe } from "@/service.js";
 import { Client } from "@/transport/client.js";
+
+vi.mock("node:crypto", async (load) => {
+  const actual = await load<typeof import("node:crypto")>();
+  return { ...actual, createHash: vi.fn(actual.createHash) };
+});
 
 it("reads fixed film ranges after later edits, renews links and never submits or retries an export", async () => {
   // Synthetic bytes qualify binary transport only, never native encoding or player playback.
@@ -126,6 +131,7 @@ it("reads fixed film ranges after later edits, renews links and never submits or
     const attachment = await fetch(first.ticket.url, { method: "HEAD" });
     expect(attachment.headers.get("content-disposition")).toContain("attachment;");
     expect(attachment.headers.get("etag")).toBe(etag);
+    const verifiedHashCount = vi.mocked(createHash).mock.calls.length;
     for (const [range, start, end] of [
       ["bytes=0-3", 0, 4],
       ["bytes=4-", 4, bytes.length],
@@ -138,6 +144,7 @@ it("reads fixed film ranges after later edits, renews links and never submits or
       expect(response.headers.get("content-range")).toBe(`bytes ${start}-${end - 1}/${bytes.length}`);
       expect(Buffer.from(await response.arrayBuffer())).toEqual(bytes.subarray(start, end));
     }
+    expect(vi.mocked(createHash).mock.calls.length).toBe(verifiedHashCount);
     for (const range of [
       "bytes=",
       "bytes=-0",
@@ -172,14 +179,17 @@ it("reads fixed film ranges after later edits, renews links and never submits or
     expect(reads).toEqual([first.job.id, second.job.id, first.job.id]);
     expect(jobs.size).toBe(2);
     // Same-size corruption outside the requested range must still refuse all bytes.
+    const beforeCorruption = vi.mocked(createHash).mock.calls.length;
     await writeFile(join(rendererRoot, "exports", `${first.ticket.film.id}.mp4`), Buffer.alloc(bytes.length));
     const corrupt = await fetch(renewed.url, { headers: { range: "bytes=0-1" } });
     expect(corrupt.status).not.toBe(206);
     expect(await corrupt.text()).not.toContain(rendererRoot);
+    expect(vi.mocked(createHash).mock.calls.length).toBe(beforeCorruption + 1);
     await writeFile(join(rendererRoot, "exports", `${first.ticket.film.id}.mp4`), bytes);
     const recovered = await fetch(renewed.url, { headers: { range: "bytes=0-1" } });
     expect(recovered.status).toBe(206);
     expect(Buffer.from(await recovered.arrayBuffer())).toEqual(bytes.subarray(0, 2));
+    expect(vi.mocked(createHash).mock.calls.length).toBe(beforeCorruption + 2);
     expect(reads).toHaveLength(3);
     await manager.close();
     expect(await observeProcesses(root)).toEqual([]);
