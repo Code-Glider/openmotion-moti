@@ -383,7 +383,7 @@ export function FontRow({
             <CopyChip feedback={copyFeedback} asset={asset} />
           </div>
         </div>
-        {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} />}
+        {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} compact />}
       </div>
 
       {contextMenu && (

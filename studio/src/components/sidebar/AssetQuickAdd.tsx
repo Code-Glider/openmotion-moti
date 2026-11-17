@@ -6,7 +6,7 @@ import { StudioToastViewport } from "../StudioToastViewport";
 import { IconButton, Tooltip } from "../ui";
 
 /** Explicit insertion stays separate from the thumbnail's preview and drag gestures. */
-export function AssetQuickAdd({ asset, onAdd }: { asset: string; onAdd: (path: string) => unknown }) {
+export function AssetQuickAdd({ asset, onAdd, compact = false }: { asset: string; onAdd: (path: string) => unknown; compact?: boolean }) {
   const { t } = useI18n();
   const busy = useRef(false);
   const [adding, setAdding] = useState(false);
@@ -26,11 +26,11 @@ export function AssetQuickAdd({ asset, onAdd }: { asset: string; onAdd: (path: s
   };
   const label = t(adding ? "Adding…" : "Add at playhead");
   return <>
-    <div className="om-media-quick-actions" data-busy={adding || undefined}>
+    <div className="om-media-quick-actions" data-busy={adding || undefined} data-compact={compact || undefined}>
       <Tooltip label={label} wrap>
         <IconButton type="button" variant="primary" className="om-media-quick-add"
           aria-label={label} aria-busy={adding} disabled={adding} draggable={false}
-          icon={<RemixIcon name="add-line" size={16} />}
+          icon={<RemixIcon name="add-line" size={compact ? 14 : 16} />}
           onPointerDown={event => event.stopPropagation()}
           onPointerUp={event => event.stopPropagation()}
           onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}

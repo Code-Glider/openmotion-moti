@@ -25,6 +25,11 @@
 .om-media-quick-actions .om-media-quick-add:hover {
   background: var(--motion-neutral-n11);
 }
+.om-media-quick-actions[data-compact] .om-media-quick-add {
+  width: var(--motion-space-24);
+  height: var(--motion-space-24);
+  min-width: var(--motion-space-24);
+}
 .motion-asset-thumbnail:hover .om-media-quick-add,
 .motion-asset-thumbnail:focus-within .om-media-quick-add,
 [draggable]:focus-visible > .motion-asset-thumbnail .om-media-quick-add,
