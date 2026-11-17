@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { channel, digest, namespace } from "@odsuite/protocol";
@@ -15,7 +15,8 @@ it("preserves running export intent after SIGKILL and requires actual sidecar re
   const evidence = fileURLToPath(new URL(`../../../../.artifacts/export-crash/${randomUUID()}/`, import.meta.url)),
     root = join(evidence, "sidecar"),
     scope = { channel: channel("dev"), namespace: namespace("export-crash") },
-    entry = join(evidence, "host.mjs");
+    entry = join(evidence, "host.mjs"),
+    checkpoint = join(evidence, "native-loading");
   await mkdir(evidence, { recursive: true });
   const resource = {
     type: "directory" as const,
@@ -23,8 +24,9 @@ it("preserves running export intent after SIGKILL and requires actual sidecar re
   };
   await writeFile(
     entry,
-    `import {open} from ${JSON.stringify(new URL("../../dist/index.mjs", import.meta.url).href)};
-const tool={resource:${JSON.stringify(resource)},executable:"tool",load:async(signal)=>new Promise((resolve,reject)=>signal.addEventListener("abort",()=>reject(signal.reason),{once:true}))};
+    `import {writeFile} from "node:fs/promises";
+import {open} from ${JSON.stringify(new URL("../../dist/index.mjs", import.meta.url).href)};
+const tool={resource:${JSON.stringify(resource)},executable:"tool",load:async(signal)=>{await writeFile(${JSON.stringify(checkpoint)},"loading",{flag:"wx",flush:true});return new Promise((resolve,reject)=>signal.addEventListener("abort",()=>reject(signal.reason),{once:true}))}};
 const runtime=await open({root:${JSON.stringify(root)},scope:${JSON.stringify(scope)},version:"0.6.1-dev.1",tools:{browser:tool,ffmpeg:tool,ffprobe:tool}});
 process.stdout.write(JSON.stringify(await runtime.status())+"\\n");
 process.once("SIGTERM",()=>{runtime.close().then(()=>{process.exitCode=0}).catch(e=>{process.stderr.write(e.message);process.exitCode=1})});`,
@@ -82,6 +84,20 @@ process.once("SIGTERM",()=>{runtime.close().then(()=>{process.exitCode=0}).catch
         { timeout: 15000 },
       )
       .toBe(true);
+    // The ready witness precedes the Blob staging publication. Kill only at the declared qualified cutpoint.
+    await expect
+      .poll(
+        async () => {
+          try {
+            return await readFile(checkpoint, "utf8");
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+            throw error;
+          }
+        },
+        { timeout: 15000 },
+      )
+      .toBe("loading");
     const exited = new Promise<void>((done) => child.once("exit", () => done()));
     child.kill("SIGKILL");
     await exited;
@@ -115,7 +131,11 @@ process.once("SIGTERM",()=>{runtime.close().then(()=>{process.exitCode=0}).catch
     await writeFile(
       join(evidence, "result.json"),
       JSON.stringify(
-        { job: await runtime.execute("export_read", { ...owner, id: job.id }), recovery: plan.fingerprint },
+        {
+          job: await runtime.execute("export_read", { ...owner, id: job.id }),
+          recovery: plan.fingerprint,
+          cutpoint: "published-native-loader",
+        },
         null,
         2,
       ),
