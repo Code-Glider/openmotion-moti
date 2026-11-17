@@ -224,7 +224,7 @@
   const timeline = gsap.timeline({ paused: true });
   timeline.to(clock, { time: DURATION, duration: DURATION, ease: 'none', onUpdate: () => render(clock.time) }, 0);
   window.__timelines = window.__timelines || {};
-  window.__timelines.main = timeline;
+  window.__timelines["granola-voice-typing"] = timeline;
   window.__templateScene = { render, duration: DURATION, fps: FPS, scenes, typing, appStops, grayKeys, closingStart: CLOSING_START, waveEnd: WAVE_END };
   render(0);
 })();

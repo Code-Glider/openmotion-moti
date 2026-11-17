@@ -89,8 +89,8 @@
   "files": [
     {
       "path": "assets/as-code.js",
-      "bytes": 4013,
-      "sha256": "adda652f67e7a9408147d1fac56e0501f2c08cd5c5af7ee759627c2ae8222fa8"
+      "bytes": 4028,
+      "sha256": "61eba977ae650f8297c4192e9e233b2ae9b7e72d89ed2d4eab08d73ea1756ed4"
     },
     {
       "path": "assets/fonts/Inter-400.woff2",
@@ -184,8 +184,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 6608,
-      "sha256": "97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074"
+      "bytes": 6649,
+      "sha256": "f0ac803ca0d0f07e0808ade3760a0c933a17438dfa17bdf4ff1db4e2d6719019"
     },
     {
       "path": "motion.md",

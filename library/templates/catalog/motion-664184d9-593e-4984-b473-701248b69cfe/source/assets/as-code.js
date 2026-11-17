@@ -299,7 +299,7 @@ async function buildBoltSkills() {
   const timeline = gsap.timeline({paused: true, onUpdate: () => render(clock.time)});
   timeline.to(clock, {time: 1289 / 30, duration: 1289 / 30, ease: 'none'}, 0);
   window.__timelines = window.__timelines || {};
-  window.__timelines.main = timeline;
+  window.__timelines["bolt-skills-213"] = timeline;
   render(0);
   byId('root').dataset.ready = 'true';
 }

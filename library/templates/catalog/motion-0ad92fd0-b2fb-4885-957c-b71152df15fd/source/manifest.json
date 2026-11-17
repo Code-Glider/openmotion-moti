@@ -88,8 +88,8 @@
   "files": [
     {
       "path": "assets/as-code.js",
-      "bytes": 18078,
-      "sha256": "b0139217498c0a7e3c038708b9a4dcc6c34941c02b5c290025536ec6b15d3319"
+      "bytes": 18097,
+      "sha256": "a8aeb386fa3697f3af89eae92c9bfb6f5c0b6fed737b8ae9f41092149060654b"
     },
     {
       "path": "assets/fonts/EBGaramond-400.woff2",
@@ -167,6 +167,11 @@
       "sha256": "8d86851992b9e01f3a8e8e9a5ea7fdb8e9d0b6cfe2a6c54efc2446f734bee47b"
     },
     {
+      "path": "compositions/catalog-scene.html",
+      "bytes": 5665,
+      "sha256": "a1d8973cebb1c0e896929805140941936b5a1d262438610c2197a47ac7939569"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -198,8 +203,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 6444,
-      "sha256": "24a3a2676a823759245aad9b7c31c8a3551913eec204acf6435b3164eb60f212"
+      "bytes": 1270,
+      "sha256": "91bf58b1312ec1a9fe983e1fad3be9231edb47be9fb725e1418a1437e7024850"
     },
     {
       "path": "motion.md",

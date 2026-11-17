@@ -29,16 +29,16 @@
     },
     "folderPath": "motion-template/P0-20261111/",
     "folderId": "6acca2cc-3a31-45f4-b931-6d6a59e36044",
-    "indexUrl": "https://r.open-design.ai/files/97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074",
+    "indexUrl": "https://r.open-design.ai/files/f0ac803ca0d0f07e0808ade3760a0c933a17438dfa17bdf4ff1db4e2d6719019",
     "jsUrl": null,
     "cssUrl": null,
     "files": [
       {
         "path": "assets/as-code.js",
         "mimeType": "text/javascript",
-        "bytes": 4013,
-        "sha256": "adda652f67e7a9408147d1fac56e0501f2c08cd5c5af7ee759627c2ae8222fa8",
-        "url": "https://r.open-design.ai/files/adda652f67e7a9408147d1fac56e0501f2c08cd5c5af7ee759627c2ae8222fa8"
+        "bytes": 4028,
+        "sha256": "61eba977ae650f8297c4192e9e233b2ae9b7e72d89ed2d4eab08d73ea1756ed4",
+        "url": "https://r.open-design.ai/files/61eba977ae650f8297c4192e9e233b2ae9b7e72d89ed2d4eab08d73ea1756ed4"
       },
       {
         "path": "assets/fonts/Inter-400.woff2",
@@ -78,9 +78,9 @@
       {
         "path": "index.html",
         "mimeType": "text/html",
-        "bytes": 6608,
-        "sha256": "97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074",
-        "url": "https://r.open-design.ai/files/97cea44110e3e263ce759eeb287282626372e4bdc568b007b816283ed4b8e074"
+        "bytes": 6649,
+        "sha256": "f0ac803ca0d0f07e0808ade3760a0c933a17438dfa17bdf4ff1db4e2d6719019",
+        "url": "https://r.open-design.ai/files/f0ac803ca0d0f07e0808ade3760a0c933a17438dfa17bdf4ff1db4e2d6719019"
       },
       {
         "path": "assets/fonts/OFL-inter.txt",
@@ -94,7 +94,7 @@
     "coverUrl": "https://r.open-design.ai/files/06a5c90348b264b8cb1aa3462da2f74e8cd53f755faa0be428eb9cfd16252b57",
     "motionDocumentUrl": "https://r.open-design.ai/files/5faf0044d2c001ef705a4a8785f18eff39057d856d1239dec7204cfa36c17824",
     "motionGuideUrl": "https://r.open-design.ai/files/2a3f6d4a8ccbb1b92ef8de4856fa2ce1de0bee05f1d53ef02bdeb269912360ba",
-    "projectFileUrl": "https://r.open-design.ai/files/a8539895969bffc9d44e166254d436e11b1721e97f6646b25561a42d384121f1",
+    "projectFileUrl": "https://r.open-design.ai/files/e7f6b337ee2c67719d75fc43fa78917a8ecb8ffea03ee2f06feb95080c352652",
     "brand": "Google",
     "colors": [
       "purple",

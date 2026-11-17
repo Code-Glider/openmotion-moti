@@ -757,7 +757,7 @@ async function initialize() {
   const timeline = gsap.timeline({ paused: true });
   timeline.fromTo(clock, { time: 0 }, { time: DURATION, duration: DURATION, ease: 'none', onUpdate: () => renderAt(clock.time) }, 0);
   window.__timelines = window.__timelines || {};
-  window.__timelines.main = timeline;
+  window.__timelines["lark-magic-share"] = timeline;
   window.addEventListener('hf-seek', event => renderAt(event.detail.time));
   canvas.dataset.ready = 'true';
   renderAt(0);

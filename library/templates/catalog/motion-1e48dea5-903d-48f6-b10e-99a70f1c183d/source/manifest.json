@@ -123,8 +123,8 @@
     },
     {
       "path": "assets/magic-share.js",
-      "bytes": 38983,
-      "sha256": "30d5d81a4b6a04c91529b8b352f6621b268ceda203a173b321eb4de8a7caf790"
+      "bytes": 38998,
+      "sha256": "e070e2dd5862d997fae336ca93b4ff79e948ff5980198b4d5c4e975d592f8f7d"
     },
     {
       "path": "assets/reference-1.webp",
@@ -177,6 +177,11 @@
       "sha256": "c8211c69345d2e9949dc7a8ac969380497aa0600a5a8ac6a459c8cd02dd9cb8a"
     },
     {
+      "path": "compositions/catalog-scene.html",
+      "bytes": 4610,
+      "sha256": "bc7667dd48041110956c8cd724e8119b91de7d3a6a6daedfb91bdbbce0a5fde1"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -218,8 +223,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 6277,
-      "sha256": "6b083bcf5f7e49d1a073ed1e75d50488a062024fc38069ee970b7b6a62628b9c"
+      "bytes": 2117,
+      "sha256": "d30f4b93a2dd8620bf5cdf5ae80119fea613524310db3ca7cf62f37b73e31f1a"
     },
     {
       "path": "motion.md",

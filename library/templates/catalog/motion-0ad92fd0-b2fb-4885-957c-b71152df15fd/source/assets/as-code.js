@@ -328,7 +328,7 @@ async function buildDia() {
   const timeline = gsap.timeline({paused: true});
   timeline.to(clock, {time: 1441 / 60, duration: 1441 / 60, ease: 'none', onUpdate: () => renderAt(clock.time)});
   window.__timelines = window.__timelines || {};
-  window.__timelines.main = timeline;
+  window.__timelines["dia-introduction-183"] = timeline;
   renderAt(0);
   root.dataset.ready = 'true';
 }

@@ -133,8 +133,8 @@
     },
     {
       "path": "assets/motion.js",
-      "bytes": 11752,
-      "sha256": "5ffcc7c88f323f8b7c0237fcd120cf203f7203ed938cab44b83b94f286cf02c6"
+      "bytes": 11771,
+      "sha256": "9f3c97c5a337c3381c4c78d0ee04699fb676ead21a38d016aa70df51d984e05a"
     },
     {
       "path": "assets/OFL-caveat.txt",
@@ -187,6 +187,11 @@
       "sha256": "2ab1aa8b3ffa31c97403bd9a2c97c7987513623192902cb67ce77e024c0a9d1b"
     },
     {
+      "path": "compositions/catalog-scene.html",
+      "bytes": 18939,
+      "sha256": "44835ed919380194d3ee4f9f3a8647f557d424cc0b9ac4aeb09aa9f8c92e21d4"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -218,8 +223,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 19970,
-      "sha256": "59ee28bd29d9015a0a473169b79860d4d3c25173a3ab0ab6c339815356dc1a2b"
+      "bytes": 1516,
+      "sha256": "f5f723400842a5958168695385d5a6c540dfc1f2cf6e6688848a290125ed13d6"
     },
     {
       "path": "motion.md",

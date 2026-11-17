@@ -88,8 +88,8 @@
   "files": [
     {
       "path": "assets/as-code.js",
-      "bytes": 20087,
-      "sha256": "fd01ca2f3c5f23e49b7afedefaf782f7bf6910fc926d3fa33c465f349148a396"
+      "bytes": 20101,
+      "sha256": "e7e246ddade56a98b1135ea53412bf4f2849e25a8db53ef0f7a7dd50190e33ac"
     },
     {
       "path": "assets/fonts/Inter-variable-latin.woff2",
@@ -167,6 +167,11 @@
       "sha256": "d5c5f565a59df1e54f803467b26b7a5a08cc9561e813ebf256b2a3a568e76823"
     },
     {
+      "path": "compositions/catalog-scene.html",
+      "bytes": 11109,
+      "sha256": "fff17806695c66a27afc8f180cfa3d7df1ff1828f8d4b780e524158b6078e6e0"
+    },
+    {
       "path": "demos/bridge.js",
       "bytes": 1657,
       "sha256": "b297fdbeb26a4f8658081f0e00920363bf0398d8c9eef1e2ff7c79a141ce243c"
@@ -203,8 +208,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 11939,
-      "sha256": "8fd04602a885147085a804cb22b5011d6752701bf9fe064a043e8f125e9e0656"
+      "bytes": 1314,
+      "sha256": "d262f8e1b23b81ca221221db29f1ae880273177fa05cc59f1b20f40839a82d96"
     },
     {
       "path": "motion.md",
