@@ -1,12 +1,42 @@
 import type { TimelineElement } from "../store/playerStore";
 import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
-import { linkedOverlayKeys, mainVisualTrack } from "./timelineLinkage";
+import { mainVisualTrack } from "./timelineLinkage";
+import { linkedMembersOf } from "./audioClipLink";
+import { classifyZone } from "./timelineZones";
+import { createTimelineClipIndex, queryTimelineClipIndex } from "../lib/timelineClipIndex";
+import { getTimelineElementIndexes } from "../lib/timelineElementIndexes";
 import { clampToHostStart, savedClipEdges } from "../store/timelineElement";
 
 export interface MainTrackReorder {
   slot: number;
   start: number;
   changes: readonly { element: TimelineElement; start: number }[];
+}
+
+const keyOf = (el: TimelineElement) => el.key ?? el.id;
+const sources = new WeakMap<readonly TimelineElement[], ReturnType<typeof prepareSource>>();
+
+/** Gesture-stable ownership is indexed once, not rediscovered for every shifted
+ * host on every pointer frame. The shared interval index preserves half-open edges. */
+function prepareSource(elements: readonly TimelineElement[]) {
+  const main = mainVisualTrack(elements);
+  const lane = elements.filter(el => el.track === main).sort((a, b) => a.start - b.start);
+  const index = createTimelineClipIndex([[0, lane]]);
+  const overlays = new Map<string, TimelineElement[]>();
+  const links = new Map<string, TimelineElement[]>();
+  for (const el of elements) {
+    if (el.link) {
+      const group = links.get(el.link) ?? [];
+      group.push(el); links.set(el.link, group);
+    }
+    if (el.track === main || el.timelineLocked || classifyZone(el) !== "visual") continue;
+    for (const host of queryTimelineClipIndex(index, 0, { start: el.start, end: el.start + 1e-6 })) {
+      if (host.sourceFile !== el.sourceFile || el.start < host.start || el.start >= host.start + host.duration) continue;
+      const owned = overlays.get(keyOf(host)) ?? [];
+      owned.push(el); overlays.set(keyOf(host), owned);
+    }
+  }
+  return { main, lane, overlays, links };
 }
 
 /** Insert a main clip between its peers, rather than looking for an empty gap.
@@ -18,15 +48,18 @@ export function planMainTrackReorder(
   moving: ReadonlySet<string>,
   linkage: boolean,
   previous?: { slot: number; margin: number },
+  linkedSelection = true,
 ): MainTrackReorder | null {
-  const keyOf = (el: TimelineElement) => el.key ?? el.id;
+  let source = sources.get(elements);
+  if (!source) { source = prepareSource(elements); sources.set(elements, source); }
+  const { main, lane, overlays, links } = source;
   const key = keyOf(grabbed);
-  const main = mainVisualTrack(elements);
-  if (grabbed.track !== main || !elements.some(el => keyOf(el) === key)) return null;
-  const linked = linkedOverlayKeys(elements, key, null, linkage);
+  const byKey = getTimelineElementIndexes(elements).byKey;
+  if (grabbed.track !== main || !byKey.has(key)) return null;
+  const partnersOf = (host: TimelineElement) => linkedMembersOf(host, links.get(host.link ?? "") ?? [host], linkedSelection);
+  const linked = new Set([key, ...(linkage ? overlays.get(key) ?? [] : []).map(keyOf), ...partnersOf(grabbed).map(keyOf)]);
   // A manually selected formation keeps its existing rigid group semantics.
-  if ([...moving].some(member => !linked.has(member))) return null;
-  const lane = elements.filter(el => el.track === main).sort((a, b) => a.start - b.start);
+  if ([...moving].some(member => !linked.has(member) || (member !== key && byKey.get(member)?.track === main))) return null;
   const peers = lane.filter(el => keyOf(el) !== key);
   let slot = peers.findIndex(el => aimedStart < el.start + el.duration / 2);
   if (slot < 0) slot = peers.length;
@@ -55,18 +88,27 @@ export function planMainTrackReorder(
   });
   if (changes.some(change => !canMoveTimelineElement(change.element)))
     return { slot, start: grabbed.start, changes: [] };
-  if (linkage) {
-    const mainChanges = [...changes];
-    for (const host of mainChanges) {
-      const overlays = linkedOverlayKeys(elements, keyOf(host.element), null, true);
-      for (const element of elements) {
-        if (element.track === main || !overlays.has(keyOf(element))) continue;
-        if (changes.some(change => keyOf(change.element) === keyOf(element))) continue;
-        const start = savedClipEdges(element, element.start + host.start - host.element.start).start;
-        if (!canMoveTimelineElement(element) || start < clampToHostStart(element, 0))
+  const planned = new Set(changes.map(change => keyOf(change.element)));
+  const mainChanges = [...changes];
+  for (const host of mainChanges) {
+    const companions = [...(linkage ? overlays.get(keyOf(host.element)) ?? [] : []), ...partnersOf(host.element)];
+    for (const element of companions) {
+      const memberKey = keyOf(element);
+      const delta = host.start - host.element.start;
+      const target = element.start + delta;
+      if (target < clampToHostStart(element, 0) - 1e-6)
+        return { slot, start: grabbed.start, changes: [] };
+      const start = savedClipEdges(element, target).start;
+      if (element.track === main) {
+        if (linkedSelection && partnersOf(host.element).some(partner => keyOf(partner) === memberKey) &&
+            Math.abs((starts.get(memberKey) ?? element.start) - start) > 1e-6)
           return { slot, start: grabbed.start, changes: [] };
-        changes.push({ element, start });
+        continue;
       }
+      if (planned.has(memberKey)) continue;
+      if (!canMoveTimelineElement(element) || start < clampToHostStart(element, 0))
+        return { slot, start: grabbed.start, changes: [] };
+      changes.push({ element, start }); planned.add(memberKey);
     }
   }
   return { slot, start: starts.get(key)!, changes };

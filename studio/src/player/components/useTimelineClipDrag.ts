@@ -331,6 +331,7 @@ export function useTimelineClipDrag({
         gridStep: snapGridStep(),
         rippleEditEnabled: usePlayerStore.getState().rippleEditEnabled,
         timelineLinkageEnabled: usePlayerStore.getState().timelineLinkageEnabled,
+        linkedSelectionEnabled: isLinkedSelectionOn(),
       });
     },
     [

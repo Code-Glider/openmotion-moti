@@ -108,3 +108,57 @@ it("keeps fractional authored durations on one lane after centisecond persistenc
     expect(saved[i].start + 1e-6).toBeGreaterThanOrEqual(saved[i-1].start + saved[i-1].duration);
   expect(result.start).toBe(saved.find(element => element.id === "ease")!.start);
 });
+
+it("moves linked audio with a shifted neighbor and the grabbed clip in the same plan", () => {
+  const b = { ...clip("b", 5), link: "b-link" };
+  const ease = { ...clip("ease", 10), link: "ease-link" };
+  const audioB = { ...clip("audio-b", 5), tag: "audio", track: 1, link: "b-link" };
+  const audioEase = { ...clip("audio-ease", 10), tag: "audio", track: 1, link: "ease-link" };
+  const elements = [clip("a", 0), b, ease, audioB, audioEase];
+  const result = planMainTrackReorder(elements, ease, 5, new Set(["ease", "audio-ease"]), false)!;
+  expect(result?.changes.map(change => [change.element.id, change.start])).toEqual([
+    ["ease", 5], ["b", 10], ["audio-ease", 5], ["audio-b", 10],
+  ]);
+});
+
+it("refuses a reorder if a shifted host has a locked linked audio partner", () => {
+  const b = { ...clip("b", 5), link: "b-link" };
+  const audio = { ...clip("audio-b", 5), tag: "audio", track: 1, link: "b-link", timelineLocked: true };
+  expect(plan([clip("a", 0), b, clip("ease", 10), audio])).toMatchObject({ start: 10, changes: [] });
+});
+
+it("leaves media partners alone when linked selection is disabled", () => {
+  const b = { ...clip("b", 5), link: "b-link" };
+  const audio = { ...clip("audio-b", 5), tag: "audio", track: 1, link: "b-link" };
+  const elements = [clip("a", 0), b, clip("ease", 10), audio];
+  expect(planMainTrackReorder(elements, elements[2], 5, new Set(["ease"]), false, undefined, false)
+    ?.changes.map(change => change.element.id)).toEqual(["ease", "b"]);
+});
+
+it("does not carry a same-named media link from another source composition", () => {
+  const b = { ...clip("b", 5), link: "shared-name" };
+  const audio = { ...clip("audio-b", 5), tag: "audio", track: 1, link: "shared-name", sourceFile: "other.html" };
+  expect(plan([clip("a", 0), b, clip("ease", 10), audio])?.changes.map(change => change.element.id))
+    .toEqual(["ease", "b"]);
+});
+
+it("saves the shifted neighbor's audio in the same atomic transaction", () => {
+  const b = { ...clip("b", 5), link: "b-link" };
+  const audio = { ...clip("audio-b", 5), tag: "audio", track: 1, link: "b-link" };
+  const elements = [clip("a", 0), b, clip("ease", 10), audio];
+  const drag = preview(elements, 5);
+  const onMoveElements = vi.fn();
+  commitDraggedClipMove(drag, { elements, trackOrder: [0, 1], updateElement: vi.fn(), onMoveElements });
+  expect(onMoveElements).toHaveBeenCalledTimes(1);
+  expect(onMoveElements.mock.calls[0][0].map((edit: TimelineMoveEdit) => [edit.element.id, edit.updates.start]))
+    .toEqual([["ease", 5], ["b", 10], ["audio-b", 10]]);
+});
+
+
+it("refuses a companion floor crossing before saved timing can clamp away its sync offset", () => {
+  const ease = clip("ease", 0);
+  const a = { ...clip("a", 5), link: "a-link" };
+  const audio = { ...clip("audio-a", 3), tag: "audio", track: 1, link: "a-link" };
+  expect(planMainTrackReorder([ease, a, clip("b", 10), clip("c", 15), audio], ease, 14,
+    new Set(["ease"]), false)).toMatchObject({ start: 0, changes: [] });
+});

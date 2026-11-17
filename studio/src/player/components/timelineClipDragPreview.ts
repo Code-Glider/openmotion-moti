@@ -67,6 +67,7 @@ export interface DragPreviewContext {
   /** Main-track magnet preference; omitted contexts use ordinary lane placement. */
   rippleEditEnabled?: boolean;
   timelineLinkageEnabled?: boolean;
+  linkedSelectionEnabled?: boolean;
 }
 
 export function createKeyboardClipDrag(
@@ -303,7 +304,8 @@ export function computeDragPreview(
     ? planMainTrackReorder(ctx.elements, drag.element, previewStart, group.moving,
         ctx.timelineLinkageEnabled ?? false,
         drag.mainTrackReorder && ctx.pps > 0
-          ? { slot: drag.mainTrackReorder.slot, margin: TIMELINE_SNAP_PX / ctx.pps } : undefined)
+          ? { slot: drag.mainTrackReorder.slot, margin: TIMELINE_SNAP_PX / ctx.pps } : undefined,
+        (ctx.linkedSelectionEnabled ?? true) && !drag.altKey)
     : null;
   if (reorder) placement.start = reorder.start;
   const { track: previewTrack, insertRow } = placement;
