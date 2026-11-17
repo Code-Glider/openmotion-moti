@@ -125,7 +125,8 @@ test('MCP template delivery exposes a paused zero-second handoff with user playb
     const native = responses.get(2).structuredContent;
     assert.ok(template.references.some((reference: { documentId: string }) =>
       reference.documentId === native.documentId), 'Template delivery must expose the shared handoff to MCP-only clients');
-    assert.match(template.content, /After the playback check[\s\S]*?paused at 0 seconds[^.]*opening frame is blank/i, 'Template delivery must stay at zero even with a blank first frame');
+    assert.match(template.content, /After the playback check[^.]*handoff's paused playback state/i, 'Template delivery must return to the shared paused handoff');
+    assert.doesNotMatch(template.content, /opening frame is blank|seek\(0\)/i, 'Template delivery must not restate the shared zero-second rule');
     assert.match(native.content, /pause the preview first[^.]*seek to 0 seconds/i, 'Playback must pause before seeking to zero');
     assert.match(native.content, /paused at 0 seconds[^.]*opening frame is blank[^.]*do not advance/i, 'A blank opening must not move the playhead forward');
     assert.match(native.content, /Before recording display confirmation[\s\S]*?default handoff[^.]*at 0 seconds[^.]*stable[^.]*paused/i, 'Stable paused playback at zero must be checked before confirmation');

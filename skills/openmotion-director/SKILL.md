@@ -103,7 +103,7 @@ Typography: before choosing faces for new text, redesigning text hierarchy or ad
 
 根据实际素材、配音与布局调整时间，更新脚本中受影响的决定。脚本是工作记录，不是禁止修改的预设。
 
-Once this turn's final video HTML and assets are complete and ready for preview, complete the [editable preview handoff](../openmotion-production/references/native.md#editable-preview-handoff) automatically, before final export or delivery. Keep intermediate authoring silent; present the final chat video only after its verified MP4 export through the shared production workflow.
+最终视频就绪后按 [可编辑预览交接](../openmotion-production/references/native.md#editable-preview-handoff) 打开编辑器，再导出，并按 [成片交付](../openmotion-production/references/production.md#final-video-delivery) 在对话中展示成片。
 
 ### 5. 观看、修正、交付
 

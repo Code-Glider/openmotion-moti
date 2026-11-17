@@ -50,7 +50,7 @@ Ask all of it in one batch through the host's question interface, in the user's 
 
 ## 4. Create the project
 
-Follow the [runtime adapter](../openmotion-production/references/production.md) and [Native authoring](../openmotion-production/references/native.md). A continued recreation reuses its projectId. Otherwise create one project with `openmotion_create_project` and a stable requestId: `projectType: "reference_video"` with `referenceUrl` for a link, or `projectType: "natural_language"` for a local file, with the file path and the agreed brief in `requirements`. Creation makes an empty carrier, not a film, and never overwrites another project.
+Follow the [runtime adapter](../openmotion-production/references/production.md) and [Native authoring](../openmotion-production/references/native.md). A continued recreation reuses its projectId. Otherwise create one project with `openmotion_create_project` and a stable requestId: `projectType: "reference_video"` with `referenceUrl` for a link, or `projectType: "natural_language"` for a local file, with the file path and the agreed brief in `requirements`.
 
 Read `openmotion_get_project({projectId})` for the directory, revision, current version, `hyperframesCli` and `authoringGuide`; read the pinned engine guide before writing source. Commands you run yourself (`node <hyperframesCli>`, this Skill's measurer, `ffmpeg`) locate Node and FFmpeg through the shared [runtime paths](../openmotion-production/references/reference-video.md#locate-the-pinned-cli-and-media-tools).
 
@@ -59,8 +59,6 @@ Read `openmotion_get_project({projectId})` for the directory, revision, current 
 For detailed moving material, scrolling text or textured breakup, use the [reusable rendering code](references/rendering.md). It supplies complete-texture transport, source-coloured sprites, release masks and motion exposure. Use its optional source observer when existing source views leave a concrete mark-size, brightness or transition question unresolved; batch those observations and sprite preparation. Read that reference for the applicable mechanism and save the rendering helper with the editable project.
 
 Follow [rebuild](references/rebuild.md) and the shared [editable representation](../openmotion-production/references/reference-video.md#choose-an-editable-representation) to choose the representation from source observations and build the user's version directly. Resolve appearance-bearing materials, visible bounds, motion controls and event timing together before writing the complete implementation. Carry observed texture and mark-size distributions through motion, exposure and breakup. Reuse suitable supplied implementations and the pinned engine's supported capabilities with their coordinate and timing contracts. For dense multi-shot work, use the [segment reconstruction process](references/reconstruction.md), delegate independent units when available and authorized, and integrate their source. Keep source observations, representation decisions, timed controls and known gaps in existing working notes. Default creation follows the focused preview pass and delivery below.
-
-Import real media with `openmotion_import_assets` and use the returned paths; save text files (HTML, CSS, JS, SVG, JSON) with `openmotion_edit_project` using the latest `expectedRevision` and `expectedVersionId`. Re-read the project after a conflict instead of replaying an old batch.
 
 Before grouping reference regions into materials, inspect each proposed material region through time and inventory its independently changing contents, including small changes within stationary boundaries. Connect those changes to source controls in the reconstruction.
 
@@ -72,7 +70,7 @@ Apply the changes with care: fit longer text with related layout and reading-tim
 
 Sound: when the reference has sound, the remix has sound. Keep the reference soundtrack by default (extract it as AAC `.m4a` and import it) and re-time it to the new cut. A voiceover that names the reference's brand or product is replaced with the user's lines in the reference's language, delivery and timing when speech generation is available and consented. An unanswered consent question stays pending; do not remove or replace the narration to get around it. If generation is unavailable or declined, follow the audio alternative the user chose; if the narration cannot be separated from the music, say so. Deliver a silent film only when the user asks or the reference is silent.
 
-Once this turn's final video HTML and assets are complete and ready for preview, complete the [editable preview handoff](../openmotion-production/references/native.md#editable-preview-handoff) automatically, before final export or delivery. Keep intermediate authoring silent; present the final chat video after technical export verification through [this route's delivery workflow](references/verify.md).
+When the final video is ready, open the editor through the [editable preview handoff](../openmotion-production/references/native.md#editable-preview-handoff); export and delivery follow §6 and §7.
 
 ## 6. Export and requested review
 

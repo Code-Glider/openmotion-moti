@@ -75,7 +75,7 @@ Read Hyperframes guidance within the [native engine boundary](native.md#engine-g
 
 ## 会话与产物归属
 
-操作工程时用 `openmotion_get_project({projectId})` 核对项目、sessionId 和当前版本；没有 projectId 时先查分页列表。独立新任务通过 `openmotion_create_project` 创建项目，可传已有 OpenMotion sessionId 归属。Original creation, reference-video recreation and editable-template production complete the [editable preview handoff](native.md#editable-preview-handoff) when the final requested video is complete and ready to preview. Existing-project content edits follow its [continuing-edit rules](native.md#continuing-edits) across all entries; other scopes open the GUI on request. 宿主聊天 ID 不自动等于 OpenMotion sessionId，未绑定时不能用全局最近项目猜测归属。
+操作工程时用 `openmotion_get_project({projectId})` 核对项目、sessionId 和当前版本；没有 projectId 时先查分页列表。独立新任务通过 `openmotion_create_project` 创建项目，可传已有 OpenMotion sessionId 归属。何时打开可编辑预览见 [Native 工程循环](native.md#project-loop) 第 6 步。宿主聊天 ID 不自动等于 OpenMotion sessionId，未绑定时不能用全局最近项目猜测归属。
 
 ## 一份上下文
 
@@ -95,7 +95,7 @@ Motion 质量是基础职责，不以用户是否说“丝滑”作为加载条�
 
 由当前 Agent 执行一次操作链；Skills 是同一任务的指导文档，不是互相调用的独立执行进程。进入另一份文档不会授权再次创建项目、应用模板、导入同一素材或发起相同导出。
 
-工程操作前读 [运行规范](production.md)；编写原生内容前读 [Native authoring](native.md) 及返回的固定版本引擎指南。确认活动项目和最新 revision，复用已有工程，只有任务确实需要时创建或切换项目。冲突时检查新源文件，不盲目重放旧写入。
+工程操作前读 [运行规范](production.md)；编写原生内容前读 [Native authoring](native.md) 及返回的固定版本引擎指南。复用已有工程，只有任务确实需要时创建或切换项目。
 
 声明自行负责交付与审片范围的入口，导出按该入口执行；其他需要新渲染的导出/成片交付读 [验证](verification.md)。
 

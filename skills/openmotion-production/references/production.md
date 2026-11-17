@@ -25,7 +25,7 @@ File-only delivery of already accepted content follows [source pinning](native.m
 
 During generation and editing, do not create an inline progress or video component and do not open the right-hand editor for intermediate saves. Begin a business work round silently with `openmotion_open_preview({action:"begin",projectId,requestId,mode:"create"|"modify"})`; retain `inlineWork.id` as `workId` through saves and the final export. This call presents no UI.
 
-Once the final authored video and supporting assets are ready for preview, complete the editable Studio handoff on the right. Do not open an empty carrier or partial draft merely to show activity. Explicit editor-only or show-now requests retain their scope, and an explicit background preference still skips presentation.
+Once the final authored video is ready, complete the [editable preview handoff](native.md#editable-preview-handoff) on the right.
 
 For an actual video creation/content-edit turn, render the final version once. Wait for its MP4 export to complete and pass technical verification, then call the discovered `openmotion_show_video({projectId,workId})` once to display the final video in the chat. No intermediate, queued, checking or rendering state creates a chat video frame. The player loads that fixed completed export; earlier final videos retain their own versions. This final playback does not require a separate download request. Hosts without the presentation Tool keep the existing file/player delivery path. Explicit editor-only work, unchanged template opening, reviews and existing-link requests do not start an unwanted render.
 
