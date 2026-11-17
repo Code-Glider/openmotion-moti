@@ -16,6 +16,54 @@ Use external tools for the operation that needs them and identify their contribu
 
 If available tools cannot supply the material, report the specific gap and continue independent work within scope. Use a suitable alternative when it preserves the request; keep original and generated material distinct and report missing media accurately.
 
+## Asset naming
+
+Apply this section when generating, acquiring, importing, deriving or organizing assets. A name helps the user recognize an asset; storage paths and IDs identify its bytes. Change display metadata without moving files, replacing IDs or rewriting composition references.
+
+### 1. Preserve or assign a name
+
+| Asset being added or organized | Action |
+| --- | --- |
+| Existing asset with a user-assigned name | Preserve it. Rename or translate only when the user requests it. |
+| Existing asset with a meaningful filename, library name or template name | Preserve it, even when its use in the film changes. |
+| New generated asset | Assign a concise name based on its content and, when useful, its purpose. |
+| New asset derived from an existing asset | Retain the recognizable source name and add the confirmed segment or transformation. Keep the original asset unchanged. |
+| Existing asset without a meaningful name | Inspect the asset or reliable metadata, then assign a name using confirmed information. |
+
+Empty names, UUIDs, hashes and generic temporary names such as `untitled`, `temp` or `image_001` are not meaningful source names. A meaningful name identifies the material without requiring the user to open it.
+
+### 2. Choose the naming language
+
+For newly assigned names, use this order:
+
+1. An explicit user instruction, within its stated asset or project scope.
+2. The project's saved `namingLanguage`.
+3. For a project without a saved language, the primary language of its initial creative brief.
+4. The interface language when the brief provides no language signal.
+
+Supply a BCP 47 language tag, such as `zh-CN` or `en`, when creating the project. For an existing project without a saved language, set it with the guarded project-edit operation before assigning names. Change a saved language only on explicit user instruction; a single-asset exception does not change it. Later conversation or interface language changes do not change the project's naming language or translate existing names.
+
+Keep established brand, product and font spellings. Write added descriptions in the selected language: `Dia 参考视频－原声` in Chinese, `Dia reference – original audio` in English. Preserve meaningful existing names in any language unless translation is requested. For standalone assets outside a project, use the explicit naming instruction, otherwise the current request's language, then the interface language.
+
+### 3. Write a recognizable name
+
+- Use **content + optional purpose**. Include purpose only when it helps distinguish the asset; do not rename a recognizable source merely because it is used in another scene.
+- Use a short noun phrase. Avoid full generation prompts, invented facts, UUIDs, hashes and redundant file-type labels.
+- Keep meaningful dates, version numbers, segment ranges and other distinguishing details.
+- For a derived asset, use **source name – segment or transformation**, such as `Founder interview – 00:12–00:20` or `Product photo – transparent background`.
+- For an unnamed font, use its parsed family and distinguishing weight/style, such as `Inter 700` or `EB Garamond Italic`. Do not infer the family from a UUID.
+- If content cannot be identified confidently, use the localized media type and a short sequence, such as `音频 1` or `Audio 1`. Do not infer narration, music or a subject from the extension alone.
+
+### 4. Save and confirm
+
+- Read the project's `namingLanguage`, `assets` and `assetNames` through `openmotion_get_project` before organizing existing material.
+- Pass the chosen name through `items[].name` in `openmotion_import_assets`, or `name` in `openmotion_assets_use` when generating or importing library material. Importing a pinned library version preserves its saved library name by default.
+- To rename or repair an existing project asset, use `openmotion_edit_project` with `assetNames: [{path, name}]`, the current revision/version guards and a stable request ID. Use `files: []` for a metadata-only change. Do not reimport, regenerate or render merely to change a name.
+- Confirm the saved name in the operation result or a project read. The project read model supplies `assetNames` for consistent captions, search and preview. Known media extensions are omitted from captions; original names, paths and IDs remain available as metadata.
+- The project display layer distinguishes duplicate captions with `(2)`, `(3)`, etc. Do not scan the entire workspace or add UUID suffixes to deduplicate names. Workspace-library names remain independent of project captions.
+
+Platform type-name fallbacks are localized for the eleven Studio interface languages; unsupported languages currently fall back to English. For another requested naming language, provide a meaningful name explicitly. Semantic naming requires the Agent to inspect the material; the platform does not infer content from file bytes automatically.
+
 ## 按素材职责确定来源
 
 用户明确的必用素材、参考用途、来源限制与视觉要求优先于以下默认顺序。同一视频可组合不同来源，逐项判断当前素材承担的是身份呈现、事实证据、主体表演、图解还是氛围。

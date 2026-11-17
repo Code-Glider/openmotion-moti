@@ -209,3 +209,27 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
   expect(rename).toHaveBeenCalledWith('assets/music.wav', 'assets/music 111.wav');
   expect(host.querySelector('input')).toBeNull();
 });
+
+it('shows the imported name while preview, drag and rename keep the immutable asset path', () => {
+  const asset = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const host = mount(<AudioRow projectId="p" asset={asset} displayName="Dia 参考视频－原声" used={false} onCopy={() => {}} copyFeedback={null} />);
+  expect(host.textContent).toContain('Dia 参考视频－原声');
+  expect(host.textContent).not.toContain('94dcfb95');
+  const row = host.querySelector('[role="button"]')!;
+  act(() => row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  expect(useAssetPreviewStore.getState().previewAsset).toBe(asset);
+});
+
+it('edits the display name without constructing a new storage path', () => {
+  const rename = vi.fn();
+  const asset = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const host = mount(<InlineAssetRename asset={asset} displayName="original-audio" onRename={rename} onDone={() => {}} />);
+  const input = host.querySelector('input')!;
+  expect(input.value).toBe('original-audio');
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Dia 参考视频－原声');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  expect(rename).toHaveBeenCalledExactlyOnceWith(asset, 'Dia 参考视频－原声');
+});
