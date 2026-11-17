@@ -57,6 +57,14 @@ Failures resolve with `{isError:true,error:{code,message,applied}}`, because rej
 
 The shared WebMCP registrar measures all twenty-one page tools through the existing Studio tracking transport. `webmcp_tool_started` and `webmcp_tool_finished` correlate one invocation by `call_id`, with the public `tool_name`, `transport=webmcp`, observed outcome and elapsed milliseconds. `webmcp_registration_result` measures each attempted registration, including refusal and cleanup cancellation. Collection remains asynchronous and respects existing privacy settings and Do Not Track; analytics failures never retry a tool or replace its result. No tool arguments, returned content, handles, paths or raw errors are recorded. These browser events are separate from unchanged stdio MCP events and existing domain-operation results; a failed or cancelled invocation does not establish whether a mutation was applied or rolled back. See [tracking coverage and limits](../tracking/README.md#implemented-signals-and-limits).
 
+## Video artifact completion
+
+Once the requested video artifact is complete, call `openmotion_open_preview({action:"complete_generation",projectId,workId,requestId,expectedRevision,expectedVersionId})` immediately, including background work. This independently validates the current native video artifact and records its first completion. It performs no save, preview opening or export. Use the current identities from `openmotion_get_project` after direct filesystem authoring. Intermediate source changes and metadata-only edits do not establish completion.
+
+Each generation round has one `workId` within its `projectId`. Begin returns that ID before authoring. Completion requires an authored video content change from the initial version, a positive native duration, successful native lint and matching version identities. The completion action keeps the editor closed and records no save operation. Repeated request IDs return the same result. Repeated completion declarations retain the first completion time. Export-only rounds use `generation:false`.
+
+The `work_generation_stage` event follows started, generated, edited and exported observations. Studio manual content edits count after completion. Metadata renames, failed edits and Agent writes are excluded from the editing conversion. Studio exports bind the work at request time and record success from the backend render receipt even after the browser closes. MCP export jobs retain their explicit work identity.
+
 ## 共用约束
 
 - projectId 是作品身份；sessionId 是 OpenMotion 内部会话，不能把宿主聊天 ID 自动当成它。Project writes require explicit project identity; workspace asset operations use asset/version identity and need no project until import_to_project.新 MCP 客户端未绑定时，默认预览报 PROJECT_NOT_BOUND，不猜全局最近工程。

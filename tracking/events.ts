@@ -21,7 +21,7 @@ export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'o
 const webMcp = { tool_name: webMcpToolNames, transport: ['webmcp'] } as const;
 const generation = { modality: ['image', 'video', 'audio'] } as const;
 // Studio project ids are UUIDs except the built-in local project, whose id is the literal `project`.
-const project = { project_id: 'uuid', project_scope: ['default', 'managed', 'other'] } as const;
+const project = { project_id: 'project_id', project_scope: ['default', 'managed', 'other'] } as const;
 const exportSettings = { origin: ['header', 'export_panel', 'composition_card'], format: ['mp4', 'webm', 'mov', 'gif'],
   quality: ['draft', 'standard', 'high'], resolution: ['auto', '1080p', '4k'], fps: ['24', '30', '60', 'other'] } as const;
 const countBucket = ['0', '1_5', '6_20', '21_50', 'gt_50', 'unknown'] as const;
@@ -98,6 +98,11 @@ export const omEvents = {
     last_stage: accountStages, last_result: ['started', 'success', 'failed'], error_kind: accountErrorKinds, browser_opened: 'boolean',
     receipt: ['accepted', 'rejected'], exit_code: 'integer', duration_ms: 'integer', prepare_ms: 'integer', link_ms: 'integer', approved_ms: 'integer' },
     required: ['attempt_id', 'outcome', 'connector_version', 'resumed', 'duration_ms'] },
+  work_generation_stage: { producers: ['mcp', 'worker'], fields: {
+    work_id: 'uuid', project_id: 'code', stage: ['started', 'generated', 'edited', 'exported'],
+    task_type: ['create', 'modify'], version_id: 'code', revision: 'code',
+    export_route: ['mcp', 'studio'],
+  }, required: ['work_id', 'project_id', 'stage', 'task_type'] },
   host_run_started: { producers: ['mcp'], fields: { run_id: 'uuid', entry_type: ['mcp'], task_type: ['create', 'modify'], delivery_mode: ['preview', 'technical_export'] }, required: ['run_id', 'entry_type', 'task_type'] },
   host_run_delivered: { producers: ['mcp', 'worker'], fields: { run_id: 'uuid', delivery_mode: ['preview', 'technical_export'], project_id: 'code', revision: 'code', delivery_evidence_ref: 'code' }, required: ['run_id', 'delivery_mode', 'project_id', 'revision'] },
   host_run_failed: { producers: ['mcp', 'worker'], fields: { run_id: 'uuid', task_type: ['create', 'modify'], error_code: 'code', stage: 'code' }, required: ['run_id', 'task_type', 'error_code'] },
