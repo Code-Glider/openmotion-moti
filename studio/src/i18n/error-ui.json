@@ -64,7 +64,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}”超过大小限制，请压缩或更换文件。",
     "Cannot add \"{name}\". Re-export or replace the file.": "无法添加“{name}”，请重新导出或更换文件。",
     "Some changes were saved, but other changes remain incomplete.": "部分修改已保存，但仍有修改未完成。",
-    "Frame capture timed out. Please capture again.": "截帧超时，请重新截取。"
+    "Frame capture timed out. Please capture again.": "截帧超时，请重新截取。",
+    "Content has changed. This step cannot be undone.": "内容已变更，无法撤销这一步",
+    "Content has changed. This step cannot be redone.": "内容已变更，无法重做这一步"
   },
   "ja": {
     "Uploaded {uploaded}.": "アップロード済み：{uploaded} 件。",
@@ -131,7 +133,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "「{name}」はサイズ上限を超えています。圧縮するか、別のファイルを選んでください。",
     "Cannot add \"{name}\". Re-export or replace the file.": "「{name}」を追加できません。再エクスポートするか、別のファイルを選んでください。",
     "Some changes were saved, but other changes remain incomplete.": "一部の変更は保存されましたが、まだ完了していない変更があります。",
-    "Frame capture timed out. Please capture again.": "フレームのキャプチャがタイムアウトしました。もう一度キャプチャしてください。"
+    "Frame capture timed out. Please capture again.": "フレームのキャプチャがタイムアウトしました。もう一度キャプチャしてください。",
+    "Content has changed. This step cannot be undone.": "内容が変更されたため、この操作は元に戻せません。",
+    "Content has changed. This step cannot be redone.": "内容が変更されたため、この操作はやり直せません。"
   },
   "ko": {
     "Uploaded {uploaded}.": "업로드됨: {uploaded}개.",
@@ -198,7 +202,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}”이 크기 제한을 초과했습니다. 파일을 압축하거나 다른 파일로 바꿔 주세요.",
     "Cannot add \"{name}\". Re-export or replace the file.": "“{name}”을 추가할 수 없습니다. 다시 내보내거나 다른 파일로 바꿔 주세요.",
     "Some changes were saved, but other changes remain incomplete.": "일부 변경 사항은 저장되었지만 아직 완료되지 않은 변경 사항이 있습니다.",
-    "Frame capture timed out. Please capture again.": "프레임 캡처 시간이 초과되었습니다. 다시 캡처해 주세요."
+    "Frame capture timed out. Please capture again.": "프레임 캡처 시간이 초과되었습니다. 다시 캡처해 주세요.",
+    "Content has changed. This step cannot be undone.": "내용이 변경되어 이 단계를 실행 취소할 수 없습니다.",
+    "Content has changed. This step cannot be redone.": "내용이 변경되어 이 단계를 다시 실행할 수 없습니다."
   },
   "de": {
     "Uploaded {uploaded}.": "Hochgeladen: {uploaded}.",
@@ -265,7 +271,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "„{name}“ überschreitet die Größenbeschränkung. Komprimieren oder ersetzen Sie die Datei.",
     "Cannot add \"{name}\". Re-export or replace the file.": "„{name}“ kann nicht hinzugefügt werden. Exportieren Sie die Datei erneut oder ersetzen Sie sie.",
     "Some changes were saved, but other changes remain incomplete.": "Einige Änderungen wurden gespeichert, andere sind noch nicht abgeschlossen.",
-    "Frame capture timed out. Please capture again.": "Zeitüberschreitung bei der Einzelbildaufnahme. Nehmen Sie das Bild erneut auf."
+    "Frame capture timed out. Please capture again.": "Zeitüberschreitung bei der Einzelbildaufnahme. Nehmen Sie das Bild erneut auf.",
+    "Content has changed. This step cannot be undone.": "Der Inhalt wurde geändert. Dieser Schritt kann nicht rückgängig gemacht werden.",
+    "Content has changed. This step cannot be redone.": "Der Inhalt wurde geändert. Dieser Schritt kann nicht wiederholt werden."
   },
   "fr": {
     "Uploaded {uploaded}.": "Téléversés : {uploaded}.",
@@ -332,7 +340,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "« {name} » dépasse la taille limite. Compressez ou remplacez le fichier.",
     "Cannot add \"{name}\". Re-export or replace the file.": "Impossible d’ajouter « {name} ». Exportez à nouveau le fichier ou remplacez-le.",
     "Some changes were saved, but other changes remain incomplete.": "Certaines modifications ont été enregistrées, mais d’autres restent incomplètes.",
-    "Frame capture timed out. Please capture again.": "La capture de l’image a expiré. Effectuez une nouvelle capture."
+    "Frame capture timed out. Please capture again.": "La capture de l’image a expiré. Effectuez une nouvelle capture.",
+    "Content has changed. This step cannot be undone.": "Le contenu a changé. Cette étape ne peut pas être annulée.",
+    "Content has changed. This step cannot be redone.": "Le contenu a changé. Cette étape ne peut pas être rétablie."
   },
   "es": {
     "Uploaded {uploaded}.": "Subidos: {uploaded}.",
@@ -399,7 +409,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "«{name}» supera el límite de tamaño. Comprime o sustituye el archivo.",
     "Cannot add \"{name}\". Re-export or replace the file.": "No se puede añadir «{name}». Vuelve a exportar el archivo o sustitúyelo.",
     "Some changes were saved, but other changes remain incomplete.": "Se guardaron algunos cambios, pero otros siguen incompletos.",
-    "Frame capture timed out. Please capture again.": "Se agotó el tiempo de captura del fotograma. Vuelve a capturarlo."
+    "Frame capture timed out. Please capture again.": "Se agotó el tiempo de captura del fotograma. Vuelve a capturarlo.",
+    "Content has changed. This step cannot be undone.": "El contenido ha cambiado. No se puede deshacer este paso.",
+    "Content has changed. This step cannot be redone.": "El contenido ha cambiado. No se puede rehacer este paso."
   },
   "pt-BR": {
     "Uploaded {uploaded}.": "Enviados: {uploaded}.",
@@ -466,7 +478,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}” excede o limite de tamanho. Comprima ou substitua o arquivo.",
     "Cannot add \"{name}\". Re-export or replace the file.": "Não foi possível adicionar “{name}”. Exporte o arquivo novamente ou substitua-o.",
     "Some changes were saved, but other changes remain incomplete.": "Algumas alterações foram salvas, mas outras ainda estão incompletas.",
-    "Frame capture timed out. Please capture again.": "O tempo de captura do quadro se esgotou. Capture novamente."
+    "Frame capture timed out. Please capture again.": "O tempo de captura do quadro se esgotou. Capture novamente.",
+    "Content has changed. This step cannot be undone.": "O conteúdo mudou. Não é possível desfazer esta etapa.",
+    "Content has changed. This step cannot be redone.": "O conteúdo mudou. Não é possível refazer esta etapa."
   },
   "it": {
     "Uploaded {uploaded}.": "Caricati: {uploaded}.",
@@ -533,7 +547,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}” supera il limite di dimensione. Comprimi o sostituisci il file.",
     "Cannot add \"{name}\". Re-export or replace the file.": "Impossibile aggiungere “{name}”. Esporta di nuovo il file o sostituiscilo.",
     "Some changes were saved, but other changes remain incomplete.": "Alcune modifiche sono state salvate, ma altre sono ancora incomplete.",
-    "Frame capture timed out. Please capture again.": "Tempo scaduto per la cattura del fotogramma. Acquisiscilo di nuovo."
+    "Frame capture timed out. Please capture again.": "Tempo scaduto per la cattura del fotogramma. Acquisiscilo di nuovo.",
+    "Content has changed. This step cannot be undone.": "Il contenuto è cambiato. Impossibile annullare questo passaggio.",
+    "Content has changed. This step cannot be redone.": "Il contenuto è cambiato. Impossibile ripetere questo passaggio."
   },
   "ru": {
     "Uploaded {uploaded}.": "Загружено: {uploaded}.",
@@ -600,7 +616,9 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "Файл «{name}» превышает допустимый размер. Сожмите или замените файл.",
     "Cannot add \"{name}\". Re-export or replace the file.": "Не удалось добавить «{name}». Экспортируйте файл заново или замените его.",
     "Some changes were saved, but other changes remain incomplete.": "Часть изменений сохранена, но остальные изменения ещё не завершены.",
-    "Frame capture timed out. Please capture again.": "Время ожидания захвата кадра истекло. Захватите кадр ещё раз."
+    "Frame capture timed out. Please capture again.": "Время ожидания захвата кадра истекло. Захватите кадр ещё раз.",
+    "Content has changed. This step cannot be undone.": "Содержимое изменилось. Этот шаг нельзя отменить.",
+    "Content has changed. This step cannot be redone.": "Содержимое изменилось. Этот шаг нельзя повторить."
   },
   "tr": {
     "Uploaded {uploaded}.": "Yüklenen: {uploaded}.",
@@ -667,6 +685,8 @@
     "\"{name}\" exceeds the size limit. Compress or replace the file.": "“{name}” boyut sınırını aşıyor. Dosyayı sıkıştırın veya değiştirin.",
     "Cannot add \"{name}\". Re-export or replace the file.": "“{name}” eklenemedi. Dosyayı yeniden dışa aktarın veya değiştirin.",
     "Some changes were saved, but other changes remain incomplete.": "Bazı değişiklikler kaydedildi, ancak diğer değişiklikler henüz tamamlanmadı.",
-    "Frame capture timed out. Please capture again.": "Kare yakalama zaman aşımına uğradı. Lütfen yeniden yakalayın."
+    "Frame capture timed out. Please capture again.": "Kare yakalama zaman aşımına uğradı. Lütfen yeniden yakalayın.",
+    "Content has changed. This step cannot be undone.": "İçerik değişti. Bu adım geri alınamaz.",
+    "Content has changed. This step cannot be redone.": "İçerik değişti. Bu adım yeniden uygulanamaz."
   }
 }

@@ -7,6 +7,17 @@ import { languages } from './messages';
 import { SCRIPT_DEPENDENCY_DELETE_MESSAGE } from '../utils/deleteScriptDependencies';
 import { toastErrorMessage } from '../components/ui/toastErrorMessage';
 
+it('localizes late history conflicts without suggesting another attempt', () => {
+  for (const key of ['Content has changed. This step cannot be undone.', 'Content has changed. This step cannot be redone.']) {
+    expect(toastErrorMessage(key)).toBe(key);
+    for (const { locale } of languages) {
+      const message = systemMessage(key, (source, values) => translate(locale, source, values));
+      if (locale !== 'en') expect(message).not.toBe(key);
+    }
+  }
+  expect(translate('zh-CN', 'Content has changed. This step cannot be undone.')).toBe('内容已变更，无法撤销这一步');
+});
+
 it('localizes script dependency deletion refusals in every editor language', () => {
   expect(toastErrorMessage(SCRIPT_DEPENDENCY_DELETE_MESSAGE)).toBe(SCRIPT_DEPENDENCY_DELETE_MESSAGE);
   for (const { locale } of languages) {
