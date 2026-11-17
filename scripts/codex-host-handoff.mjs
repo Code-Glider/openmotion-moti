@@ -127,7 +127,9 @@ export async function prepareCodexHostHandoff(options = {}) {
     const directory = project.structuredContent?.dataDirectory;
     if (typeof directory !== 'string' || path.resolve(directory) !== path.resolve(options.dataDirectory)) return required('HOST_WORKSPACE_MISMATCH');
     return { ...base, status: 'ready_for_presentation', automaticActivation: 'verified', hostSessionVerified: true, threadId,
-      nextAction: options.welcomeDelivered
+      nextAction: options.requirePresentation === false
+        ? 'Current-chat activation is verified. Continue with the prepared HTML document and its publication instructions; no native card call or additional workspace read is needed.'
+        : options.welcomeDelivered
         ? 'Keep the existing welcome and library; invoke the prepared cards-only native Tool with the same IDs/order and language.'
         : 'Open the template library once and invoke the natively discovered presentation tool with onboarding:true and the latest user-request language. Its persistent conversation component contains the welcome above exactly three cards. Opening the library is sufficient for installation; detailed playback acceptance is separate. Do not duplicate the welcome in the final reply.' };
   } catch { return required('HOST_REQUEST_FAILED'); }

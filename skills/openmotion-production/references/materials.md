@@ -12,9 +12,57 @@ Choose the material source from its content role before selecting tools, followi
 
 For each required operation, inspect OpenMotion's actual available capabilities. Prefer OpenMotion when it can meet that operation's content and output requirements. When it lacks a suitable available capability, use an appropriate external search, browsing, stock-media or generation tool, including tools from other video-production platforms such as ChatCut. This fallback does not require the user to name the platform; retain existing authorization and explicit source/tool preferences. Retrieval and generation are different operations, as are finding an existing soundtrack and composing a new one.
 
-Use external tools for the operation that needs them and identify their contribution. Continue supported project authoring, editing, preview and export in OpenMotion; sourcing one asset does not move the whole production workflow to another platform. OpenMotion's configured BYOK generation remains available through the supporting Skill below when generation is the appropriate source.
+Use external tools for the operation that needs them and identify their contribution. Continue supported project authoring, editing, preview and export in OpenMotion; sourcing one asset does not move the whole production workflow to another platform. OpenMotion's configured BYOK generation remains available through the supporting [media Skill](../../openmotion-media/SKILL.md) when generation is the appropriate source.
 
 If available tools cannot supply the material, report the specific gap and continue independent work within scope. Use a suitable alternative when it preserves the request; keep original and generated material distinct and report missing media accurately.
+
+## Asset naming
+
+Apply this section when generating, acquiring, importing, deriving or organizing assets. A name helps the user recognize an asset; storage paths and IDs identify its bytes. Change display metadata without moving files, replacing IDs or rewriting composition references.
+
+### 1. Preserve or assign a name
+
+| Asset being added or organized | Action |
+| --- | --- |
+| Existing asset with a user-assigned name | Preserve it. Rename or translate only when the user requests it. |
+| Existing asset with a meaningful filename, library name or template name | Preserve it, even when its use in the film changes. |
+| New generated asset | Assign a concise name based on its content and, when useful, its purpose. |
+| New asset derived from an existing asset | Retain the recognizable source name and add the confirmed segment or transformation. Keep the original asset unchanged. |
+| Existing asset without a meaningful name | Inspect the asset or reliable metadata, then assign a name using confirmed information. |
+
+Empty names, UUIDs, hashes and generic temporary names such as `untitled`, `temp` or `image_001` are not meaningful source names. A meaningful name identifies the material without requiring the user to open it.
+
+### 2. Choose the naming language
+
+For newly assigned names, use this order:
+
+1. An explicit user instruction, within its stated asset or project scope.
+2. The project's saved `namingLanguage`.
+3. For a project without a saved language, the primary language of its initial creative brief.
+4. The interface language when the brief provides no language signal.
+
+Supply a BCP 47 language tag, such as `zh-CN` or `en`, when creating the project. For an existing project without a saved language, set it with the guarded project-edit operation before assigning names. Change a saved language only on explicit user instruction; a single-asset exception does not change it. Later conversation or interface language changes do not change the project's naming language or translate existing names.
+
+Keep established brand, product and font spellings. Write added descriptions in the selected language: `Dia 参考视频－原声` in Chinese, `Dia reference – original audio` in English. Preserve meaningful existing names in any language unless translation is requested. For standalone assets outside a project, use the explicit naming instruction, otherwise the current request's language, then the interface language.
+
+### 3. Write a recognizable name
+
+- Use **content + optional purpose**. Include purpose only when it helps distinguish the asset; do not rename a recognizable source merely because it is used in another scene.
+- Use a short noun phrase. Avoid full generation prompts, invented facts, UUIDs, hashes and redundant file-type labels.
+- Keep meaningful dates, version numbers, segment ranges and other distinguishing details.
+- For a derived asset, use **source name – segment or transformation**, such as `Founder interview – 00:12–00:20` or `Product photo – transparent background`.
+- For an unnamed font, use its parsed family and distinguishing weight/style, such as `Inter 700` or `EB Garamond Italic`. Do not infer the family from a UUID.
+- If content cannot be identified confidently, use the localized media type and a short sequence, such as `音频 1` or `Audio 1`. Do not infer narration, music or a subject from the extension alone.
+
+### 4. Save and confirm
+
+- Read the project's `namingLanguage`, `assets` and `assetNames` through `openmotion_get_project` before organizing existing material.
+- Pass the chosen name through `items[].name` in `openmotion_import_assets`, or `name` in `openmotion_assets_use` when generating or importing library material. Importing a pinned library version preserves its saved library name by default.
+- To rename or repair an existing project asset, use `openmotion_edit_project` with `assetNames: [{path, name}]`, the current revision/version guards and a stable request ID. Use `files: []` for a metadata-only change. Do not reimport, regenerate or render merely to change a name.
+- Confirm the saved name in the operation result or a project read. The project read model supplies `assetNames` for consistent captions, search and preview. Known media extensions are omitted from captions; original names, paths and IDs remain available as metadata.
+- The project display layer distinguishes duplicate captions with `(2)`, `(3)`, etc. Do not scan the entire workspace or add UUID suffixes to deduplicate names. Workspace-library names remain independent of project captions.
+
+Platform type-name fallbacks are localized for the eleven Studio interface languages; unsupported languages currently fall back to English. For another requested naming language, provide a meaningful name explicitly. Semantic naming requires the Agent to inspect the material; the platform does not infer content from file bytes automatically.
 
 ## 按素材职责确定来源
 
@@ -37,16 +85,3 @@ If available tools cannot supply the material, report the specific gap and conti
 在实际最大取景下检查主体轮廓、细节、结构与文字、光影材质、身份一致性，以及裁切、背景能否支撑构图和所需动作。不合格就更换或修正，再扩建影片。声音素材核对内容、可用时段和用途；实际听感另行试听，未审听如实记录。生成成功、标称分辨率高或文件已导入，都不能替代可用性检查。
 
 复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](decisions.md)。
-
-## BYOK provider references
-
-Apply the [generation boundary](#generation-boundary) above. When it selects generation, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
-
-Read only the selected provider's document for model queries, request templates, polling and error interpretation:
-
-- [fal.ai](media-providers/fal.md)
-- [Atlas Cloud](media-providers/atlascloud.md)
-- [WaveSpeedAI](media-providers/wavespeed.md)
-- [OpenDesign Cloud](media-providers/opendesign.md)
-- [OpenDesign account](media-providers/account.md)
-- [Registered compatible APIs](media-providers/compatible.md)

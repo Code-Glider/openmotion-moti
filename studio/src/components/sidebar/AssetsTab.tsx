@@ -31,6 +31,7 @@ import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
 interface AssetsTabProps {
   projectId: string;
   assets: string[];
+  assetNames?: Record<string, string>;
   onImport?: (files: FileList, entryPoint?: "assets_button" | "assets_drop") => void | Promise<void>;
   onLibraryImport?: (options: FileTreeRefreshOptions) => Promise<void>;
   onDelete?: (path: string) => void;
@@ -149,6 +150,7 @@ function EmptyState({
 export const AssetsTab = memo(function AssetsTab({
   projectId,
   assets,
+  assetNames,
   onImport,
   onLibraryImport,
   onDelete,
@@ -235,11 +237,12 @@ export const AssetsTab = memo(function AssetsTab({
     if (!searchQuery) return all;
     const q = searchQuery.toLowerCase();
     return all.filter((a) => {
+      if ((assetNames?.[a] ?? filename(a)).toLowerCase().includes(q)) return true;
       if (filename(a).toLowerCase().includes(q)) return true;
       const rec = manifest.get(a);
       return rec?.description?.toLowerCase().includes(q);
     });
-  }, [allMediaAssets, searchQuery, manifest]);
+  }, [allMediaAssets, searchQuery, manifest, assetNames]);
 
   const categorized = useMemo(() => {
     const groups: Record<MediaCategory, string[]> = { audio: [], images: [], video: [], fonts: [] };
@@ -391,6 +394,7 @@ export const AssetsTab = memo(function AssetsTab({
                           key={a}
                           projectId={projectId}
                           asset={a}
+                          displayName={assetNames?.[a]}
                           used={usedPaths.has(a)}
                           meta={manifest.get(a)}
                           onCopy={handleCopyPath}
@@ -407,6 +411,7 @@ export const AssetsTab = memo(function AssetsTab({
                             key={a}
                             projectId={projectId}
                             asset={a}
+                            displayName={assetNames?.[a]}
                             used={usedPaths.has(a)}
                             duration={manifest.get(a)?.duration}
                             onCopy={handleCopyPath}
@@ -423,6 +428,7 @@ export const AssetsTab = memo(function AssetsTab({
                         <FontRow
                           key={a}
                           asset={a}
+                          displayName={assetNames?.[a]}
                           used={usedPaths.has(a)}
                           onCopy={handleCopyPath}
                           copyFeedback={copyFeedback}

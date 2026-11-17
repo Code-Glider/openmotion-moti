@@ -6,6 +6,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { distributionFiles } from '../scripts/distribution.ts';
+
+test('platform export ships its shared prompt and user guide in both profiles', async () => {
+  const expected = ['docs/product/platform-export.md', 'shared/platform-export.ts', 'shared/project-agent-prompt.ts'];
+  for (const profile of ['phase1', 'legacy']) {
+    assert.deepEqual(await distributionFiles(profile, file => expected.includes(file)), expected);
+  }
+});
 import { prepareInlineOnboarding, publishInlineOnboarding } from '../scripts/inline-onboarding.mjs';
 import { runFile } from '../scripts/runtime-assets.mjs';
 
@@ -78,4 +85,11 @@ test('both distribution profiles include the complete project archive entry poin
   for (const profile of ['phase1', 'legacy']) {
     assert.deepEqual(await distributionFiles(profile, file => required.includes(file)), [...required].sort());
   }
+});
+
+
+test('platform artwork and its licenses ship with both runtime profiles', async () => {
+  const { platformIconFiles } = await import('../packages/design-system/platform-icons.js');
+  const required = ['platform-icons.js', ...platformIconFiles, 'platforms/sources.json', 'platforms/NOTICE.md', 'platforms/CC0-LICENSE.txt', 'platforms/remix-icon-LICENSE.txt'].map(file => 'packages/design-system/' + file);
+  for (const profile of ['phase1', 'legacy']) assert.deepEqual(await distributionFiles(profile, file => required.includes(file)), [...required].sort());
 });

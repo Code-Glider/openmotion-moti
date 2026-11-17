@@ -112,6 +112,7 @@ function useProbedDuration(src: string, skip: boolean): number | null | undefine
 export interface AssetCardProps {
   projectId: string;
   asset: string;
+  displayName?: string;
   used: boolean;
   duration?: number;
   onCopy: (path: string) => void;
@@ -134,6 +135,7 @@ export interface AssetCardProps {
 export function AssetCard({
   projectId,
   asset,
+  displayName,
   used,
   duration,
   onCopy,
@@ -149,8 +151,8 @@ export function AssetCard({
   const [renaming, setRenaming] = useState(false);
   const [imgError, setImgError] = useState(false);
   const isCopied = copyFeedback?.path === asset && copyFeedback.ok;
-  const fullName = asset.split("/").pop() ?? asset;
-  const name = basename(asset);
+  const fullName = displayName ?? asset.split("/").pop() ?? asset;
+  const name = displayName ?? basename(asset);
   const extension = ext(asset);
   const serveUrl = resolveMediaPreviewUrl(asset, projectId);
   const isVideo = VIDEO_EXT.test(asset);
@@ -285,7 +287,7 @@ export function AssetCard({
 
         {/* Match catalog caption spacing and typography; keep actions beside the name. */}
         <div className="flex items-center gap-1 px-1.5 py-1.5">
-          {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <Tooltip label={fullName} lines={3}>
+          {renaming && onRename ? <InlineAssetRename displayName={displayName} asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <Tooltip label={fullName} lines={3}>
             <span className="min-w-0 flex-1 text-[10px] font-medium text-neutral-200 truncate leading-tight text-left">
               {fullName}
             </span>
@@ -303,6 +305,7 @@ export function AssetCard({
           onClose={() => setContextMenu(null)}
           onCopy={onCopy}
           onDelete={onDelete}
+          displayName={displayName}
           onRename={onRename}
           onStartRename={() => setRenaming(true)}
           onAddAtPlayhead={onAddAssetToTimeline}
@@ -316,6 +319,7 @@ export function AssetCard({
 
 export interface FontRowProps {
   asset: string;
+  displayName?: string;
   used: boolean;
   onCopy: (path: string) => void;
   copyFeedback: CopyFeedback;
@@ -329,6 +333,7 @@ export interface FontRowProps {
  */
 export function FontRow({
   asset,
+  displayName,
   used,
   onCopy,
   copyFeedback,
@@ -338,7 +343,7 @@ export function FontRow({
 }: FontRowProps) {
   const { t } = useI18n();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const name = basename(asset);
+  const name = displayName ?? basename(asset);
   const extension = ext(asset);
   const isCopied = copyFeedback?.path === asset && copyFeedback.ok;
 
@@ -394,6 +399,7 @@ export function FontRow({
           onClose={() => setContextMenu(null)}
           onCopy={onCopy}
           onDelete={onDelete}
+          displayName={displayName}
           onRename={onRename}
           onAddAtPlayhead={onAddAssetToTimeline}
         />

@@ -1,5 +1,4 @@
-import { templatePrompts } from './template-prompts.ts';
-import { catalogLocale } from './template-locale.ts';
+import { formatTemplatePrompt } from './template-prompts.ts';
 import { workflowEntryGuide } from './workflow-entry.js';
 
 export const integrationHosts = ['codex', 'claude', 'deepseek', 'chatgpt', 'mcp'] as const;
@@ -98,9 +97,7 @@ Follow the installation guide: ${setupGuideUrl(info)}
 4. ${host === 'codex' ? '在本轮完成引导：先准备好欢迎语和视频卡片，再打开模板库并立即展示已就绪的内容，不把内部指令发成新的用户消息。' : '接入后打开模板库，'}等我给出创作要求后再创建或修改工程。`;
 }
 export function templatePrompt(_info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
-  const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
-  const values = { installUrl: 'https://github.com/nexu-io/openmotion', name: template.title, id: template.id };
-  return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);
+  return formatTemplatePrompt(template, locale);
 }
 
 export function agentGuide(info: IntegrationInfo, host: IntegrationHost) {

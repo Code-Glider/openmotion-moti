@@ -2,9 +2,16 @@
 
 Read before submission or when resuming, recovering or regenerating a job. Apply the [entry authorization](../SKILL.md#provider-preference-and-authorization) before any paid request.
 
-## Provider request conversion
+## Provider references
 
-Provider guides show request fields as `openmotion_media_use` JSON; that shape applies only to existing project-direct jobs. For a new submission, convert it to the asset Tool: drop `provider` and `projectId`, prefix the model as `<provider>:<model>` (for example `fal:fal-ai/flux/schnell`), keep `modality`, `mode`, `prompt` and `parameters`, and poll the asset Tool with only the original `jobId`. Call `action: "reference"` with the selected provider ID from `inspect`, or open that provider's guide from the shared [BYOK provider references](../../openmotion-production/references/materials.md#byok-provider-references), and read only that guide for endpoint rules, supported modes and parameter schemas.
+Call `action: "reference"` with the selected provider ID from `inspect`, or open that provider's guide below, and read only that guide for endpoint rules, supported modes and parameter schemas. Its request templates are `openmotion_assets_use` arguments; an existing project-direct job keeps its original route (step 5 below).
+
+- [fal.ai](providers/fal.md)
+- [Atlas Cloud](providers/atlascloud.md)
+- [WaveSpeedAI](providers/wavespeed.md)
+- [OpenDesign Cloud](providers/opendesign.md)
+- [OpenDesign account](providers/account.md)
+- [Registered compatible APIs](providers/compatible.md)
 
 ## Generate library assets and track the original job
 

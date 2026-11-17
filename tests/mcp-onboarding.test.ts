@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mcpCapabilities, mcpBenefits, mcpFaq } from '../studio/src/motion/mcpCapabilities.ts';
+import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
+import { assetNamingInstruction } from '../shared/asset-names.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
 
@@ -13,7 +14,18 @@ test('MCP onboarding covers every public domain tool exactly once', () => {
 
 test('every capability and benefit has a real shared icon', () => {
   const sprite = readFileSync(new URL('../packages/design-system/icons.svg', import.meta.url), 'utf8');
-  for (const { icon } of [...mcpCapabilities, ...mcpBenefits]) assert.ok(sprite.includes(`id="ri-${icon}"`), icon);
+  for (const { icon } of [...mcpCapabilities, ...mcpScenarios, ...mcpBenefits]) assert.ok(sprite.includes(`id="ri-${icon}"`), icon);
+});
+
+test('handbook scenarios compose public tools and keep their copyable instructions aligned', () => {
+  const names = new Set(phase1Tools.map(tool => tool.name));
+  for (const scenario of mcpScenarios) {
+    assert.ok(scenario.title && scenario.description);
+    for (const tool of scenario.tools) {
+      assert.ok(names.has(tool), tool);
+      assert.ok((scenario.id === 'asset-naming' ? assetNamingInstruction : platformExportExample('en')).includes(tool), tool);
+    }
+  }
 });
 
 test('reference-image and audio guidance is translated in every interface language', () => {
@@ -51,4 +63,27 @@ test('media example preserves setup and task continuation across supported langu
   assert.match(setup, /MCP handbook media-generation example/);
   assert.match(setup, /read-only `inspect`/);
   assert.match(skill, /MCP handbook example \| \[Discovery and setup\]/);
+});
+
+test('asset naming scenario is localized in all eleven interface languages', () => {
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  const scenario = mcpScenarios.find(item => item.id === 'asset-naming')!;
+  for (const locale of Object.values(translations) as Record<string, string>[]) {
+    for (const message of [scenario.title, scenario.description, scenario.prompt]) assert.ok(locale[message], message);
+  }
+});
+
+test('final-video selection and recovery are localized throughout the handbook', () => {
+  const answer = mcpFaq.find(([question]) => question === 'What if the final video cannot load?')![1];
+  const matrix = mcpClientComparison.find(([capability]) => capability === 'Inline template cards and final video')!;
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  assert.match(answer, /Codex normally shows it in the final reply/);
+  assert.match(answer, /never both for the same video/);
+  assert.match(answer, /without rendering again/);
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [answer, matrix[1], matrix[2]]) {
+      assert.ok(values[key]?.trim(), `${language}: missing final-video guidance`);
+      assert.notEqual(values[key], key, `${language}: English fallback`);
+    }
+  }
 });

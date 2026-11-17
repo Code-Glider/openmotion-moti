@@ -1,3 +1,5 @@
+// Keep Cloud contract cases in the maintained BYOK entry for both CI and npm test.
+import './cloud-native-media.cases.ts';
 import test from 'node:test';
 import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
@@ -33,9 +35,9 @@ test('public media tool reads guides, generates fal media once and binds job que
   assert.doesNotMatch(JSON.stringify(inspect), /test-fal-private/);
   const reference = await api.call('openmotion_media_use', { action: 'reference', provider: 'fal' });
   assert.match(reference.content, /https:\/\/fal.ai\/docs\//);
-  assert.equal(reference.workflow, 'production');
-  assert.equal(reference.documentId, 'skills/openmotion-production/references/media-providers/fal.md');
-  assert(inspect.references.every((ref: any) => ref.uri.startsWith('openmotion://workflow/production/')));
+  assert.equal(reference.workflow, 'media');
+  assert.equal(reference.documentId, 'skills/openmotion-media/references/providers/fal.md');
+  assert(inspect.references.every((ref: any) => ref.uri.startsWith('openmotion://workflow/media/')));
   const args = { action: 'generate', provider: 'fal', model: 'fal-ai/flux/schnell', projectId: store.projectId, requestId: 'same-task', modality: 'image', prompt: 'cup', parameters: { image_size: 'square_hd' } };
   const queued = await api.call('openmotion_media_use', args);
   assert.equal(queued.job.state, 'queued');

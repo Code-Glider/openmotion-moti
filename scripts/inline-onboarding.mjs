@@ -10,6 +10,13 @@ import { selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 // A current host can render this read-only production view without loading a
 // new MCP tool. Domain work continues through the installation's existing CLI.
+export function onboardingPresentationInstructions(status) {
+  const completion = 'Complete onboarding in this same installation turn. Do not enqueue a user message, defer to another turn or send a separate success reply. ';
+  if (status === 'prepared') return completion + 'Publish this prepared document with --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY into the active chat\'s explicitly permitted visualization directory. Reuse the template library tab or open preview.previewUrl once in the right-hand browser. Use only that opening call\'s result or initial page state; no hidden-tab reveal, additional snapshot, screenshot, inventory or media audit is needed. Finish required browser bookkeeping, then emit the published finalReplyMarkdown verbatim when the library opened successfully. Do not summarize its welcome. If the library failed, was only queued or its opening cannot be confirmed, replace the library-visible heading with the actual result and usable URL; preserve the introduction and cards. Do not wait for media validation or native activation, call the native card tool, reinstall, resample or enqueue a message. For a welcome already delivered, publish with --welcome-delivered. Publication does not establish visible delivery or native activation.';
+  if (status === 'native_required') return completion + 'Open the real template library once, then show these exact three prepared references through the natively discovered presentation Tool with onboarding:true. The persistent conversation component puts the maintained welcome above all three cards. Preserve the IDs/order and immutable resource URI; never resample or substitute builtins. Detailed library inspection, image decoding, advancing video playback and enlarged-preview checks are not installation gates. Do not run or wait for media acceptance before completing installation; record media failures separately for development/release acceptance. Do not repeat the welcome in the final reply. If native discovery is stale, use the supported automatic host action and the saved recovery command in this same turn. Without a compatible host connection, report the concrete dependency and keep activation incomplete; a library webpage, shell presentation call or host security change does not satisfy native delivery. If library opening failed, was queued or cannot be confirmed, set onboarding:false and provide a truthful welcome and usable URL in reply text instead of the component-owned success welcome.';
+  return 'Use the maintained fallback welcome after successful library opening; otherwise replace its library-visible heading with the actual result and usable URL. Do not add page or media checks, repeat setup or delay installation completion.';
+}
+
 export async function prepareInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds() }) {
   assert(path.isAbsolute(output) && output.endsWith('.html'), 'Inline onboarding requires an absolute HTML output path supplied by the calling host');
   return JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', path.join(appRoot, 'scripts/inline-onboarding.mjs'),
@@ -21,7 +28,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
   const { loadTemplatePresentation, loadInlineProjectPreviews, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
-  const { welcomeMarkdown } = await import('../mcp-ui/template-recommendations/i18n.ts');
+  const { welcomeMarkdown, inlineDescriptionPrefixes } = await import('../mcp-ui/template-recommendations/i18n.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });
   const match = presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s);
@@ -36,14 +43,12 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   const references = bootstrap.templates.filter(template => template.kind === 'reference');
   if (references.length && previewSource === 'project') {
     const previews = loadInlineProjectPreviews(references.map(item => item.id), { applicationRoot: appRoot, directory });
-    const labels = { zh: '简介：', en: 'Project preview (silent) · ', ja: 'プロジェクトプレビュー（無音） · ',
-      ko: '프로젝트 미리보기 (무음) · ', fr: 'Aperçu du projet (muet) · ', es: 'Vista previa del proyecto (sin sonido) · ', pt: 'Prévia do projeto (sem som) · ' };
     for (const template of references) {
       const preview = previews.find(item => item.id === template.id);
       delete template.videoUrl; delete template.posterUrl;
       Object.assign(template, preview);
-      template.description = labels[language] + template.description;
-      for (const locale of Object.keys(template.descriptions)) template.descriptions[locale] = labels[locale] + template.descriptions[locale];
+      template.description = inlineDescriptionPrefixes[language] + template.description;
+      for (const locale of Object.keys(template.descriptions)) template.descriptions[locale] = inlineDescriptionPrefixes[locale] + template.descriptions[locale];
       const card = recommendation.cards.find(item => item.templateId === template.id);
       card.durationSeconds = preview.durationSeconds;
       card.description = template.description;
@@ -58,7 +63,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
       welcomeMarkdown: welcomeMarkdown(language),
       publicationRequired: false, nativeMcpSessionVerified: false,
       presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: true } },
-      instructions: 'Open the real template library once, then show these exact three prepared references through the natively discovered presentation Tool with onboarding:true. The persistent conversation component puts the maintained welcome above all three cards. Preserve the IDs/order and immutable resource URI; never resample or substitute builtins. Detailed library inspection and video playback acceptance are not installation gates. Do not repeat the welcome in the final reply. If native discovery is stale, use the supported automatic host action and the saved recovery command in this same turn. Without a compatible host connection, report the concrete dependency and keep activation incomplete; a library webpage, shell presentation call or host security change does not satisfy native delivery.' };
+      instructions: onboardingPresentationInstructions('native_required') };
   }
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');
@@ -85,7 +90,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
     welcomeMarkdown: welcomeMarkdown(language),
     publicationRequired: true,
     draftBehavior: 'clipboard-copy; no task submission', nativeMcpSessionVerified: false,
-    instructions: 'Complete onboarding in this same installation turn; never enqueue a user message or defer presentation. Initialize the browser and finish file reads/checks first. This runtime document needs publication with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY using the active chat\'s explicitly permitted visualization directory; runtime write access alone is insufficient. With the returned reference ready, prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal the loaded tab and obtain its page state in one call. Do not reopen or inspect it again or repeat an open_in_codex opening. Complete mandatory browser bookkeeping next, then emit the published finalReplyMarkdown verbatim. Do not summarize or replace its welcome with an installation-status report. Report activation diagnostics separately in progress updates. For recovery after an actually delivered welcome, publish with --welcome-delivered to return cards only. The welcome streams as text; the document contains cards only. Preserve the production welcome/cards and full-duration videos. Recreate copies the brief to the clipboard with a floating copied/paste Toast; no extra textbox or task submission. Preparation/publication is not visible delivery or native MCP discovery.' };
+    instructions: onboardingPresentationInstructions('prepared') };
 }
 
 export async function publishInlineOnboarding({ source, expectedSHA256, hostDirectory, welcomeDelivered = false }) {
@@ -119,7 +124,7 @@ export async function publishInlineOnboarding({ source, expectedSHA256, hostDire
     publicationRequired: false, nativeMcpSessionVerified: false,
     language, welcomeMarkdown, contentReference,
     finalReplyMarkdown: [welcomeMarkdown, contentReference].filter(Boolean).join('\n\n'),
-    instructions: 'After visibly opening the library and completing browser bookkeeping, emit finalReplyMarkdown verbatim. Do not summarize or replace the welcome with a status report. Report activation diagnostics separately in progress updates. Publication does not verify visible delivery or native MCP activation.' };
+    instructions: 'Open or reuse the library once and finish required browser bookkeeping; use the opening call result without further inspection. If opening succeeded, emit finalReplyMarkdown verbatim. If opening failed, was queued or cannot be confirmed, replace the library-visible heading with the actual result and usable URL, preserving the introduction and cards. Publication does not verify visible delivery or native MCP activation.' };
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {

@@ -1,3 +1,4 @@
+import { installationSummary } from '../scripts/install-onboarding.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { loadTemplatePresentation } from '../shared/mcp-template-recommendations
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const templateIds = ['motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b',
-  'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044', 'motion-dac924da-010f-4445-baf3-a39cb033e48f'];
+  'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044', 'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd'];
 const threadId = 'installing-chat', dataDirectory = '/workspace/existing-motion-data';
 const presentation = loadTemplatePresentation();
 function receipt() {
@@ -110,4 +111,25 @@ test('an earlier source-install receipt retains its original chat from the recor
   const result = await resumeInstallationOnboarding(legacy, { appRoot, threadId, request: host.request });
   assert.equal(result.hostSessionVerified, true);
   assert.deepEqual(result.hostHandoff.presentation.arguments.templateIds, templateIds);
+});
+
+// A saved receipt may contain obsolete instructions; recovery must use the current route.
+test('installation summary keeps failed library opening truthful and ignores obsolete receipt choreography', () => {
+  const saved: any = receipt();
+  saved.inlinePresentation = { status: 'prepared', instructions: 'load a hidden tab and call a native tool' };
+  saved.preview = { status: 'unavailable', warning: 'Local library startup failed' };
+  saved.onboardingStatus = 'preview_unavailable';
+  const summary = installationSummary(saved);
+  assert.match(summary, /LIBRARY_UNAVAILABLE: Local library startup failed/);
+  assert.match(summary, /Installation remains installed/);
+  assert.match(summary, /replace the library-visible heading with the actual result/);
+  assert.doesNotMatch(summary, /load a hidden tab|entire final reply must be|invoke.*native/);
+});
+
+test('only a queued refresh requests one verification command in the summary', () => {
+  const saved: any = receipt();
+  saved.hostHandoff.status = 'refresh_requested';
+  assert.match(installationSummary(saved), /run recovery.command\/recovery.args once/);
+  saved.hostHandoff.status = 'ready_for_presentation';
+  assert.doesNotMatch(installationSummary(saved), /run recovery.command\/recovery.args once/);
 });

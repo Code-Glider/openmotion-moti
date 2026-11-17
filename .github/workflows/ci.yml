@@ -310,6 +310,12 @@ jobs:
       - name: Related template preview browser regression
         if: steps.scope.outputs.full == 'true'
         run: node --experimental-strip-types tests/related-template-preview-browser.mjs "$RUNNER_TEMP/related-template-preview"
+      - name: Platform export Studio and MCP end-to-end regression
+        if: steps.scope.outputs.full == 'true'
+        timeout-minutes: 10
+        run: |
+          node --test tests/platform-export.test.ts
+          node tests/platform-export-browser.mjs "$RUNNER_TEMP/platform-export"
       - name: Brand Kit capture, package and showcase regression
         if: steps.scope.outputs.full == 'true'
         run: |
