@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useToast } from './useToast';
 import { StudioToast } from '../components/StudioToast';
+import { I18nProvider } from '../i18n/I18n';
 
 let host: HTMLDivElement;
 let root: Root;
@@ -15,6 +16,17 @@ function Harness() {
 }
 beforeEach(() => { vi.useFakeTimers(); host = document.createElement('div'); document.body.append(host); root = createRoot(host); act(() => root.render(<Harness />)); });
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.useRealTimers(); });
+it.each([
+  ['"large.mp4" exceeds the size limit. Compress or replace the file.', '“large.mp4”超过大小限制，请压缩或更换文件。'],
+  ['Cannot add "clip.mp4". Re-export or replace the file.', '无法添加“clip.mp4”，请重新导出或更换文件。'],
+  ['Some changes were saved, but other changes remain incomplete.', '部分修改已保存，但仍有修改未完成。'],
+  ['Frame capture timed out. Please capture again.', '截帧超时，请重新截取。'],
+  ['Cannot add "ENOENT network error.mp4". Re-export or replace the file.', '无法添加“ENOENT network error.mp4”，请重新导出或更换文件。'],
+])('renders approved copy through the error filter: %s', (message, expected) => {
+  act(() => root.render(<I18nProvider initialLocale="zh-CN"><Harness /></I18nProvider>));
+  act(() => api.showToast(message, 'error'));
+  expect(host.querySelector('[role=alert]')?.textContent).toBe(expected);
+});
 it('shows feedback without a close button and starts exiting after exactly 3 seconds', () => {
   act(() => { api.showToast('Copied element', 'info'); });
   expect(host.querySelector('button')).toBeNull();

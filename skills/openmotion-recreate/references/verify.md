@@ -22,7 +22,7 @@ Use this section for an explicit review, evaluation or visual revision request. 
 node <skill directory>/scripts/measure_frame.mjs reference.mp4 output.mp4 --t <output seconds> --ref-t <reference seconds> [--region x,y,w,h --ref-region x,y,w,h]
 ```
 
-For brief events, use zero-based decoded indices with `--frame <output index> --ref-frame <source index>`. A preview PNG uses `--frame 0` with its actual source time or `--ref-frame`. Keep resolution, capture time and source revision explicit. The helper needs Node and ffmpeg/ffprobe from the [runtime setup](../SKILL.md#4-create-the-project). Batch independent measurements when useful.
+For brief events, use zero-based decoded indices with `--frame <output index> --ref-frame <source index>`. A preview PNG uses `--frame 0` with its actual source time or `--ref-frame`. Keep resolution, capture time and source revision explicit. The helper needs Node and ffmpeg/ffprobe from the shared [runtime paths](../../openmotion-production/references/reference-video.md#locate-the-pinned-cli-and-media-tools). Batch independent measurements when useful.
 
 For shots produced as generated media, whole-frame brightness, detail and accent values are diagnostic, not pass/fail gates or reasons to regenerate; keep the numeric checks for native text, logos, UI and other regions meant to match the reference.
 
