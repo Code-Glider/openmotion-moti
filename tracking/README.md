@@ -100,6 +100,17 @@ correctness incidents and recovery evidence use `incident_confirmed` and
 
 ## Identity, properties and privacy
 
+`account_sign_in_result` reports each finished OpenDesign connector attempt with
+`source_product=openmotion`, `source_detail=openmotion_editor_login`, and an
+`entry_id` / `entry_occurred_at` pair created when the editor starts sign-in.
+Attempts replaced within that sign-in retain the entry pair while their
+`attempt_id` changes. A new explicit sign-in creates a new entry pair. Success
+is reported only after the connector completes credential acceptance and the
+local account setup finishes; browser opening or approval alone is not success.
+The existing installation identity and collection controls apply. No account ID,
+email, activation URL, authorization code or credential is added. These fields
+describe the local OM result; AMR handoff attribution is a separate integration.
+
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.
 Different data directories remain separate installations.

@@ -94,6 +94,7 @@ export const omEvents = {
   // sign-in continues with a new attempt. Times are milliseconds since the click. Stage values come from the connector
   // protocol; activation links, codes, identities and credentials are never fields.
   account_sign_in_result: { producers: ['mcp'], fields: { attempt_id: 'uuid', outcome: ['success', 'failure', 'cancelled', 'replaced'],
+    source_product: ['openmotion'], source_detail: ['openmotion_editor_login'], entry_id: 'uuid', entry_occurred_at: 'timestamp',
     error_code: ['connector_unavailable', 'setup_failed', 'authorization_expired', 'credentials_rejected'], connector_version: 'code', resumed: 'boolean',
     last_stage: accountStages, last_result: ['started', 'success', 'failed'], error_kind: accountErrorKinds, browser_opened: 'boolean',
     receipt: ['accepted', 'rejected'], exit_code: 'integer', duration_ms: 'integer', prepare_ms: 'integer', link_ms: 'integer', approved_ms: 'integer' },

@@ -131,7 +131,7 @@ export class OpenDesignAccount {
   /** The connector exited with confirmed credentials and the session and model catalogue are being set up. */
   private syncing = false;
   /** Times since the sign-in click, for the attempt record. */
-  private clock?: { start: number; prepared?: number; link?: number; approved?: number };
+  private clock?: { start: number; entryId: string; occurredAt: string; prepared?: number; link?: number; approved?: number };
   private preparing?: Promise<string>;
   /** Attempts already reported; two cancels racing each other must not count one attempt twice. */
   private reported = new WeakSet<AccountAttempt>();
@@ -172,6 +172,7 @@ export class OpenDesignAccount {
     const errorKind = attempt.stages.findLast(entry => entry.split(':')[1] === 'failed' && !entry.startsWith('browser_open_result'))?.split(':')[2];
     const browser = attempt.stages.find(entry => entry.startsWith('browser_open_result:'))?.split(':')[1];
     const record = { attempt_id: attempt.id, outcome, error_code: errorCode, connector_version: connectorVersion, resumed: Boolean(attempt.resumed),
+      source_product: 'openmotion', source_detail: 'openmotion_editor_login', entry_id: this.clock.entryId, entry_occurred_at: this.clock.occurredAt,
       last_stage: lastStage, last_result: lastResult, browser_opened: browser === undefined ? undefined : browser === 'success', receipt: attempt.receipt,
       error_kind: errorKind === undefined ? undefined : (accountErrorKinds as readonly string[]).includes(errorKind) ? errorKind : 'unknown',
       exit_code: typeof attempt.exitCode === 'number' && attempt.exitCode >= 0 ? attempt.exitCode : undefined,
@@ -281,7 +282,7 @@ export class OpenDesignAccount {
     this.authorizationUrl = undefined; this.userCode = undefined; this.syncing = false;
     const generation = ++this.generation;
     this.attempt = { id: randomUUID(), stages: [], persisted: false };
-    this.clock = { start: performance.now() };
+    this.clock = { start: performance.now(), entryId: randomUUID(), occurredAt: new Date().toISOString() };
     void this.authorize(generation).catch(error => {
       if (this.generation !== generation) return;
       this.connecting = false; this.syncing = false; this.child = undefined; this.authorizationUrl = undefined; this.userCode = undefined;
