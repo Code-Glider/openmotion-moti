@@ -101,3 +101,5 @@ Motion 质量是基础职责，不以用户是否说“丝滑”作为加载条�
 - 本地链接与 MCP 读同一文件。MCP 返回 `documentId`、`contentHash`、`references`，用其定位与去重；未读、上下文已丢失或版本已变的内容仍需读取。
 - 占位入口只声明职责和现有工具路径，不代表成熟专业能力。可完成的工作继续推进；缺少的视频分析、素材或能力须明确说明，不伪造完成证据。
 - 分清创作审查、技术验证、正常速度播放和听看证据。读过规范或运行成功，均不能单独证明 Motion 质量。
+
+When generating, importing, deriving or organizing assets, read the shared [asset naming contract](materials.md#asset-naming) before assigning display names.

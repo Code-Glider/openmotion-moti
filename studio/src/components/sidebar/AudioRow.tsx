@@ -1,3 +1,4 @@
+import { AssetQuickAdd } from "./AssetQuickAdd";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { OverflowText } from "../ui/OverflowText";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -23,6 +24,7 @@ import { StudioToastViewport } from "../StudioToastViewport";
 export function AudioRow({
   projectId,
   asset,
+  displayName,
   used,
   usages = [],
   onRevealUsage,
@@ -35,6 +37,7 @@ export function AudioRow({
 }: {
   projectId: string;
   asset: string;
+  displayName?: string;
   used: boolean;
   usages?: readonly AssetUsage[];
   onRevealUsage?: (usage: AssetUsage) => void;
@@ -57,7 +60,7 @@ export function AudioRow({
   const sessionEpoch = usePlayerStore(s => s.timelineSessionEpoch);
   const revision = usePlayerStore(s => thumbnailRevisionOf(s.thumbnailRevisions, asset));
   const { toasts, showToast, dismissToast } = useToast();
-  const name = filename(asset);
+  const name = displayName ?? filename(asset);
   const sourceUrl = resolveMediaPreviewUrl(asset, projectId);
   const serveUrl = `${sourceUrl}${sourceUrl.includes("?") ? "&" : "?"}assetRevision=${revision}&session=${sessionEpoch}`;
   const { playing, pending, duration, toggle, stop } = useAudioAssetPreview(serveUrl, visible, () => showToast(t("Preview failed to load")));
@@ -155,7 +158,7 @@ export function AudioRow({
           e.preventDefault();
           setContextMenu({ x: e.clientX, y: e.clientY });
         }}
-        className="motion-audio-row"
+        className="motion-audio-row om-asset-action-row"
         data-used={used || undefined}
       >
         <button
@@ -173,8 +176,9 @@ export function AudioRow({
         </button>
         <div className="motion-audio-content">
           <div className="motion-audio-heading">
-            {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> :
+            {renaming && onRename ? <InlineAssetRename displayName={displayName} asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> :
               <OverflowText text={name} className="motion-audio-name" />}
+            {onAddAssetToTimeline && <AssetQuickAdd compact asset={asset} onAdd={onAddAssetToTimeline} />}
             <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
           </div>
           <div className="motion-audio-detail">
@@ -208,6 +212,7 @@ export function AudioRow({
           onClose={() => setContextMenu(null)}
           onCopy={onCopy}
           onDelete={onDelete}
+          displayName={displayName}
           onRename={onRename}
           onStartRename={() => setRenaming(true)}
           onAddAtPlayhead={onAddAssetToTimeline}

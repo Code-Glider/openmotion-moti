@@ -163,3 +163,17 @@ it('shows usage ranges instead of waveforms and stops audition before locating a
   expect(reveal).toHaveBeenCalledWith(usages[1]);
   expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
 });
+
+ it("preserves display names and quick insertion without opening preview", async () => {
+  const add = vi.fn();
+  render(<AudioRow {...props} displayName="Narration" onAddAssetToTimeline={add} />);
+  expect(host.querySelector('.motion-audio-name')?.textContent).toBe('Narration');
+  const quickAdd = host.querySelector<HTMLButtonElement>('.om-media-quick-add')!;
+  await act(async () => {
+    quickAdd.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    quickAdd.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    quickAdd.click();
+  });
+  expect(add).toHaveBeenCalledWith(props.asset);
+  expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+});

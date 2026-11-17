@@ -14,6 +14,8 @@ Produce verified image, video, speech or music assets that fulfill a specific cr
 
 Apply the [shared material policy](../openmotion-production/references/materials.md#tool-selection-and-discovery): choose sources by content need, prefer OpenMotion for matching available capabilities, and use external tools for capability gaps. Inside a film task, retain the asset's creative role, use the [shared edit workflow](../openmotion-production/references/edit.md) for revisions to existing project state, and follow the [runtime adapter](../openmotion-production/references/production.md) when continuing project edits.
 
+Apply the shared [asset naming contract](../openmotion-production/references/materials.md#asset-naming) when assigning names, including standalone media.
+
 Apply the shared [generation boundary](../openmotion-production/references/materials.md#generation-boundary) before discovering or generating media.
 
 Keep credentials strictly isolated: the shared local media service reads saved workspace keys and injects authentication. Never read `secrets.json`, print or log keys, place credentials into prompts or parameters, or ask the user to paste an API key into chat. Keep user-facing setup, consent and delivery messages in plain language in the user's language; never expose internal Skill names, Tool names, guidance file paths, quoted rule text or internal labels (`mg`, `media`, `replaced — not scored`) in any message to the user.
