@@ -116,7 +116,7 @@ test('reference-video routes share one reading and measurement method and keep o
   for (const [workflow, sections] of routes) {
     for (const section of sections) {
       const document = await getWorkflow(section, workflow);
-      for (const phrase of ['navigation only', 'measure probe', 'Google Fonts', 'runtime/media/bin', 'one clip per object', 'mouse pointer with an inset']) {
+      for (const phrase of ['navigation only', 'measure probe', 'Google Fonts', 'runtime/media/bin', 'one clip per object', 'mouse pointer with an inset', 'never claim to have watched', 'never as passed', 'two consecutive fixes']) {
         assert.ok(!document.content.includes(phrase), `${workflow}/${section} repeats shared method: ${phrase}`);
       }
     }

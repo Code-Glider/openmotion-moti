@@ -32,7 +32,7 @@ Read the [shared context](../openmotion-production/references/context.md) before
 
 Before asking anything, look in the current workspace for the user's own material: README and docs, product or marketing copy, brand files, logos, screenshots, colour or font definitions, package or site metadata. Read what is there. This is the user's brand, product and latest features; use it as the content of the film.
 
-Then read the reference as the shared [reference reading](../openmotion-production/references/reference-video.md#obtain-the-reference) describes: a local decodable copy, its URL and checksum, the whole video and consecutive frames around important changes. A cover image or an unreachable link is not a viewed video; never claim to have watched it.
+Then read the reference as the shared [reference reading](../openmotion-production/references/reference-video.md#obtain-the-reference) describes: a local decodable copy, its URL and checksum, the whole video and consecutive frames around important changes.
 
 ## 2. Decide what the user wants
 
@@ -52,7 +52,7 @@ Ask all of it in one batch through the host's question interface, in the user's 
 
 Follow the [runtime adapter](../openmotion-production/references/production.md) and [Native authoring](../openmotion-production/references/native.md). A continued recreation reuses its projectId. Otherwise create one project with `openmotion_create_project` and a stable requestId: `projectType: "reference_video"` with `referenceUrl` for a link, or `projectType: "natural_language"` for a local file, with the file path and the agreed brief in `requirements`. Creation makes an empty carrier, not a film, and never overwrites another project.
 
-Read `openmotion_get_project({projectId})` for the directory, revision, current version, `hyperframesCli` and `authoringGuide`; read the pinned engine guide before writing source. Commands you run yourself (`node <hyperframesCli>`, this Skill's measurer, `ffmpeg`) locate Node and FFmpeg through the shared [runtime paths](../openmotion-production/references/reference-video.md#locate-the-pinned-cli-and-media-tools). When neither is available, record the affected check as blocked with the reason; never as passed.
+Read `openmotion_get_project({projectId})` for the directory, revision, current version, `hyperframesCli` and `authoringGuide`; read the pinned engine guide before writing source. Commands you run yourself (`node <hyperframesCli>`, this Skill's measurer, `ffmpeg`) locate Node and FFmpeg through the shared [runtime paths](../openmotion-production/references/reference-video.md#locate-the-pinned-cli-and-media-tools).
 
 ## 5. Rebuild, then change
 
