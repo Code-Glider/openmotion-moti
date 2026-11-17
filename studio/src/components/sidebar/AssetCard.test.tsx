@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePlayerStore, type TimelineElement } from "../../player/store/playerStore";
 import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
-import { AssetCard } from "./AssetCard";
+import { AssetCard, FontRow } from "./AssetCard";
 import { AudioRow } from "./AudioRow";
 import { InlineAssetRename } from "./InlineAssetRename";
 import { I18nProvider } from "../../i18n/I18n";
@@ -254,4 +254,24 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
   act(() => input.blur());
   expect(rename).toHaveBeenCalledWith('assets/music.wav', 'assets/music 111.wav');
   expect(host.querySelector('input')).toBeNull();
+});
+
+
+describe("row quick insertion", () => {
+  it.each(["font", "audio"])("adds %s without copying or opening preview", async kind => {
+    const add = vi.fn().mockResolvedValue(true);
+    const copy = vi.fn();
+    const asset = kind === "font" ? "assets/AlbertSans.ttf" : "assets/music.mp3";
+    const props = { asset, used: false, onCopy: copy, copyFeedback: null, onAddAssetToTimeline: add };
+    const host = mount(kind === "font" ? <FontRow {...props} /> : <AudioRow {...props} projectId="p1" />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      button.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+      button.click();
+    });
+    expect(add).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(copy).not.toHaveBeenCalled();
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+  });
 });

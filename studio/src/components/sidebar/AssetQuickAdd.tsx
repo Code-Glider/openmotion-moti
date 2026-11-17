@@ -30,7 +30,7 @@ export function AssetQuickAdd({ asset, onAdd }: { asset: string; onAdd: (path: s
       <Tooltip label={label} wrap>
         <IconButton type="button" variant="primary" className="om-media-quick-add"
           aria-label={label} aria-busy={adding} disabled={adding} draggable={false}
-          icon={<RemixIcon name="add-line" size={18} />}
+          icon={<RemixIcon name="add-line" size={16} />}
           onPointerDown={event => event.stopPropagation()}
           onPointerUp={event => event.stopPropagation()}
           onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}

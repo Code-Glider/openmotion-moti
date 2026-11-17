@@ -1,3 +1,4 @@
+import { AssetQuickAdd } from "./AssetQuickAdd";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { OverflowText } from "../ui/OverflowText";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -238,7 +239,7 @@ export function AudioRow({
           e.preventDefault();
           setContextMenu({ x: e.clientX, y: e.clientY });
         }}
-        className={`motion-audio-row group w-full mb-1 rounded-md border border-panel-border text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer outline-hidden focus-visible:ring-1 focus-visible:ring-panel-border ${
+        className={`motion-audio-row om-asset-action-row group w-full mb-1 rounded-md border border-panel-border text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer outline-hidden focus-visible:ring-1 focus-visible:ring-panel-border ${
           isCopied
             ? "bg-panel-accent/10"
             : "bg-panel-surface hover:bg-panel-hover"
@@ -305,6 +306,7 @@ export function AudioRow({
             </div>
           )}
         </div>
+        {onAddAssetToTimeline && <AssetQuickAdd asset={asset} onAdd={onAddAssetToTimeline} />}
         <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
       </div>
       {contextMenu && (
