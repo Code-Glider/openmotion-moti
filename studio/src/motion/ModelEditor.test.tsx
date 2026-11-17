@@ -104,3 +104,99 @@ it('localizes the inline error in Chinese and retains valid input when saving fa
   expect(document.querySelector('[role="alert"]')).toBeNull();
   expect(document.querySelector('textarea')!.value).toBe('{"temperature":0.5}');
 });
+it.each(['-1', '0', '1.5', '100000001', 'abc', '-', '1e', '1e309'])('retains invalid token draft %j and focuses its field even when collapsed', async value => {
+  const save = vi.fn(async () => true);
+  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={save} onClose={vi.fn()} />);
+  await fill('Context window', value);
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  await act(async () => button('More settings').click());
+  await submitModel();
+  const input = document.querySelector<HTMLInputElement>('[aria-label="Context window"]')!;
+  expect(input.value).toBe(value);
+  expect(document.activeElement).toBe(input);
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  const error = document.getElementById(input.getAttribute('aria-describedby')!)!;
+  expect(error.textContent).toBe(value === '100000001' ? 'The value cannot exceed 100,000,000.' : 'Enter an integer between 1 and 100,000,000.');
+  expect(save).not.toHaveBeenCalled();
+});
+it.each([false, true])('shows all token relationship errors and revalidates them when context changes (editing: %s)', async editing => {
+  const save = vi.fn(async () => true), close = vi.fn();
+  await mount(<ModelEditor provider={provider} model={editing ? { id: 'test:model', modelId: 'model' } as DirectoryModel : undefined} save={save} onClose={close} />);
+  if (!editing) { await fill('Model ID', 'model'); await act(async () => button('More settings').click()); }
+  await fill('Context window', '128000'); await fill('Max input tokens', '200000'); await fill('Max output tokens', '256000');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await act(async () => button('More settings').click()); await submitModel();
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Max input tokens');
+    expect([...document.querySelectorAll('[role="alert"]')].map(el => el.textContent)).toEqual([
+      'Max input tokens cannot exceed the context window (currently 128,000).',
+      'Max output tokens cannot exceed the context window (currently 128,000).',
+    ]);
+    expect(save).not.toHaveBeenCalled();
+  }
+  await act(async () => button('Context window: 200000').click());
+  expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  expect(document.querySelector('[role="alert"]')!.textContent).toContain('currently 200,000');
+  await fill('Max output tokens', '200000');
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  await submitModel();
+  expect(save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ contextWindow: 200000, maxInputTokens: 200000, maxOutputTokens: 200000 }));
+  expect(close).toHaveBeenCalledOnce();
+});
+it('allows optional empty token limits and valid integer boundaries', async () => {
+  const save = vi.fn(async () => false);
+  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={save} onClose={vi.fn()} />);
+  await fill('Context window', ' '); await submitModel();
+  expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ contextWindow: null, maxInputTokens: null, maxOutputTokens: null }));
+  await fill('Context window', '100000000'); await fill('Max input tokens', '1'); await fill('Max output tokens', '100000000'); await submitModel();
+  expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ contextWindow: 100000000, maxInputTokens: 1, maxOutputTokens: 100000000 }));
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+});
+it('shows Chinese token errors beside each field along with an independent JSON error', async () => {
+  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={vi.fn()} onClose={vi.fn()} />, 'zh-CN');
+  await fill('上下文窗口', '128000'); await fill('最大输入 Token', '200000'); await fill('最大输出 Token', '-1'); await fillDefaults('[]'); await submitModel();
+  expect([...document.querySelectorAll('[role="alert"]')].map(el => el.textContent)).toEqual([
+    '最大输入 Token 不能超过上下文窗口（当前为 128,000）。', '请输入 1～100,000,000 之间的整数。', '请输入有效的 JSON 对象。',
+  ]);
+  await fill('上下文窗口', ''); await fill('最大输出 Token', '100000001');
+  expect([...document.querySelectorAll('[role="alert"]')].map(el => el.textContent)).toEqual(['数值不能超过 100,000,000。', '请输入有效的 JSON 对象。']);
+});
+
+it('shows all basic field errors, focuses the first and preserves drafts until corrected', async () => {
+  const save = vi.fn(async () => true);
+  await mount(<ModelEditor provider={provider} save={save} onClose={() => {}} />);
+  await fill('Model ID', 'bad id'); await fill('Display name', 'x'.repeat(181)); await fill('Group name', 'x'.repeat(81));
+  await submitModel();
+  expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(3);
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('Model ID');
+  expect(document.querySelector<HTMLInputElement>('[aria-label="Group name"]')!.value).toHaveLength(81);
+  expect(save).not.toHaveBeenCalled();
+  await fill('Model ID', 'vendor/model:v1'); await fill('Display name', 'x'.repeat(180)); await fill('Group name', 'x'.repeat(80));
+  expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
+  await submitModel(); expect(save).toHaveBeenCalledOnce();
+});
+it('explains empty and overlong model IDs at the field', async () => {
+  const save = vi.fn(async () => true);
+  await mount(<ModelEditor provider={provider} save={save} onClose={() => {}} />);
+  expect(button('Add model').disabled).toBe(false);
+  await submitModel(); expect(document.body.textContent).toContain('Enter a model ID.');
+  await fill('Model ID', 'x'.repeat(181));
+  expect(document.body.textContent).toContain('Model ID cannot exceed 180 characters.');
+  await fill('Model ID', 'x'.repeat(180)); await submitModel(); expect(save).toHaveBeenCalledOnce();
+});
+it.each([false, true])('validates reserved fields and serialized JSON size, including hidden settings (editing: %s)', async editing => {
+  const save = vi.fn(async () => true);
+  await mount(<ModelEditor provider={provider} model={editing ? { id: 'test:model', modelId: 'model', defaults: {} } as DirectoryModel : undefined} save={save} onClose={() => {}} />, 'zh-CN');
+  if (!editing) { await fill('模型 ID', 'model'); await act(async () => button('更多设置').click()); }
+  await fillDefaults('{"MODEL":"example"}');
+  await act(async () => button('更多设置').click()); await submitModel();
+  expect(document.body.textContent).toContain('默认参数不能包含保留字段“MODEL”，请移除该字段。');
+  expect(document.activeElement).toBe(document.querySelector('textarea'));
+  const long = JSON.stringify({ x: 'a'.repeat(63993) }); // 64,001 serialized characters
+  await fillDefaults(long);
+  expect(document.body.textContent).toContain('64,000');
+  expect(document.querySelector('textarea')!.value).toBe(long);
+  expect(save).not.toHaveBeenCalled();
+  await fillDefaults(JSON.stringify({ x: 'a'.repeat(63992) }, null, 2));
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  await submitModel(); expect(save).toHaveBeenCalledOnce();
+});
