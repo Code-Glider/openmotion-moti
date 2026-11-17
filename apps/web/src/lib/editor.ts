@@ -16,7 +16,9 @@ import {
 import type { Client } from "../api.js";
 import { EntryLoader } from "./entry.js";
 import { observedView } from "./observe.js";
+import { VersionRestore } from "./versions.js";
 export class Editor {
+  readonly versions: VersionRestore;
   state: State = { sessions: [], selection: { revision: 0, sessionId: null, artifactId: null } };
   session: SessionDetail | null = null;
   project: Project | null = null;
@@ -39,7 +41,14 @@ export class Editor {
   get needsRefresh() {
     return !!this.refresh;
   }
-  constructor(private client: Client) {}
+  constructor(private client: Client) {
+    this.versions = new VersionRestore(
+      this,
+      client,
+      (input) => this.mutate("project_restore", input),
+      (project) => this.install({ state: this.state, session: this.session, project }),
+    );
+  }
   private current() {
     return this.project ? { artifactId: this.project.artifactId, revision: this.project.revision } : null;
   }

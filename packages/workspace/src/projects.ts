@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto";
 import {
   type Artifact,
+  type ContentVersion,
   Fault,
   type Input,
   type Project,
   type ProjectHead,
+  type ProjectSnapshot,
   type Resource,
   type SourceFile,
+  type VersionPage,
 } from "./contract.js";
 import type { Database } from "./database.js";
 import { digest, manifest, sources } from "./native.js";
@@ -80,6 +83,7 @@ export class Projects {
       input.title,
       artifact.createdAt,
     );
+    this.record(projectId, revision, "create");
     return artifact;
   }
   head(input: Input<"project_read">): ProjectHead {
@@ -134,6 +138,7 @@ export class Projects {
       cursor,
       current.id,
     );
+    this.record(current.id, String(target.revision), direction < 0 ? "undo" : "redo");
     return this.read(input);
   }
   save(input: Input<"project_save">): Project {
@@ -162,11 +167,11 @@ export class Projects {
       resources,
     };
   }
-  commit(current: Project, input: SourceFile[], assets: Resource[]): Project {
+  commit(current: Project, input: SourceFile[], assets: Resource[], restoredFrom?: string): Project {
     const files = sources(input),
       resources = manifest(assets),
       revision = digest(files, resources);
-    if (revision === current.revision) return current;
+    if (revision === current.revision && !restoredFrom) return current;
     const cursor = Number(this.db.one("SELECT cursor FROM projects WHERE id=?", current.id)?.cursor);
     this.db.run(
       "INSERT OR IGNORE INTO revisions VALUES(?,?,?,?)",
@@ -183,6 +188,97 @@ export class Projects {
       cursor + 1,
       current.id,
     );
+    this.record(current.id, revision, restoredFrom ? "restore" : "edit", restoredFrom);
     return this.read({ sessionId: current.sessionId, artifactId: current.artifactId });
+  }
+  private record(projectId: string, revision: string, kind: ContentVersion["kind"], restoredFrom?: string) {
+    const number = Number(
+      this.db.one("SELECT COALESCE(MAX(number),0)+1 AS number FROM versions WHERE project_id=?", projectId)?.number,
+    );
+    this.db.run(
+      "INSERT INTO versions VALUES(?,?,?,?,?,?,?)",
+      randomUUID(),
+      projectId,
+      number,
+      revision,
+      kind,
+      Date.now(),
+      restoredFrom ?? null,
+    );
+  }
+  private versionHead(projectId: string): ContentVersion {
+    const version = this.db.one(
+      "SELECT id,number,revision,kind,created_at AS createdAt,restored_from AS restoredFromVersionId FROM versions WHERE project_id=? ORDER BY number DESC LIMIT 1",
+      projectId,
+    );
+    if (!version) throw new Fault("integrity", "project version head is missing");
+    return version as unknown as ContentVersion;
+  }
+  versions(input: Input<"project_versions">, verify: (snapshot: ProjectSnapshot) => string[]): VersionPage {
+    const owner = this.owner(input.sessionId, input.artifactId),
+      head = this.head(input),
+      current = this.versionHead(owner.projectId),
+      cursor = input.cursor;
+    if (current.revision !== head.revision)
+      throw new Fault("integrity", "project version head differs from current revision");
+    if (
+      cursor &&
+      (cursor.projectId !== owner.projectId || cursor.ceiling > current.number || cursor.before > cursor.ceiling + 1)
+    )
+      throw new Fault("invalid", "version cursor is outside its owned inventory");
+    const ceiling = cursor?.ceiling ?? current.number,
+      rows = this.db.all(
+        "SELECT id,number,revision,kind,created_at AS createdAt,restored_from AS restoredFromVersionId FROM versions WHERE project_id=? AND number<=? AND number<? ORDER BY number DESC LIMIT 6",
+        owner.projectId,
+        ceiling,
+        cursor?.before ?? ceiling + 1,
+      ) as unknown as ContentVersion[];
+    const versions = rows.slice(0, 5).map((version) => {
+        let unavailableFiles: string[];
+        try {
+          unavailableFiles = verify(this.snapshot({ ...input, revision: version.revision }));
+        } catch {
+          unavailableFiles = ["native source snapshot"];
+        }
+        return { ...version, restorable: unavailableFiles.length === 0, unavailableFiles };
+      }),
+      last = versions.at(-1);
+    return {
+      current,
+      historyVersion: head.historyVersion,
+      versions,
+      newerAvailable: current.number > ceiling,
+      nextCursor: rows.length > 5 && last ? { projectId: owner.projectId, ceiling, before: last.number } : null,
+    };
+  }
+  restore(input: Input<"project_restore">, verify: (snapshot: ProjectSnapshot) => string[]): Project {
+    const current = this.read(input),
+      head = this.versionHead(current.id);
+    if (
+      current.revision !== input.expectedRevision ||
+      current.history.version !== input.expectedHistory ||
+      head.id !== input.expectedVersionId
+    )
+      throw new Fault("conflict", "project version changed; read current source and versions before restoring", {
+        revision: current.revision,
+        historyVersion: current.history.version,
+        versionId: head.id,
+      });
+    const target = this.db.one(
+      "SELECT revision FROM versions WHERE project_id=? AND id=?",
+      current.id,
+      input.versionId,
+    );
+    if (!target) throw new Fault("ownership", "version does not belong to this project");
+    if (input.versionId === head.id) throw new Fault("invalid", "selected version is already current");
+    let snapshot: ProjectSnapshot;
+    try {
+      snapshot = this.snapshot({ ...input, revision: String(target.revision) });
+    } catch {
+      throw new Fault("invalid", "historical source is unavailable; current project is unchanged");
+    }
+    if (verify(snapshot).length)
+      throw new Fault("invalid", "historical resource bytes are missing or corrupt; current project is unchanged");
+    return this.commit(current, snapshot.files, snapshot.resources, input.versionId);
   }
 }

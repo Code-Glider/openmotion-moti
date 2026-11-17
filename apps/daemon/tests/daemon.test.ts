@@ -147,6 +147,46 @@ describe("daemon", () => {
       const command = { requestId: randomUUID(), title: "persisted session", mode: "motion" as const };
       const created = await api.execute("session_create", command);
       expect(await api.execute("session_create", command)).toEqual(created);
+      const artifact = await api.execute("artifact_create", {
+          requestId: randomUUID(),
+          sessionId: created.id,
+          title: "Versioned",
+          files: initialFiles(),
+        }),
+        owner = { sessionId: created.id, artifactId: artifact.id },
+        original = await api.execute("project_read", owner),
+        initial = (await api.execute("project_versions", owner)).current,
+        edited = await api.execute("project_save", {
+          ...owner,
+          requestId: randomUUID(),
+          expectedRevision: original.revision,
+          files: [{ path: "index.html", content: "edited" }],
+        }),
+        current = (await api.execute("project_versions", owner)).current;
+      await expect(
+        api.execute("project_restore", {
+          ...owner,
+          requestId: randomUUID(),
+          versionId: initial.id,
+          expectedVersionId: initial.id,
+          expectedRevision: original.revision,
+          expectedHistory: original.history.version,
+        }),
+      ).rejects.toMatchObject({
+        code: "conflict",
+        current: { revision: edited.revision, historyVersion: edited.history.version, versionId: current.id },
+      });
+      const restore = {
+          ...owner,
+          requestId: randomUUID(),
+          versionId: initial.id,
+          expectedVersionId: current.id,
+          expectedRevision: edited.revision,
+          expectedHistory: edited.history.version,
+        },
+        restored = await api.execute("project_restore", restore);
+      expect(await api.execute("project_restore", restore)).toEqual(restored);
+      expect(restored.files).toEqual(original.files);
       expect(await call(port.value, "/state", token)).toMatchObject({ status: 404 });
       await client.release(lease);
       lease = await client.start({
@@ -160,6 +200,8 @@ describe("daemon", () => {
         service: "daemon",
       });
       expect((await api.execute("session_get", { sessionId: created.id })).title).toBe("persisted session");
+      expect(await api.execute("project_read", owner)).toEqual(restored);
+      expect((await api.execute("project_versions", owner)).versions).toHaveLength(3);
     } finally {
       if (lease) await client.release(lease);
       await client.revoke({ namespace: scope, channel: channel("stable") }, port.lease);

@@ -294,7 +294,7 @@ export class Client {
         result.error &&
         ["invalid", "missing", "ownership", "conflict", "idempotency", "integrity"].includes(result.error.code)
       )
-        throw new Fault(result.error.code, result.error.message);
+        throw new Fault(result.error.code, result.error.message, result.error.current);
       throw new Error(`daemon request failed: ${response.status}`);
     }
     return result;
