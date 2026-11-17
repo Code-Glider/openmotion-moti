@@ -178,7 +178,10 @@ it("reads fixed film ranges after later edits, renews links and never submits or
     expect(renewed.film).toEqual(first.ticket.film);
     expect(reads).toEqual([first.job.id, second.job.id, first.job.id]);
     expect(jobs.size).toBe(2);
-    // Same-size corruption outside the requested range must still refuse all bytes.
+    const beforeWarmRead = vi.mocked(createHash).mock.calls.length;
+    expect((await fetch(renewed.url, { method: "HEAD" })).status).toBe(200);
+    expect(vi.mocked(createHash).mock.calls.length).toBe(beforeWarmRead + 1);
+    // Corrupt an already verified ticket: same-size writes must invalidate its memo before any range bytes.
     const beforeCorruption = vi.mocked(createHash).mock.calls.length;
     await writeFile(join(rendererRoot, "exports", `${first.ticket.film.id}.mp4`), Buffer.alloc(bytes.length));
     const corrupt = await fetch(renewed.url, { headers: { range: "bytes=0-1" } });
