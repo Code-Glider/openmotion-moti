@@ -32,7 +32,9 @@ export function readRecommendation(value: unknown, bootstrap: TemplateCardsBoots
     || typeof value.recommendationId !== 'string' || !uuid.test(value.recommendationId)
     || typeof value.selectionGuide !== 'string' || !Array.isArray(value.cards) || value.cards.length !== 3
     || (value.language !== undefined && !isLanguage(value.language))
-    || (value.onboarding !== undefined && typeof value.onboarding !== 'boolean')) return null;
+    || (value.onboarding !== undefined && typeof value.onboarding !== 'boolean')
+    || (value.welcomeText !== undefined && (value.onboarding !== true || typeof value.welcomeText !== 'string'
+      || !value.welcomeText.trim() || value.welcomeText.length > 4000))) return null;
   const assets = new Map(bootstrap.templates.map(asset => [asset.id, asset]));
   const used = new Set<string>(), requests = new Set<string>();
   const cards: RecommendationCard[] = [];
@@ -59,7 +61,8 @@ export function readRecommendation(value: unknown, bootstrap: TemplateCardsBoots
   }
   return Object.freeze({ schemaVersion: 1, resourceVersion: bootstrap.resourceVersion,
     recommendationId: value.recommendationId, ...(isLanguage(value.language) ? { language: value.language } : {}), cards: Object.freeze(cards), selectionGuide: value.selectionGuide,
-    ...(value.onboarding === true ? { onboarding: true } : {}) });
+    ...(value.onboarding === true ? { onboarding: true } : {}),
+    ...(typeof value.welcomeText === 'string' ? { welcomeText: value.welcomeText } : {}) });
 }
 
 export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBootstrap, host: TemplateCardsHost) {
@@ -67,6 +70,8 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
   root.setAttribute('data-motion-ui', '');
   const actionFeedback = createInlineFeedback(root);
   let context = host.getHostContext?.() ?? {}, connected = false, destroyed = false, generation = 0, busy = false;
+  let welcomeInput: { text: string; language?: Language; partial: boolean; progressed: boolean; complete: boolean } | undefined;
+  let reveal = 0, pendingResult: Recommendation | undefined;
   let snapshot: Recommendation | null = null, states: CardState[] = [], observer: IntersectionObserver | undefined;
   let detail: { section: HTMLElement; video: HTMLVideoElement; title: HTMLElement; back: HTMLButtonElement;
     clone: HTMLButtonElement; status: HTMLElement; feedback: HTMLElement; visible: boolean;
@@ -76,7 +81,7 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
   const cleanups: (() => void)[] = [], lifetime: (() => void)[] = [];
   const pendingPause = new WeakMap<HTMLVideoElement, number>(), pendingPlay = new WeakMap<HTMLVideoElement, number>();
   const playingRequest = new WeakMap<HTMLVideoElement, { cancelled: boolean }>();
-  const language = () => snapshot?.language ?? resolveLanguage(context.locale);
+  const language = () => snapshot?.language ?? welcomeInput?.language ?? resolveLanguage(context.locale);
   const t = (key: CopyKey) => translations[language()].ui[key];
   function element<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text?: string): HTMLElementTagNameMap[K] {
     const node = doc.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node;
@@ -171,9 +176,16 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
   }
   function refreshWelcome() {
     let welcome = root.querySelector<HTMLElement>('.omtc-welcome');
-    if (!snapshot?.onboarding) { welcome?.remove(); return; }
+    if (!snapshot?.onboarding && !welcomeInput) { welcome?.remove(); return; }
     if (!welcome) { welcome = element('section', 'omtc-welcome'); welcome.setAttribute('aria-label', t('welcomeLabel')); root.prepend(welcome); }
     welcome.setAttribute('aria-label', t('welcomeLabel'));
+    const streamedText = snapshot?.welcomeText ?? welcomeInput?.text;
+    if (streamedText !== undefined) {
+      // Tool arguments are untrusted text, never HTML or executable Markdown.
+      welcome.replaceChildren(...streamedText.split(/\n\n+/).map((text, index) => element(index === 0 ? 'h2' : 'p', '', text)));
+      welcome.hidden = Boolean(detail?.selected);
+      return;
+    }
     const text = translations[language()].welcome;
     const recommendation = element('p'); recommendation.append(element('strong', '', text.recommendations));
     welcome.replaceChildren(element('h2', '', text.heading), element('p', '', text.introduction),
@@ -335,6 +347,12 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     observer?.observe(detailSection);
     refreshLabels(); reconcile();
   }
+  function fail() {
+    if (destroyed) return;
+    reveal++; pendingResult = undefined; cleanupView(); snapshot = null;
+    if (welcomeInput) { welcomeInput.complete = true; refreshWelcome(); }
+    const error = element('p', 'omtc-status', t('unavailable')); error.setAttribute('role', 'alert'); root.append(error);
+  }
   listen(doc, 'visibilitychange', () => reconcile(), true);
   const onReduced = () => { reduced = mediaQuery?.matches ?? false; reconcile(); };
   mediaQuery?.addEventListener?.('change', onReduced); lifetime.push(() => mediaQuery?.removeEventListener?.('change', onReduced));
@@ -344,21 +362,65 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
   }, true);
   root.classList.add('omtc'); root.replaceChildren(element('p', 'omtc-status', t('waiting')));
   return {
+    toolInput(value: unknown, complete = false) {
+      if (destroyed || snapshot || pendingResult || welcomeInput?.complete || !record(value)
+        || value.onboarding !== true || typeof value.welcomeText !== 'string' || value.welcomeText.length > 4000) return;
+      const text = value.welcomeText;
+      if (!text) return;
+      welcomeInput = { text, language: isLanguage(value.language) ? value.language : welcomeInput?.language,
+        partial: welcomeInput?.partial === true || !complete,
+        progressed: welcomeInput?.progressed === true || (welcomeInput?.partial === true && text !== welcomeInput.text), complete };
+      root.dataset.welcomeDelivery = welcomeInput.partial ? 'streaming' : 'complete-only';
+      root.querySelector('.omtc-status')?.remove(); refreshLabels();
+    },
+    fail,
     update(value: unknown) {
       if (destroyed) return;
       const next = readRecommendation(value, bootstrap);
-      if (!next) { cleanupView(); snapshot = null; const error = element('p', 'omtc-status', t('unavailable')); error.setAttribute('role', 'alert'); root.append(error); return; }
-      if (snapshot && JSON.stringify(snapshot) === JSON.stringify(next)) return;
-      try { render(next); } catch { cleanupView(); snapshot = null; const error = element('p', 'omtc-status', t('unavailable')); error.setAttribute('role', 'alert'); root.append(error); }
+      if (!next) { fail(); return; }
+      if (JSON.stringify(snapshot ?? pendingResult) === JSON.stringify(next)) return;
+      if (snapshot || pendingResult) welcomeInput = undefined;
+      const currentReveal = ++reveal;
+      pendingResult = undefined;
+      if (next.welcomeText !== undefined) {
+        cleanupView(); snapshot = null;
+        welcomeInput = { text: next.welcomeText, language: next.language, partial: welcomeInput?.partial ?? false,
+          progressed: welcomeInput?.progressed === true || (welcomeInput?.partial === true && welcomeInput.text !== next.welcomeText), complete: true };
+        root.dataset.welcomeDelivery = welcomeInput.progressed ? 'streamed' : 'complete-only';
+        refreshWelcome(); pendingResult = next;
+        // Give the complete welcome a paint before creating any media elements.
+        // This schedules layout, not timed text or simulated typing.
+        win.requestAnimationFrame(() => {
+          if (destroyed || currentReveal !== reveal) return;
+          win.requestAnimationFrame(() => {
+            if (destroyed || currentReveal !== reveal) return;
+            pendingResult = undefined;
+            try { render(next); } catch { fail(); }
+          });
+        });
+      } else {
+        welcomeInput = undefined; delete root.dataset.welcomeDelivery;
+        try { render(next); } catch { fail(); }
+      }
     },
     setConnected(value: boolean) {
+      if (destroyed) return;
       connected = value;
-      if (!value && !snapshot) { const error = element('p', 'omtc-status', t('unavailable')); error.setAttribute('role', 'alert'); root.replaceChildren(error); }
+      if (!value && welcomeInput) { fail(); return; }
+      if (!value && !snapshot && !welcomeInput) { const error = element('p', 'omtc-status', t('unavailable')); error.setAttribute('role', 'alert'); root.replaceChildren(error); }
       refreshLabels();
     },
-    setHostContext(value: HostContext) { context = { ...context, ...value }; refreshLabels(); },
-    destroy() { if (destroyed) return; cleanupView(); actionFeedback.destroy(); destroyed = true; snapshot = null; for (const cleanup of lifetime.splice(0)) cleanup(); },
+    setHostContext(value: HostContext) { if (destroyed) return; context = { ...context, ...value }; refreshLabels(); },
+    destroy() { if (destroyed) return; reveal++; pendingResult = undefined; cleanupView(); actionFeedback.destroy(); destroyed = true; snapshot = null; for (const cleanup of lifetime.splice(0)) cleanup(); },
   };
+}
+
+/** Install input handlers before connecting so early streamed arguments are retained. */
+export function bindTemplateCardInput(app: App, ui: ReturnType<typeof mountTemplateCards>) {
+  app.ontoolinputpartial = input => ui.toolInput(input.arguments);
+  app.ontoolinput = input => ui.toolInput(input.arguments, true);
+  app.ontoolresult = result => result.isError ? ui.fail() : ui.update(result.structuredContent);
+  app.ontoolcancelled = () => ui.fail();
 }
 
 /** The production entry is inert when imported by the DOM test harness. */
@@ -367,7 +429,7 @@ if (typeof window !== 'undefined' && window.__OPENMOTION_TEMPLATE_CARDS__) {
   if (root) {
     const app = new App({ name: 'OpenMotion template recommendations', version: '1.0.0' }, {});
     const ui = mountTemplateCards(root, window.__OPENMOTION_TEMPLATE_CARDS__, app);
-    app.ontoolresult = result => ui.update(result.structuredContent);
+    bindTemplateCardInput(app, ui);
     app.onhostcontextchanged = () => ui.setHostContext(app.getHostContext() ?? {});
     app.onteardown = async () => { ui.destroy(); return {}; };
     window.addEventListener('pagehide', () => ui.destroy(), { once: true });

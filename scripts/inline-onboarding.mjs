@@ -20,7 +20,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
   const { loadTemplatePresentation, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
-  const { welcomeMarkdown } = await import('../mcp-ui/template-recommendations/i18n.ts');
+  const { welcomeMarkdown, onboardingWelcomeText } = await import('../mcp-ui/template-recommendations/i18n.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });
   const match = presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s);
@@ -34,10 +34,10 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   if (bootstrap.templates.some(template => templateIds.includes(template.id) && (template.posterUrl || template.videoUrl))) {
     return { status: 'native_required', mode: 'native-mcp-app', reason: 'INLINE_EXTERNAL_MEDIA_BLOCKED',
       resourceVersion: presentation.resourceVersion, templateIds: recommendation.cards.map(card => card.templateId), language,
-      welcomeMarkdown: welcomeMarkdown(language, 'before'),
+      welcomeMarkdown: welcomeMarkdown(language), welcomeStreamingVerified: false,
       publicationRequired: false, nativeMcpSessionVerified: false,
-      presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: false } },
-      instructions: 'Show these exact three prepared references in the calling conversation through the natively discovered presentation Tool with onboarding:false. Its resource declares the approved image/video origin. Finish verification before the final presentation; after the cards-only Tool result, stream welcomeMarkdown once as ordinary final reply text. Do not put the welcome inside the App, use collapsed commentary or simulate streaming with animation. Native cards precede the final text; its pointers refer to the cards above. Verify the current Tool schema accepts all selected IDs, then check actual image decoding and full video playback in the mounted native cards. Preserve the IDs and order on retries; never resample or substitute builtins. If discovery is stale, refresh this existing MCP connection through the supported host action. Without a compatible native connection, report the concrete blocker and keep the task incomplete. A right-hand browser page, shell RPC, downloaded-media embedding or a host security change is not inline card delivery.' };
+      presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: true, welcomeText: onboardingWelcomeText(language) } },
+      instructions: 'Visibly open the library, then call the natively discovered presentation Tool with the exact prepared IDs/order, language, onboarding:true and welcomeText LAST. The native App displays genuine incremental tool input, then mounts cards below the complete welcome after a valid result. Do not stream a second welcome in chat or simulate typing. Verify live tool-input-partial delivery, actual progressive text and subsequent image/video loading in this same chat. Complete-only or restored input retains the full welcome and cards but does not establish streaming. A stale schema without welcomeText needs a supported host refresh. Keep delivery unverified if native discovery or incremental input is unavailable. A right-hand browser page or shell probe is not inline card delivery.' };
   }
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');

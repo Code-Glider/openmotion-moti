@@ -15,6 +15,7 @@ Draft for the next selected stable version. These changes are integrated into `m
 
 ## Fixed
 
+- Installation onboarding shows the welcome before loading three previews selected from the nine-template pool. Hosts that deliver incremental MCP App input can stream the welcome; result-only hosts display the complete text.
 - Recover Windows host setup and legacy workspace installation paths. ([#434](https://github.com/nexu-io/openmotion/pull/434))
 - Retry socket-buffer rendering failures with fewer workers. ([#443](https://github.com/nexu-io/openmotion/pull/443))
 

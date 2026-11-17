@@ -16,7 +16,7 @@ function host({ tools = true, directory = dataDirectory, loaded = true, denied =
     if (method === 'thread/loaded/list') return { data: loaded ? [threadId] : [], nextCursor: null };
     if (method === 'config/mcpServer/reload') return {};
     if (method === 'mcpServerStatus/list') return { data: [{ name: 'openmotion',
-      tools: tools ? { openmotion_get_project: {}, openmotion_show_template_recommendations: { inputSchema: { properties: { templateIds: { items: { enum: acceptedIds } } } } } } : {},
+      tools: tools ? { openmotion_get_project: {}, openmotion_show_template_recommendations: { inputSchema: { properties: { welcomeText: { type: 'string' }, templateIds: { items: { enum: acceptedIds } } } } } } : {},
       serverInfo: { name: 'openmotion', version: '0.0.1' } }], nextCursor: null };
     if (method === 'mcpServer/tool/call') {
       if (denied) throw Object.assign(new Error('Host denied the read'), { code: -32000 });
@@ -38,8 +38,11 @@ test('CLI handoff refreshes the existing host and verifies this chat before nati
   assert.equal(calls[2].params.threadId, threadId);
   assert.equal(calls[3].params.threadId, threadId);
   assert.equal(calls[3].params.tool, 'openmotion_get_project');
-  assert.deepEqual(result.presentation.arguments, { templateIds: onboardingTemplateIds.slice(-3),
-    onboarding: false, language: 'zh' });
+  assert.deepEqual(result.presentation.arguments.templateIds, onboardingTemplateIds.slice(-3));
+  assert.equal(result.presentation.arguments.onboarding, true);
+  assert.equal(result.presentation.arguments.language, 'zh');
+  assert.match(result.presentation.arguments.welcomeText, /我是你的开源视频创作搭档/);
+  assert.equal(result.welcomeStreamingVerified, false);
   assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
 });
 
@@ -50,6 +53,20 @@ test('builtin-only stale native discovery cannot accept curated reference cards'
   assert.equal(result.reason, 'NATIVE_PRESENTATION_SELECTION_UNSUPPORTED');
   assert.deepEqual(result.presentation.arguments.templateIds, onboardingTemplateIds.slice(0, 3));
   assert.equal(calls.some(call => call.method === 'mcpServer/tool/call'), false);
+});
+
+test('discovered cards without the welcome input schema cannot claim readiness for streaming onboarding', async () => {
+  const h = host();
+  const request = async (method: string, params: any) => {
+    const value = await h.request(method, params);
+    if (method === 'mcpServerStatus/list') delete (value as any).data[0].tools.openmotion_show_template_recommendations.inputSchema.properties.welcomeText;
+    return value;
+  };
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request });
+  assert.equal(result.reason, 'NATIVE_WELCOME_STREAMING_SCHEMA_UNSUPPORTED');
+  assert.equal(result.hostSessionVerified, false);
+  assert.equal(result.welcomeStreamingVerified, false);
+  assert.equal(h.calls.some(call => call.method === 'mcpServer/tool/call'), false);
 });
 
 test('queued refresh is incomplete; a later verification never reloads or presents again', async () => {
@@ -120,7 +137,7 @@ for await (const line of readline.createInterface({input:process.stdin})) {
   if(call.id===undefined) continue;
   let result={};
   if(call.method==='thread/loaded/list') result={data:[${JSON.stringify(threadId)}]};
-  if(call.method==='mcpServerStatus/list') result={data:[{name:'openmotion',serverInfo:{version:'0.0.1'},tools:{openmotion_get_project:{},openmotion_show_template_recommendations:{}}}]};
+  if(call.method==='mcpServerStatus/list') result={data:[{name:'openmotion',serverInfo:{version:'0.0.1'},tools:{openmotion_get_project:{},openmotion_show_template_recommendations:{inputSchema:{properties:{welcomeText:{type:'string'}}}}}}]};
   if(call.method==='mcpServer/tool/call') result={content:[],structuredContent:{dataDirectory:${JSON.stringify(dataDirectory)}}};
   process.stdout.write(JSON.stringify({id:call.id,result})+'\\n');
 }

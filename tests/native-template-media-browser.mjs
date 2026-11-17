@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { loadTemplatePresentation, showTemplateRecommendations } from '../shared/mcp-template-recommendations.ts';
+import { onboardingWelcomeText } from '../mcp-ui/template-recommendations/i18n.ts';
 import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const output = process.argv[2];
@@ -24,15 +25,18 @@ const server = createServer((req, res) => {
   }
   const ids = groups[Number(url.searchParams.get('group'))];
   if (!ids) { res.writeHead(404); res.end(); return; }
-  const shown = showTemplateRecommendations(presentation, { templateIds: ids, language: 'zh', onboarding: false });
+  const shown = showTemplateRecommendations(presentation, { templateIds: ids, language: 'zh', onboarding: true, welcomeText: onboardingWelcomeText('zh') });
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end(`<!doctype html><html><body><iframe id="app" src="/resource" style="width:100%;height:520px;border:0" sandbox="allow-scripts allow-same-origin"></iframe><script>
+  res.end(`<!doctype html><html><body><iframe id="app" src="/resource" style="width:100%;height:740px;border:0" sandbox="allow-scripts allow-same-origin"></iframe><script>
     const frame=document.getElementById('app');
+    window.testHostReady=false;
+    window.sendInput=(text,complete=false)=>frame.contentWindow.postMessage({jsonrpc:'2.0',method:complete?'ui/notifications/tool-input':'ui/notifications/tool-input-partial',params:{arguments:{templateIds:${JSON.stringify(ids)},language:'zh',onboarding:true,welcomeText:text}}},location.origin);
+    window.sendResult=()=>frame.contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{content:[],structuredContent:${JSON.stringify(shown).replaceAll('<', '\\u003c')}}},location.origin);
     window.addEventListener('message',event=>{
       if(event.source!==frame.contentWindow)return;
       const message=event.data;
       if(message.method==='ui/initialize') event.source.postMessage({jsonrpc:'2.0',id:message.id,result:{protocolVersion:message.params.protocolVersion,hostInfo:{name:'OpenMotion integration test',version:'1'},hostCapabilities:{},hostContext:{locale:'zh',theme:'dark'}}},location.origin);
-      else if(message.method==='ui/notifications/initialized') event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:{content:[],structuredContent:${JSON.stringify(shown).replaceAll('<', '\\u003c')}}},location.origin);
+      else if(message.method==='ui/notifications/initialized') window.testHostReady=true;
       else if(message.id!==undefined) event.source.postMessage({jsonrpc:'2.0',id:message.id,result:{}},location.origin);
     });
   </script></body></html>`);
@@ -42,20 +46,38 @@ try {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   browser = await puppeteer.launch({ executablePath: process.env.HYPERFRAMES_BROWSER_PATH || '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', headless: true });
   const page = await browser.newPage();
-  await page.setViewport({ width: 800, height: 600 });
+  await page.setViewport({ width: 800, height: 800 });
+  const mediaRequests = [];
+  page.on('request', request => { if (request.url().startsWith('https://r.open-design.ai/')) mediaRequests.push(request.url()); });
   page.on('pageerror', error => result.errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') result.errors.push(message.text()); });
   page.on('console', message => { if (message.text().includes('message')) result.protocol.push(message.text().slice(0, 250)); });
   for (let index = 0; index < groups.length; index++) {
+    await page.setViewport({ width: index === 2 ? 390 : 800, height: 800 });
+    mediaRequests.length = 0;
     await page.goto(`http://127.0.0.1:${server.address().port}/?group=${index}`, { waitUntil: 'domcontentloaded' });
     const frame = await (await page.$('#app')).contentFrame();
+    await page.waitForFunction(() => window.testHostReady);
+    const welcomeText = onboardingWelcomeText('zh');
+    for (const text of [welcomeText.slice(0, 12), welcomeText.slice(0, 70)]) {
+      await page.evaluate(text => window.sendInput(text), text);
+      await frame.waitForFunction(text => document.querySelector('.omtc-welcome')?.innerText.replaceAll('\n', '') === text.replaceAll('\n', ''), {}, text);
+      assert.equal(await frame.$$eval('video,img,.omtc-card', nodes => nodes.length), 0);
+      assert.equal(mediaRequests.length, 0, 'No remote media is requested while welcome input is streaming');
+    }
+    if (index === 0) await page.screenshot({ path: path.join(output, 'partial-welcome-protocol-test.png') });
+    await page.evaluate(text => window.sendInput(text, true), welcomeText);
+    await frame.waitForFunction(() => document.querySelector('.omtc-welcome')?.innerText.includes('复制提示词'));
+    assert.equal(mediaRequests.length, 0, 'Complete welcome alone does not authorize media');
+    await page.evaluate(() => window.sendResult());
+
     try { await frame.waitForSelector('.omtc-card', { timeout: 15000 }); }
     catch (error) {
       result.failureText = await frame.$eval('body', element => element.innerText);
       result.diagnostic = await frame.evaluate(value => ({ version: window.__OPENMOTION_TEMPLATE_CARDS__?.resourceVersion,
         ids: window.__OPENMOTION_TEMPLATE_CARDS__?.templates.map(item => item.id),
         directValidation: Boolean(window.OpenMotionTemplateCards?.readRecommendation(value, window.__OPENMOTION_TEMPLATE_CARDS__)) }),
-        showTemplateRecommendations(presentation, { templateIds: groups[index], language: 'zh', onboarding: false }));
+        showTemplateRecommendations(presentation, { templateIds: groups[index], language: 'zh', onboarding: true, welcomeText: onboardingWelcomeText('zh') }));
       await page.screenshot({ path: path.join(output, 'native-host-failure.png') }); throw error;
     }
     await frame.waitForFunction(() => [...document.querySelectorAll('.omtc-card img')].length === 3
@@ -66,7 +88,10 @@ try {
       return { templateId: card.dataset.templateId, imageWidth: image.naturalWidth, imageHeight: image.naturalHeight,
         duration: video.duration, time: video.currentTime, frames: video.getVideoPlaybackQuality().totalVideoFrames, error: video.error?.code ?? null };
     }));
-    assert.equal(await frame.$$eval('.omtc-welcome', items => items.length), 0, 'Welcome belongs to the streamed final reply');
+    assert.equal(await frame.$$eval('.omtc-welcome', items => items.length), 1);
+    assert.equal(await frame.$eval('.omtc', root => root.dataset.welcomeDelivery), 'streamed');
+    assert(await frame.$eval('.omtc', root => root.firstElementChild.className === 'omtc-welcome'));
+    assert(await frame.evaluate(() => document.querySelector('.omtc-welcome').getBoundingClientRect().bottom <= document.querySelector('.omtc-list').getBoundingClientRect().top));
     const initial = await read();
     await frame.waitForFunction(times => [...document.querySelectorAll('.omtc-card video')].every((video, position) => video.currentTime > times[position] + 0.2), {}, initial.map(item => item.time));
     const advanced = await read();
@@ -78,7 +103,7 @@ try {
   assert.equal(result.groups.flatMap(group => group.advanced).length, 9);
   assert.deepEqual(result.errors, []);
   result.passed = true;
-  console.log('PASS all nine candidates: decoded posters, loaded full video duration, advancing time and frames through the production native App SDK handshake; zero CSP/runtime errors');
+  console.log('PASS all nine candidates: incremental SDK input before media requests, welcome above cards, decoded posters, loaded full video duration, advancing time and frames through the production native App SDK handshake; zero CSP/runtime errors');
 } finally {
   await writeFile(path.join(output, 'nine-candidate-media.json'), JSON.stringify(result, null, 2));
   await browser?.close(); server.closeAllConnections(); await new Promise(resolve => server.close(() => resolve()));

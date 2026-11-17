@@ -25,8 +25,8 @@ test('onboarding locale tags normalize to a supported language and other languag
     assert.equal(result.status, 'native_required');
     assert.equal(result.language, expected);
     assert.equal(typeof result.welcomeMarkdown, 'string');
-    assert.match(result.welcomeMarkdown, /👆/);
-    assert.doesNotMatch(result.welcomeMarkdown, /👇/);
+    assert.match(result.welcomeMarkdown, /👇/);
+    assert.doesNotMatch(result.welcomeMarkdown, /👆/);
     assertSelection(result.templateIds);
   }
 });
@@ -113,7 +113,11 @@ test('every three-reference selection requires native cards with image and video
     const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, start + '.html'), language: 'zh', templateIds });
     assert.equal(result.status, 'native_required');
     assert.equal(result.path, undefined);
-    assert.deepEqual(result.presentation.arguments, { templateIds, language: 'zh', onboarding: false });
+    assert.deepEqual(result.presentation.arguments.templateIds, templateIds);
+    assert.equal(result.presentation.arguments.onboarding, true);
+    assert.equal(result.presentation.arguments.language, 'zh');
+    assert.match(result.presentation.arguments.welcomeText, /我是你的开源视频创作搭档/);
+    assert.equal(result.welcomeStreamingVerified, false);
     assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
     assert.match(result.instructions, /not inline card delivery/);
   }

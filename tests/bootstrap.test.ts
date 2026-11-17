@@ -45,6 +45,29 @@ async function fixture(run: (context: { directory: string; destination: string; 
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
+test('installation retains a standalone welcome when cards, native discovery or the library are unavailable', async () => {
+  for (const previewReady of [true, false]) {
+    await fixture(async ({ env }) => {
+      if (!previewReady) await writeFile(path.join(env.MOTION_TEST_SOURCE!, 'scripts/open-template-library.ts'), 'process.exit(1);');
+      const result = spawnSync('bash', [path.join(root, 'install.sh')], {
+        env: { ...env, OPENMOTION_ONBOARDING_LANGUAGE: 'zh-CN' }, encoding: 'utf8',
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
+      assert.equal(onboarding.inlinePresentation.status, 'unavailable');
+      assert.equal(onboarding.hostHandoff.reason, 'HOST_CONTROL_UNAVAILABLE');
+      assert.equal(onboarding.onboardingComplete, false);
+      assert.equal(onboarding.preview.status, previewReady ? 'ready' : 'unavailable');
+      assert.match(onboarding.welcomeMarkdown, /我是你的开源视频创作搭档/);
+      assert.doesNotMatch(onboarding.welcomeMarkdown, /右侧|这 3 个|上方|下方|[👆👇]/u);
+      assert.equal(onboarding.welcomeMarkdown.includes('http://127.0.0.1:4173/?templates=1&embed=1'), previewReady);
+      assert.match(result.stderr, /stream the top-level welcomeMarkdown/i);
+      const details = JSON.parse(await readFile(onboarding.detailsFile, 'utf8'));
+      assert.equal(details.welcomeMarkdown, onboarding.welcomeMarkdown);
+    });
+  }
+});
+
 test('remote entry point builds a fresh checkout before registering and checking the plugin', async () => {
   await fixture(async ({ destination, log, env }) => {
     const result = spawnSync('bash', [path.join(root, 'install.sh')], { env, encoding: 'utf8' });

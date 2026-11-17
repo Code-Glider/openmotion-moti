@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
 import { App } from '@modelcontextprotocol/ext-apps/app-with-deps';
-import { mountTemplateCards, recreationPrompt } from '../mcp-ui/template-recommendations/app.ts';
+import { mountTemplateCards, recreationPrompt, bindTemplateCardInput } from '../mcp-ui/template-recommendations/app.ts';
 import { translations, languages, resolveLanguage } from '../mcp-ui/template-recommendations/i18n.ts';
 import type { TemplateCardsHost } from '../mcp-ui/template-recommendations/types.ts';
 
@@ -142,6 +142,69 @@ function fixture(options: { reduced?: boolean; message?: boolean; draft?: boolea
     async close() { ui.destroy(); await window.happyDOM.abort(); },
   };
 }
+
+test('streamed onboarding renders real input immediately and loads cards only after the complete welcome paints', async () => {
+  const f = fixture();
+  const frames: FrameRequestCallback[] = [];
+  f.window.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+  try {
+    const input = { onboarding: true, language: 'zh', templateIds: ids };
+    f.ui.toolInput({ ...input, welcomeText: '欢迎' });
+    assert.equal(f.root.querySelector('.omtc-welcome')?.textContent, '欢迎');
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0);
+    f.ui.toolInput({ ...input, welcomeText: '欢迎使用 OpenMotion\n\n先看看模板' });
+    assert.equal(f.root.querySelector('.omtc-welcome')?.textContent, '欢迎使用 OpenMotion先看看模板');
+    f.ui.toolInput({ ...input, welcomeText: '欢迎使用 OpenMotion\n\n先看看模板！' }, true);
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0);
+    f.ui.update({ ...result(), onboarding: true, language: 'zh', welcomeText: '欢迎使用 OpenMotion\n\n先看看模板！' });
+    assert.equal(f.root.dataset.welcomeDelivery, 'streamed');
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0);
+    frames.shift()!(0);
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0, 'The welcome gets its own paint before media is attached');
+    frames.shift()!(16);
+    assert.equal(f.root.querySelectorAll('article').length, 3);
+    assert.equal(f.root.firstElementChild?.className, 'omtc-welcome');
+    assert.deepEqual([...f.root.querySelectorAll('article')].map(card => card.getAttribute('data-template-id')), ['decision-tree', 'product-promo', 'nyt-graph']);
+    const welcome = f.root.querySelector('.omtc-welcome')?.textContent;
+    f.ui.toolInput({ ...input, welcomeText: 'late partial' });
+    f.ui.setHostContext({ locale: 'en' });
+    assert.equal(f.root.querySelector('.omtc-welcome')?.textContent, welcome);
+    f.ui.update({ ...result([0, 1, 2], '33333333-3333-4333-8333-333333333333'), onboarding: true, welcomeText: 'Another completed result' });
+    assert.equal(f.root.dataset.welcomeDelivery, 'complete-only', 'A new result cannot inherit earlier streaming evidence');
+  } finally { await f.close(); }
+});
+
+test('interrupted streaming retains the welcome and never mounts cards', async () => {
+  const f = fixture();
+  try {
+    f.ui.toolInput({ onboarding: true, welcomeText: 'Welcome <script>unsafe()</script>' });
+    assert.equal(f.root.querySelector('script'), null);
+    f.ui.update(undefined);
+    assert.match(f.root.querySelector('.omtc-welcome')!.textContent!, /Welcome/);
+    assert.ok(f.root.querySelector('[role="alert"]'));
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0);
+    f.ui.setConnected(false);
+    assert.match(f.root.querySelector('.omtc-welcome')!.textContent!, /Welcome/);
+  } finally { await f.close(); }
+});
+
+test('result-only hosts display the complete welcome without pretending to have streamed it', async () => {
+  const f = fixture(), frames: FrameRequestCallback[] = [];
+  f.window.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+  try {
+    f.ui.update({ ...result(), onboarding: true, welcomeText: 'Complete welcome' });
+    assert.equal(f.root.querySelector('.omtc-welcome')?.textContent, 'Complete welcome');
+    assert.equal(f.root.dataset.welcomeDelivery, 'complete-only');
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0);
+    f.ui.destroy();
+    f.ui.fail();
+    f.ui.setConnected(true);
+    f.ui.setHostContext({ locale: 'zh' });
+    while (frames.length) frames.shift()!(0);
+    assert.equal(f.root.querySelectorAll('video,img,article').length, 0);
+    assert.equal(f.root.children.length, 0);
+  } finally { await f.close(); }
+});
 
 test('onboarding welcome stays above the cards without duplicate descriptions or status prose', async () => {
   const f = fixture();
@@ -294,6 +357,49 @@ test('each card fills its actual title and ID, and the brief format accepts cata
   const prompt = recreationPrompt({ title: 'Higgsfield API｜返现活动', templateId: 'motion-a6f31f7b-f6af-44be-8bf4-881e70057f63' });
   assert.ok(prompt.includes('指定模板：Higgsfield API｜返现活动\n模板 ID：motion-a6f31f7b-f6af-44be-8bf4-881e70057f63'));
   assert.ok(prompt.endsWith('\n\n我的要求：\n'));
+});
+
+test('the pinned SDK routes incremental input, complete input, result and cancellation into the production UI', async () => {
+  const f = fixture(), frames: FrameRequestCallback[] = [];
+  f.window.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+  const transport: any = {
+    start: async () => {}, close: async () => {},
+    async send(message: any) {
+      if (message.id === undefined) return;
+      queueMicrotask(() => transport.onmessage({ jsonrpc: '2.0', id: message.id, result: {
+        protocolVersion: '2026-01-26', hostInfo: { name: 'isolated-streaming-protocol-test', version: '1' }, hostCapabilities: {}, hostContext: {},
+      } }));
+    },
+  };
+  const app = new App({ name: 'streaming-wire-test', version: '1' }, {}, { autoResize: false });
+  bindTemplateCardInput(app, f.ui);
+  await app.connect(transport);
+  const notify = async (method: string, params: unknown) => {
+    transport.onmessage({ jsonrpc: '2.0', method: 'ui/notifications/' + method, params }); await flush();
+  };
+  try {
+    await notify('tool-input-partial', { arguments: { onboarding: true, welcomeText: 'Welcome' } });
+    assert.equal(f.root.querySelector('.omtc-welcome')?.textContent, 'Welcome');
+    assert.equal(f.root.querySelectorAll('video,img').length, 0);
+    await notify('tool-input', { arguments: { onboarding: true, welcomeText: 'Welcome to OpenMotion' } });
+    await notify('tool-result', { content: [], structuredContent: { ...result(), onboarding: true, welcomeText: 'Welcome to OpenMotion' } });
+    assert.equal(f.root.dataset.welcomeDelivery, 'streamed');
+    assert.equal(f.root.querySelectorAll('video,img').length, 0);
+    await notify('tool-cancelled', { reason: 'Cancelled before card reveal' });
+    while (frames.length) frames.shift()!(0);
+    assert.equal(f.root.querySelectorAll('video,img').length, 0);
+    assert.equal(f.root.querySelector('.omtc-welcome')?.textContent, 'Welcome to OpenMotion');
+  } finally { await app.close(); await f.close(); }
+});
+
+test('one full partial snapshot is not mislabeled as progressive streaming', async () => {
+  const f = fixture();
+  try {
+    f.ui.toolInput({ onboarding: true, welcomeText: 'All at once' });
+    f.ui.toolInput({ onboarding: true, welcomeText: 'All at once' }, true);
+    f.ui.update({ ...result(), onboarding: true, welcomeText: 'All at once' });
+    assert.equal(f.root.dataset.welcomeDelivery, 'complete-only');
+  } finally { await f.close(); }
 });
 
 test('the pinned real SDK preserves draft metadata on the wire and its negotiated capability', async () => {

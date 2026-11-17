@@ -69,14 +69,18 @@ test('successful setup hands the current Agent a project-free template library b
     assert.doesNotMatch(example, /打开并编辑|要用这个模板/);
   }
   assert.doesNotMatch(cards, /1\. \*\*产品宣传片|2\. \*\*动态图表|3\. \*\*决策树动画/);
-  assert.match(installed.onboarding.instructions, /onboarding: false/);
-  assert.match(installed.onboarding.instructions, /stream the separate welcomeMarkdown once as the final reply/);
+  assert.match(installed.onboarding.instructions, /onboarding: true/);
+  assert.match(installed.onboarding.instructions, /welcomeText.*last/);
   assert.match(cards, /不想自己找？先看看我挑的这 3 个/);
-  assert.match(cards, /你可以点击上方卡片上的「复刻模板」，然后补充/);
-  assert.match(cards, /补充「我的要求」或添加附件，发送后就开始创作/);
+  assert.match(cards, /点击下方卡片上的「复刻模板」即可复制提示词/);
+  assert.match(cards, /补充要求或附件后发送/);
   assert.doesNotMatch(library, /卡片|3 个推荐|填入输入框|回复.*[123]/);
   assert(Array.isArray(installed.onboarding.catalog.templates));
   assert.equal(installed.onboarding.preview.status, 'ready', installed.onboarding.preview.warning);
+  assert.match(installed.onboarding.welcomeMarkdown, /OpenMotion/);
+  assert(installed.onboarding.welcomeMarkdown.includes(installed.onboarding.preview.previewUrl));
+  assert.doesNotMatch(installed.onboarding.welcomeMarkdown, /[👆👇]/u);
+  assert.equal(installed.onboarding.onboardingComplete, false);
   assert.equal(installed.onboarding.preview.projectCreated, false);
   assert.equal(new URL(installed.onboarding.preview.previewUrl).searchParams.get('templates'), '1');
   assert.equal(installed.onboarding.preview.previewHandoff.nextAction.kind, 'host');

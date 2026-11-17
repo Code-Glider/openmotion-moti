@@ -27,9 +27,10 @@ test('a negotiated native presentation is discoverable, readable and project-fre
   assert.equal(listed.result.tools.length, 18);
   const definition = listed.result.tools.find((tool: any) => tool.name === name);
   assert.equal(definition.annotations.readOnlyHint, true);
-  assert.match(definition.description, /onboarding=false/);
-  assert.match(definition.description, /welcomeMarkdown.*final reply/);
-  assert.doesNotMatch(definition.description, /set onboarding=true/);
+  assert.match(definition.description, /onboarding=true/);
+  assert.match(definition.description, /streaming tool-input/);
+  assert.equal(definition.inputSchema.properties.welcomeText.maxLength, 4000);
+  assert.match(definition.description, /completed result alone cannot prove/);
   assert.match(definition.inputSchema.properties.onboarding.description, /[Ll]egacy/);
   const shown = await call('tools/call', { name, arguments: { templateIds: ids } });
   assert.equal(shown.result.isError, undefined);
@@ -120,6 +121,13 @@ test('onboarding is an explicit read-only presentation mode and ordinary calls r
   assert.equal(welcome.structuredContent.onboarding, true);
   assert.deepEqual(welcome.structuredContent.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(0, 3));
   assert.match(welcome.content[0].text, /Do not append/);
+  const welcomeText = 'Welcome\n\nChoose one of these three templates.';
+  const streamed = (await call('tools/call', { name, arguments: { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true, welcomeText } })).result;
+  assert.equal(streamed.structuredContent.welcomeText, welcomeText);
+  assert.equal(streamed._meta['openai/widgetSessionId'], undefined, 'Keep the live tool-call widget instead of replacing its streaming input session');
+  for (const args of [{ templateIds: ids, welcomeText }, { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true, welcomeText: ' ' }, { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true, welcomeText: 'x'.repeat(4001) }]) {
+    assert.equal((await call('tools/call', { name, arguments: args })).result.isError, true);
+  }
   const invalid = await call('tools/call', { name, arguments: { templateIds: ids, onboarding: 'true' } });
   assert.equal(invalid.result.isError, true);
   assert.deepEqual(await store.get(), before);

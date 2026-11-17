@@ -19,7 +19,7 @@ export type RecommendationCard = Readonly<{
 export type Recommendation = Readonly<{
   schemaVersion: 1; resourceVersion: string; recommendationId: string;
   cards: readonly RecommendationCard[]; selectionGuide: string;
-  onboarding?: boolean; language?: Language;
+  onboarding?: boolean; language?: Language; welcomeText?: string;
 }>;
 export type HostContext = { locale?: string; theme?: string };
 export type TemplateCardsHost = {

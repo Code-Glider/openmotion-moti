@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
-import { welcomeMarkdown } from '../mcp-ui/template-recommendations/i18n.ts';
+import { welcomeMarkdown, onboardingWelcomeText } from '../mcp-ui/template-recommendations/i18n.ts';
 
 const presentationTool = 'openmotion_show_template_recommendations';
 const languages = ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'];
@@ -66,11 +66,12 @@ export async function prepareCodexHostHandoff(options = {}) {
   const threadId = options.threadId ?? env.CODEX_THREAD_ID ?? env.CODEX_SESSION_ID;
   const language = options.language ?? env.OPENMOTION_ONBOARDING_LANGUAGE ?? 'en';
   const presentation = { tool: presentationTool, arguments: {
-    templateIds: options.templateIds ?? selectOnboardingTemplateIds(), onboarding: false,
+    templateIds: options.templateIds ?? selectOnboardingTemplateIds(), onboarding: true,
     language: languages.includes(language) ? language : 'en',
   }, prerequisite: 'Visibly open the template library, then invoke this tool natively in the calling chat. Do not call the presentation through a shell probe.' };
-  const base = { hostSessionVerified: false, presentationVerified: false, presentation,
-    welcomeMarkdown: welcomeMarkdown(presentation.arguments.language, 'before') };
+  presentation.arguments.welcomeText = onboardingWelcomeText(presentation.arguments.language);
+  const base = { welcomeStreamingVerified: false, hostSessionVerified: false, presentationVerified: false, presentation,
+    welcomeMarkdown: welcomeMarkdown(presentation.arguments.language) };
   const hostRequests = [
     { method: 'config/mcpServer/reload', params: null },
     { method: 'mcpServerStatus/list', params: { threadId, serverName: 'openmotion', detail: 'toolsAndAuthOnly' } },
@@ -111,13 +112,15 @@ export async function prepareCodexHostHandoff(options = {}) {
     const acceptedIds = server.tools[presentationTool].inputSchema?.properties?.templateIds?.items?.enum;
     if (Array.isArray(acceptedIds) && presentation.arguments.templateIds.some(id => !acceptedIds.includes(id)))
       return required('NATIVE_PRESENTATION_SELECTION_UNSUPPORTED');
+    if (!server.tools[presentationTool].inputSchema?.properties?.welcomeText)
+      return required('NATIVE_WELCOME_STREAMING_SCHEMA_UNSUPPORTED');
     if (options.expectedVersion && server.serverInfo?.version !== options.expectedVersion) return required('HOST_VERSION_MISMATCH');
     const project = await request('mcpServer/tool/call', { threadId, server: 'openmotion', tool: 'openmotion_get_project', arguments: {} });
     if (project.isError) return required('HOST_WORKSPACE_READ_FAILED');
     const directory = project.structuredContent?.dataDirectory;
     if (typeof directory !== 'string' || path.resolve(directory) !== path.resolve(options.dataDirectory)) return required('HOST_WORKSPACE_MISMATCH');
     return { ...base, status: 'ready_for_presentation', hostSessionVerified: true, threadId,
-      nextAction: 'Open the template library visibly and invoke the natively discovered presentation tool with onboarding:false and the latest user-request language. Then stream welcomeMarkdown as ordinary final reply text, outside the cards-only App. Native cards precede the final text. Confirm three video cards; presentation is still unverified.' };
+      nextAction: 'Open the library visibly and call the native presentation tool with the prepared IDs, language, onboarding:true and welcomeText LAST. Observe genuine incremental welcome text followed by three video cards inside the same App. Do not duplicate the welcome in chat. Schema support does not verify incremental host delivery; presentation and streaming remain unverified.' };
   } catch { return required('HOST_REQUEST_FAILED'); }
   finally { client?.close(); }
 }

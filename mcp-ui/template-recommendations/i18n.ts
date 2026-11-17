@@ -125,3 +125,25 @@ export function welcomeMarkdown(language: Language, cardsPosition: 'before' | 'a
   const draft = cardsPosition === 'before' ? text.clipboardDraft.replace('下方', '上方') : text.clipboardDraft;
   return [`**${text.heading}**`, text.introduction, text.discovery, `**${recommendations}**`, draft].join("\n\n");
 }
+
+/** Available even when neither the cards nor the library can be displayed. */
+export function installationWelcomeMarkdown(language: Language, previewUrl?: string): string {
+  const text = translations[language];
+  const installed: Record<Language, string> = {
+    zh: '🎉 OpenMotion 安装好啦！',
+    en: '🎉 OpenMotion is installed!',
+    ja: '🎉 OpenMotion のインストールが完了しました！',
+    ko: '🎉 OpenMotion 설치가 완료되었습니다!',
+    fr: '🎉 OpenMotion est installé !',
+    es: '🎉 ¡OpenMotion ya está instalado!',
+    pt: '🎉 OpenMotion instalado!',
+  };
+  return [`**${installed[language]}**`, text.welcome.introduction,
+    ...(previewUrl ? [text.welcome.discovery, `[${text.ui.listLabel}](${previewUrl})`] : [])].join('\n\n');
+}
+
+/** Plain tool-argument text for incremental MCP App input; never a typing animation. */
+export function onboardingWelcomeText(language: Language): string {
+  const text = translations[language].welcome;
+  return [text.heading, text.introduction, text.discovery, text.recommendations, text.clipboardDraft].join('\n\n');
+}

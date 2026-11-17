@@ -27,7 +27,7 @@ async function mount(locale: Locale = 'en') {
   return { openLibrary, openProviders };
 }
 
-it.each(['en', 'zh-CN'] as const)('explains native reference cards and a separately streamed welcome in %s', async locale => {
+it.each(['en', 'zh-CN'] as const)('explains welcome-first native streaming and complete-only host fallback in %s', async locale => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
   await mount(locale);
   const faq = [...document.querySelectorAll<HTMLDetailsElement>('.om-mcp-faq details')]
@@ -35,9 +35,9 @@ it.each(['en', 'zh-CN'] as const)('explains native reference cards and a separat
   expect(faq).toBeDefined();
   await act(async () => faq.querySelector('summary')!.click());
   expect(faq.open).toBe(true);
-  expect(faq.textContent).toContain(locale === 'en' ? 'native MCP Apps' : '原生 MCP Apps');
-  expect(faq.textContent).toContain(locale === 'en' ? 'streams the welcome separately' : '单独流式输出欢迎文案');
-  expect(faq.textContent).toContain(locale === 'en' ? 'Builtin examples' : '内置示例');
+  expect(faq.textContent).toContain(locale === 'en' ? 'MCP Apps' : 'MCP Apps');
+  expect(faq.textContent).toContain(locale === 'en' ? 'welcome text inside the component first' : '先在组件内流式显示欢迎语');
+  expect(faq.textContent).toContain(locale === 'en' ? 'without streaming' : '一次显示完整欢迎语');
 });
 
 it.each(['zh-CN', 'en', 'ja'] as const)('links the FAQ and footer to the README community for %s', async locale => {

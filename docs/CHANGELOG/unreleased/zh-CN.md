@@ -15,6 +15,7 @@
 
 ## 修复
 
+- 安装引导先展示欢迎语，再加载从九个模板中选出的三个预览。提供 MCP App 增量输入的宿主可流式展示欢迎语；仅提供最终结果的宿主展示完整文本。
 - 修复 Windows 宿主配置及旧工作区安装路径的恢复。([#434](https://github.com/nexu-io/openmotion/pull/434))
 - 渲染遇到套接字缓冲区故障时，减少并发后重试。([#443](https://github.com/nexu-io/openmotion/pull/443))
 
