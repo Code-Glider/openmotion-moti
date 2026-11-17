@@ -1233,5 +1233,14 @@
   "Could not group the voices to duck under.": "未能将要避让的人声分组。",
   "This clip's volume is automated. Remove its volume automation to normalize it.": "此片段的音量由自动化控制，请先移除音量自动化，再统一响度。",
   "Enter a valid JSON object.": "请输入有效的 JSON 对象。",
-  "Could not measure this clip": "未能测量此片段的响度"
+  "Could not measure this clip": "未能测量此片段的响度",
+  "Return to the original project before placing this asset on the timeline.": "请返回原项目后再放入时间线。",
+  "Return to the original project before replacing this image.": "请返回原项目后再替换图片。",
+  "Could not confirm placement. Check the timeline.": "未能确认放入结果，请检查时间线。",
+  "Could not confirm image replacement. Check the timeline.": "未能确认替换结果，请检查时间线。",
+  "Could not place the asset on the timeline.": "未能放入时间线。",
+  "Could not replace the image.": "未能替换图片。",
+  "Could not confirm cancellation. Check the task status.": "未能确认取消结果，请查看任务状态。",
+  "Generation already completed.": "生成已完成。",
+  "Check the timeline": "请检查时间线"
 }
