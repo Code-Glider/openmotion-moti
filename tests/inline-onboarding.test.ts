@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { Window } from 'happy-dom';
 import { renderInlineOnboarding, prepareInlineOnboarding, publishInlineOnboarding } from '../scripts/inline-onboarding.mjs';
 import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs';
-import { welcomeMarkdown } from '../mcp-ui/template-recommendations/i18n.ts';
+import { languages, welcomeMarkdown } from '../mcp-ui/template-recommendations/i18n.ts';
 import { runFile } from '../scripts/runtime-assets.mjs';
 
 import { onboardingTemplateIds, builtinRecommendationIds } from '../shared/onboarding-templates.ts';
@@ -43,6 +43,31 @@ test('curated project previews are self-contained without native MCP activation'
   assert.deepEqual(videoTypes, ['video/webm', 'video/webm', 'video/webm']);
   assert.match(window.document.querySelector('.omtc-description')!.textContent!, /^简介：/);
   assert.doesNotMatch(window.document.body.textContent!, /工程预览（静音）/);
+});
+test('HTML project-card summaries use localized introduction labels in every supported language', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-inline-summary-locales-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const prefixes = { zh: '简介：', en: 'Summary: ', ja: '概要：', ko: '소개: ',
+    fr: 'Présentation : ', es: 'Resumen: ', pt: 'Resumo: ' };
+  assert.deepEqual(Object.keys(prefixes), [...languages], 'Every supported language needs an explicit summary label');
+  await Promise.all(languages.map(async language => {
+    const templateIds = [...onboardingTemplateIds].slice(0, 3);
+    const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, language + '.html'), language, templateIds });
+    const window = new Window();
+    try {
+      window.URL.createObjectURL = () => 'blob:summary-locale-test';
+      window.URL.revokeObjectURL = () => {};
+      window.document.body.innerHTML = await readFile(result.path, 'utf8');
+      for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
+      const descriptions = [...window.document.querySelectorAll('.omtc-description')].map(node => node.textContent!);
+      assert.equal(descriptions.length, 3);
+      for (const description of descriptions) {
+        assert(description.startsWith(prefixes[language]), `${language}: ${description}`);
+        assert(description.slice(prefixes[language].length).trim(), 'Keep the localized summary after its label');
+        assert.equal(description.indexOf(prefixes[language], prefixes[language].length), -1, 'Do not duplicate the summary label');
+      }
+    } finally { await window.happyDOM.abort(); }
+  }));
 });
 test('onboarding locale tags normalize to a supported language and other languages fall back to English', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-onboarding-language-'));

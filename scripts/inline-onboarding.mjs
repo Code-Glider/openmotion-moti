@@ -27,7 +27,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
   const { loadTemplatePresentation, loadInlineProjectPreviews, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
-  const { welcomeMarkdown } = await import('../mcp-ui/template-recommendations/i18n.ts');
+  const { welcomeMarkdown, inlineDescriptionPrefixes } = await import('../mcp-ui/template-recommendations/i18n.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });
   const match = presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s);
@@ -42,14 +42,12 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   const references = bootstrap.templates.filter(template => template.kind === 'reference');
   if (references.length && previewSource === 'project') {
     const previews = loadInlineProjectPreviews(references.map(item => item.id), { applicationRoot: appRoot, directory });
-    const labels = { zh: '简介：', en: 'Project preview (silent) · ', ja: 'プロジェクトプレビュー（無音） · ',
-      ko: '프로젝트 미리보기 (무음) · ', fr: 'Aperçu du projet (muet) · ', es: 'Vista previa del proyecto (sin sonido) · ', pt: 'Prévia do projeto (sem som) · ' };
     for (const template of references) {
       const preview = previews.find(item => item.id === template.id);
       delete template.videoUrl; delete template.posterUrl;
       Object.assign(template, preview);
-      template.description = labels[language] + template.description;
-      for (const locale of Object.keys(template.descriptions)) template.descriptions[locale] = labels[locale] + template.descriptions[locale];
+      template.description = inlineDescriptionPrefixes[language] + template.description;
+      for (const locale of Object.keys(template.descriptions)) template.descriptions[locale] = inlineDescriptionPrefixes[locale] + template.descriptions[locale];
       const card = recommendation.cards.find(item => item.templateId === template.id);
       card.durationSeconds = preview.durationSeconds;
       card.description = template.description;

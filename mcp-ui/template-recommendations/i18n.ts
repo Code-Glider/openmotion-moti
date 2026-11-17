@@ -1,6 +1,11 @@
 import type { Language, TemplateId } from './types.ts';
 
 export const languages = ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'] as const;
+// HTML project previews describe the template; media provenance belongs in the installation guide.
+export const inlineDescriptionPrefixes: Record<Language, string> = {
+  zh: '简介：', en: 'Summary: ', ja: '概要：', ko: '소개: ',
+  fr: 'Présentation : ', es: 'Resumen: ', pt: 'Resumo: ',
+};
 export function isLanguage(value: unknown): value is Language {
   return typeof value === 'string' && languages.includes(value as Language);
 }
