@@ -25,7 +25,6 @@ export class Preferences {
     private client: Client,
     private actions: {
       layout(value: ViewPreferences["layout"]): void;
-      fit(): void;
     },
   ) {
     const document = root.ownerDocument;
@@ -57,15 +56,8 @@ export class Preferences {
     this.status.setAttribute("role", "status");
     this.save = button(document, { label: "应用并保存界面", primary: true, onClick: () => this.commit() });
     this.refresh = button(document, { label: "重新读取界面设置", onClick: () => this.load() });
-    const fit = button(document, {
-      label: "时间轴适配内容",
-      onClick: () => {
-        this.view.close();
-        actions.fit();
-      },
-    });
     const actionsRow = slot(document, "toolbar");
-    actionsRow.append(this.save, this.refresh, fit);
+    actionsRow.append(this.save, this.refresh);
     this.view.body.append(
       field(document, "主题", this.theme),
       note(

@@ -1,4 +1,4 @@
-import { badge, button, note, readout, slot, type timeTracks } from "@open-motion/components";
+import { badge, note, readout, slot, type timeTracks } from "@open-motion/components";
 import type { Clip, NativeValues } from "@open-motion/motion/contract";
 import type { ContextModel } from "@open-motion/motion/project";
 import { isFontResource, type Project } from "@open-motion/workspace/contract";
@@ -468,9 +468,6 @@ export class Studio {
   }
   setLayout(layout: "edit" | "preview") {
     this.areas.focusBody(layout === "preview");
-  }
-  fitTimeline() {
-    this.axis?.resize(this.timelineRoot.clientWidth);
   }
   pause() {
     if (this.viewer.revision) this.control("pause");

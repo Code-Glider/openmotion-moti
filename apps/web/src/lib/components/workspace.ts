@@ -173,7 +173,6 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   });
   const preferences = new Preferences(root, client, {
     layout: (value) => studio.setLayout(value),
-    fit: () => studio.fitTimeline(),
   });
   const settings = button(document, { label: "界面设置", compact: true, onClick: () => preferences.open(settings) });
   settings.setAttribute("aria-haspopup", "dialog");
