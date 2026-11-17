@@ -1,3 +1,5 @@
+import { deleteProjectAsset, readProjectAssetNames } from '../project-asset-names.ts';
+import { FONT_EXT } from './asset-names.ts';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { lstatSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -6,7 +8,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { WorkspaceStore } from '../workspace.ts';
+import { WorkspaceStore, projectPath } from '../workspace.ts';
 import { HYPERFRAMES_VERSION, repairGeneratedRegistry } from '../hyperframes.ts';
 import { isMain } from './entry.ts';
 import { withAvailableHistorySteps } from './studio-history-availability.ts';
@@ -188,7 +190,7 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
             const data = await response.json();
             const projectFonts = [];
             for (const file of data.files ?? []) {
-              if (!/\.(?:ttf|otf|ttc|woff2?)$/i.test(file)) continue;
+              if (!FONT_EXT.test(file)) continue;
               try {
                 const faces = await fonts.inspect(await scoped.safePath(file));
                 // Existing collections retain their actual first face until explicitly re-imported.
@@ -196,7 +198,13 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
                 projectFonts.push({ ...face, path: file });
               } catch { /* Invalid historical files remain on disk but are not offered as fonts. */ }
             }
-            return c.json({ ...data, fonts: projectFonts });
+            return c.json({ ...data, fonts: projectFonts, ...await readProjectAssetNames(scoped, data.files ?? [], projectFonts) });
+          }).delete('/api/projects/:id/files/*', c => {
+            const pathname = new URL(c.req.url).pathname;
+            let assetPath: string;
+            try { assetPath = projectPath(decodeURIComponent(pathname.slice(pathname.indexOf('/files/') + '/files/'.length))); }
+            catch { return c.json({ error: 'Invalid project path' }, 400); }
+            return deleteProjectAsset(scoped, assetPath, () => nativeApp.fetch(c.req.raw));
           }).post('/api/projects/:id/upload', bodyLimit({
           maxSize: MAX_ASSET_BYTES,
           onError: c => c.json({ error: 'Upload exceeds 500 MB (500000000 bytes)', maxBytes: MAX_ASSET_BYTES }, 413),

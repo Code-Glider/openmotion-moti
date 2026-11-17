@@ -58,6 +58,8 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
   const {
     compositions,
     assets,
+    assetNames,
+    handleRenameAsset,
     editingFile,
     fileTree,
     revealSourceOffset,
@@ -129,7 +131,8 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
             onImport={importAssets}
             onLibraryImport={refreshFileTree}
             onDelete={handleDeleteFile}
-            onRename={handleRenameFile}
+            assetNames={assetNames}
+            onRename={handleRenameAsset}
             onAddAssetToTimeline={onAddAssetToTimeline}
           />
         </PanelColumn>

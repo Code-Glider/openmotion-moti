@@ -7,7 +7,7 @@ import { transcriptRequest } from './transcriptClient';
 import { gatewayRequest } from './gatewayClient';
 import { useCaptionWorkspace } from './captionWorkspace';
 
-export function useCaptionTracks() {
+export function useCaptionTracks(visible: boolean, previewRevision?: number) {
   const shell = useStudioShellContext(), { t } = useI18n();
   const projectId = shell.projectId, compositionPath = shell.activeCompPath || 'index.html';
   const epoch = useCaptionWorkspace(s => s.epoch);
@@ -21,7 +21,7 @@ export function useCaptionTracks() {
     } catch { if (mounted.current && request === sequence.current) { setFailed(true); setLoading(false); } }
   }, [projectId, compositionPath]);
   useEffect(() => { mounted.current = true; setTracks([]); setLoading(true); return () => { mounted.current = false; sequence.current++; }; }, [refresh]);
-  useEffect(() => { void refresh(); const timer = setInterval(() => { if (!document.hidden) void refresh(); }, 2500); return () => clearInterval(timer); }, [refresh, epoch]);
+  useEffect(() => { if (visible) void refresh(); }, [visible, refresh, epoch, previewRevision]);
   const disabled = busy || Boolean(shell.writeBlockedReason) || shell.renderQueue.isRendering;
   const change = async (id: string, settings?: Partial<CaptionSettings>, remove = false) => {
     if (active.current || disabled) return false;

@@ -15,7 +15,7 @@ export function makeStudioDebugLogger(name: string): DebugLogger {
   return (stage, data = {}) => {
     if (enabled === null) {
       try {
-        enabled = name === "reload" || localStorage.getItem(`hf-${name}-debug`) === "1";
+        enabled = localStorage.getItem(`hf-${name}-debug`) === "1";
       } catch {
         enabled = false;
       }

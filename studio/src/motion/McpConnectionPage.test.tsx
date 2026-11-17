@@ -191,6 +191,20 @@ it.each(['en', 'zh-CN'] as const)('copies the maintained platform workflow with 
   expect(document.querySelector('.motion-feedback-layer')).not.toBeNull();
 });
 
+it.each(['en', 'zh-CN', 'ja'] as const)('copies the asset naming scenario in %s with shared project safeguards', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const title = { en: 'Name project assets', 'zh-CN': '整理素材名称', ja: '素材名を整理' }[locale];
+  const card = [...document.querySelectorAll('article')].find(node => node.querySelector('h3')?.textContent === title)!;
+  expect(card).toBeDefined();
+  await act(async () => card.querySelector('button')!.click());
+  expect(copy).toHaveBeenCalledOnce();
+  const instruction = copy.mock.calls[0][0];
+  for (const token of ['openmotion_get_project', 'namingLanguage', 'openmotion_edit_project', 'assetNames']) expect(instruction).toContain(token);
+  if (locale === 'zh-CN') expect(instruction).toContain('保留已有可读名称');
+});
+
 it.each([
   ['en', 'Prefer the host’s video preview', 'never both for the same video'],
   ['zh-CN', '优先使用宿主自带的视频预览', '同一成片不同时展示两种预览'],

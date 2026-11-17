@@ -52,10 +52,10 @@ describe("inline asset rename", () => {
     });
     return { input, host, rename, done };
   }
-  it("saves on blur in the original directory", () => {
+  it("saves a display name on blur even without a resolved caption", () => {
     const { input, rename, done } = setup("new.mp4");
     act(() => input.blur());
-    expect(rename).toHaveBeenCalledWith("assets/video.mp4", "assets/new.mp4");
+    expect(rename).toHaveBeenCalledWith("assets/video.mp4", "new.mp4");
     expect(done).toHaveBeenCalledOnce();
   });
   it("commits Enter once even if followed by blur", () => {
@@ -71,14 +71,14 @@ describe("inline asset rename", () => {
     expect(rename).not.toHaveBeenCalled();
     expect(done).toHaveBeenCalledOnce();
   });
-  it("restores empty names and blocks path traversal", () => {
+  it("restores empty names and blocks control characters", () => {
     const empty = setup("   ");
     act(() => empty.input.blur());
     expect(empty.rename).not.toHaveBeenCalled();
     expect(empty.done).toHaveBeenCalledOnce();
     act(() => root?.unmount());
     root = null;
-    const invalid = setup("../other.mp4");
+    const invalid = setup("bad\u0001name");
     act(() => invalid.input.blur());
     expect(invalid.rename).not.toHaveBeenCalled();
     expect(invalid.done).not.toHaveBeenCalled();
@@ -206,6 +206,30 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
   });
   expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
   act(() => input.blur());
-  expect(rename).toHaveBeenCalledWith('assets/music.wav', 'assets/music 111.wav');
+  expect(rename).toHaveBeenCalledWith('assets/music.wav', 'music 111.wav');
   expect(host.querySelector('input')).toBeNull();
+});
+
+it('shows the imported name while preview, drag and rename keep the immutable asset path', () => {
+  const asset = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const host = mount(<AudioRow projectId="p" asset={asset} displayName="Dia 参考视频－原声" used={false} onCopy={() => {}} copyFeedback={null} />);
+  expect(host.textContent).toContain('Dia 参考视频－原声');
+  expect(host.textContent).not.toContain('94dcfb95');
+  const row = host.querySelector('[role="button"]')!;
+  act(() => row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  expect(useAssetPreviewStore.getState().previewAsset).toBe(asset);
+});
+
+it('edits the display name without constructing a new storage path', () => {
+  const rename = vi.fn();
+  const asset = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const host = mount(<InlineAssetRename asset={asset} displayName="original-audio" onRename={rename} onDone={() => {}} />);
+  const input = host.querySelector('input')!;
+  expect(input.value).toBe('original-audio');
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Dia 参考视频－原声');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  expect(rename).toHaveBeenCalledExactlyOnceWith(asset, 'Dia 参考视频－原声');
 });

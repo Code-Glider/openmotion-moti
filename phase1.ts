@@ -1,3 +1,5 @@
+import { readProjectAssetNames } from './project-asset-names.ts';
+import { namingLanguage, projectAssetKind, validateAssetDisplayName } from './shared/asset-names.ts';
 import { projectArchive } from './project-archive.ts';
 import { manageProject } from './project-management.ts';
 import { probeLibraryMedia } from './gateway/asset-probe.ts';
@@ -243,11 +245,13 @@ export class Phase1Service {
       jobs.sort((a, b) => b.createdAt - a.createdAt);
       if (args.exportJobId && !jobs.some(job => job.id === args.exportJobId)) throw new Error('EXPORT_NOT_FOUND: 任务不属于该项目');
       const exportJob = args.exportJobId ? await this.publicJob(args.exportJobId) : jobs[0] ? await this.publicJob(jobs[0].id) : null;
+      const assetNaming = await readProjectAssetNames(scoped, (state.project?.files ?? []).map(file => file.path), undefined, this.runtimeRoot);
       if ((await scoped.get()).revision !== state.revision) throw new Error('VERSION_CONFLICT: 读取期间工程已变化');
       return { projectId, sessionId: owner.id, project: state.project, revision: state.revision, version: await versions.publicVersion(version, history, true),
         currentVersionId: version.versionId, currentVersionNumber: version.versionNumber, dataDirectory: this.store.directory,
         hyperframesCli: path.join(this.runtimeRoot, 'node_modules/hyperframes/bin/hyperframes.mjs'), authoringGuide: path.join(this.runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'),
         requirements: meta.requirements ?? (await scoped.conversation(projectId)).messages.map(message => message.content).join('\n'),
+        ...assetNaming,
         projectType: meta.projectType ?? 'legacy', source: meta.source ?? null, assets, file, exportJob,
         previewDisplay: await this.previewDisplay(projectId, version),
         exports: jobs.map(({ token, workerPid, trackingHost, ...job }) => job), reviews: await jsonFile(path.join(this.store.directory, 'phase1', 'reviews', projectId + '.json'), []),
@@ -349,7 +353,7 @@ export class Phase1Service {
             changedFiles: [name], previewSync: this.context.nativeUrl(input.projectId) ? 'file_watcher_notified' : 'not_open' }));
         })));
       }
-      return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
+      return assetOperation(this.store, args, (input, options) => this.importAssets(input, options), this.context.tracking);
     }
     if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);
     if (name === 'motion_get_project' && !args.projectId) {
@@ -402,12 +406,13 @@ export class Phase1Service {
       if (args.projectType === 'template' && (!source || !isEditableTemplate(source))) throw new Error('TEMPLATE_NOT_COPYABLE: 请在 Studio 选择可编辑原生模板；参考视频需由 Agent 重建');
       if (args.referenceUrl && !['https:', 'http:'].includes(new URL(args.referenceUrl).protocol)) throw new Error('INVALID_REFERENCE_URL');
       validateInstruction(args.requirements);
+      const language = args.namingLanguage === undefined ? undefined : namingLanguage(args.namingLanguage);
       const title = validateProjectTitle(args.title), directory = this.store.projectDirectoryFor(record.projectId);
       let registered = false;
       try {
         if (args.projectType === 'template') await templateCatalogFor(this.store.directory).copy(source!, directory, this.runtimeRoot);
         else await createBlankProject(directory, this.runtimeRoot, title);
-        const meta = { schemaVersion: 1, projectType: args.projectType, requirements: args.requirements, creationRequestId: args.requestId,
+        const meta = { schemaVersion: 1, namingLanguage: language, projectType: args.projectType, requirements: args.requirements, creationRequestId: args.requestId,
           source: source ? { id: source.id, kind: source.kind, catalogVersion: 'catalogVersion' in source ? source.catalogVersion : undefined, previewUrl: source.previewUrl, sourceUrl: source.sourceUrl } : args.referenceUrl ? { url: args.referenceUrl, inspected: false } : null };
         await atomicJson(path.join(directory, metadataPath), meta);
         await atomicJson(path.join(directory, assetIndexPath), []);
@@ -504,14 +509,30 @@ export class Phase1Service {
       }
       if (bytes > 8388608) throw new Error('SOURCE_BATCH_TOO_LARGE: 8 MiB limit');
       const changes = [...args.files];
-      if (args.requirements !== undefined) {
-        validateInstruction(args.requirements);
+      if (args.requirements !== undefined || args.namingLanguage !== undefined) {
+        if (args.requirements !== undefined) validateInstruction(args.requirements);
         const meta = await jsonFile<any>(path.join(scoped.projectDirectory, metadataPath), { schemaVersion: 1, projectType: 'legacy' });
-        changes.push({ path: metadataPath, content: JSON.stringify({ ...meta, requirements: args.requirements }) });
+        changes.push({ path: metadataPath, content: JSON.stringify({ ...meta, ...(args.requirements !== undefined ? { requirements: args.requirements } : {}), ...(args.namingLanguage !== undefined ? { namingLanguage: namingLanguage(args.namingLanguage) } : {}) }) });
+      }
+      if (args.assetNames?.length) {
+        const records = await jsonFile<any[]>(path.join(scoped.projectDirectory, assetIndexPath), []);
+        const renamed = new Set<string>();
+        for (const item of args.assetNames) {
+          const assetPath = projectPath(item.path);
+          if (renamed.has(assetPath)) throw new Error('DUPLICATE_ASSET_PATH');
+          renamed.add(assetPath);
+          const displayName = validateAssetDisplayName(item.name);
+          const file = await stat(await scoped.safePath(assetPath));
+          if (!file.isFile() || projectAssetKind(assetPath) < 0) throw new Error('INVALID_ASSET_PATH');
+          const record = records.find(asset => asset.path === assetPath);
+          if (record) Object.assign(record, { originalName: record.originalName ?? record.name ?? path.basename(assetPath), name: displayName, nameSource: 'user' });
+          else records.push({ path: assetPath, originalName: path.basename(assetPath), name: displayName, nameSource: 'user' });
+        }
+        changes.push({ path: assetIndexPath, content: JSON.stringify(records) });
       }
       return versions.withHistory(async history => ({ projectId: args.projectId,
         ...await versions.transaction(history, args.expectedRevision, args.expectedVersionId, args.requestId, changes, { label: args.summary ?? 'Agent source edit' }),
-        changedFiles: changes.map(file => file.path), previewSync: this.context.nativeUrl(args.projectId) ? 'file_watcher_notified' : 'not_open' }));
+        ...await readProjectAssetNames(scoped, undefined, undefined, this.runtimeRoot), changedFiles: changes.map(file => file.path), previewSync: this.context.nativeUrl(args.projectId) ? 'file_watcher_notified' : 'not_open' }));
     })));
     if (name === 'motion_restore_version') return this.writeRequest(name, args, () => this.context.mutation(() => this.store.lock(async () => {
       const versions = this.versions(args.projectId);
@@ -558,8 +579,11 @@ export class Phase1Service {
     });
     throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);
   }
-  async importAssets(args: any) {
-    return this.writeRequest('motion_import_assets', args, async () => {
+  async importAssets(args: any, options?: { receiptName: string; reusePinnedContent: boolean }) {
+    // A library's mutable display name must not change an immutable-version
+    // import's retry identity, including receipts written before display naming.
+    const requestArgs = options ? { ...args, items: args.items.map((item: any) => ({ ...item, name: options.receiptName })) } : args;
+    return this.writeRequest('motion_import_assets', requestArgs, async () => {
       const versions = this.versions(args.projectId), scoped = versions.store;
       const existing = await jsonFile<any[]>(path.join(scoped.projectDirectory, assetIndexPath), []);
       const items: any[] = [], changes: any[] = [], added: any[] = [];
@@ -572,7 +596,7 @@ export class Phase1Service {
           try {
             const inputHash = digest(item), prior = existing.find(asset => asset.itemId === item.itemId);
             if (prior) {
-              if (prior.inputHash !== inputHash) throw new Error('ITEM_ID_CONFLICT');
+              if (prior.inputHash !== inputHash && !(options?.reusePinnedContent && item.expectedSha256 && prior.sha256 === item.expectedSha256)) throw new Error('ITEM_ID_CONFLICT');
               if (!await stat(path.join(scoped.projectDirectory, prior.path)).catch(() => null)) throw new Error('ASSET_NOT_IN_CURRENT_VERSION: 请恢复对应版本或使用新 itemId 重新导入');
               if (item.expectedSha256 && await fileHash(path.join(scoped.projectDirectory, prior.path)) !== item.expectedSha256) throw new Error('ASSET_CONTENT_CHANGED: the imported copy no longer matches the pinned library version');
               items.push({ ...prior, status: 'completed', reused: true }); continue;
@@ -589,14 +613,14 @@ export class Phase1Service {
               const prepared = await prepareImportedFont(staged, item.licensePath, assetId, staging, this.runtimeRoot);
               const { changes: fontChanges, ...metadata } = prepared;
               const asset = { itemId: item.itemId, assetId, inputHash, ...metadata, size: (await stat(staged)).size,
-                sha256: await fileHash(staged), name: item.name ?? path.basename(item.sourcePath) };
+                sha256: await fileHash(staged), originalName: path.basename(item.sourcePath), name: item.name?.trim() ? validateAssetDisplayName(item.name) : path.basename(item.sourcePath) };
               changes.push(...fontChanges); added.push(asset); items.push({ ...asset, status: 'completed' }); continue;
             }
             if (item.licensePath) throw new Error('FONT_LICENSE_REQUIRES_FONT');
             const media = await probeLibraryMedia(staged).catch(error => { throw new Error('INVALID_MEDIA: ' + errorText(error)); });
             const assetId = crypto.randomUUID(), relative = 'assets/imported/' + assetId + '.' + media.extension;
             const asset = { itemId: item.itemId, assetId, inputHash, path: relative, mimeType: media.mimeType, size: media.bytes,
-              sha256, width: media.width, height: media.height, duration: media.duration, name: item.name ?? path.basename(item.sourcePath) };
+              sha256, width: media.width, height: media.height, duration: media.duration, originalName: path.basename(item.sourcePath), name: item.name?.trim() ? validateAssetDisplayName(item.name) : path.basename(item.sourcePath) };
             changes.push({ path: relative, source: staged }); added.push(asset); items.push({ ...asset, status: 'completed' });
           } catch (error) { items.push({ itemId: item.itemId, status: 'failed', error: errorText(error) }); }
         }

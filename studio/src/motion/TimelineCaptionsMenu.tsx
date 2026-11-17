@@ -8,11 +8,14 @@ import { useI18n } from '../i18n/I18n';
 import { useStudioShellContext, useStudioPlaybackContext } from '../contexts/StudioContext';
 import { captionTrackCode, captionTrackText, useCaptionWorkspace, type CaptionMode } from './captionWorkspace';
 import { useCaptionTracks } from './useCaptionTracks';
+import { useCaptionSurfaceActive } from './useCaptionSurfaceActive';
 
 export function TimelineCaptionsMenu() {
-  const { t } = useI18n(), { tracks, loading, failed, refresh, change, disabled } = useCaptionTracks();
+  const { t } = useI18n();
+  const visible = useCaptionSurfaceActive('timeline');
   const { projectId, activeCompPath } = useStudioShellContext();
-  const { timelineElements } = useStudioPlaybackContext();
+  const { timelineElements, refreshKey } = useStudioPlaybackContext();
+  const { tracks, loading, failed, refresh, change, disabled } = useCaptionTracks(visible, refreshKey);
   const label = (track: typeof tracks[number]) => `${captionTrackCode(track, tracks, timelineElements)} · ${captionTrackText(track, timelineElements) || t(track.label)}`;
   const on = tracks.some(track => track.settings.visible);
   const [open, setOpen] = useState(false);

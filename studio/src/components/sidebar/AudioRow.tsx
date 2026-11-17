@@ -20,6 +20,7 @@ let stopCurrentPreview: (() => void) | null = null;
 export function AudioRow({
   projectId,
   asset,
+  displayName,
   used,
   meta,
   onCopy,
@@ -30,6 +31,7 @@ export function AudioRow({
 }: {
   projectId: string;
   asset: string;
+  displayName?: string;
   used: boolean;
   meta?: { description?: string; duration?: number };
   onCopy: (path: string) => void;
@@ -49,7 +51,7 @@ export function AudioRow({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const animRef = useRef<number>(0);
-  const name = filename(asset);
+  const name = displayName ?? filename(asset);
   const subtype = getAudioSubtype(asset);
   const subtypeLabel = subtype === "Audio" ? "" : t(subtype);
   const serveUrl = resolveMediaPreviewUrl(asset, projectId);
@@ -265,7 +267,7 @@ export function AudioRow({
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <OverflowText
+            {renaming && onRename ? <InlineAssetRename displayName={displayName} asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <OverflowText
               text={name}
               className={`min-w-0 max-w-full line-clamp-2 text-[12px] font-medium [overflow-wrap:anywhere] ${used ? "text-panel-text-1" : "text-panel-text-3"}`}
             />}
@@ -315,6 +317,7 @@ export function AudioRow({
           onClose={() => setContextMenu(null)}
           onCopy={onCopy}
           onDelete={onDelete}
+          displayName={displayName}
           onRename={onRename}
           onStartRename={() => setRenaming(true)}
           onAddAtPlayhead={onAddAssetToTimeline}

@@ -11,7 +11,7 @@ for (const target of platformExportTargets) for (const goal of platformExportGoa
     const text = platformExportPrompt({ target: target.id, goal: goal.id, context, notes: '  Keep the original narration.  ' });
     assert.match(text, /^Project: Launch\nProject ID: project-a/);
     for (const value of [target.label, target.aspect, `${target.width}×${target.height}`, '/fixture/work space', '/#project/project-a', 'Keep the original narration.', 'expectedRevision', 'expectedVersionId', 'versionId', 'requestId', 'exportJobId', 'required', 'silent']) assert.ok(text.includes(value), value);
-    for (const tool of mcpScenarios[0].tools) assert.ok(text.includes(tool), tool);
+    for (const tool of mcpScenarios.find(scenario => scenario.id === 'platform-export')!.tools) assert.ok(text.includes(tool), tool);
     assert.match(text, /leaving the source unchanged/);
     assert.match(text, /If unavailable.*ask for captions or timecodes/);
     assert.match(text, /never substitute an old file/);
@@ -34,11 +34,12 @@ test('Chinese prompt and unbound MCP example retain safe project selection and l
     assert.doesNotMatch(example, /Project ID:|项目 ID：/);
   }
 });
-test('scenario tools are real public operations and scenario guidance is translated', () => {
+test('scenario tools are public operations and platform-export guidance is translated in its own resource', () => {
   const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/platform-export-ui.json', import.meta.url), 'utf8'));
   const publicNames = new Set(phase1Tools.map(tool => tool.name));
   for (const scenario of mcpScenarios) {
     for (const tool of scenario.tools) assert.ok(publicNames.has(tool), tool);
+    if (scenario.id !== 'platform-export') continue;
     for (const locale of Object.values(translations) as Record<string, string>[]) {
       assert.ok(locale[scenario.title]); assert.ok(locale[scenario.description]);
     }

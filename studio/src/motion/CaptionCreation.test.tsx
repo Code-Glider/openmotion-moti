@@ -7,6 +7,7 @@ import { AutoCaptionsPanel } from './AutoCaptionsPanel';
 import { ManualTextPanel } from './ManualTextPanel';
 import { useCaptionWorkspace } from './captionWorkspace';
 import { usePlayerStore } from '../player/store/playerStore';
+import { useDockLayoutStore } from '../components/dock/dockLayoutStore';
 const state = vi.hoisted(() => ({ composition: 'index.html', model: true, fail: false, wait: vi.fn(), refresh: vi.fn(), toast: vi.fn(), calls: [] as any[] }));
 vi.mock('../contexts/StudioContext', () => ({ useStudioShellContext: () => ({ projectId: 'project', activeCompPath: state.composition, waitForPendingDomEditSaves: state.wait, showToast: state.toast, renderQueue: { isRendering: false } }) }));
 vi.mock('../contexts/FileManagerContext', () => ({ useFileManagerContext: () => ({ refreshFileTree: state.refresh }) }));
@@ -24,6 +25,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent?.trim() === label)!;
 const render = async (node: React.ReactNode) => act(async () => root.render(<I18nProvider initialLocale="en">{node}</I18nProvider>));
+beforeEach(() => useDockLayoutStore.setState({ visiblePanels: new Set(['captions', 'timeline']) }));
 beforeEach(() => { useCaptionWorkspace.setState({ selections: {}, requests: {}, epoch: 0 }); state.composition = 'index.html'; state.model = true; state.fail = false; state.calls = []; state.wait.mockReset().mockResolvedValue(undefined); state.refresh.mockReset().mockResolvedValue(undefined); state.toast.mockReset(); usePlayerStore.setState({ currentTime: 4, selectedElementId: null, elements: [] }); const host = document.createElement('div'); document.body.append(host); root = createRoot(host); });
 afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.useRealTimers(); });
 it('adds plain editable text at the playhead without requiring speech or a model', async () => {
@@ -66,4 +68,18 @@ it('an interrupted paid request reuses its request id on explicit retry', async 
   state.fail = true; await render(<AutoCaptionsPanel />); await act(async () => button('Generate captions').click());
   state.fail = false; await act(async () => button('Generate captions').click());
   const calls = state.calls.filter(input => input.command === 'submit'); expect(calls).toHaveLength(2); expect(calls[1].requestId).toBe(calls[0].requestId);
+});
+it('pauses a hidden recognition surface and resumes the same job without resubmitting', async () => {
+  vi.useFakeTimers();
+  await render(<AutoCaptionsPanel />);
+  await act(async () => button('Generate captions').click());
+  await render(<AutoCaptionsPanel visible={false} />);
+  state.calls = [];
+  await act(async () => vi.advanceTimersByTimeAsync(15000));
+  expect(state.calls).toHaveLength(0);
+  await render(<AutoCaptionsPanel />);
+  await act(async () => vi.advanceTimersByTimeAsync(1100));
+  expect(state.calls.filter(input => input.command === 'status')).toEqual([{ command: 'status', projectId: 'project', jobId: 'job' }]);
+  expect(state.calls.some(input => input.command === 'captions')).toBe(true);
+  expect(state.calls.some(input => input.command === 'submit')).toBe(false);
 });

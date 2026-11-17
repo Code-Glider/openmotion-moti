@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DirectoryModel } from '../../../shared/provider-directory';
-import type { TranscriptDocument } from '../../../shared/transcript';
+import type { TranscriptDocument, TranscriptionJob } from '../../../shared/transcript';
 import { useStudioShellContext } from '../contexts/StudioContext';
 import { useFileManagerContext } from '../contexts/FileManagerContext';
 import { useI18n } from '../i18n/I18n';
@@ -19,6 +19,7 @@ import { projectMediaPath } from './timelineMediaSelection';
 import { TranscriptEditor } from './TranscriptEditor';
 import { TranscriptWorkflowBrief } from './TranscriptWorkflowBrief';
 import { useCaptionWorkspace } from './captionWorkspace';
+import { useCaptionSurfaceActive } from './useCaptionSurfaceActive';
 
 type Source = { path: string; sha256: string; bytes: number };
 export function TranscriptPanel({ onAddToTimeline }: { onAddToTimeline?: (path: string) => unknown }) {
@@ -35,7 +36,8 @@ function TranscriptContent({ projectId, onAddToTimeline }: { projectId: string; 
   const [brief, setBrief] = useState(false), [briefVisited, setBriefVisited] = useState(false), [view, setView] = useState<TranscriptView>('segments');
   const [settings, setSettings] = useState(false), [editorBusy, setEditorBusy] = useState(false);
   const selection = useCaptionWorkspace(s => s.selections[projectId]);
-  const visible = useDockLayoutStore(s => s.visiblePanels.has('transcript'));
+  const visible = useCaptionSurfaceActive('transcript');
+  const epoch = useCaptionWorkspace(s => s.epoch);
   const selectedId = usePlayerStore(s => s.selectedElementId);
   const elements = usePlayerStore(s => s.elements);
   const selected = elements.find(e => (e.key ?? e.id) === selectedId);
@@ -56,11 +58,29 @@ function TranscriptContent({ projectId, onAddToTimeline }: { projectId: string; 
     setModels(catalog.models); setModel(old => catalog.models.some(m => m.id === old) ? old : catalog.defaultModel || catalog.models[0]?.id || '');
     setListing(list); setFailed(false); setLoading(false);
   }, [projectId]);
-  useEffect(() => { alive.current = true; let polling = false;
-    const load = async () => { if (polling) return; polling = true; try { await refresh(); } catch { if (alive.current) { setFailed(true); setLoading(false); } } finally { polling = false; } };
-    void load(); const timer = setInterval(() => void load(), 2500);
-    return () => { alive.current = false; clearInterval(timer); };
-  }, [refresh]);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => {
+    if (visible) void refresh().catch(() => { if (alive.current) { setFailed(true); setLoading(false); } });
+  }, [visible, refresh, epoch, files.fileTree, selection?.nonce]);
+  useEffect(() => {
+    const jobs = listing.jobs.filter(job => ['queued', 'running'].includes(job.state));
+    if (!visible || !jobs.length) return;
+    let cancelled = false, polling = false;
+    const poll = async () => {
+      if (polling || document.visibilityState === 'hidden') return;
+      polling = true;
+      try {
+        const results = await Promise.all(jobs.map(job => transcriptRequest<{ job: TranscriptionJob }>({ command: 'status', projectId, jobId: job.id })));
+        if (cancelled || !alive.current) return;
+        const updates = new Map(results.map(result => [result.job.id, result.job]));
+        setListing(previous => ({ ...previous, jobs: previous.jobs.map(job => updates.get(job.id) || job) }));
+        if (results.some(result => !['queued', 'running'].includes(result.job.state))) useCaptionWorkspace.getState().changed();
+      } catch { if (!cancelled && alive.current) setFailed(true); }
+      finally { polling = false; }
+    };
+    const timer = setInterval(() => void poll(), 2500);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [visible, listing.jobs, projectId]);
   async function act(fn: () => Promise<void>) {
     if (active.current) return; active.current = true; setBusy(true);
     try { await fn(); } catch (e) { if (alive.current) error(e instanceof Error ? e.message : 'Transcript operation failed'); }

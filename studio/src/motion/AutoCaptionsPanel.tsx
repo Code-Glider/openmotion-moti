@@ -13,9 +13,13 @@ import { useNativeCaptionWrite } from './useNativeCaptionWrite';
 import { transcriptRequest } from './transcriptClient';
 import { useCaptionWorkspace } from './captionWorkspace';
 import { useDockLayoutStore } from '../components/dock/dockLayoutStore';
+import { useCaptionSurfaceActive } from './useCaptionSurfaceActive';
 import { projectMediaPath } from './timelineMediaSelection';
 
-export function AutoCaptionsPanel() {
+export function AutoCaptionsPanel({ visible = true }: { visible?: boolean }) {
+  const surfaceActive = useCaptionSurfaceActive('captions');
+  const active = surfaceActive && visible;
+  const epoch = useCaptionWorkspace(s => s.epoch);
   const { t } = useI18n(), shell = useStudioShellContext(), files = useFileManagerContext(), chrome = useOptionalWorkspaceChrome();
   const { write, disabled: writeDisabled } = useNativeCaptionWrite();
   const [sources, setSources] = useState<{ path: string }[]>([]), [source, setSource] = useState('');
@@ -44,11 +48,8 @@ export function AutoCaptionsPanel() {
     } catch { if (alive.current) setFailed(true); }
     finally { if (alive.current) setLoading(false); }
   }, [shell.projectId, selectedPath]);
-  useEffect(() => {
-    alive.current = true; void refresh();
-    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') void refresh(); }, 5000);
-    return () => { alive.current = false; clearInterval(timer); };
-  }, [refresh]);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => { if (active) void refresh(); }, [active, refresh, epoch, files.fileTree]);
   useEffect(() => { if (selectedPath && !disabled && sources.some(item => item.path === selectedPath)) { setSource(selectedPath); setReady(null); } }, [selectedPath, sources.length]);
   const act = async (fn: () => Promise<void>) => {
     if (working.current) return;
@@ -71,10 +72,10 @@ export function AutoCaptionsPanel() {
   };
   const addReadyRef = useRef(addReady); addReadyRef.current = addReady;
   useEffect(() => {
-    if (!job || !running) return;
+    if (!active || !job || !running) return;
     let cancelled = false, polling = false;
     const poll = async () => {
-      if (polling) return; polling = true;
+      if (polling || document.visibilityState === 'hidden') return; polling = true;
       try {
         const result = await transcriptRequest<{ job: TranscriptionJob }>({ command: 'status', projectId: shell.projectId, jobId: job.id });
         if (cancelled || !alive.current) return;
@@ -88,7 +89,7 @@ export function AutoCaptionsPanel() {
     };
     const timer = setInterval(() => void poll(), 1000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [job?.id, Boolean(running)]);
+  }, [active, job?.id, Boolean(running)]);
   const submit = () => act(async () => {
     if (!model) { chrome?.openModelSettings(); return; }
     const clip = selectedPath === source && selected && (!selected.sourceFile || selected.sourceFile === (shell.activeCompPath || 'index.html')) && !selected.parentCompositionStart && !selected.automation ? selected : null;

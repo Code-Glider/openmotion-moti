@@ -116,3 +116,10 @@ test('unchanged export guidance and helpers survive lightweight distribution', a
     for (const reference of route.references) assert(files.has(reference.documentId));
   }
 });
+
+test('asset naming contracts and runtime dependencies survive lightweight distribution', async () => {
+  for (const profile of ['phase1', 'legacy']) {
+    const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|ts|json|ya?ml)$/.test(file)));
+    for (const file of ['project-asset-names.ts', 'shared/asset-names.ts', 'shared/asset-name-ui.json', 'skills/openmotion-production/references/materials.md']) assert.ok(files.has(file), file);
+  }
+});

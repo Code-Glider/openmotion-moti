@@ -17,6 +17,7 @@ import { usePlayerStore } from '../player/store/playerStore';
 import { projectMediaPath } from './timelineMediaSelection';
 import { belongsToCaptionTrack, captionTrackCode, captionTrackText, useCaptionWorkspace } from './captionWorkspace';
 import { useCaptionTracks } from './useCaptionTracks';
+import { useCaptionSurfaceActive } from './useCaptionSurfaceActive';
 import { transcriptRequest, type TranscriptList } from './transcriptClient';
 import { gatewayRequest } from './gatewayClient';
 
@@ -26,12 +27,13 @@ export function CaptionsPanel() {
 }
 function CaptionControls() {
   const { t } = useI18n(), shell = useStudioShellContext(), files = useFileManagerContext();
-  const { tracks, loading, failed, refresh, change, disabled } = useCaptionTracks();
+  const visible = useCaptionSurfaceActive('captions');
+  const { timelineElements, refreshKey } = useStudioPlaybackContext();
+  const { tracks, loading, failed, refresh, change, disabled } = useCaptionTracks(visible, refreshKey);
   const selection = useCaptionWorkspace(s => s.selections[shell.projectId]);
   const request = useCaptionWorkspace(s => s.requests[shell.projectId]);
   const appliedRequest = useRef(0), pendingTrack = useRef<string | undefined>(undefined), pendingClip = useRef<string | undefined>(undefined);
   const epoch = useCaptionWorkspace(s => s.epoch);
-  const visible = useDockLayoutStore(s => s.visiblePanels.has('captions'));
   const [mode, setMode] = useState<'auto' | 'manual' | 'style'>('auto');
   const initialMode = useRef(false);
   const [documents, setDocuments] = useState<TranscriptList['documents']>([]), [source, setSource] = useState(''), [target, setTarget] = useState('');
@@ -39,7 +41,7 @@ function CaptionControls() {
   const alive = useRef(true), active = useRef(false), latest = useRef(shell); latest.current = shell;
   const current = tracks.find(track => track.id === target), doc = documents.find(doc => doc.id === (current?.id || source));
   const [placement, setPlacement] = useState({ sourceStart: 0, sourceEnd: 0, timelineStart: 0, playbackRate: 1 });
-  const { timelineElements } = useStudioPlaybackContext(), selectedId = usePlayerStore(s => s.selectedElementId);
+  const selectedId = usePlayerStore(s => s.selectedElementId);
   const selected = timelineElements.find(el => (el.key || el.id) === selectedId);
   const blocked = disabled || working;
   const appearance = current?.settings || settings;
@@ -108,7 +110,7 @@ function CaptionControls() {
     <div className="flex shrink-0 flex-wrap gap-1 border-b border-border p-2" role="tablist" aria-label={t('Caption tools')}>
       {(['auto', 'manual', 'style'] as const).map((item, i) => <Button key={item} size="sm" role="tab" aria-selected={mode === item} variant={mode === item ? 'secondary' : 'ghost'} onClick={() => setMode(item)}>{t(['Auto captions', 'Add captions', 'Style'][i])}</Button>)}
     </div>
-    <div className={mode === 'auto' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}><AutoCaptionsPanel /></div>
+    <div className={mode === 'auto' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}><AutoCaptionsPanel visible={mode === 'auto'} /></div>
     {mode === 'manual' ? <ManualTextPanel kind="caption" /> : mode === 'style' ? <>
     {(tracks.length > 0 || documents.length > 0 || loading || failed) && <div className="flex shrink-0 flex-col items-stretch gap-2 border-b border-border px-3 py-2 @min-[300px]:flex-row @min-[300px]:items-center" data-testid="caption-track-bar">
       <span className="text-step-11 font-medium text-text-2">{t('Caption track')}</span>

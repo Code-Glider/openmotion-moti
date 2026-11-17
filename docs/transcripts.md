@@ -20,7 +20,7 @@ In **Settings → Model providers**, configure an OpenAI-compatible provider wit
 - **Timed segments and words** uses `verbose_json` and requests both segment and word timestamps. Groq's documented `whisper-large-v3` and `whisper-large-v3-turbo` support this contract.
 - **Plain transcript** uses `json`. For example, the currently documented OpenAI `gpt-transcribe` response provides text; OpenMotion does not manufacture subtitle timing from it. Review/copy/TXT remain available, and users can enter timings explicitly.
 - **Speakers and timed segments** uses `diarized_json` and automatic provider chunking. Select it only for a model that documents this response. Speaker identity is supplied by the provider; identity across independently processed chunks is not reconciled automatically.
-- Advanced JSON defaults accept `response_format`, `timestamp_granularities`, `prompt`, `temperature`, `chunking_strategy`, `keywords` and `languages`. Endpoint support is model-specific. Per-request parameters override saved defaults through MCP.
+- Advanced JSON defaults accept `response_format`, `timestamp_granularities`, `temperature`, `chunking_strategy`, `keywords` and `languages`. Endpoint support is model-specific. Per-request parameters override saved defaults through MCP. Context/vocabulary `prompt` is a per-request MCP parameter; it cannot be stored in model defaults.
 
 Credentials remain in the existing settings service. Compatibility is a request contract, not proof of account entitlement, accuracy, quota or successful billing. See the maintained [compatible provider reference](../skills/openmotion-media/references/providers/compatible.md).
 

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
+import { assetNamingInstruction } from '../shared/asset-names.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
 
@@ -22,7 +23,7 @@ test('handbook scenarios compose public tools and keep their copyable instructio
     assert.ok(scenario.title && scenario.description);
     for (const tool of scenario.tools) {
       assert.ok(names.has(tool), tool);
-      assert.ok(platformExportExample('en').includes(tool), tool);
+      assert.ok((scenario.id === 'asset-naming' ? assetNamingInstruction : platformExportExample('en')).includes(tool), tool);
     }
   }
 });
@@ -62,6 +63,14 @@ test('media example preserves setup and task continuation across supported langu
   assert.match(setup, /MCP handbook media-generation example/);
   assert.match(setup, /read-only `inspect`/);
   assert.match(skill, /MCP handbook example \| \[Discovery and setup\]/);
+});
+
+test('asset naming scenario is localized in all eleven interface languages', () => {
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  const scenario = mcpScenarios.find(item => item.id === 'asset-naming')!;
+  for (const locale of Object.values(translations) as Record<string, string>[]) {
+    for (const message of [scenario.title, scenario.description, scenario.prompt]) assert.ok(locale[message], message);
+  }
 });
 
 test('final-video selection and recovery are localized throughout the handbook', () => {

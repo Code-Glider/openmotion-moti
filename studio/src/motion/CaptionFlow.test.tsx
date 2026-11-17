@@ -5,6 +5,7 @@ import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18n';
 import { TranscriptPanel } from './TranscriptPanel';
 import { useCaptionWorkspace } from './captionWorkspace';
+import { useDockLayoutStore } from '../components/dock/dockLayoutStore';
 import { TimelineCaptionActions } from './TimelineCaptionActions';
 const state = vi.hoisted(() => ({ model: false, failSubmit: false, failLoad: false, jobs: [] as any[], composition: 'index.html', wait: vi.fn(), upload: vi.fn(), toast: vi.fn(), settings: vi.fn(), clear: vi.fn(), file: null as File | null, calls: [] as any[] }));
 vi.mock('../contexts/StudioContext', () => ({ useStudioShellContext: () => ({ projectId: 'project', activeCompPath: state.composition, showToast: state.toast, waitForPendingDomEditSaves: state.wait, writeBlockedReason: null, renderQueue: { isRendering: false } }) }));
@@ -16,8 +17,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(n => n.textContent?.trim() === text || n.getAttribute('aria-label') === text)!;
 const render = async (node: React.ReactNode) => act(async () => root.render(<I18nProvider initialLocale="en">{node}</I18nProvider>));
-beforeEach(() => { state.model = false; state.failSubmit = false; state.failLoad = false; state.jobs = []; state.composition = 'index.html'; state.calls = []; state.wait.mockReset().mockResolvedValue(undefined); state.upload.mockReset().mockResolvedValue(['assets/recording.wav']); state.clear.mockReset(); state.settings.mockReset(); state.file = new File(['recorded'], 'recording.wav'); const host = document.createElement('div'); document.body.append(host); root = createRoot(host); vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:recording'); vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {}); vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {}); });
-afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); });
+beforeEach(() => { useDockLayoutStore.setState({ visiblePanels: new Set(['transcript', 'timeline']) }); state.model = false; state.failSubmit = false; state.failLoad = false; state.jobs = []; state.composition = 'index.html'; state.calls = []; state.wait.mockReset().mockResolvedValue(undefined); state.upload.mockReset().mockResolvedValue(['assets/recording.wav']); state.clear.mockReset(); state.settings.mockReset(); state.file = new File(['recorded'], 'recording.wav'); const host = document.createElement('div'); document.body.append(host); root = createRoot(host); vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:recording'); vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {}); vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {}); });
+afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.useRealTimers(); vi.restoreAllMocks(); });
 it('missing model offers an actionable setup path and independent subtitle import', async () => {
  await render(<TranscriptPanel />);
  expect(document.querySelector('[data-testid="transcript-workflow"]')).toBeNull();
@@ -93,4 +94,41 @@ it('the icon-only T shortcut opens manual captions in the active composition', a
  expect(button('Manual captions').textContent).toBe('');
  await act(async () => button('Manual captions').click());
  expect(useCaptionWorkspace.getState().requests.project).toMatchObject({ mode: 'manual', compositionPath: 'index.html' });
+});
+
+it('retains hidden transcript state without polling and refreshes on return to the foreground', async () => {
+ vi.useFakeTimers();
+ const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+ useDockLayoutStore.setState({ visiblePanels: new Set(['timeline']) });
+ await render(<TranscriptPanel />);
+ await act(async () => { useCaptionWorkspace.getState().changed(); await vi.advanceTimersByTimeAsync(15000); });
+ expect(state.calls).toHaveLength(0);
+ await act(async () => useDockLayoutStore.setState({ visiblePanels: new Set(['transcript', 'timeline']) }));
+ expect(state.calls.filter(c => c.command === 'sources')).toHaveLength(1);
+ state.calls = [];
+ await act(async () => vi.advanceTimersByTimeAsync(15000));
+ expect(state.calls).toHaveLength(0);
+ await act(async () => { visibility.mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange')); });
+ await act(async () => { useCaptionWorkspace.getState().changed(); await vi.advanceTimersByTimeAsync(15000); });
+ expect(state.calls).toHaveLength(0);
+ await act(async () => { visibility.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange')); });
+ expect(state.calls.filter(c => c.command === 'sources')).toHaveLength(1);
+});
+
+it('polls only the known active job while visible, without repeating media or model discovery', async () => {
+ vi.useFakeTimers();
+ const job = { id: 'running-job', source: { path: 'speech.wav' }, state: 'running', totalChunks: 4, completedChunks: 2 };
+ state.jobs = [job];
+ const { transcriptRequest } = await import('./transcriptClient');
+ const original = vi.mocked(transcriptRequest).getMockImplementation()!;
+ vi.mocked(transcriptRequest).mockImplementation(async input => input.command === 'status' ? (state.calls.push(input), { job } as any) : original(input));
+ try {
+  await render(<TranscriptPanel />); state.calls = [];
+  await act(async () => vi.advanceTimersByTimeAsync(2500));
+  expect(state.calls).toEqual([{ command: 'status', projectId: 'project', jobId: job.id }]);
+  await act(async () => useDockLayoutStore.setState({ visiblePanels: new Set(['timeline']) }));
+  state.calls = [];
+  await act(async () => vi.advanceTimersByTimeAsync(10000));
+  expect(state.calls).toHaveLength(0);
+ } finally { vi.mocked(transcriptRequest).mockImplementation(original); }
 });

@@ -39,10 +39,10 @@ beforeEach(() => {
   state.tracks = [{ id: 'doc', kind: 'caption', track: 4, label: 'Speech', cueCount: 2, settings: { ...DEFAULT_CAPTION_SETTINGS }, locked: false }];
   state.documents = [{ id: 'doc', source: { path: 'speech.wav', duration: 3 }, segmentCount: 2 }];
   state.wait.mockReset().mockResolvedValue(undefined); state.refresh.mockReset().mockResolvedValue(undefined); state.toast.mockReset();
-  useCaptionWorkspace.setState({ selections: {}, requests: {}, epoch: 0 }); useDockLayoutStore.setState({ visiblePanels: new Set(['captions']) }); usePlayerStore.setState({ selectedElementId: null });
+  useCaptionWorkspace.setState({ selections: {}, requests: {}, epoch: 0 }); useDockLayoutStore.setState({ visiblePanels: new Set(['captions', 'timeline']) }); usePlayerStore.setState({ selectedElementId: null });
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
-afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); });
+afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.useRealTimers(); vi.restoreAllMocks(); });
 it('clicking a style immediately patches only appearance and preserves hidden state and native edits', async () => {
   state.tracks[0].settings.visible = false;
   await render(); await act(async () => button('Paper card').click());
@@ -166,4 +166,22 @@ it('a panel request for another composition does not override this composition',
   useCaptionWorkspace.getState().open('project', { compositionPath: 'other.html', mode: 'manual' });
   await render();
   expect(document.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Style');
+});
+
+it('does no recurring caption discovery and refreshes visible consumers after edits', async () => {
+ vi.useFakeTimers();
+ const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+ await render(<><CaptionsPanel /><TimelineCaptionsMenu /></>);
+ state.calls = [];
+ await act(async () => vi.advanceTimersByTimeAsync(20000));
+ expect(state.calls).toHaveLength(0);
+ await act(async () => useDockLayoutStore.setState({ visiblePanels: new Set(['timeline']) }));
+ await act(async () => useCaptionWorkspace.getState().changed());
+ expect(state.calls.map(c => c.command)).toEqual(['caption_tracks']);
+ state.calls = [];
+ await act(async () => { visibility.mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange')); });
+ await act(async () => { useCaptionWorkspace.getState().changed(); await vi.advanceTimersByTimeAsync(20000); });
+ expect(state.calls).toHaveLength(0);
+ await act(async () => { visibility.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange')); });
+ expect(state.calls.map(c => c.command)).toEqual(['caption_tracks']);
 });
