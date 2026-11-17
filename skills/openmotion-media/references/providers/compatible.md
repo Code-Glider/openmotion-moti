@@ -9,7 +9,7 @@ Call `openmotion_media_use` with `action=inspect` to obtain the actual provider 
 Image request template (replace placeholders with discovered IDs):
 
 ```json
-{"action":"generate","projectId":"PROJECT_ID","provider":"PROVIDER_ID","model":"MODEL_ID","requestId":"image-one","modality":"image","prompt":"A ceramic cup","parameters":{"size":"1024x1024"}}
+{"action":"generate","requestId":"image-one","model":"PROVIDER_ID:MODEL_ID","modality":"image","prompt":"A ceramic cup","parameters":{"size":"1024x1024"}}
 ```
 
 The wire request is `POST <base>/images/generations` with JSON `{model,prompt,...parameters}`. Read the selected model's supported parameters first. Returned `data[].b64_json` or `data[].url` becomes validated project-owned media. This adapter does not implement an image-edit upload protocol or asynchronous video endpoints.
@@ -17,12 +17,12 @@ The wire request is `POST <base>/images/generations` with JSON `{model,prompt,..
 Speech request template:
 
 ```json
-{"action":"generate","projectId":"PROJECT_ID","provider":"PROVIDER_ID","model":"MODEL_ID","requestId":"speech-one","modality":"audio","mode":"text-to-speech","prompt":"Welcome to the studio.","parameters":{"voice":"PROVIDER_VOICE_ID"}}
+{"action":"generate","requestId":"speech-one","model":"PROVIDER_ID:MODEL_ID","modality":"audio","mode":"text-to-speech","prompt":"Welcome to the studio.","parameters":{"voice":"PROVIDER_VOICE_ID"}}
 ```
 
 The wire request is `POST <base>/audio/speech` with JSON `{model,input:prompt,voice,...parameters}` and binary audio output. Voice is required; music and sound-effects protocols are not implemented by this adapter. Transcription uses the separate shared transcript service below.
 
-The Tool returns a local queued job. Poll `action=status` with the original projectId/jobId until completion. A successful synchronous provider response has no separate remote task ID. Stable requestId prevents duplicate local submission. HTTP 401/403 means authorization or permissions were rejected; 400/422 needs a model/input correction; 429 means rate/quota limits; 5xx or timeout can have an uncertain paid outcome. Raw upstream bodies and keys are not exposed. No error automatically resubmits, changes model or changes provider. Local cancel cannot establish remote cancellation or refund; inspect provider history before intentionally retrying.
+The Tool returns a local queued job. Poll `action=status` with the original jobId until completion. A successful synchronous provider response has no separate remote task ID. Stable requestId prevents duplicate local submission. HTTP 401/403 means authorization or permissions were rejected; 400/422 needs a model/input correction; 429 means rate/quota limits; 5xx or timeout can have an uncertain paid outcome. Raw upstream bodies and keys are not exposed. No error automatically resubmits, changes model or changes provider. Local cancel cannot establish remote cancellation or refund; inspect provider history before intentionally retrying.
 
 
 ## Speech-to-text and editable captions

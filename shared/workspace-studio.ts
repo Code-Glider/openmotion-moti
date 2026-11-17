@@ -15,6 +15,7 @@ import { repairCodeExtrudeMaterial } from './registry-material-compat.ts';
 import { StudioRenderAttempts, StudioRenderBusy } from './studio-render-attempts.ts';
 
 import { createFontCatalog, prepareFont, preparedFontResponse } from './studio-fonts.ts';
+import { createPreviewFontPreparation } from './preview-fonts.ts';
 
 export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: string, initialDirectory: string, port: number) {
   const require = createRequire(path.join(runtimeRoot, 'package.json'));
@@ -34,6 +35,8 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
   const coreRoot = path.dirname(require.resolve('@hyperframes/core/package.json'));
   const core = JSON.parse(await readFile(path.join(coreRoot, 'package.json'), 'utf8'));
   const { collectFontFileEntries, fontDirectories } = await import(pathToFileURL(path.join(coreRoot, core.exports['./fonts/system-locator'].import)).href);
+  const { injectDeterministicFontFaces } = await import(pathToFileURL(path.join(coreRoot, core.exports['./fonts/embed'].import)).href);
+  const preparePreviewFonts = createPreviewFontPreparation(injectDeterministicFontFaces);
   const { create: parseFont } = require('fontkit');
   const fonts = createFontCatalog(fontDirectories().flatMap(directory => collectFontFileEntries(directory).map(entry => entry.path)), parseFont);
   const historyModule = path.join(path.dirname(require.resolve('@hyperframes/studio-server/package.json')), 'dist/history/index.js');
@@ -53,6 +56,10 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
         if (closing) throw new Error('Studio is stopping');
         const host = createStudioServer({ projectDir: scoped.projectDirectory, projectName: id,
           origin: () => origin, historyRoot });
+        const transformPreviewHtml = host.adapter.transformPreviewHtml.bind(host.adapter);
+        host.adapter.transformPreviewHtml = async options => transformPreviewHtml({
+          ...options, html: await preparePreviewFonts(options.html),
+        });
         // Keep the upstream catalog, but repair its pinned WebGL 1 material defect.
         // This adapter is shared by Studio registry-install callers.
         const installRegistryBlock = host.adapter.installRegistryBlock?.bind(host.adapter);

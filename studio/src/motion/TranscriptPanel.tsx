@@ -32,7 +32,7 @@ function TranscriptContent({ projectId, onAddToTimeline }: { projectId: string; 
   const [models, setModels] = useState<DirectoryModel[]>([]), [model, setModel] = useState(''), [language, setLanguage] = useState('auto');
   const [listing, setListing] = useState<TranscriptList>({ documents: [], jobs: [] }), [doc, setDoc] = useState<TranscriptDocument | null>(null);
   const [loading, setLoading] = useState(true), [failed, setFailed] = useState(false), [busy, setBusy] = useState(false), [dirty, setDirty] = useState(false);
-  const [brief, setBrief] = useState(false), [view, setView] = useState<TranscriptView>('segments');
+  const [brief, setBrief] = useState(false), [briefVisited, setBriefVisited] = useState(false), [view, setView] = useState<TranscriptView>('segments');
   const [settings, setSettings] = useState(false), [editorBusy, setEditorBusy] = useState(false);
   const selection = useCaptionWorkspace(s => s.selections[projectId]);
   const visible = useDockLayoutStore(s => s.visiblePanels.has('transcript'));
@@ -162,8 +162,8 @@ function TranscriptContent({ projectId, onAddToTimeline }: { projectId: string; 
       </div>
     </>}
     <div className="flex shrink-0 items-center border-t border-border px-2 py-1.5">
-      <Popover open={brief} onOpenChange={setBrief} side="top" align="start" aria-label={t('Translate or create versions')} className="max-h-[70vh] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto" trigger={<Button variant="ghost" size="sm" className="min-w-0 max-w-full" disabled={disabled || dirty}><RemixIcon name="global-line" size={14} /><span className="truncate">{t('Translate or create versions')}</span><RemixIcon name="arrow-right-s-line" size={14} /></Button>}>
-        <TranscriptWorkflowBrief projectId={projectId} transcript={doc} sourcePaths={sources.map(s => s.path)} />
+      <Popover open={brief} onOpenChange={open => { setBrief(open); if (open) setBriefVisited(true); }} side="top" align="start" aria-label={t('Translate or create versions')} keepMounted={briefVisited} className="flex max-h-[min(740px,85dvh)] w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-0" trigger={<Button variant="ghost" size="sm" className="min-w-0 max-w-full" disabled={disabled || dirty}><RemixIcon name="global-line" size={14} /><span className="truncate">{t('Translate or create versions')}</span><RemixIcon name="arrow-right-s-line" size={14} /></Button>}>
+        <TranscriptWorkflowBrief key={projectId} projectId={projectId} transcript={doc} sourcePaths={sources.map(s => s.path)} />
       </Popover>
     </div>
   </section>;

@@ -12,7 +12,7 @@ Choose the material source from its content role before selecting tools, followi
 
 For each required operation, inspect OpenMotion's actual available capabilities. Prefer OpenMotion when it can meet that operation's content and output requirements. When it lacks a suitable available capability, use an appropriate external search, browsing, stock-media or generation tool, including tools from other video-production platforms such as ChatCut. This fallback does not require the user to name the platform; retain existing authorization and explicit source/tool preferences. Retrieval and generation are different operations, as are finding an existing soundtrack and composing a new one.
 
-Use external tools for the operation that needs them and identify their contribution. Continue supported project authoring, editing, preview and export in OpenMotion; sourcing one asset does not move the whole production workflow to another platform. OpenMotion's configured BYOK generation remains available through the supporting Skill below when generation is the appropriate source.
+Use external tools for the operation that needs them and identify their contribution. Continue supported project authoring, editing, preview and export in OpenMotion; sourcing one asset does not move the whole production workflow to another platform. OpenMotion's configured BYOK generation remains available through the supporting [media Skill](../../openmotion-media/SKILL.md) when generation is the appropriate source.
 
 If available tools cannot supply the material, report the specific gap and continue independent work within scope. Use a suitable alternative when it preserves the request; keep original and generated material distinct and report missing media accurately.
 
@@ -38,19 +38,6 @@ If available tools cannot supply the material, report the specific gap and conti
 
 复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](decisions.md)。
 
-## BYOK provider references
-
-Apply the [generation boundary](#generation-boundary) above. When it selects generation, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
-
-Read only the selected provider's document for model queries, request templates, polling and error interpretation:
-
-- [fal.ai](media-providers/fal.md)
-- [Atlas Cloud](media-providers/atlascloud.md)
-- [WaveSpeedAI](media-providers/wavespeed.md)
-- [OpenDesign Cloud](media-providers/opendesign.md)
-- [OpenDesign account](media-providers/account.md)
-- [Registered compatible APIs](media-providers/compatible.md)
-
 ## Recorded speech, transcript review and captions
 
-For speech-led material, use `openmotion_assets_use` with `action=transcript` to discover configured transcription models and source-matched saved transcripts. Submit only missing sources with a stable request ID and follow the original job. Correct actual text/timing before editing cuts; transcript edits do not themselves cut footage. Real timestamps support SRT/VTT and editable captions with explicit source-to-timeline mapping and version guards. The [compatible API reference](media-providers/compatible.md#speech-to-text-and-editable-captions) describes setup and wire behavior; the [user workflow](../../../docs/transcripts.md) covers recordings, language variants, independent platform projects and export. Visual observations still require actual source inspection. Preserve the five creative entry points and use the existing native edit and delivery workflow.
+For speech-led material, follow the [transcript workflow](../../../docs/transcripts.md) for source discovery, recognition, correction and editable captions through `openmotion_assets_use`. The [compatible API reference](../../openmotion-media/references/providers/compatible.md#speech-to-text-and-editable-captions) owns transcription provider setup and wire behavior. Continue composition edits and delivery through the existing native workflow.

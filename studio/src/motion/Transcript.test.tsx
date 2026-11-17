@@ -48,13 +48,68 @@ it('caption adoption waits for saves and refuses a composition switch', async ()
 it('workflow handoff carries exact source identity, language/platform choices, safe MCP steps and clipboard recovery', async () => {
   vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Clipboard denied'));
   await render(<TranscriptWorkflowBrief projectId="project" sourcePaths={['voice.wav']} transcript={doc} />);
-  await type('textarea[aria-label="Subtitle languages (optional)"]', 'English, Japanese');
+  await act(async () => button('English').click());
+  await act(async () => button('日本語').click());
+  await act(async () => button('Bilibili').click());
+  await act(async () => button('More options').click());
   await type('textarea[aria-label="Source links or search brief"]', 'https://youtube.com/watch?v=fixture');
   await act(async () => button('Copy production brief').click());
   const text = (document.querySelector('[aria-label="Complete workflow instruction"]') as HTMLTextAreaElement).value;
   expect(text).toContain('Source projectId: project'); expect(text).toContain(`Selected transcriptId: ${doc.id}`); expect(text).toContain('English, Japanese'); expect(text).toContain('https://youtube.com/watch?v=fixture');
+  expect(text).toContain('Bilibili (16:9, 1920×1080)'); expect(text).toContain('YouTube Shorts (9:16, 1080×1920)');
   expect(text).toContain('expectedTranscriptRevision'); expect(text).toContain('openmotion_export_request'); expect(text).not.toContain('never-copy');
   expect(state.toast).toHaveBeenCalledWith(expect.stringContaining('manually'), 'error');
+});
+
+it('workflow defaults need no typing and keep source language until translations are chosen', async () => {
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await render(<TranscriptWorkflowBrief projectId="project" sourcePaths={['voice.wav']} transcript={doc} />);
+  expect(button('Source language').getAttribute('aria-pressed')).toBe('true');
+  expect(button('YouTube Shorts').getAttribute('aria-pressed')).toBe('true');
+  expect(document.querySelector('[aria-label="Source links or search brief"]')).toBeNull();
+  await act(async () => button('Copy production brief').click());
+  expect(copy).toHaveBeenLastCalledWith(expect.stringContaining('Subtitle languages requested: Keep the source language.'));
+  expect(copy.mock.calls[0][0]).toContain('Select up to three self-contained highlights');
+  await act(async () => button('English').click());
+  expect(button('Source language').getAttribute('aria-pressed')).toBe('false');
+  await act(async () => button('English').click());
+  expect(button('Source language').getAttribute('aria-pressed')).toBe('true');
+  await act(async () => button('YouTube Shorts').click());
+  expect(button('Copy production brief').disabled).toBe(true);
+  expect(document.querySelector('[role="status"]')?.textContent).toBe('Choose at least one platform');
+});
+
+it('workflow custom choices and full-video goal reach the brief, with an explicit source-language reset', async () => {
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await render(<TranscriptWorkflowBrief projectId="project" sourcePaths={[]} transcript={null} />);
+  await act(async () => button('Adapt the full video').click());
+  await act(async () => button('More options').click());
+  await act(async () => button('YouTube Shorts').click());
+  await type('input[aria-label="Other platforms"]', 'Conference screen, 16:9');
+  await type('input[aria-label="Other subtitle languages"]', 'Deutsch');
+  expect(button('Source language').getAttribute('aria-pressed')).toBe('false');
+  await act(async () => button('Copy production brief').click());
+  expect(copy.mock.calls[0][0]).toContain('Keep the complete story');
+  expect(copy.mock.calls[0][0]).toContain('Platforms requested: Conference screen, 16:9');
+  expect(copy.mock.calls[0][0]).toContain('Subtitle languages requested: Deutsch');
+  await act(async () => button('Source language').click());
+  expect((document.querySelector('[aria-label="Other subtitle languages"]') as HTMLInputElement).value).toBe('');
+});
+
+it('workflow waits for pending saves once and discards stale clipboard recovery after a choice changes', async () => {
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+  let finish!: () => void; state.wait.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  await render(<TranscriptWorkflowBrief projectId="project" sourcePaths={['voice.wav']} transcript={doc} />);
+  await act(async () => { button('Copy production brief').click(); button('Copy production brief').click(); });
+  expect(copy).not.toHaveBeenCalled(); expect(state.wait).toHaveBeenCalledOnce();
+  expect(button('English').disabled).toBe(true);
+  await act(async () => finish());
+  expect(copy).toHaveBeenCalledOnce();
+  expect(document.querySelector('[aria-label="Complete workflow instruction"]')).not.toBeNull();
+  await render(<TranscriptWorkflowBrief projectId="project" sourcePaths={['voice.wav']} transcript={doc} />);
+  expect(document.querySelector('[aria-label="Complete workflow instruction"]')).not.toBeNull();
+  await act(async () => button('日本語').click());
+  expect(document.querySelector('[aria-label="Complete workflow instruction"]')).toBeNull();
 });
 
 it('microphone permission denial and late permission after unmount release capture resources', async () => {

@@ -20,6 +20,7 @@ beforeEach(() => { state.model = false; state.failSubmit = false; state.failLoad
 afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); });
 it('missing model offers an actionable setup path and independent subtitle import', async () => {
  await render(<TranscriptPanel />);
+ expect(document.querySelector('[data-testid="transcript-workflow"]')).toBeNull();
  expect(button('Connect speech model').disabled).toBe(false); expect(button('Transcribe')).toBeUndefined();
  await act(async () => button('Connect speech model').click()); expect(state.settings).toHaveBeenCalledOnce();
  expect(button('Import SRT / VTT').disabled).toBe(false);
