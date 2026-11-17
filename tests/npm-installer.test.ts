@@ -81,6 +81,10 @@ test('successful setup hands the current Agent a project-free template library b
   assert(installed.onboarding.welcomeMarkdown.includes(installed.onboarding.preview.previewUrl));
   assert.doesNotMatch(installed.onboarding.welcomeMarkdown, /[👆👇]/u);
   assert.equal(installed.onboarding.onboardingComplete, false);
+  const receipt = JSON.parse(await readFile(installed.onboarding.detailsFile, 'utf8'));
+  assert.equal(receipt.applicationRoot, installed.appRoot);
+  assert.deepEqual(receipt.catalog.templates, installed.onboarding.catalog.templates);
+  assert.equal(receipt.dataDirectory, installed.onboarding.dataDirectory);
   assert.equal(installed.onboarding.preview.projectCreated, false);
   assert.equal(new URL(installed.onboarding.preview.previewUrl).searchParams.get('templates'), '1');
   assert.equal(installed.onboarding.preview.previewHandoff.nextAction.kind, 'host');

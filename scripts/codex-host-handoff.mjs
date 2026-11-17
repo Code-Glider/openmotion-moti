@@ -66,18 +66,28 @@ export async function prepareCodexHostHandoff(options = {}) {
   const threadId = options.threadId ?? env.CODEX_THREAD_ID ?? env.CODEX_SESSION_ID;
   const language = options.language ?? env.OPENMOTION_ONBOARDING_LANGUAGE ?? 'en';
   const presentation = { tool: presentationTool, arguments: {
-    templateIds: options.templateIds ?? selectOnboardingTemplateIds(), onboarding: true,
+    templateIds: options.templateIds ?? selectOnboardingTemplateIds(), onboarding: !options.welcomeDelivered,
     language: languages.includes(language) ? language : 'en',
   }, prerequisite: 'Visibly open the template library, then invoke this tool natively in the calling chat. Do not call the presentation through a shell probe.' };
-  presentation.arguments.welcomeText = onboardingWelcomeText(presentation.arguments.language);
-  const base = { welcomeStreamingVerified: false, hostSessionVerified: false, presentationVerified: false, presentation,
-    welcomeMarkdown: welcomeMarkdown(presentation.arguments.language) };
+  if (!options.welcomeDelivered) presentation.arguments.welcomeText = onboardingWelcomeText(presentation.arguments.language);
+  const base = { threadId, expectedResourceUri: options.expectedResourceUri,
+    welcomeStreamingVerified: false, hostSessionVerified: false, presentationVerified: false, presentation,
+    welcomeMarkdown: options.welcomeDelivered ? '' : welcomeMarkdown(presentation.arguments.language) };
   const hostRequests = [
     { method: 'config/mcpServer/reload', params: null },
     { method: 'mcpServerStatus/list', params: { threadId, serverName: 'openmotion', detail: 'toolsAndAuthOnly' } },
   ];
-  const required = reason => ({ ...base, status: 'host_action_required', reason, hostRequests,
-    nextAction: 'Have the existing host reload MCP configuration and verify OpenMotion in this same chat. Registration and an independent probe do not complete onboarding. Do not reinstall, start another app-server, create a project, or claim native presentation succeeded.' });
+  const required = reason => {
+    const restart = ['HOST_CONTROL_UNAVAILABLE', 'NATIVE_PRESENTATION_UNAVAILABLE', 'NATIVE_PRESENTATION_SELECTION_UNSUPPORTED',
+      'NATIVE_WELCOME_STREAMING_SCHEMA_UNSUPPORTED', 'NATIVE_PRESENTATION_RESOURCE_MISMATCH', 'HOST_VERSION_MISMATCH'].includes(reason);
+    return { ...base, status: 'host_action_required', reason, hostRequests,
+      ...(restart ? { manualAction: { kind: 'restart_mcp_connection', serverName: 'openmotion', threadId,
+        instruction: 'In Codex Settings > MCP servers, Restart only the OpenMotion connection, then resume this saved installation in the same chat. Keep its workspace, template IDs/order and language. Do not reinstall or restart the application.' } } : {}),
+      nextAction: (restart
+        ? 'Use an available supported host reload action, or the supplied manualAction when automatic host control is unavailable. '
+        : 'Resolve the reported chat, workspace or policy condition in the existing host; a connection restart does not resolve that condition. ')
+        + 'Resume the saved installation and verify OpenMotion in this same chat. Registration and an independent probe do not complete onboarding. Do not reinstall, start another app-server, create a project, or claim native presentation succeeded.' };
+  };
   if (!threadId) return required('CURRENT_CHAT_UNKNOWN');
   if (!options.dataDirectory) return required('EXPECTED_WORKSPACE_UNKNOWN');
   let client;
@@ -100,32 +110,37 @@ export async function prepareCodexHostHandoff(options = {}) {
       if (!cursor) break;
     }
     if (!loaded) return required('CURRENT_CHAT_NOT_LOADED');
-    if (!options.verifyOnly) await request('config/mcpServer/reload', null);
     const inventory = await request('mcpServerStatus/list', hostRequests[1].params);
     const server = inventory.data?.find(item => item.name === 'openmotion');
     if (server?.toolsError) return required('HOST_TOOL_DISCOVERY_FAILED');
-    if (!server?.tools?.[presentationTool] || !server.tools.openmotion_get_project) {
-      if (options.verifyOnly) return required('NATIVE_PRESENTATION_UNAVAILABLE');
-      return { ...base, status: 'refresh_requested', hostRequests: hostRequests.slice(1),
-        nextAction: 'Allow the current host step to finish, then verify this same chat once with --verify-only. A queued refresh is not a connected or displayed onboarding.' };
+    const tool = server?.tools?.[presentationTool];
+    const acceptedIds = tool?.inputSchema?.properties?.templateIds?.items?.enum;
+    let staleReason;
+    if (!tool || !server.tools.openmotion_get_project) staleReason = 'NATIVE_PRESENTATION_UNAVAILABLE';
+    else if (Array.isArray(acceptedIds) && presentation.arguments.templateIds.some(id => !acceptedIds.includes(id))) staleReason = 'NATIVE_PRESENTATION_SELECTION_UNSUPPORTED';
+    else if (!options.welcomeDelivered && !tool.inputSchema?.properties?.welcomeText) staleReason = 'NATIVE_WELCOME_STREAMING_SCHEMA_UNSUPPORTED';
+    else if (options.expectedVersion && server.serverInfo?.version !== options.expectedVersion) staleReason = 'HOST_VERSION_MISMATCH';
+    else if (options.expectedResourceUri && tool._meta?.ui?.resourceUri !== options.expectedResourceUri) staleReason = 'NATIVE_PRESENTATION_RESOURCE_MISMATCH';
+    if (staleReason) {
+      if (options.verifyOnly) return required(staleReason);
+      await request('config/mcpServer/reload', null);
+      return { ...base, status: 'refresh_requested', reason: staleReason, hostRequests: hostRequests.slice(1),
+        nextAction: 'Allow the current host step to finish, then resume the saved installation with --verify-only once. Preserve its template IDs/order, language, workspace and resource identity. A queued refresh is not a connected or displayed onboarding.' };
     }
-    const acceptedIds = server.tools[presentationTool].inputSchema?.properties?.templateIds?.items?.enum;
-    if (Array.isArray(acceptedIds) && presentation.arguments.templateIds.some(id => !acceptedIds.includes(id)))
-      return required('NATIVE_PRESENTATION_SELECTION_UNSUPPORTED');
-    if (!server.tools[presentationTool].inputSchema?.properties?.welcomeText)
-      return required('NATIVE_WELCOME_STREAMING_SCHEMA_UNSUPPORTED');
-    if (options.expectedVersion && server.serverInfo?.version !== options.expectedVersion) return required('HOST_VERSION_MISMATCH');
     const project = await request('mcpServer/tool/call', { threadId, server: 'openmotion', tool: 'openmotion_get_project', arguments: {} });
     if (project.isError) return required('HOST_WORKSPACE_READ_FAILED');
     const directory = project.structuredContent?.dataDirectory;
     if (typeof directory !== 'string' || path.resolve(directory) !== path.resolve(options.dataDirectory)) return required('HOST_WORKSPACE_MISMATCH');
     return { ...base, status: 'ready_for_presentation', hostSessionVerified: true, threadId,
-      nextAction: 'Open the library visibly and call the native presentation tool with the prepared IDs, language, onboarding:true and welcomeText LAST. Observe genuine incremental welcome text followed by three video cards inside the same App. Do not duplicate the welcome in chat. Schema support does not verify incremental host delivery; presentation and streaming remain unverified.' };
+      nextAction: options.welcomeDelivered
+        ? 'Keep the existing welcome and library. Call the prepared cards-only native Tool once with the same IDs/order and language. Do not replay the welcome or claim streaming acceptance.'
+        : 'Open the library visibly and call the native presentation tool with the prepared IDs, language, onboarding:true and welcomeText LAST. Observe genuine incremental welcome text followed by three video cards inside the same App. Do not duplicate the welcome in chat. Schema support does not verify incremental host delivery; presentation and streaming remain unverified.' };
   } catch { return required('HOST_REQUEST_FAILED'); }
   finally { client?.close(); }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes('--verify-only')) throw new Error('Resume the saved installation with scripts/install-onboarding.mjs APP_ROOT --resume RECEIPT --verify-only; do not redraw template IDs.');
   const { WorkspaceStore } = await import('../workspace.ts');
   const result = await prepareCodexHostHandoff({ dataDirectory: new WorkspaceStore().directory,
     expectedVersion: JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version,

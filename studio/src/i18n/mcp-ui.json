@@ -1,5 +1,7 @@
 {
   "zh-CN": {
+    "Why are template cards missing after installation?": "安装后为什么没有推荐卡片？",
+    "A CLI install can finish before the current chat loads its MCP connection. If automatic activation is unavailable, restart only OpenMotion in Codex Settings > MCP servers, then ask the Agent to resume the saved onboarding receipt. Keep the same chat, workspace and three recommendations. A working connection is reused. An already shown welcome is not repeated.": "命令行安装完成后，当前对话可能还未加载 MCP 连接。若无法自动激活，请在 Codex 设置 > MCP servers 中仅对 OpenMotion 点 Restart，再让 Agent 继续保存的安装引导。沿用当前对话、工作区和三个推荐，不必重新安装。已可用的连接会直接复用，已显示的欢迎语不会重复。",
     "MCP": "MCP",
     "Current project": "当前项目",
     "Copy the instruction to another conversation to continue editing this project.": "复制指令到其他会话，继续编辑此项目。",

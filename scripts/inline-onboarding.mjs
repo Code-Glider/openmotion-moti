@@ -33,7 +33,8 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   // cannot inherit it. Never mark remote-reference fragments as displayable.
   if (bootstrap.templates.some(template => templateIds.includes(template.id) && (template.posterUrl || template.videoUrl))) {
     return { status: 'native_required', mode: 'native-mcp-app', reason: 'INLINE_EXTERNAL_MEDIA_BLOCKED',
-      resourceVersion: presentation.resourceVersion, templateIds: recommendation.cards.map(card => card.templateId), language,
+      resourceVersion: presentation.resourceVersion, resourceUri: presentation.uri,
+      templateIds: recommendation.cards.map(card => card.templateId), language,
       welcomeMarkdown: welcomeMarkdown(language), welcomeStreamingVerified: false,
       publicationRequired: false, nativeMcpSessionVerified: false,
       presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: true, welcomeText: onboardingWelcomeText(language) } },

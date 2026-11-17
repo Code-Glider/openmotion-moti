@@ -27,17 +27,50 @@ function host({ tools = true, directory = dataDirectory, loaded = true, denied =
   return { calls, request };
 }
 
-test('CLI handoff refreshes the existing host and verifies this chat before native presentation', async () => {
+test('an already connected chat is verified without restarting its working connection', async () => {
+  const { request, calls } = host();
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request });
+  assert.equal(result.status, 'ready_for_presentation');
+  assert.equal(calls.some(call => call.method === 'config/mcpServer/reload'), false);
+});
+
+test('same-version stale card resources request activation without reading through the old connection', async () => {
+  const h = host();
+  const request = async (method: string, params: any) => {
+    const value = await h.request(method, params);
+    if (method === 'mcpServerStatus/list') (value as any).data[0].tools.openmotion_show_template_recommendations._meta = {
+      ui: { resourceUri: 'ui://openmotion/template-recommendations/old/index.html' },
+    };
+    return value;
+  };
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request,
+    expectedResourceUri: 'ui://openmotion/template-recommendations/new/index.html' });
+  assert.equal(result.status, 'refresh_requested');
+  assert.equal(result.hostSessionVerified, false);
+  assert.equal(h.calls.some(call => call.method === 'mcpServer/tool/call'), false);
+});
+
+test('missing host control returns an actionable restart limited to the existing OpenMotion connection', async () => {
+  const ids = onboardingTemplateIds.slice(-3);
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, templateIds: ids,
+    socketPath: '/nonexistent/openmotion-host.sock', env: {} });
+  assert.equal(result.manualAction.kind, 'restart_mcp_connection');
+  assert.equal(result.manualAction.serverName, 'openmotion');
+  assert.equal(result.manualAction.threadId, threadId);
+  assert.equal(result.threadId, threadId);
+  assert.deepEqual(result.presentation.arguments.templateIds, ids);
+});
+
+test('CLI handoff verifies an existing connection in this chat before native presentation', async () => {
   const { request, calls } = host();
   const result = await prepareCodexHostHandoff({ threadId, dataDirectory, expectedVersion: '0.0.1', request, language: 'zh', templateIds: onboardingTemplateIds.slice(-3) });
   assert.equal(result.status, 'ready_for_presentation');
   assert.equal(result.hostSessionVerified, true);
   assert.equal(result.presentationVerified, false);
-  assert.deepEqual(calls.map(call => call.method), ['thread/loaded/list', 'config/mcpServer/reload',
-    'mcpServerStatus/list', 'mcpServer/tool/call']);
+  assert.deepEqual(calls.map(call => call.method), ['thread/loaded/list', 'mcpServerStatus/list', 'mcpServer/tool/call']);
+  assert.equal(calls[1].params.threadId, threadId);
   assert.equal(calls[2].params.threadId, threadId);
-  assert.equal(calls[3].params.threadId, threadId);
-  assert.equal(calls[3].params.tool, 'openmotion_get_project');
+  assert.equal(calls[2].params.tool, 'openmotion_get_project');
   assert.deepEqual(result.presentation.arguments.templateIds, onboardingTemplateIds.slice(-3));
   assert.equal(result.presentation.arguments.onboarding, true);
   assert.equal(result.presentation.arguments.language, 'zh');
@@ -48,7 +81,7 @@ test('CLI handoff refreshes the existing host and verifies this chat before nati
 
 test('builtin-only stale native discovery cannot accept curated reference cards', async () => {
   const { request, calls } = host({ acceptedIds: ['product-promo', 'nyt-graph', 'decision-tree'] });
-  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request, templateIds: onboardingTemplateIds.slice(0, 3) });
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request, verifyOnly: true, templateIds: onboardingTemplateIds.slice(0, 3) });
   assert.equal(result.status, 'host_action_required');
   assert.equal(result.reason, 'NATIVE_PRESENTATION_SELECTION_UNSUPPORTED');
   assert.deepEqual(result.presentation.arguments.templateIds, onboardingTemplateIds.slice(0, 3));
@@ -62,7 +95,7 @@ test('discovered cards without the welcome input schema cannot claim readiness f
     if (method === 'mcpServerStatus/list') delete (value as any).data[0].tools.openmotion_show_template_recommendations.inputSchema.properties.welcomeText;
     return value;
   };
-  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request });
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request, verifyOnly: true });
   assert.equal(result.reason, 'NATIVE_WELCOME_STREAMING_SCHEMA_UNSUPPORTED');
   assert.equal(result.hostSessionVerified, false);
   assert.equal(result.welcomeStreamingVerified, false);
@@ -153,7 +186,7 @@ for await (const line of readline.createInterface({input:process.stdin})) {
       const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
       assert.deepEqual(calls[0].argv, ['app-server', 'proxy', '--sock', socketPath]);
       assert.deepEqual(calls.slice(1).map(call => call.method), ['initialize', 'initialized', 'thread/loaded/list',
-        'config/mcpServer/reload', 'mcpServerStatus/list', 'mcpServer/tool/call']);
+        'mcpServerStatus/list', 'mcpServer/tool/call']);
       assert.equal(calls.some(call => call.method === 'openmotion_show_template_recommendations'), false);
     }
   } finally {

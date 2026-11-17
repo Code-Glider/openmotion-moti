@@ -64,6 +64,9 @@ test('installation retains a standalone welcome when cards, native discovery or 
       assert.match(result.stderr, /stream the top-level welcomeMarkdown/i);
       const details = JSON.parse(await readFile(onboarding.detailsFile, 'utf8'));
       assert.equal(details.welcomeMarkdown, onboarding.welcomeMarkdown);
+      assert.deepEqual(details.recovery, onboarding.recovery);
+      assert(details.recovery.args.includes(onboarding.detailsFile));
+      assert.equal(details.hostHandoff.manualAction.kind, 'restart_mcp_connection');
     });
   }
 });
