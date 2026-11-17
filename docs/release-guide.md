@@ -35,6 +35,14 @@ A first test candidate may be distributed with declared, accepted non-blocking i
 
 Mac arm64 and Windows x64 require separate results; absent runners are not passes. A fixture-tested adapter is not proof of a real host conversation. Mark PASS / FAIL / NOT RUN explicitly; flaky or infrastructure failures do not count as acceptance.
 
+## Onboarding media development acceptance
+
+Compare the complete Tool/Skill inventory against the exact package manifest in development/release acceptance; ordinary installation only needs the selected workspace read.
+
+When changing onboarding media or card rendering, verify image decoding and advancing full-video playback in the mounted cards, including enlarged preview, for the affected inline/native routes and current recommendation pool. Check decoded image dimensions, complete video duration, advancing playback time and decoded frames, and media/CSP/runtime errors. A cover image or HTTP success alone does not prove playback. Record the source/resource identity, host, selected IDs and evidence; a browser test host does not establish actual native-host delivery. Human audiovisual review remains separate.
+
+These are developer/release checks, never work required of the installing Agent. Do not delay installation completion, repeat setup or invalidate installation/connection results because media acceptance is failed, unavailable or not run. Track those results separately from visible card delivery and automatic MCP activation.
+
 ## Stable acceptance
 
 1. Candidate blockers are resolved; remaining issues have an explicit acceptance owner and workaround. Required host/platform, true Agent creation and human playback results are complete.

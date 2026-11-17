@@ -73,6 +73,8 @@ test('an explicit builtin document can verify domain MCP without requiring the n
   const result = await prepareCodexHostHandoff({ threadId, dataDirectory, requirePresentation: false, request });
   assert.equal(result.hostSessionVerified, true);
   assert.equal(result.automaticActivation, 'verified');
+  assert.match(result.nextAction, /prepared HTML/);
+  assert.doesNotMatch(result.nextAction, /invoke.*(?:presentation tool|native Tool)/);
   assert.equal(fixture.calls.some(call => call.method === 'config/mcpServer/reload'), false);
 });
 
