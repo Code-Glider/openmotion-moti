@@ -183,7 +183,7 @@ it("previews verified source without a project, creates independently with exact
       .evaluate((node) => node.ownerDocument.activeElement === node),
   ).toBe(true);
   expect((await client.execute("workspace_state", {})).sessions).toEqual([]);
-  expect(reads.every((op) => ["template_list", "template_read"].includes(op))).toBe(true);
+  expect(reads.every((op) => ["workspace_preferences", "template_list", "template_read"].includes(op))).toBe(true);
   expect(await detail.getByLabel("模板源码", { exact: true }).inputValue()).toBe(
     original.files.find((f) => f.path === "index.html")?.content,
   );
@@ -327,7 +327,7 @@ it("previews verified source without a project, creates independently with exact
     `${url}?page=templates&template=${selected.id}&templateHash=${encodeURIComponent(selected.contentHash)}${fragment}`,
   );
   await previewReady();
-  expect(reads).toEqual(["template_read"]);
+  expect(reads).toEqual(["workspace_preferences", "template_read"]);
   expect((await reopened.execute("workspace_state", {})).selection.artifactId).toBe(second.artifactId);
   await driver.capture("template-cold-detail");
   await nav.getByRole("button", { name: "编辑工作区", exact: true }).click();
@@ -363,12 +363,12 @@ it("rejects malformed and stale template links without falling back to creation 
   try {
     await page.goto(`${url}?page=templates&template=product-promo&templateHash=bad`);
     await page.getByLabel("模板预览状态", { exact: true }).filter({ hasText: "模板链接无效" }).waitFor();
-    expect(operations).toEqual([]);
+    expect(operations).toEqual(["workspace_preferences"]);
     await page.goto(
       `${url}?page=templates&template=product-promo&templateHash=${encodeURIComponent(`sha256:${"0".repeat(64)}`)}`,
     );
     await page.getByLabel("模板预览状态", { exact: true }).filter({ hasText: "模板预览不可用" }).waitFor();
-    expect(operations).toEqual(["template_read"]);
+    expect(operations).toEqual(["workspace_preferences", "workspace_preferences", "template_read"]);
     expect(await page.getByRole("button", { name: "从此模板创建独立项目", exact: true }).isEnabled()).toBe(false);
     await page.getByRole("button", { name: "返回模板目录", exact: true }).click();
     await page.locator("[data-template-id]").first().waitFor();

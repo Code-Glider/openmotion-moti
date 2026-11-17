@@ -18,6 +18,8 @@
   grid-template-rows: minmax(0, var(--om-flex-track)) var(--om-timeline-height);
   gap: var(--om-pane-gap); padding: 0 var(--om-pane-gap) var(--om-pane-gap); min-width: 0; min-height: 0;
   &__leading, &__trailing, &__body, &__footer { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  &--focused { grid-template-columns: minmax(0, var(--om-flex-track)); }
+  &__leading, &__trailing { &[hidden] { display: none; } }
   &__footer { grid-column: var(--om-span-all); }
 }
 .om-slot {
@@ -31,7 +33,7 @@
   &--stage { box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; min-height: 0; height: var(--om-size-full); padding: var(--om-canvas-padding); background: var(--om-canvas); }
   &--scroll { overflow: auto; max-height: var(--om-list-max-height); }
   &--title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--om-label-size); font-weight: var(--om-weight-medium); color: var(--om-strong); }
-  &--header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: var(--om-appbar-height); padding: 0 var(--om-control-padding-x); border-bottom: var(--om-focus-width) solid var(--om-border); background: var(--om-inset); }
+  &--header { display: flex; flex-wrap: wrap; gap: var(--om-field-gap); align-items: center; justify-content: space-between; flex-shrink: 0; min-height: var(--om-appbar-height); padding: 0 var(--om-control-padding-x); border-bottom: var(--om-focus-width) solid var(--om-border); background: var(--om-inset); }
   &--content { display: flex; flex-direction: column; gap: var(--om-control-padding-x); padding: var(--om-panel-padding); }
   &--footer { display: flex; flex-direction: column; gap: var(--om-control-padding-y); margin-top: auto; padding: var(--om-panel-padding) var(--om-control-padding-y) 0; border-top: var(--om-focus-width) solid var(--om-border); }
   &--editorbar { box-sizing: border-box; display: flex; flex-direction: column; flex-shrink: 0; align-items: stretch; justify-content: space-between; gap: var(--om-control-padding-y); min-height: var(--om-editorbar-height); padding: var(--om-control-padding-y) var(--om-control-padding-x); }
@@ -41,17 +43,17 @@
 }
 @media (max-width: 1250px) {
   .om-split { &__start { flex-basis: var(--om-inspector-width); } }
-  .om-grid { grid-template-columns: minmax(var(--om-side-min-width), var(--om-library-narrow)) minmax(var(--om-preview-min-width), var(--om-flex-track)) minmax(var(--om-side-min-width), var(--om-inspector-narrow)); }
+  .om-grid { grid-template-columns: minmax(0, var(--om-library-narrow)) minmax(0, var(--om-flex-track)) minmax(0, var(--om-inspector-narrow)); &--focused { grid-template-columns: minmax(0, var(--om-flex-track)); } }
 }
 @media (max-width: 1000px) {
   .om-shell { height: auto; min-height: var(--om-screen-height); }
   .om-split { display: block; overflow: auto; &__start { max-height: var(--om-conversation-narrow); } &__end { min-height: var(--om-editor-min-height); } }
-  .om-grid { flex: auto; min-height: var(--om-editor-min-height); grid-template-rows: var(--om-stage-narrow) var(--om-timeline-height); }
+  .om-grid { overflow: auto; flex: auto; min-height: var(--om-editor-min-height); grid-template-rows: var(--om-stage-narrow) var(--om-timeline-height); }
 }
 @media (max-width: 760px) {
   .om-shell { grid-template-columns: minmax(0, var(--om-flex-track)); &__rail { max-height: var(--om-list-max-height); } }
   .om-shell { &--compact &__rail { flex-direction: row; align-items: center; border-right: 0; border-bottom: var(--om-focus-width) solid var(--om-border); } }
   .om-split { &__start { min-height: var(--om-conversation-narrow); } }
-  .om-grid { grid-template-columns: minmax(0, var(--om-flex-track)); grid-template-rows: auto; &__leading, &__body, &__trailing, &__footer { grid-column: auto; min-height: var(--om-stage-min-height); } }
+  .om-grid { grid-template-columns: minmax(0, var(--om-flex-track)); grid-template-rows: auto; &__body { order: 0; } &__footer { order: var(--om-order-secondary); } &__leading { order: var(--om-order-third); } &__trailing { order: var(--om-order-fourth); } &__leading, &__body, &__trailing, &__footer { grid-column: auto; min-height: var(--om-stage-min-height); } }
   .om-slot { &--navigation { flex-direction: row; } &--editorbar { flex-wrap: wrap; } }
 }

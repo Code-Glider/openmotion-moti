@@ -30,6 +30,7 @@ export function studioLayout(document: Document) {
     return view;
   };
   return {
+    focusBody: grid.focusBody,
     element: grid.element,
     library: mount("library"),
     canvas: mount("canvas"),

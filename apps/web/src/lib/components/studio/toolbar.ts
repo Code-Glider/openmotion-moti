@@ -1,4 +1,4 @@
-import { badge, button, field, numberField, setButtonSelected, slot } from "@open-motion/components";
+import { badge, button, emptyState, field, numberField, setButtonSelected, slot } from "@open-motion/components";
 /** One transport view per Studio; playback updates never replace an active seek input. */
 export function playerControls(
   document: Document,
@@ -112,4 +112,16 @@ export function studioTools(
 export function syncMode(root: HTMLElement, mode: "preview" | "source") {
   for (const control of root.querySelectorAll<HTMLButtonElement>("[data-mode]"))
     setButtonSelected(control, control.dataset.mode === mode);
+}
+
+export function emptyStudio(document: Document, session: boolean, start: () => void) {
+  const view = emptyState(document, {
+    title: "让想法成为画面",
+    detail: "创建空白或模板项目，或让 Agent 创建项目后继续编辑。",
+    icon: "film",
+  });
+  view.actions.append(
+    button(document, { label: session ? "新建影片工程" : "开始创作", icon: "plus", primary: true, onClick: start }),
+  );
+  return view.element;
 }

@@ -35,6 +35,14 @@ const click = async (name: string) => {
   await driver.page.getByRole("button", { name, exact: true }).click();
   await ready();
 };
+async function theme(value: "light" | "dark") {
+  const page = driver.page;
+  await page.getByRole("button", { name: "界面设置", exact: true }).click();
+  await page.getByRole("combobox", { name: "主题", exact: true }).selectOption(value);
+  await page.getByRole("button", { name: "应用并保存界面", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "界面设置已保存并同步" }).waitFor();
+  await page.keyboard.press("Escape");
+}
 async function scene(name: string) {
   const page = driver.page;
   await page.goto(url);
@@ -146,7 +154,12 @@ describe.sequential("persistent Studio view and native browser controls", () => 
     await seek.fill("1.25");
     await seek.evaluate((e) => e.setAttribute("data-probe", "stable-seek"));
     await page.getByRole("button", { name: "打开项目列表", exact: true }).click();
-    await click("切换主题");
+    await page.getByRole("button", { name: "外观与布局", exact: true }).click();
+    const themeChoice = page.getByRole("combobox", { name: "主题", exact: true });
+    await expect.poll(() => themeChoice.isEnabled()).toBe(true);
+    await themeChoice.selectOption((await themeChoice.inputValue()) === "light" ? "dark" : "light");
+    await page.getByRole("button", { name: "应用并保存界面", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: "界面设置已保存并同步" }).waitFor();
     await page.keyboard.press("Escape");
     expect(await seek.inputValue()).toBe("1.25");
     expect(await seek.getAttribute("data-probe")).toBe("stable-seek");
@@ -241,6 +254,7 @@ describe.sequential("persistent Studio view and native browser controls", () => 
   }, 30000);
   it("retains recorded design tokens and restores same-source pixels across a theme round-trip", async () => {
     await scene("Visual contract");
+    await theme("light");
     const page = driver.page;
     await page.mouse.move(0, 0);
     await page.evaluate(async () => {
@@ -257,14 +271,10 @@ describe.sequential("persistent Studio view and native browser controls", () => 
     }, Object.keys(contract.tokens));
     expect(actual).toEqual(contract.tokens);
     const before = await driver.capture("light");
-    await page.getByRole("button", { name: "打开项目列表", exact: true }).click();
-    await click("切换主题");
-    await page.keyboard.press("Escape");
+    await theme("dark");
     await page.mouse.move(0, 0);
     await driver.capture("dark");
-    await page.getByRole("button", { name: "打开项目列表", exact: true }).click();
-    await click("切换主题");
-    await page.keyboard.press("Escape");
+    await theme("light");
     await page.mouse.move(0, 0);
     const restored = await driver.capture("light-restored");
     const difference = imageDifference(before, restored);

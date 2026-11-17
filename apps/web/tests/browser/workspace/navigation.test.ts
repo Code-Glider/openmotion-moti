@@ -185,7 +185,7 @@ it("browses without a project, retains drafts through page history and keeps ack
     nav = page.getByRole("navigation", { name: "工作区导航", exact: true }),
     cards = library.locator("[data-template-id]");
   await expect.poll(() => cards.count()).toBe(3);
-  expect(operations).toEqual(["template_list"]);
+  expect(operations).toEqual(["workspace_preferences", "template_list"]);
   expect((await client.execute("workspace_state", {})).sessions).toEqual([]);
   expect(await nav.getByRole("button", { name: "后退", exact: true }).isEnabled()).toBe(false);
   await library.getByLabel("搜索模板", { exact: true }).fill("missing-template");
@@ -236,7 +236,10 @@ it("browses without a project, retains drafts through page history and keeps ack
   operations.length = 0;
   await page.reload();
   await expect.poll(() => cards.count()).toBe(3);
-  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toEqual(["template_list"]);
+  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toEqual([
+    "workspace_preferences",
+    "template_list",
+  ]);
   expect((await client.execute("workspace_state", {})).selection.artifactId).toBeNull();
   await nav.getByRole("button", { name: "编辑工作区", exact: true }).click();
   await ready();
@@ -260,7 +263,7 @@ it("browses without a project, retains drafts through page history and keeps ack
   expect(await code.getAttribute("data-retained")).toBe("draft");
   expect(await code.evaluate((node) => (node as HTMLTextAreaElement).selectionStart)).toBe(5);
   // The retained editor may observe durable task metadata; page navigation must not write or load source.
-  const reads = ["template_list", "workspace_observe", "export_list", "generation_list"];
+  const reads = ["workspace_preferences", "template_list", "workspace_observe", "export_list", "generation_list"];
   expect(operations.filter((op) => !reads.includes(op))).toEqual([]);
   expect((await client.execute("workspace_state", {})).selection).toEqual(before.selection);
   // Save in an earlier page-history entry, then forward through an older URL.
@@ -276,7 +279,10 @@ it("browses without a project, retains drafts through page history and keeps ack
   operations.length = 0;
   await page.reload();
   await cards.first().waitFor();
-  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toEqual(["template_list"]);
+  expect(await page.evaluate(() => Reflect.get(window, "navigationOperations"))).toEqual([
+    "workspace_preferences",
+    "template_list",
+  ]);
   expect((await client.execute("workspace_state", {})).selection).toEqual(acknowledged);
   expect(await nav.getByRole("button", { name: "后退", exact: true }).isEnabled()).toBe(true);
   await nav.getByRole("button", { name: "后退", exact: true }).click();

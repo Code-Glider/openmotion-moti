@@ -5,6 +5,7 @@ import {
   type Input,
   type Operation,
   type Output,
+  type Preferences,
   type Project,
   type ResourceSourceIntent,
   resourceSourceIntent,
@@ -13,6 +14,7 @@ import {
   type SourcePayload,
   schemas,
   sourceIntent,
+  viewPreferences,
 } from "./contract.js";
 import { Database } from "./database.js";
 import { sources } from "./native.js";
@@ -125,6 +127,23 @@ export class Workspace {
   }
   private dispatch(operation: Operation, input: unknown): Output<Operation> {
     switch (operation) {
+      case "workspace_preferences": {
+        const row = this.db.one("SELECT version,value FROM preferences WHERE id=1");
+        if (!row || !Number.isSafeInteger(row.version) || Number(row.version) < 0)
+          throw new Fault("integrity", "workspace preferences are invalid");
+        return { version: Number(row.version), value: viewPreferences.parse(JSON.parse(String(row.value))) };
+      }
+      case "workspace_configure": {
+        const data = input as Input<"workspace_configure">;
+        const current = this.dispatch("workspace_preferences", {}) as Preferences;
+        if (data.expectedVersion !== current.version)
+          throw new Fault("conflict", "view preferences changed; reload before saving");
+        if (JSON.stringify(data.value) === JSON.stringify(current.value)) return current;
+        const version = current.version + 1;
+        if (!Number.isSafeInteger(version)) throw new Fault("integrity", "view preference version exhausted");
+        this.db.run("UPDATE preferences SET version=?,value=? WHERE id=1", version, JSON.stringify(data.value));
+        return { version, value: data.value };
+      }
       case "workspace_observe": {
         const state = { sessions: this.sessions.list(), selection: this.selection.get() },
           selected = state.selection,

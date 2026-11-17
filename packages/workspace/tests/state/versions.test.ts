@@ -267,11 +267,11 @@ it("upgrades accepted format3 in place, preserves all rows and receipts, and lab
       ],
       rows = () => Object.fromEntries(tables.map((table) => [table, raw.prepare(`SELECT * FROM ${table}`).all()])),
       before = rows();
-    raw.exec("DROP TABLE versions; PRAGMA user_version=3");
+    raw.exec("DROP TABLE preferences; DROP TABLE versions; PRAGMA user_version=3");
     try {
       f.cold();
       expect(rows()).toEqual(before);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(4);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(5);
       const legacy = inventory(f);
       expect(legacy).toHaveLength(4);
       expect(legacy.every((v) => v.kind === "legacy" && v.createdAt === null)).toBe(true);
@@ -300,7 +300,7 @@ it("refuses an incomplete accepted schema3 head without leaving a partial upgrad
   try {
     f.db.close();
     const raw = new DatabaseSync(file);
-    raw.exec("DROP TABLE versions; PRAGMA user_version=3");
+    raw.exec("DROP TABLE preferences; DROP TABLE versions; PRAGMA user_version=3");
     raw.prepare("UPDATE projects SET current_revision=?").run("sha256:" + "0".repeat(64));
     raw.close();
     const before = createHash("sha256").update(readFileSync(file)).digest("hex");
