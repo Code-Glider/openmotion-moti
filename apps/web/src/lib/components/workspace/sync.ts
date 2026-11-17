@@ -1,6 +1,7 @@
-import { button, codeEditor, disclosure, field, note, slot } from "@open-motion/components";
 import { mergeSources, type SourceChoice } from "@open-motion/workspace/contract";
 import type { Editor } from "../../editor.js";
+import type { Copy } from "../../locale/index.js";
+import { attr, button, codeEditor, text as copyText, disclosure, field, m, note, slot } from "../../locale/index.js";
 import type { ConnectionState } from "../../observe.js";
 
 /** Explicit decisions only; a successful merge remains a local draft until Save. */
@@ -28,23 +29,23 @@ export class WorkspaceSync {
     retryConnection: () => void,
   ) {
     this.element = slot(document, "content");
-    this.connection = note(document, "正在观察工作区");
-    this.connection.setAttribute("aria-label", "协作连接状态");
+    this.connection = note(document, m("正在观察工作区"));
+    attr(this.connection, "aria-label", m("协作连接状态"));
     this.connection.setAttribute("role", "status");
-    this.reconnect = button(document, { label: "重试工作区连接", compact: true, onClick: retryConnection });
+    this.reconnect = button(document, { label: m("重试工作区连接"), compact: true, onClick: retryConnection });
     this.reconnect.hidden = true;
     this.body = slot(document, "stack");
-    this.body.setAttribute("aria-label", "外部修改");
+    attr(this.body, "aria-label", m("外部修改"));
     this.body.hidden = true;
     this.summary = note(document, "");
     this.conflicts = slot(document, "content");
     this.prepare = button(document, {
-      label: "准备本地属性草稿",
+      label: m("准备本地属性草稿"),
       compact: true,
       onClick: () => run(() => editor.prepareExternal()),
     });
     this.merge = button(document, {
-      label: "合并到本地草稿",
+      label: m("合并到本地草稿"),
       compact: true,
       onClick: () => {
         const token = editor.incoming?.token,
@@ -53,12 +54,12 @@ export class WorkspaceSync {
       },
     });
     this.follow = button(document, {
-      label: "放弃本地草稿并同步",
+      label: m("放弃本地草稿并同步"),
       compact: true,
       onClick: () => run(() => editor.useExternal()),
     });
     this.retain = button(document, {
-      label: "返回本地工程并保留草稿",
+      label: m("返回本地工程并保留草稿"),
       compact: true,
       onClick: () => run(() => editor.retainContext()),
     });
@@ -68,12 +69,12 @@ export class WorkspaceSync {
       this.summary,
       this.conflicts,
       actions,
-      note(document, "合并不会自动保存。未冲突的文件保留双方修改；冲突文件请显式选择，保存时仍会校验版本。"),
+      note(document, m("合并不会自动保存。未冲突的文件保留双方修改；冲突文件请显式选择，保存时仍会校验版本。")),
     );
     this.element.append(this.connection, this.reconnect, this.body);
   }
-  status(value: string, state: ConnectionState) {
-    this.connection.textContent = value;
+  status(value: Copy, state: ConnectionState) {
+    copyText(this.connection, value);
     this.connectionState = state;
     this.connectionControls();
   }
@@ -116,15 +117,15 @@ export class WorkspaceSync {
             const document = this.element.ownerDocument,
               view = disclosure(document, conflict.path, false),
               select = document.createElement("select");
-            select.setAttribute("aria-label", `冲突选择 ${conflict.path}`);
+            attr(select, "aria-label", m("冲突选择 {0}", [conflict.path]));
             for (const [value, text] of [
-              ["", "请选择冲突内容"],
-              ["local", "保留本地内容"],
-              ["remote", "采用外部内容"],
-            ]) {
+              ["", m("请选择冲突内容")],
+              ["local", m("保留本地内容")],
+              ["remote", m("采用外部内容")],
+            ] as const) {
               const option = document.createElement("option");
               option.value = value!;
-              option.textContent = text!;
+              copyText(option, text!);
               select.append(option);
             }
             select.onchange = () => {
@@ -134,13 +135,14 @@ export class WorkspaceSync {
             };
             this.selectors.set(conflict.path, select);
             for (const [label, content] of [
-              ["本地源码", conflict.local],
-              ["外部源码", conflict.remote],
-            ]) {
+              [m("本地源码"), conflict.local],
+              [m("外部源码"), conflict.remote],
+            ] as const) {
               const source = codeEditor(document);
               source.readOnly = true;
-              source.setAttribute("aria-label", `${label} ${conflict.path}`);
-              source.value = content ?? "（文件已删除）";
+              attr(source, "aria-label", m("{0} {1}", [label, conflict.path]));
+              source.value = content ?? "";
+              if (content === undefined) attr(source, "placeholder", m("（文件已删除）"));
               view.body.append(field(document, label!, source));
             }
             this.conflicts.append(field(document, conflict.path, select), view.element);
@@ -151,9 +153,12 @@ export class WorkspaceSync {
         }
       }
     }
-    this.summary.textContent = same
-      ? "检测到其他调用方修改，当前内容与本地草稿仍保留。"
-      : "工作区已切换到另一上下文；当前工程与草稿仍保留，请选择后续操作。";
+    copyText(
+      this.summary,
+      same
+        ? m("检测到其他调用方修改，当前内容与本地草稿仍保留。")
+        : m("工作区已切换到另一上下文；当前工程与草稿仍保留，请选择后续操作。"),
+    );
     this.state(blocked, same, native);
   }
   private state(blocked: boolean, same: boolean, native: boolean) {

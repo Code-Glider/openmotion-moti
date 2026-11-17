@@ -1,17 +1,28 @@
-import { button, imagePreview, note, readout, setButton, slot } from "@open-motion/components";
 import type { Candidate, Job } from "@open-motion/gateway/contract";
 import type { Project } from "@open-motion/workspace/contract";
 import type { Client } from "../../../../api.js";
+import type { Copy } from "../../../locale/index.js";
+import {
+  attr,
+  button,
+  text as copyText,
+  imagePreview,
+  m,
+  note,
+  readout,
+  setButton,
+  slot,
+} from "../../../locale/index.js";
 
-const labels: Record<Job["state"], string> = {
-  queued: "等待中",
-  submitting: "提交供应商",
-  running: "生成中",
-  cancelling: "取消确认中",
-  succeeded: "候选已保存",
-  failed: "生成失败",
-  cancelled: "已取消",
-  interrupted: "已中断",
+const labels: Record<Job["state"], Copy> = {
+  queued: m("等待中"),
+  submitting: m("提交供应商"),
+  running: m("生成中"),
+  cancelling: m("取消确认中"),
+  succeeded: m("候选已保存"),
+  failed: m("生成失败"),
+  cancelled: m("已取消"),
+  interrupted: m("已中断"),
 };
 /** Task projection and owned candidate preview only; never writes source or imports resources. */
 export class GenerationTasks {
@@ -46,9 +57,9 @@ export class GenerationTasks {
   ) {
     this.element = slot(document, "content");
     this.rows = slot(document, "content");
-    this.image = imagePreview(document, "生成的 PNG 候选");
+    this.image = imagePreview(document, m("生成的 PNG 候选"));
     this.image.hidden = true;
-    this.status = readout(document, "候选预览状态", "");
+    this.status = readout(document, m("候选预览状态"), "");
     this.status.setAttribute("aria-live", "polite");
     this.element.append(this.rows, this.status, this.image);
   }
@@ -59,7 +70,7 @@ export class GenerationTasks {
       this.selected = "";
       this.release();
       this.image.hidden = true;
-      this.status.value = "";
+      copyText(this.status, "");
       this.rows.replaceChildren();
       this.cards.clear();
     }
@@ -75,9 +86,9 @@ export class GenerationTasks {
         const element = slot(this.document, "content"),
           text = note(this.document, "");
         element.setAttribute("data-generation-id", job.id);
-        const cancel = button(this.document, { label: "取消素材任务", compact: true });
-        const preview = button(this.document, { label: "预览 PNG 候选", compact: true });
-        const adopt = button(this.document, { label: "采用为工程资源", compact: true });
+        const cancel = button(this.document, { label: m("取消素材任务"), compact: true });
+        const preview = button(this.document, { label: m("预览 PNG 候选"), compact: true });
+        const adopt = button(this.document, { label: m("采用为工程资源"), compact: true });
         element.append(text, cancel, preview, adopt);
         this.rows.append(element);
         card = { element, text, cancel, preview, adopt };
@@ -86,11 +97,23 @@ export class GenerationTasks {
       card.element.setAttribute("data-generation-state", job.state);
       if (job.id === this.selected) card.element.setAttribute("aria-current", "true");
       else card.element.removeAttribute("aria-current");
-      card.text.textContent = `${labels[job.state]} · ${job.providerId}@${job.providerVersion} / ${job.modelId} · ${job.prompt} · 发起版本 ${job.revision.slice(7, 19)}${job.submission === "unknown" ? " · 供应商提交结果未知，不会自动重发" : ""}${job.error ? ` · ${job.error}` : ""}`;
+      copyText(
+        card.text,
+        m("{0} · {1}@{2} / {3} · {4} · 发起版本 {5}{6}{7}", [
+          labels[job.state],
+          job.providerId,
+          job.providerVersion,
+          job.modelId,
+          job.prompt,
+          job.revision.slice(7, 19),
+          job.submission === "unknown" ? m(" · 供应商提交结果未知，不会自动重发") : "",
+          job.error ? ` · ${job.error}` : "",
+        ]),
+      );
       const pending = this.actions.cancelPending(job.id);
       card.cancel.hidden = !pending && !["queued", "submitting", "running", "cancelling"].includes(job.state);
       setButton(card.cancel, {
-        label: pending ? "重试同一取消请求" : "取消素材任务",
+        label: pending ? m("重试同一取消请求") : m("取消素材任务"),
         compact: true,
         disabled: blocked || (!pending && job.state === "cancelling"),
         onClick: () => this.actions.cancel(job),
@@ -104,7 +127,7 @@ export class GenerationTasks {
           (asset) => asset.path === `assets/generated-${job.id}.png` && asset.digest === candidate.contentHash,
         );
       setButton(card.preview, {
-        label: "预览 PNG 候选",
+        label: m("预览 PNG 候选"),
         compact: true,
         onClick: () => {
           const flight = this.preview(job);
@@ -113,7 +136,7 @@ export class GenerationTasks {
         },
       });
       setButton(card.adopt, {
-        label: adopted ? "已采用为工程资源" : "采用为工程资源",
+        label: adopted ? m("已采用为工程资源") : m("采用为工程资源"),
         compact: true,
         disabled: blocked || !!adopted,
         onClick: () => {
@@ -126,7 +149,7 @@ export class GenerationTasks {
     const epoch = ++this.epoch,
       owner = this.owner;
     this.selected = job.id;
-    this.status.value = "读取候选中";
+    copyText(this.status, m("读取候选中"));
     let url: string | undefined;
     try {
       const result = await this.client.execute("generation_result", {
@@ -155,11 +178,19 @@ export class GenerationTasks {
       this.url = url;
       url = undefined;
       this.image.src = this.url;
-      this.image.alt = `PNG 候选：${job.prompt}`;
+      attr(this.image, "alt", m("PNG 候选：{0}", [job.prompt]));
       this.image.hidden = false;
-      this.status.value = `${result.candidate.width} × ${result.candidate.height} · ${(bytes.length / 1024).toFixed(1)} KiB · 尚未自动采用或插入`;
+      copyText(
+        this.status,
+        m("{0} × {1} · {2} KiB · 尚未自动采用或插入", [
+          result.candidate.width,
+          result.candidate.height,
+          { number: bytes.length / 1024, digits: 1 },
+        ]),
+      );
     } catch (error) {
-      if (!this.disposed && epoch === this.epoch && owner === this.owner) this.status.value = (error as Error).message;
+      if (!this.disposed && epoch === this.epoch && owner === this.owner)
+        copyText(this.status, (error as Error).message);
     } finally {
       if (url) URL.revokeObjectURL(url);
     }

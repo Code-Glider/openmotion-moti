@@ -1,7 +1,22 @@
-import { badge, button, codeEditor, field, note, readout, slot, tooltip } from "@open-motion/components";
 import { entryFragment } from "@open-motion/daemon/contract";
 import type { Client } from "../../api.js";
 import type { Editor } from "../editor.js";
+import {
+  attr,
+  badge,
+  button,
+  type Copy,
+  codeEditor,
+  text as copyText,
+  display,
+  field,
+  languageScope,
+  m,
+  note,
+  readout,
+  slot,
+  tooltip,
+} from "../locale/index.js";
 import { observeWorkspace } from "../observe.js";
 import { Exports } from "./exports.js";
 import { workspaceLayout } from "./layout.js";
@@ -15,6 +30,7 @@ import { Pages } from "./workspace/pages.js";
 import { WorkspaceSync } from "./workspace/sync.js";
 import { Versions } from "./workspace/versions.js";
 export function workspace(root: HTMLElement, editor: Editor, client: Client, entry?: string) {
+  const language = languageScope(root);
   const document = root.ownerDocument,
     shell = workspaceLayout(document),
     studioRoot = slot(document, "fill"),
@@ -22,17 +38,17 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     source = codeEditor(document),
     sourceLabel = field(document, "index.html", source),
     revision = readout(document, "revision", ""),
-    caption = note(document, "工程源码 · ⌘/Ctrl S 保存"),
+    caption = note(document, m("工程源码 · ⌘/Ctrl S 保存")),
     body = slot(document, "content"),
     sourceActions = slot(document, "toolbar");
-  sourceView.setAttribute("aria-label", "工程源码");
+  attr(sourceView, "aria-label", m("工程源码"));
   body.append(caption, sourceLabel, revision, sourceActions);
   sourceView.append(body);
   shell.editor.append(studioRoot);
   root.replaceChildren(shell.element);
   let busy = false,
     disposed = false,
-    message = "加载中",
+    message: Copy = m("加载中"),
     retry: (() => void) | undefined,
     file = "index.html",
     activity = 0,
@@ -62,7 +78,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     operations++;
     busy = true;
     retry = () => run(action, next, recordAddress);
-    render("处理中");
+    render(m("处理中"));
     flight = action()
       .then(
         () => {
@@ -81,7 +97,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
           busy = false;
           if (!disposed) {
             if (next) run(next);
-            else render("就绪");
+            else render(m("就绪"));
           }
         },
         (error) => {
@@ -144,7 +160,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
         await editor.openArtifact(artifact);
         opened = true;
       });
-      if (!opened) throw new Error(message);
+      if (!opened) throw new Error(display(root, message));
     },
     create: () => creation.open(newProject),
     theme: () => {
@@ -173,8 +189,9 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   });
   const preferences = new Preferences(root, client, {
     layout: (value) => studio.setLayout(value),
+    language: (value) => language.set(value),
   });
-  const settings = button(document, { label: "界面设置", compact: true, onClick: () => preferences.open(settings) });
+  const settings = button(document, { label: m("界面设置"), compact: true, onClick: () => preferences.open(settings) });
   settings.setAttribute("aria-haspopup", "dialog");
   settings.setAttribute("aria-expanded", "false");
   shell.rail.append(settings);
@@ -182,19 +199,19 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   const exports = new Exports(document, editor, client, (action) => run(action));
   shell.editor.append(exports.element, archives.element);
   const newProject = button(document, {
-    label: "新建项目",
+    label: m("新建项目"),
     icon: "plus",
     compact: true,
     onClick: () => creation.open(newProject),
   });
   const title = slot(document, "title"),
-    saved = badge(document, "保存状态", ""),
-    state = badge(document, "操作状态", message),
+    saved = badge(document, m("保存状态"), ""),
+    state = badge(document, m("操作状态"), message),
     left = slot(document, "toolbar"),
     actions = slot(document, "toolbar");
   state.setAttribute("aria-live", "polite");
   const navigationToggle = button(document, {
-    label: "打开项目列表",
+    label: m("打开项目列表"),
     icon: "sidebar",
     iconOnly: true,
     variant: "ghost",
@@ -204,48 +221,48 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   navigationToggle.setAttribute("aria-expanded", "false");
   left.append(navigationToggle, title, saved);
   actions.append(newProject);
-  const history = button(document, { label: "版本历史", compact: true, onClick: () => versions.open(history) });
+  const history = button(document, { label: m("版本历史"), compact: true, onClick: () => versions.open(history) });
   history.setAttribute("aria-haspopup", "dialog");
   history.setAttribute("aria-expanded", "false");
   actions.append(history);
   shell.header.append(left, actions);
   const undo = button(document, {
-      label: "撤销",
+      label: m("撤销"),
       icon: "undo",
       iconOnly: true,
       variant: "ghost",
       onClick: () => run(() => editor.history("project_undo")),
     }),
     redo = button(document, {
-      label: "重做",
+      label: m("重做"),
       icon: "redo",
       iconOnly: true,
       variant: "ghost",
       onClick: () => run(() => editor.history("project_redo")),
     }),
     refresh = button(document, {
-      label: "刷新",
+      label: m("刷新"),
       icon: "refresh",
       iconOnly: true,
       variant: "ghost",
       onClick: () => run(() => editor.load()),
     }),
     save = button(document, {
-      label: "保存",
+      label: m("保存"),
       icon: "save",
       compact: true,
       primary: true,
       onClick: () => run(() => editor.save()),
     }),
-    again = button(document, { label: "重试", icon: "refresh", compact: true, onClick: () => retry?.() });
+    again = button(document, { label: m("重试"), icon: "refresh", compact: true, onClick: () => retry?.() });
   const hints = [
-    tooltip(document, undo, "撤销 · ⌘/Ctrl Z"),
-    tooltip(document, redo, "重做 · ⌘/Ctrl Shift Z"),
-    tooltip(document, refresh, "刷新工作区"),
+    tooltip(document, undo, m("撤销 · ⌘/Ctrl Z")),
+    tooltip(document, redo, m("重做 · ⌘/Ctrl Shift Z")),
+    tooltip(document, refresh, m("刷新工作区")),
   ];
   actions.append(...hints.map((h) => h.element), save, again, state);
   const discard = button(document, {
-    label: "放弃本地修改并刷新",
+    label: m("放弃本地修改并刷新"),
     icon: "refresh",
     compact: true,
     onClick: () => run(() => editor.discard()),
@@ -292,9 +309,12 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
   function refreshHeader() {
     const blocked = busy || editor.unconfirmed || creation.pending || !!editor.incoming,
       artifact = editor.session?.artifacts.find((a) => a.id === editor.project?.artifactId);
-    title.textContent = artifact?.title ?? editor.session?.title ?? "Open Motion";
-    saved.value = !editor.project ? "尚无项目" : editor.dirty || editor.drafts?.dirty() ? "未保存" : "本地已保存";
-    state.value = message;
+    copyText(title, artifact?.title ?? editor.session?.title ?? "Open Motion");
+    copyText(
+      saved,
+      !editor.project ? m("尚无项目") : editor.dirty || editor.drafts?.dirty() ? m("未保存") : m("本地已保存"),
+    );
+    copyText(state, message);
     undo.disabled =
       blocked || !editor.project || !(editor.project.history.canUndo || editor.dirty || editor.drafts?.dirty());
     redo.disabled = blocked || !editor.project?.history.canRedo || editor.dirty || !!editor.drafts?.dirty();
@@ -307,7 +327,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     source.readOnly = blocked || !!editor.drafts?.dirty();
     discard.disabled = blocked;
   }
-  function render(next: string) {
+  function render(next: Copy) {
     if (disposed) return;
     message = next;
     const blocked = busy || editor.unconfirmed || creation.pending || !!editor.incoming;
@@ -321,10 +341,10 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
     versions.update(busy || creation.pending || !!editor.incoming);
     newProject.disabled = busy || (blocked && !creation.pending);
     if (!editor.sources.some((f) => f.path === file)) file = "index.html";
-    source.setAttribute("aria-label", file);
-    if (sourceLabel.firstElementChild) sourceLabel.firstElementChild.textContent = file;
+    attr(source, "aria-label", file);
+    if (sourceLabel.firstElementChild) copyText(sourceLabel.firstElementChild, file);
     if (source.value !== editor.source(file)) source.value = editor.source(file);
-    revision.textContent = editor.project?.revision ?? "尚未打开工程";
+    copyText(revision, editor.project?.revision ?? m("尚未打开工程"));
     refreshHeader();
     studio.sync(editor.project, blocked);
     exports.update(editor.project, blocked);
@@ -351,7 +371,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
       run(() => editor.load(target || undefined), undefined, false);
     }
   }
-  render("就绪");
+  render(m("就绪"));
   showPage();
   let disposal: Promise<void> | undefined;
   return {
@@ -368,6 +388,7 @@ export function workspace(root: HTMLElement, editor: Editor, client: Client, ent
         await library.dispose();
         await versions.dispose();
         await preferences.dispose();
+        language.dispose();
         pages.dispose();
         await studio.dispose();
         archives.dispose();

@@ -1,8 +1,9 @@
-import { previewFrame, previewViewport } from "@open-motion/components";
 import { inspectRuntimeProtocol, runtimeProtocolMetadata } from "@open-motion/motion/protocol";
 import type { TemplateInput } from "@open-motion/templates/contract";
 import { isFontResource, type Project } from "@open-motion/workspace/contract";
 import type { Client } from "../../api.js";
+import type { Copy } from "../locale/index.js";
+import { m, previewFrame, previewViewport } from "../locale/index.js";
 
 type Source = {
   key: string;
@@ -36,7 +37,7 @@ export class NativePreview {
     private client: Client,
     private current: () => Project | null,
     private events: {
-      message(value: string): void;
+      message(value: Copy): void;
       ready(): void;
       time(value: number): void;
       select(id: string): void;
@@ -146,17 +147,17 @@ export class NativePreview {
     await this.draining;
     if (!current()) return;
     if (this.view?.key === source.key) {
-      this.events.message("预览就绪");
+      this.events.message(m("预览就绪"));
       return;
     }
-    this.events.message("正在加载预览");
+    this.events.message(m("正在加载预览"));
     const opened = await source.open();
     if (!current()) {
       await this.client.closePreview(opened.id);
       return;
     }
     const document = this.host.ownerDocument,
-      frame = previewFrame(document, source.artifactId ? "影片预览" : "模板预览"),
+      frame = previewFrame(document, source.artifactId ? m("影片预览") : m("模板预览")),
       viewport = previewViewport(document),
       window = document.defaultView;
     frame.setAttribute("sandbox", "allow-scripts");
@@ -262,7 +263,7 @@ export class NativePreview {
         } catch (error) {
           if (this.view !== present) return;
           present.acceptTime = true;
-          this.events.message(`新预览已就绪，旧视图撤销未确认：${(error as Error).message}`);
+          this.events.message(m("新预览已就绪，旧视图撤销未确认：{0}", [(error as Error).message]));
           this.events.ready();
           return;
         }
@@ -271,7 +272,7 @@ export class NativePreview {
       present.acceptTime = true;
       this.host.dataset.revision = source.revision;
       this.select(this.selection, this.editable, this.scope);
-      this.events.message("预览就绪");
+      this.events.message(m("预览就绪"));
       this.events.ready();
     } catch (error) {
       viewport.element.remove();
@@ -288,7 +289,7 @@ export class NativePreview {
     this.host.removeAttribute("data-revision");
     this.events.message("");
     this.draining = this.draining.catch(() => {}).then(() => this.client.closePreviews(this.scopeId));
-    void this.draining.catch((error) => this.events.message(`视图撤销未确认：${error.message}`));
+    void this.draining.catch((error) => this.events.message(m("视图撤销未确认：{0}", [error.message])));
     return this.draining;
   }
   async dispose() {

@@ -170,7 +170,7 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   const artifact = await client.execute("template_create", {
     requestId: randomUUID(),
     sessionId: session.id,
-    title: "Persistent view",
+    title: "保存",
     id: template.id,
     contentHash: template.contentHash,
   });
@@ -180,9 +180,9 @@ it("retains drafts, frame identity and unknown project receipts through view cha
     html: created.files.find((f) => f.path === "index.html")!.content,
     action: "addText",
     fontSize: 96,
-    text: "Preference draft",
+    text: "保存",
   });
-  const textId = edited.clips.find((c) => c.text === "Preference draft")!.id;
+  const textId = edited.clips.find((c) => c.text === "保存")!.id;
   const initial = await client.execute("project_save", {
     ...owner,
     requestId: randomUUID(),
@@ -236,6 +236,69 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   expect(await client.execute("project_read", owner)).toEqual(before.project);
   expect(await client.execute("project_versions", owner)).toEqual(before.versions);
   expect(await client.execute("workspace_state", {})).toEqual(before.state);
+  await stage("eleven interface languages preserve authored collisions and source drafts");
+  await open();
+  const preferenceId = await settings.getAttribute("id");
+  const localized = page.locator(`[id="${preferenceId}"]`);
+  const trigger = page.locator(`button[aria-controls="${preferenceId}"]`);
+  const choices = await localized.locator('select[name="locale"] option').evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      value: (node as HTMLOptionElement).value,
+      label: node.textContent,
+      lang: node.getAttribute("lang"),
+    })),
+  );
+  expect(choices.map((choice) => choice.value)).toEqual([
+    "en",
+    "zh-CN",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "es",
+    "pt-BR",
+    "it",
+    "tr",
+  ]);
+  expect(choices.every((choice) => choice.lang === choice.value)).toBe(true);
+  for (const locale of ["en", "ja", "ko", "de", "fr", "ru", "es", "pt-BR", "it", "tr", "zh-CN"]) {
+    await localized.locator('select[name="locale"]').selectOption(locale);
+    await localized.locator("button.om-button--primary").click();
+    await expect.poll(() => localized.locator("button.om-button--primary").isEnabled()).toBe(true);
+    await expect.poll(() => page.locator("#app").getAttribute("lang")).toBe(locale);
+    expect((await client.execute("workspace_preferences", {})).value.locale).toBe(locale);
+    expect(await source.inputValue()).toBe(draft);
+    expect(await source.getAttribute("data-view-probe")).toBe("source");
+    expect(await page.locator(".om-shell__body").innerText()).not.toContain("[object Object]");
+    expect(await frame.getAttribute("src")).toBe(frameSource);
+    expect(
+      await page.evaluate(() => Reflect.get(window, "retainedPreferenceFrame") === document.querySelector("iframe")),
+    ).toBe(true);
+    if (locale === "en") {
+      await localized.getByRole("heading", { name: "Interface settings", exact: true }).waitFor();
+      expect(await page.getByRole("button", { name: "Save", exact: true }).count()).toBe(1);
+      await driver.capture("english-source-draft");
+    }
+    await page.setViewportSize({ width: 390, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+    if (locale === "de") await driver.capture("german-narrow-settings");
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.keyboard.press("Escape");
+    expect(await trigger.evaluate((node) => document.activeElement === node)).toBe(true);
+    expect(await page.locator(".om-shell__body").innerText()).toContain("保存");
+    if (locale !== "zh-CN") await trigger.click();
+  }
+  async function chooseLanguage(locale: string) {
+    await trigger.click();
+    await localized.locator('select[name="locale"]').selectOption(locale);
+    await localized.locator("button.om-button--primary").click();
+    await expect.poll(() => page.locator("#app").getAttribute("lang")).toBe(locale);
+    await expect.poll(() => localized.locator("button.om-button--primary").isEnabled()).toBe(true);
+    await page.keyboard.press("Escape");
+  }
+  expect(await client.execute("project_read", owner)).toEqual(before.project);
+  expect(await client.execute("project_versions", owner)).toEqual(before.versions);
   await apply("light", "edit");
   await click("放弃本地修改并刷新");
   await click("预览");
@@ -247,6 +310,9 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   const native = page.getByLabel("不透明度", { exact: true });
   await native.fill("0.37");
   await native.evaluate((node) => node.setAttribute("data-view-probe", "native"));
+  await chooseLanguage("de");
+  expect(await page.locator('input[data-view-probe="native"]').inputValue()).toBe("0.37");
+  await chooseLanguage("zh-CN");
   await apply("system", "preview");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect.poll(() => page.locator("#app").getAttribute("data-om-theme")).toBe("dark");
@@ -280,6 +346,9 @@ it("retains drafts, frame identity and unknown project receipts through view cha
     .poll(() => page.getByRole("button", { name: "重试", exact: true }).isEnabled(), { timeout: 8000 })
     .toBe(true);
   const savedUnknown = await client.execute("project_versions", owner);
+  await chooseLanguage("en");
+  await chooseLanguage("zh-CN");
+  expect(projectRequests).toHaveLength(1);
   await apply("dark", "preview");
   expect(projectRequests).toHaveLength(1);
   expect(await client.execute("project_versions", owner)).toEqual(savedUnknown);
@@ -305,23 +374,26 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   await open();
   await settings.getByRole("combobox", { name: "主题", exact: true }).selectOption("dark");
   await settings.getByRole("combobox", { name: "布局", exact: true }).selectOption("preview");
+  await settings.locator('select[name="locale"]').selectOption("de");
   await settings.getByRole("button", { name: "应用并保存界面", exact: true }).click();
   await settings.getByRole("status").filter({ hasText: "保存结果未确认" }).waitFor();
   const committed = await client.execute("workspace_preferences", {});
   await client.execute("workspace_configure", {
     requestId: randomUUID(),
     expectedVersion: committed.version,
-    value: { theme: "system", layout: "edit" },
+    value: { theme: "system", layout: "edit", locale: "en" },
   });
   await page.keyboard.press("Escape");
   await open();
   await settings.getByRole("button", { name: "确认原界面保存", exact: true }).click();
-  await settings.getByRole("status").filter({ hasText: "界面设置已保存并同步" }).waitFor();
+  await localized.getByRole("status").filter({ hasText: "Interface settings saved and synchronized" }).waitFor();
   expect(requests).toHaveLength(2);
   expect(requests[1]).toEqual(requests[0]);
-  expect(await settings.getByRole("combobox", { name: "主题", exact: true }).inputValue()).toBe("system");
+  expect(await localized.getByRole("combobox", { name: "Theme", exact: true }).inputValue()).toBe("system");
   await page.keyboard.press("Escape");
+  expect(await localized.locator('select[name="locale"]').inputValue()).toBe("en");
   await page.unroute("**/api/workspace_configure");
+  await chooseLanguage("zh-CN");
   await stage("responsive frames and hidden panel focus");
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -336,6 +408,11 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   const persisted = await client.execute("workspace_preferences", {});
   const content = await client.execute("project_read", owner);
   const versions = await client.execute("project_versions", owner);
+  const coldLanguage = await client.execute("workspace_configure", {
+    requestId: randomUUID(),
+    expectedVersion: persisted.version,
+    value: { ...persisted.value, locale: "en" },
+  });
   const oldOrigin = new URL(url).origin;
   await page.goto("about:blank");
   await manager.close();
@@ -351,13 +428,18 @@ it("retains drafts, frame identity and unknown project receipts through view cha
     expectedHistory: content.history.version,
   });
   await page.goto(new URL(entryFragment(coldEntry), url).href);
-  await ready();
-  await page.getByLabel("预览状态", { exact: true }).filter({ hasText: "预览就绪" }).waitFor();
+  await page.getByLabel("Preview status", { exact: true }).filter({ hasText: "Preview ready" }).waitFor();
+  expect(await page.locator("#app").getAttribute("lang")).toBe("en");
   expect(await page.locator("#app").getAttribute("data-om-theme")).toBe("dark");
-  expect(await page.getByRole("region", { name: "图层与文件", exact: true }).isVisible()).toBe(false);
-  expect(await client.execute("workspace_preferences", {})).toEqual(persisted);
+  expect(await page.getByRole("region", { name: "Layers and files", exact: true }).isVisible()).toBe(false);
+  expect(await client.execute("workspace_preferences", {})).toEqual(coldLanguage);
   expect(await client.execute("project_read", owner)).toEqual(content);
   expect(await client.execute("project_versions", owner)).toEqual(versions);
+  await client.execute("workspace_configure", {
+    requestId: randomUUID(),
+    expectedVersion: coldLanguage.version,
+    value: persisted.value,
+  });
   await page.goto(`${url}?page=templates&embed=1`);
   await page.emulateMedia({ colorScheme: "light" });
   await expect.poll(() => page.locator("#app").getAttribute("data-om-theme")).toBe("light");

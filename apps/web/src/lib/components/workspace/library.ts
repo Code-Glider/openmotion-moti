@@ -1,4 +1,3 @@
-import { button, field, heading, layout, note, panel, slot } from "@open-motion/components";
 import {
   catalogEntries,
   type Descriptor,
@@ -6,6 +5,7 @@ import {
   type TemplateOutput,
 } from "@open-motion/templates/contract";
 import type { Client } from "../../../api.js";
+import { attr, button, text as copyText, field, heading, layout, m, note, panel, slot } from "../../locale/index.js";
 import { TemplateDetail } from "./detail.js";
 
 type Catalog = TemplateOutput<"template_list">;
@@ -41,7 +41,7 @@ export class Library {
   ) {
     this.element = slot(document, "fill");
     this.element.setAttribute("role", "region");
-    this.element.setAttribute("aria-label", "模板库");
+    attr(this.element, "aria-label", m("模板库"));
     this.element.hidden = true;
     this.element.inert = true;
     const content = slot(document, "content"),
@@ -50,19 +50,19 @@ export class Library {
     this.query = document.createElement("input");
     this.query.type = "search";
     this.query.maxLength = 120;
-    this.query.setAttribute("aria-label", "搜索模板");
+    attr(this.query, "aria-label", m("搜索模板"));
     this.query.oninput = () => {
       this.page = 0;
       this.render();
     };
     this.refresh = button(document, {
-      label: "刷新模板库",
+      label: m("刷新模板库"),
       icon: "refresh",
       compact: true,
       onClick: () => this.load(),
     });
     this.previous = button(document, {
-      label: "上一页模板",
+      label: m("上一页模板"),
       compact: true,
       onClick: () => {
         this.page--;
@@ -70,22 +70,22 @@ export class Library {
       },
     });
     this.next = button(document, {
-      label: "下一页模板",
+      label: m("下一页模板"),
       compact: true,
       onClick: () => {
         this.page++;
         this.render();
       },
     });
-    this.status = note(document, "打开模板库以读取目录");
+    this.status = note(document, m("打开模板库以读取目录"));
     this.status.setAttribute("role", "status");
     this.list = layout(document, "stack");
-    this.list.setAttribute("aria-label", "模板目录");
+    attr(this.list, "aria-label", m("模板目录"));
     toolbar.append(this.refresh, this.previous, this.next);
     content.append(
-      heading(document, "模板库"),
-      note(document, "浏览不会创建项目。查看模板详情和原生预览，再明确创建独立工程。"),
-      field(document, "搜索模板", this.query),
+      heading(document, m("模板库")),
+      note(document, m("浏览不会创建项目。查看模板详情和原生预览，再明确创建独立工程。")),
+      field(document, m("搜索模板"), this.query),
       toolbar,
       this.status,
       this.list,
@@ -107,7 +107,7 @@ export class Library {
     this.active = active;
     if (!active) {
       if (this.flight)
-        this.status.textContent = this.catalog ? "刷新已暂停 · 保留上次目录，可刷新重试" : "目录读取已暂停";
+        copyText(this.status, this.catalog ? m("刷新已暂停 · 保留上次目录，可刷新重试") : m("目录读取已暂停"));
       this.epoch++;
       this.controller?.abort();
       this.flight = undefined;
@@ -119,7 +119,7 @@ export class Library {
     const controller = new AbortController(),
       epoch = ++this.epoch;
     this.controller = controller;
-    this.status.textContent = "正在读取模板目录";
+    copyText(this.status, m("正在读取模板目录"));
     this.refresh.disabled = true;
     const flight = this.client
       .execute("template_list", {}, controller.signal)
@@ -129,16 +129,25 @@ export class Library {
           const entries = catalogEntries(result);
           this.catalog = entries;
           this.page = 0;
-          this.status.textContent = result.catalogError
-            ? `目录读取失败：${result.catalogError} · 仍可浏览内置模板`
-            : result.catalog?.stale
-              ? `使用已验证目录缓存 · ${result.catalog.warning ?? "远端暂不可用"}`
-              : `共 ${entries.length} 个模板`;
+          copyText(
+            this.status,
+            result.catalogError
+              ? m("目录读取失败：{0} · 仍可浏览内置模板", [result.catalogError])
+              : result.catalog?.stale
+                ? m("使用已验证目录缓存 · {0}", [result.catalog.warning ?? m("远端暂不可用")])
+                : m("共 {0} 个模板", [entries.length]),
+          );
           this.render();
         },
         (error) => {
           if (!this.disposed && this.active && epoch === this.epoch)
-            this.status.textContent = `模板目录读取失败：${(error as Error).message} · 可刷新重试${this.catalog ? "，保留上次目录" : ""}`;
+            copyText(
+              this.status,
+              m("模板目录读取失败：{0} · 可刷新重试{1}", [
+                (error as Error).message,
+                this.catalog ? m("，保留上次目录") : "",
+              ]),
+            );
         },
       )
       .finally(() => {
@@ -169,13 +178,13 @@ export class Library {
             document,
             "availability" in entry
               ? entry.availability === "unsupported"
-                ? `暂不支持：${entry.reason ?? "资源类型未验证"}`
-                : "创建前需要读取并验证源码"
-              : `${entry.duration} 秒 · ${entry.width} × ${entry.height}`,
+                ? m("暂不支持：{0}", [entry.reason ?? m("资源类型未验证")])
+                : m("创建前需要读取并验证源码")
+              : m("{0} 秒 · {1} × {2}", [entry.duration, entry.width, entry.height]),
           ),
           note(document, `${entry.source} · ${entry.license}`),
           button(document, {
-            label: "查看模板详情",
+            label: m("查看模板详情"),
             disabled: "availability" in entry && entry.availability === "unsupported",
             onClick: () => this.actions.select({ id: entry.id, contentHash: entry.contentHash }),
           }),
@@ -183,7 +192,8 @@ export class Library {
         return card;
       }),
     );
-    if (this.catalog && !entries.length) this.list.append(note(document, query ? "没有匹配的模板" : "目录中暂无模板"));
+    if (this.catalog && !entries.length)
+      this.list.append(note(document, query ? m("没有匹配的模板") : m("目录中暂无模板")));
   }
   update(blocked: boolean, pending = false, busy = false) {
     this.detail.update(blocked, pending, busy);

@@ -1,8 +1,20 @@
-import { button, disclosure, field, note, readout, setButton, slot } from "@open-motion/components";
 import type { Candidate, GenerationInput, Job, Status } from "@open-motion/gateway/contract";
 import { Fault, type Project } from "@open-motion/workspace/contract";
 import type { Client } from "../../../../api.js";
 import type { Editor } from "../../../editor.js";
+import {
+  attr,
+  button,
+  text as copyText,
+  disclosure,
+  field,
+  m,
+  note,
+  option,
+  readout,
+  setButton,
+  slot,
+} from "../../../locale/index.js";
 import { GenerationTasks } from "./tasks.js";
 
 type Draft = {
@@ -51,15 +63,15 @@ export class GenerationPanel {
       run(action: () => Promise<void>): void;
     },
   ) {
-    const view = disclosure(document, "生成 PNG 素材", false);
+    const view = disclosure(document, m("生成 PNG 素材"), false);
     this.element = view.element;
-    this.element.setAttribute("aria-label", "PNG 素材生成");
+    attr(this.element, "aria-label", m("PNG 素材生成"));
     this.prompt = document.createElement("textarea");
     this.prompt.rows = 3;
     this.prompt.maxLength = 8000;
-    this.prompt.setAttribute("aria-label", "图片描述");
+    attr(this.prompt, "aria-label", m("图片描述"));
     this.model = document.createElement("select");
-    this.model.setAttribute("aria-label", "图片生成模型");
+    attr(this.model, "aria-label", m("图片生成模型"));
     this.prompt.addEventListener("input", () => {
       if (this.owner) this.owner.prompt = this.prompt.value;
       this.controls();
@@ -69,23 +81,23 @@ export class GenerationPanel {
       this.controls();
     });
     this.create = button(document, {
-      label: "生成新的 PNG 候选",
+      label: m("生成新的 PNG 候选"),
       onClick: () => {
         const owner = this.owner;
         if (owner) this.editing.run(() => this.submit(owner));
       },
     });
-    this.status = readout(document, "素材任务状态", "");
+    this.status = readout(document, m("素材任务状态"), "");
     this.status.setAttribute("aria-live", "polite");
-    this.configuration = readout(document, "素材生成配置", "读取配置中");
-    const refresh = button(document, { label: "刷新图片模型", compact: true, onClick: () => this.loadStatus() });
+    this.configuration = readout(document, m("素材生成配置"), m("读取配置中"));
+    const refresh = button(document, { label: m("刷新图片模型"), compact: true, onClick: () => this.loadStatus() });
     this.tasks = new GenerationTasks(document, editing.client, {
       cancel: (job) => this.editing.run(() => this.cancel(job)),
       adopt: (job, candidate) => this.editing.run(() => this.adopt(job, candidate)),
       cancelPending: (id) => this.cancellations.has(id),
     });
     this.previous = button(document, {
-      label: "上一页素材任务",
+      label: m("上一页素材任务"),
       compact: true,
       onClick: () => {
         this.before = this.cursors.pop();
@@ -93,7 +105,7 @@ export class GenerationPanel {
       },
     });
     this.more = button(document, {
-      label: "下一页素材任务",
+      label: m("下一页素材任务"),
       compact: true,
       onClick: () => {
         if (!this.next) return;
@@ -107,10 +119,10 @@ export class GenerationPanel {
     view.body.append(
       this.configuration,
       refresh,
-      field(document, "图片生成模型", this.model),
-      field(document, "图片描述", this.prompt),
+      field(document, m("图片生成模型"), this.model),
+      field(document, m("图片描述"), this.prompt),
       this.create,
-      note(document, "生成结果先保存为候选；明确采用后进入工程媒体，再通过“插入”参与作品。关闭面板不会取消任务。"),
+      note(document, m("生成结果先保存为候选；明确采用后进入工程媒体，再通过“插入”参与作品。关闭面板不会取消任务。")),
       this.status,
       this.tasks.element,
       paging,
@@ -140,7 +152,7 @@ export class GenerationPanel {
         : undefined;
       if (this.owner) this.drafts.set(key, this.owner);
       this.prompt.value = this.owner?.prompt ?? "";
-      this.status.value = "";
+      copyText(this.status, "");
       this.modelOptions();
       this.refresh();
     }
@@ -148,18 +160,20 @@ export class GenerationPanel {
     this.tasks.update(key, this.jobs, project, blocked);
   }
   private modelOptions() {
+    const document = this.model.ownerDocument;
     const selected = this.owner?.model ?? "";
-    const choices = [new Option("请选择图片模型", "")];
+    const choices = [option(document, m("请选择图片模型"), "")];
     for (const provider of this.catalog?.providers ?? [])
       for (const model of provider.models)
         choices.push(
-          new Option(
+          option(
+            document,
             `${model.label} · ${provider.id}@${provider.version}`,
             JSON.stringify([provider.id, provider.version, model.id]),
           ),
         );
     if (selected && !choices.some((option) => option.value === selected)) {
-      const stale = new Option("已选择的模型版本当前不可用，请明确重新选择", selected);
+      const stale = option(document, m("已选择的模型版本当前不可用，请明确重新选择"), selected);
       stale.disabled = true;
       choices.push(stale);
     }
@@ -179,7 +193,7 @@ export class GenerationPanel {
     this.prompt.disabled = this.blocked || !!pending || !this.owner;
     this.model.disabled = this.blocked || !!pending || !this.owner;
     setButton(this.create, {
-      label: pending ? "重试同一素材提交" : "生成新的 PNG 候选",
+      label: pending ? m("重试同一素材提交") : m("生成新的 PNG 候选"),
       disabled:
         this.blocked || !this.owner || (!pending && (!this.owner.prompt.trim() || !this.modelExists(this.owner.model))),
       onClick: () => {
@@ -189,7 +203,7 @@ export class GenerationPanel {
     });
     this.previous.disabled = this.cursors.length === 0;
     this.more.disabled = !this.next;
-    if (pending) this.status.value = "提交结果待确认：将重试原请求，不会创建新的生成意图";
+    if (pending) copyText(this.status, m("提交结果待确认：将重试原请求，不会创建新的生成意图"));
   }
   private loadStatus() {
     const epoch = ++this.statusEpoch;
@@ -198,14 +212,17 @@ export class GenerationPanel {
         const status = await this.editing.client.execute("generation_status", {});
         if (this.disposed || epoch !== this.statusEpoch) return;
         this.catalog = status;
-        this.configuration.value = status.configured
-          ? "已显式配置供应商；实际生成结果以任务为准"
-          : "未配置 PNG 生成供应商；已有任务、候选预览与采用仍可使用";
+        copyText(
+          this.configuration,
+          status.configured
+            ? m("已显式配置供应商；实际生成结果以任务为准")
+            : m("未配置 PNG 生成供应商；已有任务、候选预览与采用仍可使用"),
+        );
         this.modelOptions();
         this.controls();
       } catch (error) {
         if (!this.disposed && epoch === this.statusEpoch)
-          this.configuration.value = `配置读取失败：${(error as Error).message}`;
+          copyText(this.configuration, m("配置读取失败：{0}", [(error as Error).message]));
       }
     });
   }
@@ -316,13 +333,14 @@ export class GenerationPanel {
         this.jobs = page.jobs;
         this.next = page.next ?? undefined;
         if (!owner.input)
-          this.status.value = page.jobs.length
-            ? `${page.jobs.length} 条素材任务；采用与插入均需明确操作`
-            : "尚无素材任务";
+          copyText(
+            this.status,
+            page.jobs.length ? m("{0} 条素材任务；采用与插入均需明确操作", [page.jobs.length]) : m("尚无素材任务"),
+          );
         this.tasks.update(this.key, this.jobs, this.editing.editor.project, this.blocked);
         this.controls();
       } catch (error) {
-        if (!this.disposed && epoch === this.epoch) this.status.value = (error as Error).message;
+        if (!this.disposed && epoch === this.epoch) copyText(this.status, (error as Error).message);
       }
       if (!this.disposed && epoch === this.epoch) this.timer = setTimeout(() => this.refresh(), 1000);
     });

@@ -1,9 +1,19 @@
-import { badge, note, readout, slot, type timeTracks } from "@open-motion/components";
 import type { Clip, NativeValues } from "@open-motion/motion/contract";
 import type { ContextModel } from "@open-motion/motion/project";
 import { isFontResource, type Project } from "@open-motion/workspace/contract";
 import type { Client } from "../../api.js";
 import type { Editor } from "../editor.js";
+import {
+  attr,
+  badge,
+  text as copyText,
+  m,
+  note,
+  readout,
+  slot,
+  sourceLabel,
+  type timeTracks,
+} from "../locale/index.js";
 import { studioLayout } from "./layout.js";
 import { NativePreview } from "./preview.js";
 import { AnimationEditor } from "./studio/animation.js";
@@ -12,8 +22,12 @@ import { StudioLibrary } from "./studio/library/index.js";
 import { Properties } from "./studio/properties.js";
 import { studioTimeline } from "./studio/timeline.js";
 import { emptyStudio, playerControls, studioTools, syncMode } from "./studio/toolbar.js";
-import { applyClip, commitClip, editClip, retimeKey } from "./studio/transactions.js";
-/** Product editor projection. The SDK owns native transforms; workspace owns committed content. */
+import {
+  applyClip,
+  commitClip,
+  editClip,
+  retimeKey,
+} from "./studio/transactions.js"; /** Product editor projection. The SDK owns native transforms; workspace owns committed content. */
 export class Studio {
   private areas: ReturnType<typeof studioLayout>;
   private disposed = false;
@@ -103,13 +117,13 @@ export class Studio {
     this.timelineRoot = timeline.body;
     this.timelineActions = timeline.actions;
     this.preview = slot(document, "stage");
-    this.preview.setAttribute("aria-label", "影片预览区域");
+    attr(this.preview, "aria-label", m("影片预览区域"));
     this.previewWrapper = slot(document, "fill");
     this.previewWrapper.append(this.preview);
     this.toolbar = slot(document, "editorbar");
     this.player = slot(document, "player");
-    this.status = badge(document, "预览状态", "");
-    this.time = readout(document, "播放时间", "0.00");
+    this.status = badge(document, m("预览状态"), "");
+    this.time = readout(document, m("播放时间"), "0.00");
     canvas.body.append(this.previewWrapper, options.source, this.player);
     canvas.actions.append(this.status);
     options.source.hidden = true;
@@ -130,9 +144,7 @@ export class Studio {
       root.ownerDocument.defaultView?.removeEventListener("pagehide", hide);
     };
     this.viewer = new NativePreview(this.preview, client, () => editor.project, {
-      message: (value) => {
-        this.status.value = value;
-      },
+      message: (value) => copyText(this.status, value),
       ready: () => {
         this.transport?.update(
           this.context.owner,
@@ -144,7 +156,7 @@ export class Studio {
       time: (value) => {
         this.globalTime = value;
         this.currentTime = this.context.localTime(value);
-        this.time.value = this.currentTime.toFixed(2);
+        copyText(this.time, m("{0}", [{ number: this.currentTime, digits: 2 }]));
         this.axis?.time(this.currentTime);
       },
       begin: () => this.control("pause"),
@@ -192,8 +204,8 @@ export class Studio {
       this.layers.reset();
       this.context.reset();
       this.retire();
-      this.toolbar.replaceChildren(note(this.root.ownerDocument, "正在打开项目"));
-      this.timelineRoot.replaceChildren(note(this.root.ownerDocument, "正在读取项目时间轴"));
+      this.toolbar.replaceChildren(note(this.root.ownerDocument, m("正在打开项目")));
+      this.timelineRoot.replaceChildren(note(this.root.ownerDocument, m("正在读取项目时间轴")));
       this.context.element.replaceChildren();
       this.layers.update([], "", true);
       this.properties.clear();
@@ -229,8 +241,7 @@ export class Studio {
     this.axis?.disable(true);
     this.library.setAttribute("aria-busy", "true");
     for (const button of this.toolbar.querySelectorAll("button"))
-      if (["添加文本", "打开预览"].includes(button.getAttribute("aria-label") ?? button.textContent ?? ""))
-        button.disabled = true;
+      if (["添加文本", "打开预览"].includes(sourceLabel(button))) button.disabled = true;
     this.properties.block(true);
     this.animations.block(true);
     if (!project) {
@@ -240,8 +251,8 @@ export class Studio {
       this.animations.update("", undefined, true);
       this.layers.update([], "", true);
       this.context.element.replaceChildren();
-      this.timelineRoot.replaceChildren(note(this.root.ownerDocument, "创建或打开工程，开始编辑时间轴。"));
-      this.toolbar.replaceChildren(note(this.root.ownerDocument, "本地 Studio"));
+      this.timelineRoot.replaceChildren(note(this.root.ownerDocument, m("创建或打开工程，开始编辑时间轴。")));
+      this.toolbar.replaceChildren(note(this.root.ownerDocument, m("本地 Studio")));
       this.preview.replaceChildren(
         emptyStudio(this.root.ownerDocument, this.editor.session !== null, this.options.start),
       );
@@ -252,7 +263,7 @@ export class Studio {
     if (this.editor.dirty) {
       this.transport?.update(this.context.owner, true, this.viewer.ready);
       this.context.render(this.blocked);
-      this.status.value = "源码尚未保存，预览与时钟保持已确认版本";
+      copyText(this.status, m("源码尚未保存，预览与时钟保持已确认版本"));
       return;
     }
     if (this.viewer.artifactId && this.viewer.artifactId !== project.artifactId) this.retire();
@@ -272,7 +283,7 @@ export class Studio {
             if (seek !== null) {
               this.globalTime = seek;
               this.currentTime = this.context.localTime(seek);
-              this.time.value = this.currentTime.toFixed(2);
+              copyText(this.time, m("{0}", [{ number: this.currentTime, digits: 2 }]));
               this.selected = "";
               this.layers.reset();
               this.options.context(this.context.file);
@@ -283,14 +294,14 @@ export class Studio {
             this.render(model.clips);
           },
           (error) => {
-            if (epoch === this.epoch) this.status.value = `原生源码解析失败：${error.message}`;
+            if (epoch === this.epoch) copyText(this.status, m("原生源码解析失败：{0}", [error.message]));
           },
         ),
       120,
     );
     if (this.enabled)
-      void this.show(project).catch((error) => {
-        if (epoch === this.epoch) this.status.value = error.message;
+      void this.viewer.open(project).catch((error) => {
+        if (epoch === this.epoch) copyText(this.status, error.message);
       });
   }
   private async flush(): Promise<void> {
@@ -322,9 +333,9 @@ export class Studio {
   private control(action: "play" | "pause" | "seek", timeSeconds?: number) {
     try {
       this.viewer.control(action, timeSeconds === undefined ? undefined : this.context.globalTime(timeSeconds));
-      if (this.model && this.viewer.revision === this.editor.project?.revision) this.status.value = "预览就绪";
+      if (this.model && this.viewer.revision === this.editor.project?.revision) copyText(this.status, m("预览就绪"));
     } catch (error) {
-      this.status.value = (error as Error).message;
+      copyText(this.status, (error as Error).message);
     }
   }
   private render(clips: Clip[]) {
@@ -404,7 +415,7 @@ export class Studio {
     this.toolbar.replaceChildren(
       ...studioTools(document, {
         title:
-          this.editor.session?.artifacts.find((a) => a.id === this.editor.project?.artifactId)?.title ?? "影片工程",
+          this.editor.session?.artifacts.find((a) => a.id === this.editor.project?.artifactId)?.title ?? m("影片工程"),
         mode: this.mode,
         file: this.context.file,
         blocked: blocked,
@@ -429,7 +440,7 @@ export class Studio {
           this.run(async () => {
             await this.editor.save();
             this.enabled = true;
-            if (this.editor.project) await this.show(this.editor.project);
+            if (this.editor.project) await this.viewer.open(this.editor.project);
           }),
         close: () => {
           this.enabled = false;
@@ -472,14 +483,11 @@ export class Studio {
   pause() {
     if (this.viewer.revision) this.control("pause");
   }
-  private show(project: Project) {
-    return this.viewer.open(project);
-  }
   private retire() {
     this.viewer.close();
     this.globalTime = this.context.readonly ? 0 : this.context.globalTime(0);
     this.currentTime = this.context.localTime(this.globalTime);
-    this.time.value = this.currentTime.toFixed(2);
+    copyText(this.time, m("{0}", [{ number: this.currentTime, digits: 2 }]));
   }
   async dispose() {
     this.disposed = true;

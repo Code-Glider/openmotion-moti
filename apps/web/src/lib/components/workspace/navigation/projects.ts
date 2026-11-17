@@ -1,7 +1,18 @@
-import { badge, button, dialog, field, note, setButton, slot } from "@open-motion/components";
 import type { Artifact, Input, Output } from "@open-motion/workspace/contract";
 import type { Client } from "../../../../api.js";
 import type { Editor } from "../../../editor.js";
+import {
+  attr,
+  badge,
+  button,
+  text as copyText,
+  dialog,
+  field,
+  m,
+  note,
+  setButton,
+  slot,
+} from "../../../locale/index.js";
 /** One bounded metadata page; workspace remains the project catalogue and selection authority. */
 export class Navigation {
   readonly view;
@@ -31,18 +42,18 @@ export class Navigation {
     private client: Client,
     private actions: { open(artifact: Artifact): Promise<void>; create(): void; theme(): void },
   ) {
-    this.view = dialog(document, "项目列表", true);
+    this.view = dialog(document, m("项目列表"), true);
     this.search = document.createElement("input");
     this.search.type = "search";
     this.search.maxLength = 120;
-    this.search.setAttribute("aria-label", "搜索项目");
+    attr(this.search, "aria-label", m("搜索项目"));
     this.search.autofocus = true;
-    this.status = note(document, "打开项目列表以读取项目");
+    this.status = note(document, m("打开项目列表以读取项目"));
     this.status.setAttribute("role", "status");
     this.list = document.createElement("nav");
-    this.list.setAttribute("aria-label", "项目");
+    attr(this.list, "aria-label", m("项目"));
     this.create = button(document, {
-      label: "新建空白或模板项目",
+      label: m("新建空白或模板项目"),
       icon: "plus",
       primary: true,
       onClick: () => {
@@ -51,14 +62,14 @@ export class Navigation {
       },
     });
     this.previous = button(document, {
-      label: "上一页项目",
+      label: m("上一页项目"),
       onClick: () => {
         this.cursor = this.history.pop();
         this.load();
       },
     });
     this.next = button(document, {
-      label: "下一页项目",
+      label: m("下一页项目"),
       onClick: () => {
         if (this.page?.nextCursor) {
           this.history.push(this.cursor);
@@ -67,13 +78,20 @@ export class Navigation {
         }
       },
     });
-    this.refresh = button(document, { label: "刷新项目", onClick: () => this.reset() });
-    this.theme = button(document, { label: "外观与布局", icon: "moon", onClick: actions.theme });
+    this.refresh = button(document, { label: m("刷新项目"), onClick: () => this.reset() });
+    this.theme = button(document, { label: m("外观与布局"), icon: "moon", onClick: actions.theme });
     const pages = slot(document, "toolbar"),
       footer = slot(document, "footer");
     pages.append(this.previous, this.next, this.refresh);
-    footer.append(badge(document, "存储位置", "数据保存在本机"), this.theme);
-    this.view.body.append(this.create, field(document, "搜索项目", this.search), this.status, this.list, pages, footer);
+    footer.append(badge(document, m("存储位置"), m("数据保存在本机")), this.theme);
+    this.view.body.append(
+      this.create,
+      field(document, m("搜索项目"), this.search),
+      this.status,
+      this.list,
+      pages,
+      footer,
+    );
     this.search.oninput = () => this.reset();
     this.list.onkeydown = (event) => {
       if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
@@ -104,7 +122,7 @@ export class Navigation {
     this.controller = new AbortController();
     const epoch = ++this.epoch,
       input = { query: this.search.value.trim(), cursor: this.cursor };
-    this.status.textContent = "读取项目中";
+    copyText(this.status, m("读取项目中"));
     this.page = undefined;
     this.list.replaceChildren();
     this.flight = this.client
@@ -113,16 +131,19 @@ export class Navigation {
         (page) => {
           if (this.disposed || epoch !== this.epoch) return;
           this.page = page;
-          this.status.textContent = page.projects.length
-            ? `本页 ${page.projects.length} 个项目`
-            : input.query
-              ? "没有匹配的项目"
-              : "尚无项目，请创建项目或通过 Agent 开始创作";
+          copyText(
+            this.status,
+            page.projects.length
+              ? m("本页 {0} 个项目", [page.projects.length])
+              : input.query
+                ? m("没有匹配的项目")
+                : m("尚无项目，请创建项目或通过 Agent 开始创作"),
+          );
           this.render();
         },
         (error) => {
           if (!this.disposed && epoch === this.epoch)
-            this.status.textContent = `项目读取失败：${(error as Error).message}`;
+            copyText(this.status, m("项目读取失败：{0}", [(error as Error).message]));
         },
       )
       .finally(() => {
@@ -140,7 +161,7 @@ export class Navigation {
     this.busy = busy;
     this.blocked = blocked;
     this.selected = editor.project?.artifactId ?? "";
-    setButton(this.theme, { label: "外观与布局", icon: "moon", onClick: this.actions.theme });
+    setButton(this.theme, { label: m("外观与布局"), icon: "moon", onClick: this.actions.theme });
     this.controls();
     this.render();
   }
@@ -182,7 +203,7 @@ export class Navigation {
               this.view.close();
             },
             (error) => {
-              this.status.textContent = `${(error as Error).message} · 点击同一项目重试，或关闭列表处理当前内容。`;
+              copyText(this.status, m("{0} · 点击同一项目重试，或关闭列表处理当前内容。", [(error as Error).message]));
             },
           );
         },

@@ -1,6 +1,6 @@
-import { button, field, note, readout, slot } from "@open-motion/components";
 import type { ContextModel } from "@open-motion/motion/project";
 import type { Editor } from "../../editor.js";
+import { attr, button, text as copyText, field, m, note, readout, slot } from "../../locale/index.js";
 
 export interface Binding {
   artifact: string;
@@ -33,15 +33,15 @@ export class CompositionContext {
     private navigate: (id: string | null) => void,
   ) {
     this.element = slot(document, "toolbar");
-    this.element.setAttribute("aria-label", "合成上下文");
-    this.global = readout(document, "全局播放时间", "0.00");
+    attr(this.element, "aria-label", m("合成上下文"));
+    this.global = readout(document, m("全局播放时间"), "0.00");
     this.trail = slot(document, "toolbar");
     this.actions = slot(document, "toolbar");
     this.select = document.createElement("select");
-    this.select.setAttribute("aria-label", "合成实例");
-    this.enter = button(document, { label: "进入合成", onClick: () => this.navigate(this.select.value) });
+    attr(this.select, "aria-label", m("合成实例"));
+    this.enter = button(document, { label: m("进入合成"), onClick: () => this.navigate(this.select.value) });
     this.description = note(document, "");
-    this.actions.append(field(document, "合成实例", this.select, true, true), this.enter, this.global);
+    this.actions.append(field(document, m("合成实例"), this.select, true, true), this.enter, this.global);
   }
   get file() {
     return this.model?.context.file ?? "index.html";
@@ -92,7 +92,7 @@ export class CompositionContext {
     return Math.max(start, Math.min(start + (this.model?.context.duration ?? Number.POSITIVE_INFINITY), requested));
   }
   localTime(global: number) {
-    this.global.value = global.toFixed(2);
+    copyText(this.global, m("{0}", [{ number: global, digits: 2 }]));
     return Math.max(
       0,
       Math.min(this.model?.context.duration ?? Number.POSITIVE_INFINITY, global - (this.model?.context.offset ?? 0)),
@@ -178,7 +178,7 @@ export class CompositionContext {
     const trailKey = JSON.stringify(context?.trail.map((node) => [node.id, node.file]) ?? []);
     if (this.trailKey !== trailKey) {
       this.trailKey = trailKey;
-      this.trail.replaceChildren(button(document, { label: "主合成", onClick: () => this.navigate(null) }));
+      this.trail.replaceChildren(button(document, { label: m("主合成"), onClick: () => this.navigate(null) }));
       for (const node of context?.trail ?? [])
         this.trail.append(
           button(document, { label: `${node.hostId} · ${node.file}`, onClick: () => this.navigate(node.id) }),
@@ -194,7 +194,7 @@ export class CompositionContext {
         ...children.map((node) => {
           const option = document.createElement("option");
           option.value = node.id;
-          option.textContent = `${node.hostId} · ${node.file}`;
+          copyText(option, `${node.hostId} · ${node.file}`);
           return option;
         }),
       );
@@ -204,13 +204,15 @@ export class CompositionContext {
     this.enter.disabled = this.select.disabled;
     this.element.dataset.file = this.file;
     this.element.dataset.instance = this.scope;
-    this.description.textContent =
+    copyText(
+      this.description,
       context?.clockReason ??
-      (context?.invalidated
-        ? "实例已移除，已返回主合成"
-        : this.instance
-          ? `局部编辑 ${this.file} · 全局预览；保存将更新全部共享实例`
-          : "主合成编辑与全局预览");
+        (context?.invalidated
+          ? m("实例已移除，已返回主合成")
+          : this.instance
+            ? m("局部编辑 {0} · 全局预览；保存将更新全部共享实例", [this.file])
+            : m("主合成编辑与全局预览")),
+    );
     if (!this.element.contains(this.trail)) this.element.replaceChildren(this.trail, this.actions, this.description);
   }
 }

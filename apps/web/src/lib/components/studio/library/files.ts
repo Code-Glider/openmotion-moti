@@ -1,6 +1,6 @@
-import { button, field, note, slot } from "@open-motion/components";
 import type { SourceChange } from "@open-motion/workspace/contract";
 import type { Editor } from "../../../editor.js";
+import { attr, button, text as copyText, field, m, note, slot } from "../../../locale/index.js";
 
 /** Source operations do not depend on a successfully parsed native graph. */
 export class SourceFiles {
@@ -20,34 +20,34 @@ export class SourceFiles {
     private open: (path: string) => void,
   ) {
     this.element = slot(document, "content");
-    this.element.setAttribute("aria-label", "工程源文件");
+    attr(this.element, "aria-label", m("工程源文件"));
     this.list = slot(document, "content");
     this.selected = document.createElement("select");
-    this.selected.setAttribute("aria-label", "管理源文件");
+    attr(this.selected, "aria-label", m("管理源文件"));
     this.target = document.createElement("input");
-    this.target.setAttribute("aria-label", "源文件路径");
-    this.target.placeholder = "compositions/scene.html";
+    attr(this.target, "aria-label", m("源文件路径"));
+    attr(this.target, "placeholder", "compositions/scene.html");
     this.target.maxLength = 240;
     this.confirm = document.createElement("input");
     this.confirm.type = "checkbox";
-    this.confirm.setAttribute("aria-label", "确认删除源文件");
+    attr(this.confirm, "aria-label", m("确认删除源文件"));
     this.actions = (
       [
-        ["create", "新建源文件"],
-        ["duplicate", "复制源文件"],
-        ["rename", "重命名源文件"],
-        ["remove", "删除源文件"],
+        ["create", m("新建源文件")],
+        ["duplicate", m("复制源文件")],
+        ["rename", m("重命名源文件")],
+        ["remove", m("删除源文件")],
       ] as const
     ).map(([kind, label]) => button(document, { label, compact: true, onClick: () => this.change(kind) }));
     const actions = slot(document, "toolbar");
     actions.append(...this.actions);
     this.element.append(
       this.list,
-      field(document, "管理源文件", this.selected),
-      field(document, "源文件路径", this.target),
-      field(document, "确认删除源文件", this.confirm),
+      field(document, m("管理源文件"), this.selected),
+      field(document, m("源文件路径"), this.target),
+      field(document, m("确认删除源文件"), this.confirm),
       actions,
-      note(document, "路径相对工程；主入口与 Studio 元数据受保护。重命名不改写源码引用，可在源码中修复后预览。"),
+      note(document, m("路径相对工程；主入口与 Studio 元数据受保护。重命名不改写源码引用，可在源码中修复后预览。")),
     );
     this.selected.onchange = () => {
       this.selection = this.selected.value;
@@ -93,7 +93,7 @@ export class SourceFiles {
         ...files.map((file) => {
           const option = this.selected.ownerDocument.createElement("option");
           option.value = file.path;
-          option.textContent = file.path;
+          copyText(option, file.path);
           return option;
         }),
       );

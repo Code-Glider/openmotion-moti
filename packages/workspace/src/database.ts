@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
-import { Fault, type Operation } from "./contract.js";
+import { Fault, locales, type Operation } from "./contract.js";
 export class Database {
   readonly sql: DatabaseSync;
   constructor(root: string) {
@@ -18,7 +18,7 @@ export class Database {
       this.sql.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;");
       this.transaction(() => {
         const version = Number(this.one("PRAGMA user_version")?.user_version);
-        if (![0, 3, 4, 5].includes(version)) throw new Fault("integrity", "unsupported workspace database schema");
+        if (![0, 3, 4, 5, 6].includes(version)) throw new Fault("integrity", "unsupported workspace database schema");
         if (version === 0) {
           if (this.one("SELECT name FROM sqlite_master WHERE type='table'"))
             throw new Fault("integrity", "unknown workspace database");
@@ -65,10 +65,14 @@ export class Database {
           }
           this.sql.exec("PRAGMA user_version=4;");
         }
-        if (version !== 5) {
+        if (version < 5) {
           this.sql.exec(`CREATE TABLE preferences(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL,value TEXT NOT NULL);
             INSERT INTO preferences VALUES(1,0,'{"theme":"light","layout":"edit"}');
             PRAGMA user_version=5;`);
+        }
+        if (version < 6) {
+          this.sql.exec(`ALTER TABLE preferences ADD COLUMN locale TEXT NOT NULL DEFAULT 'zh-CN'
+            CHECK(locale IN (${locales.map((value) => `'${value}'`).join(",")})); PRAGMA user_version=6;`);
         }
       });
     } catch (error) {

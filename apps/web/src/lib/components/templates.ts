@@ -1,6 +1,6 @@
-import { button, disclosure, field, note, slot } from "@open-motion/components";
 import { catalogEntries, type Descriptor, type TemplateOutput } from "@open-motion/templates/contract";
 import type { Client } from "../../api.js";
+import { attr, button, text as copyText, disclosure, field, m, note, slot } from "../locale/index.js";
 
 type Catalog = TemplateOutput<"template_list">;
 type Entry = Descriptor | NonNullable<Catalog["catalog"]>["entries"][number];
@@ -27,20 +27,20 @@ export class Templates {
     private client: Client,
     create: (template: Pick<Descriptor, "id" | "contentHash" | "title">, title: string) => void,
   ) {
-    const view = disclosure(document, "从模板创建", false);
+    const view = disclosure(document, m("从模板创建"), false);
     this.element = view.element;
-    this.element.setAttribute("aria-label", "原生模板");
+    attr(this.element, "aria-label", m("原生模板"));
     this.select = document.createElement("select");
-    this.select.setAttribute("aria-label", "模板");
+    attr(this.select, "aria-label", m("模板"));
     this.title = document.createElement("input");
-    this.title.setAttribute("aria-label", "模板项目标题");
+    attr(this.title, "aria-label", m("模板项目标题"));
     this.title.maxLength = 120;
-    this.description = note(document, "选择模板并创建独立的可编辑项目");
+    this.description = note(document, m("选择模板并创建独立的可编辑项目"));
     this.status = note(document, "");
-    this.status.setAttribute("aria-label", "模板目录状态");
+    attr(this.status, "aria-label", m("模板目录状态"));
     this.status.setAttribute("role", "status");
     this.create = button(document, {
-      label: "创建模板项目",
+      label: m("创建模板项目"),
       icon: "plus",
       compact: true,
       disabled: true,
@@ -50,13 +50,13 @@ export class Templates {
           create(template, this.title.value.trim() || template.title);
       },
     });
-    this.refresh = button(document, { label: "刷新模板", compact: true, onClick: () => this.load() });
+    this.refresh = button(document, { label: m("刷新模板"), compact: true, onClick: () => this.load() });
     const actions = slot(document, "toolbar");
     actions.append(this.create, this.refresh);
     view.body.append(
       this.status,
-      field(document, "模板", this.select),
-      field(document, "模板项目标题", this.title),
+      field(document, m("模板"), this.select),
+      field(document, m("模板项目标题"), this.title),
       this.description,
       actions,
     );
@@ -100,13 +100,21 @@ export class Templates {
     this.title.disabled = this.blocked;
     this.create.disabled = this.blocked || !template || !this.supported(template) || !!this.flight;
     this.refresh.disabled = this.blocked || !!this.flight;
-    this.description.textContent = template
-      ? "availability" in template
-        ? `${template.description} · ${template.availability === "unsupported" ? `暂不支持：${template.reason ?? "资源类型未验证"}` : "创建时读取并验证源码，再确认画布与时长"}`
-        : `${template.description} · ${template.duration} 秒 · ${template.width} × ${template.height}`
-      : this.selected
-        ? "所选模板版本已变化或不可用，请重新选择"
-        : "选择模板并创建独立的可编辑项目";
+    copyText(
+      this.description,
+      template
+        ? "availability" in template
+          ? m("{0} · {1}", [
+              template.description,
+              template.availability === "unsupported"
+                ? m("暂不支持：{0}", [template.reason ?? m("资源类型未验证")])
+                : m("创建时读取并验证源码，再确认画布与时长"),
+            ])
+          : m("{0} · {1} 秒 · {2} × {3}", [template.description, template.duration, template.width, template.height])
+        : this.selected
+          ? m("所选模板版本已变化或不可用，请重新选择")
+          : m("选择模板并创建独立的可编辑项目"),
+    );
   }
   private load() {
     if (this.flight || this.disposed) return;
@@ -122,17 +130,24 @@ export class Templates {
           ...entries.map((template) => {
             const option = this.document.createElement("option");
             option.value = template.id;
-            option.textContent = `${template.title}${this.supported(template) ? "" : "（暂不支持）"}`;
+            copyText(option, m("{0}{1}", [template.title, this.supported(template) ? "" : m("（暂不支持）")]));
             return option;
           }),
         );
-        this.status.textContent = result.catalog
-          ? `Prism ${result.catalog.publicationId}${result.catalog.stale ? " · 使用已验证缓存" : ""}${result.catalog.warning ? ` · ${result.catalog.warning}` : ""}`
-          : result.catalogError
-            ? `Prism 目录读取失败：${result.catalogError} · 可使用内置模板`
-            : "内置模板";
+        copyText(
+          this.status,
+          result.catalog
+            ? m("Prism {0}{1}{2}", [
+                result.catalog.publicationId,
+                result.catalog.stale ? m(" · 使用已验证缓存") : "",
+                result.catalog.warning ? ` · ${result.catalog.warning}` : "",
+              ])
+            : result.catalogError
+              ? m("Prism 目录读取失败：{0} · 可使用内置模板", [result.catalogError])
+              : m("内置模板"),
+        );
       } catch (error) {
-        if (!this.disposed) this.status.textContent = `目录读取失败：${(error as Error).message}`;
+        if (!this.disposed) copyText(this.status, m("目录读取失败：{0}", [(error as Error).message]));
       } finally {
         this.flight = undefined;
         if (!this.disposed) this.render();

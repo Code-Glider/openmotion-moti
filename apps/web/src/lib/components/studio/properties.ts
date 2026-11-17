@@ -1,17 +1,22 @@
-import {
-  badge,
-  button,
-  disclosure,
-  emptyState,
-  field,
-  note,
-  numberField,
-  readout,
-  slot,
-} from "@open-motion/components";
 import type { Clip } from "@open-motion/motion";
 import type { AudioValues, ClipEdit, NativeValues } from "@open-motion/motion/contract";
 import { type FontResource, resourceFontFamily } from "@open-motion/workspace/contract";
+import type { Copy } from "../../locale/index.js";
+import {
+  attr,
+  badge,
+  button,
+  text as copyText,
+  disclosure,
+  emptyState,
+  field,
+  m,
+  note,
+  numberField,
+  readout,
+  sameOptions,
+  slot,
+} from "../../locale/index.js";
 import { AppearanceFields } from "./appearance.js";
 
 interface Options {
@@ -59,11 +64,11 @@ export class Properties {
   constructor(document: Document) {
     this.element = slot(document, "properties");
     this.select = document.createElement("select");
-    this.select.setAttribute("aria-label", "图层选择");
+    attr(this.select, "aria-label", m("图层选择"));
     this.text = document.createElement("textarea");
     this.text.rows = 3;
     this.text.maxLength = 8000;
-    this.text.setAttribute("aria-label", "文本内容");
+    attr(this.text, "aria-label", m("文本内容"));
     const changed = (key: keyof NativeValues) => {
       const o = this.current,
         clip = o?.clips.find((c) => c.id === o.selected);
@@ -90,7 +95,7 @@ export class Properties {
       changed("audio");
     };
     this.inPoint = numberField(document, {
-      label: "源入点秒",
+      label: m("源入点秒"),
       unit: "s",
       min: 0,
       max: 3600,
@@ -98,7 +103,7 @@ export class Properties {
       change: () => audioChanged("inPoint"),
     });
     this.rate = numberField(document, {
-      label: "素材倍率",
+      label: m("素材倍率"),
       unit: "×",
       min: 0.1,
       max: 10,
@@ -106,7 +111,7 @@ export class Properties {
       change: () => audioChanged("rate"),
     });
     this.volume = numberField(document, {
-      label: "音量",
+      label: m("音量"),
       unit: "×",
       min: 0,
       max: 1,
@@ -115,32 +120,32 @@ export class Properties {
     });
     this.muted = document.createElement("input");
     this.muted.type = "checkbox";
-    this.muted.setAttribute("aria-label", "静音");
+    attr(this.muted, "aria-label", m("静音"));
     this.muted.onchange = () => audioChanged("muted");
     this.audio = slot(document, "stack");
-    this.audio.setAttribute("aria-label", "音频设置");
+    attr(this.audio, "aria-label", m("音频设置"));
     this.audioReason = note(document, "");
     this.audio.append(
-      field(document, "源入点秒", this.inPoint.element),
-      field(document, "素材倍率", this.rate.element),
-      field(document, "音量", this.volume.element),
-      field(document, "静音", this.muted),
+      field(document, m("源入点秒"), this.inPoint.element),
+      field(document, m("素材倍率"), this.rate.element),
+      field(document, m("音量"), this.volume.element),
+      field(document, m("静音"), this.muted),
       this.audioReason,
     );
     this.appearance = new AppearanceFields(document, () => changed("appearance"));
-    this.start = numberField(document, { label: "开始秒", unit: "s", min: 0, change: () => changed("start") });
-    this.duration = numberField(document, { label: "持续秒", unit: "s", min: 0, change: () => changed("duration") });
+    this.start = numberField(document, { label: m("开始秒"), unit: "s", min: 0, change: () => changed("start") });
+    this.duration = numberField(document, { label: m("持续秒"), unit: "s", min: 0, change: () => changed("duration") });
     this.font = numberField(document, {
-      label: "字号",
+      label: m("字号"),
       unit: "px",
       min: 0,
       max: 4096,
       optional: true,
       change: () => changed("fontSize"),
     });
-    this.font.input.placeholder = "继承";
+    attr(this.font.input, "placeholder", m("继承"));
     this.family = document.createElement("select");
-    this.family.setAttribute("aria-label", "字体");
+    attr(this.family, "aria-label", m("字体"));
     this.family.onchange = () => changed("fontFamily");
     this.text.oninput = () => changed("text");
     this.select.onchange = () => {
@@ -148,15 +153,18 @@ export class Properties {
       this.select.value = this.current?.selected ?? "";
       this.current?.choose(id);
     };
-    this.type = badge(document, "元素类型", "");
-    this.identity = readout(document, "元素身份", "");
-    const info = disclosure(document, "元素信息"),
+    this.type = badge(document, m("元素类型"), "");
+    this.identity = readout(document, m("元素身份"), "");
+    const info = disclosure(document, m("元素信息")),
       values = slot(document, "stack"),
       timing = slot(document, "pair");
     info.body.append(this.identity);
-    timing.append(field(document, "开始秒", this.start.element), field(document, "持续秒", this.duration.element));
+    timing.append(
+      field(document, m("开始秒"), this.start.element),
+      field(document, m("持续秒"), this.duration.element),
+    );
     this.apply = button(document, {
-      label: "应用更改",
+      label: m("应用更改"),
       icon: "check",
       compact: true,
       fullWidth: true,
@@ -165,25 +173,25 @@ export class Properties {
     });
     this.links = slot(document, "stack");
     this.partner = document.createElement("select");
-    this.partner.setAttribute("aria-label", "链接伙伴");
+    attr(this.partner, "aria-label", m("链接伙伴"));
     this.linkInfo = note(document, "");
     this.link = button(document, {
-      label: "链接媒体",
+      label: m("链接媒体"),
       onClick: () => {
         const o = this.current;
         if (o && this.partner.value) o.edit({ action: "link", id: o.selected, partner: this.partner.value });
       },
     });
     this.unlink = button(document, {
-      label: "解除链接",
+      label: m("解除链接"),
       onClick: () => {
         const o = this.current;
         if (o) o.edit({ action: "unlink", id: o.selected });
       },
     });
-    this.links.append(this.linkInfo, field(document, "链接伙伴", this.partner), this.link, this.unlink);
+    this.links.append(this.linkInfo, field(document, m("链接伙伴"), this.partner), this.link, this.unlink);
     this.remove = button(document, {
-      label: "删除元素",
+      label: m("删除元素"),
       icon: "close",
       compact: true,
       variant: "ghost",
@@ -194,9 +202,9 @@ export class Properties {
     });
     values.append(
       this.type,
-      field(document, "文本内容", this.text),
-      field(document, "字号", this.font.element),
-      field(document, "字体", this.family),
+      field(document, m("文本内容"), this.text),
+      field(document, m("字号"), this.font.element),
+      field(document, m("字体"), this.family),
       this.appearance.textElement,
       timing,
       this.audio,
@@ -211,12 +219,12 @@ export class Properties {
     this.empty = document.createElement("div");
     this.empty.append(
       emptyState(document, {
-        title: "尚未选择元素",
-        detail: "点击画布或左侧图层，查看并编辑元素属性。",
+        title: m("尚未选择元素"),
+        detail: m("点击画布或左侧图层，查看并编辑元素属性。"),
         icon: "layers",
       }).element,
     );
-    this.element.append(field(document, "图层选择", this.select, false, true), this.content, this.empty);
+    this.element.append(field(document, m("图层选择"), this.select, false, true), this.content, this.empty);
     this.clear();
   }
   clear() {
@@ -287,23 +295,21 @@ export class Properties {
     this.current = options;
     const clip = options.clips.find((c) => c.id === options.selected),
       document = this.element.ownerDocument;
-    const names = options.clips.map((c) => [
+    const names = options.clips.map((c): [string, Copy] => [
       c.id,
-      c.host ? `${c.id} · ${c.host.source}` : c.text || (c.composition ? "主合成" : c.tag),
+      c.host ? `${c.id} · ${c.host.source}` : c.text || (c.composition ? m("主合成") : c.tag),
     ]);
-    if (
-      JSON.stringify([...this.select.options].slice(1).map((o) => [o.value, o.textContent])) !== JSON.stringify(names)
-    ) {
+    if (!sameOptions([...this.select.options].slice(1), names)) {
       const empty = document.createElement("option");
       empty.value = "";
-      empty.textContent = "选择图层…";
+      copyText(empty, m("选择图层…"));
       empty.disabled = true;
       this.select.replaceChildren(
         empty,
         ...names.map(([id, name]) => {
           const option = document.createElement("option");
           option.value = id ?? "";
-          option.textContent = name ?? "";
+          copyText(option, name ?? "");
           return option;
         }),
       );
@@ -323,15 +329,22 @@ export class Properties {
           ...candidates.map((c) => {
             const option = document.createElement("option");
             option.value = c.id;
-            option.textContent = `${c.id} · ${c.tag}`;
+            copyText(option, `${c.id} · ${c.tag}`);
             return option;
           }),
         );
         if (!changed && candidates.some((c) => c.id === prior)) this.partner.value = prior;
       }
-      this.linkInfo.textContent = clip.link
-        ? `链接组 ${clip.link.id} · ${clip.link.members.length} 个成员；${clip.link.reason ?? "起点与时长联动，音频入点与倍率联动；音量和静音独立。"}`
-        : (clip.media?.linkReason ?? "选择已对齐的静态媒体伙伴，建立同一源码合成内的链接组。");
+      copyText(
+        this.linkInfo,
+        clip.link
+          ? m("链接组 {0} · {1} 个成员；{2}", [
+              clip.link.id,
+              clip.link.members.length,
+              clip.link.reason ?? m("起点与时长联动，音频入点与倍率联动；音量和静音独立。"),
+            ])
+          : (clip.media?.linkReason ?? m("选择已对齐的静态媒体伙伴，建立同一源码合成内的链接组。")),
+      );
       const values = options.values,
         audio = clip.media?.audio;
       this.audio.hidden = !audio;
@@ -339,45 +352,47 @@ export class Properties {
       this.rate.value(values?.audio?.rate ?? audio?.rate ?? undefined, changed);
       this.volume.value(values?.audio?.volume ?? audio?.volume ?? undefined, changed);
       this.muted.checked = values?.audio?.muted ?? audio?.muted ?? false;
-      this.audioReason.textContent =
-        audio?.reason ?? "源入点与素材倍率不改变片段起点和时长；素材倍率范围 0.1..10，音量范围 0..1。";
+      copyText(
+        this.audioReason,
+        audio?.reason ?? m("源入点与素材倍率不改变片段起点和时长；素材倍率范围 0.1..10，音量范围 0..1。"),
+      );
       if (changed || document.activeElement !== this.text) this.text.value = values?.text ?? clip.text ?? "";
       this.start.value(values?.start ?? clip.start ?? 0, changed);
       this.duration.value(values?.duration ?? clip.duration ?? 1, changed);
       this.font.value(values?.fontSize ?? clip.fontSize ?? undefined, changed);
       const family = values && Object.hasOwn(values, "fontFamily") ? values.fontFamily : clip.fontFamily,
-        fonts = new Map(
+        fonts = new Map<string, Copy>(
           options.fonts.map((face) => [
             resourceFontFamily(face.digest),
             `${face.family} · ${face.weight.join("–")} · ${face.slant}`,
           ]),
         );
-      if (family && !fonts.has(family)) fonts.set(family, `源码定义 · ${family}`);
-      const entries = [["", "继承 / 源码定义"], ...fonts];
-      if (
-        JSON.stringify([...this.family.options].map((item) => [item.value, item.textContent])) !==
-        JSON.stringify(entries)
-      )
+      if (family && !fonts.has(family)) fonts.set(family, m("源码定义 · {0}", [family]));
+      const entries: [string, Copy][] = [["", m("继承 / 源码定义")], ...fonts];
+      if (!sameOptions(this.family.options, entries))
         this.family.replaceChildren(
           ...entries.map(([value, text]) => {
             const option = document.createElement("option");
             option.value = value!;
-            option.textContent = text!;
+            copyText(option, text!);
             return option;
           }),
         );
       this.family.value = family ?? "";
       this.appearance.update(clip.appearance, values?.appearance, changed);
-      this.identity.value = clip.host?.reason ? `${clip.id} · ${clip.host.reason}` : clip.id;
-      this.type.value = clip.host
-        ? "合成实例"
-        : clip.composition
-          ? "主合成"
-          : clip.media?.kind === "audio"
-            ? "音频片段"
-            : clip.media
-              ? "图像图层"
-              : "元素图层";
+      copyText(this.identity, clip.host?.reason ? `${clip.id} · ${clip.host.reason}` : clip.id);
+      copyText(
+        this.type,
+        clip.host
+          ? m("合成实例")
+          : clip.composition
+            ? m("主合成")
+            : clip.media?.kind === "audio"
+              ? m("音频片段")
+              : clip.media
+                ? m("图像图层")
+                : m("元素图层"),
+      );
     }
     this.block(options.blocked);
   }
