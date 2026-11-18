@@ -37,6 +37,26 @@ it("uses the pointer's insertion intent even when a distant edge could snap the 
   }).insertion).toBeUndefined();
 });
 
+it("inserts a long clip at its aligned leading edge when grabbed past the right neighbour", () => {
+  const moving = clip("moving", 0, 20, 8.53);
+  const left = clip("left", 1, 0, 10.73), right = clip("right", 1, 10.73, 4);
+  const pps = 40;
+  const y = RULER_H + TRACKS_TOP_PAD + TRACK_H / 2;
+  const drag = { pointerId: 0, element: moving, originClientX: 1060, originClientY: y,
+    originScrollLeft: 0, originScrollTop: 0, pointerClientX: 1060, pointerClientY: y,
+    pointerOffsetX: 260, pointerOffsetY: 20, previewStart: 20, previewTrack: 0, insertRow: null,
+    snapTime: null, snapType: null, started: true } satisfies DraggedClipState;
+  const context = {
+    scroll: null, pps, duration: 30, trackOrder: [0, 1],
+    elements: [moving, left, right], selectedKeys: new Set<string>(), buildSnapTargets: () => [],
+  };
+  const x = 10.73 * pps + drag.pointerOffsetX;
+  const preview = computeDragPreview(drag, x + 2, y + TRACK_H, context);
+  expect(preview).toMatchObject({ previewTrack: 1, previewStart: 10.73 });
+  expect(preview.insertion).toEqual(new Map([["moving", 10.73], ["right", 19.26]]));
+  expect(computeDragPreview(preview, x + 12, y + TRACK_H, context).insertion).toBeUndefined();
+});
+
 it.each([0, 0.18, 1])("makes just enough room in a gap of %ss and leaves later free space alone", gap => {
   const moving = clip("moving", 0, 20, 3);
   const left = clip("left", 1, 0, 4), right = clip("right", 1, 4 + gap, 3), later = clip("later", 1, 12, 2);

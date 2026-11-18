@@ -20,10 +20,23 @@ export function previewClipInsert(
   elements: TimelineElement[], grabbed: TimelineElement, moving: ReadonlySet<string>,
   track: number, rawStart: number, pointerTime: number,
   linkedSelection = true,
+  edgeTolerance = 0,
 ): { start: number; insertion: ReadonlyMap<string, number> } | null {
   if (!canMoveTimelineElement(grabbed)) return null;
   const lane = collisionLane(elements, track).filter(el => !moving.has(keyOf(el)));
-  const rightIndex = lane.findIndex((right, index) => index > 0 &&
+  // A long clip grabbed near its tail can line up with a seam past the pointer's midpoint range.
+  let edgeIndex = -1, edgeDistance = edgeTolerance;
+  for (let index = 1; index < lane.length; index++) {
+    const left = lane[index - 1], right = lane[index];
+    const leftEnd = left.start + left.duration;
+    if (right.start - leftEnd >= grabbed.duration) continue;
+    const distance = Math.min(Math.abs(rawStart - leftEnd), Math.abs(rawStart - right.start));
+    if (distance < edgeDistance) {
+      edgeIndex = index;
+      edgeDistance = distance;
+    }
+  }
+  const rightIndex = edgeIndex !== -1 ? edgeIndex : lane.findIndex((right, index) => index > 0 &&
     pointerTime >= lane[index - 1].start + lane[index - 1].duration / 2 &&
     pointerTime <= right.start + right.duration / 2);
   if (rightIndex < 1 || !lane.some(el => timelineSpansOverlap(rawStart, rawStart + grabbed.duration, el.start, el.start + el.duration))) return null;
