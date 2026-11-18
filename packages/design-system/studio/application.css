@@ -101,7 +101,8 @@
 [data-motion-studio] .om-settings-sections .om-nav-item:is(:hover, [aria-current="page"]) > svg { color: inherit; }
 [data-motion-studio] .om-app-header :is(.om-button, .om-nav-item, .motion-icon-button, .om-app-header-links > a) { min-height: var(--motion-control-sm); font-size: var(--motion-text-sm); }
 [data-motion-studio] .om-app-header :is(.om-button, .om-app-header-links > a) { padding: var(--motion-space-4) var(--motion-space-8); }
-[data-motion-studio] .om-app-header .om-model-switcher > svg { width: var(--motion-icon); height: var(--motion-icon); }
+[data-motion-studio] .om-app-header button.om-model-switcher { gap: var(--motion-space-4); padding-inline: var(--motion-space-6); }
+[data-motion-studio] .om-app-header .om-model-switcher > svg { width: var(--motion-space-12); height: var(--motion-space-12); }
 :root[data-motion-ui] .motion-studio-header-compact button { font-size: var(--motion-text-sm); line-height: var(--motion-space-18); }
 
 /* Keep navigation mounted while its layout and visibility settle together. */

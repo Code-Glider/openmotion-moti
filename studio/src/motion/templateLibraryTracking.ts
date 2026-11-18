@@ -1,6 +1,7 @@
 // Reports for the editor's template library. Event, area, element and field names follow the shared OpenMotion
 // tracking sheet so one funnel reads the same on the website and in the editor.
 // The dialog calls these and owns no tracking code of its own; nothing here may throw into it.
+import type { SeriesAttribution } from './brandStoryTracking';
 import { studioEvents } from '../../../tracking/events.ts';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
 import { optionId, send, slugField, searchKeyword } from './reporting';
@@ -16,7 +17,9 @@ type Template = GalleryTemplate;
 /** What the list looked like when something happened: the active search, the sort and how many filters were on. */
 export type ListContext = { searchId?: string; sort: Sort; filterCount: number };
 /** One opened detail: its id and how the user got there. */
-export type DetailView = { id: string; placement: Placement };
+export type DetailView = { id: string; placement: Placement; series?: SeriesAttribution };
+/** Timeline actions have a series view, without inventing a template detail view. */
+export type ActionView = DetailView | { series: SeriesAttribution };
 
 export { newTrackingId, optionId, searchKeyword } from './reporting';
 const SORTS: readonly string[] = studioEvents.ui_click.fields.sort;
@@ -25,7 +28,8 @@ const studio = { page_name: 'studio' } as const;
 /** A catalogue id is sent only when it is a bounded slug; anything else is left out, never rewritten. */
 const templateId = (template: Template) => slugField('template_id', template.id);
 const list = (context: ListContext) => ({ sort: context.sort, applied_filter_count: context.filterCount, ...(context.searchId ? { search_id: context.searchId } : {}) });
-const detail = (view: DetailView | undefined) => view ? { detail_view_id: view.id, detail_mode: 'modal' as const } : {};
+const detail = (view: ActionView | undefined) => view ? { ...('id' in view ? { detail_view_id: view.id, detail_mode: 'modal' as const } : {}), ...view.series } : {};
+const actionArea = (view: ActionView | undefined) => view?.series?.series_surface === 'timeline' ? 'template_series_detail' as const : 'template_detail' as const;
 const resource = (template: Template) => ({ resource_kind: isEditableTemplate(template) ? 'editable_project' as const : 'reference' as const });
 const instruction = (template: Template, submit = false) => ({
   instruction_kind: submit ? 'recreate_submit' as const : isEditableTemplate(template) ? 'template_use' as const : 'reference_recreate' as const });
@@ -53,8 +57,8 @@ export function reportDetailShown(template: Template, view: DetailView, position
     placement: view.placement, ...(position ? { position } : {}) });
 }
 /** Open-and-edit or a recreate button. A click is intent only; the copy result and the project result say what happened. */
-export function reportUseClicked(template: Template, action: TemplateAction, view: DetailView | undefined, copyAttemptId?: string) {
-  send('ui_click', { ...studio, area: 'template_detail', element: 'start_use', ...templateId(template), ...resource(template), template_action: action,
+export function reportUseClicked(template: Template, action: TemplateAction, view: ActionView | undefined, copyAttemptId?: string) {
+  send('ui_click', { ...studio, area: actionArea(view), element: 'start_use', ...templateId(template), ...resource(template), template_action: action,
     ...(copyAttemptId ? { copy_attempt_id: copyAttemptId } : {}), ...detail(view) });
 }
 export function reportInstructionShown(template: Template, view: DetailView | undefined) {
@@ -64,7 +68,7 @@ export function reportInstructionExpanded(template: Template, expanded: boolean,
   send('ui_click', { ...studio, area: 'template_instruction', element: 'expand_instruction', expanded, ...templateId(template), ...detail(view) });
 }
 /** Only `clipboard_written` is a successful copy; showing the text for a manual copy is not. */
-export function reportCopyResult(template: Template, status: Fields<'template_instruction_copy_result'>['copy_status'], copyAttemptId: string, submit: boolean, view: DetailView | undefined) {
+export function reportCopyResult(template: Template, status: Fields<'template_instruction_copy_result'>['copy_status'], copyAttemptId: string, submit: boolean, view: ActionView | undefined) {
   send('template_instruction_copy_result', { ...studio, host_product: 'codex', copy_status: status, copy_attempt_id: copyAttemptId, ...templateId(template), ...resource(template), ...instruction(template, submit), ...detail(view) });
 }
 export function reportSearchResult(searchId: string, query: string, resultCount: number, context: Omit<ListContext, 'searchId'>) {
@@ -82,15 +86,15 @@ export function reportDiscoveryClick(element: Extract<Click['element'], 'categor
 export function reportFilterResult(action: FilterAction, resultCount: number, context: ListContext) {
   send('template_filter_result', { ...studio, area: 'template_discovery', action, result_count: resultCount, outcome: 'success', ...list(context) });
 }
-export function reportDownloadClicked(template: Template, kind: 'download_guide' | 'download_project', downloadAttemptId: string | undefined, view: DetailView | undefined) {
-  send('ui_click', { ...studio, area: 'template_detail', element: kind, ...templateId(template), resource_kind: kind === 'download_guide' ? 'motion_guide' : 'editable_project',
+export function reportDownloadClicked(template: Template, kind: 'download_guide' | 'download_project', downloadAttemptId: string | undefined, view: ActionView | undefined) {
+  send('ui_click', { ...studio, area: actionArea(view), element: kind, ...templateId(template), resource_kind: kind === 'download_guide' ? 'motion_guide' : 'editable_project',
     ...(downloadAttemptId ? { download_attempt_id: downloadAttemptId } : {}), ...detail(view) });
 }
-export function reportDownloadResult(template: Template, downloadAttemptId: string, status: 'browser_save_requested' | 'fetch_failed', errorCode: string | undefined, view: DetailView | undefined) {
+export function reportDownloadResult(template: Template, downloadAttemptId: string, status: 'browser_save_requested' | 'fetch_failed', errorCode: string | undefined, view: ActionView | undefined) {
   send('resource_download_result', { ...studio, resource_kind: 'motion_guide', download_attempt_id: downloadAttemptId, delivery_status: status,
     ...(errorCode ? { error_code: errorCode } : {}), ...templateId(template), ...detail(view) });
 }
 /** Links that leave the detail: the full motion guide, the template's repository directory, or the original post. */
-export function reportDetailLink(template: Template, element: 'view_full_page' | 'view_repository' | 'view_source', view: DetailView | undefined) {
-  send('ui_click', { ...studio, area: 'template_detail', element, ...templateId(template), ...detail(view) });
+export function reportDetailLink(template: Template, element: 'view_full_page' | 'view_repository' | 'view_source', view: ActionView | undefined) {
+  send('ui_click', { ...studio, area: actionArea(view), element, ...templateId(template), ...detail(view) });
 }

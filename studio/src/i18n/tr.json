@@ -1,4 +1,5 @@
 {
+  "Cannot drop here": "Buraya bırakılamaz",
   "+ Add effect": "+ efekt ekle",
   "+ Add variable": "+ değişken ekle",
   "+ New track": "+ Yeni parça",
@@ -1814,8 +1815,10 @@
   "Delete track": "Parçayı sil",
   "Unlock the track before deleting it": "Silmeden önce parçanın kilidini açın",
   "Open the composition to delete this track": "Bu parçayı silmek için kompozisyonu açın",
+  "Main track": "Ana parça",
   "Main track magnet": "Ana parça mıknatısı",
-  "Timeline linkage": "Zaman çizelgesi bağlantısı",
+  "Main track linkage": "Ana parça bağlantısı",
+  "Moves with the selected main track clip": "Seçili ana parça klibiyle birlikte taşınır",
   "Trim left to playhead": "Oynatma kafasına kadar solu kırp",
   "Trim right to playhead": "Oynatma kafasına kadar sağı kırp",
   "Screen too small to expand this panel": "Ekran bu paneli açmak için çok küçük"

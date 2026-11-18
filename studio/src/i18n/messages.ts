@@ -13,7 +13,6 @@ import skillLibraryUi from './skill-library';
 import projectUi from './project-ui.json';
 import exportRecoveryUi from './export-recovery-ui.json';
 import importRecoveryUi from './import-recovery-ui.json';
-import voiceUi from './voice-ui.json';
 import platformExportUi from './platform-export-ui.json';
 import transcriptUi from './transcript-ui.json';
 import ja from './ja.json';
@@ -46,7 +45,7 @@ export const isLocale = (value: unknown): value is Locale => languages.some(lang
 // supported language. Retained, unexposed advanced-editor strings still fall back.
 export const mvpMessages: Partial<Record<Locale, Record<string, Message>>> = { 'zh-CN': mvpZhCN, ...mvpUi };
 const uiMessages: Partial<Record<Locale, Record<string, Message>>>[] = [
-  assetNameUi, mvpMessages, errorUi, templateUi, settingsUi, mcpUi, assetsUi, skillsUi, skillLibraryUi, brandKitUi, projectUi, transcriptUi, exportRecoveryUi, importRecoveryUi, platformExportUi, voiceUi,
+  assetNameUi, mvpMessages, errorUi, templateUi, settingsUi, mcpUi, assetsUi, skillsUi, skillLibraryUi, brandKitUi, projectUi, transcriptUi, exportRecoveryUi, importRecoveryUi, platformExportUi,
 ];
 const effectiveDictionaries: Record<string, Record<string, Message>> = Object.fromEntries(Object.entries(dictionaries).map(([locale, messages]) => {
   const localized = { ...messages };
@@ -58,6 +57,7 @@ const reverse = Object.fromEntries(Object.entries(effectiveDictionaries).map(([l
 ]));
 const singular: Record<string, string> = {
   '{count} renders': '{count} render', '{count} layers': '{count} layer',
+  '{count} works': '{count} work',
   '{count} effects': '{count} effect', '{count} elements': '{count} element',
   '{count} errors': '{count} error', '{count} warnings': '{count} warning',
   ' and its {count} slides': ' and its {count} slide', '{count} lint findings': '{count} lint finding',

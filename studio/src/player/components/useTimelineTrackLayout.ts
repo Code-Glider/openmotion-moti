@@ -9,6 +9,9 @@ import { useTimelineTrackDerivations } from "./useTimelineTrackDerivations";
 import { buildTimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
 import {
   TRACK_H,
+  MAIN_TRACK_H,
+  TRACKS_TOP_PAD,
+  TRACKS_BOTTOM_PAD,
   createTimelineRowGeometry,
   type TimelineRowGeometry,
   type TimelineTrackPadding,
@@ -19,6 +22,7 @@ import type { TimelineTrackGroupInfo } from "./useTimelineTrackDerivations";
 import { groupAutomationElement } from "./groupAutomationElement";
 import { AUTOMATION_LANE_H } from "./automationLaneHeight";
 import { useMvpEditor } from "../../motion/StudioHost";
+import { mainVisualTrack } from "./timelineLinkage";
 import { centerTimelineTracks } from "./timelineTrackAlignment";
 
 /** Automation rows the GROUP itself owns — its `data-automation`, not its members'. */
@@ -162,6 +166,20 @@ function applyGroupStripHeights(
   });
 }
 
+/** Emphasize the main clip row without moving expanded property/automation lanes. */
+export function mainTrackRowHeights(
+  tracks: readonly (readonly [number, readonly TimelineElement[]])[],
+  heights: number[],
+  expandedClipIds: ReadonlySet<string>,
+): number[] {
+  const main = mainVisualTrack(tracks.flatMap(([, elements]) => elements));
+  return tracks.map(([track, elements], index) =>
+    track === main && !isTrackRowExpanded(elements, expandedClipIds)
+      ? Math.max(MAIN_TRACK_H, heights[index] ?? TRACK_H)
+      : heights[index] ?? TRACK_H,
+  );
+}
+
 function useTimelineRowHeights(
   tracks: [number, TimelineElement[]][],
   gsapAnimations: Map<string, GsapAnimation[]>,
@@ -169,6 +187,7 @@ function useTimelineRowHeights(
   selectedElementIds: ReadonlySet<string>,
   groups: readonly TimelineTrackGroupInfo[],
   trackPadding: TimelineTrackPadding | undefined,
+  emphasizeMain: boolean,
 ) {
   const padTop = trackPadding?.top;
   const padBottom = trackPadding?.bottom;
@@ -213,11 +232,12 @@ function useTimelineRowHeights(
       laneCounts,
       rowGeometry: createTimelineRowGeometry(
         tracks.map(([track]) => track),
-        rowHeights,
+        emphasizeMain ? mainTrackRowHeights(tracks, rowHeights, expandedClipIds) : rowHeights,
         { top: padTop, bottom: padBottom },
       ),
     };
   }, [
+    emphasizeMain,
     padTop,
     padBottom,
     expandedClipIds,
@@ -242,7 +262,7 @@ export function useTimelineTrackLayout(
   trackPadding?: TimelineTrackPadding,
   viewportHeight = 0,
 ) {
-  const centered = useMvpEditor();
+  const mvp = useMvpEditor();
   const { tracks, trackStyles, trackOrder, groups, trackGroupOf } =
     useTimelineTrackDerivations(expandedElements);
   const trackOrderRef = useRef(trackOrder);
@@ -259,9 +279,10 @@ export function useTimelineTrackLayout(
     selectedElementId,
     selectedElementIds,
     groups,
-    centered ? { top: trackPadding?.top ?? TRACK_H, bottom: trackPadding?.bottom ?? TRACK_H } : trackPadding,
+    mvp ? { top: trackPadding?.top ?? TRACKS_TOP_PAD, bottom: trackPadding?.bottom ?? TRACKS_BOTTOM_PAD } : trackPadding,
+    mvp,
   );
-  const rowGeometry = useMemo(() => centered ? centerTimelineTracks(naturalGeometry, viewportHeight) : naturalGeometry, [centered, naturalGeometry, viewportHeight]);
+  const rowGeometry = useMemo(() => mvp ? centerTimelineTracks(naturalGeometry, viewportHeight) : naturalGeometry, [mvp, naturalGeometry, viewportHeight]);
   const rowGeometryRef = useRef(rowGeometry);
   rowGeometryRef.current = rowGeometry;
 
@@ -295,44 +316,17 @@ function useDisplayRowHeights(
   );
 }
 
-function insertPreviewTrack(trackOrder: number[], preview: number) {
-  const result: number[] = [];
-  let inserted = false;
-  for (const key of trackOrder) {
-    if (!inserted && Number.isInteger(key) && key > preview) {
-      result.push(preview);
-      inserted = true;
-    }
-    result.push(key);
-  }
-  if (!inserted) result.push(preview);
-  return result;
-}
-
 function useDisplayTrackOrder(draggedClip: DraggedClipState | null, trackOrder: number[]) {
-  const started = draggedClip?.started === true;
-  const insertRow = draggedClip?.insertRow ?? null;
-  const previewTrack = draggedClip?.previewTrack;
-  const keyboardPickup = draggedClip?.pointerId === null;
+  // Only keyboard pickup reserves a row. Pointer insertions use the committed geometry.
+  const insertRow =
+    draggedClip?.started && draggedClip.pointerId === null ? draggedClip.insertRow : null;
   return useMemo(() => {
-    if (!started || previewTrack === undefined) return trackOrder;
-    if (insertRow !== null) {
-      // Interior pointer seams must not move existing rows under the pointer.
-      // Inserting above or below every row is safe and keeps the new-lane preview visible.
-      if (!keyboardPickup && insertRow > 0 && insertRow < trackOrder.length) return trackOrder;
-      const pendingKey = trackOrder.reduce((lowest, key) => Math.min(lowest, key), 0) - 1;
-      const displayOrder = [...trackOrder];
-      displayOrder.splice(insertRow, 0, pendingKey);
-      return displayOrder;
-    }
-    if (trackOrder.includes(previewTrack)) return trackOrder;
-    // A group's members sit out of raw numeric order (pulled under their
-    // anchor row), so a plain numeric sort here would undo that grouping the
-    // moment a clip drags onto a brand-new track. Insert the new preview
-    // track only relative to other REAL (integer) tracks, leaving any
-    // fractional group-anchor keys exactly where grouping placed them.
-    return insertPreviewTrack(trackOrder, previewTrack);
-  }, [started, insertRow, previewTrack, trackOrder, keyboardPickup]);
+    if (insertRow === null) return trackOrder;
+    const pendingKey = trackOrder.reduce((lowest, key) => Math.min(lowest, key), 0) - 1;
+    const displayOrder = [...trackOrder];
+    displayOrder.splice(insertRow, 0, pendingKey);
+    return displayOrder;
+  }, [insertRow, trackOrder]);
 }
 
 export function useTimelineDisplayLayout(

@@ -83,7 +83,7 @@ export const TemplateGalleryCard = memo(function TemplateGalleryCard({ template,
       {template.previewUrl && <video ref={video} muted playsInline loop preload="none" aria-hidden="true" onPlaying={() => setPlaying(true)} onError={() => { setFailed(true); setPlaying(false); }} style={{ opacity: active && playing ? 1 : 0 }} />}
       {animatedPreview && active && animate && <iframe className="om-gallery-animation" src={animatedPreview} loading="lazy" sandbox="allow-scripts" title={template.title} tabIndex={-1} aria-hidden="true" />}
       <span className="om-gallery-card-shade" />
-      <span className="om-gallery-card-top"><span>{t(resourceKind === 'brand-kit' ? 'Brand Kit' : 'Template')}</span>{resourceKind === 'template' && <span>{t(isEditableTemplate(template) ? 'Ready to edit' : template.styles?.[0] || 'Motion design')}</span>}{template.duration != null && <span>{t('{value}s', { value: Number(template.duration.toFixed(1)) })}</span>}</span>
+      <span className="om-gallery-card-top">{resourceKind === 'brand-kit' && <span>{t('Brand Kit')}</span>}{resourceKind === 'template' && <span>{t(isEditableTemplate(template) ? 'Ready to edit' : template.styles?.[0] || 'Motion design')}</span>}{template.duration != null && <span>{t('{value}s', { value: Number(template.duration.toFixed(1)) })}</span>}</span>
       {!linkedSource && <span className="om-gallery-card-bottom"><TemplateIdentity template={template} /><span className="om-gallery-card-caption"><strong>{template.title}</strong><small>{template.authorName || template.author || template.brand}</small></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={18} /></span></span>}
     </button>
     </div>

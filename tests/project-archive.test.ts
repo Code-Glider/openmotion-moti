@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdir, readFile, writeFile, readdir, symlink } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile, readdir, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -9,6 +11,7 @@ import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
 import { projectArchive, importProjects } from '../project-archive.ts';
 import { readProjectZip } from '../shared/project-zip.ts';
+import { firstFoldedDuplicate, portableNameProblem } from '../shared/project-name.ts';
 import { zip } from '../scripts/zip.mjs';
 import { Phase1Service } from '../phase1.ts';
 import { nativeProjectConfig, pluginRoot } from '../hyperframes.ts';
@@ -273,3 +276,46 @@ test('a re-compressed OpenMotion ZIP can have one enclosing folder and Finder me
   const imported = await importProjects(store, 'recompressed', packaged, pluginRoot);
   assert.equal(imported.projects[0].title, 'Original title');
 }, false));
+
+test('portable project names follow one rule for writes and archive import', () => {
+  assert.equal(portableNameProblem('con.html'), 'con.html');
+  assert.equal(portableNameProblem('assets/AUX.png'), 'AUX.png');
+  assert.equal(portableNameProblem('notes. '), 'notes. ');
+  assert.equal(portableNameProblem('assets/cover.png'), null);
+  assert.equal(firstFoldedDuplicate(['A.css', 'a.css'], true), 'a.css');
+  assert.equal(firstFoldedDuplicate(['A.css', 'a.css'], false), null);
+  assert.equal(firstFoldedDuplicate(['A.css', 'b.css'], true), null);
+});
+test('import refuses a reserved device name that a write would now reject', () => {
+  const bytes = zip([
+    { name: 'index.html', data: Buffer.from(html) },
+    { name: 'hyperframes.json', data: Buffer.from(JSON.stringify(nativeProjectConfig)) },
+    { name: 'con.html', data: Buffer.from('<html></html>') },
+  ]);
+  assert.throws(() => readProjectZip(bytes), /Invalid or unsupported ZIP/);
+});
+
+test('archive CI lane checks portable names through project write and asset APIs', () => fixture(async store => {
+  const current = await store.get();
+  await assert.rejects(store.writeFiles(current.revision, [{ path: 'con.html', content: html }]), /路径无效/);
+  const source = path.join(store.directory, 'portable-source.png');
+  await writeFile(source, Buffer.from('asset-fixture'));
+  await assert.rejects(store.importAsset(current.revision, source, 'assets/nul.png'), /路径无效/);
+}));
+
+test('archive CI lane keeps the entry-file guard exact on every platform', () => fixture(async store => {
+  const current = await store.get();
+  await assert.rejects(store.writeFiles(current.revision, [{ path: 'Index.html', content: html }]), /index\.html/);
+}, false));
+
+test('archive import rejects a source that would block without a writer', { skip: process.platform === 'win32' && 'FIFO sources are POSIX-only' }, () => fixture(async store => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'motion-archive-fifo-'));
+  try {
+    const source = path.join(directory, 'project.zip');
+    execFileSync('mkfifo', [source]);
+    const started = Date.now();
+    // A blocking open would wait for a writer and stall the serialized tool queue.
+    await assert.rejects(projectArchive(store, { action: 'import', requestId: 'fifo-source', sourcePath: source }), /regular file/);
+    assert.ok(Date.now() - started < 5000, 'a FIFO source must be rejected without waiting for a writer');
+  } finally { await rm(directory, { recursive: true, force: true }); }
+}));

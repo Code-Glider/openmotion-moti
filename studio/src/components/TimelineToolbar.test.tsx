@@ -13,6 +13,7 @@ import { AudioMeterStrip } from "./nle/AudioMeterStrip";
 import { TimelineToolbar } from "./TimelineToolbar";
 import { StudioHostContext } from "../motion/StudioHost";
 import { registerTimelineZoomViewport } from "../player/components/timelineZoomInput";
+import { readFileSync } from "node:fs";
 
 vi.mock("../contexts/StudioContext", () => ({
   useStudioShellContextOptional: () => ({
@@ -258,7 +259,7 @@ describe("TimelineToolbar Fit", () => {
     vi.useRealTimers();
   });
 
-  /** A mounted timeline for the zoom to preview on: 1080px wide, 32px of headers. */
+  /** A mounted timeline for frame-coalesced zoom: 1080px wide, 32px of headers. */
   function mountTimelineViewport() {
     const scroll = document.createElement("div");
     Object.defineProperties(scroll, {
@@ -283,7 +284,7 @@ describe("TimelineToolbar Fit", () => {
     };
   }
 
-  it("moves the slider and its readout with a zoom while it is previewed", () => {
+  it("updates zoom geometry, the slider and its readout together on the next frame", () => {
     const { unregister } = mountTimelineViewport();
     const { host, root } = renderToolbar();
     const slider = host.querySelector<HTMLInputElement>('input[aria-label="Timeline zoom"]')!;
@@ -295,11 +296,15 @@ describe("TimelineToolbar Fit", () => {
       );
       slider.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    act(() => vi.advanceTimersToNextFrame());
-    // Not laid out yet: the store still holds Fit, but the toolbar shows the zoom on screen.
+    // Input waits for the next frame instead of stretching the existing timeline.
     expect(usePlayerStore.getState().zoomMode).toBe("fit");
+    act(() => vi.advanceTimersToNextFrame());
+    const { zoomMode, manualZoomPercent, timelinePps, timelineFitPps } = usePlayerStore.getState();
+    expect(zoomMode).toBe("manual");
+    expect(manualZoomPercent).toBeGreaterThan(100);
+    expect(timelinePps).toBeCloseTo(timelineFitPps * manualZoomPercent / 100);
     expect(slider.value).not.toBe(before);
-    expect(host.querySelector('[aria-label="Timeline zoom level"]')?.textContent).not.toBe("Fit");
+    expect(host.querySelector('[aria-label="Timeline zoom level"]')?.textContent).toBe(`${manualZoomPercent}%`);
     act(() => root.unmount());
     act(() => unregister());
   });
@@ -520,6 +525,36 @@ describe("TimelineToolbar history", () => {
 });
 
 describe("TimelineToolbar tool menu", () => {
+  it.each(["light", "dark"])("keeps the secondary caret compact and lets its trigger grow in %s theme", theme => {
+    const html = document.documentElement;
+    const previousMotionUi = html.getAttribute("data-motion-ui");
+    const previousTheme = html.getAttribute("data-theme");
+    html.setAttribute("data-motion-ui", "");
+    html.setAttribute("data-theme", theme);
+    const style = document.createElement("style");
+    style.textContent = [
+      "../../../packages/design-system/tokens.css",
+      "../../../packages/design-system/studio/editor-workspace.css",
+      "../motion/theme.css",
+    ].map(path => readFileSync(new URL(path, import.meta.url), "utf8")).join("\n");
+    document.head.append(style);
+    const { host, root } = renderToolbar();
+    try {
+      const trigger = host.querySelector<HTMLButtonElement>('button[aria-label^="Timeline tool:"]')!;
+      const [primary, caret] = trigger.querySelectorAll("svg");
+      expect(getComputedStyle(primary).width).toBe("16px");
+      expect(caret.getAttribute("width")).toBe("10");
+      expect(getComputedStyle(caret).width).not.toBe("16px");
+      expect(getComputedStyle(trigger).width).toBe("auto");
+    } finally {
+      act(() => root.unmount());
+      style.remove();
+      for (const [name, value] of [["data-motion-ui", previousMotionUi], ["data-theme", previousTheme]]) {
+        if (value === null) html.removeAttribute(name!); else html.setAttribute(name!, value!);
+      }
+    }
+  });
+
   async function openMenuRows(props: Partial<React.ComponentProps<typeof TimelineToolbar>>) {
     const { host, root } = renderToolbar(undefined, props);
     const trigger = host.querySelector<HTMLButtonElement>('button[aria-label^="Timeline tool:"]')!;

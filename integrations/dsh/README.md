@@ -36,21 +36,30 @@ Optional environment variables:
 
 ## Download and install the plugin
 
-Users do not need to build the plugin themselves. The maintained public entry is:
+Users do not need to build the plugin themselves. The default public entry follows the verified stable OpenMotion release:
 
-<https://releases.open-design.ai/open-motion/integrations/dsh/main/latest.json>
+<https://releases.open-design.ai/open-motion/integrations/dsh/stable/latest.json>
 
-This small JSON records the plugin version, supported DSH version, exact OpenMotion `sourceCommit`, immutable `tarballUrl`, byte length and SHA-256. Download the `.tgz` at `tarballUrl`; no GitHub login is required. For a new installation, use a separate OpenMotion checkout at `sourceCommit`, install its root dependencies and build Studio as described in Prerequisites. Preserve an existing checkout and use the local build below when you want to keep its version. The tarball still requires that built source runtime; it does not contain the full OpenMotion application.
+| Channel | Download manifest | Updated by |
+| --- | --- | --- |
+| Stable (default) | `integrations/dsh/stable/latest.json` under the public releases origin | Successful stable publication, after both native application checks. |
+| Test | `integrations/dsh/test/latest.json` under the public releases origin | Successful test publication. |
+| Main development | `integrations/dsh/main/latest.json` under the public releases origin | The independent DSH integration workflow on main. |
+
+For stable/test, the plugin version matches the OpenMotion release version; main retains the development package version. This small JSON records the plugin version, supported DSH version, exact OpenMotion `sourceCommit`, immutable `tarballUrl`, byte length and SHA-256. Download the `.tgz` at `tarballUrl`; no GitHub login is required. For a new installation, use a separate OpenMotion checkout at `sourceCommit`, install its root dependencies and build Studio as described in Prerequisites. Preserve an existing checkout and use the local build below when you want to keep its version. The tarball still requires that built source runtime; it does not contain the full OpenMotion application.
 
 From a prepared checkout, this helper downloads and verifies the published package before writing it to a new file:
 
 ```sh
 node integrations/dsh/download.ts /absolute/path/to/downloads
+# Explicit test or development installation:
+node integrations/dsh/download.ts /absolute/path/to/downloads --channel=test
+node integrations/dsh/download.ts /absolute/path/to/downloads --channel=main
 ```
 
 Use the returned `filename` with the DSH installation command below. It also returns `sourceCommit` and `dshVersion` so the Agent can check the runtime and host before enabling. A checksum, network or version mismatch must be reported rather than silently switching an existing installation. Existing downloads are not overwritten.
 
-**Availability:** the first public download appears after this PR merges to `main` and **DSH integration** succeeds. Before merging, download the `openmotion-dsh` artifact from the PR's successful [DSH integration run](https://github.com/nexu-io/openmotion/actions/workflows/dsh-integration.yml), extract GitHub's outer ZIP, and use the `.tgz` inside. GitHub artifact downloads require sign-in and expire; the public R2 download is the maintained user entry.
+**Availability:** the stable/test entries appear after their first coordinated release containing DSH. Before that, explicitly choose the main development channel, build locally, or download the `openmotion-dsh` artifact from a successful [DSH integration run](https://github.com/nexu-io/openmotion/actions/workflows/dsh-integration.yml). GitHub artifact downloads require sign-in and expire. The helper reports unavailable channels without silently substituting another version.
 
 ### Build locally instead
 
@@ -68,7 +77,7 @@ This produces `integrations/dsh/dist/openmotion-dsh-0.1.0.tgz`. It can also be c
 With DSH installed, install the downloaded or locally built tarball in the desired profile:
 
 ```sh
-dsh plugin --profile web add /absolute/path/to/openmotion-dsh-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/to/the-downloaded-plugin.tgz
 ```
 
 Add this entry to that profile's `cordis.patch.yml`, preserving existing entries:
@@ -88,7 +97,11 @@ Restart DSH. Enabling this one plugin mounts its workspace UI, starts/reuses Ope
 
 ### Distribution maintenance
 
-The path-scoped **DSH integration** workflow checks, packs and retains the tarball for PR testing. On trusted `main` pushes or a manual run on `main`, it additionally uploads a content-addressed tarball to R2, verifies the public bytes, and updates `main/latest.json` last. Old tarball URLs remain valid. A stale run cannot promote over a newer main commit; rerun the workflow on current `main` if main advanced during packaging. R2 credentials are provided only to that final trusted publishing step. This uses the existing release-bucket configuration, independently of npm and application release workflows. No plugin npm publication is performed.
+**Motion candidate build** checks the optional integration at the frozen application source, packs a plugin with the same application version, scans it and seals its archive, download metadata and scan into the candidate. The candidate artifact includes `openmotion-dsh-<version>.tgz` and `dsh-plugin.json` for isolated DSH testing. Set the plugin root to a built source checkout at that manifest's `sourceCommit`; the npm application package is a separate installation surface.
+
+**Motion npm publication** reuses those exact plugin bytes after application publication and archival. It verifies the immutable public tarball before advancing only `stable/latest.json` or `test/latest.json`. A newer main commit does not invalidate an already frozen release. Superseded releases and snapshot-only recovery may restore immutable downloads but never move plugin channels. Retained older candidates without DSH remain publishable and do not rebuild a plugin from newer source. No plugin npm publication is performed.
+
+The path-scoped **DSH integration** workflow continues to check, pack and retain a development plugin for PR testing. Trusted main pushes/manual main runs publish only `main/latest.json`; they cannot change the stable or test entries. Both paths use the existing release-bucket settings, with R2 credentials supplied only to the final publishing steps.
 
 ## Verify and recover
 

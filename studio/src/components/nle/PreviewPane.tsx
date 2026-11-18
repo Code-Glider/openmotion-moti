@@ -127,7 +127,7 @@ export function PreviewPane({
       // MVP insets only the canvas; the transport background reaches the panel edges.
       // Fullscreen removes the inset so the preview fills the screen.
       className={`relative scheme-dark flex-1 min-h-0 flex flex-col overflow-hidden ${mvp ? "bg-transparent" : "bg-[var(--studio-preview-bg,var(--color-neutral-950))]"} ${
-        isFullscreen ? "" : mvp ? (empty ? "my-3" : "") : "m-3 rounded-md border border-border"
+        isFullscreen ? "" : mvp ? (empty ? "mb-3" : "") : "m-3 rounded-md border border-border"
       }`}
       data-studio-fullscreen-target={mvp ? undefined : ""}
     >

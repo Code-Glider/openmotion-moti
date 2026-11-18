@@ -48,6 +48,7 @@ export const ChartBarHorizontal = icon("timeline-view");
 export const Check = icon("check-line");
 export const CheckCircleIcon = icon("checkbox-circle-line");
 export const ClipboardText = icon("clipboard-line");
+export const ClosedCaptioning = icon("closed-captioning-line");
 export const Clock = icon("time-line");
 export const ClockCounterClockwise = icon("history-line");
 export const Code = icon("code-s-slash-line");
