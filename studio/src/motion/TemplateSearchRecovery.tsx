@@ -87,16 +87,16 @@ export function TemplateSearchRecovery({ query, context, reason, searchAction, e
             <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'link'} disabled={copying} onClick={() => { setSource('link'); setManual(''); }}>{t('Video link')}</button>
             <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'local'} disabled={copying} onClick={() => { setSource('local'); setManual(''); }}>{t('Local video')}</button>
           </div>
-          {source === 'link' ? <label>{t('Reference video')}<input autoFocus autoComplete="off" className="om-input" type="url" required maxLength={2000} value={reference} disabled={copying} onChange={event => { setReference(event.target.value); setManual(''); }} placeholder="https://…" /></label>
+          {source === 'link' ? <label>{t('Reference video')}<input autoFocus autoComplete="off" type="url" required maxLength={2000} value={reference} disabled={copying} onChange={event => { setReference(event.target.value); setManual(''); }} placeholder="https://…" /></label>
             : <p className={styles.recoveryNote}>{t('Attach the video in your Agent before sending.')}</p>}
         </>}
         <label key={mode}>{t(mode === 'describe' ? 'What video do you want to make?' : 'What would you like to keep or change? (optional)')}
-          <textarea className="om-input" autoFocus={mode === 'describe'} maxLength={1000} required={mode === 'describe'} rows={3}
+          <textarea autoFocus={mode === 'describe'} maxLength={1000} required={mode === 'describe'} rows={3}
             value={mode === 'describe' ? description : referenceNotes} disabled={copying} onChange={event => {
               const update = mode === 'describe' ? setDescription : setReferenceNotes;
               update(event.target.value); setManual('');
             }} /></label>
-        {manual && <label>{t('Creation instruction')}<textarea className={`om-input ${styles.manualCopy}`} readOnly value={manual} rows={5} onFocus={event => event.target.select()} /></label>}
+        {manual && <label>{t('Creation instruction')}<textarea className={styles.manualCopy} readOnly value={manual} rows={5} onFocus={event => event.target.select()} /></label>}
         <div className={styles.recoveryFooter}>
           <div className={styles.recoveryActions}>
             <button className="om-button" data-primary disabled={copying || !valid}><MotionIcon name="copy" size={16} />{t('Copy request')}</button>
