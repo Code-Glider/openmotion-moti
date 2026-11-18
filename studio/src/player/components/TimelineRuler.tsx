@@ -143,7 +143,7 @@ export const TimelineRuler = memo(function TimelineRuler({
           scrolling underneath don't bleed through; z-index sits above the track
           rows and drag overlays but below the playhead (z 100). */}
       <div
-        className="sticky top-0 flex motion-timeline-ruler"
+        className="sticky top-0 flex"
         style={{ height: RULER_H, width: contentOrigin + trackContentWidth, zIndex: 70 }}
       >
         <div
