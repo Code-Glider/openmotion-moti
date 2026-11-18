@@ -284,6 +284,33 @@ it.each([false, true])("fences retries after raw unlink fails with prior ready i
   }
   expect(() => staged.close()).toThrow("has not drained");
 });
+it("fences retries when cleaning extracted media after cancellation fails", async () => {
+  const root = await fixture(),
+    input = archive(),
+    staged = new Staging(root, input),
+    controller = new AbortController(),
+    actualOpen = vi.mocked(open).getMockImplementation()!,
+    actualUnlink = vi.mocked(unlinkSync).getMockImplementation()!;
+  let writes = 0;
+  vi.mocked(open).mockImplementation(async (...args) => {
+    const file = await actualOpen(...args);
+    if (args[1] === "wx" && ++writes === 3) controller.abort();
+    return file;
+  });
+  let removals = 0;
+  vi.mocked(unlinkSync).mockImplementation((path) => {
+    if (++removals === 3) throw Object.assign(Error("media cleanup fault"), { code: "EACCES" });
+    actualUnlink(path);
+  });
+  await expect(staged.write(chunks(input.chunks()), controller.signal)).rejects.toThrow("media cleanup fault");
+  const names = (await readdir(root)).sort();
+  expect(names).toHaveLength(1);
+  await expect(staged.write(chunks(input.chunks()), new AbortController().signal)).rejects.toMatchObject({
+    code: "conflict",
+  });
+  expect((await readdir(root)).sort()).toEqual(names);
+  expect(() => staged.close()).toThrow("has not drained");
+});
 it("replays a byte-backed archive receipt before an unrelated expired file cleanup fault", async () => {
   const root = await fixture(),
     dbRoot = join(root, "db");

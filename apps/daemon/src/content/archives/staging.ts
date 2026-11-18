@@ -50,8 +50,8 @@ export class Staging {
       await raw.drain();
       raw.close();
       this.files = this.files.filter((file) => file !== raw);
+      if (!result) this.clear();
       this.active = false;
-      if (!result) this.close();
     }
     if (signal.aborted) {
       if (!prior) this.close();
@@ -63,6 +63,9 @@ export class Staging {
   }
   close() {
     if (this.active) throw new Fault("integrity", "archive staging has not drained");
+    this.clear();
+  }
+  private clear() {
     for (const file of this.files) file.close();
     this.files = [];
     this.payload = undefined;
