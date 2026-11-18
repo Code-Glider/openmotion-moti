@@ -16,7 +16,30 @@ describe('asset usage on the active timeline', () => {
   it('resolves file-relative media and uses live edited intervals without duplicating manifest rows', () => {
     const element = { id: 'audio', key: 'parts/scene.html#audio', tag: 'audio', track: 1, src: '../assets/voice.wav', sourceFile: 'parts/scene.html', start: 4, duration: 2 };
     const clips = [clip({ id: 'audio', kind: 'audio', compositionId: null, compositionSrc: null, assetUrl: '/api/projects/p/preview/assets/voice.wav', start: 0, duration: 7 })];
-    expect(deriveAssetUsages([element], clips, 'p').get('assets/voice.wav')).toMatchObject([{ start: 4, end: 6, targetId: 'parts/scene.html#audio' }]);
+    expect(deriveAssetUsages([element], clips, 'p', 'parts/scene.html').get('assets/voice.wav')).toMatchObject([{ start: 4, end: 6, targetId: 'parts/scene.html#audio' }]);
+  });
+  it.each([
+    { sourceFile: 'index.html', nestedAsset: 'nested.wav' },
+    { sourceFile: undefined, nestedAsset: 'nested.wav' },
+    { sourceFile: 'index.html', nestedAsset: 'root.wav' },
+    { sourceFile: undefined, nestedAsset: 'root.wav' },
+  ])('keeps repeated media ids in their own composition ($sourceFile, $nestedAsset)', ({ sourceFile, nestedAsset }) => {
+    const root = { id: 'audio', key: 'index.html#audio', tag: 'audio', track: 1, src: 'assets/root.wav', sourceFile, start: 2, duration: 4 };
+    const host = { id: 'host', key: 'index.html#host', tag: 'div', track: 0, kind: 'composition' as const, compositionSrc: 'compositions/scene.html', sourceFile: 'index.html', start: 10, duration: 10 };
+    const clips = [
+      clip({ start: 10, duration: 10, playbackStart: 5, playbackRate: 2 }),
+      clip({ id: 'audio', kind: 'audio', compositionId: null, compositionSrc: null, assetUrl: '/api/projects/p/preview/assets/root.wav', start: 0, duration: 7 }),
+      clip({ id: 'audio', kind: 'audio', compositionId: null, compositionSrc: null, parentCompositionId: 'scene', assetUrl: `/api/projects/p/preview/assets/${nestedAsset}`, start: 12, duration: 3 }),
+    ];
+    const usages = deriveAssetUsages([root, host], clips, 'p');
+    const rootUsage = { start: 2, end: 6, compositionPath: 'index.html', localStart: 2, targetId: 'index.html#audio' };
+    const nestedUsage = { start: 12, end: 15, compositionPath: 'compositions/scene.html', localStart: 9, targetId: 'index.html#host' };
+    if (nestedAsset === 'root.wav') {
+      expect(usages.get('assets/root.wav')).toMatchObject([rootUsage, nestedUsage]);
+    } else {
+      expect(usages.get('assets/root.wav')).toMatchObject([rootUsage]);
+      expect(usages.get('assets/nested.wav')).toMatchObject([nestedUsage]);
+    }
   });
   it('does not match other projects or external URLs with the same basename', () => {
     const clips = [clip({ kind: 'audio', assetUrl: '/api/projects/other/preview/assets/voice.wav' }), clip({ id: 'external', kind: 'audio', assetUrl: 'https://example.com/assets/voice.wav' })];

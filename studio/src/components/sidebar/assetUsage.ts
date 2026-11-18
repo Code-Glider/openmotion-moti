@@ -46,11 +46,9 @@ export function deriveAssetUsages(elements: readonly TimelineElement[], manifest
   };
   for (const clip of manifest ?? []) {
     if (!clip.assetUrl || !['audio', 'video', 'image'].includes(clip.kind)) continue;
-    const live = elements.find(el => matchesId(el, clip.id) && el.src);
-    if (live) covered.add(live);
     let parent = hosts.get(clip.parentCompositionId ?? '');
     let owner: ClipManifestClip | undefined;
-    let target = live;
+    let target: TimelineElement | undefined;
     const seen = new Set<ClipManifestClip>();
     while (parent && !seen.has(parent)) {
       seen.add(parent);
@@ -60,7 +58,11 @@ export function deriveAssetUsages(elements: readonly TimelineElement[], manifest
       if (!owner && source) owner = { ...parent, compositionSrc: source };
       parent = hosts.get(parent.parentCompositionId ?? '');
     }
-    const compositionPath = live?.sourceFile ?? (owner?.compositionSrc ? assetSourcePath(owner.compositionSrc, activePath, projectId) : activePath) ?? activePath;
+    const compositionPath = (owner?.compositionSrc ? assetSourcePath(owner.compositionSrc, activePath, projectId) : activePath) ?? activePath;
+    // DOM ids are local to each composition; rows without sourceFile belong to the active file.
+    const live = elements.find(el => matchesId(el, clip.id) && el.src && (el.sourceFile ?? activePath) === compositionPath);
+    if (live) covered.add(live);
+    target = live ?? target;
     const asset = assetSourcePath(live?.src ?? clip.assetUrl, live?.sourceFile ?? compositionPath, projectId);
     if (!asset) continue;
     const start = live?.start ?? clip.start, duration = live?.duration ?? clip.duration;
