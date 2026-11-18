@@ -247,6 +247,10 @@ function resolveMultiSelection(
   movedStart: (e: TimelineElement) => number;
 } | null {
   const dragKey = keyOf(drag.element);
+  if (drag.insertion) {
+    const starts = drag.insertion;
+    return { keys: new Set(starts.keys()), movedStart: el => starts.get(keyOf(el)) ?? el.start };
+  }
   const movers = resolveGroupMovers(deps.elements, deps.selectedKeys, dragKey);
   if (!movers) return null;
   const keys = new Set(movers.map(keyOf));
@@ -268,6 +272,8 @@ export function commitDraggedClipMove(drag: DraggedClipState, deps: DragCommitDe
 
   const { elements, updateElement, onMoveElement } = deps;
   const dragKey = keyOf(drag.element);
+  if (drag.insertion && (!deps.onMoveElements ||
+    elements.filter(el => drag.insertion!.has(keyOf(el)) && canMoveElement(el)).length !== drag.insertion.size)) return;
   const isInsert = drag.insertRow != null;
   const laneChanged = drag.previewTrack !== drag.element.track;
   // Deliberate VERTICAL gesture: the pointer aimed at a different lane, or at the
@@ -297,7 +303,7 @@ export function commitDraggedClipMove(drag: DraggedClipState, deps: DragCommitDe
   // ── Pure time-move (dragged clip keeps its lane, no insert) ─────────────────
   if (!isInsert && !laneChanged) {
     const delta = drag.previewStart - drag.element.start;
-    if (delta === 0) return;
+    if (delta === 0 && !drag.insertion) return;
     if (multi || renumbers.length) {
       const edits: TimelineMoveEdit[] = elements
         .filter((e) => multi ? multi.keys.has(keyOf(e)) : keyOf(e) === dragKey)

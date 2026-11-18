@@ -323,6 +323,7 @@ export function useTimelineClipDrag({
         buildSnapTargets,
         audioTracks: dragAudioTracksRef.current,
         gridStep: snapGridStep(),
+        canInsertClips: Boolean(onMoveElementsRef.current),
       });
     },
     [

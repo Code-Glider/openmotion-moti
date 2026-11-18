@@ -36,6 +36,7 @@ import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
 import { findBlockedTrackInsert, layoutAfterTrackInsert } from "./timelineDragLanding";
 import type { TimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
 import { isPendingTimelineRow } from "./timelinePendingRows";
+import { previewClipInsert } from "./timelineClipInsert";
 
 /** Snap-target builder closure supplied by the hook (closes over refs + store). */
 type BuildSnapTargets = (
@@ -66,6 +67,7 @@ export interface DragPreviewContext {
   audioTracks?: ReadonlySet<number>;
   /** Seconds between the ruler's lines; 0 or absent when snapping is off. */
   gridStep?: number;
+  canInsertClips?: boolean;
 }
 
 export function createKeyboardClipDrag(
@@ -257,7 +259,8 @@ export function computeDragPreview(
   // coordinates recover the same origin after OM's horizontal scroll.
   const scrollDelta = (scroll?.scrollLeft ?? drag.originScrollLeft) - drag.originScrollLeft;
   const delta = (clientX - drag.originClientX + scrollDelta) / Math.max(pps, 1);
-  const rawStart = clampToHostStart(drag.element, Math.min(resolveDragMaxStart(scroll, pps, duration), drag.element.start + delta));
+  const requestedStart = drag.element.start + delta;
+  const rawStart = clampToHostStart(drag.element, Math.min(resolveDragMaxStart(scroll, pps, duration), requestedStart));
   // OpenReel drag rules: the pointer owns time; edge snapping never grabs the playhead.
   const targets = drag.snapDisabled ? [] : buildSnapTargets(
     drag.element.key ?? drag.element.id,
@@ -283,7 +286,17 @@ export function computeDragPreview(
   const savedStart = keepOrigin || group.moving.size > 1 ||
     authoredStart < group.floor || authoredStart - origin < shift.min || authoredStart - origin > shift.max
     ? previewStart : authoredStart;
-  let placement = resolveDropPlacement(drag, aim, savedStart, desiredTrack, ctx, group);
+  const host = drag.element.expandedHostKey;
+  const insertion = ctx.canInsertClips !== false && drag.pointerId !== null && aim.insertRow === null &&
+    trackOrder[aimedRow] !== undefined && !ctx.groupTracks?.has(desiredTrack) &&
+    !(host && ctx.selectedKeys.has(host)) && !isPendingTimelineRow(desiredTrack, ctx.elements)
+    ? previewClipInsert(
+      ctx.elements, drag.element, group.moving, desiredTrack, rawStart,
+      requestedStart + drag.pointerOffsetX / Math.max(pps, 1), !drag.altKey,
+    ) : null;
+  let placement = insertion
+    ? { track: desiredTrack, insertRow: null, start: insertion.start }
+    : resolveDropPlacement(drag, aim, savedStart, desiredTrack, ctx, group);
   if (placement.insertRow !== null && group.hasReadOnlyRows) {
     const layout = layoutAfterTrackInsert(drag.element, placement.start, placement.insertRow, null, ctx);
     const sources = new Map(ctx.elements.map(el => [el.key ?? el.id, el]));
@@ -291,7 +304,7 @@ export function computeDragPreview(
       placement = { track: drag.element.track, insertRow: null, start: origin };
   }
   const { track: previewTrack, insertRow } = placement;
-  const guide = guideIfSaved(drag.element, placement, snapTarget(snap), pps);
+  const guide = insertion ? null : guideIfSaved(drag.element, placement, snapTarget(snap), pps);
   return {
     ...drag,
     started: true,
@@ -303,6 +316,7 @@ export function computeDragPreview(
     // tell a deliberate vertical lane change from a horizontal drag.
     desiredTrack,
     insertRow,
+    insertion: insertion?.insertion,
     snapTime: guide?.time ?? null,
     snapType: guide?.type ?? null,
     snapEdge: guide ? snapped.snapEdge : undefined,

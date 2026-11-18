@@ -167,11 +167,11 @@ it.each(["drag", "resize"] as const)("uses the %s release coordinate when its la
 });
 
 it.each([
-  { painted: 450, released: 550, collision: true },
-  { painted: 550, released: 450, collision: true },
-  { painted: 550, released: 950, collision: false },
-  { painted: 550, released: 950, collision: true, extra: true },
-])("saves the final pointer time on a free or newly opened row at $released once, without saving painted frames", ({ painted, released, collision, extra }) => {
+  { painted: 550, released: 800, mode: "row" },
+  { painted: 800, released: 450, mode: "insert" },
+  { painted: 550, released: 950, mode: "free" },
+  { painted: 550, released: 950, mode: "next-insert", extra: true },
+])("commits the final $mode landing once, without saving painted frames", ({ painted, released, mode, extra }) => {
   vi.useFakeTimers();
   const g = mountGesture("drag");
   const clips = [
@@ -198,12 +198,16 @@ it.each([
   release(released, y);
   release(released, y);
   vi.advanceTimersByTime(100);
-  if (collision) {
+  if (mode !== "free") {
     expect(save).toHaveBeenCalledTimes(1);
-    const edits = save.mock.calls[0][0];
-    expect(edits.find(edit => edit.element.id === "clip-1").updates).toEqual({ start: released / 100, track: 0 });
-    for (const peer of clips.slice(1))
-      expect(edits.find(edit => edit.element.id === peer.id).updates).toEqual({ start: peer.start, track: 1 });
+    const edits = Object.fromEntries(save.mock.calls[0][0].map(edit => [edit.element.id, edit.updates]));
+    if (mode === "row") {
+      expect(edits).toEqual({ "clip-1": { start: 8, track: 0 }, b: { start: 2, track: 1 }, c: { start: 5, track: 1 } });
+    } else if (mode === "insert") {
+      expect(edits).toEqual({ "clip-1": { start: 5, track: 0 }, c: { start: 7, track: 0 } });
+    } else {
+      expect(edits).toEqual({ "clip-1": { start: 9, track: 0 }, d: { start: 11, track: 0 } });
+    }
     expect(g.onMoveElement).not.toHaveBeenCalled();
   } else {
     expect(save).not.toHaveBeenCalled();

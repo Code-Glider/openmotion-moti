@@ -35,6 +35,7 @@ export interface MultiDragPreviewInput {
   draggedPreviewStart: number;
   /** The current multi-selection (store.selectedElementIds). */
   selectedKeys: ReadonlySet<string>;
+  offsets?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -83,7 +84,7 @@ export function multiDragPassengerOffsetPx(
 ): number {
   if (!isMultiDragPassenger(clipKey, input)) return 0;
   const pps = Number.isFinite(pixelsPerSecond) ? pixelsPerSecond : 0;
-  return multiDragDeltaSeconds(input) * pps;
+  return (input.offsets?.get(clipKey) ?? multiDragDeltaSeconds(input)) * pps;
 }
 
 /** The selected clips a group drag moves: a locked clip swept into the selection stays put.

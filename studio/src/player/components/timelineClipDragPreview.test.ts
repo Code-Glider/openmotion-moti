@@ -143,6 +143,8 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     const geometry = createTimelineRowGeometry([0, 1, 2], [104, 48, 48], { top: 0 });
     const context = { ...ctx(geometry.rowHeights), rowGeometry: geometry };
     const { drag, clientX } = horizontalDrag(moodboard, 0.5, 2);
+    // Grab toward the right side so the pointer lies beyond both clip midpoints.
+    drag.pointerOffsetX = 4 * PPS;
     const top = computeDragPreview(drag, clientX, 24, context);
     expect(top.insertRow).toBe(0);
     const between = computeDragPreview(drag, clientX, 128, context);

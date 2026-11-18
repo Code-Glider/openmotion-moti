@@ -36,6 +36,8 @@ export interface DraggedClipState {
   started: boolean;
   altKey?: boolean;
   snapDisabled?: boolean;
+  /** Starts previewed for a same-row insertion, keyed by clip identity. */
+  insertion?: ReadonlyMap<string, number>;
 }
 
 export interface ResizingClipState {
