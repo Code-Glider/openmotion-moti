@@ -18,7 +18,7 @@ import { expect, it } from "vitest";
 const execute = promisify(execFile);
 const digest = (bytes: Uint8Array) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const source =
-  '<html><body><main data-composition-id="main" data-width="160" data-height="90" data-duration="2"><p id="caption" data-hf-id="caption" data-start="0" data-duration="2">Round one</p><svg width="160" height="40"><rect id="box" width="24" height="24" fill="blue"/></svg></main><script>const tl=gsap.timeline({paused:true});tl.fromTo("#box",{attr:{x:0}},{attr:{x:100},duration:2,ease:"none"});window.__timelines={main:tl};</script></body></html>';
+  '<html><body><main data-composition-id="main" style="background:white;color:black;font:16px sans-serif" data-width="160" data-height="90" data-duration="2"><p id="caption" style="margin:0" data-hf-id="caption" data-start="0" data-duration="2">Round one</p><svg width="160" height="40"><rect id="box" width="24" height="24" fill="blue"/></svg></main><script>const tl=gsap.timeline({paused:true});tl.fromTo("#box",{attr:{x:0}},{attr:{x:100},duration:2,ease:"none"});window.__timelines={main:tl};</script></body></html>';
 
 // Explicit native qualification includes cold public-tool preparation. Ordinary source CI must not imply it ran.
 it.runIf(process.env.OPEN_MOTION_NATIVE_HANDOFF === "1")(
