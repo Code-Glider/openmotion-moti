@@ -444,7 +444,7 @@ it("retains drafts, frame identity and unknown project receipts through view cha
   await page.emulateMedia({ colorScheme: "light" });
   await expect.poll(() => page.locator("#app").getAttribute("data-om-theme")).toBe("light");
   await open();
-  expect(await settings.getByRole("combobox", { name: "主题", exact: true }).isEnabled()).toBe(false);
+  expect(await settings.getByRole("combobox", { name: "主题", exact: true }).isEnabled()).toBe(true);
   expect((await client.execute("workspace_preferences", {})).value.theme).toBe("dark");
   await driver.capture("embedded-system-light");
   report.preferences = persisted;

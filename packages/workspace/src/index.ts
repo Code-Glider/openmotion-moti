@@ -128,12 +128,16 @@ export class Workspace {
   private dispatch(operation: Operation, input: unknown): Output<Operation> {
     switch (operation) {
       case "workspace_preferences": {
-        const row = this.db.one("SELECT version,value,locale FROM preferences WHERE id=1");
+        const row = this.db.one("SELECT version,value,locale,embedded_theme FROM preferences WHERE id=1");
         if (!row || !Number.isSafeInteger(row.version) || Number(row.version) < 0)
           throw new Fault("integrity", "workspace preferences are invalid");
         return {
           version: Number(row.version),
-          value: viewPreferences.parse({ ...JSON.parse(String(row.value)), locale: row.locale }),
+          value: viewPreferences.parse({
+            ...JSON.parse(String(row.value)),
+            locale: row.locale,
+            embeddedTheme: row.embedded_theme,
+          }),
         };
       }
       case "workspace_configure": {
@@ -141,15 +145,21 @@ export class Workspace {
         const current = this.dispatch("workspace_preferences", {}) as Preferences;
         if (data.expectedVersion !== current.version)
           throw new Fault("conflict", "view preferences changed; reload before saving");
-        const value = { ...data.value, locale: data.value.locale ?? current.value.locale };
+        const value = {
+          theme: data.value.theme,
+          layout: data.value.layout,
+          locale: data.value.locale ?? current.value.locale,
+          embeddedTheme: data.value.embeddedTheme ?? current.value.embeddedTheme,
+        };
         if (JSON.stringify(value) === JSON.stringify(current.value)) return current;
         const version = current.version + 1;
         if (!Number.isSafeInteger(version)) throw new Fault("integrity", "view preference version exhausted");
         this.db.run(
-          "UPDATE preferences SET version=?,value=?,locale=? WHERE id=1",
+          "UPDATE preferences SET version=?,value=?,locale=?,embedded_theme=? WHERE id=1",
           version,
           JSON.stringify({ theme: value.theme, layout: value.layout }),
           value.locale,
+          value.embeddedTheme,
         );
         return { version, value };
       }

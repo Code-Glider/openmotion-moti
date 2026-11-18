@@ -30,7 +30,7 @@ export class Preferences {
   private refresh: HTMLButtonElement;
   private media?: MediaQueryList;
   private embedded: boolean;
-  private value: ViewPreferences = { theme: "light", layout: "edit", locale: "zh-CN" };
+  private value: ViewPreferences = { theme: "light", layout: "edit", locale: "zh-CN", embeddedTheme: "system" };
   private changed = () => this.apply();
   constructor(
     private root: HTMLElement,
@@ -91,7 +91,7 @@ export class Preferences {
       note(
         document,
         this.embedded
-          ? m("嵌入视图跟随浏览器的系统外观；独立视图的主题偏好保持不变。")
+          ? m("嵌入视图的主题单独保存；跟随系统会响应浏览器的外观变化。")
           : m("跟随系统会响应设备外观变化。"),
       ),
       field(document, m("布局"), this.layout),
@@ -108,13 +108,14 @@ export class Preferences {
     this.view.open(trigger);
   }
   private apply() {
-    const dark = this.embedded || this.value.theme === "system" ? !!this.media?.matches : this.value.theme === "dark";
+    const theme = this.embedded ? this.value.embeddedTheme : this.value.theme;
+    const dark = theme === "system" ? !!this.media?.matches : theme === "dark";
     setTheme(this.root, dark ? "dark" : "light");
     this.actions.layout(this.value.layout);
     this.actions.language(this.value.locale);
   }
   private controls() {
-    this.theme.disabled = this.embedded || !!this.flight || !!this.pending || !this.state;
+    this.theme.disabled = !!this.flight || !!this.pending || !this.state;
     this.language.disabled = !!this.flight || !!this.pending || !this.state;
     this.layout.disabled = !!this.flight || !!this.pending || !this.state;
     setButton(this.save, {
@@ -128,7 +129,7 @@ export class Preferences {
   private accept(state: State) {
     this.state = state;
     this.value = state.value;
-    this.theme.value = state.value.theme;
+    this.theme.value = this.embedded ? state.value.embeddedTheme : state.value.theme;
     this.layout.value = state.value.layout;
     this.language.value = state.value.locale;
     this.apply();
@@ -165,6 +166,9 @@ export class Preferences {
         theme: this.embedded ? this.state.value.theme : (this.theme.value as ViewPreferences["theme"]),
         layout: this.layout.value as ViewPreferences["layout"],
         locale: this.language.value as Locale,
+        embeddedTheme: this.embedded
+          ? (this.theme.value as ViewPreferences["embeddedTheme"])
+          : this.state.value.embeddedTheme,
       },
     };
     copyText(this.status, m("保存界面设置中"));

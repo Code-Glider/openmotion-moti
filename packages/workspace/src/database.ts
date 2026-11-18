@@ -18,7 +18,8 @@ export class Database {
       this.sql.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;");
       this.transaction(() => {
         const version = Number(this.one("PRAGMA user_version")?.user_version);
-        if (![0, 3, 4, 5, 6].includes(version)) throw new Fault("integrity", "unsupported workspace database schema");
+        if (![0, 3, 4, 5, 6, 7].includes(version))
+          throw new Fault("integrity", "unsupported workspace database schema");
         if (version === 0) {
           if (this.one("SELECT name FROM sqlite_master WHERE type='table'"))
             throw new Fault("integrity", "unknown workspace database");
@@ -73,6 +74,10 @@ export class Database {
         if (version < 6) {
           this.sql.exec(`ALTER TABLE preferences ADD COLUMN locale TEXT NOT NULL DEFAULT 'zh-CN'
             CHECK(locale IN (${locales.map((value) => `'${value}'`).join(",")})); PRAGMA user_version=6;`);
+        }
+        if (version < 7) {
+          this.sql.exec(`ALTER TABLE preferences ADD COLUMN embedded_theme TEXT NOT NULL DEFAULT 'system'
+            CHECK(embedded_theme IN ('light','dark','system')); PRAGMA user_version=7;`);
         }
       });
     } catch (error) {
