@@ -15,8 +15,8 @@ export function canvasRatio(width: number, height: number): string {
 }
 
 /** Native source owns framing. Preview and export consume these same dimensions and transforms. */
-export function compositionCanvasSource(html: string, parse: typeof parseHTML, change?: { ratio: CanvasRatio; fit: CanvasFit }) {
-  const { document } = parse(html);
+export function compositionCanvasSource(html: string, parsers: { parseHTML: typeof parseHTML; rewriteStyles: (source: string, aliases: Map<string, string>) => string }, change?: { ratio: CanvasRatio; fit: CanvasFit }) {
+  const { document } = parsers.parseHTML(html);
   let root = document.querySelector('[data-composition-id]');
   if (!root || root.tagName !== 'DIV') throw new Error('Choose a native composition with a div root');
   const width = Number(root.getAttribute('data-width')), height = Number(root.getAttribute('data-height'));
@@ -28,8 +28,11 @@ export function compositionCanvasSource(html: string, parse: typeof parseHTML, c
   if (!frame) {
     // Keep the authored root and its children together: selectors and GSAP targets retain their IDs.
     const outer = document.createElement('div');
+    const aliases = new Map<string, string>();
     for (const attr of [...root.attributes]) {
       if (/^data-(?:composition|start$|duration$|width$|height$|fps$|track-index$)/.test(attr.name)) {
+        const alias = `data-canvas-authored-${attr.name.slice(5)}`;
+        aliases.set(attr.name, alias); root.setAttribute(alias, attr.value);
         outer.setAttribute(attr.name, attr.value); root.removeAttribute(attr.name);
       }
     }
@@ -39,6 +42,7 @@ export function compositionCanvasSource(html: string, parse: typeof parseHTML, c
     root.setAttribute('data-canvas-content', '');
     (root as HTMLElement).style.width = `${width}px`; (root as HTMLElement).style.height = `${height}px`;
     root.replaceWith(outer); outer.append(frame); frame.append(root); root = outer;
+    for (const style of document.querySelectorAll('style')) style.textContent = parsers.rewriteStyles(style.textContent || '', aliases);
   }
   const sourceWidth = Number(root.getAttribute('data-canvas-source-width')), sourceHeight = Number(root.getAttribute('data-canvas-source-height'));
   if (![sourceWidth, sourceHeight].every(value => Number.isFinite(value) && value > 0)) throw new Error('Canvas framing metadata changed; restore the composition before reframing');

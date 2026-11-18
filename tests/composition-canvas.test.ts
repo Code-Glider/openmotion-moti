@@ -6,14 +6,15 @@ import { fixture } from './fixtures.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { Phase1Service } from '../phase1.ts';
 import { canvasPresets, compositionCanvasSource } from '../shared/composition-canvas.ts';
-import { loadCaptionSourceOperations } from '../shared/transcript-captions.ts';
+import { loadCanvasSourceOperations } from '../shared/composition-canvas-source.ts';
 
-const { parseHTML } = await loadCaptionSourceOperations(pluginRoot);
+const parsers = await loadCanvasSourceOperations(pluginRoot);
+const { parseHTML } = parsers;
 const source = '<!doctype html><html><head><style>#main > h1 { color:red }</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="4" data-width="1920" data-height="1080"><h1 id="title" class="clip" data-start="1" data-duration="2" data-track-index="0">Keep &amp; animate</h1></div><script>window.__timelines={main:gsap.timeline({paused:true})};</script></body></html>';
 test('all canvas presets preserve authored geometry, targets and timing through repeated fit changes', () => {
   let content = source;
   for (const preset of canvasPresets) for (const fit of ['contain', 'cover'] as const) {
-    const result = compositionCanvasSource(content, parseHTML, { ratio: preset.ratio, fit }); content = result.content;
+    const result = compositionCanvasSource(content, parsers, { ratio: preset.ratio, fit }); content = result.content;
     assert.deepEqual(result.canvas, { ...preset, fit });
     const { document } = parseHTML(content), root = document.querySelector('[data-composition-id]')!;
     assert.equal(document.querySelectorAll('[data-canvas-frame]').length, 1);
@@ -26,9 +27,33 @@ test('all canvas presets preserve authored geometry, targets and timing through 
     assert.equal(document.querySelector('#title')!.getAttribute('data-duration'), '2');
     const scale = Math[fit === 'contain' ? 'min' : 'max'](preset.width / 1920, preset.height / 1080);
     assert.match(document.querySelector('[data-canvas-frame]')!.getAttribute('style')!, new RegExp(`scale\\(${scale}\\)`));
-    assert.equal(compositionCanvasSource(content, parseHTML).canvas.fit, fit);
+    assert.equal(compositionCanvasSource(content, parsers).canvas.fit, fit);
   }
-  assert.throws(() => compositionCanvasSource('<div data-composition-id="main"></div>', parseHTML, { ratio: '9:16', fit: 'contain' }), /dimensions/);
+  assert.throws(() => compositionCanvasSource('<div data-composition-id="main"></div>', parsers, { ratio: '9:16', fit: 'contain' }), /dimensions/);
+});
+test('canvas framing preserves root attribute selectors, nested composition styling and CSS source', async () => {
+  const scene = await readFile(path.join(pluginRoot, 'template-library/decision-tree/compositions/decision_tree.html'), 'utf8');
+  const fragment = parseHTML(scene).document.querySelector('template')!.innerHTML;
+  const result = compositionCanvasSource(fragment, parsers, { ratio: '9:16', fit: 'contain' });
+  const { document } = parseHTML(result.content);
+  assert.equal(document.querySelector('[data-canvas-content]')?.getAttribute('data-canvas-authored-composition-id'), 'decision-tree');
+  const rootSelector = (document.querySelector('style')!.sheet!.cssRules[0] as CSSStyleRule).selectorText;
+  assert.equal(document.querySelector('[data-canvas-content]')!.matches(rootSelector), true);
+  assert.equal(document.querySelector('[data-canvas-fit]')!.matches(rootSelector), false);
+  const css = '/* attribution */ @media (min-width: 1px) { [data-composition-id="main"] > h1, [data-composition-id="nested"] > .nested { color:red; content:"[data-composition-id]"; } } [data-duration="4"] { opacity:.8 }';
+  const fixture = source.replace('#main > h1 { color:red }', css).replace('</h1>', '</h1><div data-composition-id="nested"><span class="nested"></span></div>');
+  const first = compositionCanvasSource(fixture, parsers, { ratio: '9:16', fit: 'contain' }).content;
+  const framed = parseHTML(first).document;
+  const style = framed.querySelector('style')!;
+  const selector = ((style.sheet!.cssRules[0] as CSSMediaRule).cssRules[0] as CSSStyleRule).selectorText;
+  assert.equal(framed.querySelector('#title')!.matches(selector), true, 'Direct-child rules stay on the authored root');
+  assert.equal(framed.querySelector('.nested')!.matches(selector), true, 'Nested compositions retain their own styles');
+  const styled = style.textContent;
+  assert.match(styled!, /\/\* attribution \*\//);
+  assert.match(styled!, /content:"\[data-composition-id\]"/);
+  assert.match(styled!, /data-canvas-authored-duration="4"/);
+  const second = compositionCanvasSource(first, parsers, { ratio: '1:1', fit: 'cover' }).content;
+  assert.equal(parseHTML(second).document.querySelector('style')!.textContent, styled, 'Repeated framing does not rewrap selectors');
 });
 test('public canvas editing persists and replays one version, rejects conflicts and restores original source', () => fixture(async store => {
   await writeFile(path.join(store.projectDirectory, 'index.html'), source);
@@ -38,7 +63,7 @@ test('public canvas editing persists and replays one version, rejects conflicts 
   const saved = await service.call('openmotion_edit_project', input);
   assert.equal(saved.canvas.width, 1080); assert.equal(saved.canvas.height, 1920);
   assert.equal((await service.call('openmotion_edit_project', input)).replayed, true);
-  assert.equal(compositionCanvasSource(await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'), parseHTML).canvas.ratio, '9:16');
+  assert.equal(compositionCanvasSource(await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'), parsers).canvas.ratio, '9:16');
   await assert.rejects(service.call('openmotion_edit_project', { ...input, requestId: 'stale-canvas', canvas: { ...input.canvas, ratio: '1:1' } }), /VERSION_CONFLICT/);
   const current = await service.call('openmotion_get_project', { projectId });
   await service.call('openmotion_restore_version', { projectId, requestId: 'undo-canvas', versionId: before.currentVersionId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId });

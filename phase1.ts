@@ -14,6 +14,7 @@ import { assetOperation } from './gateway/asset-operations.ts';
 import { transcriptOperation } from './gateway/transcript-operations.ts';
 import { transcriptsFor } from './gateway/transcription.ts';
 import { compositionCanvasSource } from './shared/composition-canvas.ts';
+import { loadCanvasSourceOperations } from './shared/composition-canvas-source.ts';
 import { loadCaptionSourceOperations } from './shared/transcript-captions.ts';
 import { brandKitOperation } from './gateway/brand-kit-operation.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
@@ -580,8 +581,8 @@ export class Phase1Service {
       if (args.canvas) {
         const name = projectPath(args.canvas.compositionPath);
         if (!name.endsWith('.html') || names.has(name)) throw new Error('Supply one canvas edit per HTML composition without a competing file edit');
-        const { parseHTML } = await loadCaptionSourceOperations(this.runtimeRoot);
-        const result = compositionCanvasSource(await readFile(await scoped.safePath(name), 'utf8'), parseHTML, args.canvas);
+        const parsers = await loadCanvasSourceOperations(this.runtimeRoot);
+        const result = compositionCanvasSource(await readFile(await scoped.safePath(name), 'utf8'), parsers, args.canvas);
         canvas = result.canvas; changes.push({ path: name, content: result.content });
       }
       if (args.files === undefined && !args.canvas && args.requirements === undefined && args.namingLanguage === undefined && !args.assetNames?.length) throw new Error('Supply files or canvas settings');

@@ -7,6 +7,8 @@ import { Client } from './shared-editor-client.mjs';
 import { closeFixtureEditor } from './fixtures.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { configureNativeEnvironment } from '../scripts/npm-runtime.mjs';
+import { compositionCanvasSource } from '../shared/composition-canvas.ts';
+import { loadCanvasSourceOperations } from '../shared/composition-canvas-source.ts';
 
 const out = process.argv[2]; assert(out && path.isAbsolute(out)); await mkdir(out, { recursive: true });
 await configureNativeEnvironment(pluginRoot);
@@ -32,6 +34,27 @@ try {
   ] });
   const preview = await client.call('openmotion_open_preview', { projectId });
   browser = await puppeteer.launch({ executablePath: process.env.HYPERFRAMES_BROWSER_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
+  const parsers = await loadCanvasSourceOperations(pluginRoot);
+  const sceneTemplate = await readFile(path.join(pluginRoot, 'template-library/decision-tree/compositions/decision_tree.html'), 'utf8');
+  const scene = parsers.parseHTML(sceneTemplate).document.querySelector('template').innerHTML;
+  const stylePage = await browser.newPage();
+  const inspectRoot = async (html, selector) => {
+    const { document } = parsers.parseHTML(html);
+    for (const script of document.querySelectorAll('script')) script.remove();
+    await stylePage.setContent(document.toString());
+    return stylePage.$eval(selector, el => {
+      const s = getComputedStyle(el);
+      return { background: s.backgroundColor, image: s.backgroundImage, size: s.backgroundSize, position: s.position, font: s.fontFamily, overflow: s.overflow, width: s.width, height: s.height };
+    });
+  };
+  const authored = await inspectRoot(scene, '[data-composition-id]');
+  for (const fit of ['contain', 'cover']) {
+    const framed = compositionCanvasSource(scene, parsers, { ratio: '9:16', fit }).content;
+    assert.deepEqual(await inspectRoot(framed, '[data-canvas-content]'), authored);
+    await stylePage.screenshot({ path: path.join(out, `decision-tree-${fit}.png`) });
+  }
+  await stylePage.close();
+  check('Decision Tree retains its root attribute styles and dotted background in both fit modes');
   page = await browser.newPage(); page.on('pageerror', error => errors.push(error.message));
   await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
   await page.setViewport({ width: 1440, height: 900 }); await page.goto(preview.previewUrl, { waitUntil: 'domcontentloaded' });
