@@ -91,7 +91,11 @@ it('keeps the search in the header and preserves filters when clearing the keywo
 });
 it('opens the reference-link form from the library home without creating a search', async () => {
   await mount();
-  const trigger = button('Make a video from a reference', host.querySelector('.om-gallery-intro')!);
+  const intro = host.querySelector('.om-gallery-intro')!;
+  const trigger = button('Paste a video link to make your own', intro);
+  const actions = intro.querySelector('.om-gallery-intro-actions')!;
+  expect(actions.querySelector('a')?.textContent).toBe('Submit video');
+  expect(actions.nextElementSibling).toBe(trigger);
   expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
   const initialCards = cards();
   await act(async () => trigger.click());

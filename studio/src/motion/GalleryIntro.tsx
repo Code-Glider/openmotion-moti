@@ -4,11 +4,11 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { MotionIcon } from './icons';
 
 /** The introductory tile participates in the same masonry flow as media cards. */
-export function GalleryIntro({ eyebrow, title, description, count, disabled, onSurprise, submitLabel, submitUrl, onSubmit, createAction, extraAction }: {
+export function GalleryIntro({ eyebrow, title, description, count, disabled, onSurprise, submitLabel, submitUrl, onSubmit, createAction, afterActions }: {
   eyebrow: string; title: string; description?: string; count: string; disabled: boolean;
   onSurprise: () => void; submitLabel: string; submitUrl: string; onSubmit?: () => void;
   createAction?: { label: string; onClick: () => void };
-  extraAction?: ReactNode;
+  afterActions?: ReactNode;
 }) {
   const { t } = useI18n();
   const submit = <a className={createAction ? "om-button" : "om-gallery-submit"} href={submitUrl} onClick={onSubmit} target="_blank" rel="noreferrer">{submitLabel}<MotionIcon name="arrow-up-right" size={15} /></a>;
@@ -21,7 +21,9 @@ export function GalleryIntro({ eyebrow, title, description, count, disabled, onS
         <button type="button" className="om-button" data-primary onClick={createAction.onClick}><RemixIcon name="add-line" size={16} />{createAction.label}</button>
         {submit}
         <div className="om-gallery-intro-auxiliary">{surprise}</div>
-      </> : <>{surprise}{extraAction}{submit}</>}
-    </div><small>{count}</small>
+      </> : <>{surprise}{submit}</>}
+    </div>
+    {afterActions}
+    <small>{count}</small>
   </section>;
 }

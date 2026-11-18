@@ -33,13 +33,23 @@
   overscroll-behavior: contain;
 }
 .referenceDialog::backdrop { background: var(--motion-overlay); }
-.library .referenceEntryButton {
-  align-self: stretch;
-  min-height: var(--motion-space-40);
+.library[data-motion-template-library] .referenceEntryButton {
+  width: 100%;
   height: auto;
+  justify-content: space-between;
+  gap: var(--motion-space-12);
+  margin-top: var(--motion-space-12);
+  padding: var(--motion-space-12);
+  border-radius: var(--motion-radius-lg);
+  background: var(--motion-accent-soft);
+  color: var(--motion-strong);
   white-space: normal;
   text-align: start;
 }
+.library[data-motion-template-library] .referenceEntryButton:hover { background: var(--motion-hover); }
+.referenceEntryCopy { display: grid; gap: var(--motion-space-4); }
+.referenceEntryCopy > span { color: var(--motion-muted); font-size: var(--motion-text-xs); }
+.referenceEntryCopy > strong { font-weight: var(--motion-weight-semibold); }
 .referenceEntryButton > svg { flex: none; }
 .recoveryStatus { display: grid; justify-items: center; gap: var(--motion-space-12); text-align: center; }
 .recoveryMark {

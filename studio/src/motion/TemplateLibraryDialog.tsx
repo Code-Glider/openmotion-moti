@@ -505,10 +505,13 @@ export function TemplateLibraryDialog(props: Props) {
       {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
       <div className={storiesPreview && brandsOnly ? storyStyles.brandGrid : styles.grid}>
         {!showEmptyRecovery && <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())}
-          extraAction={!hasFilters && <button type="button" className={`om-button ${styles.referenceEntryButton}`} aria-haspopup="dialog" onClick={event => {
+          afterActions={!hasFilters && <button type="button" className={`om-button ${styles.referenceEntryButton}`} aria-haspopup="dialog" aria-label={t('Paste a video link to make your own')} onClick={event => {
             tracking.reportRecoveryAction('reference', listContext(), 'library_home');
             setReferenceTrigger(event.currentTarget);
-          }}><MotionIcon name="film" size={16} />{t('Make a video from a reference')}</button>} />}
+          }}>
+            <span className={styles.referenceEntryCopy}><span>{t('Nothing suitable?')}</span><strong>{t('Paste a video link to make your own')}</strong></span>
+            <MotionIcon name="arrow-right" size={16} />
+          </button>} />}
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
         {storiesPreview && brandsOnly ? visibleBrandGroups.map(series => <BrandSeriesCard key={series.name} series={series} onOpen={(group, element) => openBrand(group, element, 'top100')} />) : visible.map((item, index) => <Fragment key={item.id}>{insertions.get(index) && <BrandSeriesCard series={insertions.get(index)!} discovery onOpen={(group, element) => openBrand(group, element, 'discovery')} />}<TemplateCard template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} /></Fragment>)}
       </div>
