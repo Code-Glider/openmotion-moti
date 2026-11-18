@@ -62,6 +62,11 @@
 .motion-layout-menu-option { display: flex; align-items: center; gap: var(--motion-space-8); }
 .motion-layout-menu-option > svg { flex: none; color: var(--motion-muted); }
 
+.timeline-clip.is-audio .timeline-waveform-canvas { color: var(--timeline-clip-audio-ink); }
+.timeline-clip.is-audio .timeline-waveform-canvas[data-waveform-muted] {
+  color: light-dark(var(--motion-neutral-n8), var(--motion-neutral-n4));
+}
+
 .motion-track-controls-row { display: flex; align-items: center; padding-inline: var(--motion-space-4); }
 .motion-track-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0; width: 100%; }
 .motion-track-kind { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; color: var(--motion-control-disabled); }

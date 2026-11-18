@@ -384,9 +384,7 @@
   opacity: 1;
 }
 
-/* Audio clips read as a distinct kind — a persistent violet tint vs the teal-
-   accented visual clips — so the audio zone at the bottom is visually separate
-   at a glance (the timeline's kinds: visual on top, audio below). */
+/* The audio lane uses the brand tint and a higher-contrast waveform. */
 .timeline-clip.is-audio {
   background-color: var(--timeline-clip-audio-bg);
   border-color: var(--timeline-clip-audio-border);
