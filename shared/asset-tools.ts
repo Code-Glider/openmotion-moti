@@ -40,7 +40,7 @@ export const assetUseTool = {
 };
 export const workspaceAssetUseTool = {
   ...assetUseTool,
-  description: assetUseTool.description + ' Use action=voice with a voice command to list/get/add/update/check/discover saved Fish Audio and MiniMax Speech voices. Management never generates audio or deletes remote voices. A voiceRef pins a local voice revision when generating speech. List presence proves visibility, not synthesis; missing entries do not prove deletion. Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.' + transcriptToolDescription,
+  description: assetUseTool.description + ' Use action=voice with a voice command to list/get/add/update/check/discover saved Fish Audio and MiniMax Speech voices. Management never generates audio or deletes remote voices. A voiceRef selects an immutable local voice identity and records the selection revision. Metadata changes do not invalidate queued speech; trash and unavailable connections still block it. List presence proves visibility, not synthesis; missing entries do not prove deletion. Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.' + transcriptToolDescription,
   annotations: { ...assetUseTool.annotations, destructiveHint: true },
   inputSchema: {
     ...assetUseTool.inputSchema, properties: { ...assetUseTool.inputSchema.properties,

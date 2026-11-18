@@ -1,3 +1,4 @@
+import { isVoiceProvider, type VoiceProvider } from '../shared/voice-library.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
@@ -143,7 +144,7 @@ export class ModelGateway {
     if (input.refresh && input.provider === 'account') await this.account.models(true);
     if (input.refresh && typeof input.provider === 'string' && input.provider !== 'account' && !providerIds.includes(input.provider)) await this.connections.sync(input.provider);
     if (input.refresh) {
-      const selected = mediaProviders.filter(id => id !== 'opendesign' && id !== 'fishaudio' && id !== 'minimax-speech' && id !== 'minimax-speech-cn').filter(id => !input.provider || input.provider === id);
+      const selected = mediaProviders.filter(id => id !== 'opendesign').filter((id): id is Exclude<typeof id, VoiceProvider> => !isVoiceProvider(id)).filter(id => !input.provider || input.provider === id);
       const discovered = await Promise.all(selected.map(async id => {
         try {
           if (id === 'wavespeed') {
@@ -469,7 +470,10 @@ export class ModelGateway {
         if (job.model.provider === 'opendesign' && job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the queued task was not submitted');
         if (job.model.provider !== 'account' && !isGatewayProvider(job.model.provider) && job.providerOrigin !== await this.connections.baseUrl(job.model.provider)) throw new Error('Provider API origin changed; the queued task was not submitted');
         if (job.model.provider !== 'account' && !isGatewayProvider(job.model.provider) && (job.providerRevision !== await this.connections.identity(job.model.provider) || !(await this.connections.mediaModels()).some(model => model.id === job.model.id))) throw new Error('Provider or model configuration changed; the queued task was not submitted');
-        if (job.voiceRef) await new VoiceLibrary(this.store).resolve(job.voiceRef, job.model.provider);
+        if (job.voiceRef) {
+          const voice = await new VoiceLibrary(this.store).resolve(job.voiceRef, job.model.provider);
+          if (voice.externalId !== job.voice?.externalId) throw new Error('VOICE_CHANGED: Speech voice identity changed');
+        }
         await requireLibraryMediaRuntime();
         await mkdir(dir, { recursive: true, mode: 0o700 });
         let buffers: Buffer[];

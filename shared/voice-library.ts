@@ -2,6 +2,7 @@ import type { AssetReference } from './asset-library.ts';
 
 export const voiceProviders = ['fishaudio', 'minimax-speech-cn', 'minimax-speech'] as const;
 export type VoiceProvider = typeof voiceProviders[number];
+export function isVoiceProvider(value: unknown): value is VoiceProvider { return voiceProviders.some(provider => provider === value); }
 export const voiceKinds = ['cloned', 'designed', 'system', 'unknown'] as const;
 export type VoiceReference = { voiceId: string; revision: number };
 export type VoiceAsset = {

@@ -1,3 +1,5 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixtures.ts';
@@ -235,3 +237,72 @@ test('MiniMax synchronous speech uses the job budget and accepts hex audio beyon
   });
   assert.deepEqual(timeouts, [15 * 60_000]); assert.equal(output[0].length, bytes); assert.equal(submissions, 1);
 });
+
+test('queued speech and restored selections survive voice metadata edits and rechecks without changing the pinned source', () => fixture(async store => {
+  const audio = await mediaBytes('audio'), gateway = new ModelGateway(store, { detect: async () => [] });
+  let submissions = 0;
+  gateway.options.fetcher = async (_url, init) => {
+    submissions++; assert.equal(JSON.parse(String(init?.body)).voice_setting.voice_id, input.externalId);
+    return Response.json({ base_resp: { status_code: 0 }, data: { audio: audio.toString('hex') } });
+  };
+  const library = new VoiceLibrary(store, async () => Response.json({ base_resp: { status_code: 0 }, voice_cloning: [{ voice_id: input.externalId }] }));
+  try {
+    await library.connections.configure('minimax-speech', { apiKey: 'synthetic-queued-voice-key' });
+    const voice = await library.add({ ...input, provider: 'minimax-speech' });
+    const request = { modality: 'audio' as const, model: 'minimax-speech:speech-2.8-hd', prompt: 'A queued script', library: {}, voiceRef: { voiceId: voice.id, revision: voice.revision } };
+    const queued = await gateway.submit({ ...request, idempotencyKey: 'before-metadata-change' });
+    const renamed = await library.update(voice.id, voice.revision, { name: 'Renamed narrator', description: 'Updated metadata' });
+    const restored = await gateway.submit({ ...request, idempotencyKey: 'restored-older-selection' });
+    const checked = await library.check(voice.id, renamed.revision);
+    assert.equal(checked.connection, 'ready');
+    await gateway.tick(); await Promise.all([...gateway.active.values()].map(task => task.done));
+    for (const job of [queued, restored]) {
+      const completed = await gateway.getJob(job.id);
+      assert.equal(completed.state, 'completed', completed.error);
+      assert.deepEqual(completed.voice, job.voice);
+      assert.equal(completed.voice?.externalId, input.externalId);
+    }
+    assert.equal(submissions, 2);
+    await assert.rejects(library.resolve({ voiceId: voice.id, revision: checked.revision + 1 }, 'minimax-speech'), /VOICE_CHANGED/);
+    await assert.rejects(library.update(voice.id, renamed.revision, { name: 'Stale update' }), /VOICE_CHANGED/);
+  } finally { await gateway.close(); }
+}, false));
+
+for (const change of ['trash', 'connection', 'identity'] as const) test(`queued voice jobs still stop on ${change} changes before a provider call`, () => fixture(async store => {
+  const gateway = new ModelGateway(store, { detect: async () => [] }), library = new VoiceLibrary(store);
+  let submissions = 0; gateway.options.fetcher = async () => { submissions++; throw new Error('Unexpected paid submission'); };
+  try {
+    await library.connections.configure('fishaudio', { apiKey: 'synthetic-original-connection' });
+    const voice = await library.add(input);
+    const job = await gateway.submit({ modality: 'audio', model: 'fishaudio:s2-pro', prompt: 'Queued narration', library: {}, voiceRef: { voiceId: voice.id, revision: voice.revision } });
+    if (change === 'trash') await library.update(voice.id, voice.revision, { trashed: true });
+    else if (change === 'connection') await library.connections.configure('fishaudio', { apiKey: 'synthetic-changed-connection' });
+    else {
+      const file = path.join(store.directory, 'asset-library', 'voices', voice.id + '.json');
+      await writeFile(file, JSON.stringify({ ...JSON.parse(await readFile(file, 'utf8')), externalId: 'different-remote-identity' }));
+    }
+    await gateway.tick(); await Promise.all([...gateway.active.values()].map(task => task.done));
+    const completed = await gateway.getJob(job.id);
+    assert.equal(completed.state, 'failed');
+    assert.match(completed.error ?? '', /VOICE_CHANGED|Check this voice/); assert.equal(submissions, 0);
+  } finally { await gateway.close(); }
+}, false));
+
+test('native speech rejects missing voices before queueing and accepts explicit voices, saved selections and model defaults', () => fixture(async store => {
+  const gateway = new ModelGateway(store, { detect: async () => [] });
+  try {
+    for (const provider of ['fishaudio', 'minimax-speech-cn', 'minimax-speech']) {
+      await gateway.connections.configure(provider, { apiKey: `synthetic-${provider}` });
+      const model = `${provider}:${provider === 'fishaudio' ? 's2-pro' : 'speech-2.8-hd'}`;
+      const request = { modality: 'audio' as const, model, prompt: 'Speech requires a voice', library: {} };
+      for (const parameters of [undefined, { voice: '' }, { voice: '  ' }]) await assert.rejects(gateway.submit({ ...request, parameters }), /Voice ID|voice/);
+      assert.equal((await gateway.listJobs()).length, 0);
+    }
+    const request = { modality: 'audio' as const, model: 'fishaudio:s2-pro', prompt: 'A narrator', library: {} };
+    assert.equal((await gateway.submit({ ...request, parameters: { voice: 'explicit-voice' } })).parameters.voice, 'explicit-voice');
+    const voice = await new VoiceLibrary(store).add(input);
+    assert.equal((await gateway.submit({ ...request, voiceRef: { voiceId: voice.id, revision: voice.revision } })).parameters.voice, input.externalId);
+    await gateway.connections.updateMetadata('fishaudio:s2-pro', { defaults: { voice: 'default-voice' } });
+    assert.equal((await gateway.submit(request)).model.defaults?.voice, 'default-voice');
+  } finally { await gateway.close(); }
+}, false));

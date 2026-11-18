@@ -29,3 +29,5 @@ Saving a voice only saves local metadata. Updating/trashing/restoring affects lo
 Official references: [TTS](https://platform.minimax.io/docs/api-reference/speech-t2a-http), [voice management](https://platform.minimax.io/docs/api-reference/voice-management-get), [clone lifecycle](https://platform.minimax.io/docs/api-reference/voice-cloning-clone).
 
 China mainland references: [TTS](https://platform.minimax.cn/docs/api-reference/speech-t2a-http), [voice management](https://platform.minimax.cn/docs/api-reference/voice-management-get).
+
+Voice management updates and checks use exact revision guards. Speech references retain the immutable saved voice identity across metadata edits and rechecks; queued jobs preserve their original source snapshot. Trash, unavailable/changed connections and a mismatched remote voice identity still prevent submission. Native speech without a saved selection or explicit/default voice ID is rejected before queueing.

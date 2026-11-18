@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { WorkspaceStore } from '../workspace.ts';
-import { voiceKinds, voiceProviders, type VoiceAsset, type VoiceReference, type VoiceProvider } from '../shared/voice-library.ts';
+import { voiceKinds, isVoiceProvider, type VoiceAsset, type VoiceReference, type VoiceProvider } from '../shared/voice-library.ts';
 import { AssetLibrary, assetName, atomicAssetJson, libraryId } from './asset-library.ts';
 import { ProviderConnections } from './connections.ts';
 import { apiJson, publicProviderFetch, type Fetcher } from './network.ts';
@@ -11,7 +11,7 @@ import { apiJson, publicProviderFetch, type Fetcher } from './network.ts';
 type SavedVoice = Omit<VoiceAsset, 'connection'> & { scope?: string; receipt?: string };
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function providerId(value: unknown): asserts value is VoiceProvider {
-  if (!voiceProviders.includes(value as VoiceProvider)) throw new Error('Choose a supported voice provider');
+  if (!isVoiceProvider(value)) throw new Error('Choose a supported voice provider');
 }
 function voiceId(value: unknown): asserts value is string {
   if (typeof value !== 'string' || !value.trim() || value.length > 256 || /[\x00-\x1f]/.test(value)) throw new Error('Enter a voice ID (up to 256 characters)');
@@ -111,9 +111,10 @@ export class VoiceLibrary {
     });
   }
   async resolve(reference: VoiceReference, provider: string) {
-    if (!reference || Object.keys(reference).some(key => !['voiceId','revision'].includes(key))) throw new Error('Invalid voice reference');
+    if (!reference || !Number.isInteger(reference.revision) || reference.revision < 1 || Object.keys(reference).some(key => !['voiceId','revision'].includes(key))) throw new Error('Invalid voice reference');
     const voice = await this.get(reference.voiceId);
-    if (voice.trashedAt || voice.revision !== reference.revision) throw new Error('VOICE_CHANGED: Select the current voice');
+    // Source identity is immutable; metadata revisions do not invalidate a speech selection.
+    if (voice.trashedAt || voice.revision < reference.revision) throw new Error('VOICE_CHANGED: Select the current voice');
     if (provider !== voice.provider) throw new Error('Voice and speech model must use the same provider');
     if (voice.connection !== 'ready') throw new Error('Check this voice after connecting or changing its provider');
     return { voiceId: voice.id, revision: voice.revision, name: voice.name, provider: voice.provider, externalId: voice.externalId };

@@ -24,3 +24,5 @@ Official references: [TTS](https://docs.fish.audio/api-reference/endpoint/openap
 ## Regions
 
 The official [Chinese developer page](https://fish.audio/zh-CN/developers/) also uses `https://api.fish.audio/v1/tts` (checked 2026-11-17). No separate public regional API contract was found, so Settings keeps a single Fish Audio connection. Interface language and enterprise self-hosting do not imply a second regional API preset.
+
+Voice management updates and checks use exact revision guards. Speech references retain the immutable saved voice identity across metadata edits and rechecks; queued jobs preserve their original source snapshot. Trash, unavailable/changed connections and a mismatched remote voice identity still prevent submission. Native speech without a saved selection or explicit/default voice ID is rejected before queueing.
