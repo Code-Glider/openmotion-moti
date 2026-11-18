@@ -1,7 +1,6 @@
 import { useI18n } from "../i18n/I18n";
 import { usePlayerStore } from "../player";
 import { RemixIcon, Magnet } from "../icons/RemixIcons";
-import { RippleEditIcon } from "./icons/RippleEditIcon";
 import { Tooltip } from "./ui";
 import { flatActive, flatIdle } from "./timelineToolbarStyles";
 import { keyHint, useStudioKeys } from "../player/components/studioShortcuts";
@@ -27,6 +26,7 @@ export function TimelineBehaviorToggles() {
                 trackStudioClick("timeline", "snap_toggle", undefined, undefined, timelineSnapEnabled ? "off" : "on");
                 setTimelineSnapEnabled(!timelineSnapEnabled);
               }}
+              data-timeline-snap
               aria-label={t("Snapping")}
               aria-pressed={timelineSnapEnabled}
               className={timelineSnapEnabled ? flatActive : flatIdle}
@@ -44,7 +44,7 @@ export function TimelineBehaviorToggles() {
               aria-pressed={rippleEditEnabled}
               className={rippleEditEnabled ? flatActive : flatIdle}
             >
-              <RippleEditIcon size={16} />
+              <RemixIcon name="align-item-left-line" size={18} />
             </button>
           </Tooltip>
           <Tooltip label={t("Timeline linkage")}>

@@ -443,7 +443,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
             );
           })()}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="motion-timeline-view-controls flex items-center gap-0.5">
           <TimelineBehaviorToggles />
           {rightActions}
 {!mvp && <>           <Tooltip
