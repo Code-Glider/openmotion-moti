@@ -80,7 +80,7 @@
 .motion-track-badge[data-main-track] { color: var(--motion-accent); background: var(--motion-accent-soft); }
 
 /* Timeline toggles share icon scale and ink; their background conveys on/off. */
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls button {
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button {
   width: var(--motion-space-28);
   height: var(--motion-space-28);
   min-height: 0;
@@ -90,13 +90,12 @@
   color: var(--motion-strong);
   background: transparent;
 }
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls button > svg {
-  width: var(--motion-space-18);
-  height: var(--motion-space-18);
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button > svg {
+  width: var(--motion-icon);
+  height: var(--motion-icon);
   flex: none;
 }
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls [data-timeline-snap] > svg { width: var(--motion-space-20); height: var(--motion-space-20); }
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls button:is([aria-pressed="true"], :hover:enabled) { background: var(--motion-hover); }
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls button[aria-pressed="true"]:hover:enabled { background: var(--motion-chrome-active); }
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls button:disabled { color: var(--motion-control-disabled); background: transparent; }
-:root[data-motion-ui] .motion-timeline-toolbar .motion-timeline-view-controls button:enabled { color: var(--motion-strong); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:is([aria-pressed="true"], :hover:enabled) { background: var(--motion-hover); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button[aria-pressed="true"]:hover:enabled { background: var(--motion-chrome-active); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:disabled { color: var(--motion-control-disabled); background: transparent; opacity: 1; }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:enabled { color: var(--motion-strong); }

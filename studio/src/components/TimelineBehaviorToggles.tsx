@@ -26,7 +26,6 @@ export function TimelineBehaviorToggles() {
                 trackStudioClick("timeline", "snap_toggle", undefined, undefined, timelineSnapEnabled ? "off" : "on");
                 setTimelineSnapEnabled(!timelineSnapEnabled);
               }}
-              data-timeline-snap
               aria-label={t("Snapping")}
               aria-pressed={timelineSnapEnabled}
               className={timelineSnapEnabled ? flatActive : flatIdle}
@@ -44,7 +43,7 @@ export function TimelineBehaviorToggles() {
               aria-pressed={rippleEditEnabled}
               className={rippleEditEnabled ? flatActive : flatIdle}
             >
-              <RemixIcon name="align-item-left-line" size={18} />
+              <RemixIcon name="align-item-left-line" size={16} />
             </button>
           </Tooltip>
           <Tooltip label={t("Timeline linkage")}>
