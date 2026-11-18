@@ -57,7 +57,7 @@ node /absolute/path/to/hyperframes/bin/hyperframes.mjs render /absolute/path/to/
 
 Do not compare every frame, and do not spend repair rounds on pixel differences that are not visible (for example GPU antialiasing). Fix a failed render, a missing file or a visible difference. Record the result in `TEMPLATE.md` as passed, failed or not run.
 
-When the handoff includes Studio import, validate the exact ZIP in an isolated workspace using the [native ZIP import flow](../../openmotion-production/references/portable-project.md#import-a-native-zip-into-studio). Import has its own native validation. If it rejects nested timeline media, use top-level timed layers or the pinned guide's native sub-compositions, then rerender and repackage the corrected source. Record the import and version-read results separately from the unpacked render.
+Run `node <runtimeRoot>/scripts/lint-project.mjs <runtimeRoot> <unpackedDirectory>` on the unpacked copy for every template, because later template use imports it into Studio; structural errors there are delivery failures. When the handoff includes Studio import, also validate the exact ZIP in an isolated workspace using the [native ZIP import flow](../../openmotion-production/references/portable-project.md#import-a-native-zip-into-studio). Import has its own native validation. If the linter or import rejects nested timeline media, use top-level timed layers or the pinned guide's native sub-compositions, then rerender and repackage the corrected source. Record the import and version-read results separately from the unpacked render.
 
 This is a self-containment check, not independent-agent proof. Do not claim an independent test happened inside the creating session.
 
