@@ -32,7 +32,7 @@ import type { DraggedClipState, ResizingClipState } from "./timelineClipDragType
 import { useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
 import { heldAudioShiftRange, heldPartnerVideoBounds } from "./audioClipLink";
 import { snapOpenReelMove } from "./timelineDragSnap";
-import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
+import { canMoveTimelineElement, resolveExpandedHostAlias } from "./timelineAuthoredMoveTarget";
 import { findBlockedTrackInsert, layoutAfterTrackInsert } from "./timelineDragLanding";
 import type { TimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
 import { isPendingTimelineRow } from "./timelinePendingRows";
@@ -286,10 +286,10 @@ export function computeDragPreview(
   const savedStart = keepOrigin || group.moving.size > 1 ||
     authoredStart < group.floor || authoredStart - origin < shift.min || authoredStart - origin > shift.max
     ? previewStart : authoredStart;
-  const host = drag.element.expandedHostKey;
   const insertion = ctx.canInsertClips !== false && drag.pointerId !== null && aim.insertRow === null &&
     trackOrder[aimedRow] !== undefined && !ctx.groupTracks?.has(desiredTrack) &&
-    !(host && ctx.selectedKeys.has(host)) && !isPendingTimelineRow(desiredTrack, ctx.elements)
+    !isPendingTimelineRow(desiredTrack, ctx.elements) &&
+    ((ctx.selectedKeys.size < 2 && !drag.element.expandedHostKey) || !resolveExpandedHostAlias(drag, ctx))
     ? previewClipInsert(
       ctx.elements, drag.element, group.moving, desiredTrack, rawStart,
       requestedStart + drag.pointerOffsetX / Math.max(pps, 1), !drag.altKey,

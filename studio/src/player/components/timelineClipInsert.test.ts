@@ -31,6 +31,10 @@ it("uses the pointer's insertion intent even when a distant edge could snap the 
   expect(preview.previewTrack).toBe(1);
   expect(preview.insertion?.get("b")).toBe(7);
   expect(computeDragPreview(preview, 62, y + TRACK_H, context).insertion).toBeUndefined();
+  const child = { ...clip("child", 2, 20, 1), expandedHostKey: moving.id };
+  expect(computeDragPreview(drag, 40, y + TRACK_H, {
+    ...context, elements: [...context.elements, child], selectedKeys: new Set([moving.id, child.id]),
+  }).insertion).toBeUndefined();
 });
 
 it.each([0, 0.18, 1])("makes just enough room in a gap of %ss and leaves later free space alone", gap => {
