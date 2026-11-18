@@ -1,6 +1,6 @@
 /* Continuous editor surfaces. Dockview retains geometry and resize hit targets. */
 [data-motion-studio] {
-  --motion-editor-divider: light-dark(var(--motion-editor-divider-light), var(--motion-neutral-n11));
+  --motion-editor-divider: light-dark(var(--motion-editor-divider-light), var(--motion-editor-divider-dark));
   --motion-editor-surface: var(--motion-panel);
 }
 [data-motion-studio][data-theme="paper"] { --motion-editor-surface: var(--motion-neutral-n0); }
