@@ -115,6 +115,61 @@ function buildLiveIframe(bodyHtml: string) {
 describe("applyUndoRestoreToPreview", () => {
   const ROOT = "index.html";
 
+  it("restores a scene's timing without reloading unrelated scenes that reuse identities", () => {
+    const source = (duration: number) => wrap(
+      `<div id="root" data-hf-id="root" data-composition-id="root">` +
+      `<div id="scene-a" data-hf-id="host-a" data-start="2" data-duration="${duration}" data-composition-src="a.html"></div>` +
+      `<div id="scene-b" data-hf-id="host-b" data-start="10" data-duration="5" data-composition-src="b.html"></div></div>`,
+    );
+    const { iframe, doc } = buildLiveIframe(
+      `<div id="root" data-hf-id="root" data-composition-id="root">` +
+      `<div id="scene-a" data-hf-id="host-a" data-start="2" data-hf-authored-duration="7" data-composition-file="a.html" data-hf-scene="scene-a" style="visibility: hidden !important">` +
+      `<div data-hf-inner-root><span data-hf-id="shared-title">A</span></div></div>` +
+      `<div id="scene-b" data-hf-id="host-b" data-start="10" data-hf-authored-duration="5" data-composition-file="b.html">` +
+      `<div data-hf-inner-root><span data-hf-id="shared-title">B</span></div></div></div>`,
+    );
+    const children = [...doc.querySelectorAll("[data-hf-inner-root]")];
+    const reload = vi.fn();
+    const files = { [ROOT]: { previous: source(7), restored: source(4) } };
+
+    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, reload)).toBe("soft");
+    expect(reload).not.toHaveBeenCalled();
+    const host = doc.getElementById("scene-a")!;
+    expect(host.getAttribute("data-duration")).toBe("4");
+    expect(host.getAttribute("data-hf-authored-duration")).toBe("4");
+    expect(host.getAttribute("data-composition-file")).toBe("a.html");
+    expect(host.hasAttribute("data-composition-src")).toBe(false);
+    expect(host.getAttribute("data-hf-scene")).toBe("scene-a");
+    expect((host as HTMLElement).style.getPropertyPriority("visibility")).toBe("important");
+    expect([...doc.querySelectorAll("[data-hf-inner-root]")]).toEqual(children);
+    expect([...doc.querySelectorAll("[data-hf-id=shared-title]")].map(e => e.textContent)).toEqual(["A", "B"]);
+
+    expect(applyUndoRestoreToPreview(iframe, ROOT, { [ROOT]: { previous: source(4), restored: source(7) } }, 3, reload)).toBe("soft");
+    expect(host.getAttribute("data-duration")).toBe("7");
+    expect(host.getAttribute("data-hf-authored-duration")).toBe("7");
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("still reloads when the changed identity itself is ambiguous", () => {
+    const { iframe } = buildLiveIframe('<div data-hf-id="target"></div><div data-hf-id="target"></div>');
+    const reload = vi.fn();
+    const files = { [ROOT]: { previous: wrap('<div data-hf-id="target" data-start="2"></div>'), restored: wrap('<div data-hf-id="target" data-start="1"></div>') } };
+    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, reload)).toBe("full");
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("restores authored scene styles while retaining the runtime's hidden state", () => {
+    const source = (style: string) => wrap(`<div id="scene" data-hf-id="host" data-composition-src="scene.html" style="${style}"></div>`);
+    const { iframe, doc } = buildLiveIframe('<div id="scene" data-hf-id="host" data-composition-file="scene.html" style="z-index: 3; opacity: 0.5; visibility: hidden !important; position: absolute"></div>');
+    const files = { [ROOT]: { previous: source("z-index: 3; opacity: 0.5"), restored: source("z-index: 1") } };
+    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, vi.fn())).toBe("soft");
+    const style = (doc.getElementById("scene") as HTMLElement).style;
+    expect(style.zIndex).toBe("1");
+    expect(style.opacity).toBe("");
+    expect(style.position).toBe("absolute");
+    expect(style.getPropertyPriority("visibility")).toBe("important");
+  });
+
   it("takes GSAP's composed transform off the preview it is about to reload", () => {
     // Undoing "enable keyframes" removes the script: no in-place patch expresses that, so the
     // preview reloads — and until it lands it shows where the timeline last put the box, though

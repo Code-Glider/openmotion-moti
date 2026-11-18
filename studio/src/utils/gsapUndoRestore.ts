@@ -17,6 +17,7 @@ import { STUDIO_EDIT_ATTRS } from "../components/editor/manualEditsSeekReapply";
 import { markScenesStale } from "../player/sceneSwap";
 import { STUDIO_ORIGINAL_INLINE_TRANSLATE_ATTR } from "../components/editor/manualEditsTypes";
 import { countStudioPreviewChange, studioGestureDraws } from "../components/editor/manualEditsDom";
+import { syncPreservedPreviewTiming } from "./previewAuthoredTiming";
 
 type PreviewWindow = Window & {
   __player?: { seek?: (t: number) => void };
@@ -47,11 +48,12 @@ function elementIdentityKey(el: Element): string | null {
 
 const IDENTITY_SELECTOR = "[id], [data-hf-id]";
 
-function identityElementMap(root: ParentNode): Map<string, Element> | null {
+function identityElementMap(root: ParentNode, needed?: ReadonlySet<string>): Map<string, Element> | null {
   const map = new Map<string, Element>();
   for (const el of root.querySelectorAll(IDENTITY_SELECTOR)) {
     const key = elementIdentityKey(el);
     if (!key) continue;
+    if (needed && !needed.has(key)) continue;
     // Ambiguous identity must full-reload; silently overwriting would restore
     // one element's attributes onto another element sharing the same key.
     if (map.has(key)) return null;
@@ -149,12 +151,39 @@ function diffRestoreDocs(prevDoc: Document, nextDoc: Document): string[] | null 
 function syncElementAttributes(target: Element, source: Element, base?: Element): void {
   const draws = base && studioGestureDraws(target);
   const merged = draws ? keepDrawn(target, source, base, draws) : source;
+  if (base && syncMountedCompositionAttributes(target, merged, base)) return;
   for (const name of [...target.getAttributeNames()]) {
     if (!merged.hasAttribute(name)) target.removeAttribute(name);
   }
   for (const name of merged.getAttributeNames()) {
     target.setAttribute(name, merged.getAttribute(name) ?? "");
   }
+}
+
+/** A mounted scene contains runtime-owned markup and visibility. Restore only
+ * the authored differences without turning it back into an unloaded reference. */
+function syncMountedCompositionAttributes(target: Element, source: Element, base: Element): boolean {
+  const file = target.getAttribute("data-composition-file");
+  if (!file || file !== source.getAttribute("data-composition-src")) return false;
+  for (const name of new Set([...base.getAttributeNames(), ...source.getAttributeNames()])) {
+    if (name === "data-composition-src" || source.getAttribute(name) === base.getAttribute(name)) continue;
+    if (name === "style") {
+      const live = (target as HTMLElement).style;
+      const before = (base as HTMLElement).style;
+      const after = (source as HTMLElement).style;
+      for (const property of new Set([...Array.from(before), ...Array.from(after)])) {
+        if (before.getPropertyValue(property) === after.getPropertyValue(property) && before.getPropertyPriority(property) === after.getPropertyPriority(property)) continue;
+        if (after.getPropertyValue(property)) live.setProperty(property, after.getPropertyValue(property), after.getPropertyPriority(property));
+        else live.removeProperty(property);
+      }
+      continue;
+    }
+    const value = source.getAttribute(name);
+    syncPreservedPreviewTiming(target, name, value);
+    if (value === null) target.removeAttribute(name);
+    else target.setAttribute(name, value);
+  }
+  return true;
 }
 
 /** `source`, plus what a gesture in progress draws on `live` (whatever its value) or changed since `base`. */
@@ -235,7 +264,9 @@ function scopeTargets(
   restoredByKey: Map<string, Element>,
   previousByKey: Map<string, Element>,
 ): RestoreTarget[] | null {
-  const liveByKey = identityElementMap(scope);
+  // Inlined scenes may reuse local identities. Only ambiguity in an actual
+  // restore target requires a reload; unrelated scene contents stay mounted.
+  const liveByKey = identityElementMap(scope, new Set(keys));
   if (!liveByKey) return null;
   const targets: RestoreTarget[] = [];
   for (const key of keys) {

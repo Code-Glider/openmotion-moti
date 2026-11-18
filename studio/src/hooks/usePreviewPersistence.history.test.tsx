@@ -220,3 +220,30 @@ describe("undo that lands while a newer gesture holds an element", () => {
     expect(win.__player.seek).not.toHaveBeenCalled();
   });
 });
+
+it("paints soft-restored timing immediately and puts a refused prediction back without a runtime message", async () => {
+  const page = (start: number) => `<html><body><div data-composition-id="root" data-duration="20"><div id="clip" data-hf-id="hf-clip" data-start="${start}" data-duration="4"></div></div></body></html>`;
+  const doc = document.implementation.createHTMLDocument("");
+  doc.body.innerHTML = new DOMParser().parseFromString(page(5), "text/html").body.innerHTML;
+  const iframe = {
+    contentDocument: doc,
+    contentWindow: { __hfForceTimelineRebind: vi.fn(), __timelines: {}, __player: { seek: vi.fn() } },
+  } as unknown as HTMLIFrameElement;
+  usePlayerStore.setState({ elements: [{ id: "clip", key: "index.html#clip", domId: "clip", hfId: "hf-clip", sourceFile: "index.html", tag: "div", start: 5, duration: 4, track: 0 }], duration: 20 });
+  const reload = vi.fn();
+  let hook!: ReturnType<typeof usePreviewPersistence>;
+  function Harness() {
+    hook = usePreviewPersistence({ showToast: () => {}, readOptionalProjectFile: async () => "", writeProjectFile: async () => {}, recordEdit: async () => {}, previewIframeRef: { current: iframe }, activeCompPathRef: { current: null }, reloadPreview: reload });
+    return null;
+  }
+  mountReactHarness(<Harness />);
+  const files = { "index.html": { previous: page(5), restored: page(2) } };
+  const putBack = hook.showHistoryRestoreNow(files)!;
+  expect(putBack).not.toBeNull();
+  expect(usePlayerStore.getState().elements[0].start).toBe(2);
+  putBack();
+  expect(usePlayerStore.getState().elements[0].start).toBe(5);
+  await act(() => hook.syncHistoryPreviewAfterApply({ paths: ["index.html"], files }));
+  expect(usePlayerStore.getState().elements[0].start).toBe(2);
+  expect(reload).not.toHaveBeenCalled();
+});

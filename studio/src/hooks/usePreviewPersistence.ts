@@ -28,6 +28,7 @@ import { settleNestedReads } from "../utils/gsapSoftReload";
 import { readProjectFileContent } from "../utils/studioFileHistory";
 import { usePlayerStore } from "../player";
 import { syncStoredAutomationFromPreview } from "../player/lib/automationStoreSync";
+import { syncRestoredTimelineFromPreview } from "../player/lib/timelineRestoreSync";
 
 /** The restore payload the undo/redo preview-sync consumes (from the history store). */
 interface HistoryPreviewRestore {
@@ -247,6 +248,7 @@ export function usePreviewPersistence({
         nestedFiles,
       );
       if (strategy === "full") return;
+      syncRestoredTimelineFromPreview(previewIframeRef.current?.contentDocument);
       // A soft restore patched the reverted attributes onto the live preview, but the
       // player store keeps its own copy and that copy is what the automation lanes
       // draw — so without this an undone envelope edit stayed invisible until a
@@ -266,10 +268,12 @@ export function usePreviewPersistence({
       const now = () => usePlayerStore.getState().currentTime;
       const putBack = showRestoreInPlace(iframe, activeCompPathRef.current, files, now());
       if (!putBack) return null;
+      syncRestoredTimelineFromPreview(iframe?.contentDocument);
       return () => {
-        if (!heldPreviewDoc() && putBack(now()))
+        if (!heldPreviewDoc() && putBack(now())) {
+          syncRestoredTimelineFromPreview(iframe?.contentDocument);
           syncStoredAutomationFromPreview(iframe?.contentDocument ?? null);
-        else void syncHistoryPreviewAfterApply({ paths: Object.keys(files) });
+        } else void syncHistoryPreviewAfterApply({ paths: Object.keys(files) });
       };
     },
     [previewIframeRef, activeCompPathRef, syncHistoryPreviewAfterApply, heldPreviewDoc],
