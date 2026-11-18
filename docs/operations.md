@@ -25,6 +25,14 @@ pnpm --filter @open-motion/standalone test
 
 Installed-kit continuity is covered by `packages/application/tests/journey.test.ts`: actual npm installation, installed MCP creation, managed standalone Web edits/history, stale-revision refusal and cold reconnect. Run it through the application module's standard test command with Playwright installed as above. With `OPEN_MOTION_NATIVE_MANIFEST`, the same journey also verifies a Web-submitted native film and its unchanged bytes after restart. Without that manifest, native execution is explicitly unqualified. MCP SDK coverage is separate from a real model-backed Codex host session.
 
+The explicit installed two-film scenario builds and packages through the public pipeline CLI, installs the resulting npm kit into an isolated home, prepares the declared native tools, then continues an SDK-created project through the actual Web. It verifies two fixed-revision films, complete bytes, an isolated browser player's first load/seek/replay and failed-read recovery, unchanged first-film frames after the second edit and cold link renewal without another render. Run on the qualified macOS arm64 platform:
+
+```sh
+OPEN_MOTION_NATIVE_HANDOFF=1 pnpm --filter @open-motion/application exec vitest run -c vitest.config.ts tests/handoff.test.ts
+```
+
+This opt-in can retrieve about 153 MiB of pinned vendor archives into the existing renderer-owned Blob cache. Both rounds and the cold restart share that isolated runtime's normal cache; Playwright retains its separate shared OS cache. The eight-minute test budget includes pipeline build, npm installation, cold preparation and two native executions; it changes no product or loader deadline. Standard source checks skip this native case, and a skip does not qualify it. Its SDK and headless media harness does not establish current-chat editor/player visibility, listening or creative acceptance. Retained evidence excludes temporary capability URLs and authority journals.
+
 Web browser fixtures use actual built Web, SQLite and Daemon HTTP hosted in the test process. Standalone tests exercise an independent sidecar-owned Daemon. Services/ports/data belong to sidecar; Chromium is test-driver infrastructure closed in finally. Check actual manager closure and zero workloads. Evidence goes to `.artifacts/browser/<uuid>` or `.artifacts/animation-browser/<uuid>`; failures preserve screenshots/diagnostics. Fixed reference tokens, pixel round-trips, actual editing, platform and full product acceptance are separate. Never upload capabilities or raw communication traces.
 
 ## Explicit Prism template configuration
