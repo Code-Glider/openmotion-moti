@@ -1,4 +1,5 @@
 {
+  "Cannot drop here": "ここにはドロップできません",
   "+ Add effect": "+ エフェクトを追加",
   "+ Add variable": "+ 変数を追加",
   "+ New track": "+ 新曲",
@@ -1816,7 +1817,8 @@
   "Open the composition to delete this track": "このトラックを削除するにはコンポジションを開いてください",
   "Main track": "メインのトラック",
   "Main track magnet": "メイントラックのマグネット",
-  "Timeline linkage": "タイムライン連動",
+  "Main track linkage": "メイントラック連動",
+  "Moves with the selected main track clip": "選択したメイントラックのクリップと一緒に移動",
   "Trim left to playhead": "再生ヘッドまで左をトリム",
   "Trim right to playhead": "再生ヘッドまで右をトリム",
   "Screen too small to expand this panel": "画面が小さすぎるため、パネルを展開できません"

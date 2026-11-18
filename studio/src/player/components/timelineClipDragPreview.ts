@@ -22,7 +22,7 @@ import {
   type TimelineSnapTarget,
   type TimelineSnapType,
 } from "./timelineSnapping";
-import { resolveInsertRow, resolveZoneDropPlacement } from "./timelineCollision";
+import { resolveInsertRow, resolveZoneDropPlacement, type TimelineDropPlacement } from "./timelineCollision";
 import {
   applyTimelineGroupResizePreview,
   type TimelineGroupResizeSession,
@@ -170,7 +170,7 @@ function resolveDropPlacement(
   desiredTrack: number,
   ctx: DragPreviewContext,
   group: GroupDrag,
-): { track: number; insertRow: number | null; start: number } {
+): TimelineDropPlacement {
   const { trackOrder, elements } = ctx;
   if (isPendingTimelineRow(desiredTrack, elements)) {
     return { track: drag.element.track, start: drag.element.start, insertRow: null };
@@ -310,7 +310,7 @@ export function computeDragPreview(
       ctx.elements, drag.element, group.moving, desiredTrack, rawStart,
       requestedStart + drag.pointerOffsetX / Math.max(pps, 1), !drag.altKey,
     ) : null;
-  let placement = insertion
+  let placement: TimelineDropPlacement = insertion
     ? { track: desiredTrack, insertRow: null, start: insertion.start }
     : resolveDropPlacement(drag, aim, savedStart, desiredTrack, ctx, group);
   if (placement.insertRow !== null && group.hasReadOnlyRows) {
@@ -320,7 +320,7 @@ export function computeDragPreview(
       placement = { track: drag.element.track, insertRow: null, start: origin };
   }
   const { track: previewTrack, insertRow } = placement;
-  const guide = insertion ? null : guideIfSaved(drag.element, placement, snapTarget(snap), pps);
+  const guide = insertion || placement.invalidDrop ? null : guideIfSaved(drag.element, placement, snapTarget(snap), pps);
   return {
     ...drag,
     started: true,
@@ -332,6 +332,7 @@ export function computeDragPreview(
     // tell a deliberate vertical lane change from a horizontal drag.
     desiredTrack,
     insertRow,
+    invalidDrop: placement.invalidDrop,
     insertion: insertion?.insertion,
     snapTime: guide?.time ?? null,
     snapType: guide?.type ?? null,

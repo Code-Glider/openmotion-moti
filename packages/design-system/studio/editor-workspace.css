@@ -57,6 +57,15 @@
 .motion-track-column-resize:is(:hover, :focus-visible, :active)::after { background: var(--motion-accent); }
 .motion-track-column-resize:focus-visible { outline: none; }
 
+.timeline-clip[data-main-track-follower]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px dashed var(--motion-accent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 /* One continuous control column; all lane content starts at its right edge. */
 :root[data-motion-ui] .motion-timeline-gutter-fill { background: var(--timeline-gutter-bg); border-right: 1px solid var(--timeline-gutter-border); }
 :root[data-motion-ui] .motion-timeline-ruler { border-bottom: 1px solid var(--timeline-row-border); }

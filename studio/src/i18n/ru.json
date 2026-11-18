@@ -1,4 +1,5 @@
 {
+  "Cannot drop here": "Сюда нельзя перетащить",
   "+ Add effect": "+ добавить эффекты",
   "+ Add variable": "+ добавить переменную",
   "+ New track": "+ Новый трек",
@@ -1876,7 +1877,8 @@
   "Open the composition to delete this track": "Откройте композицию, чтобы удалить эту дорожку",
   "Main track": "Главная дорожка",
   "Main track magnet": "Магнит основной дорожки",
-  "Timeline linkage": "Связь на шкале времени",
+  "Main track linkage": "Связь с главной дорожкой",
+  "Moves with the selected main track clip": "Перемещается с выбранным клипом главной дорожки",
   "Trim left to playhead": "Обрезать слева до курсора",
   "Trim right to playhead": "Обрезать справа до курсора",
   "Screen too small to expand this panel": "Экран слишком мал, чтобы развернуть панель"

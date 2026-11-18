@@ -30,6 +30,7 @@ interface TimelineClipProps {
   clipY: number;
   clipHeight?: number;
   isSelected: boolean;
+  isMainTrackFollower?: boolean;
   isHovered: boolean;
   isDragging?: boolean;
   isGestureActor?: boolean;
@@ -71,6 +72,7 @@ export const TimelineClip = memo(function TimelineClip({
   clipY,
   clipHeight,
   isSelected,
+  isMainTrackFollower,
   isHovered,
   isDragging = false,
   isGestureActor = false,
@@ -154,6 +156,7 @@ export const TimelineClip = memo(function TimelineClip({
   const tooltipLabel = isComposition
           ? t("{value0} • Double-click to open", { value0: el.compositionSrc ?? "" })
           : t("{displayLabel} • {startLabel}s to {endLabel}s", { displayLabel: displayLabel, startLabel: startLabel, endLabel: endLabel });
+  const linkageHint = isMainTrackFollower ? t("Moves with the selected main track clip") : "";
   const clip = (
     <button
       type="button"
@@ -163,6 +166,7 @@ export const TimelineClip = memo(function TimelineClip({
       data-clip-start={el.start}
       data-clip-end={el.start + el.duration}
       data-clip-hidden={el.hidden ? "true" : undefined}
+      data-main-track-follower={isMainTrackFollower ? "" : undefined}
       data-label-in-track={mvp ? "true" : undefined}
       data-link-color={linkColor ?? undefined}
       data-ladder={ladder}
@@ -175,7 +179,8 @@ export const TimelineClip = memo(function TimelineClip({
       aria-description={
         isGestureActor || !capabilities.canMove
           ? undefined
-          : "Space picks up. Up and Down choose a new track. Enter drops. Escape cancels."
+          : [linkageHint, "Space picks up. Up and Down choose a new track. Enter drops. Escape cancels."]
+              .filter(Boolean).join(" ")
       }
       className={clipClassName}
       style={style}
@@ -282,5 +287,5 @@ export const TimelineClip = memo(function TimelineClip({
   );
   return isAudioClip || el.hasAudio
     ? <ClipPeakTooltip label={tooltipLabel}>{clip}</ClipPeakTooltip>
-    : <Tooltip label={tooltipLabel} wrap disabled={isGestureActor || isDragging}>{clip}</Tooltip>;
+    : <Tooltip label={tooltipLabel} description={linkageHint || undefined} wrap disabled={isGestureActor || isDragging}>{clip}</Tooltip>;
 });

@@ -1,4 +1,5 @@
-import type { TimelineElement } from "../store/playerStore";
+import { usePlayerStore, type TimelineElement } from "../store/playerStore";
+import { linkedOverlayKeys } from "./timelineLinkage";
 import { sameSourceFile } from "./timelineAuthoredTrack";
 import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
 import { resolveGroupMovers, groupMoveFloor } from "./timelineMultiDragPreview";
@@ -60,7 +61,11 @@ export function previewClipInsert(
   if (pushes.length === 0) return null;
   const following = pushes.map(({ peer }) => peer);
   // Resolve linkage once, rather than rescanning the whole timeline for every pushed clip.
-  const passengers = resolveGroupMovers(elements, new Set(following.map(keyOf)), keyOf(following[0])) ?? following;
+  const first = keyOf(following[0]);
+  const followingKeys = linkedOverlayKeys(
+    elements, first, new Set(following.map(keyOf)), usePlayerStore.getState().timelineLinkageEnabled,
+  );
+  const passengers = resolveGroupMovers(elements, followingKeys, first) ?? following;
   const byHost = new Map(following.map(el => [keyOf(el), [el]]));
   const links = new Map<string, TimelineElement[]>();
   for (const el of elements) {

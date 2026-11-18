@@ -27,14 +27,15 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
     : -1;
   // A track not in the order is a new track, drawn one row past the last lane.
   const dropRowIndex = dropTrackIndex < 0 ? displayTrackOrder.length : dropTrackIndex;
-  const insertLineRow =
-    (draggedClip?.started ? draggedClip.insertRow : null) ?? props.dropPreview?.insertRow ?? null;
+  const clipInsertRow = draggedClip?.started ? draggedClip.insertRow : null;
+  const insertLineRow = clipInsertRow ?? props.dropPreview?.insertRow ?? null;
+  const pointerClipInsert = clipInsertRow !== null && draggedClip?.pointerId !== null;
   const ghostLaneActive =
     (insertLineRow ?? -1) >= props.trackOrder.length ||
     (props.dropPreview?.insertRow == null && props.dropPreview != null && dropTrackIndex < 0);
-  // A host bottom pad shorter than a track leaves no lane to draw.
-  const showGhostLane = props.rowGeometry.padding.bottom >= TRACK_H;
-  // Past the last committed track: a drag's new bottom-track preview row is the lane itself.
+  // The media drop well is separate from the pointer clip's insertion line.
+  const showGhostLane = !pointerClipInsert && props.rowGeometry.padding.bottom >= TRACK_H;
+  // A keyboard insertion at the bottom still reserves a preview row.
   const ghostLaneRow = props.rowGeometry.getRowIndex(props.trackOrder.at(-1) ?? Number.NaN) + 1;
   const draggedRowHeight = getTimelineRowHeight(draggedRowIndex, props.rowHeights);
   // A clip bar in an EXPANDED row still renders at TRACK_H (the property lanes
@@ -145,7 +146,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
 
       {/* Drop placeholder — a clip-sized slot at the exact landing spot (target
           lane + snapped start), parallel to the ghost. Hidden in insert mode. */}
-      {draggedClip?.started && draggedClip.insertRow == null && draggedRowIndex >= 0 && (
+      {draggedClip?.started && !draggedClip.invalidDrop && draggedClip.insertRow == null && draggedRowIndex >= 0 && (
         <div
           data-testid="timeline-drag-landing"
           className="absolute pointer-events-none motion-placement-outline"

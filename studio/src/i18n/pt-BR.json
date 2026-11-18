@@ -1,4 +1,5 @@
 {
+  "Cannot drop here": "Não é possível soltar aqui",
   "+ Add effect": "+ adicionar efeitos",
   "+ Add variable": "+ adicionar variável",
   "+ New track": "+ Nova faixa",
@@ -1852,7 +1853,8 @@
   "Open the composition to delete this track": "Abra a composição para excluir esta faixa",
   "Main track": "Faixa principal",
   "Main track magnet": "Ímã da faixa principal",
-  "Timeline linkage": "Vinculação da linha do tempo",
+  "Main track linkage": "Vinculação da faixa principal",
+  "Moves with the selected main track clip": "Move junto com o clipe selecionado da faixa principal",
   "Trim left to playhead": "Aparar à esquerda até o cursor",
   "Trim right to playhead": "Aparar à direita até o cursor",
   "Screen too small to expand this panel": "A tela é pequena demais para expandir este painel"
