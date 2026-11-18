@@ -1,4 +1,5 @@
 import { memo, type RefObject } from "react";
+import { TimelineTimecode } from "./TimelineTimecode";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useSettledScrollLeft } from "./useSettledScrollLeft";
 import type { TimelineTheme } from "./timelineTheme";
@@ -152,7 +153,7 @@ export const TimelineRuler = memo(function TimelineRuler({
             // Ruler corner uses the panel surface — same as the ruler strip itself.
             background: rulerBackground,
           }}
-        />
+        >{mvp && <TimelineTimecode />}</div>
         {/* Breathing pad before 00:00 is folded into contentOrigin (see
             Timeline.tsx: GUTTER + TRACKS_LEFT_PAD), so no separate pad div. */}
         <div
