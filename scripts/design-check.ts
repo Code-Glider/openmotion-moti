@@ -55,7 +55,7 @@ export async function checkDesign() {
     for (const match of value.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `Studio token ${name}: undefined ${match[1]}`);
   }
   for (const [theme, values] of Object.entries(tokens.themes) as [string, Record<string, string>][]) {
-    for (const [ink, surface] of [['text', 'shell'], ['text', 'workspace'], ['text', 'panel'], ['text', 'inset'], ['muted', 'panel'], ['dim', 'panel'], ['dim', 'bg'], ['accent', 'accent-soft'], ['on-action', 'action'], ['danger', 'danger-soft'], ['warning', 'warning-soft'], ['strong', 'highlight']]) {
+    for (const [ink, surface] of [['text', 'shell'], ['text', 'workspace'], ['text', 'panel'], ['text', 'inset'], ['muted', 'panel'], ['dim', 'panel'], ['dim', 'bg'], ['accent', 'accent-soft'], ['on-action', 'action'], ['danger', 'danger-soft'], ['on-danger', 'danger'], ['warning', 'warning-soft'], ['strong', 'highlight']]) {
       const a = luminance(values[ink]), b = luminance(values[surface]);
       assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, `${theme}: ${ink} on ${surface} needs 4.5:1 contrast.`);
     }

@@ -63,6 +63,17 @@ async function search(value: string) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
+it('clears the template query and returns focus to its input', async () => {
+  await mount();
+  await search('Ada');
+  const input = host.querySelector<HTMLInputElement>('input[type=search]')!;
+  const clear = host.querySelector<HTMLButtonElement>('button[aria-label="Clear search"]')!;
+  await act(async () => clear.click());
+  expect(input.value).toBe('');
+  expect(document.activeElement).toBe(input);
+  expect(host.querySelector('button[aria-label="Clear search"]')).toBeNull();
+});
+
 it('uses one ordered gallery without a duplicate featured section and combines category, search and facets', async () => {
   await mount();
   expect(host.textContent).not.toContain('Popular templates');

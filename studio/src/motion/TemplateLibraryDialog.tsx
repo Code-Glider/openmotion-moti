@@ -1,3 +1,4 @@
+import { SearchField } from '../components/ui/SearchField';
 import { GalleryIntro } from './GalleryIntro';
 import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
 import { GitHubLink } from './GitHubLink';
@@ -435,7 +436,10 @@ export function TemplateLibraryDialog(props: Props) {
         {props.onTemplateChange && <WorkspaceHistoryNavigation tooltips />}
         <div className="om-gallery-wordmark"><BrandLogo compact /><span className="om-gallery-page-label">{t('Template library')}</span></div>
         <div className="om-control-row om-gallery-header-actions">
-          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
+          <SearchField inputRef={search} value={query} onChange={setQuery}
+            onCompositionStart={() => { composing.current = true; }}
+            onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }}
+            placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} shortcut="⌘ K" />
           <GitHubLink className="om-button" />
           <Tooltip label={t('Close template library')}><button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button></Tooltip>
         </div>
