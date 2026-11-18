@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
+import { once } from "node:events";
 import { mkdir, writeFile } from "node:fs/promises";
-import { request as httpRequest } from "node:http";
+import { request as httpRequest, type IncomingMessage } from "node:http";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { channel, digest, namespace } from "@odsuite/protocol";
@@ -106,10 +107,81 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
       expectedRevision: frozen.revision,
       files: [...frozen.files, { path: "later.txt", content: "Not part of selected revision" }],
     });
+    const metadata = await fetch(ticket.url, { method: "HEAD" });
+    expect(metadata.status).toBe(200);
+    expect(metadata.headers.get("content-length")).toBe(String(ticket.bytes));
+    expect((await metadata.arrayBuffer()).byteLength).toBe(0);
     const zip = await sender.api.downloadArchive(ticket);
+    const repeated = await fetch(ticket.url),
+      complete = createHash("sha256");
+    let repeatedBytes = 0;
+    if (!repeated.body) throw Error("missing repeated archive body");
+    for await (const chunk of repeated.body) {
+      complete.update(chunk);
+      repeatedBytes += chunk.length;
+    }
+    expect(repeatedBytes).toBe(ticket.bytes);
+    expect(`sha256:${complete.digest("hex")}`).toBe(ticket.digest);
     await sender.api.execute("archive_release", { id: ticket.id });
     expect((await fetch(ticket.url)).status).toBe(404);
-    await sender.owner.close();
+    const slow = await sender.api.execute("archive_export", { ...request, requestId: randomUUID() });
+    const pause = async (url: string) => {
+      const req = httpRequest(url);
+      req.on("error", () => {});
+      req.end();
+      const [response] = (await once(req, "response")) as [IncomingMessage];
+      response.on("error", () => {});
+      await new Promise<void>((done) =>
+        response.once("data", () => {
+          response.pause();
+          done();
+        }),
+      );
+      return response;
+    };
+    const active = await pause(slow.url);
+    try {
+      await sender.api.execute("archive_release", { id: slow.id });
+      const held = await sender.api.execute("archive_upload", {
+          requestId: randomUUID(),
+          digest: digest("unused"),
+          bytes: 22,
+        }),
+        next = { ...request, requestId: randomUUID() };
+      await expect(sender.api.execute("archive_export", next)).rejects.toMatchObject({ code: "conflict" });
+      const closed = new Promise<void>((done) => active.once("close", done));
+      active.destroy();
+      await closed;
+      let replacement: typeof slow | undefined;
+      await expect
+        .poll(
+          async () => {
+            try {
+              replacement = await sender.api.execute("archive_export", next);
+              return true;
+            } catch (error) {
+              if ((error as { code?: string }).code !== "conflict") throw error;
+              return false;
+            }
+          },
+          { timeout: 5000 },
+        )
+        .toBe(true);
+      if (!replacement) throw Error("missing replacement archive ticket");
+      expect(replacement.digest).toBe(ticket.digest);
+      await sender.api.execute("archive_release", { id: held.id });
+      const draining = await pause(replacement.url),
+        drained = new Promise<void>((done) => draining.once("close", done));
+      try {
+        await sender.owner.close();
+      } finally {
+        draining.destroy();
+        await drained;
+      }
+      expect(draining.complete).toBe(false);
+    } finally {
+      active.destroy();
+    }
     await expect(sender.api.health()).rejects.toThrow();
     const destination = await target.api.execute("session_create", {
         requestId: randomUUID(),
@@ -178,6 +250,11 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
       archive: { digest: ticket.digest, bytes: ticket.bytes },
       resources: imported.resources.length,
       sourceRetiredBeforeUpload: true,
+      repeatedStreamingDownload: true,
+      fullHead: true,
+      slowReleaseRetainsSlot: true,
+      disconnectReleasesSlot: true,
+      shutdownDrainsDownload: true,
       lostResponseReceipt: true,
       coldReplayPreservesLaterEdit: true,
     };

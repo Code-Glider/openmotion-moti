@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import { expect, it } from "vitest";
 import { prepare, read } from "@";
+import type { Entry } from "@/content";
 import { manifestPath } from "@/contract";
-import { zip } from "@/write";
+import { buffered, zip as encode } from "@/write";
+
+const zip = (entries: Entry[]) => encode(entries.map(buffered));
 
 const hash = (bytes: Uint8Array) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const goldenHex =

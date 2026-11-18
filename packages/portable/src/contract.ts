@@ -29,7 +29,7 @@ export interface Archive {
   readonly digest: string;
   readonly bytes: number;
   readonly entries: number;
-  /** Fresh bounded copies; stopping iteration owns no OS resource. */
+  /** Fresh bounded copies; stopping iteration owns no OS resource. Snapshot callers drain before Workspace closes. */
   chunks(): Iterable<Uint8Array>;
 }
 export function invalid(message: string): never {
