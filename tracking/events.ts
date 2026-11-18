@@ -38,6 +38,11 @@ const hosts = ['codex', 'claude', 'deepseek', 'chatgpt', 'mcp'] as const;
 const sortOrder = ['recommended', 'name', 'reverse', 'duration'] as const;
 // Where a card or detail came from: the gallery, the related strip, random discovery or previous/next in the detail.
 const placement = ['popular', 'catalog', 'related', 'random', 'navigation'] as const;
+// Curated template brand series, distinct from the Brand Kit catalogue. No brand names, copy or URLs.
+const templateSeries = { search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer', series_id: 'slug', series_list_id: 'uuid', series_view_id: 'uuid',
+  series_placement: ['top100', 'discovery'], series_surface: ['timeline', 'template_detail'],
+  series_position: 'integer', series_rank: 'integer', series_work_count: 'integer', series_work_position: 'integer',
+  ranking_policy: ['works59-ctr41-v1', 'catalog-v1'], ranking_snapshot: ['ctr-20261118-v2'] } as const;
 const templateDetail = { detail_view_id: 'uuid', detail_mode: ['modal'], resource_kind: ['reference', 'editable_project', 'motion_guide'],
   instruction_kind: ['template_use', 'reference_recreate', 'recreate_submit'] } as const;
 const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer' } as const;
@@ -127,7 +132,7 @@ export const omEvents = {
     required: ['entry_from', 'presentation', 'embedded'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean', ...project, ...projectScale, ...template }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
   ui_click: { producers: ['studio'], fields: { page_name: pages,
-    area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery',
+    area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'template_series_card', 'template_series_detail',
       'skill_intro', 'skill_discovery', 'skill_card', 'skill_detail', 'skill_command',
       'brand_collection', 'brand_library', 'brand_card', 'brand_detail',
       'header', 'project_drawer', 'left_panel', 'right_panel', 'clips', 'assets', 'catalog',
@@ -137,6 +142,7 @@ export const omEvents = {
       'settings_nav', 'provider_list', 'provider_detail', 'default_agent', 'local_agents', 'account', 'diagnostics', 'help_resources',
       'project_manager', 'version_history'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
+      'select_work', 'select_chapter', 'browse_timeline', 'expand_learning', 'compare_brands',
       'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source',
@@ -165,7 +171,8 @@ export const omEvents = {
       'all', 'images', 'video', 'audio', 'fonts',
       'captions', 'code-animation', 'vfx', 'transitions', 'effects', 'text-effects', 'social', 'data', 'scenes',
       '0.25', '0.5', '1', '1.5', '2', 'featured', 'ads', 'clone', 'motion', 'script', 'pinned', 'other'],
-    interaction_method: ['pointer', 'keyboard'], ...project, ...template,
+    interaction_method: ['pointer', 'keyboard'], ...project, ...template, ...templateSeries,
+    chapter_index: 'integer', browse_method: ['arrow', 'drag'], direction: ['previous', 'next'],
     placement, position: 'integer', template_action: ['recreate', 'recreate_submit', 'open_edit'], target_agent: hosts,
     copy_attempt_id: 'uuid', download_attempt_id: 'uuid', source_template_id: 'slug', operation_id: 'uuid',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
@@ -199,8 +206,8 @@ export const omEvents = {
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.
   // A card counts once it is at least half visible for a second, once per result set.
-  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_related', 'template_guide', 'skill_detail', 'brand_detail'],
-    element: ['library', 'card', 'detail', 'instruction', 'related', 'guide'], placement, position: 'integer', source_template_id: 'slug', ...templateList, ...templateDetail, ...template,
+  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_related', 'template_guide', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
+    element: ['library', 'card', 'detail', 'instruction', 'related', 'guide'], placement, position: 'integer', source_template_id: 'slug', ...templateList, ...templateDetail, ...template, ...templateSeries,
     ...skill, ...brand, brand_state: brandState },
     required: ['page_name', 'area', 'element'] },
   // One per settled query, never per keystroke. `search_keyword` is the only free-text field in this registry.
@@ -212,10 +219,10 @@ export const omEvents = {
     required: ['action', 'result_count', 'outcome'] },
   // `browser_save_requested` means the save was handed to the browser; nothing confirms the file reached disk.
   resource_download_result: { producers: ['studio'], fields: { page_name: pages, resource_kind: ['motion_guide', 'brand_kit_package'], download_attempt_id: 'uuid',
-    delivery_status: ['browser_save_requested', 'fetch_failed', 'unknown'], error_code: 'code', detail_view_id: 'uuid', detail_mode: ['modal'], ...template, ...brand },
+    delivery_status: ['browser_save_requested', 'fetch_failed', 'unknown'], error_code: 'code', detail_view_id: 'uuid', detail_mode: ['modal'], ...template, ...brand, ...templateSeries },
     required: ['resource_kind', 'download_attempt_id', 'delivery_status'] },
   template_instruction_copy_result: { producers: ['studio'], fields: { host_product: hosts, copy_status: ['clipboard_written', 'manual_fallback_shown', 'failed'],
-    page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateDetail, ...project, ...template }, required: ['host_product', 'copy_status'] },
+    page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateDetail, ...project, ...template, ...templateSeries }, required: ['host_product', 'copy_status'] },
   // One observed Studio handoff operation result, not an Agent receipt or a completed film.
   template_project_result: { producers: ['studio'], fields: { page_name: ['studio'], ...template, ...project, ...templateDetail,
     operation_id: 'uuid', handoff_attempt_id: 'uuid', stage: ['create', 'reconcile', 'open'], outcome: ['success', 'failure', 'unknown', 'not_found'] },

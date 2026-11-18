@@ -4,7 +4,11 @@ import { GitHubLink } from './GitHubLink';
 import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
 import { GithubLogo } from '@phosphor-icons/react';
 import { templateRepositoryUrl } from './githubRepository';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { BrandSeriesCard, BrandStoriesDialog } from './BrandStories';
+import { discoveryInsertions, groupBrandSeries, type BrandSeries } from './brandStoryData';
+import { seriesId, seriesContext, reportSeriesCard, openSeriesView, type SeriesView } from './brandStoryTracking';
+import storyStyles from './BrandStories.module.css';
 import { isEditableTemplate, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
 import { templatePrompt, type IntegrationInfo } from '../../../shared/integration';
 import { useI18n } from '../i18n/I18n';
@@ -75,6 +79,11 @@ function DetailScroll({ enabled, container, children }: { enabled: boolean; cont
 
 export function TemplateLibraryDialog(props: Props) {
   const { t, locale } = useI18n();
+  const [storiesPreview] = useState(() => new URLSearchParams(location.search).get('brandStoriesPreview') === '1');
+  const [discoverySeed] = useState(() => Math.floor(Math.random() * 4294967296));
+  const [brandStory, setBrandStory] = useState<{ series: BrandSeries; view: SeriesView } | null>(null);
+  const [compareWithout, setCompareWithout] = useState('');
+  const brandTrigger = useRef<HTMLButtonElement | null>(null);
   const { toasts, showToast, dismissToast } = useToast();
   const dialog = useRef<HTMLDialogElement>(null), detail = useRef<HTMLDialogElement>(null);
   const libraryClose = useRef<HTMLButtonElement>(null);
@@ -96,7 +105,7 @@ export function TemplateLibraryDialog(props: Props) {
   const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
-  const handoffPreview = templateHandoffEnabled();
+  const handoffPreview = templateHandoffEnabled() && !brandStory;
   const reviewBody = useRef<HTMLDivElement>(null), reviewFooter = useRef<HTMLDivElement>(null), reviewScroll = useRef<HTMLDivElement>(null);
   const detailTitle = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -216,8 +225,8 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, props.returnFocus]);
   useEffect(() => {
     if (!props.open) return;
-    setCatalog([]); setSelected({}); setBrandsOnly(false); setQuery(''); setPreview(null); detail.current?.close();
-    shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear();
+    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setPreview(null); detail.current?.close();
+    shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear(); seriesLists.current.clear(); shownSeries.current.clear();
     const controller = new AbortController();
     let version: string | undefined, pending = false;
     async function load() {
@@ -254,23 +263,23 @@ export function TemplateLibraryDialog(props: Props) {
   });
   const industries = available.find(facet => facet.key === 'industries')?.values ?? [];
   const sortOptions = [['recommended', 'Recommended order'], ['name', 'Name A–Z'], ['reverse', 'Name Z–A'], ['duration', 'Duration']] as const;
-  const hasFilters = Boolean(query || editableOnly || brandsOnly || Object.values(selected).some(items => items?.length));
+  const hasFilters = Boolean(query || editableOnly || brandsOnly || compareWithout || Object.values(selected).some(items => items?.length));
   const searchable = useMemo(() => {
     return catalog.filter(item => {
       const text = [item.id, item.title, item.description, item.authorName, item.author, ...item.tags, ...facets.flatMap(([key]) => values(item, key).flatMap(value => [value, t(value)]))].join(' ').toLocaleLowerCase();
-      return (!brandsOnly || Boolean(item.brand?.trim())) && matchesGallerySearch(query, text);
+      return (!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout) && matchesGallerySearch(query, text);
     });
-  }, [catalog, query, brandsOnly, t]);
+  }, [catalog, query, brandsOnly, compareWithout, t]);
   const draftCount = useMemo(() => filtersOpen ? searchable.filter(item => matchesFilters(item, draftFilters, draftEditable)).length : 0, [filtersOpen, searchable, draftFilters, draftEditable]);
   const hasDraftFilters = draftEditable || Object.values(draftFilters).some(items => items?.length);
   const visible = useMemo(() => {
     return searchable.filter(item => matchesFilters(item, selected, editableOnly)).sort((a, b) => sort === 'recommended' ? (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) : sort === 'duration' ? (a.duration ?? Infinity) - (b.duration ?? Infinity) : a.title.localeCompare(b.title, locale) * (sort === 'reverse' ? -1 : 1));
   }, [searchable, selected, sort, locale, editableOnly]);
-  useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly]);
-  const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly);
+  useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly, compareWithout]);
+  const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
   // The list state is read when a handler, timer or effect fires, not when it was scheduled.
-  const latest = useRef({ items: visible, query, sort, filterCount, covered: false }); latest.current = { items: visible, query, sort, filterCount, covered: Boolean(preview) };
+  const latest = useRef({ items: visible, query, sort, filterCount, covered: false }); latest.current = { items: visible, query, sort, filterCount, covered: Boolean(preview || brandStory) };
   const listContext = useCallback(() => {
     const { query, sort, filterCount } = latest.current, keyword = query.trim();
     return { searchId: keyword && keyword === reportedQuery.current ? searchId.current : undefined, sort, filterCount };
@@ -296,7 +305,10 @@ export function TemplateLibraryDialog(props: Props) {
   }, [selected, sort, query, editableOnly, brandsOnly]);
   // One result set per search, filter and sort combination: a card is reported again only when that combination changes.
   // Empty groups are dropped and groups and values sorted, so the same choices always make the same key.
-  const resultSet = JSON.stringify([query.trim(), sort, editableOnly, brandsOnly, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
+  const resultSet = JSON.stringify([query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
+  const seriesLists = useRef(new Map<string, string>()), shownSeries = useRef(new Set<string>());
+  if (!seriesLists.current.has(resultSet)) seriesLists.current.set(resultSet, tracking.newTrackingId());
+  const seriesListId = seriesLists.current.get(resultSet)!;
   const resultSetLatest = useRef(resultSet); resultSetLatest.current = resultSet;
   const cardSeen = useCallback((id: string) => {
     const { items, covered } = latest.current;
@@ -308,12 +320,39 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardShown(items[index], index + 1, listContext());
     return true;
   }, [listContext]);
-  useTemplateImpressions(dialog, visible.map(item => item.id).join(','), props.open && !preview, resultSet, cardSeen);
-  const active = useTemplatePlayback(dialog, visible.map(item => item.id).join(','), props.open && !preview, true, priority);
+  useTemplateImpressions(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, resultSet, cardSeen);
+  const brandGroups = useMemo(() => groupBrandSeries(catalog), [catalog]);
+  const visibleBrandGroups = useMemo(() => groupBrandSeries(visible), [visible]);
+  const insertions = useMemo(() => discoveryInsertions(visible, brandGroups, storiesPreview && !hasFilters, discoverySeed), [visible, brandGroups, storiesPreview, hasFilters, discoverySeed]);
+  const seriesCards = storiesPreview && brandsOnly
+    ? visibleBrandGroups.map((series, index) => ({ series, placement: 'top100' as const, position: index + 1, rank: index + 1 }))
+    : [...insertions].map(([index, series], rank) => ({ series, placement: 'discovery' as const, position: index + rank + 1, rank: rank + 1 }));
+  const seriesCardsLatest = useRef(seriesCards); seriesCardsLatest.current = seriesCards;
+  const seriesSeen = (id: string) => {
+    if (document.hidden || latest.current.covered) return false;
+    const row = seriesCardsLatest.current.find(row => seriesId(row.series.name) === id);
+    if (!row) return true;
+    const key = seriesListId + '|' + id;
+    if (shownSeries.current.has(key)) return true;
+    shownSeries.current.add(key); settleLatest.current();
+    reportSeriesCard(seriesContext(row.series, row.placement, row.position, row.rank, seriesListId, listContext()));
+    return true;
+  };
+  useTemplateImpressions(dialog, seriesCards.map(row => seriesId(row.series.name)).join(','), props.open && storiesPreview && !preview && !brandStory, seriesListId, seriesSeen, 'data-series-id');
+  const openBrand = (series: BrandSeries, element: HTMLButtonElement, placement: 'top100' | 'discovery') => {
+    const row = seriesCards.find(row => row.series.name === series.name && row.placement === placement);
+    if (!row) return;
+    settleLatest.current();
+    const view = openSeriesView(seriesContext(series, placement, row.position, row.rank, seriesListId, listContext()));
+    brandTrigger.current = element; setBrandStory({ series, view });
+  };
+  const closeBrand = () => { setBrandStory(null); brandTrigger.current?.focus({ preventScroll: true }); };
+  const active = useTemplatePlayback(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, true, priority);
   const related = useMemo(() => preview ? (handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview]);
   const previewIndex = visible.findIndex(item => item.id === preview?.id);
-  const clear = () => { setQuery(''); setSelected({}); setEditableOnly(false); setBrandsOnly(false); };
+  const clear = () => { setQuery(''); setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
   const reset = () => {
+    setCompareWithout('');
     if (hasFilters) { tracking.reportDiscoveryClick('filter_clear', listContext()); pendingResult.current = 'filter_clear'; }
     clear();
   };
@@ -328,12 +367,14 @@ export function TemplateLibraryDialog(props: Props) {
     setSelected(previous => ({ ...previous, [key]: previous[key]?.includes(value) ? previous[key]!.filter(item => item !== value) : [...(previous[key] ?? []), value] }));
   };
   const chooseCategory = (key: 'uses' | 'industries', value: string | undefined) => {
+    setCompareWithout('');
     const next = value === undefined || (key === 'uses' && selected.uses?.includes(value)) ? [] : [value];
     picked('category_select', key, value, next.length > 0);
     if (key === 'uses') setBrandsOnly(false);
     setSelected(previous => ({ ...previous, [key]: next }));
   };
   const chooseBrands = (next: boolean) => {
+    setCompareWithout('');
     picked(next ? 'category_select' : 'filter_option', 'brand', 'top-100-brands', next);
     setBrandsOnly(next);
     if (next) setSelected(previous => ({ ...previous, uses: [] }));
@@ -364,9 +405,9 @@ export function TemplateLibraryDialog(props: Props) {
     if (editableOnly !== draftEditable) picked('filter_option', 'editable', undefined, draftEditable);
     setSelected(draftFilters); setEditableOnly(draftEditable); setFiltersOpen(false);
   };
-  const show = useCallback((item: GalleryTemplate, placement: Placement = 'catalog', navigate = true) => {
+  const show = useCallback((item: GalleryTemplate, placement: Placement = 'catalog', navigate = true, series?: SeriesView) => {
     if (navigate) routeChange.current?.(item.id);
-    const view = { id: tracking.newTrackingId(), placement }; detailView.current = view; instructionShown.current = undefined;
+    const view: DetailView = { id: tracking.newTrackingId(), placement, ...(series ? { series: { ...series, series_surface: 'template_detail' } } : {}) }; detailView.current = view; instructionShown.current = undefined;
     const index = latest.current.items.findIndex(candidate => candidate.id === item.id);
     tracking.reportDetailShown(item, view, placement === 'related' || index < 0 ? undefined : index + 1);
     setPreview(item); setPrompt(''); setPromptError(false); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false);
@@ -390,11 +431,14 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardOpened(item, 'catalog', latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
     show(item, 'catalog');
   }, [show, listContext]);
-  const openRelated = (item: GalleryTemplate, position: number) => { tracking.reportCardOpened(item, 'related', position, listContext(), preview ?? undefined, detailView.current); show(item, 'related'); };
+  const openRelated = (item: GalleryTemplate, position: number) => {
+    tracking.reportCardOpened(item, 'related', position, listContext(), preview ?? undefined, detailView.current);
+    show(item, 'related', true, detailView.current?.series);
+  };
   const navigate = (step: number) => {
     if (visible.length < 2) return;
     tracking.reportDetailStep(preview, step, detailView.current);
-    show(visible[previewIndex < 0 ? (step > 0 ? 0 : visible.length - 1) : (previewIndex + step + visible.length) % visible.length], 'navigation');
+    show(visible[previewIndex < 0 ? (step > 0 ? 0 : visible.length - 1) : (previewIndex + step + visible.length) % visible.length], 'navigation', true, detailView.current?.series);
   };
   const surprise = () => {
     settleSearch();
@@ -447,14 +491,40 @@ export function TemplateLibraryDialog(props: Props) {
       if (template) tracking.reportCopyResult(template, 'manual_fallback_shown', attemptId, submit, view);
     }
   }
-  async function downloadMotion() {
-    if (!preview?.motionDocumentUrl) return;
-    const template = preview, view = detailView.current, attemptId = tracking.newTrackingId();
+  async function copyBrandInstruction(template: GalleryTemplate, submit = false): Promise<string | null> {
+    const view = brandStory ? { series: { ...brandStory.view, series_surface: 'timeline' as const } } : undefined;
+    const attemptId = tracking.newTrackingId();
+    tracking.reportUseClicked(template, submit ? 'recreate_submit' : 'recreate', view, attemptId);
+    let text: string;
+    try {
+      const connection = info.current ?? await motionApi<IntegrationInfo>('/integration'); info.current = connection;
+      const instruction = templatePrompt(connection, 'codex', template, locale);
+      text = submit ? templateSubmissionPrompt(instruction) : instruction;
+    } catch {
+      showToast(t('Could not load the instruction.'), 'error', 'feedback');
+      tracking.reportCopyResult(template, 'failed', attemptId, submit, view); return null;
+    }
+    let copyTimeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise<never>((_, reject) => { copyTimeout = setTimeout(() => reject(new Error('Clipboard permission timed out')), 8000); }),
+      ]);
+      showToast(t(submit ? 'Contribution instruction copied. Paste into your Agent to prepare a reusable template and contribution PR.' : 'Copied. Paste into your Agent, add your materials and requirements, then send.'), 'info');
+      tracking.reportCopyResult(template, 'clipboard_written', attemptId, submit, view); return null;
+    } catch {
+      showToast(t('Copy failed. Select the instruction below to copy manually, or try again.'), 'error', 'feedback');
+      tracking.reportCopyResult(template, 'manual_fallback_shown', attemptId, submit, view); return text;
+    } finally { clearTimeout(copyTimeout); }
+  }
+  async function downloadMotion(template = preview) {
+    if (!template?.motionDocumentUrl) return;
+    const view = template.id === preview?.id ? detailView.current : brandStory ? { series: { ...brandStory.view, series_surface: 'timeline' as const } } : undefined, attemptId = tracking.newTrackingId();
     tracking.reportDownloadClicked(template, 'download_guide', attemptId, view);
     let errorCode = 'FETCH_ERROR';
     setDownloading(true);
     try {
-      const response = await fetch(preview.motionDocumentUrl, { credentials: 'omit' });
+      const response = await fetch(template.motionDocumentUrl, { credentials: 'omit' });
       if (!response.ok) { errorCode = `HTTP_${response.status}`; throw new Error(`Download HTTP ${response.status}`); }
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement('a'); link.href = url; link.download = 'motion.md'; link.click();
@@ -463,7 +533,7 @@ export function TemplateLibraryDialog(props: Props) {
     } catch { showToast('Download failed. Please try again.', 'error', 'feedback'); tracking.reportDownloadResult(template, attemptId, 'fetch_failed', errorCode, view); }
     finally { setDownloading(false); }
   }
-  const filterBy = (key: Facet, value: string) => { picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
+  const filterBy = (key: Facet, value: string) => { picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setCompareWithout(''); if (storiesPreview) setBrandStory(null); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
   return <dialog ref={dialog} className={styles.library} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
     event.stopPropagation();
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen) { event.preventDefault(); search.current?.focus(); }
@@ -502,19 +572,23 @@ export function TemplateLibraryDialog(props: Props) {
           <GallerySortMenu value={sort} options={sortOptions} onChange={changeSort} />
         </div>
       </div>
-      {hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={() => setQuery('')} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}<button onClick={reset}>{t('Clear filters')}</button><span>{t('{count} templates', { count: visible.length })}</span></div>}
+      {hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={() => setQuery('')} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}<button onClick={reset}>{t('Clear filters')}</button><span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>
     <main className={styles.results} aria-busy={loading}>
       {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
-      <div className={styles.grid}>
-        <GalleryIntro eyebrow={t('Made to move.')} title={t('Find your next motion.')} description={t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())} />
+      <div className={storiesPreview && brandsOnly ? storyStyles.brandGrid : styles.grid}>
+        <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())} />
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
-        {visible.map(item => <TemplateCard key={item.id} template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} />)}
+        {storiesPreview && brandsOnly ? visibleBrandGroups.map(series => <BrandSeriesCard key={series.name} series={series} onOpen={(group, element) => openBrand(group, element, 'top100')} />) : visible.map((item, index) => <Fragment key={item.id}>{insertions.get(index) && <BrandSeriesCard series={insertions.get(index)!} discovery onOpen={(group, element) => openBrand(group, element, 'discovery')} />}<TemplateCard template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} /></Fragment>)}
       </div>
       {loading && !catalog.length && <span className={styles.visuallyHidden} role="status">{t('Loading templates…')}</span>}
       {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
       {!loading && !visible.length && !error && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching templates. Try another name, creator or style.')}</p><button onClick={reset}>{t('Clear filters')}</button></div>}
     </main>
+    {props.open && storiesPreview && brandStory && <BrandStoriesDialog key={brandStory.view.series_view_id} series={brandStory.series} trackingView={brandStory.view} covered={Boolean(preview)} onCopy={copyBrandInstruction} onDownload={item => downloadMotion(item)} onClose={closeBrand} onTemplate={(item, guide) => { show(item, 'catalog', true, brandStory.view); if (guide) setGuideOpen(true); }} onCompare={purpose => {
+      const name = brandStory.series.name;
+      closeBrand(); setBrandsOnly(false); setQuery(''); setEditableOnly(false); setSelected({ uses: [purpose] }); setCompareWithout(name);
+    }} />}
     <dialog ref={detail} className={`${styles.detail} ${handoffPreview ? styles.reviewDetail : ''}`} aria-label={t('Template preview')} onCancel={event => { if (event.target !== detail.current) return; event.preventDefault(); if (handoffPreview && guideOpen) setGuideOpen(false); else closeDetail(); }} onClose={event => { if (event.target !== detail.current) return; setPreview(null); setPrompt(''); setGuideOpen(false); detailView.current = undefined; if (handoffPreview && openLatest.current) { dialog.current?.close(); dialog.current?.showModal(); } }} onKeyDown={event => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }

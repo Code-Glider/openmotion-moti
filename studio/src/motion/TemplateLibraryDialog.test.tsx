@@ -1051,3 +1051,275 @@ it('keeps a delayed handoff result tied to its initiating detail and does not sw
   expect(open).not.toHaveBeenCalled();
   expect(events('template_project_result')).toMatchObject([{ template_id: 'one', detail_view_id: sourceView, operation_id: requestId, stage: 'create', outcome: 'success' }]);
 });
+
+it('preserves the TOP100 detail and return path alongside the regular template handoff', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  sessionStorage.removeItem('motion.template-handoff.preview');
+  try {
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    expect(button('Surprise me')).toBeDefined();
+    expect(host.querySelector('a[href]')?.getAttribute('href')).toBeTruthy();
+    await act(async () => button('View Figma brand series').click());
+    const brand = host.querySelector('dialog[aria-label="Figma brand story"]')!;
+    expect(brand.querySelector('[aria-label="Release history"]')).not.toBeNull();
+    expect(brand.querySelector('[role="tablist"]')).toBeNull();
+    expect(brand.querySelector('[aria-label="Select work First"][aria-current="true"]')).not.toBeNull();
+    await act(async () => button('View full details', brand).click());
+    const detail = host.querySelector('dialog[aria-label="Template preview"]')!;
+    expect(detail.textContent).not.toMatch(/What to bring|After copying|Interactive walkthrough/);
+    expect(detail.querySelector('[aria-label="Template instruction"]')).not.toBeNull();
+    expect(button('Recreate template', detail)).toBeDefined();
+    expect(button('Recreate and submit', detail)).toBeDefined();
+    expect(detail.querySelector('video')).not.toBeNull();
+    await act(async () => button('Close template preview', detail).click());
+    expect(host.querySelector('dialog[aria-label="Figma brand story"][open]')).not.toBeNull();
+    await act(async () => button('Close brand story', brand).click());
+    await act(async () => button('Remove filter TOP 100 brands').click());
+    await act(async () => preview('Second'));
+    expect(button('Recreate this template', detail)).toBeDefined();
+    expect(detail.querySelector('section[aria-label="Template recreation instruction"]')).not.toBeNull();
+    expect(host.querySelector('dialog[aria-label="Figma brand story"][open]')).toBeNull();
+  } finally { history.replaceState({}, '', previous); }
+});
+
+
+it('copies the selected brand instruction directly and offers manual fallback without opening details', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    await act(async () => button('View Figma brand series').click());
+    const brand = host.querySelector('dialog[aria-label="Figma brand story"]')!;
+    await act(async () => button('Recreate template', brand).click());
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining('one'));
+    expect(host.querySelector('dialog[aria-label="Template preview"][open]')).toBeNull();
+    await act(async () => button('Recreate and submit', brand).click());
+    const contribution = vi.mocked(navigator.clipboard.writeText).mock.calls.at(-1)![0];
+    expect(contribution).toContain('one');
+    expect(contribution).toContain('Create a reusable, editable template');
+    expect(contribution).toContain('Do not merge or publish');
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('NotAllowedError'));
+    await act(async () => button('Recreate template', brand).click());
+    expect(brand.querySelector('textarea')?.value).toContain('one');
+    expect(host.querySelector('dialog[aria-label="Template preview"][open]')).toBeNull();
+    vi.useFakeTimers();
+    try {
+      vi.mocked(navigator.clipboard.writeText).mockImplementationOnce(() => new Promise(() => {}));
+      await act(async () => button('Recreate template', brand).click());
+      expect(button('Loading instruction…', brand).disabled).toBe(true);
+      await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
+      expect(button('Recreate template', brand).disabled).toBe(false);
+      expect(brand.querySelector('textarea')?.value).toContain('one');
+    } finally { vi.useRealTimers(); }
+
+  } finally { history.replaceState({}, '', previous); }
+});
+
+it('attributes the brand timeline, work changes and nested detail actions without inventing template card clicks', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    await act(async () => button('View Other brand series').click());
+    const brand = host.querySelector('dialog[aria-label="Other brand story"]')!;
+    const [opened] = events('ui_click', { area: 'template_series_card', element: 'open_detail' });
+    expect(opened).toMatchObject({ series_placement: 'top100', ranking_policy: 'catalog-v1', series_work_count: 2 });
+    expect(events('surface_view', { area: 'template_series_detail' })).toHaveLength(1);
+    expect(events('surface_view', { area: 'template_series_work' })).toHaveLength(1);
+    await act(async () => button('Select work Third', brand).click());
+    expect(events('ui_click', { element: 'select_work' })).toEqual([expect.objectContaining({ template_id: 'three', series_view_id: opened.series_view_id })]);
+    expect(events('surface_view', { area: 'template_series_work' })).toHaveLength(2);
+    await act(async () => button('View full details', brand).click());
+    expect(events('ui_click', { area: 'template_card', element: 'open_detail' })).toHaveLength(0);
+    const [detail] = events('surface_view', { area: 'template_detail' });
+    expect(detail).toMatchObject({ template_id: 'three', series_view_id: opened.series_view_id, series_surface: 'template_detail' });
+    await act(async () => button('Recreate template', host.querySelector('dialog[aria-label="Template preview"]')!).click());
+    const [copy] = events('template_instruction_copy_result');
+    expect(copy).toMatchObject({ copy_status: 'clipboard_written', series_view_id: opened.series_view_id, detail_view_id: detail.detail_view_id });
+    await act(async () => button('Close template preview').click());
+    expect(events('surface_view', { area: 'template_series_detail' })).toHaveLength(1);
+    expect(events('surface_view', { area: 'template_series_work' })).toHaveLength(2);
+    await act(async () => button('Close brand story', brand).click());
+    expect(events('ui_click', { area: 'template_detail', element: 'close_detail', series_view_id: opened.series_view_id })).toEqual([expect.objectContaining({ detail_view_id: detail.detail_view_id })]);
+    expect(events('ui_click', { area: 'template_series_detail', element: 'close_detail', series_view_id: opened.series_view_id })).toHaveLength(1);
+    for (const row of tracked) expect(validProperties(studioEvents, row.event, row.properties), JSON.stringify(row)).toBe(true);
+  } finally { history.replaceState({}, '', previous); }
+});
+
+it('counts only qualified series impressions, retains their source on direct copy/download and deduplicates on return', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  vi.useFakeTimers();
+  try {
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    const card = host.querySelector('[data-brand-series="Figma"]')!;
+    await act(async () => impressions().emit(1, [card]));
+    await act(async () => { vi.advanceTimersByTime(700); });
+    await act(async () => impressions().emit(.4, [card]));
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(events('surface_view', { area: 'template_series_card' })).toHaveLength(0);
+    await act(async () => impressions().emit(1, [card]));
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    const [seen] = events('surface_view', { area: 'template_series_card' });
+    expect(seen).toMatchObject({ series_placement: 'top100', series_rank: 1, series_position: 1 });
+    await act(async () => button('View Figma brand series').click());
+    expect(Observer.instances.filter(item => !item.disconnected && item.options?.threshold === .5)).toHaveLength(0);
+    const brand = host.querySelector('dialog[aria-label="Figma brand story"]')!;
+    await act(async () => button('Recreate template', brand).click());
+    const [intent] = events('ui_click', { element: 'start_use' });
+    const [result] = events('template_instruction_copy_result');
+    expect(result).toMatchObject({ series_id: seen.series_id, series_list_id: seen.series_list_id, series_surface: 'timeline', copy_attempt_id: intent.copy_attempt_id, copy_status: 'clipboard_written' });
+    expect(result.detail_view_id).toBeUndefined();
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('PRIVATE_ERROR'));
+    await act(async () => button('Recreate template', brand).click());
+    expect(events('template_instruction_copy_result').at(-1)).toMatchObject({ copy_status: 'manual_fallback_shown', series_view_id: result.series_view_id });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    await act(async () => button('Download motion.md', brand).click());
+    const [download] = events('ui_click', { element: 'download_guide' });
+    expect(events('resource_download_result')[0]).toMatchObject({ download_attempt_id: download.download_attempt_id, series_view_id: result.series_view_id, delivery_status: 'fetch_failed' });
+    await act(async () => button('Close brand story', brand).click());
+    await act(async () => impressions().emit(1, [card]));
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(events('surface_view', { area: 'template_series_card' })).toHaveLength(1);
+    for (const row of tracked) expect(validProperties(studioEvents, row.event, row.properties), JSON.stringify(row)).toBe(true);
+    expect(JSON.stringify(tracked)).not.toContain('PRIVATE_ERROR');
+  } finally { vi.useRealTimers(); history.replaceState({}, '', previous); }
+});
+
+it('records direct instruction preparation failure and successful download as separate observed results', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    const catalogueFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => url.endsWith('/integration') ? new Response('', { status: 503 }) : catalogueFetch(url, init)));
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    await act(async () => button('View Figma brand series').click());
+    const brand = host.querySelector('dialog[aria-label="Figma brand story"]')!;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+    await act(async () => button('Recreate template', brand).click());
+    const [intent] = events('ui_click', { element: 'start_use' });
+    expect(events('template_instruction_copy_result')).toEqual([expect.objectContaining({ copy_status: 'failed', copy_attempt_id: intent.copy_attempt_id, series_view_id: intent.series_view_id })]);
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:download');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('# motion')));
+    await act(async () => button('Download motion.md', brand).click());
+    const [download] = events('ui_click', { element: 'download_guide' });
+    expect(events('resource_download_result')).toEqual([expect.objectContaining({ delivery_status: 'browser_save_requested', download_attempt_id: download.download_attempt_id, series_view_id: intent.series_view_id })]);
+    for (const row of tracked) expect(validProperties(studioEvents, row.event, row.properties), JSON.stringify(row)).toBe(true);
+  } finally { history.replaceState({}, '', previous); }
+});
+
+it('sends discovery ranking and actual interleaved card position on exposure and opening', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  vi.useFakeTimers();
+  try {
+    fetchItems(Array.from({ length: 36 }, (_, i) => ({ ...items[i % 3], id: 'rank-' + i, brand: 'Brand ' + Math.floor(i / 3), title: 'Work ' + i, sortOrder: i })));
+    await mount();
+    const all = [...host.querySelectorAll('main [data-template-id], main [data-series-id]')];
+    const card = host.querySelector('[data-series-id]')!;
+    const position = all.indexOf(card) + 1;
+    expect(position).toBeGreaterThanOrEqual(7); expect(position).toBeLessThanOrEqual(9);
+    await act(async () => impressions().emit(1, [card]));
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    const [seen] = events('surface_view', { area: 'template_series_card' });
+    expect(seen).toMatchObject({ series_placement: 'discovery', series_rank: 1, series_position: position, ranking_policy: 'works59-ctr41-v1', ranking_snapshot: 'ctr-20261118-v2' });
+    await act(async () => card.querySelector('button')!.click());
+    const [opened] = events('ui_click', { area: 'template_series_card' });
+    const { element: _element, ...source } = seen;
+    expect(opened).toMatchObject(source);
+    expect(opened.series_view_id).toMatch(uuid);
+    expect(events('ui_click', { area: 'template_card' })).toHaveLength(0);
+  } finally { vi.useRealTimers(); history.replaceState({}, '', previous); }
+});
+
+it('opens the same filtered brand collection shown on its TOP 100 card', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    await search('Second');
+    const card = host.querySelector('[data-brand-series="Other"]')!;
+    expect(card.textContent).toContain('1 work');
+    await act(async () => button('View Other brand series', card).click());
+    const brand = host.querySelector('dialog[aria-label="Other brand story"]')!;
+    expect(brand.querySelectorAll('[data-film-id]')).toHaveLength(1);
+    expect(button('Select work Second', brand)).toBeDefined();
+    expect(button('Select work Third', brand)).toBeUndefined();
+    expect(events('surface_view', { area: 'template_series_detail' })).toEqual([expect.objectContaining({ series_work_count: 1 })]);
+  } finally { history.replaceState({}, '', previous); }
+});
+
+it('reports a one-based series position when a learning example clears the purpose filter', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    const first = { ...items[0], uses: ['Product launch'], postedAt: '2025-01-01' };
+    const example = { ...first, id: 'motion-dfb1a35a-a70e-489f-8e02-b74068fc0b8c', title: 'Design feature example', uses: ['Product demo'], sortOrder: 3, postedAt: '2025-02-01' };
+    fetchItems([first, example]);
+    await mount();
+    await act(async () => button('TOP 100 brands').click());
+    await act(async () => button('View Figma brand series').click());
+    const brand = host.querySelector('dialog[aria-label="Figma brand story"]')!;
+    await act(async () => button('Product launch films', brand).click());
+    expect(brand.querySelectorAll('[data-film-id]')).toHaveLength(1);
+    await act(async () => {
+      const learning = brand.querySelector<HTMLDetailsElement>('details:has(button)')!;
+      learning.open = true;
+      button('Design feature example', learning).click();
+    });
+    expect(button('All purposes', brand).getAttribute('aria-pressed')).toBe('true');
+    expect(brand.querySelector('[aria-label="Select work Design feature example"][aria-current="true"]')).not.toBeNull();
+    const position = { template_id: example.id, series_work_position: 2 };
+    expect(events('ui_click', { element: 'select_work' })).toEqual([expect.objectContaining(position)]);
+    expect(events('surface_view', { area: 'template_series_work' }).at(-1)).toMatchObject(position);
+  } finally { history.replaceState({}, '', previous); }
+});
+
+it('does not keep the compare exclusion when reopening the library', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    let setOpen!: React.Dispatch<React.SetStateAction<boolean>>;
+    function ReopenLibrary() {
+      const [open, updateOpen] = React.useState(true);
+      setOpen = updateOpen;
+      return <TemplateLibraryDialog open={open} busy={false} error="" onClose={() => updateOpen(false)} onOpen={() => {}} />;
+    }
+    await act(async () => root.render(<I18nProvider initialLocale="en"><ReopenLibrary /></I18nProvider>));
+    await act(async () => button('TOP 100 brands').click());
+    await act(async () => button('View Figma brand series').click());
+    const brand = host.querySelector('dialog[aria-label="Figma brand story"]')!;
+    await act(async () => button('Compare Product launch films from other brands', brand).click());
+    expect(button('Excluding Figma')).toBeDefined();
+    expect(cards()).toEqual(['two']);
+    await act(async () => setOpen(false));
+    await act(async () => setOpen(true));
+    expect(button('Excluding Figma')).toBeUndefined();
+    expect(cards()).toEqual(['two', 'one', 'three']);
+  } finally { history.replaceState({}, '', previous); }
+});
+
+it('localizes the brand intro, series controls, and filmstrip accessibility labels', async () => {
+  const previous = location.href;
+  history.replaceState({}, '', '/?brandStoriesPreview=1');
+  try {
+    await mount('ja');
+    await act(async () => button(translate('ja', 'TOP 100 brands')).click());
+    expect(host.textContent).toContain('次の発表のヒントを探そう。');
+    await act(async () => button('Figma のブランドシリーズを見る').click());
+    const brand = host.querySelector('dialog[aria-label="Figma のブランドストーリー"]')!;
+    expect(brand.querySelector('[aria-label="ブランド作品のフィルムストリップ"]')).not.toBeNull();
+    expect(button('作品「First」を選択', brand)).toBeDefined();
+    expect(button('詳細をすべて見る', brand)).toBeDefined();
+  } finally { history.replaceState({}, '', previous); }
+});

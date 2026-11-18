@@ -255,6 +255,64 @@ The research sources are the [supported MCP lifecycle](https://modelcontextproto
 [Codex's MCP client](https://github.com/openai/codex/blob/main/codex-rs/rmcp-client/src/utils.rs)
 and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/src/connection.ts).
 
+## Brand-story discovery and reuse
+
+The opt-in `brandStoriesPreview=1` template-library surface reuses the existing
+Studio transport, closed registry and installation-wide privacy controls. It does
+not add an SDK, identity, endpoint or automatic production-statistics refresh.
+`template_series_*` areas describe curated template brand series; they are distinct
+from the Brand Kit page's `brand_*` areas and catalogue IDs.
+
+| Question / signal | Event and tuple | Reporting unit |
+| --- | --- | --- |
+| Was a series card seen? | `surface_view / template_series_card / card` | At least 50% visible for one uninterrupted second, visible tab, uncovered library; once per list result set and series. Returning from detail does not count it again. |
+| Which entry opened it? | `ui_click / template_series_card / open_detail` | One activation, with a fresh `series_view_id`; opening need not imply a qualified prior exposure. |
+| Did posting history appear? | `surface_view / template_series_detail / detail` | Once per series view when its native dialog is open, visible and uncovered. |
+| Which work was inspected? | `surface_view / template_series_work / detail` | Initial selected work and each actual selected-work change; returning from an overlaid detail does not add one. It means visible selection, not video load or completed viewing. |
+| What helped browsing and learning? | `ui_click / template_series_detail` | Intentional `select_work`, `select_chapter`, `filter_option`, `browse_timeline`, `expand_learning`, `compare_brands`, `open_detail`, `view_repository` or `close_detail` handlers. Same-work activation is a no-op; drag reports once on release. Hover and video progress are not formal analytics. |
+| Was an instruction copied? | `ui_click / template_series_detail / start_use` and existing `template_instruction_copy_result` | One `copy_attempt_id` joins click and result. `clipboard_written` is success; `manual_fallback_shown` is manual recovery, `failed` means instruction preparation failed. Recreate-and-submit remains a distinct `template_action`/`instruction_kind`. |
+| Was motion.md handed to the browser? | `ui_click / template_series_detail / download_guide` and existing `resource_download_result` | One `download_attempt_id`; `browser_save_requested` does not prove a file reached disk, `fetch_failed` carries only a bounded error code. |
+
+Every series signal carries an opaque, deterministic 64-bit catalogue-label hash
+(`series_id`, not a display name), result-set UUID `series_list_id`, entry
+`series_placement=discovery|top100`, one-based `series_position`, `series_rank` and
+`series_work_count`. Position counts template and series cards, excluding the intro;
+rank counts series cards only. Search, sort and filter counts capture the list at
+entry. A changed search/filter/sort receives its own list ID, reused on return to the
+same result set within one library visit. A new library visit starts new IDs.
+Renaming a catalogue label changes its series identity; this is not a user ID.
+
+Discovery carries `ranking_policy=works59-ctr41-v1` and
+`ranking_snapshot=ctr-20261118-v2`; TOP100 carries `catalog-v1` and no popularity
+snapshot. These identify the shipped rule and fixed input, not a live rank service.
+They do not change the confirmed sampling or 10–14-template spacing.
+
+Work signals use existing `template_id` with the one-based `series_work_position`
+within the opened collection’s chronology, regardless of its in-dialog purpose filter. Chapter clicks
+use one-based `chapter_index`, never chapter text/timestamps. Learning sections use
+`adapt|habits`; browse intent uses `browse_method=arrow|drag` and optional
+`direction=previous|next`. Purposes reuse the bounded catalogue `filter_value` slug.
+Names, titles, notes, instructions, URLs, raw errors and private materials are not
+sent. Authoring scenes without a series-view context do not report these actions.
+
+Opening a work's full detail reports the ordinary detail view exactly once, with
+its own `detail_view_id` plus the same series attribution and
+`series_surface=template_detail`. It does not manufacture a `template_card` click.
+Direct timeline actions use `series_surface=timeline` without inventing a template
+detail view. Existing detail copy/download/instruction/link signals inherit the
+series source, including subsequent related/previous/next details until closed.
+Ordinary catalogue entries retain their existing fields and meaning.
+
+For series CTR, join qualified card exposure to later `open_detail` by collection
+identity, entry and `series_list_id` under the agreed analysis window. Copy intent,
+copy result, browser download handoff and completed creation are separate stages;
+these events do not prove that a user sent a prompt or produced a usable video.
+Exclude `env=test` and test-run UUIDs from production analysis. The review proxy on
+56820 deliberately disables collection; marked ingestion tests use a separate
+backend/data directory. Deterministic coverage lives in
+`brandStoryTracking.test.ts`, `TemplateLibraryDialog.test.tsx`,
+`tracking.test.ts` and `tests/brand-story-tracking.test.ts`.
+
 ## Implemented signals and limits
 
 - All registered phase-one stdio tools: accepted start and observed finish, including
