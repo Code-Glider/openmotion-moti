@@ -171,7 +171,7 @@ export class Phase1Service {
     if (previous) {
       if (previous.inputHash !== inputHash) throw new Error('REQUEST_ID_CONFLICT: 相同 requestId 不能使用不同输入');
       if (previous.state === 'completed') return { ...previous.result, ...(previous.result.job ? { job: await this.publicJob(previous.result.job.id) } : {}), replayed: true };
-      if (previous.state === 'failed') throw new Error(previous.error);
+      if (previous.state === 'failed') throw Object.assign(new Error(previous.error), previous.applied === false ? { applied: false } : {});
       if (name === 'motion_open_preview' && args.action === 'complete_generation') {
         const work = await this.workRounds.get(args.projectId, args.workId);
         if (work.generation?.completionRequestId === args.requestId) {
@@ -225,7 +225,7 @@ export class Phase1Service {
     }
     catch (error) {
       if (workAccepted) await this.workRounds.failed(args.projectId, args.workId, errorText(error));
-      await atomicJson(file, { ...record, state: 'failed', error: errorText(error) }); throw error;
+      await atomicJson(file, { ...record, state: 'failed', error: errorText(error), ...((error as any)?.applied === false ? { applied: false } : {}) }); throw error;
     }
     await atomicJson(file, { ...record, state: 'completed', result }); return result;
   }
@@ -454,18 +454,19 @@ export class Phase1Service {
       }, 30_000);
     }
     if (name === 'motion_create_project') return this.writeRequest(name, args, async record => {
-      if (args.projectType === 'natural_language' && (args.templateId || args.referenceVideoId || args.referenceUrl) || args.projectType === 'template' && (args.referenceVideoId || args.referenceUrl) || args.projectType === 'reference_video' && (args.templateId || args.referenceVideoId && args.referenceUrl)) throw new Error('INVALID_ARGUMENT: creation source must match projectType');
-      if (args.projectType === 'template' && !args.templateId || args.projectType === 'reference_video' && !args.referenceVideoId && !args.referenceUrl) throw new Error('INVALID_ARGUMENT: creation source is required');
-      const source = args.templateId ? await templateCatalogFor(this.store.directory).get(args.templateId) : args.referenceVideoId ? getTemplate(args.referenceVideoId) : null;
-      const guideDraft = args.guideDraft === undefined ? undefined : parseTemplateGuideDraft(args.guideDraft);
-      if (guideDraft && (args.projectType !== 'template' || !source)) throw new Error('INVALID_GUIDE_DRAFT: a catalog template is required');
-      if (args.projectType === 'template' && (!source || !isEditableTemplate(source)) && !guideDraft) throw new Error('TEMPLATE_NOT_COPYABLE: 请在 Studio 选择可编辑原生模板；参考视频需由 Agent 重建');
-      if (args.referenceUrl && !['https:', 'http:'].includes(new URL(args.referenceUrl).protocol)) throw new Error('INVALID_REFERENCE_URL');
-      validateInstruction(args.requirements);
-      const language = args.namingLanguage === undefined ? undefined : namingLanguage(args.namingLanguage);
-      const title = validateProjectTitle(args.title), directory = this.store.projectDirectoryFor(record.projectId);
+      const directory = this.store.projectDirectoryFor(record.projectId);
       let registered = false;
       try {
+        if (args.projectType === 'natural_language' && (args.templateId || args.referenceVideoId || args.referenceUrl) || args.projectType === 'template' && (args.referenceVideoId || args.referenceUrl) || args.projectType === 'reference_video' && (args.templateId || args.referenceVideoId && args.referenceUrl)) throw new Error('INVALID_ARGUMENT: creation source must match projectType');
+        if (args.projectType === 'template' && !args.templateId || args.projectType === 'reference_video' && !args.referenceVideoId && !args.referenceUrl) throw new Error('INVALID_ARGUMENT: creation source is required');
+        const source = args.templateId ? await templateCatalogFor(this.store.directory).get(args.templateId) : args.referenceVideoId ? getTemplate(args.referenceVideoId) : null;
+        const guideDraft = args.guideDraft === undefined ? undefined : parseTemplateGuideDraft(args.guideDraft);
+        if (guideDraft && (args.projectType !== 'template' || !source)) throw new Error('INVALID_GUIDE_DRAFT: a catalog template is required');
+        if (args.projectType === 'template' && (!source || !isEditableTemplate(source)) && !guideDraft) throw new Error('TEMPLATE_NOT_COPYABLE: 请在 Studio 选择可编辑原生模板；参考视频需由 Agent 重建');
+        if (args.referenceUrl && !['https:', 'http:'].includes(new URL(args.referenceUrl).protocol)) throw new Error('INVALID_REFERENCE_URL');
+        validateInstruction(args.requirements);
+        const language = args.namingLanguage === undefined ? undefined : namingLanguage(args.namingLanguage);
+        const title = validateProjectTitle(args.title);
         const appliedGuide = guideDraft ? await materializeTemplateGuide(templateCatalogFor(this.store.directory), source!.id, directory, this.runtimeRoot, guideDraft) : undefined;
         if (args.projectType === 'template' && !guideDraft) await templateCatalogFor(this.store.directory).copy(source!, directory, this.runtimeRoot);
         else if (!guideDraft) await createBlankProject(directory, this.runtimeRoot, title);
@@ -492,7 +493,13 @@ export class Phase1Service {
         });
         const detail = await this.detail(record.projectId);
         return { ...detail, created: true, previewUrl: this.context.origin() + sessionPath(detail.sessionId, detail.projectId, { embedded: true }), creationComplete: true, filmComplete: false };
-      } catch (error) { if (!registered) await rm(directory, { recursive: true, force: true }); throw error; }
+      } catch (error) {
+        if (!registered) {
+          await rm(directory, { recursive: true, force: true });
+          throw Object.assign(error instanceof Error ? error : new Error(errorText(error)), { applied: false });
+        }
+        throw error;
+      }
     });
     if (name === 'motion_open_preview') {
       if (args.action === 'record_display') {

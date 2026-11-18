@@ -103,6 +103,27 @@ test('the exact requested URLs serve upgraded pages, while raw source and downlo
   }
 }, false));
 
+test('a cleaned-up creation failure is terminal and unapplied through the real HTTP boundary', t => fixture(async store => {
+  const original = TemplateCatalog.prototype.sourceFile;
+  let fail = true;
+  t.mock.method(TemplateCatalog.prototype, 'sourceFile', async function (...args: Parameters<typeof original>) {
+    if (args[1] === 'demos/sequence.html' && fail) { fail = false; throw new Error('Temporary source unavailable'); }
+    return original.apply(this, args);
+  });
+  const service = new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
+  const request = transport(store, { phase1: service, runtimeRoot: pluginRoot });
+  const args = { requestId: 'guide-source-failure', projectType: 'template', templateId: lovable, title: 'Recovery', requirements: 'Continue this example', guideDraft: { title: 'Recovery', accent: '#7050da' } };
+  const create = (arguments_: typeof args) => request('/motion-api/phase1/call', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'openmotion_create_project', arguments: arguments_ }) });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await create(args); assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'Temporary source unavailable', applied: false });
+  }
+  const recovered = await create({ ...args, requestId: 'guide-recovered-source' }); assert.equal(recovered.status, 200);
+  const project = await recovered.json();
+  assert.equal(store.projectCatalog().projects.filter(item => item.id === project.projectId).length, 1);
+}, false));
+
 
 test('guide actions cross real Studio admission with closed metadata and respect opt-out', () => fixture(async store => {
   const received: PendingEvent[] = [];

@@ -1,5 +1,6 @@
 import { assetNamingInstruction } from '../../../shared/asset-names.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
+import { templateGuideContinuationInstruction } from '../../../shared/template-guide.ts';
 import type { IntegrationInfo } from '../../../shared/integration.ts';
 
 /** Maintained product descriptions; coverage is checked against the public MCP contract. */
@@ -20,6 +21,11 @@ export const mcpCapabilities = [
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
 export const mcpScenarios = [{
+  id: 'template-guide', icon: 'layout-grid-line', title: 'Continue a guide example',
+  description: 'Open a template’s motion guide and try its declared text and accent controls, then copy the requirements or enter the editor. Keep the exact template and draft. This creates the authored example, not the reference film; only confirmed unapplied failures permit a new creation request.',
+  tools: ['openmotion_get_template', 'openmotion_create_project', 'openmotion_open_preview'],
+  prompt: templateGuideContinuationInstruction,
+}, {
   id: 'asset-naming', icon: 'folder-open-line', title: 'Name project assets',
   description: 'Start with a saved project. Preserve readable names; name missing or new assets in the project’s naming language. Names change without moving files. If a save conflicts, reread the project before retrying.',
   tools: ['openmotion_get_project', 'openmotion_edit_project'],

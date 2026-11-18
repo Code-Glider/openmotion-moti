@@ -23,8 +23,19 @@ test('handbook scenarios compose public tools and keep their copyable instructio
     assert.ok(scenario.title && scenario.description);
     for (const tool of scenario.tools) {
       assert.ok(names.has(tool), tool);
-      assert.ok((scenario.id === 'asset-naming' ? assetNamingInstruction : platformExportExample('en')).includes(tool), tool);
+      assert.ok((scenario.id === 'asset-naming' ? assetNamingInstruction : scenario.id === 'template-guide' ? scenario.prompt : platformExportExample('en')).includes(tool), tool);
     }
+  }
+});
+
+test('guide-draft handoff is discoverable and translated with its actual recovery boundaries', () => {
+  const scenario = mcpScenarios.find(item => item.id === 'template-guide')!;
+  assert.match(scenario.prompt, /guideDraft.*stable requestId/);
+  assert.match(scenario.prompt, /applied=false.*new requestId.*unknown outcomes/);
+  assert.match(scenario.prompt, /not a reconstruction of the reference film/);
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  for (const [locale, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const text of [scenario.title, scenario.description, scenario.prompt]) assert.ok(values[text]?.trim(), locale + ': ' + text);
   }
 });
 

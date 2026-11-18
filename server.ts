@@ -481,7 +481,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
       catch (error) {
         const message = error instanceof Error ? error.message : 'Tool failed';
-        return json(res, 400, { error: message, applied: message.startsWith('VERSION_NOT_RESTORABLE:') ? false : 'unknown' });
+        return json(res, 400, { error: message, applied: (error as any)?.applied === false || message.startsWith('VERSION_NOT_RESTORABLE:') ? false : 'unknown' });
       }
     }
     if (req.method === 'GET' && ['/api/integration', '/connect/guide', '/connect/config'].includes(url.pathname)) {

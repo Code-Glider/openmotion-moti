@@ -37,6 +37,37 @@ it('reuses one creation request for the same draft and opens the returned projec
   expect(creates[0].arguments).toEqual(expect.objectContaining({ templateId: lovable, guideDraft: draft }));
   expect(calls.filter(call => call.name === 'openmotion_open_preview').map(call => call.arguments.projectId)).toEqual(['11111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111']);
 });
+it('replays the complete creation payload after language changes and module reloads', async () => {
+  api(); const id = 'motion-language-retry';
+  await handleGuideAction(id, 'open', draft, 'en');
+  vi.resetModules();
+  const reloaded = await import('./actions');
+  await reloaded.handleGuideAction(id, 'open', draft, 'fr');
+  const creates = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(init!.body as string)).filter(call => call.name === 'openmotion_create_project');
+  expect(creates[1].arguments).toEqual(creates[0].arguments);
+  expect(creates[1].arguments.namingLanguage).toBe('en');
+});
+it('allows a fresh attempt only after a confirmed unapplied failure, preserving uncertain retries', async () => {
+  for (const applied of [false, 'unknown']) {
+    const id = 'motion-failure-' + applied;
+    const creates: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const call = JSON.parse(init.body as string);
+      if (call.name === 'openmotion_get_template') return new Response(JSON.stringify({ title: 'Guide' }));
+      if (call.name === 'openmotion_create_project') {
+        creates.push(call.arguments);
+        if (creates.length === 1) return new Response(JSON.stringify({ error: 'Temporary source failure', applied }), { status: 400 });
+        return new Response(JSON.stringify({ projectId: '11111111-1111-4111-8111-111111111111', previewUrl: location.origin + '/?project=11111111-1111-4111-8111-111111111111' }));
+      }
+      return new Response('{}');
+    }));
+    await expect(handleGuideAction(id, 'open', draft, 'en')).rejects.toThrow('Temporary source failure');
+    vi.resetModules(); const reloaded = await import('./actions');
+    await reloaded.handleGuideAction(id, 'open', draft, 'fr');
+    if (applied === false) expect(creates[1].requestId).not.toBe(creates[0].requestId);
+    else expect(creates[1]).toEqual(creates[0]);
+  }
+});
 it('accepts only bounded requests tied to a concrete template', () => {
   const rpc = { type: 'openmotion:guide-action', templateId: lovable, viewId: crypto.randomUUID(), requestId: 'copy-1', action: 'copy', locale: 'en', value: draft };
   expect(validGuideRpc(rpc)).toBe(true); expect(validGuideRpc({ ...rpc, action: 'fetch_private_file' })).toBe(false);
