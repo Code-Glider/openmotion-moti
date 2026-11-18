@@ -129,9 +129,8 @@
 /* One continuous control column; all lane content starts at its right edge. */
 :root[data-motion-ui] .motion-timeline-gutter-fill { background: var(--timeline-gutter-bg); border-right: 1px solid var(--timeline-gutter-border); }
 :root[data-motion-ui] .motion-timeline-ruler { border-bottom: 1px solid var(--timeline-row-border); }
-:root[data-motion-ui] .motion-timeline-ruler-corner { border-right: 1px solid var(--timeline-gutter-border); display: flex; align-items: center; padding-inline: var(--motion-space-12); }
+:root[data-motion-ui] .motion-timeline-ruler-corner { border-right: 1px solid var(--timeline-gutter-border); }
 :root[data-motion-ui] [data-timeline-row] [role="rowheader"] { border-right: 1px solid var(--timeline-gutter-border); }
-.motion-timeline-timecode { font-family: var(--motion-font-mono); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); font-variant-numeric: tabular-nums; color: var(--motion-text); }
 :root[data-motion-ui] [data-timeline-row] > [role="row"] > [role="gridcell"] {
   background-image: linear-gradient(to right, var(--timeline-grid-line) 1px, transparent 1px);
   background-size: var(--timeline-grid-step) 100%;
