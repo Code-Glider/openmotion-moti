@@ -1,3 +1,4 @@
+import { loadLibrarySkills, assertSkillIds, skillUsage } from './shared/library-skill-catalog.ts';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
@@ -194,15 +195,23 @@ export class TemplateCatalog {
     return [...remote, ...builtinTemplates];
   }
 
+  private async skills(snapshot: Snapshot) {
+    const skills = this.source === 'repository' ? await loadLibrarySkills() : snapshot.hosted?.skills ?? [];
+    assertSkillIds(skills, this.templates(snapshot).map(item => item.id));
+    return skills;
+  }
+
   async index() {
     const snapshot = await this.refresh();
     const items = this.templates(snapshot);
+    const skills = await this.skills(snapshot);
     const catalogVersion = snapshot.repository?.version ?? snapshot.hosted?.version ?? snapshot.publication.publicationId;
-    const indexPath = path.join(this.directory, `templates.${hash(catalogVersion).slice(0, 16)}.index.jsonl`);
-    const lines = items.map(item => JSON.stringify({ templateId: item.id, name: item.title, summary: item.description,
-      category: item.subtitle, tags: item.tags, durationSeconds: item.duration, kind: item.kind, localSource: item.localSource })).join('\n') + '\n';
+    // Skills change the index file, not the template catalog identity shared with gallery and detail.
+    const indexPath = path.join(this.directory, `templates.${hash(catalogVersion + (skills.length ? ':skills:' + hash(JSON.stringify(skills)) : '')).slice(0, 16)}.index.jsonl`);
+    const lines = [...items.map(item => ({ templateId: item.id, name: item.title, summary: item.description,
+      category: item.subtitle, tags: item.tags, durationSeconds: item.duration, kind: item.kind, localSource: item.localSource })), ...skills.map(({ instructions: _instructions, files: _files, ...skill }) => ({ ...skill, templateId: skill.id, name: skill.title, summary: skill.description }))].map(item => JSON.stringify(item)).join('\n') + '\n';
     await atomicWrite(indexPath, lines);
-    return { indexPath, total: items.length, catalogVersion, source: this.source, warning: this.warning };
+    return { indexPath, total: items.length, skillTotal: skills.length, catalogVersion, source: this.source, warning: this.warning };
   }
 
   async page(options: Parameters<typeof templatePage>[1] & { covered?: boolean; locale?: string } = {}) {
@@ -213,9 +222,11 @@ export class TemplateCatalog {
   }
 
   async get(id: string): Promise<EditableTemplate> {
+    if (this.source === 'repository' && (await loadLibrarySkills()).some(item => item.id === id)) throw new Error(skillUsage);
     const builtin = builtinTemplates.find(item => item.id === id);
     if (builtin) return builtin;
     const snapshot = await this.refresh();
+    if ((await this.skills(snapshot)).some(item => item.id === id)) throw new Error(skillUsage);
     const template = this.templates(snapshot).find(item => item.id === id);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');
     return template;
@@ -226,6 +237,13 @@ export class TemplateCatalog {
     if (builtin) return { ...builtin, instructions: templateRecipe(builtin), source: this.source,
       workflowGuide: { workflow: 'template', section: 'start', status: 'ready' }, warning: this.warning };
     const snapshot = await this.refresh();
+    const skill = (await this.skills(snapshot)).find(item => item.id === id);
+    if (skill) {
+      // Hosted/npm installs have no library files; publish them as hash-verified objects like template sources.
+      const objects = skill.localSource ? undefined : skill.objects?.map(file => ({ ...file, url: `${snapshot.hosted!.objectBaseUrl}/${file.sha256}` }));
+      return { ...skill, ...(objects ? { objects } : {}), motionDocument: { path: skill.localSource ? path.join(skill.localSource, 'SKILL.md') : 'SKILL.md', content: skill.instructions }, source: this.source,
+        workflowGuide: { workflow: 'skill', nextStep: objects ? skillUsage + ' Supporting files are not installed locally: download the ones SKILL.md references from objects[].url into your working directory at objects[].path, and check bytes and sha256 before running scripts or reading references.' : skillUsage } };
+    }
     const template: EditableTemplate | undefined = this.templates(snapshot).find(item => item.id === id);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');
     if (template.localSource) {
