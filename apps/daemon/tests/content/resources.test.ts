@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { writeFile } from "node:fs/promises";
-import { request } from "node:http";
+import { type IncomingMessage, request } from "node:http";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { channel, digest, namespace } from "@odsuite/protocol";
@@ -259,6 +259,96 @@ it("bounds upload capacity and size, rejects bad digests/formats atomically and 
     await closed;
     await expect(api.uploadResource(second, new Blob([bytes]))).rejects.toThrow();
   } finally {
+    await f.close();
+  }
+  expect((await readDirectory(f.root)).manager.phase).toBe("closed");
+  expect(await observeProcesses(f.root)).toEqual([]);
+}, 30000);
+
+it("retains a released slow download slot until abort, then drains another active reader before shutdown", async () => {
+  const f = await fixture();
+  const paused: IncomingMessage[] = [];
+  try {
+    const { api } = await f.host(),
+      session = await api.execute("session_create", { requestId: randomUUID(), title: "Readers", mode: "motion" }),
+      artifact = await api.execute("artifact_create", {
+        requestId: randomUUID(),
+        sessionId: session.id,
+        title: "Slow download",
+        files: initialFiles(),
+      }),
+      owner = { sessionId: session.id, artifactId: artifact.id },
+      before = await api.execute("project_read", owner),
+      bytes = wave(),
+      project = (
+        await api.importResource(
+          {
+            ...owner,
+            requestId: randomUUID(),
+            expectedRevision: before.revision,
+            path: "assets/slow.wav",
+            name: "Slow WAV",
+            digest: hash(bytes),
+            bytes: bytes.length,
+          },
+          new Blob([Uint8Array.from(bytes)]),
+        )
+      ).project;
+    if (!project) throw Error("missing imported resource");
+    const input = { ...owner, revision: project.revision, path: "assets/slow.wav" },
+      first = await api.execute("resource_read", input),
+      second = await api.execute("resource_read", input),
+      head = await fetch(first.url, { method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("content-length")).toBe(String(resourceLimit));
+    const pause = async (url: string) => {
+      const req = request(url);
+      req.on("error", () => {});
+      req.end();
+      const [response] = (await once(req, "response")) as [IncomingMessage];
+      response.on("error", () => {});
+      const firstChunk = await new Promise<Buffer>((done) =>
+        response.once("data", (data: Buffer) => {
+          response.pause();
+          done(data);
+        }),
+      );
+      expect(firstChunk).toEqual(bytes.subarray(0, firstChunk.length));
+      paused.push(response);
+      return response;
+    };
+    const active = await pause(first.url);
+    await api.execute("resource_release", { id: first.id });
+    await expect(api.execute("resource_read", input)).rejects.toMatchObject({ code: "conflict" });
+    const closed = new Promise<void>((done) => active.once("close", done));
+    active.destroy();
+    await closed;
+    // Only conflict is retryable: a reclaimed slot succeeds once, without changing source data.
+    let replacement: typeof first | undefined;
+    await expect
+      .poll(
+        async () => {
+          try {
+            replacement = await api.execute("resource_read", input);
+            return true;
+          } catch (error) {
+            if ((error as { code?: string }).code !== "conflict") throw error;
+            return false;
+          }
+        },
+        { timeout: 5000 },
+      )
+      .toBe(true);
+    if (!replacement) throw Error("missing replacement ticket");
+    expect((await fetch(first.url)).status).toBe(404);
+    await api.execute("resource_release", { id: second.id });
+    const draining = await pause(replacement.url),
+      drained = new Promise<void>((done) => draining.once("close", done));
+    await f.close();
+    draining.destroy();
+    await drained;
+  } finally {
+    for (const response of paused) response.destroy();
     await f.close();
   }
   expect((await readDirectory(f.root)).manager.phase).toBe("closed");

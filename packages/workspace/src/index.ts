@@ -27,6 +27,7 @@ import { Sessions } from "./sessions.js";
 
 export * from "./contract.js";
 export { identify as identifyResource } from "./resources/formats.js";
+export type { ResourceReader } from "./resources/reader.js";
 /** The one product transaction authority; consumers supply a sidecar-granted data root. */
 export class Workspace {
   private db: Database;
@@ -54,6 +55,16 @@ export class Workspace {
       return this.db.request(operation, { ...data, requestId: data.requestId }, perform) as Output<K>;
     // Reads also pin one SQLite snapshot across ownership/revision queries.
     return this.db.transaction(perform, false) as Output<K>;
+  }
+  /** Binary reads retain immutable ownership and bounded chunk hashes, never a whole-file ticket. */
+  readResource(input: Input<"resource_read">) {
+    const assertOpen = () => {
+      if (this.closed) throw new Fault("integrity", "workspace is closed");
+    };
+    assertOpen();
+    const parsed = schemas.resource_read.safeParse(input);
+    if (!parsed.success) throw new Fault("invalid", "invalid resource read intent");
+    return this.db.transaction(() => this.resources.open(parsed.data, assertOpen), false);
   }
   /** Caller resolves bounded bytes outside SQLite; receipt replay precedes byte resolution. */
   importResource(input: Input<"resource_import">, bytes: Uint8Array): Project {

@@ -2,6 +2,7 @@ import { Fault, type Input, type Resource, resourceBytesLimit, resourceCountLimi
 import type { Database } from "../database.js";
 import type { Projects } from "../projects.js";
 import { checksum, identify } from "./formats.js";
+import { resourceReader } from "./reader.js";
 /** Persistent user bytes. Only owned immutable revision manifests grant reads; no cache/GC authority. */
 export class Resources {
   constructor(
@@ -50,6 +51,11 @@ export class Resources {
     const resource = this.projects.snapshot(input).resources.find((entry) => entry.path === input.path);
     if (!resource) throw new Fault("missing", "resource does not belong to this revision");
     return { resource, data: this.bytes(resource).toString("base64") };
+  }
+  open(input: Input<"resource_read">, assertOpen: () => void) {
+    const resource = this.projects.snapshot(input).resources.find((entry) => entry.path === input.path);
+    if (!resource) throw new Fault("missing", "resource does not belong to this revision");
+    return resourceReader(this.db, resource, assertOpen);
   }
   /** Historical manifests retain membership; every actual byte is verified before restoration. */
   verify(resources: Resource[]): string[] {

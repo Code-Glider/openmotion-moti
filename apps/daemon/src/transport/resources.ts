@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { Fault, type Workspace } from "@open-motion/workspace";
+import { Fault, type ResourceReader, type Workspace } from "@open-motion/workspace";
 import {
   resourceTransferLimits as limits,
   type ResourceDownload,
@@ -19,6 +19,7 @@ interface Ticket {
   key: string;
   signature: string;
   data?: Buffer;
+  reader?: ResourceReader;
   busy: boolean;
   retired: boolean;
 }
@@ -69,7 +70,7 @@ export class ResourceTransfers {
       if (this.tickets.size >= limits.tickets)
         throw new Fault("conflict", "resource transfer capacity reached; release a ticket or wait for expiry");
       const input = parsed.data as ResourceInput<"resource_read">,
-        read = this.workspace.execute("resource_read", input),
+        read = this.workspace.readResource(input),
         key = randomBytes(32).toString("hex"),
         id = randomUUID(),
         value: ResourceDownload = {
@@ -85,7 +86,7 @@ export class ResourceTransfers {
         kind: "download",
         key,
         value,
-        data: Buffer.from(read.data, "base64"),
+        reader: read,
         signature: JSON.stringify(input),
         busy: false,
         retired: false,
@@ -147,8 +148,8 @@ export class ResourceTransfers {
     try {
       if (ticket.kind === "download") {
         const value = ticket.value as ResourceDownload,
-          data = ticket.data;
-        if (!data) throw new Fault("integrity", "resource download bytes are missing");
+          reader = ticket.reader;
+        if (!reader) throw new Fault("integrity", "resource download reader is missing");
         response.writeHead(200, {
           "content-type": value.resource.type,
           "content-length": value.bytes,
@@ -159,15 +160,7 @@ export class ResourceTransfers {
           ...(origin ? { "access-control-allow-origin": origin, vary: "origin" } : {}),
         });
         if (request.method === "HEAD") response.end();
-        else
-          await pipeline(
-            Readable.from(
-              (function* () {
-                for (let at = 0; at < data.length; at += 65536) yield data.subarray(at, at + 65536);
-              })(),
-            ),
-            response,
-          );
+        else await pipeline(Readable.from(reader.chunks(), { objectMode: false, highWaterMark: 65536 }), response);
         return;
       }
       const data = Buffer.alloc(ticket.value.bytes),
