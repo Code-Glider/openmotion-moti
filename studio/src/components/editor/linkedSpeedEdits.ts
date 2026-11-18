@@ -76,7 +76,9 @@ export function useLinkedSpeedCommit(
   return {
     commitRate: async value => {
       const state = usePlayerStore.getState();
-      const storedSelf = state.elements.find(el => isSelected(el, selection));
+      // Authored IDs (including generated hf-ids) can repeat across source files.
+      const storedSelf = state.elements.find(el =>
+        (el.sourceFile ?? 'index.html') === selection.sourceFile && isSelected(el, selection));
       state.pinTimelineZoom(state.timelinePps, state.timelineFitPps);
       let plan: SpeedTimingPlan | undefined;
       const latest = bumpDomEditCommitMapVersion(rateVersions.current, `${selection.sourceFile}:${selection.hfId ?? selection.id ?? selection.selector}:${selection.selectorIndex ?? 0}`);
