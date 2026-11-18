@@ -1,5 +1,6 @@
 import { isHtmlElement } from "@hyperframes/core/runtime/dom-realm";
 import { applyAuthoredTiming } from "@hyperframes/core/studio-preview-mark";
+import { syncPreservedPreviewTiming } from "../utils/previewAuthoredTiming";
 import { type TimelineElement, usePlayerStore } from "../player/store/playerStore";
 import { toAuthoredStart } from "../player/store/timelineElement";
 import {
@@ -182,12 +183,8 @@ export function patchIframeDomTiming(
   try {
     const el = findTimelineElementInIframe(iframe, element, activeCompositionPath);
     if (!el) return;
-    // Rebind strips composition data-duration but only seeds its preserved value once.
-    for (const [name, value] of attrs) {
-      if (name === "data-duration" && el.hasAttribute("data-hf-authored-duration"))
-        el.setAttribute("data-hf-authored-duration", value);
-    }
     applyAuthoredTiming(el, attrs);
+    for (const [name, value] of attrs) syncPreservedPreviewTiming(el, name, value);
   } catch {
     // Cross-origin or mid-navigation — file save is enqueued; iframe patch is best-effort.
   }
