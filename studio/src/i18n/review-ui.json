@@ -86,7 +86,9 @@
     "Continue drawing": "继续绘制",
     "Place label": "放置文字",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "在播放控制栏选择“评论此刻”或“画笔标注”，然后点击或绘制。小浮窗会显示时间和评论输入框，不会挤压视频。时间、元素和标注会自动附上。Agent 检查最新版本，修改并验证后再标记完成。目标已变化时，先核对保存的上下文。复制不会启动 Agent；评论保存在本地。"
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "在播放控制栏选择“评论此刻”或“画笔标注”，然后点击或绘制。小浮窗会显示时间和评论输入框，不会挤压视频。时间、元素和标注会自动附上。Agent 检查最新版本，修改并验证后再标记完成。目标已变化时，先核对保存的上下文。复制不会启动 Agent；评论保存在本地。",
+    "Composition": "合成",
+    "Element": "元素"
   },
   "ja": {
     "Comments": "コメント",
@@ -175,7 +177,9 @@
     "Continue drawing": "描画を続ける",
     "Place label": "文字を配置",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "再生コントロールでコメントか描画を選び、画面をクリックするか描きます。動画のサイズを変えずに小さな入力カードが開きます。時刻、要素情報、注釈も含まれます。Agent は最新の版を確認し、編集・検証してから完了にします。対象が変わった場合は保存した情報を確認してください。コピーで Agent は起動せず、コメントはローカルに保存されます。"
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "再生コントロールでコメントか描画を選び、画面をクリックするか描きます。動画のサイズを変えずに小さな入力カードが開きます。時刻、要素情報、注釈も含まれます。Agent は最新の版を確認し、編集・検証してから完了にします。対象が変わった場合は保存した情報を確認してください。コピーで Agent は起動せず、コメントはローカルに保存されます。",
+    "Composition": "コンポジション",
+    "Element": "要素"
   },
   "ko": {
     "Comments": "댓글",
@@ -264,7 +268,9 @@
     "Continue drawing": "계속 그리기",
     "Place label": "텍스트 배치",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "재생 컨트롤에서 댓글이나 그리기를 선택한 다음 화면을 클릭하거나 그립니다. 영상 크기를 바꾸지 않는 작은 입력 카드가 열립니다. 댓글 목록에서 미처리 항목을 복사해 이 작업 공간에 연결된 Agent에게 전달합니다. 시간, 요소 정보와 주석이 포함됩니다. Agent는 최신 버전을 확인하고 수정 및 검증 후 완료 처리합니다. 대상이 바뀌었다면 저장된 맥락을 확인하세요. 복사로 Agent가 실행되지는 않으며 댓글은 로컬에 저장됩니다."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "재생 컨트롤에서 댓글이나 그리기를 선택한 다음 화면을 클릭하거나 그립니다. 영상 크기를 바꾸지 않는 작은 입력 카드가 열립니다. 댓글 목록에서 미처리 항목을 복사해 이 작업 공간에 연결된 Agent에게 전달합니다. 시간, 요소 정보와 주석이 포함됩니다. Agent는 최신 버전을 확인하고 수정 및 검증 후 완료 처리합니다. 대상이 바뀌었다면 저장된 맥락을 확인하세요. 복사로 Agent가 실행되지는 않으며 댓글은 로컬에 저장됩니다.",
+    "Composition": "컴포지션",
+    "Element": "요소"
   },
   "de": {
     "Comments": "Kommentare",
@@ -353,7 +359,9 @@
     "Continue drawing": "Weiterzeichnen",
     "Place label": "Text platzieren",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "In der Wiedergabesteuerung Kommentieren oder Zeichnen wählen, dann ins Bild klicken oder zeichnen. Eine kleine schwebende Karte öffnet sich, ohne die Videogröße zu ändern. Notizen speichern und offene Einträge aus der Kommentarliste für einen mit diesem Arbeitsbereich verbundenen Agent kopieren. Zeitpunkt, Elementkontext und Markierungen werden mitgegeben. Der Agent prüft aktuelle Versionen, bearbeitet und verifiziert vor dem Abschließen. Bei geänderten Zielen zuerst den gespeicherten Kontext prüfen. Kopieren startet keinen Agent; Kommentare bleiben lokal."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "In der Wiedergabesteuerung Kommentieren oder Zeichnen wählen, dann ins Bild klicken oder zeichnen. Eine kleine schwebende Karte öffnet sich, ohne die Videogröße zu ändern. Notizen speichern und offene Einträge aus der Kommentarliste für einen mit diesem Arbeitsbereich verbundenen Agent kopieren. Zeitpunkt, Elementkontext und Markierungen werden mitgegeben. Der Agent prüft aktuelle Versionen, bearbeitet und verifiziert vor dem Abschließen. Bei geänderten Zielen zuerst den gespeicherten Kontext prüfen. Kopieren startet keinen Agent; Kommentare bleiben lokal.",
+    "Composition": "Komposition",
+    "Element": "Element"
   },
   "fr": {
     "Comments": "Commentaires",
@@ -442,7 +450,9 @@
     "Continue drawing": "Continuer à dessiner",
     "Place label": "Placer le texte",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Choisissez le commentaire ou le dessin dans les commandes de lecture, puis cliquez ou dessinez sur l’image. Une petite carte flottante s’ouvre sans redimensionner la vidéo. Enregistrez vos notes, puis copiez les commentaires non traités vers un Agent connecté à cet espace. L’instant, le contexte des éléments et les annotations sont inclus. L’Agent vérifie les versions actuelles, modifie et contrôle le résultat avant de terminer. Si une cible a changé, consultez son contexte enregistré. La copie ne lance pas d’Agent ; les commentaires restent locaux."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Choisissez le commentaire ou le dessin dans les commandes de lecture, puis cliquez ou dessinez sur l’image. Une petite carte flottante s’ouvre sans redimensionner la vidéo. Enregistrez vos notes, puis copiez les commentaires non traités vers un Agent connecté à cet espace. L’instant, le contexte des éléments et les annotations sont inclus. L’Agent vérifie les versions actuelles, modifie et contrôle le résultat avant de terminer. Si une cible a changé, consultez son contexte enregistré. La copie ne lance pas d’Agent ; les commentaires restent locaux.",
+    "Composition": "Composition",
+    "Element": "Élément"
   },
   "ru": {
     "Comments": "Комментарии",
@@ -531,7 +541,9 @@
     "Continue drawing": "Продолжить рисование",
     "Place label": "Разместить текст",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Выберите комментарий или рисование в управлении воспроизведением, затем нажмите на кадр или нарисуйте. Откроется небольшая плавающая карточка без изменения размера видео. Сохраните замечания и скопируйте открытые комментарии из списка для Agent, подключённого к этому пространству. Время, контекст элементов и пометки включены. Agent проверяет текущие версии, вносит и проверяет изменения перед завершением. Если цель изменилась, проверьте сохранённый контекст. Копирование не запускает Agent; комментарии хранятся локально."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Выберите комментарий или рисование в управлении воспроизведением, затем нажмите на кадр или нарисуйте. Откроется небольшая плавающая карточка без изменения размера видео. Сохраните замечания и скопируйте открытые комментарии из списка для Agent, подключённого к этому пространству. Время, контекст элементов и пометки включены. Agent проверяет текущие версии, вносит и проверяет изменения перед завершением. Если цель изменилась, проверьте сохранённый контекст. Копирование не запускает Agent; комментарии хранятся локально.",
+    "Composition": "Композиция",
+    "Element": "Элемент"
   },
   "es": {
     "Comments": "Comentarios",
@@ -620,7 +632,9 @@
     "Continue drawing": "Seguir dibujando",
     "Place label": "Colocar texto",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Elige comentar o dibujar en los controles de reproducción y haz clic o dibuja sobre la imagen. Se abre una pequeña tarjeta flotante sin cambiar el tamaño del vídeo. Guarda tus notas y copia los comentarios pendientes de la lista para un Agent conectado a este espacio. Se incluyen el tiempo, el contexto de los elementos y las marcas. El Agent comprueba las versiones actuales, edita y verifica antes de resolver. Si un objetivo cambió, revisa su contexto guardado. Copiar no inicia un Agent; los comentarios son locales."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Elige comentar o dibujar en los controles de reproducción y haz clic o dibuja sobre la imagen. Se abre una pequeña tarjeta flotante sin cambiar el tamaño del vídeo. Guarda tus notas y copia los comentarios pendientes de la lista para un Agent conectado a este espacio. Se incluyen el tiempo, el contexto de los elementos y las marcas. El Agent comprueba las versiones actuales, edita y verifica antes de resolver. Si un objetivo cambió, revisa su contexto guardado. Copiar no inicia un Agent; los comentarios son locales.",
+    "Composition": "Composición",
+    "Element": "Elemento"
   },
   "pt-BR": {
     "Comments": "Comentários",
@@ -709,7 +723,9 @@
     "Continue drawing": "Continuar desenhando",
     "Place label": "Posicionar texto",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Escolha comentar ou desenhar nos controles de reprodução e clique ou desenhe na imagem. Um pequeno cartão flutuante aparece sem redimensionar o vídeo. Salve as notas e copie os comentários pendentes da lista para um Agent conectado a este espaço. Tempo, contexto dos elementos e marcações são incluídos. O Agent verifica as versões atuais, edita e valida antes de concluir. Se um alvo mudou, confira o contexto salvo. Copiar não inicia o Agent; os comentários ficam locais."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Escolha comentar ou desenhar nos controles de reprodução e clique ou desenhe na imagem. Um pequeno cartão flutuante aparece sem redimensionar o vídeo. Salve as notas e copie os comentários pendentes da lista para um Agent conectado a este espaço. Tempo, contexto dos elementos e marcações são incluídos. O Agent verifica as versões atuais, edita e valida antes de concluir. Se um alvo mudou, confira o contexto salvo. Copiar não inicia o Agent; os comentários ficam locais.",
+    "Composition": "Composição",
+    "Element": "Elemento"
   },
   "it": {
     "Comments": "Commenti",
@@ -798,7 +814,9 @@
     "Continue drawing": "Continua a disegnare",
     "Place label": "Posiziona testo",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Scegli il commento o il disegno nei controlli di riproduzione, poi fai clic o disegna sul fotogramma. Si apre una piccola scheda sospesa senza ridimensionare il video. Salva le note e copia i commenti aperti dall’elenco per un Agent collegato a questo spazio. Sono inclusi tempo, contesto degli elementi e annotazioni. L’Agent controlla le versioni attuali, modifica e verifica prima di completare. Se un elemento è cambiato, controlla il contesto salvato. La copia non avvia un Agent; i commenti restano locali."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Scegli il commento o il disegno nei controlli di riproduzione, poi fai clic o disegna sul fotogramma. Si apre una piccola scheda sospesa senza ridimensionare il video. Salva le note e copia i commenti aperti dall’elenco per un Agent collegato a questo spazio. Sono inclusi tempo, contesto degli elementi e annotazioni. L’Agent controlla le versioni attuali, modifica e verifica prima di completare. Se un elemento è cambiato, controlla il contesto salvato. La copia non avvia un Agent; i commenti restano locali.",
+    "Composition": "Composizione",
+    "Element": "Elemento"
   },
   "tr": {
     "Comments": "Yorumlar",
@@ -887,6 +905,8 @@
     "Continue drawing": "Çizmeye devam et",
     "Place label": "Metni yerleştir",
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
-    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Oynatma kontrollerinden yorum veya çizimi seçin, ardından kareye tıklayın ya da çizin. Videoyu boyutlandırmadan küçük bir yüzen kart açılır. Notları kaydedip yorum listesindeki bekleyenleri bu çalışma alanına bağlı Agent için kopyalayın. Zaman, öğe bağlamı ve işaretler eklenir. Agent güncel sürümleri denetler, düzenler ve tamamlamadan önce doğrular. Hedef değiştiyse kayıtlı bağlamı inceleyin. Kopyalama Agent’ı başlatmaz; yorumlar yerelde kalır."
+    "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Oynatma kontrollerinden yorum veya çizimi seçin, ardından kareye tıklayın ya da çizin. Videoyu boyutlandırmadan küçük bir yüzen kart açılır. Notları kaydedip yorum listesindeki bekleyenleri bu çalışma alanına bağlı Agent için kopyalayın. Zaman, öğe bağlamı ve işaretler eklenir. Agent güncel sürümleri denetler, düzenler ve tamamlamadan önce doğrular. Hedef değiştiyse kayıtlı bağlamı inceleyin. Kopyalama Agent’ı başlatmaz; yorumlar yerelde kalır.",
+    "Composition": "Kompozisyon",
+    "Element": "Öğe"
   }
 }
