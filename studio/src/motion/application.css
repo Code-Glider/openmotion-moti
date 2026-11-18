@@ -26,7 +26,6 @@
 .motion-header-project .om-app-project-title { position: relative; display: inline-grid; flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .motion-project-name-measure { visibility: hidden; overflow: hidden; white-space: pre; min-width: var(--motion-space-64); }
 .om-app-project-title .motion-project-name-input { position: absolute; inset: 0; width: 100%; min-width: 0; text-align: center; text-overflow: ellipsis; }
-.om-app-project-title .motion-project-name-input:focus-visible { border-color: var(--motion-selected); outline: 3px solid var(--motion-selected); outline-offset: 1px; }
 .motion-autosave-status { display: flex; align-items: center; gap: var(--motion-space-6); min-width: 0; }
 .motion-autosave-status > svg { flex: none; }
 .motion-autosave-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

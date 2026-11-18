@@ -9,6 +9,7 @@ import { MotionIcon } from './icons';
 import { motionApi } from './useWorkspace';
 import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration';
 import { Popover } from '../components/ui/Popover';
+import { Collapsible } from '@base-ui/react/collapsible';
 import * as tracking from './pageTracking';
 import './skills.css';
 
@@ -25,6 +26,25 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [instantDetail, setInstantDetail] = useState(false);
+  const categories = useRef<HTMLDivElement>(null);
+  const [categoryEdges, setCategoryEdges] = useState({ start: false, end: false });
+  useEffect(() => {
+    const element = categories.current;
+    if (!element) return;
+    const measure = () => {
+      const start = Math.abs(element.scrollLeft) > 1;
+      const end = element.scrollWidth - element.clientWidth - Math.abs(element.scrollLeft) > 1;
+      setCategoryEdges(previous => previous.start === start && previous.end === end ? previous : { start, end });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    for (const child of element.children) observer.observe(child);
+    element.addEventListener('scroll', measure, { passive: true });
+    document.fonts?.addEventListener('loadingdone', measure);
+    return () => { observer.disconnect(); element.removeEventListener('scroll', measure); document.fonts?.removeEventListener('loadingdone', measure); };
+  }, [locale]);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState<{ text: string; surface: 'instruction' | 'command' } | null>(null);
   // Same install guide as template instructions; the repository guide is the fallback until the service answers.
   const [installUrl, setInstallUrl] = useState(() => setupGuideUrl(null));
@@ -95,29 +115,36 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
       setManualCopy({ text, surface }); toast.showToast(t(surface === 'command' ? 'Copy failed. Select and copy the command below.' : 'Copy failed. Select and copy the instruction below.'), 'error', 'feedback');
     }
   }
-  return <div className="om-gallery-surface om-skills-page om-skills-library" data-detail={Boolean(selected)}>
+  return <Collapsible.Root open={Boolean(selected)} className="om-gallery-surface om-skills-page om-skills-library" data-detail={Boolean(selected)}
+    onPointerDownCapture={() => setInstantDetail(false)} onKeyDownCapture={() => setInstantDetail(true)}>
     <StudioToastViewport {...toast} />
     <div className="om-skills-main">
-      <div className="om-gallery-sticky-header">
-        <div className="om-gallery-toolbar om-skills-toolbar">
-          <div className="om-gallery-categories" role="group" aria-label={t('Skill category')}>
-            <button aria-pressed={!category} onClick={() => pickCategory(null)}>{t('All')}</button>
-            {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => pickCategory(value)}>{t(value)}</button>)}
-          </div>
-          <label className="om-field om-search-field"><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd aria-hidden="true">⌘ K</kbd></label>
-        </div>
-      </div>
       <main className="om-gallery-results">
-        <section className="om-gallery-intro om-skills-intro"><span className="om-gallery-eyebrow">{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
-          <div className="om-gallery-intro-actions"><a className="om-gallery-submit" href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillSubmitClicked()}>{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
+        <section className="om-gallery-intro om-skills-intro">
+          <div className="om-skills-heading-row">
+            <h1>{t('Teach your Agent new moves.')}</h1>
+            <a className="om-gallery-submit" data-borderless href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillSubmitClicked()}>{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a>
+          </div>
+          <p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
         </section>
+        <div className="om-gallery-sticky-header">
+          <div className="om-gallery-toolbar om-skills-toolbar">
+            <div ref={categories} className="om-gallery-categories om-overflow-fade" data-fade-start={categoryEdges.start} data-fade-end={categoryEdges.end} role="group" aria-label={t('Skill category')}>
+              <button aria-pressed={!category} onClick={() => pickCategory(null)}>{t('All')}</button>
+              {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => pickCategory(value)}>{t(value)}</button>)}
+            </div>
+            <label className="om-field om-search-field"><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd aria-hidden="true">⌘ K</kbd></label>
+          </div>
+        </div>
         <div className="om-gallery-masonry om-skills-grid">
-          {visible.map((skill, index) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
+          {visible.map((skill, index) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
         </div>
         {!visible.length && <div className="om-empty"><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button className="om-button" onClick={() => { setQuery(''); setCategory(null); tracking.reportSkillFiltersCleared(); }}>{t('Clear filters')}</button></div>}
       </main>
     </div>
-    {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>
+    <Collapsible.Panel render={<aside />} className="om-skill-detail om-surface-divider om-detail-reveal" data-instant={instantDetail}
+      inert={!selected} aria-hidden={!selected || undefined} aria-label={selected ? displayName(selected) : undefined}>
+      <RetainedDetailContent>{selected ? <>
       <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => { tracking.reportSkillDetailClick(selected, 'close_detail', detailView.current); onSkillChange(null); }}><RemixIcon name="close-line" size={18} /></button></header>
       <SkillMedia key={selected.id} skill={selected} large />
       <p className="om-skill-output"><span>{t('When to use')}</span>{t(selected.useWhen)}</p>
@@ -149,14 +176,21 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
           </Popover>
         </div>
       </footer>
-    </aside>}
-  </div>;
+      </> : null}</RetainedDetailContent>
+    </Collapsible.Panel>
+  </Collapsible.Root>;
 }
 
-/** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
-function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
+/** Keep the last rendered brief intact until the panel's exit transition unmounts it. */
+function RetainedDetailContent({ children }: { children: ReactElement | null }) {
+  const [content, setContent] = useState(children);
+  if (children && children !== content) setContent(children);
+  return children ?? content;
+}
+
+function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; selected: boolean; onSelect: () => void }) {
   const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false), [near, setNear] = useState(false);
-  const card = useRef<HTMLElement>(null);
+  const card = useRef<HTMLButtonElement>(null);
   // Autoplay while at least half the card is on screen (paused off screen, so only the visible few load).
   // Reduced-motion users keep hover-to-play.
   useEffect(() => {
@@ -170,18 +204,18 @@ function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { ski
   }, []);
   const active = hovered || visible;
   const setActive = setHovered;
-  // Keep the cover clean; the task name and what it makes sit under it, so a glance says what the skill does.
-  return <article ref={card} className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}
-    onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}>
-    <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
-      onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
+  return <button ref={card} type="button" className="om-card om-skill-gallery-card" data-interactive data-skill-id={skill.id} data-selected={selected}
+    onClick={onSelect} aria-pressed={selected} aria-labelledby={`skill-title-${skill.id}`} aria-describedby={`skill-purpose-${skill.id}`}
+    onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
+    <span className="om-skill-card-meta">
+      <span className="om-skill-card-heading"><strong id={`skill-title-${skill.id}`}>{name}</strong></span>
+      <span className="om-skill-card-purpose" id={`skill-purpose-${skill.id}`} title={useWhen}>{useWhen}</span>
+    </span>
+    <span className="om-gallery-cover om-skill-card-demo">
       <SkillMedia skill={skill} playing={active} near={near || hovered} />
-      <span className="om-gallery-card-top"><span>{category}</span></span>
-    </button>
-    <button className="om-skill-card-meta" onClick={onSelect} tabIndex={-1} aria-hidden="true"><strong>{name}</strong><span>{useWhen}</span></button>
-  </article>;
+    </span>
+  </button>;
 }
-const coverAspect = [1.78, 1.35, 1, 1.78];
 
 /** Upstream demo media when available; otherwise the package-token illustration. */
 export function SkillMedia({ skill, playing = false, near = false, large = false }: { skill: MotionSkill; playing?: boolean; near?: boolean; large?: boolean }) {
