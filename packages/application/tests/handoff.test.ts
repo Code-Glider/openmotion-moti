@@ -17,6 +17,12 @@ import { expect, it } from "vitest";
 
 const execute = promisify(execFile);
 const digest = (bytes: Uint8Array) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+const diagnostic = (error: unknown) => ({
+  name: error instanceof Error ? error.name : "Unknown",
+  message: (error instanceof Error ? error.message : String(error))
+    .replace(/https?:\/\/[^\s"<>]+/g, "[redacted URL]")
+    .slice(0, 2000),
+});
 const source =
   '<html><body><main data-composition-id="main" style="background:white;color:black;font:16px sans-serif" data-width="160" data-height="90" data-duration="2"><p id="caption" style="margin:0" data-hf-id="caption" data-start="0" data-duration="2">Round one</p><svg width="160" height="40"><rect id="box" width="24" height="24" fill="blue"/></svg></main><script>const tl=gsap.timeline({paused:true});tl.fromTo("#box",{attr:{x:0}},{attr:{x:100},duration:2,ease:"none"});window.__timelines={main:tl};</script></body></html>';
 
@@ -78,9 +84,18 @@ it.runIf(process.env.OPEN_MOTION_NATIVE_HANDOFF === "1")(
           maxBuffer: 1024 ** 2,
           env: { ...process.env, npm_config_update_notifier: "false" },
         },
-      );
+      ).catch((error) => {
+        let response: { ok?: boolean };
+        try {
+          response = JSON.parse(error.stdout);
+        } catch {
+          throw error;
+        }
+        if (response.ok !== false) throw error;
+        return { stdout: error.stdout as string };
+      });
       const response = JSON.parse(result.stdout);
-      if (!response.ok) throw Error("installed operator command failed");
+      if (!response.ok) throw Error(`installed ${args[0]} failed: ${JSON.stringify(response.error)}`);
       return response.result;
     };
     let driver: Awaited<ReturnType<typeof browser>> | undefined,
@@ -135,7 +150,7 @@ it.runIf(process.env.OPEN_MOTION_NATIVE_HANDOFF === "1")(
     };
     try {
       const installed = await command(["setup", "--carrier", "standalone"]);
-      // 160 MiB of three pinned cold archives plus tree verification; product loader deadlines are unchanged.
+      // About 153 MiB of three pinned cold archives plus tree verification; product loader deadlines are unchanged.
       expect((await command(["prepare"], 180000)).state).toBe("ready");
       expect((await readDirectory(data)).manager.phase).toBe("closed");
       expect(await observeProcesses(data)).toEqual([]);
@@ -365,7 +380,8 @@ it.runIf(process.env.OPEN_MOTION_NATIVE_HANDOFF === "1")(
         cleanupErrors.push(error);
       }
       report.success = !failure && cleanupErrors.length === 0;
-      report.cleanupErrors = cleanupErrors.map((error) => (error instanceof Error ? error.name : "unknown"));
+      if (failure) report.failure = diagnostic(failure);
+      report.cleanupErrors = cleanupErrors.map(diagnostic);
       await writeFile(join(evidence, "result.json"), JSON.stringify(report, null, 2));
     }
     if (failure || cleanupErrors.length)
