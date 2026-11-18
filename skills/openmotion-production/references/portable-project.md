@@ -33,4 +33,6 @@ The team gallery owns catalog registration and template IDs. A delivered folder 
 
 Use **Import projects** in Studio, or `openmotion_project_archive` with `action: "import"`, an absolute local `sourcePath`, and a stable `requestId`. To bring an independent folder into Studio, package it as a native ZIP first. Import creates a copy.
 
-Open the copy from Studio's project list before the first managed version read. Wait for the editor to load the project and its referenced media, then call `openmotion_get_project` with the returned project ID and confirm the current version. The pinned Studio runtime adopts larger files after first open. Reading while that is pending can record an incomplete version. If the editor or version cannot be verified, report the specific Studio limitation and keep the independent files usable.
+Open the copy from Studio's project list and wait for the editor to load its media before calling `openmotion_get_project` with the returned project ID. A project-specific call starts managed version capture even when it only requests an HTML file. Workspace listing with `openmotion_get_project({})` is safe while Studio loads. The pinned Studio runtime adopts larger files after first open, and an early project-specific read can record an incomplete version.
+
+Use background editor access if the host supports it and the user requests background work. If the host cannot open Studio, stop at the confirmed import receipt and report the version check as pending. Keep the independent source and archive available.
