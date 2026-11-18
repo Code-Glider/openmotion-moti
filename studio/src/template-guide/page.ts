@@ -107,9 +107,9 @@ async function mount() {
   const referenceHeading = element('header', 'omg-reference-heading'); referenceHeading.append(element('h2', '', t('breakdown')));
   const downloads = element('nav', 'omg-resources'), download = link(t('download'), 'motion.md?download=1', 'download-2-line'); download.download = 'motion.md'; download.target = '_self';
   downloads.setAttribute('aria-label', t('document')); downloads.append(download);
-  download.addEventListener('click', event => { if (parent !== window) { event.preventDefault(); void host('download').catch(() => notice(t('failed'))); } report('download'); });
-  if (source) { const doc = button(t('document'), 'file-text-line', true); doc.setAttribute('aria-expanded', 'false'); doc.onclick = () => { source.hidden = !source.hidden; doc.setAttribute('aria-expanded', String(!source.hidden)); if (!source.hidden) source.scrollIntoView({ block: 'start' }); }; downloads.append(doc); }
-  if (config.sourceUrl) { const sourceLink = link(t('source'), config.sourceUrl, 'external-link-line'); sourceLink.onclick = event => { if (parent !== window) { event.preventDefault(); void host('source').catch(() => notice(t('failed'))); } }; downloads.append(sourceLink); }
+  download.addEventListener('click', event => { event.preventDefault(); void host('download').then(() => report('download', { delivery_status: 'browser_save_requested' })).catch(() => { notice(t('failed')); report('download', { delivery_status: 'fetch_failed' }); }); });
+  if (source) { const doc = button(t('document'), 'file-text-line', true); doc.setAttribute('aria-expanded', 'false'); doc.onclick = () => { source.hidden = !source.hidden; doc.setAttribute('aria-expanded', String(!source.hidden)); if (!source.hidden) source.scrollIntoView({ block: 'start' }); report('document', { expanded: !source.hidden }); }; downloads.append(doc); }
+  if (config.sourceUrl) { const sourceLink = link(t('source'), config.sourceUrl, 'external-link-line'); sourceLink.onclick = event => { report('source'); if (parent !== window) { event.preventDefault(); void host('source').catch(() => notice(t('failed'))); } }; downloads.append(sourceLink); }
   for (const control of downloads.children) { control.className = 'ui-text-link'; const glyph = control.querySelector('span'); if (glyph) control.prepend(glyph); }
   breakdown.append(referenceHeading);
   const rules = original?.querySelector('.rule-grid'), identity = original?.querySelector('.identity'), filmstrip = original?.querySelector('.filmstrip'), production = original?.querySelector('.production');
@@ -188,6 +188,7 @@ async function mount() {
     catch { notice(t('failed')); report('copy', { outcome: 'failure' }); } finally { copy.disabled = false; }
   };
   open.onclick = async () => {
+    report('open_editor');
     try { open.disabled = true; copy.disabled = true; open.textContent = t('opening'); const result = await host('open', values());
       if (parent === window) { await report('open_editor', { outcome: 'success', project_id: result.projectId }); location.assign(result.url); }
     } catch { notice(t('failed')); if (parent === window) report('open_editor', { outcome: 'failure' }); } finally { open.disabled = false; copy.disabled = false; open.textContent = t('edit'); }

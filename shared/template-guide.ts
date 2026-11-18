@@ -1,14 +1,16 @@
 /** Portable draft contract for each catalog entry's own authored motion example. */
 export type TemplateGuideDraft = { title: string; accent: string };
-export const templateGuideActions = ['shown', 'edit', 'chapter', 'reference', 'reset', 'copy', 'open_editor', 'download'] as const;
-export type TemplateGuideEvent = { action: typeof templateGuideActions[number]; view_id: string; field?: 'title' | 'accent'; outcome?: 'success' | 'failure' | 'manual_fallback'; project_id?: string };
+export const templateGuideActions = ['shown', 'edit', 'chapter', 'reference', 'reset', 'copy', 'open_editor', 'download', 'document', 'source'] as const;
+export type TemplateGuideEvent = { action: typeof templateGuideActions[number]; view_id: string; field?: 'title' | 'accent'; outcome?: 'success' | 'failure' | 'manual_fallback'; project_id?: string; expanded?: boolean; delivery_status?: 'browser_save_requested' | 'fetch_failed' };
 export function isTemplateGuideEvent(input: unknown): input is TemplateGuideEvent {
   const value = input as TemplateGuideEvent;
   return Boolean(value && templateGuideActions.includes(value.action) && /^[a-f0-9-]{36}$/i.test(value.view_id)
     && (value.field === undefined || ['title', 'accent'].includes(value.field))
     && (value.outcome === undefined || ['success', 'failure', 'manual_fallback'].includes(value.outcome))
     && (value.project_id === undefined || value.action === 'open_editor' && value.outcome === 'success' && /^[a-f0-9-]{36}$/i.test(value.project_id))
-    && Object.keys(value).every(key => ['action', 'view_id', 'field', 'outcome', 'project_id'].includes(key)));
+    && (value.expanded === undefined || value.action === 'document' && typeof value.expanded === 'boolean')
+    && (value.delivery_status === undefined || value.action === 'download' && ['browser_save_requested', 'fetch_failed'].includes(value.delivery_status))
+    && Object.keys(value).every(key => ['action', 'view_id', 'field', 'outcome', 'project_id', 'expanded', 'delivery_status'].includes(key)));
 }
 export const templateGuideDraftSchema = { type: 'object', additionalProperties: false,
   properties: { title: { type: 'string', minLength: 1, maxLength: 60 }, accent: { type: 'string', pattern: '^#[a-fA-F0-9]{6}$' } },

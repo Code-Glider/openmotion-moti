@@ -10,6 +10,8 @@ import { pluginRoot, inspectProject } from '../hyperframes.ts';
 import { Phase1Service } from '../phase1.ts';
 import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
+import { createTracker, deviceContext, type PendingEvent } from '../tracking/core.ts';
+import { omEvents } from '../tracking/events.ts';
 
 const lovable = 'motion-be2a4af0-0183-4979-ab05-2a68413c0890';
 const stripe = 'motion-80dceb1d-5219-4e1f-9394-6baacf5d0166';
@@ -45,6 +47,10 @@ test('guide drafts and analytics reject arbitrary fields and never collect chang
   const event = { action: 'edit', view_id: crypto.randomUUID(), field: 'title' };
   assert(isTemplateGuideEvent(event)); assert(!isTemplateGuideEvent({ ...event, text: 'Private draft' }));
   assert(!isTemplateGuideEvent({ ...event, field: 'brand' }));
+  assert(isTemplateGuideEvent({ action: 'document', view_id: event.view_id, expanded: true }));
+  assert(!isTemplateGuideEvent({ ...event, expanded: true }));
+  assert(isTemplateGuideEvent({ action: 'download', view_id: event.view_id, delivery_status: 'browser_save_requested' }));
+  assert(!isTemplateGuideEvent({ action: 'download', view_id: event.view_id, delivery_status: 'saved_to_disk' }));
 });
 
 test('each selected guide materializes its own native canvas, timing and variables', () => fixture(async store => {
@@ -95,4 +101,32 @@ test('the exact requested URLs serve upgraded pages, while raw source and downlo
     assert.equal(download.headers.get('content-disposition'), 'attachment; filename="motion.md"');
     assert.equal(await download.text(), motion);
   }
+}, false));
+
+
+test('guide actions cross real Studio admission with closed metadata and respect opt-out', () => fixture(async store => {
+  const received: PendingEvent[] = [];
+  const tracking = createTracker({ registry: omEvents, entrypoint: 'mcp', enabled: true, flushIntervalMs: 0,
+    send: async events => { received.push(...events); return 'accepted'; } });
+  const request = transport(store, { tracking });
+  const view = crypto.randomUUID();
+  const properties = [
+    { action: 'shown' }, { action: 'edit', field: 'title' }, { action: 'chapter' }, { action: 'reference' },
+    { action: 'document', expanded: true }, { action: 'source' },
+    { action: 'download', delivery_status: 'browser_save_requested' }, { action: 'download', delivery_status: 'fetch_failed' },
+    { action: 'open_editor' }, { action: 'open_editor', outcome: 'success', project_id: crypto.randomUUID() },
+    { action: 'copy', outcome: 'manual_fallback' },
+  ].map(value => ({ page_name: 'studio', template_id: lovable, view_id: view, ...value }));
+  const packet = (value: Record<string, unknown>): PendingEvent => ({ event: 'template_guide_interaction', properties: value,
+    event_id: crypto.randomUUID(), occurred_at: new Date().toISOString(), entrypoint: 'studio', ...deviceContext() });
+  const send = (value: Record<string, unknown>) => request('/motion-api/tracking', { method: 'POST',
+    headers: { 'content-type': 'application/json' }, body: JSON.stringify({ events: [packet(value)] }) });
+  for (const value of properties) assert.equal((await send(value)).status, 200);
+  assert.equal(await tracking.flush(), 'accepted'); assert.equal(received.length, properties.length);
+  assert(received.every(event => event.properties.template_id === lovable && event.properties.view_id === view));
+  assert.equal((await send({ ...properties[1], title: 'PRIVATE_COPY' })).status, 400);
+  assert.equal((await send({ ...properties[6], delivery_status: 'saved_to_disk' })).status, 400);
+  tracking.setEnabled(false);
+  assert.equal((await send(properties[0])).status, 200); assert.equal(tracking.pending(), 0);
+  assert.equal(received.length, properties.length); tracking.close();
 }, false));
