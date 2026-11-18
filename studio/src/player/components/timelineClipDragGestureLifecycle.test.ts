@@ -171,7 +171,7 @@ it.each([
   { painted: 550, released: 450, collision: true },
   { painted: 550, released: 950, collision: false },
   { painted: 550, released: 950, collision: true, extra: true },
-])("saves the final free-move or insertion release at $released once, without saving painted frames", ({ painted, released, collision, extra }) => {
+])("saves the final pointer time on a free or newly opened row at $released once, without saving painted frames", ({ painted, released, collision, extra }) => {
   vi.useFakeTimers();
   const g = mountGesture("drag");
   const clips = [
@@ -200,8 +200,10 @@ it.each([
   vi.advanceTimersByTime(100);
   if (collision) {
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save.mock.calls[0][0].find(edit => edit.element.id === "clip-1").updates.start).toBe(extra ? 9 : 5);
-    expect(save.mock.calls[0][0].find(edit => edit.element.id === (extra ? "d" : "c")).updates.start).toBe(extra ? 11 : 7);
+    const edits = save.mock.calls[0][0];
+    expect(edits.find(edit => edit.element.id === "clip-1").updates).toEqual({ start: released / 100, track: 0 });
+    for (const peer of clips.slice(1))
+      expect(edits.find(edit => edit.element.id === peer.id).updates).toEqual({ start: peer.start, track: 1 });
     expect(g.onMoveElement).not.toHaveBeenCalled();
   } else {
     expect(save).not.toHaveBeenCalled();

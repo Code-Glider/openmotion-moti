@@ -35,8 +35,6 @@ export interface MultiDragPreviewInput {
   draggedPreviewStart: number;
   /** The current multi-selection (store.selectedElementIds). */
   selectedKeys: ReadonlySet<string>;
-  /** Per-clip offsets for insertion; ordinary selections stay rigid. */
-  offsets?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -85,7 +83,6 @@ export function multiDragPassengerOffsetPx(
 ): number {
   if (!isMultiDragPassenger(clipKey, input)) return 0;
   const pps = Number.isFinite(pixelsPerSecond) ? pixelsPerSecond : 0;
-  if (input.offsets) return (input.offsets.get(clipKey) ?? 0) * pps;
   return multiDragDeltaSeconds(input) * pps;
 }
 

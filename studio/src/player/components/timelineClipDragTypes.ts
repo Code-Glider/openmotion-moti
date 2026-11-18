@@ -36,8 +36,6 @@ export interface DraggedClipState {
   started: boolean;
   altKey?: boolean;
   snapDisabled?: boolean;
-  /** Transient per-clip starts for making room between neighbours; committed as one move batch. */
-  insertion?: ReadonlyMap<string, number>;
 }
 
 export interface ResizingClipState {
@@ -49,7 +47,7 @@ export interface ResizingClipState {
   /**
    * scrollLeft at gesture start. Edge auto-scroll moves the content under a
    * stationary pointer, so the trim math folds (current − origin) scrollLeft
-   * into the pointer x — mirroring resolveTimelineMove's scroll compensation.
+   * into the pointer x — mirroring the clip drag's scroll compensation.
    * Optional so pre-existing constructors/tests stay valid; when absent the
    * first preview update captures the current scrollLeft.
    */

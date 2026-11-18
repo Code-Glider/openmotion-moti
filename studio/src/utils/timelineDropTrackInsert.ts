@@ -1,7 +1,7 @@
 import type { TimelineElement } from "../player";
 import { layoutAfterTrackInsert } from "../player/components/timelineDragLanding";
 import { canMoveTimelineElement } from "../player/components/timelineAuthoredMoveTarget";
-import { resolveNearestFreeStart } from "../player/components/timelineCollision";
+import { resolveNearestFreeStart, resolveZoneDropPlacement } from "../player/components/timelineCollision";
 import { authoredTrackForLane } from "../player/components/timelineAuthoredTrack";
 import { isAudioTimelineElement } from "./timelineInspector";
 import type { TimelineDropPlacement } from "../player/components/timelineCallbacks";
@@ -99,18 +99,37 @@ function resolveRowDrop(
   };
 }
 
-/** The shared magnetic import position, usable before media metadata resolves. */
-export function mainTrackAppendStart(elements: readonly TimelineElement[], track: number): number {
-  return elements.filter(element => !isAudioTimelineElement(element) && element.track === track)
-    .reduce((end, element) => Math.max(end, element.start + element.duration), 0);
+/** Resolve a media drop in visible row order before translating it to authored tracks. */
+export function resolveMediaDropPlacement(
+  elements: TimelineElement[],
+  placement: TimelineDropPlacement,
+  dropped: DroppedClip,
+): TimelineDropPlacement {
+  if (placement.insertRow != null || placement.newTrack) return placement;
+  const order = [...new Set(elements.map(el => el.track))].sort((a, b) => a - b);
+  if (order.length === 0) return placement;
+  const result = resolveZoneDropPlacement({
+    order,
+    audioTracks: new Set(elements.filter(isAudioTimelineElement).map(el => el.track)),
+    elements,
+    desiredTrack: placement.track,
+    deliberateInsertRow: null,
+    start: dropped.start,
+    duration: dropped.duration,
+    dragKey: dropped.id,
+    isAudio: isAudioTimelineElement(dropped),
+  });
+  return result.insertRow == null
+    ? { track: result.track, start: result.start }
+    : { track: result.track, start: result.start, insertRow: result.insertRow, trackOrder: order };
 }
 
 /** Where a dropped clip is written: the aimed row's file track at its nearest free time, or a new track. */
 export function resolveDropTrack(input: {
   source: string;
   elements: TimelineElement[];
-  /** Main-track imports append head-to-tail when its magnet is on. */
-  magneticMainTrack?: boolean;
+  /** True when OpenReel has already resolved this media drop. */
+  mediaPlacement?: boolean;
   /** Clips this drop gesture already wrote, which `elements` does not hold yet. */
   placed?: readonly TimelineElement[];
   placement: TimelineDropPlacement;
@@ -144,19 +163,13 @@ export function resolveDropTrack(input: {
     return { source: applyTrackRenumbers(insertionSource, plan), track: plan.track, start: dropped.start };
   }
   if (placement.insertRow == null) {
-    if (input.magneticMainTrack && !isAudioTimelineElement(dropped)) {
-      const end = mainTrackAppendStart([...elements, ...(input.placed ?? [])], placement.track);
-      const peers = planTimelineLanePersistence(elements, { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile });
-      const persisted = withPersistedTimelineLanes(elements, peers);
-      const track = authoredTrackForLane(placement.track, persisted, { ...dropped, track: placement.track });
-      return { source: applyTrackRenumbers(source, { track, renumbers: peers }), track, start: end };
-    }
     const target = { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile };
     const renumbers = planTimelineLanePersistence(elements, target);
-    return {
-      source: applyTrackRenumbers(source, { track: placement.track, renumbers }),
-      ...resolveRowDrop(withPersistedTimelineLanes(elements, renumbers), input.placed ?? [], placement.track, dropped),
-    };
+    const persisted = withPersistedTimelineLanes(elements, renumbers);
+    const landing = input.mediaPlacement
+      ? { track: authoredTrackForLane(placement.track, persisted, target), start: dropped.start }
+      : resolveRowDrop(persisted, input.placed ?? [], placement.track, dropped);
+    return { source: applyTrackRenumbers(source, { track: placement.track, renumbers }), ...landing };
   }
   const { insertRow, trackOrder } = placement;
   const plan = planDropTrackInsert({ elements, trackOrder, insertRow, dropped });

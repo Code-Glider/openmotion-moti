@@ -315,6 +315,7 @@ export function useTimelineClipDrag({
         trackOrder: trackOrderRef.current,
         allowedInsertRows: trackInsertLayoutRef?.current?.allowedRows,
         groupTracks: trackInsertLayoutRef?.current?.groupTracks,
+        trackInsertLayout: trackInsertLayoutRef?.current,
         rowHeights: rowGeometryRef?.current.rowHeights,
         rowGeometry: rowGeometryRef?.current,
         elements: elementsRef.current,

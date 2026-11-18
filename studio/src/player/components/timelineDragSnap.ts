@@ -1,31 +1,31 @@
-/*!
-MIT License
-
-Copyright (c) 2024-2026 Augustus Otu and Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-// Adapted from OpenReel calculateSnap; Motion retains its saved timing precision and beat targets.
-// https://github.com/Augani/openreel-video/blob/367d7e90b61b5181f9861b852bb8b9d7a7d2954a/apps/web/src/components/editor/timeline/utils.ts
 import { TIMELINE_SNAP_PX, type TimelineSnapTarget } from "./timelineSnapping";
+import { calculateSnap } from "./openreel/calculateSnap";
 
 const OPENREEL_DRAG_SNAP_PX = 40;
+type SnapClips = Parameters<typeof calculateSnap>[2][number]["clips"];
+const candidates = new WeakMap<readonly TimelineSnapTarget[], { edges: SnapClips; beats: SnapClips }>();
+
+function firstAtOrAfter(clips: SnapClips, time: number): number {
+  let low = 0;
+  let high = clips.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (clips[mid].startTime < time) low = mid + 1;
+    else high = mid;
+  }
+  return low;
+}
+
+/** The native solver only considers candidates within its radius of either moving edge. */
+function nearbyClips(clips: SnapClips, start: number, duration: number, radius: number): SnapClips {
+  const first = firstAtOrAfter(clips, start - radius);
+  const last = firstAtOrAfter(clips, start + radius + 1e-9);
+  const endFrom = firstAtOrAfter(clips, start + duration - radius);
+  const endTo = firstAtOrAfter(clips, start + duration + radius + 1e-9);
+  return endFrom <= last
+    ? clips.slice(first, endTo)
+    : [...clips.slice(first, last), ...clips.slice(endFrom, endTo)];
+}
 
 export function snapOpenReelMove(
   rawTime: number,
@@ -34,32 +34,42 @@ export function snapOpenReelMove(
   pixelsPerSecond: number,
   gridStep = 0,
 ): { start: number; snapTime: number | null; snapType: TimelineSnapTarget["type"] | null; snapEdge?: "start" | "end" } {
-  const points = targets.filter(point => point.type !== "playhead");
-  if (gridStep > 0) {
-    points.push({ time: Math.round(rawTime / gridStep) * gridStep, type: "grid" });
-    points.push({ time: Math.round((rawTime + duration) / gridStep) * gridStep, type: "grid" });
+  let projected = candidates.get(targets);
+  if (!projected) {
+    // The gesture already excluded moving clips. A zero-length proxy supplies each edge once by time.
+    const edges: SnapClips = [];
+    const beats: SnapClips = [];
+    targets.forEach(({ time, type }, index) => {
+      const item = { id: String(index), startTime: time, duration: 0 };
+      if (type === "clip-edge") edges.push(item);
+      if (type === "beat") beats.push(item);
+    });
+    edges.sort((a, b) => a.startTime - b.startTime);
+    beats.sort((a, b) => a.startTime - b.startTime);
+    projected = { edges, beats };
+    candidates.set(targets, projected);
   }
-  const priority = { "clip-edge": 0, beat: 1, grid: 2, playhead: 3 };
-  let closest: TimelineSnapTarget | null = null;
-  let closestDistance = Infinity;
-  let closestPriority = Infinity;
-  let edge: "start" | "end" = "start";
-  for (const point of points) {
-    // Keep dense music beat targets at Motion's existing radius.
-    const threshold = (point.type === "beat" ? TIMELINE_SNAP_PX : OPENREEL_DRAG_SNAP_PX) / Math.max(pixelsPerSecond, 1);
-    const pointPriority = priority[point.type];
-    for (const candidateEdge of ["start", "end"] as const) {
-      const distance = Math.abs(point.time - rawTime - (candidateEdge === "end" ? duration : 0));
-      if (distance < threshold && (pointPriority < closestPriority ||
-          (pointPriority === closestPriority && distance < closestDistance))) {
-        closest = point;
-        closestDistance = distance;
-        closestPriority = pointPriority;
-        edge = candidateEdge;
-      }
-    }
-  }
-  const start = Math.max(0, Math.round((closest ? closest.time - (edge === "end" ? duration : 0) : rawTime) * 1000) / 1000);
-  return { start, snapTime: closest?.time ?? null, snapType: closest?.type ?? null,
-    ...(closest && { snapEdge: edge }) };
+  const pps = Math.max(pixelsPerSecond, 1);
+  const edges = nearbyClips(projected.edges, rawTime, duration, OPENREEL_DRAG_SNAP_PX / pps);
+  const primary = calculateSnap(rawTime, "", [{ clips: edges }], 0, {
+    enabled: true, snapToClips: true, snapToPlayhead: false, snapToGrid: gridStep > 0,
+    gridSize: gridStep, snapThreshold: OPENREEL_DRAG_SNAP_PX,
+  }, pps, duration);
+  const clipEdge = primary.snapPoint && primary.snapPoint.type !== "grid";
+  const beats = clipEdge ? [] : nearbyClips(projected.beats, rawTime, duration, TIMELINE_SNAP_PX / pps);
+  const beat = beats.length > 0
+    ? calculateSnap(rawTime, "", [{ clips: beats }], 0, {
+        enabled: true, snapToClips: true, snapToPlayhead: false, snapToGrid: false,
+        gridSize: 0, snapThreshold: TIMELINE_SNAP_PX,
+      }, pps, duration)
+    : null;
+  const chosen = beat?.snapped ? beat : primary;
+  const snapTime = chosen.snapPoint?.time ?? null;
+  if (snapTime === null) return { start: chosen.time, snapTime, snapType: null };
+  return {
+    start: chosen.time,
+    snapTime,
+    snapType: beat?.snapped ? "beat" : clipEdge ? "clip-edge" : "grid",
+    snapEdge: chosen.time === snapTime ? "start" : "end",
+  };
 }

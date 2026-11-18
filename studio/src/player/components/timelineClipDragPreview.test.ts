@@ -139,7 +139,7 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     expect(move(22)).toMatchObject({ previewStart: 22, insertRow: null });
   });
 
-  it("keeps collision insertion when leaving a seam into an occupied ordinary lane", () => {
+  it("leaves an occupied lane at the requested time and reuses the free upper row", () => {
     const geometry = createTimelineRowGeometry([0, 1, 2], [104, 48, 48], { top: 0 });
     const context = { ...ctx(geometry.rowHeights), rowGeometry: geometry };
     const { drag, clientX } = horizontalDrag(moodboard, 0.5, 2);
@@ -148,10 +148,7 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     const between = computeDragPreview(drag, clientX, 128, context);
     expect(between.insertRow).toBe(1);
     const inside = computeDragPreview(between, clientX, 150, context);
-    // A tight neighbouring pair previews making room on the aimed row.
-    expect(inside.insertRow).toBeNull();
-    expect(inside.previewTrack).toBe(1);
-    expect(inside.insertion?.get("v-globe")).toBe(28.5);
+    expect(inside).toMatchObject({ insertRow: null, desiredTrack: 1, previewTrack: 0, previewStart: 21 });
     const below = computeDragPreview(inside, clientX, 202, context);
     // Pointer seams do not expand rows: y=202 aims at row 2, also occupied.
     // OpenReel searches every free upper lane, including the vacated origin.
@@ -159,6 +156,20 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     expect(below.previewTrack).toBe(0);
     expect(below.insertRow).toBeNull();
     expect(below.previewStart).toBe(21);
+  });
+
+  it("previews the original position when a new row would renumber a locked clip", () => {
+    const dragged = clip("moving", 0, 12, 2, 1);
+    const locked = { ...clip("locked", 0, 5, 3, 1), timelineLocked: true };
+    const context = { ...ctx(undefined, [dragged, locked]), trackOrder: [0] };
+    const { drag, clientX, clientY } = horizontalDrag(dragged, 0.5, -6);
+    const preview = computeDragPreview(drag, clientX, clientY, context);
+    expect(preview).toMatchObject({ previewStart: 12, previewTrack: 0, insertRow: null });
+    const onMoveElements = vi.fn();
+    const updateElement = vi.fn();
+    commitDraggedClipMove(preview, { ...context, updateElement, onMoveElements });
+    expect(onMoveElements).not.toHaveBeenCalled();
+    expect(updateElement).not.toHaveBeenCalled();
   });
 
   it.each([false, true])("crosses a seam in small pointer steps without being captured by a new lane (upward=%s)", (upward) => {
@@ -175,6 +186,31 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     expect(current.insertRow).toBeNull();
     expect(current.previewTrack).toBe(upward ? 0 : 1);
     expect(current.previewStart).toBe(7.87);
+  });
+
+  it.each([
+    { from: 0.8, to: 1.2, track: 0, target: 1 },
+    { from: 1.2, to: 0.8, track: 1, target: 0 },
+  ])("aims at the row under the pointer regardless of where the clip was grabbed", ({ from, to, track, target }) => {
+    const element = clip("moving", track, 7.87, 3.1, 2);
+    const { drag, clientX } = horizontalDrag(element, from, 0);
+    const context = ctx(undefined, [element]);
+    const preview = computeDragPreview(drag, clientX, yForRow(to), context);
+    expect(preview).toMatchObject({ desiredTrack: target, previewTrack: target, insertRow: null });
+    const onMoveElements = vi.fn();
+    commitDraggedClipMove(preview, { elements: [element], trackOrder: context.trackOrder, updateElement: vi.fn(), onMoveElements });
+    expect(onMoveElements.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ element, updates: { start: 7.87, track: target } }),
+    ]);
+  });
+
+  it("does not open a track when a horizontal drag starts on the clip's top edge", () => {
+    const grab = 3 / TRACK_H;
+    const { drag, clientX } = horizontalDrag(moodboard, grab, 2);
+    for (const drift of [0, -1]) {
+      const preview = computeDragPreview(drag, clientX, yForRow(grab) + drift, ctx());
+      expect(preview).toMatchObject({ previewStart: 21, previewTrack: 0, insertRow: null });
+    }
   });
 
   it("dragging v-moodboard +2s while grabbing its clip body keeps it a pure time move", () => {
@@ -391,7 +427,7 @@ describe("guideIfSaved — a guide only where the clip saves", () => {
       drag.originClientY,
       context,
     );
-    expect(next.previewStart).toBe(21);
+    expect(next.previewStart).toBeCloseTo(21.0033333333);
     expect(next.snapTime).toBeNull();
   });
 });
@@ -901,7 +937,7 @@ describe("an audio clip stays inside its partner video", () => {
     const { drag, clientX, clientY } = horizontalDrag(a, 1.5, 30);
     const next = computeDragPreview(drag, clientX, clientY, audioCtx([video(), a]));
     expect(next.previewStart).toBe(22);
-    expect(next.pointerClientX).toBe(drag.originClientX + 10 * PPS);
+    expect(next.pointerClientX).toBe(clientX);
   });
 
   it("a drag before the video's start stops at it, linked or same-source", () => {

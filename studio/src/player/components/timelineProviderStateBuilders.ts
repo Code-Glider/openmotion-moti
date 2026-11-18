@@ -19,15 +19,12 @@ export function resolveMultiDragPreview(
   if (!draggedClip?.started) return null;
   const draggedKey = getTimelineElementIdentity(draggedClip.element);
   const movers = resolveGroupMovers(elements, selectedKeys, draggedKey);
-  const offsets = draggedClip.insertion && new Map(elements.filter(el => draggedClip.insertion!.has(getTimelineElementIdentity(el)))
-    .map(el => [getTimelineElementIdentity(el), draggedClip.insertion!.get(getTimelineElementIdentity(el))! - el.start]));
   return {
     dragStarted: true,
     draggedKey,
     draggedOriginStart: draggedClip.element.start,
     draggedPreviewStart: draggedClip.previewStart,
-    selectedKeys: offsets ? new Set(offsets.keys()) : movers ? new Set(movers.map(getTimelineElementIdentity)) : selectedKeys,
-    offsets,
+    selectedKeys: movers ? new Set(movers.map(getTimelineElementIdentity)) : selectedKeys,
   };
 }
 

@@ -35,13 +35,13 @@ const drag: DraggedClipState = {
 afterEach(() => document.body.replaceChildren());
 
 describe("TimelineGestureOverlay", () => {
-  it("keeps the insertion actor under the pointer while the landing slot makes room separately", () => {
+  it("keeps the actor under the pointer when the collision landing opens another row", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
     const scroll = { scrollLeft: 0, scrollTop: 0, getBoundingClientRect: () => ({ left: 0, top: 0 }) } as HTMLDivElement;
     act(() => root.render(<TimelineGestureOverlay
-      drag={{ ...drag, insertion: new Map([["hero", 4], ["next", 7]]) }}
+      drag={{ ...drag, insertRow: 1 }}
       scrollRef={{ current: scroll }} pixelsPerSecond={100} contentOrigin={132}
       rowGeometry={createTimelineRowGeometry([0, 1, 2], [48, 48, 48])} rowHeight={42}
       selectedElementId="hero" currentTime={0} theme={defaultTimelineTheme} getTrackStyle={getTrackStyle}
@@ -56,7 +56,7 @@ describe("TimelineGestureOverlay", () => {
     { name: "crossing into magnetic main track", magnet: true, secondary: false, start: 9.87, insertRow: null },
     { name: "secondary track", magnet: true, secondary: true, start: 9.87, insertRow: null },
     { name: "nonmagnetic main track", magnet: false, secondary: false, start: 9.87, insertRow: null },
-  ])("shares the actor and committed collision landing on $name", ({ magnet, secondary, start, insertRow }) => {
+  ])("keeps the actor at the pointer and commits the resolved time on $name", ({ magnet, secondary, start, insertRow }) => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -87,7 +87,7 @@ describe("TimelineGestureOverlay", () => {
       theme={defaultTimelineTheme} getTrackStyle={getTrackStyle}
     />));
     const actor = host.querySelector<HTMLElement>("[data-timeline-gesture-actor]");
-    expect(actor?.style.left).toBe(`${132 + preview.previewStart * 100}px`);
+    expect(actor?.style.left).toBe("980px");
     expect(actor?.style.top).toBe("84px");
     const onMoveElements = vi.fn();
     const onMoveElement = vi.fn();
@@ -159,7 +159,7 @@ describe("TimelineGestureOverlay", () => {
       );
     });
     const actor = host.querySelector<HTMLElement>('[data-timeline-gesture-actor="hero"]');
-    expect(actor?.style.left).toBe("632px");
+    expect(actor?.style.left).toBe("780px");
     expect(actor?.style.top).toBe("490px");
     expect(actor?.querySelector(".timeline-clip")).not.toBeNull();
     expect(actor?.querySelector("[data-el-id]")).toBeNull();

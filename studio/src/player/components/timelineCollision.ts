@@ -1,6 +1,8 @@
 import type { TimelineElement } from "../store/playerStore";
 import { collisionLane } from "./timelineCollisionIndex";
 import { timelineSpansOverlap } from "./timelineTimeBounds";
+import { resolveTimelinePlacement } from "./openreel/timelinePlacement";
+import { openReelPlacementInput } from "./openreel/placementInput";
 
 /** Audio member tracks mark the audio zone, including members hidden by a group header. */
 export function timelineAudioRow(
@@ -207,20 +209,21 @@ export function resolveZoneDropPlacement(input: {
   const safeStart = Math.max(minStart ?? 0, start);
   if (input.origin?.track === desired && Math.abs(safeStart - input.origin.start) < 0.005)
     return { track: desired, insertRow: null, start: input.origin.start };
-  if (!elements.some(element => element.track === desired && element.timelineLocked) &&
-      isLaneFree(elements, desired, safeStart, safeStart + duration, dragKey))
-    return { track: desired, insertRow: null, start: safeStart };
-  const row = order.indexOf(desired);
-  for (let index = row - 1; index >= 0; index--) {
-    const track = order[index];
-    if (!zoneTracks.includes(track) || elements.some(element => element.track === track && element.timelineLocked)) continue;
-    if (isLaneFree(elements, track, safeStart, safeStart + duration, dragKey))
-      return { track, insertRow: null, start: safeStart };
+  const placement = resolveTimelinePlacement(openReelPlacementInput(elements, zoneTracks), {
+    targetTrackId: String(desired),
+    startTime: safeStart,
+    duration,
+    policy: "stack-above",
+    excludeItemIds: [dragKey],
+    newTrackId: "new-track",
+  });
+  if (placement.ok) {
+    if (!placement.createdTrack)
+      return { track: Number(placement.trackId), insertRow: null, start: placement.startTime };
+    const insertRow = order.indexOf(zoneTracks[placement.createdTrack.position]);
+    if (isInsertAllowedForZone(insertRow, audioRow, isAudio, input.allowedInsertRows))
+      return { track: desired, insertRow, start: placement.startTime };
   }
-  let insertRow = row;
-  while (insertRow > 0 && input.allowedInsertRows && !input.allowedInsertRows.has(insertRow)) insertRow--;
-  if (isInsertAllowedForZone(insertRow, audioRow, isAudio, input.allowedInsertRows))
-    return { track: desired, insertRow, start: safeStart };
   // A protected group boundary cannot be split. Keep the origin lane and time
   // rather than silently moving the clip to a different time.
   return { track: input.origin?.track ?? desired, insertRow: null, start: input.origin?.start ?? safeStart };

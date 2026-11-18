@@ -5,7 +5,7 @@ import type { DraggedClipState } from "./useTimelineClipDrag";
 // value-import edge stays acyclic.
 import type { ZMirrorLaneMove } from "./timelineZMirror";
 import { classifyZone } from "./timelineZones";
-import { layoutAfterTrackInsert } from "./timelineDragLanding";
+import { findBlockedTrackInsert, layoutAfterTrackInsert } from "./timelineDragLanding";
 import type { TimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
 import { computeStackingPatches, type StackingPatch } from "./timelineStackingSync";
 import {
@@ -247,10 +247,6 @@ function resolveMultiSelection(
   movedStart: (e: TimelineElement) => number;
 } | null {
   const dragKey = keyOf(drag.element);
-  if (drag.insertion) return {
-    keys: new Set(drag.insertion.keys()),
-    movedStart: e => drag.insertion!.get(keyOf(e)) ?? e.start,
-  };
   const movers = resolveGroupMovers(deps.elements, deps.selectedKeys, dragKey);
   if (!movers) return null;
   const keys = new Set(movers.map(keyOf));
@@ -402,20 +398,10 @@ function buildTrackInsertEdits(
   if (!layout) return null;
   const { normalized, targetTrack, writable } = layout;
   const bySrc = new Map(elements.map((e) => [keyOf(e), e]));
-  // A partial zone renumber creates collisions; refuse a shifted locked row.
-  for (const norm of normalized) {
-    const src = bySrc.get(keyOf(norm));
-    if (
-      src &&
-      writable(src) &&
-      !canMoveElement(src) &&
-      norm.track !== (src.authoredTrack ?? src.track)
-    ) {
-      console.warn(
-        `[Timeline] Track insert refused: locked clip ${keyOf(src)} would need renumbering`,
-      );
-      return null;
-    }
+  const blocked = findBlockedTrackInsert(normalized, bySrc);
+  if (blocked) {
+    console.warn(`[Timeline] Track insert refused: locked clip ${keyOf(blocked)} would need renumbering`);
+    return null;
   }
   const candidate = elements.map((e) => {
     if (keyOf(e) === editKey) return { ...e, start: previewStart, track: targetTrack };

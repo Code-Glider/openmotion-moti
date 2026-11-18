@@ -380,7 +380,7 @@ describe("vertical visual drops preserve scene timing", () => {
   });
   it("does not insert into a protected group boundary", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 2 },
-      allowedInsertRows: new Set([0, 3, 4]) })).toEqual({ track: 1, insertRow: 0, start: 2 });
+      allowedInsertRows: new Set([0, 3, 4]) })).toEqual({ track: 2, insertRow: null, start: 2 });
   });
 });
 

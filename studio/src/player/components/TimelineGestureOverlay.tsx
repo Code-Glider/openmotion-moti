@@ -57,7 +57,7 @@ export const TimelineGestureOverlay = memo(function TimelineGestureOverlay({
   const landingRow = insertRow ?? rowGeometry.getRowIndex(drag.previewTrack);
   const pointerPosition = drag.pointerId === null ? null : getTimelineDragOverlayPosition(drag, scrollRef.current);
   const position = landingRow < 0 ? null : {
-    left: drag.insertion && pointerPosition ? pointerPosition.left : contentOrigin + drag.previewStart * pixelsPerSecond,
+    left: pointerPosition?.left ?? contentOrigin + drag.previewStart * pixelsPerSecond,
     top: pointerPosition?.top ?? rowGeometry.getRowTop(landingRow) + CLIP_Y,
   };
   const clipWidth = Math.max(element.duration * pixelsPerSecond, 4);
