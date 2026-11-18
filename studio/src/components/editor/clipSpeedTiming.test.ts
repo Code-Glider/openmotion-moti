@@ -23,6 +23,19 @@ describe('constant clip speed timing', () => {
     expect(attr(next, 'a', 'duration')).toBe(2);
     expect(next).toContain('<p id="title">Title</p>');
   });
+  it('skips an unrelated runtime-derived duration on another lane', () => {
+    const els = [clip('a'), clip('overlay', 'img', 0, 4, 1)];
+    const html = source(els).replace('id="overlay" data-start="0" data-duration="4"', 'id="overlay" data-start="0"');
+    const next = plan(els, 2, false, false, ['a'], html).apply(html);
+    expect(attr(next, 'a', 'duration')).toBe(2);
+    expect(next).toContain('id="overlay" data-start="0" data-track-index="1"');
+  });
+  it.each(['member', 'neighbour'])('rejects unresolved timing on an affected %s', kind => {
+    const els = [clip('a'), clip('next', 'video', 4)];
+    const id = kind === 'member' ? 'a' : 'next';
+    const html = source(els).replace(`id="${id}" data-start="${kind === 'member' ? 0 : 4}" data-duration="4"`, `id="${id}" data-start="${kind === 'member' ? 0 : 4}"`);
+    expect(() => plan(els, 0.5, false, false, ['a'], html)).toThrow(/timing changed/);
+  });
   it.each([[0.5, 8], [2, 2]])('updates a template composition root at %sx', (rate, duration) => {
     const els = [{ ...clip('a', 'audio'), sourceFile: 'compositions/scene.html' }];
     const html = '<template><section data-composition-id="scene" data-duration="4"><audio id="a" data-start="0" data-duration="4"></audio></section></template>';

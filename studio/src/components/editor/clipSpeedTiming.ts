@@ -39,15 +39,24 @@ export function planClipSpeedTiming(
   linkage: boolean,
 ): SpeedTimingPlan {
   if (!Number.isFinite(rate) || rate <= 0) throw new Error('Speed must be greater than zero');
-  const rows: Row[] = elements.filter(el => sameCompositionScope(el, self)).flatMap(element => {
+  const scoped = elements.filter(el => sameCompositionScope(el, self));
+  const selected = scoped.filter(el => memberKeys.has(key(el)));
+  const main = mainVisualTrack(scoped);
+  const ripplesMain = ripple && selected.some(el => el.tag !== 'audio' && el.track === main);
+  const rows: Row[] = scoped.flatMap(element => {
     // Untimed root text spans the composition implicitly and never moves with media edits.
     if (element.implicitTextTiming) return [];
     const target = buildPatchTarget(element);
     if (!target) return [];
     const attr = (name: string) => readAttributeByTarget(html, target, `data-${name}`);
     const rawStart = attr('start'), rawDuration = attr('duration');
-    // Unresolved timing cannot be silently skipped when the edit may move a neighbour.
+    // Unrelated runtime-derived rows need no authored window. Members and any
+    // lane that can collide or move must still be resolved before saving.
     if (rawStart === undefined || rawDuration === undefined) {
+      const needed = memberKeys.has(key(element)) || selected.some(el =>
+        el.track === element.track && (el.tag === 'audio') === (element.tag === 'audio')) ||
+        (ripplesMain && element.tag !== 'audio' && (element.track === main || linkage));
+      if (!needed) return [];
       throw new Error('Clip timing changed or is unavailable. Reload the composition and try again');
     }
     const start = Number(rawStart), duration = Number(rawDuration), oldRate = Number(attr('playback-rate') ?? 1);
@@ -60,7 +69,6 @@ export function planClipSpeedTiming(
   const members = rows.filter(row => memberKeys.has(key(row.element)));
   if (!members.length || members.some(row => row.element.tag !== 'video' && row.element.tag !== 'audio'))
     throw new Error('Select a video or audio clip with editable timing');
-  const main = mainVisualTrack(rows.map(row => row.element));
   const changes = new Map<string, Change>();
   let limited = false;
   let rangeScale = 1;

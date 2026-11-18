@@ -204,6 +204,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
   const timelineFitPps = usePlayerStore((s) => s.timelineFitPps);
   const { zoomMode, setZoomMode, setManualZoomPercent } = useTimelineZoom();
   const displayedTimelineZoomPercent = useShownTimelineZoomPercent();
+  const timelineZoomLabel = `${Math.round(displayedTimelineZoomPercent)}%`;
   const showsFit = zoomMode === "fit" && displayedTimelineZoomPercent === 100;
   const {
     state: keyframeState,
@@ -532,7 +533,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
               <MagnifyingGlassMinus size={16} aria-hidden="true" />
             </button>
           </Tooltip>
-          <Tooltip label={`${displayedTimelineZoomPercent}%`} wrap><input
+          <Tooltip label={timelineZoomLabel} wrap><input
             type="range"
             disabled={zoomDisabled}
             min="0"
@@ -570,7 +571,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
             className="ml-1 w-[38px] text-right font-mono text-[11px] tabular-nums text-neutral-500 select-none"
             aria-label={t("Timeline zoom level")}
           >
-            {showsFit ? t("Fit") : `${displayedTimelineZoomPercent}%`}
+            {showsFit ? t("Fit") : timelineZoomLabel}
           </span>}
         </div>
       </div>
