@@ -20,7 +20,7 @@ day of a teaser run instead of reusing yesterday's number.
 
 ## Look
 
-Up to four product photos fill the frame and wipe in one after another as the number rolls, the number is giant display type (Anton, shipped with the Skill, SIL OFL) rolling through a mask, and a sale tape and spinning badge run for the whole film. Without photos the film uses the theme's gradient.
+A timer, not a poster: a wall of outlined type scrolls behind, a dial's ring drains as the number rolls down to the true value, and up to four product photos deal in as a stack of tilted cards. The end card is a ticket with the date and offer. Display type is Anton, shipped with the Skill (SIL OFL). Without photos the dial and type wall carry the film alone.
 
 ## 1. Collect the moments
 
@@ -50,8 +50,8 @@ cd out && npx hyperframes check && npx hyperframes render -o countdown.mp4
 | Beat | Time | What happens |
 | --- | --- | --- |
 | Kicker | 0–1.2 s | The occasion and "starts in" / "ends in" |
-| Roll | 1.2–5.2 s | The number rolls down a few steps and lands on the true value while the photos change; "days to go" / "hours left" |
-| Date | 5.2–7.5 s | The exact date as the shop writes it, then the teaser |
+| Roll | 1.2–5.2 s | The number rolls down a few steps inside the dial and lands on the true value; the ring drains and the photo cards deal in; "days to go" / "hours left" |
+| Date | 5.2–7.5 s | A ticket with the exact date as the shop writes it and the teaser |
 | Call to action | 7.5–9.6 s | Button, URL, sign-off |
 
 The unit is days when two or more days are left, otherwise hours; set `unit` to force one. The number

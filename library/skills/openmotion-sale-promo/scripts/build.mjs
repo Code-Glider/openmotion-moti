@@ -67,11 +67,11 @@ const L = { off: 'OFF', useCode: 'Use code', save: 'Save', ends: 'Ends', ...(dat
 const occWords = String(data.occasion).toUpperCase().split(/\s+/);
 const big = p.framing === 'percent' ? `${p.percent}%` : $(p.save).replace(/\.00$/, '');
 const textW = wide ? W * 0.44 : W * 0.88;
-const occSize = fit(occWords.reduce((a, b) => (a.length > b.length ? a : b)), textW, px(wide ? 300 : 330), 0.47);
+const occSize = fit(occWords.reduce((a, b) => (a.length > b.length ? a : b)), textW, px(wide ? 300 : 330), 0.57);
 const bigSize = fit(big, wide ? W * 0.5 : W * 0.86, px(wide ? 520 : 560), 0.64);
-const nowSize = fit($(p.now), wide ? W * 0.4 : W * 0.8, px(wide ? 230 : 250), 0.6);
-const endSize = fit(String(data.occasion), W * 0.86, px(wide ? 200 : 210), 0.5);
-const codeSize = fit(data.code, wide ? W * 0.38 : W * 0.72, px(130), 0.5);
+const nowSize = fit($(p.now), (wide || !portrait ? W * 0.42 : W * 0.86), px(wide ? 230 : 250), 0.62);
+const endSize = fit(String(data.occasion), W * 0.86, px(wide ? 200 : 210), 0.57);
+const codeSize = fit(data.code, (wide || !portrait ? W * 0.42 : W * 0.86) - px(110), px(130), 0.62);
 // Where the photo sits once it becomes a card, and where the price column goes.
 const card = wide ? 'inset(9% 52% 16% 5% round 28px)' : portrait ? 'inset(7% 9% 40% 9% round 36px)' : 'inset(7% 50% 22% 6% round 32px)';
 const col = wide ? { left: W * 0.52, top: H * 0.16, w: W * 0.43, align: 'left' } : portrait ? { left: W * 0.06, top: H * 0.61, w: W * 0.88, align: 'left' } : { left: W * 0.53, top: H * 0.16, w: W * 0.42, align: 'left' };

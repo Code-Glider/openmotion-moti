@@ -65,8 +65,8 @@ const L = {
 if (checkOnly) { console.log(`✓ ${data.brand.name}: ${data.occasion} ${L[mode]} ${value} ${L[unit]} (posted ${data.postAt}), ${aspect}`); process.exit(0); }
 
 // ---------- layout ----------
-// The photos (if any) fill the frame and change on each flip; a sale tape scrolls and a badge
-// spins for the whole film; the number itself is giant display type rolling through a mask.
+// A timer, not a poster: a wall of scrolling type behind, a dial whose ring drains as the number
+// rolls down, and the product photos as a stack of cards that deal in one after another.
 const [W, H] = SIZES[aspect];
 const t = theme(data);
 const wide = W > H, portrait = H / W > 1.5;
@@ -75,69 +75,76 @@ const px = n => Math.round(n * u);
 const B = { kick: 0, roll: 1.2, date: 5.2, cta: 7.5, end: 9.6 };
 const start = Math.min(99, value + Math.max(4, Math.min(9, Math.ceil(value * 0.6))));
 const steps = []; for (let v = start; v >= value; v--) steps.push(v);
-const numSize = Math.min(fit(String(start), wide ? W * 0.42 : W * 0.8, px(wide ? 640 : 760), 0.55), Math.round(H * (portrait ? 0.4 : wide ? 0.36 : 0.3)));
-const occSize = fit(String(data.occasion), wide ? W * 0.8 : W * 0.88, px(wide ? 140 : 200), 0.5);
-const teaserSize = data.teaser ? fit(data.teaser, W * 0.86, px(wide ? 150 : 170), 0.5) : 0;
-const shade = `rgba(${t.shade},`;
-const tapeText = `${data.occasion} · ${L[mode]} ${value} ${L[unit]}`;
+const D = Math.round(Math.min(W, H) * (portrait ? 0.74 : 0.56));            // dial diameter
+const dialX = wide ? W * 0.62 : W / 2, dialY = wide ? H * 0.56 : portrait ? H * 0.47 : H * 0.58;
+const numSize = Math.min(fit(String(start), D * 0.62, px(520), 0.55), Math.round(D * 0.42));
+const rowH = Math.round(numSize * 1.3);
+const occSize = fit(String(data.occasion), wide ? W * 0.9 : W * 0.88, px(wide ? 120 : 150), 0.57);
+const teaserSize = data.teaser ? fit(data.teaser, W * 0.8, px(wide ? 120 : 130), 0.57) : 0;
+const wallSize = px(wide ? 120 : 140);
+const wallText = `${data.occasion} · ${L[mode]} · `.toUpperCase().repeat(6);
+const cardW = Math.round(Math.min(W, H) * (portrait ? 0.46 : 0.36)), cardH = Math.round(cardW * 1.3);
+const R = D / 2 - px(14), C = 2 * Math.PI * R;
 const css = `
-#bg{position:absolute;inset:0;background:radial-gradient(110% 80% at 60% 25%,${t.panel} 0,${t.bg} 70%)}
-.ph{position:absolute;inset:0;background:${t.bg} center/cover no-repeat;transform-origin:50% 40%}
-#shade{position:absolute;inset:0;background:linear-gradient(180deg,${shade}.7) 0,${shade}.25) 40%,${shade}.55) 70%,${shade}.92) 100%)}
-.brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
+#bg{position:absolute;inset:0;background:${t.bg}}
+.row{position:absolute;left:0;white-space:nowrap;font-size:${wallSize}px;color:transparent;-webkit-text-stroke:${px(2)}px ${t.ink};opacity:.16}
+.row.hot{color:${t.accent};-webkit-text-stroke:0;opacity:.9}
+.card{position:absolute;width:${cardW}px;height:${cardH}px;border-radius:${px(22)}px;background:${t.panel} center/cover no-repeat;box-shadow:0 ${px(24)}px ${px(60)}px rgba(0,0,0,.45);border:${px(8)}px solid ${t.ink}}
 .mask{overflow:hidden}
-.cta{display:inline-block;background:${t.ink};color:${t.bg};font-weight:700;font-size:${px(64)}px;padding:${px(26)}px ${px(64)}px;border-radius:${px(999)}px}`;
-const rowH = Math.round(numSize * 1.05);
+.brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
+.ticket{display:inline-block;background:${t.ink};color:${t.bg};border-radius:${px(30)}px;padding:${px(48)}px ${px(70)}px;position:relative;max-width:${Math.round(W * 0.86)}px}
+.ticket:before,.ticket:after{content:'';position:absolute;top:50%;width:${px(44)}px;height:${px(44)}px;margin-top:${-px(22)}px;border-radius:50%;background:${t.bg}}
+.ticket:before{left:${-px(22)}px}.ticket:after{right:${-px(22)}px}
+.cta{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(60)}px;padding:${px(24)}px ${px(60)}px;border-radius:${px(999)}px}`;
+const rows = Math.ceil(H / (wallSize * 0.95)) + 1;
+const hotRow = Math.floor(rows * (portrait ? 0.82 : 0.86));
+const wall = Array.from({ length: rows }, (_, i) => `<div id="w${i}" class="row d${i === hotRow ? ' hot' : ''}" style="top:${Math.round(i * wallSize * 0.95)}px">${esc(wallText)}${esc(wallText)}</div>`).join('');
+const spots = wide ? [[0.06, 0.2, -8], [0.2, 0.26, 6], [0.1, 0.4, -3], [0.24, 0.12, 9]] : portrait ? [[0.04, 0.6, -9], [0.52, 0.63, 8], [0.08, 0.08, 7], [0.55, 0.1, -6]] : [[0.02, 0.5, -9], [0.66, 0.48, 8], [0.03, 0.06, 6], [0.66, 0.08, -7]];
 const reel = steps.map(v => `<div class="d" style="height:${rowH}px;line-height:${rowH}px">${v}</div>`).join('');
-const top = wide ? H * 0.06 : H * 0.12;
-const body = src => `<div id="bg"></div>
-${images.map((im, i) => `<div id="ph${i}" class="ph" style="background-image:url('${src(im)}')"></div>`).join('')}
-<div id="shade"></div><div class="grain" id="grain"></div>
+const body = src => `<div id="bg"></div>${wall}
+${images.map((im, i) => { const [x, y, r] = spots[i % spots.length]; return `<div id="cd${i}" class="card" style="left:${Math.round(W * x)}px;top:${Math.round(H * y)}px;background-image:url('${src(im)}');opacity:0"></div>`; }).join('')}
+<div class="grain" id="grain"></div>
 <div class="brand">${esc(data.brand.name)}</div>
-<div id="cnt" style="position:absolute;left:0;right:0;top:${top}px;text-align:center;color:${t.ink}">
+<div id="head" style="position:absolute;left:${wide ? W * 0.04 : 0}px;right:${wide ? W * 0.44 : 0}px;top:${Math.max(px(110), wide ? H * 0.08 : H * 0.07)}px;text-align:${wide ? 'left' : 'center'};color:${t.ink}">
   <div class="mask" style="height:${Math.round(occSize * 0.92)}px"><div id="occ" class="d" style="font-size:${occSize}px;white-space:nowrap">${esc(data.occasion)}</div></div>
-  <div id="kick" style="margin-top:${px(18)}px;font-size:${px(40)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;color:${t.ink};opacity:.85">${esc(L[mode])}</div>
-  <div class="mask" style="height:${rowH}px;margin-top:${px(4)}px;position:relative">
-    <div id="reel" style="font-size:${numSize}px;color:${t.ink}">${reel}</div>
+</div>
+<div id="dial" style="position:absolute;left:${Math.round(dialX - D / 2)}px;top:${Math.round(dialY - D / 2)}px;width:${D}px;height:${D}px;border-radius:50%;background:${t.bg};box-shadow:0 ${px(30)}px ${px(90)}px rgba(0,0,0,.5)">
+  <svg width="${D}" height="${D}" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="${D / 2}" cy="${D / 2}" r="${R}" fill="none" stroke="${t.ink}" stroke-opacity=".14" stroke-width="${px(18)}"/>
+  <circle id="arc" cx="${D / 2}" cy="${D / 2}" r="${R}" fill="none" stroke="${t.accent}" stroke-width="${px(18)}" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0"/></svg>
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:${t.ink}">
+    <div id="kick" style="font-size:${px(34)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;opacity:.8">${esc(L[mode])}</div>
+    <div class="mask" style="height:${rowH}px;margin-top:${px(4)}px"><div id="reel" style="font-size:${numSize}px;text-align:center">${reel}</div></div>
+    <div id="unit" class="d" style="font-size:${Math.min(px(64), Math.round(D * 0.085))}px;color:${t.accent};margin-top:${px(2)}px">${esc(L[unit])} ${esc(L.left)}</div>
   </div>
-  <div class="mask" style="height:${px(150)}px;margin-top:${px(6)}px"><div id="unit" class="d" style="display:inline-block;font-size:${px(118)}px;line-height:1.1;padding:0 ${px(26)}px;background:${t.accent};color:${t.accentInk}">${esc(L[unit])} ${esc(L.left)}</div></div>
 </div>
-<div id="dt" style="opacity:0;position:absolute;left:0;right:0;top:${wide ? H * 0.22 : H * 0.3}px;text-align:center;color:${t.ink}">
-  <div id="date" style="font-size:${px(54)}px;font-weight:600;letter-spacing:.04em;opacity:0">${esc(data.target.label)}</div>
-  ${data.teaser ? `<div class="mask" style="height:${Math.round(teaserSize * 1.9)}px;margin-top:${px(30)}px"><div id="teaser" class="d" style="font-size:${teaserSize}px;color:${t.ink};line-height:.95;padding:0 ${px(40)}px">${esc(data.teaser)}</div></div>` : ''}
-  <div id="cta" class="cta" style="margin-top:${px(50)}px;opacity:0">${esc(data.cta)}</div>
-  ${data.url ? `<div id="url" style="margin-top:${px(24)}px;font-size:${px(40)}px;font-weight:600;opacity:0">${esc(data.url)}</div>` : ''}
+<div id="dt" style="opacity:0;position:absolute;left:0;right:0;top:${wide ? H * 0.3 : H * 0.34}px;text-align:center">
+  <div id="ticket" class="ticket"><div style="font-size:${px(52)}px;font-weight:600">${esc(data.target.label)}</div>${data.teaser ? `<div class="d" style="margin-top:${px(14)}px;font-size:${teaserSize}px;color:${t.bg}">${esc(data.teaser)}</div>` : ''}</div>
+  <div><div id="cta" class="cta" style="margin-top:${px(46)}px">${esc(data.cta)}</div></div>
+  ${data.url ? `<div id="url" style="margin-top:${px(22)}px;font-size:${px(40)}px;font-weight:600;color:${t.ink};opacity:.85">${esc(data.url)}</div>` : ''}
 </div>
-${tape('tape', tapeText, t, W, H, { y: portrait ? 0.9 : 0.88, size: px(wide ? 56 : 62) })}
-<div id="badgewrap" style="position:absolute;left:${W * 0.05}px;top:${H * (portrait ? 0.7 : 0.52)}px;width:${px(230)}px;height:${px(230)}px;opacity:0">${badge('bdg', `${data.occasion} • ${data.target.label} • `, t, px(230))}</div>
-${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0').replace(/bottom:\d+px/, `bottom:${Math.round(H * (portrait ? 0.15 : 0.17))}px`)}`;
+${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0')}`;
 
 const f = v => v.toFixed(2);
 const stepDur = (B.date - 1.0 - B.roll) / Math.max(1, steps.length - 1);
 const rH = rowH;
-let rollJs = '', swapJs = '';
+let rollJs = '';
 steps.forEach((_, i) => { if (i) rollJs += `tl.to('#reel',{y:${-i * rH},duration:${f(Math.min(0.3, stepDur * 0.8))},ease:'power3.inOut'},${f(B.roll + 0.3 + (i - 1) * stepDur)});\n`; });
-// Photos change in step with the roll, each one wiping up over the last.
-images.forEach((_, i) => {
-  const at = i === 0 ? 0 : B.roll + 0.3 + (i * (steps.length - 1) / images.length) * stepDur;
-  swapJs += i === 0 ? `tl.set('#ph0',{clipPath:'inset(0% 0% 0% 0%)'},0);\n` : `tl.fromTo('#ph${i}',{clipPath:'inset(100% 0% 0% 0%)'},{clipPath:'inset(0% 0% 0% 0%)',duration:.45,ease:'power3.inOut'},${f(at)});\n`;
-  swapJs += `tl.fromTo('#ph${i}',{scale:1.18},{scale:1.02,duration:${f(B.end - at)},ease:'none'},${f(at)});\n`;
-});
+// Cards deal in one after another during the roll.
+const dealJs = images.map((_, i) => { const r = spots[i % spots.length][2]; const at = B.roll + 0.2 + i * ((B.date - 1.2 - B.roll) / Math.max(1, images.length)); return `tl.fromTo('#cd${i}',{opacity:0,y:${px(160)},rotation:${r * 3}},{opacity:1,y:0,rotation:${r},duration:.55,ease:'back.out(1.4)'},${f(at)});`; }).join('\n');
 const script = `
-${swapJs}tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(B.end)},ease:'steps(${Math.round(B.end * 12)})'},0);
-tl.fromTo('#tape',{xPercent:-30,opacity:0},{xPercent:0,opacity:1,duration:.5,ease:'power3.out'},0.3);
-tl.fromTo('#tape-run',{xPercent:0},{xPercent:-50,duration:${f(B.end + 4)},ease:'none'},0);
-tl.fromTo('#bdg',{rotation:0},{rotation:${Math.round(B.end * 24)},transformOrigin:'50% 50%',duration:${f(B.end)},ease:'none'},0);
-tl.fromTo('#badgewrap',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(1.8)'},0.8);
-tl.fromTo('#occ',{yPercent:105},{yPercent:0,duration:.55,ease:'power4.out'},0.1);
-tl.fromTo('#kick',{opacity:0,y:20},{opacity:.85,y:0,duration:.5,ease:'power3.out'},0.4);
-tl.fromTo('#reel',{yPercent:0,opacity:0},{opacity:1,duration:.3},${f(B.roll)});
-${rollJs}tl.fromTo('#unit',{yPercent:125},{yPercent:0,duration:.45,ease:'power4.out'},${f(B.roll + 0.4)});
-tl.fromTo('#cnt',{scale:1},{scale:1.08,duration:.15,yoyo:true,repeat:1,transformOrigin:'50% 50%'},${f(B.date - 0.95)});
-tl.to('#cnt',{yPercent:-12,opacity:0,duration:.4,ease:'power3.in'},${f(B.date - 0.3)});
+tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(B.end)},ease:'steps(${Math.round(B.end * 12)})'},0);
+${Array.from({ length: rows }, (_, i) => `tl.fromTo('#w${i}',{xPercent:${i % 2 ? -50 : 0}},{xPercent:${i % 2 ? 0 : -50},duration:${f(B.end * (1.6 + (i % 3) * 0.4))},ease:'none'},0);`).join('\n')}
+tl.fromTo('#occ',{yPercent:110},{yPercent:0,duration:.55,ease:'power4.out'},0.1);
+tl.fromTo('#dial',{scale:.3,opacity:0,rotation:-60},{scale:1,opacity:1,rotation:0,duration:.7,ease:'back.out(1.3)'},0.25);
+tl.fromTo('#reel',{opacity:0},{opacity:1,duration:.3},0.55);
+${rollJs}// the ring drains to the share of time still left between the first and the true number
+tl.fromTo('#arc',{strokeDashoffset:0},{strokeDashoffset:${(C * (1 - value / start)).toFixed(1)},duration:${f(B.date - 1.0 - B.roll)},ease:'none'},${f(B.roll + 0.3)});
+${dealJs}
+tl.fromTo('#dial',{scale:1},{scale:1.07,duration:.15,yoyo:true,repeat:1},${f(B.date - 0.95)});
+tl.to('#dial',{scale:.25,opacity:0,duration:.4,ease:'power3.in'},${f(B.date - 0.35)});
+tl.to(${JSON.stringify(images.map((_, i) => `#cd${i}`))},{y:${px(260)},opacity:0,duration:.4,ease:'power3.in',stagger:.05},${f(B.date - 0.35)});
 tl.set('#dt',{opacity:1},${f(B.date - 0.01)});
-tl.fromTo('#date',{opacity:0,y:${px(30)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.date)});
-${data.teaser ? `tl.fromTo('#teaser',{yPercent:105},{yPercent:0,duration:.55,ease:'power4.out'},${f(B.date + 0.3)});` : ''}
+tl.fromTo('#ticket',{y:${px(60)},opacity:0,rotation:-4},{y:0,opacity:1,rotation:0,duration:.5,ease:'back.out(1.6)'},${f(B.date)});
 tl.fromTo('#cta',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(2)'},${f(B.cta)});
 ${data.url ? `tl.fromTo('#url',{opacity:0},{opacity:.85,duration:.3},${f(B.cta + 0.2)});` : ''}
 ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(B.cta + 0.4)});`}

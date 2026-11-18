@@ -14,12 +14,12 @@ An OpenMotion Skill. The shop's brand leads the film and its colour can replace 
 card carries a small "Made with OpenMotion" sign-off (`--no-credit` removes it).
 
 Give a short list of products, get one reel that walks through them: 1.5 s title, 1.8 s per product,
-2.8 s end grid (13.3 s for five products, 16.9 s for seven). Every price on screen is computed from the
+2.9 s end shot (12.8 s for five products, 16.2 s for seven). Every price on screen is computed from the
 regular price and the discount, so a batch of cards never shows a mistyped number.
 
 ## Look
 
-Each product fills the whole frame in turn and wipes in over the last one with a slow push-in; the counter, a scrolling sale tape and the shop name stay on screen throughout; the title card sits on a moving wall of every product photo. Display type is Anton, shipped with the Skill (SIL OFL).
+A product shelf, not slides: every product sits on one row of cards that keeps gliding; each in turn slides to the centre, grows, strikes its old price and pops its discount tag while its neighbours wait at the edges. At the end the camera pulls back over the row with the code and call to action. Outlined title text drifts behind. Display type is Anton, shipped with the Skill (SIL OFL).
 
 ## 1. Collect the products
 
@@ -51,10 +51,10 @@ cd out && npx hyperframes check && npx hyperframes render -o carousel.mp4
 | Beat | What happens |
 | --- | --- |
 | Title | Occasion, title and "N picks" |
-| Product × N | A card slides in: photo, "01 / 05", name, the regular price struck through beside the sale price, a discount badge pops; then it slides away |
-| End grid | Every product as a tile with its sale price, the code and deadline, the call to action, the sign-off |
+| Product × N | The row glides so this card is centred; it grows, the regular price is struck through beside the sale price, the discount tag pops, the counter reads "01 / 05" |
+| End | The camera pulls back over the row; code, deadline, call to action, sign-off |
 
-Text sits over the lower part of the photo (to the right in 16:9). The badge shows a percentage
+Card size follows the frame; on narrow frames the end shot centres the middle of the row. The badge shows a percentage
 unless the saving is small, where a flat amount reads better. `theme`, `brand.accent`, `locale` and
 `labels` work as in the sale-promo Skill. The film is silent; add music in the editor and cut the
 cards on the beat.
