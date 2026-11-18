@@ -100,11 +100,11 @@ export class Phase1Service {
   constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; this.ledger = new TaskLedger(store.directory); }
   versions(projectId: string) { return new ProjectVersions(this.store.forProject(projectId), this.runtimeRoot, this.context.nativeUrl(projectId)); }
   get workRounds() { return new WorkRounds(this.store, this.context.tracking); }
-  async call(name: string, args: any, host?: HostContext) {
+  async call(name: string, args: any, host?: HostContext, options?: { attributeEntry?: boolean }) {
     const requestedName = publicToolName(name);
     name = legacyToolName(name);
     try {
-      const result = await this.invoke(name, args, host, requestedName);
+      const result = await this.invoke(name, args, host, requestedName, options);
       if (name === 'motion_restore_version') this.restoreErrors.delete(args.projectId);
       trackPhase1Result(this.context.tracking, name, args, result, undefined, host);
       return publicToolResult(result);
@@ -125,15 +125,21 @@ export class Phase1Service {
       throw error;
     }
   }
-  private async invoke(name: string, args: any, host?: HostContext, requestedName = publicToolName(name)) {
+  private async invoke(name: string, args: any, host?: HostContext, requestedName = publicToolName(name), options?: { attributeEntry?: boolean }) {
     const definition = phase1Tools.find(tool => tool.name === requestedName);
     if (!definition) throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);
     validateInput(definition.inputSchema, args);
+    if (name === 'motion_open_preview' && args.entry !== undefined && args.target !== 'providers') {
+      throw new Error('INVALID_ARGUMENT: entry is only supported when target=providers');
+    }
     if (name === 'motion_open_preview' && (args.target === 'templates' || args.target === 'providers')) {
-      if (args.action && args.action !== 'open' || Object.keys(args).some(key => !['target', 'action', 'embedded', 'presentation'].includes(key))) {
+      const allowed = args.target === 'providers' ? ['target', 'action', 'embedded', 'presentation', 'entry'] : ['target', 'action', 'embedded', 'presentation'];
+      if (args.action && args.action !== 'open' || Object.keys(args).some(key => !allowed.includes(key))) {
         throw new Error('INVALID_ARGUMENT: workspace page opening does not accept project, session or version arguments');
       }
-      return args.target === 'providers' ? providerSettingsPreview(this.context.origin(), args) : templateLibraryPreview(this.context.origin(), args);
+      return args.target === 'providers'
+        ? providerSettingsPreview(this.context.origin(), { ...args, attributeEntry: options?.attributeEntry })
+        : templateLibraryPreview(this.context.origin(), args);
     }
     if (name === 'motion_list_templates') return templateCatalogFor(this.store.directory).index();
     if (name === 'motion_get_template') return templateCatalogFor(this.store.directory).detail(args.templateId);

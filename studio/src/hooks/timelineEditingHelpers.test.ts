@@ -148,6 +148,20 @@ describe("applyTimelineStackingReorder", () => {
 });
 
 describe("patchIframeDomTiming", () => {
+  it("keeps a mounted scene's preserved timing current when its public attributes are consumed", () => {
+    const iframe = makeIframeWith('<div data-composition-id="root"><div id="scene" data-composition-file="scene.html" data-composition-id="scene" data-start="2" data-hf-authored-duration="7" data-hf-authored-end="9"></div></div>');
+    const target = el({ id: "scene", domId: "scene", tag: "div", kind: "composition", sourceFile: "index.html", compositionSrc: "scene.html" });
+    patchIframeDomTiming(iframe, target, [["data-duration", "4"], ["data-end", "6"]]);
+    const host = iframe.contentDocument!.getElementById("scene")!;
+    // The runtime consumes public timing on mounted scene hosts; its next manifest
+    // must still describe the edited window rather than snapping the clip back.
+    host.removeAttribute("data-duration");
+    host.removeAttribute("data-end");
+    expect(host.getAttribute("data-hf-authored-duration")).toBe("4");
+    expect(host.getAttribute("data-hf-authored-end")).toBe("6");
+    expect(host.getAttribute("data-composition-file")).toBe("scene.html");
+  });
+
   it("patches a top-level composition host in its parent source file", () => {
     const iframe = makeIframeWith(`
       <div data-composition-id="root">

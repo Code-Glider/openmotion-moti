@@ -115,6 +115,27 @@ correctness incidents and recovery evidence use `incident_confirmed` and
 
 ## Identity, properties and privacy
 
+`account_sign_in_result` reports each finished OpenDesign connector attempt with
+`source_product=openmotion`, `source_detail=openmotion_editor_login`, and an
+`entry_id` / `entry_occurred_at` pair created when the editor starts sign-in.
+Attempts replaced within that sign-in retain the entry pair while their
+`attempt_id` changes. A new explicit sign-in creates a new entry pair. Success
+is reported only after the connector completes credential acceptance and the
+local account setup finishes; browser opening or approval alone is not success.
+Successful completion also reports the confirmed account ID as `amr_user_id`,
+so account counts can deduplicate across installations and join AMR account facts.
+Failures and cancellations omit that ID. The existing collection controls apply;
+`distinct_id` remains the installation ID, without identify/alias or person merging.
+Email, names, activation URLs, authorization codes and credentials are omitted.
+These fields describe the local OM result; AMR handoff attribution is separate.
+
+The account and subscription settings' **Manage subscription** link carries
+`od_origin=openmotion`, `od_entry_source=openmotion_manage_subscription`, and a
+fresh `od_entry_id` / UTC `od_entry_at` for each primary or middle click. The link
+retains `billing=plan` and contains no account, installation or credential data.
+AMR must accept the OpenMotion origin and entry source in its attribution
+validation before these parameters can reach its subscription/payment events.
+
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.
 Different data directories remain separate installations.
@@ -153,8 +174,8 @@ WHERE timestamp >= now() - INTERVAL 2 DAY
 
 This measures OS-device identities, not people or immutable physical hardware. Shared
 machines count once, a person on two machines counts twice, cloned OS identifiers can
-collide, and an OS reinstall can change Windows/Linux identifiers. No account identity,
-MAC address, raw platform identifier or probabilistic fingerprint is sent. The package can
+collide, and an OS reinstall can change Windows/Linux identifiers. Device context contains
+no account identity, MAC address, raw platform identifier or probabilistic fingerprint. The package can
 initialize an identity with a validated source label; existing identities retain
 their first source. Landing-page attribution and installer `--source` plumbing are
 a separate change. Unknown source remains null.
@@ -213,6 +234,22 @@ their connection's token, project navigation preserves it, and another client
 cannot replace an existing association. A manually opened, expired, evicted or
 restarted page context reports `unknown`. No global last-used-host attribution is
 used. These tokens are metadata references, not authorization credentials.
+
+Provider-settings handoffs (`openmotion_open_preview` with `target=providers`)
+emit the MCP-only `provider_setup_opened` event on successful stdio MCP calls
+and append the validated `entry_from` parameter (`agent_providers` by default, or
+`agent_media_signed_out`, `agent_media_upgrade_free`, `agent_media_upgrade_go`,
+`agent_media_balance_low`, `agent_media_key_rejected`, `agent_media_handbook`) to
+the returned `previewUrl`. WebMCP/non-MCP HTTP calls neither emit
+`provider_setup_opened` nor attach `entry_from` to `previewUrl`, keeping funnel
+denominators and numerators aligned. Studio Settings propagates only recognized
+`entry_from` values onto Settings `page_view` and Settings `ui_click` events
+(including `account` sign-in and manage-subscription clicks) while inside
+Settings, and clears `entry_from` when navigating out of Settings (including to
+`brand-kit`, `mcp`, `assets`, `skills`, or the editor). Unknown `entry` values
+are rejected with `INVALID_ARGUMENT` on MCP calls, while Studio drops
+unrecognized URL `entry_from` values; neither side accepts prompts, account IDs
+or credentials.
 
 The research sources are the [supported MCP lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle),
 [Codex's MCP client](https://github.com/openai/codex/blob/main/codex-rs/rmcp-client/src/utils.rs)
