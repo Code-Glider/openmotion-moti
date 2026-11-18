@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject }
 import { compositionInsertionFailureMessage } from "../i18n/editorErrors";
 import type { TimelineElement } from "../player";
 import type { TimelineDropPlacement } from "../player/components/timelineCallbacks";
-import { resolveMediaDropPlacement, resolveDropTrack, topTrackZIndex } from "../utils/timelineDropTrackInsert";
+import { mediaPlacementPeers, resolveMediaDropPlacement, resolveDropTrack, topTrackZIndex } from "../utils/timelineDropTrackInsert";
 import {
   buildTimelineAssetId,
   buildTimelineAssetInsertHtml,
@@ -180,18 +180,21 @@ export function useTimelineAssetDropOps({
           newId = buildTimelineAssetId(assetPath, ids);
           // Include drops saved while this preview was still reloading.
           const awaitingPreview = usePlayerStore.getState().pendingAssetDrops.flatMap((drop) =>
-            drop.element && ids.includes(drop.element.domId ?? "")
+            drop.element?.sourceFile === targetPath && ids.includes(drop.element.domId ?? "")
               ? [drop.element] : [],
           );
           if (placement.newTrack) newElementZIndex = topTrackZIndex(originalContent, [...fileElements, ...gesture.placed, ...awaitingPreview]);
           const peers = gesture.onNewTrack ? [] : fileElements;
           const placed = [...gesture.placed, ...awaitingPreview];
           const dropped = { id: newId, tag, start: normalizedStart, duration: normalizedDuration };
-          landing = resolveMediaDropPlacement([...peers, ...placed], placement, dropped);
+          const livePeers = gesture.onNewTrack || placement.insertRow != null || placement.newTrack
+            ? peers
+            : mediaPlacementPeers(originalContent, peers, placed);
+          landing = resolveMediaDropPlacement(gesture.onNewTrack ? placed : livePeers, placement, dropped);
           const resolved = resolveDropTrack({
             mediaPlacement: true,
             source: originalContent,
-            elements: peers,
+            elements: livePeers,
             placed,
             placement: landing,
             dropped: { ...dropped, start: landing.start },

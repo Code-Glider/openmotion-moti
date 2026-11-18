@@ -53,10 +53,9 @@ describe("TimelineGestureOverlay", () => {
   });
 
   it.each([
-    { name: "crossing into magnetic main track", magnet: true, secondary: false, start: 9.87, insertRow: null },
-    { name: "secondary track", magnet: true, secondary: true, start: 9.87, insertRow: null },
-    { name: "nonmagnetic main track", magnet: false, secondary: false, start: 9.87, insertRow: null },
-  ])("keeps the actor at the pointer and commits the resolved time on $name", ({ magnet, secondary, start, insertRow }) => {
+    { name: "main track", secondary: false },
+    { name: "secondary track", secondary: true },
+  ])("keeps the actor at the pointer and commits the resolved time on $name", ({ secondary }) => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -75,10 +74,10 @@ describe("TimelineGestureOverlay", () => {
       originScrollLeft: 0, originScrollTop: 0, pointerOffsetX: 20, pointerOffsetY: 20,
     }, 1000, 104, {
       scroll, pps: 100, duration: 40, trackOrder: [0, 1, 2], rowGeometry: geometry,
-      elements, selectedKeys: new Set(), buildSnapTargets: () => [], rippleEditEnabled: magnet,
+      elements, selectedKeys: new Set(), buildSnapTargets: () => [],
     });
-    expect(preview.previewStart).toBe(start);
-    expect(preview.insertRow).toBe(insertRow);
+    expect(preview.previewStart).toBe(9.87);
+    expect(preview.insertRow).toBeNull();
     expect(preview.previewTrack).toBe(0);
     act(() => root.render(<TimelineGestureOverlay
       drag={preview} scrollRef={{ current: scroll }} pixelsPerSecond={100}

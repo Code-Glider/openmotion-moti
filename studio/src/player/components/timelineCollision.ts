@@ -101,7 +101,6 @@ export function resolveNearestFreeStart(
   excludeKey: string | null,
   minStart = 0,
   origin: number | null = null,
-  previous?: { start: number; switchMargin: number },
 ): number {
   const busy = collisionLane(elements, track);
   let best = Number.POSITIVE_INFINITY;
@@ -118,14 +117,6 @@ export function resolveNearestFreeStart(
   }
   if (origin !== null && origin >= minStart && isNearer(origin, best, start) && clearAt(origin))
     best = origin;
-  // A tiny pointer reversal around the midpoint between distant gaps must not
-  // throw the actor back across the occupied span. Free space still follows the
-  // pointer exactly; only competing collision landings retain their last side.
-  if (
-    previous && best !== start && previous.start >= minStart &&
-    Math.abs(previous.start - start) <= Math.abs(best - start) + previous.switchMargin &&
-    clearAt(previous.start)
-  ) return previous.start;
   return best;
 
   function clearAt(candidate: number): boolean {
@@ -169,9 +160,6 @@ export function resolveZoneDropPlacement(input: {
   minStart?: number;
   /** Where the dragged clip sits now. */
   origin?: { track: number; start: number };
-  /** Compatibility fields; main-track magnet no longer changes drag time or lane placement. */
-  magneticMainTrack?: number | null;
-  previous?: { track: number; start: number; switchMargin: number };
 }): { track: number; insertRow: number | null; start: number } {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;

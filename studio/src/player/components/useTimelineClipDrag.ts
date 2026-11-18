@@ -323,7 +323,6 @@ export function useTimelineClipDrag({
         buildSnapTargets,
         audioTracks: dragAudioTracksRef.current,
         gridStep: snapGridStep(),
-        rippleEditEnabled: usePlayerStore.getState().rippleEditEnabled,
       });
     },
     [

@@ -66,8 +66,6 @@ export interface DragPreviewContext {
   audioTracks?: ReadonlySet<number>;
   /** Seconds between the ruler's lines; 0 or absent when snapping is off. */
   gridStep?: number;
-  /** Compatibility preference; pointer placement now uses the same free-move rule on every lane. */
-  rippleEditEnabled?: boolean;
 }
 
 export function createKeyboardClipDrag(

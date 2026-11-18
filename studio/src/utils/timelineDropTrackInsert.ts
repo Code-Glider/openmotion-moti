@@ -9,6 +9,7 @@ import { applyPatchByTarget, readAttributeByTarget, readTagSnippetByTarget, read
 import { buildPatchTarget } from "../hooks/timelineEditingHelpers";
 import { formatTimelineAttributeNumber } from "../player/components/timelineEditing";
 import { planTimelineLanePersistence, withPersistedTimelineLanes } from "../player/components/timelineLanePersistence";
+import { normalizeToZones } from "../player/components/timelineZones";
 
 export interface DropTrackInsertPlan {
   /** Lane the dropped clip is written on. */
@@ -77,6 +78,31 @@ export function applyTrackRenumbers(source: string, plan: DropTrackInsertPlan): 
 
 type DroppedClip = Pick<TimelineElement, "id" | "tag" | "start" | "duration">;
 
+function readSavedTrack(source: string, element: TimelineElement): number | undefined {
+  const target = buildPatchTarget(element);
+  if (!target || !readTagSnippetByTarget(source, target)) return undefined;
+  const raw = readAttributeByTarget(source, target, "track-index");
+  const track = raw === undefined ? 0 : Number(raw);
+  if (!Number.isFinite(track)) throw new Error("Invalid authored track index");
+  return track;
+}
+
+/** A preceding drop can renumber lanes before the timeline discovers the saved clips. */
+export function mediaPlacementPeers(
+  source: string,
+  elements: TimelineElement[],
+  awaitingPreview: readonly TimelineElement[],
+): TimelineElement[] {
+  const peers = new Map(elements.map(element => [element.key ?? element.id, element]));
+  const unseen = awaitingPreview.filter(element => !peers.has(element.key ?? element.id));
+  if (unseen.length === 0) return elements;
+  for (const element of unseen) peers.set(element.key ?? element.id, element);
+  return normalizeToZones([...peers.values()].map(element => {
+    const track = readSavedTrack(source, element) ?? element.authoredTrack ?? element.track;
+    return { ...element, track, authoredTrack: track };
+  }));
+}
+
 /** The file track a drop on display row `lane` is written to, and its nearest free start there.
  *  The timeline's own clips decide the track; `placed` clips only block, like same-kind clips there. */
 function resolveRowDrop(
@@ -144,12 +170,8 @@ export function resolveDropTrack(input: {
     // already be saved while the iframe still shows the old row order.
     const peers = new Map<string, TimelineElement>();
     for (const element of [...elements, ...(input.placed ?? [])]) {
-      const target = buildPatchTarget(element);
-      const raw = target ? readAttributeByTarget(insertionSource, target, "track-index") : undefined;
-      if (!target || !readTagSnippetByTarget(insertionSource, target)) continue;
-      // Absent data-track-index is the authored default lane, not a missing node.
-      const track = raw === undefined ? 0 : Number(raw);
-      if (!Number.isFinite(track)) throw new Error("Invalid authored track index");
+      const track = readSavedTrack(insertionSource, element);
+      if (track === undefined) continue;
       peers.set(element.key ?? element.id, { ...element, track, authoredTrack: track });
     }
     const current = [...peers.values()];

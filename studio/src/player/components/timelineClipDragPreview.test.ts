@@ -125,7 +125,7 @@ function horizontalDrag(
 describe("computeDragPreview — plain horizontal drag never arms a phantom insert (BUG 1)", () => {
   it("preserves pointer time over an occupied main track without nearest-gap jumps", () => {
     const dragged = clip("ease", 0, 24, 4, 1);
-    const context = { ...ctx(undefined, [clip("left", 0, 0, 6, 1), clip("block", 0, 10, 10, 1), dragged]), trackOrder: [0], rippleEditEnabled: true };
+    const context = { ...ctx(undefined, [clip("left", 0, 0, 6, 1), clip("block", 0, 10, 10, 1), dragged]), trackOrder: [0] };
     const { drag, clientY } = horizontalDrag(dragged, 0.5, 0);
     let current = drag;
     const move = (time: number) => {
@@ -1019,49 +1019,40 @@ describe("trimPreviewTime", () => {
 });
 
 
-describe("magnet-aware collision preview and commit", () => {
-  it.each([10, 40, 100])("preserves target time regardless of main magnet at %s px/s", (pps) => {
+describe("collision preview and commit", () => {
+  it.each([10, 40, 100])("preserves target time at %s px/s", (pps) => {
     const moving = clip("moving", 1, 5, 5, 1);
     const elements = [clip("busy", 1, 0, 5, 1), moving, clip("upper", 0, 10, 20, 1)];
     const { drag, clientY } = horizontalDrag(moving, 1.5, 0);
-    for (const magnet of [true, false]) {
-      const context = { ...ctx(undefined, elements), trackOrder: [0, 1], rippleEditEnabled: magnet, pps };
-      const preview = computeDragPreview(drag, drag.originClientX - 2.5 * pps, clientY, context);
-      expect(preview).toMatchObject({ previewStart: 2.5, previewTrack: 0, insertRow: null });
-    }
+    const context = { ...ctx(undefined, elements), trackOrder: [0, 1], pps };
+    const preview = computeDragPreview(drag, drag.originClientX - 2.5 * pps, clientY, context);
+    expect(preview).toMatchObject({ previewStart: 2.5, previewTrack: 0, insertRow: null });
   });
 
   it.each([
-    { name: "modifier bypass on magnetic main track", bypass: true, magnet: true, track: 1, start: 12, aim: 6, landing: 6, insertRow: 1 },
-    { name: "secondary track", magnet: true, track: 0, start: 12, aim: 6, landing: 6, insertRow: 0 },
-    { name: "main track with magnet enabled", magnet: true, track: 1, start: 5, aim: 4.9, landing: 4.9, insertRow: 1 },
-    { name: "nonmagnetic main track", magnet: false, track: 1, start: 12, aim: 6, landing: 6, insertRow: 1 },
-  ])("shares the resolved landing with commit on $name", ({ magnet, track, start, aim, landing, insertRow, bypass }) => {
+    { name: "secondary track", track: 0, start: 12, aim: 6 },
+    { name: "main track near the original start", track: 1, start: 5, aim: 4.9 },
+    { name: "main track", track: 1, start: 12, aim: 6 },
+  ])("shares the resolved landing with commit on $name", ({ track, start, aim }) => {
     const moving = clip("moving", track, start, 5, 1);
     const busy = clip("busy", track, start === 5 ? 0 : 5, 5, 1);
     const other = clip("other", track === 0 ? 1 : 0, 0, 20, 1);
     const elements = [busy, moving, other];
     const { drag, clientX, clientY } = horizontalDrag(moving, track + 0.5, aim - start);
-    const ghost = computeDragPreview({ ...drag, snapDisabled: bypass }, clientX, clientY, {
-      ...ctx(undefined, elements), trackOrder: [0, 1], rippleEditEnabled: magnet,
+    const ghost = computeDragPreview(drag, clientX, clientY, {
+      ...ctx(undefined, elements), trackOrder: [0, 1],
     });
-    expect(ghost).toMatchObject({ previewTrack: track, previewStart: landing, insertRow });
+    expect(ghost).toMatchObject({ previewTrack: track, previewStart: aim, insertRow: track });
     const onMoveElement = vi.fn();
     const onMoveElements = vi.fn();
     commitDraggedClipMove(ghost, {
       elements, trackOrder: [0, 1], updateElement: vi.fn(), onMoveElement, onMoveElements,
       selectedKeys: new Set(),
     });
-    const single = onMoveElement.mock.calls[0];
+    expect(onMoveElement).not.toHaveBeenCalled();
+    expect(onMoveElements).toHaveBeenCalledTimes(1);
     const batch = onMoveElements.mock.calls[0]?.[0] as TimelineMoveEdit[] | undefined;
-    const committed = single?.[1] ?? batch?.find(edit => edit.element.id === moving.id)?.updates;
-    if (insertRow === null) {
-      expect(onMoveElement).not.toHaveBeenCalled();
-      expect(onMoveElements).toHaveBeenCalledTimes(1);
-      expect(committed?.start).toBe(ghost.previewStart);
-      expect(batch?.find(edit => edit.element.id === busy.id)?.updates.start).toBe(5);
-    } else {
-      expect(committed?.start).toBe(ghost.previewStart);
-    }
+    expect(batch?.find(edit => edit.element.id === moving.id)?.updates.start).toBe(ghost.previewStart);
+    expect(batch?.find(edit => edit.element.id === busy.id)?.updates.start).toBe(busy.start);
   });
 });

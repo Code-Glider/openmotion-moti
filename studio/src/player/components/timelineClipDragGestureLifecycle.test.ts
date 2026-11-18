@@ -188,7 +188,7 @@ it.each([
   g.onMoveElementsRef.current = save;
   g.updateDraggedClipPreview.mockImplementation((previous, x, clientY) => computeDragPreview(previous, x, clientY, {
     elements: clips, pps: 100, duration: 20, trackOrder: [0], scroll: null,
-    selectedKeys: new Set(), buildSnapTargets: () => [], rippleEditEnabled: true,
+    selectedKeys: new Set(), buildSnapTargets: () => [],
   }));
   window.dispatchEvent(new MouseEvent("pointermove", { clientX: painted, clientY: y }));
   vi.advanceTimersByTime(16);

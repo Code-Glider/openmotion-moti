@@ -42,14 +42,6 @@ describe("isLaneFree", () => {
 describe("resolveNearestFreeStart", () => {
   const row = [el("a", 0, 2, 3), el("b", 0, 8, 2)]; // busy [2,5) and [8,10)
 
-  it("never stabilizes onto an occupied or below-floor previous landing", () => {
-    const busy = [el("block", 0, 10, 10)];
-    expect(resolveNearestFreeStart(busy, 0, 13, 4, null, 0, null,
-      { start: 13, switchMargin: 100 })).toBe(20);
-    expect(resolveNearestFreeStart(busy, 0, 13, 4, null, 7, null,
-      { start: 6, switchMargin: 100 })).toBe(20);
-  });
-
   it("keeps a start whose span is already free", () => {
     expect(resolveNearestFreeStart(row, 0, 5, 3, null)).toBe(5);
     expect(resolveNearestFreeStart(row, 1, 3, 4, null)).toBe(3); // another row
@@ -182,11 +174,11 @@ describe("resolveZoneDropPlacement (overlap changes lanes while preserving time)
   };
   const allVisualOccupied = () => [el("a", 0, 0, 10), el("b", 1, 0, 10), el("c", 2, 0, 10)];
 
-  it("does not carry collision stabilization into another row or a deliberate insertion", () => {
+  it("preserves time for upper-row placement and deliberate insertion", () => {
     const drop = { ...base, elements: [el("block", 1, 10, 10)], desiredTrack: 1,
-      start: 13.01, duration: 4, magneticMainTrack: 1, previous: { track: 0, start: 6, switchMargin: 1 } };
+      start: 13.01, duration: 4 };
     expect(resolveZoneDropPlacement(drop)).toEqual({ track: 0, insertRow: null, start: 13.01 });
-    expect(resolveZoneDropPlacement({ ...drop, previous: { ...drop.previous, track: 1 },
+    expect(resolveZoneDropPlacement({ ...drop,
       deliberateInsertRow: 1 })).toEqual({ track: 1, insertRow: 1, start: 13.01 });
   });
 
@@ -385,7 +377,7 @@ describe("vertical visual drops preserve scene timing", () => {
 });
 
 
-describe("OpenReel placement independent of main-track magnet", () => {
+describe("OpenReel placement on main and secondary tracks", () => {
   const base = {
     order: [0, 1], audioTracks: new Set<number>(), deliberateInsertRow: null,
     start: 6, duration: 5, dragKey: "moving", isAudio: false,
@@ -393,35 +385,35 @@ describe("OpenReel placement independent of main-track magnet", () => {
   };
 
   it("opens above a secondary track occupied at 5–10s, retaining the aimed 6s", () => {
-    expect(resolveZoneDropPlacement({ ...base, magneticMainTrack: 1,
+    expect(resolveZoneDropPlacement({ ...base,
       elements: [el("busy", 0, 5, 5), el("moving", 0, 12, 5), el("main", 1, 0, 20)],
     })).toEqual({ track: 0, insertRow: 0, start: 6 });
   });
 
   it("preserves pointer time when an occupied main track has no nearby landing", () => {
-    expect(resolveZoneDropPlacement({ ...base, desiredTrack: 1, magneticMainTrack: 1,
+    expect(resolveZoneDropPlacement({ ...base, desiredTrack: 1,
       start: 2, origin: { track: 1, start: 5 },
       elements: [el("busy", 1, 0, 5), el("moving", 1, 5, 5)],
     })).toEqual({ track: 0, insertRow: null, start: 2 });
   });
 
   it("never corrects collision time even near the original main-track start", () => {
-    const drop = { ...base, desiredTrack: 1, magneticMainTrack: 1,
+    const drop = { ...base, desiredTrack: 1,
       origin: { track: 1, start: 5 },
       elements: [el("busy", 1, 0, 5), el("moving", 1, 5, 5)] };
     expect(resolveZoneDropPlacement({ ...drop, start: 4.92 })).toEqual({ track: 0, insertRow: null, start: 4.92 });
     expect(resolveZoneDropPlacement({ ...drop, start: 4.91 })).toEqual({ track: 0, insertRow: null, start: 4.91 });
   });
 
-  it("uses a free upper lane at 6s when the main-track magnet is disabled", () => {
-    expect(resolveZoneDropPlacement({ ...base, desiredTrack: 1, magneticMainTrack: null,
+  it("uses a free upper lane at 6s when the main track is occupied", () => {
+    expect(resolveZoneDropPlacement({ ...base, desiredTrack: 1,
       origin: { track: 1, start: 12 },
       elements: [el("busy", 1, 5, 5), el("moving", 1, 12, 5)],
     })).toEqual({ track: 0, insertRow: null, start: 6 });
   });
 
-  it("opens above the nonmagnetic main track when all upper lanes are occupied", () => {
-    expect(resolveZoneDropPlacement({ ...base, desiredTrack: 1, magneticMainTrack: null,
+  it("opens above the main track when all upper lanes are occupied", () => {
+    expect(resolveZoneDropPlacement({ ...base, desiredTrack: 1,
       origin: { track: 1, start: 12 },
       elements: [el("upper", 0, 0, 20), el("busy", 1, 5, 5), el("moving", 1, 12, 5)],
     })).toEqual({ track: 1, insertRow: 1, start: 6 });
@@ -431,12 +423,5 @@ describe("OpenReel placement independent of main-track magnet", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 1, start: 12 },
       allowedInsertRows: new Set([2]), elements: [el("busy", 0, 5, 5)],
     })).toEqual({ track: 1, insertRow: null, start: 12 });
-  });
-
-  it("ignores previous-gap hysteresis on secondary tracks", () => {
-    expect(resolveZoneDropPlacement({ ...base, magneticMainTrack: 1,
-      previous: { track: 0, start: 10, switchMargin: 100 },
-      elements: [el("busy", 0, 5, 5)],
-    })).toEqual({ track: 0, insertRow: 0, start: 6 });
   });
 });
