@@ -1,6 +1,6 @@
 # OpenMotion for DSH
 
-An optional local plugin that brings the OpenMotion workspace into DeepSeek Harness (DSH). Browse projects, templates, Brand Kits and Assets, then edit in Studio alongside the native Agent conversation. Hide Agent expands Studio without reloading its iframe; narrow windows show one usable surface at a time.
+An optional local plugin that brings the OpenMotion workspace into DeepSeek Harness (DSH). Browse projects, templates, Brand Kits and Assets, then edit in Studio alongside the native Agent conversation. DSH keeps its native sidebar, composer, resizable right-hand pane and open/close/fullscreen controls; the plugin only contributes its workspace, cards and embedded pages.
 
 This source-checkout integration targets DSH **0.2.2-rc.1**. It is separate from the OpenMotion npm application and Agent-plugin ZIPs. Building a tarball does not publish it to npm.
 
@@ -133,7 +133,7 @@ In DSH, confirm the OpenMotion sidebar entry, project/template browsing, Studio 
 
 After configuring a model, ask: “Read my current OpenMotion project and list three templates. Do not modify, create or export anything.” Actual tool calls confirm a model connection; they do not establish video creation or export acceptance.
 
-If activation fails, inspect DSH's log for the failing source path, Node executable or MCP startup. Each dashboard list loads independently, reserves placeholder cards while loading and offers its own **Retry** on failure. A failed template request does not hide projects, and a failed project request does not hide templates. Cards omit unknown duration badges. The host only proxies the two read-only listing APIs; editing remains in Studio and existing MCP tools. Standalone Studio retains its navigation. The layout adapter is pinned to DSH's semantic slot attributes; retest before upgrading DSH. Desktop DSH and other DSH versions have not been validated.
+If activation fails, inspect DSH's log for the failing source path, Node executable or MCP startup. Each dashboard list loads independently, reserves placeholder cards while loading and offers its own **Retry** on failure. A failed template request does not hide projects, and a failed project request does not hide templates. Cards omit unknown duration badges. The host only proxies the two read-only listing APIs; editing remains in Studio and existing MCP tools. Standalone Studio retains its navigation. The integration uses DSH's native extension slots and tab controls; retest before upgrading DSH. Desktop DSH and other DSH versions have not been validated.
 
 ## Acknowledgements
 

@@ -101,7 +101,14 @@ export function registerTemplateRecommendationBody(ctx: any): void {
         }
         return () => window.removeEventListener("openmotion:library-ready", ready);
       }, [props.proposal.callId, props.proposal.details.onboarding]);
-      return <TemplateRecommendationCard {...props} proposal={{ ...props.proposal,
+      return <TemplateRecommendationCard {...props} onPreview={templateId => {
+        ctx.sidebarRight.openTab("openmotion-studio", { params: { page: "templates", templateId } });
+        const sessionId = ctx.sidebarRight.mounted?.getSnapshot();
+        if (sessionId) {
+          localStorage.setItem("omd-session-page:" + sessionId, "templates");
+          localStorage.setItem("omd-session-template:" + sessionId, templateId);
+        }
+      }} proposal={{ ...props.proposal,
         details: { ...props.proposal.details, libraryOpened } }} />;
     },
   }), "openmotion-dsh: template recommendation body");
@@ -439,6 +446,7 @@ export async function apply(ctx: any) {
         if (mounted.getSnapshot() !== sessionId) return;
         localStorage.setItem("omd-session:" + sessionId, projectId);
         localStorage.removeItem("omd-session-page:" + sessionId);
+        localStorage.removeItem("omd-session-template:" + sessionId);
         ctx.sidebarRight.openTab("openmotion-studio", { params: { projectId } });
       });
       return true;
@@ -472,39 +480,16 @@ export async function apply(ctx: any) {
       () => <Mark />,
     ),
   );
-  ctx.slots.inject("sidebar.brand.mark", () =>
-    ctx.slots.register({ name: "sidebar.brand.mark", priority: -10 }, () => (
-      <Mark />
-    )),
-  );
-  ctx.slots.inject("conversation.hero.brand.mark", () =>
-    ctx.slots.register(
-      { name: "conversation.hero.brand.mark" },
-      ({ size = 34 }: { size?: number }) => (
-        <img
-          src={studio + "/design-system/brand/favicon.svg"}
-          alt="OpenMotion"
-          width={size}
-          height={size}
-        />
-      ),
-    ),
-  );
-  ctx.slots.inject("sidebar.brand.name", () =>
-    ctx.slots.register({ name: "sidebar.brand.name", priority: -10 }, () => (
-      <span>OpenMotion</span>
-    )),
-  );
   ctx.effect(() =>
     ctx.sidebarRightTabs.register({
       id: "openmotion.studio",
       kind: "openmotion-studio",
-      title: () => "OpenMotion Studio",
+      title: () => "OpenMotion",
       guide: [
         {
           id: "studio",
           order: -20,
-          title: () => "OpenMotion Studio",
+          title: () => "OpenMotion",
           description: () => "Edit and preview your video project",
         },
       ],
@@ -522,7 +507,6 @@ export async function apply(ctx: any) {
       ctx.sidebarRight.openTab("openmotion-studio", {
         params: localStorage.getItem("omd-session-page:" + sessionId) === "templates" ? { page: "templates" } : { projectId: project },
       });
-      window.dispatchEvent(new Event("openmotion:reveal-studio"));
     },
   });
   const StudioAction = ({ openStudio }: { openStudio: () => void }) => (
@@ -532,14 +516,11 @@ export async function apply(ctx: any) {
         onClick={openStudio}
         title="Open current OpenMotion project"
       >
-        <Icon size={15} /> Studio
+        <Icon size={15} /> OpenMotion
       </button>
     </span>
   );
-  for (const slot of [
-    "conversation.session.header.actions",
-    "conversation.input.right",
-  ])
+  for (const slot of ["conversation.session.header.actions"])
     ctx.slots.inject(slot, () =>
       ctx.slots.register(
         { name: slot, id: "openmotion-studio", inject: studioActions },

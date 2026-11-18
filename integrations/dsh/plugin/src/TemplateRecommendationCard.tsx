@@ -10,9 +10,10 @@ type Props = {
   decision?: { phase?: string };
   summary?: React.ReactNode;
   act: (verb: string, payload: { templateId: string }) => Promise<unknown>;
+  onPreview?: (templateId: string) => void;
 };
 
-export function TemplateRecommendationCard({ proposal, decision, summary, act }: Props) {
+export function TemplateRecommendationCard({ proposal, decision, summary, act, onPreview }: Props) {
   const theme = useHostTheme();
   const details = proposal.details;
   const language = resolveLanguage(details.language || "en");
@@ -27,6 +28,7 @@ export function TemplateRecommendationCard({ proposal, decision, summary, act }:
   async function choose(verb: string, templateId: string) {
     setPending(true);
     try {
+      if (verb === "preview" && onPreview) { onPreview(templateId); return; }
       const result = await act(verb, { templateId }) as { status?: string } | undefined;
       if (!result || result.status === "refused" || result.status === "unconfirmed") feedback.current?.show(ui.notSent);
     } catch { feedback.current?.show(ui.notSent); }

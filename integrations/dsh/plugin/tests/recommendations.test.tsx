@@ -69,6 +69,8 @@ it("opens the template library beside the current chat and waits for its load be
   await act(async () => { window.dispatchEvent(new Event('openmotion:library-ready')); });
   expect(document.body.textContent).toContain('右侧就是模板库');
   expect(openTab).toHaveBeenCalledTimes(1);
+  await act(async () => (document.querySelector('.omd-recommendation-actions')!.parentElement!.querySelector('button') as HTMLButtonElement).click());
+  expect(openTab).toHaveBeenLastCalledWith('openmotion-studio', { params: { page: 'templates', templateId: 'one' } });
 });
 
 it("does not reopen the library over a user's later editor when an old installation card mounts again", async () => {
@@ -86,9 +88,10 @@ it("does not reopen the library over a user's later editor when an old installat
 
 it("restores the library after refresh when DSH does not persist tab navigation parameters", async () => {
   const { StudioWorkspace } = await import('../src/editing');
+  (window as any).happyDOM.settings.disableIframePageLoading = true;
   localStorage.setItem('omd-session-page:welcome-session', 'templates');
   const container = document.createElement('div'); document.body.append(container); root = createRoot(container);
-  await act(async () => root!.render(<StudioWorkspace sessionId="welcome-session" useTabInfo={() => ({ tab: { visible: true, navigation: {} } })} openWorkspace={vi.fn()} closeStudio={vi.fn()} />));
+  await act(async () => root!.render(<StudioWorkspace sessionId="welcome-session" useTabInfo={() => ({ tab: { visible: true, navigation: {} } })} />));
   const frame = document.querySelector('iframe');
   expect(frame?.title).toBe('OpenMotion Templates');
   expect(frame?.src).toContain('templates=1');
