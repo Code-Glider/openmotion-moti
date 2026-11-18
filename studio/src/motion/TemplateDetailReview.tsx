@@ -73,13 +73,13 @@ function TemplateGuideLaunch({ onGuide }: { onGuide: () => void }) {
   </div>;
 }
 
-export function TemplateGuideReview({ template, open, onClose }: { template: GalleryTemplate; open: boolean; onClose: () => void }) {
+export function TemplateGuideReview({ template, open, onClose, onFullPage }: { template: GalleryTemplate; open: boolean; onClose: () => void; onFullPage?: () => void }) {
   const { t } = useI18n();
   if (!open) return null;
   return <section className={styles.guideDialog} aria-label={t('Interactive walkthrough')}
     onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); onClose(); } }}>
     <header><button className="om-button" data-quiet onClick={onClose}><MotionIcon name="arrow-left" size={16} />{t('Back to template')}</button><div><strong>{t('Motion.md guide')}</strong><span>{template.title}</span></div>
-      <a className="om-button" href={template.motionGuideUrl} target="_blank" rel="noreferrer">{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a>
+      <a className="om-button" href={template.motionGuideUrl} target="_blank" rel="noreferrer" onClick={onFullPage}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a>
     </header>
     <p>{t('Try the controls in the walkthrough. Changes affect this demo only, not the reference video or your project.')}
       <small>{t('Walkthrough content keeps its original language.')}</small></p>

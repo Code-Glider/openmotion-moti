@@ -3,11 +3,12 @@ import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalo
 
 const enabledKey = 'motion.template-handoff.preview';
 const resultKey = 'motion.template-handoff.results';
-export function templateHandoffPreviewEnabled() {
+export function templateHandoffEnabled() {
   try {
-    if (new URLSearchParams(location.search).get('templateHandoffPreview') === '1') sessionStorage.setItem(enabledKey, '1');
-    return sessionStorage.getItem(enabledKey) === '1';
-  } catch { return new URLSearchParams(location.search).get('templateHandoffPreview') === '1'; }
+    const override = new URLSearchParams(location.search).get('templateHandoffPreview');
+    if (override === '0' || override === '1') sessionStorage.setItem(enabledKey, override);
+    return sessionStorage.getItem(enabledKey) !== '0';
+  } catch { return new URLSearchParams(location.search).get('templateHandoffPreview') !== '0'; }
 }
 
 export type PreparedTemplateProject = {
@@ -15,7 +16,13 @@ export type PreparedTemplateProject = {
   originalProjectId?: string; requestId: string;
 };
 export function preparedTemplateProjects(): PreparedTemplateProject[] {
-  try { return JSON.parse(sessionStorage.getItem(resultKey) || '[]'); } catch { return []; }
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem(resultKey) || '[]');
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is PreparedTemplateProject => item && typeof item === 'object'
+      && ['projectId', 'sessionId', 'templateId', 'requestId', 'title'].every(key => typeof item[key] === 'string')
+      && (item.originalProjectId === undefined || typeof item.originalProjectId === 'string')).slice(-20);
+  } catch { return []; }
 }
 function remember(result: PreparedTemplateProject) {
   try {
@@ -37,7 +44,7 @@ export async function findPreparedTemplate(template: GalleryTemplate, originalPr
   return remember({ projectId: project.id, sessionId: session.id, title: project.title, templateId: template.id, originalProjectId, requestId });
 }
 
-/** Local review composes existing session/artifact operations; it never authors a film. */
+/** Compose existing guarded session/artifact operations into an independent editable project. */
 export async function prepareTemplateProject(template: GalleryTemplate, originalProjectId: string | undefined, requestId: string) {
   if (!isEditableTemplate(template)) throw new Error('此资源只有参考说明，没有可直接打开的工程。');
   const existing = await findPreparedTemplate(template, originalProjectId, requestId);

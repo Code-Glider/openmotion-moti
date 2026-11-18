@@ -454,3 +454,32 @@ A local save retry can update the terminal result for the same job. Use the late
 Generation uses the existing telemetry preference and installation identity.
 
 Studio recovery keeps request acknowledgement separate from execution outcome. An uncertain export receipt reports `studio_export_request_result.outcome=unknown`; a later identity-matched lookup can report one terminal result with the same browser `export_id`. Progress loss, cancelling and an inactive unknown record never produce a failed or cancelled terminal event. `studio_asset_import_result` retains its entry-point categories and reports confirmed failure, unknown and pending counts separately; unknown/pending items are not counted as failed. The manual `reload_editor` recovery action records only an unknown handoff outcome, not confirmed recovery.
+
+## Template detail handoff coverage
+
+The approved detail is enabled from the normal template-library entry. The legacy
+`templateHandoffPreview=0` compatibility switch can restore the previous detail
+for a session; no query parameter is needed for the new flow.
+
+| Question | Event and trigger | Join and deduplication |
+| --- | --- | --- |
+| Did someone inspect related options? | `surface_view` for `template_related/related` after its first eligible card impression; `template_card/card` for each related card | At least 50% visible for one uninterrupted second in a visible tab; once per source detail and card. Related cards and clicks include `source_template_id`, target `template_id`, source `detail_view_id` and displayed `position`. |
+| Was guidance or help used? | `ui_click`: `view_guide`, `back_to_template`, `view_full_page`, `handoff_help`, `copy_color`, `back_to_project`, `close_detail`; `surface_view` `template_guide/guide` when the same-dialog guide opens | The current template and detail-view UUID; a help opening counts once per opening, not per pointer move. Color clicks never carry a color value. |
+| Did editable handoff resolve and open? | `template_project_result` on observed `create`, `reconcile` or `open` completion | Stable `operation_id` for the guarded request; fresh `handoff_attempt_id` per operation attempt; captured initiating detail; confirmed project UUID only. |
+
+Create-stage success means the preparation call resolved to an exact project,
+including recovery of the same request; it is not a count of newly created projects.
+An interrupted response is `unknown`; an authoritative empty lookup is
+`not_found`; a failed lookup remains `unknown`. Opening is successful only when
+the project-opening callback confirms it. Retrying an existing project never emits
+another create result. `retry_template_project`, `check_template_project` and
+`open_prepared_project` distinguish explicit recovery intents.
+
+Existing copy semantics remain: `clipboard_written` is the only successful copy,
+and manual fallback is not success. No event claims that an external Agent received
+the copied instruction, created a film, or exported it. Exact copy-to-Agent-to-work
+provenance is not added by this change; do not infer adoption or output rates from
+copying. No titles, material names, instructions, color values, URLs or raw errors
+are admitted. Existing consent, browser admission and product=openmotion filtering
+remain in force. UI tests use fake senders; live readback requires env=test and an
+isolated test-run UUID.

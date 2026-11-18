@@ -30,7 +30,7 @@ import * as tracking from './templateLibraryTracking';
 import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './templateLibraryTracking';
 import { TemplateHandoffSteps, TemplateOpenRecovery, type TemplateOpenProgress } from './TemplateHandoffInfo';
 import { TemplateDetailReview, TemplateProductionNotes, TemplateGuideReview, TemplateReviewSpecs } from './TemplateDetailReview';
-import { templateHandoffPreviewEnabled, templateHandoffPrompt, preparedTemplateProjects, findPreparedTemplate, type PreparedTemplateProject } from './templateHandoffPreview';
+import { templateHandoffEnabled, templateHandoffPrompt, preparedTemplateProjects, findPreparedTemplate, type PreparedTemplateProject } from './templateHandoff';
 
 type Filters = Partial<Record<Facet, string[]>>;
 const toggleValue = (filters: Filters, key: Facet, value: string): Filters => ({ ...filters, [key]: filters[key]?.includes(value) ? filters[key]!.filter(item => item !== value) : [...(filters[key] ?? []), value] });
@@ -96,7 +96,7 @@ export function TemplateLibraryDialog(props: Props) {
   const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
-  const handoffPreview = templateHandoffPreviewEnabled();
+  const handoffPreview = templateHandoffEnabled();
   const reviewBody = useRef<HTMLDivElement>(null), reviewFooter = useRef<HTMLDivElement>(null), reviewScroll = useRef<HTMLDivElement>(null);
   const detailTitle = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -124,10 +124,12 @@ export function TemplateLibraryDialog(props: Props) {
     progressRef.current = { ...progressRef.current, [id]: progress };
     setProjectProgress(progressRef.current);
   };
-  async function revealProject(template: GalleryTemplate, result: PreparedTemplateProject) {
+  async function revealProject(template: GalleryTemplate, result: PreparedTemplateProject, view = detailView.current) {
+    const attemptId = tracking.newTrackingId();
     const progress = { requestId: result.requestId, result };
     writeProgress(template.id, { ...progress, state: 'opening' });
     const opened = await props.onOpenProject?.(result.projectId).catch(() => false);
+    tracking.reportProjectResult(template, result.requestId, attemptId, 'open', opened ? 'success' : 'failure', view, result.projectId);
     writeProgress(template.id, opened ? { ...progress, state: 'ready' }
       : { ...progress, state: 'open_failed', error: t('The project is retained. Retry opening it without creating another copy.') });
   }
@@ -138,28 +140,41 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportUseClicked(template, 'open_edit', detailView.current);
     if (previous?.result) { void revealProject(template, previous.result); return; }
     const requestId = previous?.requestId ?? crypto.randomUUID();
+    const attemptId = tracking.newTrackingId(), view = detailView.current;
     writeProgress(template.id, { requestId, state: 'creating' });
     try {
       const result = await props.onPrepareTemplate(template, requestId);
+      tracking.reportProjectResult(template, requestId, attemptId, 'create', 'success', view, result.projectId);
       writeProgress(template.id, { requestId, state: 'ready', result });
-      if (openLatest.current && detail.current?.open && previewLatest.current?.id === template.id) void revealProject(template, result);
+      if (openLatest.current && detail.current?.open && previewLatest.current?.id === template.id) void revealProject(template, result, view);
     } catch {
       const result = await findPreparedTemplate(template, props.projectId, requestId).catch(() => null);
+      tracking.reportProjectResult(template, requestId, attemptId, 'create', result ? 'success' : 'unknown', view, result?.projectId);
       writeProgress(template.id, result ? { requestId, state: 'ready', result } : { requestId, state: 'unknown', error: t('The connection did not return a complete result. Check this request before creating again.') });
     }
   }
   async function checkProject(template: GalleryTemplate) {
     const progress = progressRef.current[template.id]; if (!progress) return;
-    const result = await findPreparedTemplate(template, props.projectId, progress.requestId).catch(() => null);
+    const view = detailView.current, attemptId = tracking.newTrackingId();
+    tracking.reportDetailAction(template, 'check_template_project', view);
+    let result: PreparedTemplateProject | null;
+    try { result = await findPreparedTemplate(template, props.projectId, progress.requestId); }
+    catch {
+      tracking.reportProjectResult(template, progress.requestId, attemptId, 'reconcile', 'unknown', view);
+      showToast(t('The connection did not return a complete result. Check this request before creating again.'), 'error');
+      return;
+    }
+    tracking.reportProjectResult(template, progress.requestId, attemptId, 'reconcile', result ? 'success' : 'not_found', view, result?.projectId);
     if (result) writeProgress(template.id, { requestId: progress.requestId, state: 'ready', result });
     else showToast(t('No completed project was found for this request. Check again shortly.'), 'info');
   }
   const lastRandom = useRef<string>(undefined);
   const info = useRef<IntegrationInfo | null>(null);
   const routeChange = useRef(props.onTemplateChange); routeChange.current = props.onTemplateChange;
-  const closeDetail = () => { routeChange.current?.(null); detail.current?.close(); };
+  const closeDetail = () => { if (preview) tracking.reportDetailAction(preview, 'close_detail', detailView.current); routeChange.current?.(null); detail.current?.close(); };
   // Tracking state. Ids tie one detail view, one copy and one search to the events that follow from them.
   const detailView = useRef<DetailView | undefined>(undefined), searchId = useRef<string | undefined>(undefined), reportedQuery = useRef(''), shown = useRef(false);
+  useEffect(() => { if (guideOpen && preview) tracking.reportGuideShown(preview, detailView.current); }, [guideOpen, preview?.id]);
   const pendingResult = useRef<FilterAction | undefined>(undefined), composing = useRef(false), shownCards = useRef(new Set<string>()), instructionShown = useRef<string | undefined>(undefined);
   const [settle, setSettle] = useState(0);
   useEffect(() => { if (props.open && props.error) showToast(props.error, 'error'); }, [props.open, props.error, showToast]);
@@ -358,7 +373,7 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardOpened(item, 'catalog', latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
     show(item, 'catalog');
   }, [show, listContext]);
-  const openRelated = (item: GalleryTemplate, position: number) => { tracking.reportCardOpened(item, 'related', position, listContext()); show(item, 'related'); };
+  const openRelated = (item: GalleryTemplate, position: number) => { tracking.reportCardOpened(item, 'related', position, listContext(), preview ?? undefined, detailView.current); show(item, 'related'); };
   const navigate = (step: number) => {
     if (visible.length < 2) return;
     tracking.reportDetailStep(preview, step, detailView.current);
@@ -500,7 +515,7 @@ export function TemplateLibraryDialog(props: Props) {
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
-            {handoffPreview && <button className="om-button" aria-label={t('Back to current project')} onClick={props.onClose}>{t('Back to project')}</button>}
+            {handoffPreview && <button className="om-button" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</button>}
             <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
             <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
             <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
@@ -525,10 +540,10 @@ export function TemplateLibraryDialog(props: Props) {
             </section>}
             {!handoffPreview && preview.description && <p className={styles.description}>{preview.description}</p>}
             {handoffPreview && <>
-              <TemplateDetailReview template={preview} onCopyColor={color => { void navigator.clipboard.writeText(color).then(() => showToast(t('Copied {color}', { color }), 'info')).catch(() => showToast(t('Could not copy color. Try again.'), 'error')); }} onFilter={filterBy} />
+              <TemplateDetailReview template={preview} onCopyColor={color => { tracking.reportDetailAction(preview, 'copy_color', detailView.current); void navigator.clipboard.writeText(color).then(() => showToast(t('Copied {color}', { color }), 'info')).catch(() => showToast(t('Could not copy color. Try again.'), 'error')); }} onFilter={filterBy} />
             </>}
             <section ref={instructionText} className={`${styles.instruction} ${handoffPreview ? styles.reviewCreation : ''}`} aria-label={t(handoffPreview ? 'Template recreation instruction' : 'Template instruction')}><header><h3>{t(handoffPreview ? 'Template recreation instruction' : 'Template instruction')}</h3>
-              {handoffPreview && <Popover key={preview.id} container={detail} align="end" openOnHover aria-label={t('After copying')} className={styles.handoffPopover} initialFocus={false}
+              {handoffPreview && <Popover key={preview.id} container={detail} align="end" openOnHover aria-label={t('After copying')} className={styles.handoffPopover} initialFocus={false} onOpenChange={open => { if (open) tracking.reportDetailAction(preview, 'handoff_help', detailView.current); }}
                 trigger={<button className={`om-text-link ${styles.handoffHelp}`} data-quiet>{t('Next steps')}<MotionIcon name="info" size={14} /></button>}>
                 <div onKeyDown={event => event.stopPropagation()}><TemplateHandoffSteps template={preview} /></div>
               </Popover>}
@@ -556,7 +571,7 @@ export function TemplateLibraryDialog(props: Props) {
               {!handoffPreview && preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
             </section>}
             {!handoffPreview && related.length > 0 && <RelatedTemplatePreviews key={preview.id} templates={related} panel={detailInfo} onSelect={openRelated} />}
-            {handoffPreview && <TemplateProductionNotes template={preview} onGuide={() => setGuideOpen(true)} />}
+            {handoffPreview && <TemplateProductionNotes template={preview} onGuide={() => { tracking.reportDetailAction(preview, 'view_guide', detailView.current); setGuideOpen(true); }} />}
           </div>
           {handoffPreview && <div ref={reviewFooter} className={styles.reviewFooter} role="group" aria-label={t('Template actions')}>
               <div className={styles.handoffActions}>
@@ -568,13 +583,13 @@ export function TemplateLibraryDialog(props: Props) {
                   </Tooltip>
                 </div>
               </div>
-              <TemplateOpenRecovery progress={projectProgress[preview.id]} onRetry={() => void prepareProject(preview)} onCheck={() => void checkProject(preview)} onOpen={() => { const result = projectProgress[preview.id]?.result; if (result) void revealProject(preview, result); }} />
+              <TemplateOpenRecovery progress={projectProgress[preview.id]} onRetry={() => { tracking.reportDetailAction(preview, 'retry_template_project', detailView.current); void prepareProject(preview); }} onCheck={() => void checkProject(preview)} onOpen={() => { tracking.reportDetailAction(preview, 'open_prepared_project', detailView.current); const result = projectProgress[preview.id]?.result; if (result) void revealProject(preview, result); }} />
           </div>}
         </div>
       </div>
-      {handoffPreview && related.length > 0 && <RelatedTemplatePreviews wide key={preview.id} currentTemplate={preview} templates={related} panel={detailInfo} onSelect={openRelated} />}
+      {handoffPreview && related.length > 0 && <RelatedTemplatePreviews wide key={preview.id} currentTemplate={preview} detailView={detailView.current} templates={related} panel={detailInfo} onSelect={openRelated} />}
       </DetailScroll>}
-      {handoffPreview && <TemplateGuideReview template={preview} open={guideOpen} onClose={() => setGuideOpen(false)} />}
+      {handoffPreview && <TemplateGuideReview template={preview} open={guideOpen} onFullPage={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)} onClose={() => { tracking.reportDetailAction(preview, 'back_to_template', detailView.current); setGuideOpen(false); }} />}
       </>}
     </dialog>
 

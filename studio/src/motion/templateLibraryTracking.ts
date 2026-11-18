@@ -2,6 +2,7 @@
 // tracking sheet so one funnel reads the same on the website and in the editor.
 // The dialog calls these and owns no tracking code of its own; nothing here may throw into it.
 import { studioEvents } from '../../../tracking/events.ts';
+import { uuid } from '../../../tracking/core.ts';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
 import { optionId, send, slugField, searchKeyword } from './reporting';
 
@@ -38,8 +39,32 @@ export function reportCardShown(template: Template, position: number, context: L
   send('surface_view', { ...studio, area: 'template_card', element: 'card', ...templateId(template), ...resource(template), placement: 'catalog', position, ...list(context) });
 }
 /** A gallery card or a related-template thumbnail was opened. */
-export function reportCardOpened(template: Template, placement: Extract<Placement, 'catalog' | 'related'>, position: number, context: ListContext) {
-  send('ui_click', { ...studio, area: 'template_card', element: 'open_detail', ...templateId(template), ...resource(template), placement, position, ...list(context) });
+export function reportCardOpened(template: Template, placement: Extract<Placement, 'catalog' | 'related'>, position: number, context: ListContext, source?: Template, view?: DetailView) {
+  send('ui_click', { ...studio, area: 'template_card', element: 'open_detail', ...templateId(template), ...resource(template), placement, position, ...list(context),
+    ...(source ? slugField('source_template_id', source.id) : {}), ...(source ? detail(view) : {}) });
+}
+
+export type DetailAction = Extract<Click['element'], 'view_guide' | 'back_to_template' | 'handoff_help' | 'copy_color' | 'back_to_project' | 'retry_template_project' | 'check_template_project' | 'open_prepared_project' | 'close_detail'>;
+export function reportDetailAction(template: Template, element: DetailAction, view: DetailView | undefined) {
+  send('ui_click', { ...studio, area: 'template_detail', element, ...templateId(template), ...resource(template), ...detail(view) });
+}
+export function reportGuideShown(template: Template, view: DetailView | undefined) {
+  send('surface_view', { ...studio, area: 'template_guide', element: 'guide', ...templateId(template), ...detail(view) });
+}
+export function reportRelatedShown(source: Template, count: number, view: DetailView | undefined) {
+  send('surface_view', { ...studio, area: 'template_related', element: 'related', ...templateId(source), result_count: count, ...detail(view) });
+}
+export function reportRelatedCardShown(template: Template, position: number, source: Template, view: DetailView | undefined) {
+  send('surface_view', { ...studio, area: 'template_card', element: 'card', placement: 'related', position,
+    ...templateId(template), ...resource(template), ...slugField('source_template_id', source.id), ...detail(view) });
+}
+export function reportProjectResult(template: Template, operationId: string, attemptId: string,
+  stage: Fields<'template_project_result'>['stage'], outcome: Fields<'template_project_result'>['outcome'], view: DetailView | undefined, projectId?: string) {
+  const identity = templateId(template);
+  if (!uuid.test(operationId) || !uuid.test(attemptId) || !identity.template_id) return;
+  send('template_project_result', { ...studio, template_id: identity.template_id,
+    operation_id: operationId, handoff_attempt_id: attemptId, stage, outcome, ...resource(template), ...detail(view),
+    ...(projectId && uuid.test(projectId) ? { project_id: projectId } : {}) });
 }
 export function reportSurprise(context: ListContext, resultCount: number) {
   send('ui_click', { ...studio, area: 'template_discovery', element: 'surprise_me', result_count: resultCount, ...list(context) });

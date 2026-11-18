@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import { motionApi } from './useWorkspace';
-import { findPreparedTemplate, prepareTemplateProject, preparedTemplateProjects, templateHandoffPrompt } from './templateHandoffPreview';
+import { findPreparedTemplate, prepareTemplateProject, preparedTemplateProjects, templateHandoffPrompt, templateHandoffEnabled } from './templateHandoff';
 
 vi.mock('./useWorkspace', () => ({ motionApi: vi.fn() }));
 const api = vi.mocked(motionApi);
@@ -45,4 +45,18 @@ it('keeps the four sections and exact reference identity in the instruction', ()
   expect(text).toContain('没有原片工程');
   expect(text).toContain('返回准确工程链接');
   expect(text).not.toContain('基于完整模板');
+});
+
+it('enables the accepted detail flow from the ordinary entry without a preview flag', () => {
+  sessionStorage.clear();
+  expect(templateHandoffEnabled()).toBe(true);
+  sessionStorage.setItem('motion.template-handoff.preview', '0');
+  expect(templateHandoffEnabled()).toBe(false);
+});
+
+it('ignores malformed stored handoff results without blocking the library', () => {
+  sessionStorage.setItem('motion.template-handoff.results', '{"unexpected":true}');
+  expect(preparedTemplateProjects()).toEqual([]);
+  sessionStorage.setItem('motion.template-handoff.results', '[null,{"projectId":42}]');
+  expect(preparedTemplateProjects()).toEqual([]);
 });

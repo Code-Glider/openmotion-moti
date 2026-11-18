@@ -140,6 +140,7 @@ export const omEvents = {
       'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source',
+      'view_guide', 'back_to_template', 'handoff_help', 'copy_color', 'back_to_project', 'retry_template_project', 'check_template_project', 'open_prepared_project',
       'submit_skill', 'copy_instruction', 'open_command', 'copy_command', 'close_detail',
       'collection_tab', 'new_brand_kit', 'download_package',
       'export', 'template_library', 'open_project_drawer', 'new_project', 'switch_project', 'project_search', 'theme_toggle',
@@ -166,7 +167,7 @@ export const omEvents = {
       '0.25', '0.5', '1', '1.5', '2', 'featured', 'ads', 'clone', 'motion', 'script', 'pinned', 'other'],
     interaction_method: ['pointer', 'keyboard'], ...project, ...template,
     placement, position: 'integer', template_action: ['recreate', 'recreate_submit', 'open_edit'], target_agent: hosts,
-    copy_attempt_id: 'uuid', download_attempt_id: 'uuid',
+    copy_attempt_id: 'uuid', download_attempt_id: 'uuid', source_template_id: 'slug',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
     ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom,
@@ -198,8 +199,8 @@ export const omEvents = {
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.
   // A card counts once it is at least half visible for a second, once per result set.
-  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'skill_detail', 'brand_detail'],
-    element: ['library', 'card', 'detail', 'instruction'], placement, position: 'integer', ...templateList, ...templateDetail, ...template,
+  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_related', 'template_guide', 'skill_detail', 'brand_detail'],
+    element: ['library', 'card', 'detail', 'instruction', 'related', 'guide'], placement, position: 'integer', source_template_id: 'slug', ...templateList, ...templateDetail, ...template,
     ...skill, ...brand, brand_state: brandState },
     required: ['page_name', 'area', 'element'] },
   // One per settled query, never per keystroke. `search_keyword` is the only free-text field in this registry.
@@ -215,6 +216,10 @@ export const omEvents = {
     required: ['resource_kind', 'download_attempt_id', 'delivery_status'] },
   template_instruction_copy_result: { producers: ['studio'], fields: { host_product: hosts, copy_status: ['clipboard_written', 'manual_fallback_shown', 'failed'],
     page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateDetail, ...project, ...template }, required: ['host_product', 'copy_status'] },
+  // One observed Studio handoff operation result, not an Agent receipt or a completed film.
+  template_project_result: { producers: ['studio'], fields: { page_name: ['studio'], ...template, ...project, ...templateDetail,
+    operation_id: 'uuid', handoff_attempt_id: 'uuid', stage: ['create', 'reconcile', 'open'], outcome: ['success', 'failure', 'unknown', 'not_found'] },
+    required: ['template_id', 'operation_id', 'handoff_attempt_id', 'stage', 'outcome'] },
   // Skills page. One search result per settled query; the brief itself is reduced to its choices and two yes/no flags.
   skill_search_result: { producers: ['studio'], fields: { page_name: ['skills'], area: ['skill_discovery'], search_id: 'uuid', search_keyword: 'text',
     query_length: 'integer', result_count: 'integer', outcome: ['success'], skill_category: skill.skill_category },

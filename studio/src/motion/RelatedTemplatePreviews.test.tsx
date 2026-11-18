@@ -6,6 +6,8 @@ import type { GalleryTemplate } from '../../../shared/catalog';
 import { I18nProvider } from '../i18n/I18n';
 import { RelatedTemplatePreviews } from './RelatedTemplatePreviews';
 
+const telemetry = vi.hoisted(() => ({ section: vi.fn(), card: vi.fn() }));
+vi.mock('./templateLibraryTracking', () => ({ reportRelatedShown: telemetry.section, reportRelatedCardShown: telemetry.card }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, dialog: HTMLDialogElement, host: HTMLDivElement;
 let reducedMotion: EventTarget & { matches: boolean };
@@ -14,6 +16,7 @@ const templates = ['First', 'Second', 'Poster only'].map((title, index) => ({
 })) as GalleryTemplate[];
 const select = vi.fn();
 beforeEach(() => {
+  telemetry.section.mockClear(); telemetry.card.mockClear();
   reducedMotion = Object.assign(new EventTarget(), { matches: false });
   vi.stubGlobal('matchMedia', (query: string) => query.includes('reduced-motion') ? reducedMotion : Object.assign(new EventTarget(), { matches: false }));
   vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
@@ -197,4 +200,30 @@ it('shows only the common motion when recommended purposes differ', async () => 
   ];
   await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide currentTemplate={currentTemplate} templates={shelfItems} panel={{ current: host }} onSelect={select} /></I18nProvider>));
   expect(host.querySelector('section > header p')?.textContent).toBe('Interface animation');
+});
+
+it('counts related impressions only after half-visible for one second and preserves the source detail', async () => {
+  vi.useFakeTimers();
+  const observers: { callback: (entries: unknown[]) => void; threshold: unknown; elements: Element[] }[] = [];
+  vi.stubGlobal('IntersectionObserver', class {
+    entry: typeof observers[number];
+    constructor(callback: (entries: unknown[]) => void, options: IntersectionObserverInit) { this.entry = { callback, threshold: options.threshold, elements: [] }; observers.push(this.entry); }
+    observe(element: Element) { this.entry.elements.push(element); }
+    disconnect() {}
+  });
+  const currentTemplate = { id: 'current' } as GalleryTemplate;
+  const view = { id: crypto.randomUUID(), placement: 'catalog' as const };
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide currentTemplate={currentTemplate} detailView={view} templates={templates} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  const impression = observers.find(item => item.threshold === 0.5)!;
+  const emit = (ratio: number) => impression.callback(impression.elements.map(target => ({ target, intersectionRatio: ratio, isIntersecting: ratio > 0 })));
+  await act(async () => { emit(0.49); await vi.advanceTimersByTimeAsync(1000); });
+  expect(telemetry.card).not.toHaveBeenCalled();
+  await act(async () => { emit(0.5); await vi.advanceTimersByTimeAsync(999); });
+  expect(telemetry.card).not.toHaveBeenCalled();
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  expect(telemetry.section).toHaveBeenCalledExactlyOnceWith(currentTemplate, 3, view);
+  expect(telemetry.card).toHaveBeenCalledTimes(3);
+  expect(telemetry.card).toHaveBeenNthCalledWith(2, templates[1], 2, currentTemplate, view);
+  await act(async () => { emit(1); await vi.advanceTimersByTimeAsync(2000); });
+  expect(telemetry.card).toHaveBeenCalledTimes(3);
 });

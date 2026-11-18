@@ -7,7 +7,7 @@ import { ConnectionDialog } from './ConnectionDialog';
 import { MotionIcon } from './icons';
 import { RemixIcon } from '../icons/RemixIcons';
 import { navigateWorkspace, useWorkspace } from './useWorkspace';
-import { prepareTemplateProject } from './templateHandoffPreview';
+import { prepareTemplateProject } from './templateHandoff';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Dialog } from '@base-ui/react/dialog';
 import { StudioConnectionToast } from '../components/StudioConnectionToast';

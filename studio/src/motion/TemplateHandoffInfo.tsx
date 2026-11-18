@@ -1,4 +1,4 @@
-import type { PreparedTemplateProject } from './templateHandoffPreview';
+import type { PreparedTemplateProject } from './templateHandoff';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import { MotionIcon } from './icons';
 import { useI18n } from '../i18n/I18n';

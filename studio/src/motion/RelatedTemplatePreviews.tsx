@@ -6,6 +6,8 @@ import { floatingMotion, POPUP_LAYER } from '../components/ui/Menu';
 import { Skeleton } from '../components/ui/Skeleton';
 import { TemplateGalleryCard, TemplatePoster } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
+import { useTemplateImpressions } from './useTemplateImpressions';
+import { reportRelatedShown, reportRelatedCardShown, type DetailView } from './templateLibraryTracking';
 import { relatedTemplateMatches } from './templateDiscovery';
 import styles from './TemplateLibraryDialog.module.css';
 
@@ -112,8 +114,8 @@ function LegacyRelatedTemplatePreviews({ templates, panel, onSelect, wide = fals
 }
 
 /** Reuse the home module's cards and observer/player lifecycle; no hover popup. */
-function RelatedTemplateShelf({ templates, currentTemplate, onSelect }: {
-  templates: GalleryTemplate[]; currentTemplate?: GalleryTemplate; onSelect: (template: GalleryTemplate, position: number) => void;
+function RelatedTemplateShelf({ templates, currentTemplate, detailView, onSelect }: {
+  templates: GalleryTemplate[]; currentTemplate?: GalleryTemplate; detailView?: DetailView; onSelect: (template: GalleryTemplate, position: number) => void;
 }) {
   const { t } = useI18n();
   const scroller = useRef<HTMLElement>(null);
@@ -136,6 +138,21 @@ function RelatedTemplateShelf({ templates, currentTemplate, onSelect }: {
   const visible = templates.slice(0, capacity);
   const [priority, setPriority] = useState<string | null>(null);
   const active = useTemplatePlayback(scroller, visible.map(item => item.id).join(','), true, true, priority, false, 2);
+  const seen = useRef(new Set<string>());
+  useTemplateImpressions(scroller, visible.map(item => item.id).join(','), Boolean(detailView), detailView?.id ?? '', id => {
+    const index = visible.findIndex(item => item.id === id);
+    if (!currentTemplate || !detailView || index < 0) return true;
+    if (!seen.current.has(detailView.id)) {
+      seen.current.add(detailView.id);
+      reportRelatedShown(currentTemplate, visible.length, detailView);
+    }
+    const key = `${detailView.id}:${id}`;
+    if (!seen.current.has(key)) {
+      seen.current.add(key);
+      reportRelatedCardShown(visible[index], index + 1, currentTemplate, detailView);
+    }
+    return true;
+  });
   const matches = currentTemplate ? visible.map(item => relatedTemplateMatches(currentTemplate, item)) : [];
   const purpose = matches[0]?.purposes.find(value => matches.every(item => item.purposes.includes(value)));
   const motion = matches[0]?.styles.find(value => matches.every(item => item.styles.includes(value)));
@@ -150,8 +167,8 @@ function RelatedTemplateShelf({ templates, currentTemplate, onSelect }: {
 }
 
 export function RelatedTemplatePreviews(props: {
-  templates: GalleryTemplate[]; panel: RefObject<HTMLDivElement | null>; currentTemplate?: GalleryTemplate;
+  templates: GalleryTemplate[]; panel: RefObject<HTMLDivElement | null>; currentTemplate?: GalleryTemplate; detailView?: DetailView;
   onSelect: (template: GalleryTemplate, position: number) => void; wide?: boolean;
 }) {
-  return props.wide ? <RelatedTemplateShelf templates={props.templates} currentTemplate={props.currentTemplate} onSelect={props.onSelect} /> : <LegacyRelatedTemplatePreviews {...props} />;
+  return props.wide ? <RelatedTemplateShelf templates={props.templates} currentTemplate={props.currentTemplate} detailView={props.detailView} onSelect={props.onSelect} /> : <LegacyRelatedTemplatePreviews {...props} />;
 }

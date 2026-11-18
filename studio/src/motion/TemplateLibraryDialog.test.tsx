@@ -33,6 +33,7 @@ function fetchItems(data = items, templateSource?: 'repository' | 'cms') {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
 }
 beforeEach(() => {
+  sessionStorage.setItem('motion.template-handoff.preview', '0');
   window.happyDOM.settings.enableIframePageLoading = false;
   Observer.instances = []; tracked.length = 0;
   vi.stubGlobal('IntersectionObserver', Observer);
@@ -946,7 +947,7 @@ it('brings the manual instruction into view when the pinned copy action fails', 
 
 it('retries opening the exact prepared project without creating another one after a real callback failure', async () => {
   sessionStorage.setItem('motion.template-handoff.preview', '1');
-  const prepare = vi.fn(async (template, requestId: string) => ({ projectId: 'new-P', sessionId: requestId,
+  const prepare = vi.fn(async (template, requestId: string) => ({ projectId: 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b', sessionId: requestId,
     title: 'My new project', templateId: template.id, originalProjectId: 'original-A', requestId }));
   const open = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
   await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
@@ -954,13 +955,18 @@ it('retries opening the exact prepared project without creating another one afte
   await act(async () => preview('First'));
   await act(async () => button('Open and edit').click());
   expect(prepare).toHaveBeenCalledTimes(1);
-  expect(open).toHaveBeenLastCalledWith('new-P');
+  expect(open).toHaveBeenLastCalledWith('bd951eb6-bbbc-4942-9507-8f2856ec7d3b');
   expect(host.textContent).toContain('Project created, preview not opened');
   await act(async () => button('Retry opening this project').click());
   expect(prepare).toHaveBeenCalledTimes(1);
-  expect(open.mock.calls).toEqual([['new-P'], ['new-P']]);
+  expect(open.mock.calls).toEqual([['bd951eb6-bbbc-4942-9507-8f2856ec7d3b'], ['bd951eb6-bbbc-4942-9507-8f2856ec7d3b']]);
   expect(host.textContent).toContain('This project is ready');
   expect(events('ui_click', { template_action: 'open_edit' })).toHaveLength(1);
+  const results = events('template_project_result');
+  expect(results.map(item => [item.stage, item.outcome])).toEqual([['create', 'success'], ['open', 'failure'], ['open', 'success']]);
+  expect(new Set(results.map(item => item.operation_id)).size).toBe(1);
+  expect(new Set(results.map(item => item.handoff_attempt_id)).size).toBe(3);
+  expect(results.every(item => item.project_id === 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b')).toBe(true);
 });
 
 it('keeps an uncertain real creation result separate from failure and prevents a second creation', async () => {
@@ -977,4 +983,24 @@ it('keeps an uncertain real creation result separate from failure and prevents a
   await act(async () => button('Check creation result').click());
   expect(prepare).toHaveBeenCalledTimes(1);
   expect(host.textContent).toContain('Creation result needs checking');
+  expect(events('template_project_result').map(item => [item.stage, item.outcome])).toEqual([['create', 'unknown'], ['reconcile', 'not_found']]);
+});
+
+it('keeps a delayed handoff result tied to its initiating detail and does not switch a later selection', async () => {
+  sessionStorage.removeItem('motion.template-handoff.preview');
+  let finish!: (value: any) => void;
+  const prepare = vi.fn((_template, _requestId) => new Promise<any>(resolve => { finish = resolve; }));
+  const open = vi.fn().mockResolvedValue(true);
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="project"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} onOpenProject={open} /></I18nProvider>));
+  await act(async () => preview('First'));
+  const sourceView = events('surface_view', { area: 'template_detail' }).at(-1)!.detail_view_id;
+  await act(async () => button('Open and edit').click());
+  const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  await act(async () => detail.querySelector<HTMLButtonElement>('section[aria-label="Similar templates"] button[aria-label="Preview template Second"]')!.click());
+  const requestId = prepare.mock.calls[0][1];
+  await act(async () => finish({ projectId: 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b', sessionId: requestId, title: 'Independent project', templateId: 'one', originalProjectId: 'project', requestId }));
+  expect(current()).toBe('Second');
+  expect(open).not.toHaveBeenCalled();
+  expect(events('template_project_result')).toMatchObject([{ template_id: 'one', detail_view_id: sourceView, operation_id: requestId, stage: 'create', outcome: 'success' }]);
 });

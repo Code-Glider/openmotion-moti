@@ -509,3 +509,20 @@ test('provider setup handoff tracks MCP entries exclusively without counting Web
     tracking.close();
   }
 }));
+
+test('template handoff admits observed results and rejects content, made-up outcomes and invalid identities', () => {
+  const ids = { template_id: 'motion-example', operation_id: crypto.randomUUID(), handoff_attempt_id: crypto.randomUUID(), detail_view_id: crypto.randomUUID() };
+  const valid = { ...ids, page_name: 'studio', stage: 'open', outcome: 'success', project_id: crypto.randomUUID() };
+  assert.equal(validProperties(studioEvents, 'template_project_result', valid), true);
+  for (const stage of ['create', 'reconcile', 'open']) for (const outcome of ['success', 'failure', 'unknown', 'not_found']) {
+    assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, stage, outcome }), true);
+  }
+  for (const extra of [{ prompt: 'private text' }, { color: '#123456' }, { url: 'https://private.invalid' }, { raw_error: 'private stack' }, { materials: 'private asset' }]) {
+    assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, ...extra }), false);
+  }
+  assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, outcome: 'film_created' }), false);
+  assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, operation_id: 'not-a-uuid' }), false);
+  assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, template_id: '/private/path' }), false);
+  assert.equal(validProperties(studioEvents, 'surface_view', { page_name: 'studio', area: 'template_card', element: 'card', placement: 'related', ...ids, source_template_id: 'motion-source', position: 1 }), false);
+  assert.equal(validProperties(studioEvents, 'surface_view', { page_name: 'studio', area: 'template_card', element: 'card', placement: 'related', template_id: ids.template_id, detail_view_id: ids.detail_view_id, source_template_id: 'motion-source', position: 1 }), true);
+});
