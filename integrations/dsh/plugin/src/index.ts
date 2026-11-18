@@ -5,6 +5,7 @@ import * as mcpClient from "@deepseek-ai/dsh-mcp-client";
 import { studioOrigin } from "../../config.ts";
 import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { registerOpenMotionTemplateCards } from "./templateRecommendationCards.ts";
 
 export type Config = {
   root: string;
@@ -61,6 +62,10 @@ export async function apply(ctx: HostContext, config: Config) {
     failOnStartupError: true,
     toolCallTimeoutMs: 180_000,
   });
+  // Optional DSH action-card support. Older hosts keep the existing MCP/text flow.
+  if ((ctx as HostContext & { actionCards?: unknown }).actionCards) {
+    registerOpenMotionTemplateCards(ctx as HostContext & { actionCards?: unknown });
+  }
   ctx.effect(() =>
     ctx.webServer.register({
       kind: "exact",

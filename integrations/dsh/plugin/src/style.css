@@ -352,6 +352,18 @@
   font-size: var(--motion-text-sm);
   margin-bottom: 12px;
 }
+.omd-recommendation-card { display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-12); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-lg); background: var(--motion-panel); }
+.omd-recommendation-list { display: grid; gap: var(--motion-space-8); }
+.omd-recommendation-item { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: var(--motion-space-10); padding: var(--motion-space-8); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-md); background: var(--motion-bg); }
+.omd-recommendation-item img, .omd-recommendation-placeholder { width: 88px; height: 50px; object-fit: cover; border-radius: var(--motion-radius-sm); background: var(--motion-inset); }
+.omd-recommendation-placeholder { display: grid; place-items: center; }
+.omd-recommendation-placeholder img { width: 24px; height: 24px; }
+.omd-recommendation-copy { min-width: 0; }
+.omd-recommendation-copy strong, .omd-recommendation-copy span, .omd-recommendation-copy p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.omd-recommendation-copy span, .omd-recommendation-copy p { margin-top: 3px; color: var(--motion-dim); font-size: var(--motion-text-xs); }
+.omd-recommendation-actions { display: flex; flex-wrap: wrap; gap: var(--motion-space-4); justify-content: flex-end; }
+.omd-recommendation-status { margin: 0; color: var(--motion-dim); font-size: var(--motion-text-xs); }
+@media (max-width: 700px) { .omd-recommendation-item { grid-template-columns: 64px minmax(0, 1fr); } .omd-recommendation-item img, .omd-recommendation-placeholder { width: 64px; height: 40px; } .omd-recommendation-actions { grid-column: 1 / -1; justify-content: flex-start; } }
 .omd-list-actions {
   display: flex;
   flex-wrap: wrap;
