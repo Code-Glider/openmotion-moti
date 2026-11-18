@@ -6,13 +6,14 @@ import { Upload } from "../../transport/upload.js";
 export class Staging {
   private files: Upload[] = [];
   private active = false;
+  private fenced = false;
   private payload?: SourceReaders;
   constructor(
     private root: string,
     private expected: { bytes: number; digest: string },
   ) {}
   async write(source: AsyncIterable<Uint8Array>, signal: AbortSignal): Promise<SourceReaders> {
-    if (this.active) throw new Fault("conflict", "archive staging is already active");
+    if (this.active || this.fenced) throw new Fault("conflict", "archive staging is active or awaiting cleanup");
     this.active = true;
     const raw = new Upload(this.root, this.expected, "integrity"),
       prior = this.payload;
@@ -47,11 +48,17 @@ export class Staging {
         );
       signal.throwIfAborted();
     } finally {
-      await raw.drain();
-      raw.close();
-      this.files = this.files.filter((file) => file !== raw);
-      if (!result) this.clear();
-      this.active = false;
+      try {
+        await raw.drain();
+        raw.close();
+        this.files = this.files.filter((file) => file !== raw);
+        if (!result) this.clear();
+      } catch (error) {
+        this.fenced = true;
+        throw error;
+      } finally {
+        this.active = false;
+      }
     }
     if (signal.aborted) {
       if (!prior) this.close();
@@ -69,5 +76,6 @@ export class Staging {
     for (const file of this.files) file.close();
     this.files = [];
     this.payload = undefined;
+    this.fenced = false;
   }
 }

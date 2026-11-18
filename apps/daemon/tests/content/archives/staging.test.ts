@@ -282,7 +282,10 @@ it.each([false, true])("fences retries after raw unlink fails with prior ready i
     });
     expect((await readdir(root)).sort()).toEqual(names);
   }
-  expect(() => staged.close()).toThrow("has not drained");
+  staged.close();
+  expect(await readdir(root)).toEqual([]);
+  expect((await staged.write(chunks(input.chunks()), new AbortController().signal)).resources).toHaveLength(2);
+  staged.close();
 });
 it("fences retries when cleaning extracted media after cancellation fails", async () => {
   const root = await fixture(),
@@ -309,7 +312,10 @@ it("fences retries when cleaning extracted media after cancellation fails", asyn
     code: "conflict",
   });
   expect((await readdir(root)).sort()).toEqual(names);
-  expect(() => staged.close()).toThrow("has not drained");
+  staged.close();
+  expect(await readdir(root)).toEqual([]);
+  expect((await staged.write(chunks(input.chunks()), new AbortController().signal)).resources).toHaveLength(2);
+  staged.close();
 });
 it("replays a byte-backed archive receipt before an unrelated expired file cleanup fault", async () => {
   const root = await fixture(),
@@ -350,7 +356,14 @@ it("replays a byte-backed archive receipt before an unrelated expired file clean
     await mkdir(changed);
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 600001);
     expect(transfers.execute("archive_import", intent)).toEqual({ artifact });
-    expect(() => transfers.execute("archive_release", { id: ticket.id })).toThrow();
+    expect(transfers.execute("archive_release", { id: ticket.id })).toEqual({ released: true });
+    const other = transfers.execute("archive_upload", {
+      requestId: randomUUID(),
+      bytes: input.bytes,
+      digest: input.digest,
+    });
+    expect(transfers.execute("archive_release", { id: other.id })).toEqual({ released: true });
+    expect(() => transfers.close()).toThrow();
   } finally {
     if (changed) await rm(changed, { recursive: true });
     transfers.close();
@@ -382,4 +395,60 @@ it("refuses a replaced raw ZIP without exposing its granted path or deleting the
   expect(error?.message).not.toContain(root);
   expect(await readdir(root)).toEqual(["unrelated"]);
   expect(await readFile(target, "utf8")).toBe("unrelated owned fixture");
+});
+it("isolates a failed ticket, retains its capacity and retries cleanup before actual shutdown", async () => {
+  const root = await fixture(),
+    dbRoot = join(root, "db");
+  await mkdir(dbRoot);
+  const workspace = new Workspace(dbRoot),
+    input = archive(),
+    transfers = new Archives(workspace, "http://fixture.invalid", root),
+    session = workspace.execute("session_create", { requestId: randomUUID(), title: "Cleanup", mode: "motion" }),
+    actual = vi.mocked(unlinkSync).getMockImplementation()!;
+  let blocked: string | undefined,
+    armed = true;
+  vi.mocked(unlinkSync).mockImplementation((path) => {
+    if (armed && !blocked) blocked = String(path);
+    if (String(path) === blocked) throw Object.assign(Error("ticket cleanup fault"), { code: "EACCES" });
+    actual(path);
+  });
+  const allocate = () =>
+      transfers.execute("archive_upload", { requestId: randomUUID(), bytes: input.bytes, digest: input.digest }),
+    post = (url: string) =>
+      transfers.transfer(
+        Object.assign(Readable.from(input.chunks()), {
+          url: new URL(url).pathname,
+          method: "POST",
+          headers: { "content-type": "application/zip" },
+        }) as unknown as IncomingMessage,
+        { writeHead() {}, end() {} } as unknown as ServerResponse,
+      );
+  try {
+    const failed = allocate();
+    await expect(post(failed.url)).rejects.toThrow("ticket cleanup fault");
+    expect(transfers.execute("archive_release", { id: failed.id })).toEqual({ released: true });
+    const other = allocate();
+    expect(() => allocate()).toThrow("capacity");
+    await post(other.url);
+    const imported = transfers.execute("archive_import", {
+      requestId: randomUUID(),
+      sessionId: session.id,
+      title: "Independent",
+      digest: input.digest,
+      uploadId: other.id,
+    });
+    expect(imported.artifact?.id).toBeTruthy();
+    expect((await readdir(root)).filter((name) => name.endsWith(".upload"))).toHaveLength(3);
+    expect(() => transfers.quiesce()).not.toThrow();
+    expect(() => transfers.close()).toThrow("ticket cleanup fault");
+    armed = false;
+    blocked = undefined;
+    transfers.close();
+    expect(await readdir(root)).toEqual(["db"]);
+  } finally {
+    armed = false;
+    blocked = undefined;
+    transfers.close();
+    workspace.close();
+  }
 });

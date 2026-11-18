@@ -38,12 +38,20 @@ export class Archives {
     private endpoint?: string,
     private staging?: string,
   ) {}
-  private prune() {
+  private prune(strict = false) {
+    let failure: unknown;
     for (const [id, ticket] of this.tickets)
       if (!ticket.busy && (ticket.retired || ticket.value.expiresAt <= Date.now())) {
-        ticket.staging?.close();
-        this.tickets.delete(id);
+        try {
+          ticket.staging?.close();
+          this.tickets.delete(id);
+        } catch (error) {
+          // Revoke access, retain capacity and retry exact cleanup without blocking unrelated tickets.
+          ticket.retired = true;
+          failure ??= error;
+        }
       }
+    if (strict && failure) throw failure;
   }
   private available(ticket?: Ticket): ticket is Ticket {
     return !!ticket && !ticket.retired && ticket.value.expiresAt > Date.now();
@@ -223,7 +231,7 @@ export class Archives {
   }
   close() {
     for (const ticket of this.tickets.values()) ticket.retired = true;
-    this.prune();
+    this.prune(true);
     if (this.tickets.size) throw new Fault("integrity", "archive readers have not drained");
   }
 }
