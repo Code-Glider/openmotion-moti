@@ -29,13 +29,12 @@ export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, 
     }
   }
 }
-export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}, limits: { timeoutMs?: number; maxBytes?: number } = {}) {
-  const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(limits.timeoutMs ?? 30_000)]) : AbortSignal.timeout(limits.timeoutMs ?? 15_000) });
+export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}) {
+  const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(15_000) });
   // Do not forward provider response text: it may echo a key or user input.
   if (!response.ok) throw new ProviderError(`Provider HTTP ${response.status}${response.status === 401 || response.status === 403 ? ': credentials or permissions rejected' : ''}`, response.status);
   const body = await response.text();
-  const maxBytes = limits.maxBytes ?? 16 * 1024 * 1024;
-  if (Buffer.byteLength(body) > maxBytes) throw new Error(`Provider response exceeds ${maxBytes / 1024 / 1024} MB`);
+  if (Buffer.byteLength(body) > 16 * 1024 * 1024) throw new Error('Provider response exceeds 16 MB');
   try { return JSON.parse(body); } catch { throw new Error('Provider returned invalid JSON'); }
 }
 export function isPublicAddress(address: string) {
