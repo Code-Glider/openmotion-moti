@@ -36,26 +36,43 @@ export function price(item, where, errors) {
   const d = item.discount || {};
   const given = ['percent', 'amount'].filter(k => d[k] != null).length + (item.now != null ? 1 : 0);
   if (given !== 1) { errors.push(`${where} needs exactly one of discount.percent, discount.amount or now`); return null; }
-  let now;
+  // Work in whole cents so rounding is exact; a percentage rounds half-cents up.
+  const cents = v => Math.round(v * 100);
+  const wasC = cents(was);
+  let nowC;
   if (d.percent != null) {
     if (typeof d.percent !== 'number' || d.percent < 1 || d.percent > 95) { errors.push(`${where}.discount.percent must be 1-95`); return null; }
-    now = round2(was * (1 - d.percent / 100));
+    nowC = Math.round(wasC * (100 - d.percent) / 100);
   } else if (d.amount != null) {
-    if (typeof d.amount !== 'number' || d.amount <= 0 || d.amount >= was) { errors.push(`${where}.discount.amount must be above 0 and below was`); return null; }
-    now = round2(was - d.amount);
+    if (typeof d.amount !== 'number' || d.amount <= 0) { errors.push(`${where}.discount.amount must be above 0 and below was`); return null; }
+    nowC = wasC - cents(d.amount);
   } else {
-    if (typeof item.now !== 'number' || item.now <= 0 || item.now >= was) { errors.push(`${where}.now must be above 0 and below was`); return null; }
-    now = round2(item.now);
+    if (typeof item.now !== 'number') { errors.push(`${where}.now must be above 0 and below was`); return null; }
+    nowC = cents(item.now);
   }
-  const percent = Math.round((1 - now / was) * 100);
-  const save = round2(was - now);
+  // Check after rounding: what is shown must still be a real discount.
+  if (!(nowC > 0 && nowC < wasC)) {
+    errors.push(d.amount != null ? `${where}.discount.amount must be above 0 and below was` : d.percent != null ? `${where} rounds to no discount or a zero price` : `${where}.now must be above 0 and below was`);
+    return null;
+  }
+  const percent = Math.round((1 - nowC / wasC) * 100);
+  const saveC = wasC - nowC;
   // Headline framing: a percentage for higher prices, a flat amount for low prices, unless the data chose.
-  const framing = d.amount != null ? 'amount' : d.percent != null ? 'percent' : (save < 10 || percent < 10 ? 'amount' : 'percent');
-  return { was, now, percent, save, framing };
+  const framing = d.amount != null ? 'amount' : d.percent != null ? 'percent' : (saveC < 1000 || percent < 10 ? 'amount' : 'percent');
+  return { was: wasC / 100, now: nowC / 100, percent, save: saveC / 100, framing };
 }
 
-export function parseDate(s) { const t = Date.parse(s); return Number.isFinite(t) ? t : null; }
-export const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})$/;
+export const ISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-](\d{2}):(\d{2}))$/;
+// A real calendar moment: rejects dates such as Feb 30 that Date.parse would silently roll over.
+export function validISO(s) {
+  const m = ISO.exec(String(s ?? ''));
+  if (!m) return false;
+  const [y, mo, d, h, mi, se = '0'] = m.slice(1, 7).map(Number);
+  const probe = new Date(Date.UTC(y, mo - 1, d, h, mi, se));
+  return probe.getUTCFullYear() === y && probe.getUTCMonth() === mo - 1 && probe.getUTCDate() === d && h < 24 && mi < 60 && se < 60
+    && (m[7] === 'Z' || (Number(m[8]) <= 14 && Number(m[9]) < 60));
+}
+export function parseDate(s) { if (!validISO(s)) return null; const t = Date.parse(s); return Number.isFinite(t) ? t : null; }
 
 export function theme(data) {
   const key = data.theme || OCCASION_THEME[String(data.occasion || '').toLowerCase()] || 'black-friday';

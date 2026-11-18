@@ -5,7 +5,7 @@
 //   node scripts/build.mjs offer.json out/ [--aspect 9:16|4:5|1:1|16:9] [--duration 10|15] [--no-credit]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, ISO } from './film.mjs';
+import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -40,8 +40,9 @@ else if (!/^[A-Z0-9-]{3,16}$/.test(data.code)) errors.push(`code "${data.code}" 
 const dl = data.deadline || {};
 if (!dl.label) errors.push('deadline.label is required, e.g. "Ends Mon, Dec 1 · 11:59 pm ET"');
 else if (width(dl.label) > 34) errors.push(`deadline.label is ${width(dl.label)} characters; keep it under 34`);
-if (!ISO.test(dl.date || '')) errors.push('deadline.date must be an ISO date-time with an offset, e.g. 2026-12-01T23:59:00-05:00');
-if (data.postDate && ISO.test(dl.date || '') && parseDate(data.postDate) != null && parseDate(data.postDate) >= parseDate(dl.date)) errors.push('deadline.date is not after postDate: the offer would already be over');
+if (!validISO(dl.date || '')) errors.push('deadline.date must be an ISO date-time with an offset, e.g. 2026-12-01T23:59:00-05:00');
+if (data.postDate && validISO(dl.date || '') && parseDate(data.postDate) != null && parseDate(data.postDate) >= parseDate(dl.date)) errors.push('deadline.date is not after postDate: the offer would already be over');
+if (data.postDate != null && !validISO(data.postDate)) errors.push('postDate must be a real ISO date-time with an offset');
 if (!data.cta) errors.push('cta is required, e.g. "Shop now"');
 else if (width(data.cta) > 18) errors.push(`cta "${data.cta}" is longer than 18 characters`);
 if (data.url && width(data.url) > 32) errors.push(`url "${data.url}" is longer than 32 characters`);
@@ -63,6 +64,8 @@ const bigSize = Math.min(px(wide ? 420 : 400), Math.round((wide ? H * 1.3 : W * 
 const occ = String(data.occasion).toUpperCase().split(/\s+/);
 const occSize = Math.min(px(wide ? 230 : 250), Math.round((wide ? W * 0.8 : W * 0.88) / (0.6 * Math.max(...occ.map(w => w.length)))));
 const img = data.product.image;
+// Monospace glyphs are ~0.6 em plus 0.06 em tracking; leave room for the chip's padding and border.
+const codeSize = Math.min(px(118), Math.floor((W * 0.9 - px(130)) / (0.68 * data.code.length)));
 const L = { off: 'OFF', useCode: 'Use code', save: 'Save', ...(data.labels || {}) };
 
 const css = `
@@ -83,7 +86,7 @@ const css = `
 .now{font-weight:800;font-size:${px(wide ? 170 : 190)}px;letter-spacing:-.04em;line-height:1;color:${t.ink}}
 .save{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(40)}px;padding:${px(12)}px ${px(26)}px;border-radius:${px(999)}px;margin-top:${px(18)}px}
 .label{font-size:${px(44)}px;color:${t.sub};letter-spacing:.12em;text-transform:uppercase;font-weight:600}
-.chip{margin-top:${px(28)}px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-weight:700;font-size:${px(118)}px;letter-spacing:.06em;padding:${px(26)}px ${px(56)}px;border:${px(7)}px dashed ${t.accent};border-radius:${px(28)}px;background:${t.panel};color:${t.ink}}
+.chip{margin-top:${px(28)}px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-weight:700;font-size:${codeSize}px;letter-spacing:.06em;padding:${px(26)}px ${px(56)}px;border:${px(7)}px dashed ${t.accent};border-radius:${px(28)}px;background:${t.panel};color:${t.ink}}
 .dl{margin-top:${px(60)}px;font-size:${px(50)}px;font-weight:600;display:flex;align-items:center;gap:${px(18)}px}
 .dot{width:${px(22)}px;height:${px(22)}px;border-radius:50%;background:${t.accent}}
 .cta{font-weight:800;font-size:${px(96)}px;background:${t.accent};color:${t.accentInk};padding:${px(34)}px ${px(84)}px;border-radius:${px(999)}px;letter-spacing:-.01em}

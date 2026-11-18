@@ -6,7 +6,7 @@
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, ISO } from './film.mjs';
+import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -44,9 +44,10 @@ if (data.code && !/^[A-Z0-9-]{3,16}$/.test(data.code)) errors.push(`code "${data
 if (data.deadline) {
   if (!data.deadline.label) errors.push('deadline.label is required when deadline is given');
   else if (width(data.deadline.label) > 34) errors.push('deadline.label is longer than 34 characters');
-  if (!ISO.test(data.deadline.date || '')) errors.push('deadline.date must be an ISO date-time with an offset');
+  if (!validISO(data.deadline.date || '')) errors.push('deadline.date must be an ISO date-time with an offset');
   else if (data.postDate && parseDate(data.postDate) >= parseDate(data.deadline.date)) errors.push('deadline.date is not after postDate');
 }
+if (data.postDate != null && !validISO(data.postDate)) errors.push('postDate must be a real ISO date-time with an offset');
 if (!data.cta) errors.push('cta is required, e.g. "Shop the gift guide"');
 else if (width(data.cta) > 20) errors.push(`cta "${data.cta}" is longer than 20 characters`);
 if (data.url && width(data.url) > 32) errors.push(`url "${data.url}" is longer than 32 characters`);

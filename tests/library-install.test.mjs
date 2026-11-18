@@ -76,6 +76,15 @@ for (const [id, file, ok] of [
   });
 }
 
+test('sale prices are computed in whole cents', async t => {
+  const root = await isolated(t), data = JSON.parse(await readFile('tests/fixtures/holiday-sale/offer.json', 'utf8'));
+  data.product.was = 2.01; data.product.discount = { percent: 50 };
+  const file = path.join(root, 'offer.json'); await writeFile(file, JSON.stringify(data));
+  const check = spawnSync(process.execPath, [path.resolve('library/skills/openmotion-sale-promo/scripts/build.mjs'), '--check', file], { encoding: 'utf8' });
+  assert.equal(check.status, 0, check.stderr);
+  assert.match(check.stdout, /\$2\.01 → \$1\.01 \(50% off, save \$1\)/);
+});
+
 test('holiday-sale --check rejects offers that would show a wrong or impossible number', async t => {
   const root = await isolated(t);
   const cases = [
@@ -86,6 +95,9 @@ test('holiday-sale --check rejects offers that would show a wrong or impossible 
     ['openmotion-sale-countdown', 'countdown.json', 'must be after postAt', d => { d.postAt = '2026-11-28T00:00:00-05:00'; }],
     ['openmotion-sale-countdown', 'countdown.json', 'too far out', d => { d.postAt = '2026-01-01T00:00:00-05:00'; }],
     ['openmotion-sale-carousel', 'carousel.json', 'use 3-7 products', d => { d.products = d.products.slice(0, 2); }],
+    ['openmotion-sale-promo', 'offer.json', 'rounds to no discount', d => { d.product.was = 0.01; d.product.discount = { percent: 95 }; }],
+    ['openmotion-sale-promo', 'offer.json', 'must be above 0 and below was', d => { d.product.discount = undefined; d.product.now = 88.999; }],
+    ['openmotion-sale-countdown', 'countdown.json', 'target.date must be', d => { d.target.date = '2026-02-30T00:00:00Z'; }],
     ['openmotion-sale-carousel', 'carousel.json', 'was not found', d => { d.products[0].image = 'missing.jpg'; }],
   ];
   for (const [id, file, message, mutate] of cases) {

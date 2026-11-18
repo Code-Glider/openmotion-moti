@@ -8,7 +8,7 @@
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, theme, project, readData, credit, parseDate, ISO } from './film.mjs';
+import { SIZES, esc, width, theme, project, readData, credit, parseDate, validISO } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -32,12 +32,12 @@ if (!data.occasion) errors.push('occasion is required (e.g. "Black Friday")');
 else if (width(data.occasion) > 18) errors.push(`occasion "${data.occasion}" is longer than 18 characters`);
 const mode = data.mode || 'starts';
 if (!['starts', 'ends'].includes(mode)) errors.push('mode must be "starts" (counting down to the sale) or "ends" (last hours of the sale)');
-if (!ISO.test(data.postAt || '')) errors.push('postAt is required: the ISO date-time with offset when the video goes live, e.g. 2026-11-20T09:00:00-05:00');
-if (!ISO.test(data.target?.date || '')) errors.push('target.date must be an ISO date-time with an offset: when the sale starts (mode starts) or ends (mode ends)');
+if (!validISO(data.postAt || '')) errors.push('postAt is required: the ISO date-time with offset when the video goes live, e.g. 2026-11-20T09:00:00-05:00');
+if (!validISO(data.target?.date || '')) errors.push('target.date must be an ISO date-time with an offset: when the sale starts (mode starts) or ends (mode ends)');
 if (!data.target?.label) errors.push('target.label is required, e.g. "Fri, Nov 27 · 12:00 am ET"');
 else if (width(data.target.label) > 34) errors.push(`target.label is ${width(data.target.label)} characters; keep it under 34`);
 let unit = null, value = null;
-if (ISO.test(data.postAt || '') && ISO.test(data.target?.date || '')) {
+if (validISO(data.postAt || '') && validISO(data.target?.date || '')) {
   const ms = parseDate(data.target.date) - parseDate(data.postAt);
   if (ms <= 0) errors.push('target.date must be after postAt');
   else {
