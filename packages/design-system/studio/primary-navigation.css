@@ -55,8 +55,8 @@
   cursor: not-allowed;
 }
 
-.om-primary-navigation-button:focus-visible {
-  outline: 2px solid var(--motion-border-strong);
+:root[data-motion-ui] .om-primary-navigation-button:focus-visible {
+  outline: 2px solid var(--motion-selected);
   outline-offset: -2px;
 }
 
