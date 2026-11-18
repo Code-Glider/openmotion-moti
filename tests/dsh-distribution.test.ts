@@ -4,10 +4,12 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { buildPlugin } from '../integrations/dsh/build.ts';
-import { downloadOrigin, downloadPrefix, downloadPlugin, manifestUrl, validateDownload } from '../integrations/dsh/download.ts';
+import { prepareCandidatePlugin } from '../integrations/dsh/release.ts';
+import { downloadOrigin, downloadPrefix, downloadPlugin, downloadManifestUrl, manifestUrl, validateDownload } from '../integrations/dsh/download.ts';
 import { publishPlugin } from '../integrations/dsh/publish.ts';
 
 const commit = 'a'.repeat(40);
@@ -77,7 +79,7 @@ test('publisher verifies the tarball before updating the fixed entry and verifie
   assert.deepEqual(fixture.writes, [new URL(manifest.tarballUrl).pathname.slice(1), `${downloadPrefix}/main/latest.json`]);
   const destination = await mkdtemp(path.join(tmpdir(), 'dsh-cold-download-'));
   t.after(() => rm(destination, { recursive: true, force: true }));
-  const downloaded = await downloadPlugin(destination, fixture.fetcher);
+  const downloaded = await downloadPlugin(destination, fixture.fetcher, 'main');
   assert.deepEqual(await readFile(downloaded.filename), archive);
 });
 
@@ -139,4 +141,20 @@ test('installable plugin carries the licenses for its bundled icon artwork', asy
     assert.deepEqual(await readFile(path.join(output, filename)), await readFile(new URL('../packages/design-system/' + filename, import.meta.url)));
     assert((await readFile(path.join(output, 'README.md'), 'utf8')).includes(filename));
   }
+});
+
+test('candidate preparation packs the real plugin at the application version without editing source manifests', async t => {
+  const output = await mkdtemp(path.join(tmpdir(), 'dsh-release-build-'));
+  t.after(() => rm(output, { recursive: true, force: true }));
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const run = promisify(execFile);
+  const commit = (await run('git', ['rev-parse', 'HEAD'], { cwd: root })).stdout.trim();
+  const original = await readFile(path.join(root, 'integrations/dsh/plugin/package.json'));
+  const metadata = await prepareCandidatePlugin(root, output, '0.0.3-test.99', commit);
+  const archive = path.join(output, 'openmotion-dsh-0.0.3-test.99.tgz');
+  const pkg = JSON.parse((await run('tar', ['-xOf', archive, 'package/package.json'])).stdout);
+  assert.equal(pkg.name, 'openmotion-dsh'); assert.equal(pkg.version, '0.0.3-test.99');
+  assert.equal(metadata.sourceCommit, commit);
+  assert.equal(metadata.sha256, createHash('sha256').update(await readFile(archive)).digest('hex'));
+  assert.deepEqual(await readFile(path.join(root, 'integrations/dsh/plugin/package.json')), original);
 });

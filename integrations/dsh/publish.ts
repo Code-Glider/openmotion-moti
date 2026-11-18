@@ -6,17 +6,19 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { downloadOrigin, downloadPrefix, manifestUrl, validateDownload } from './download.ts';
+import { downloadOrigin, downloadPrefix, downloadManifestUrl, validateDownload, type PluginChannel } from './download.ts';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const execute = promisify(execFile);
 const run = async (command: string, args: string[]) => (await execute(command, args)).stdout;
 
 export async function publishPlugin({
-  commit, endpoint, bucket, archive, version, dshVersion,
-}: { commit: string; endpoint: string; bucket: string; archive: string; version: string; dshVersion: string },
+  commit, endpoint, bucket, archive, version, dshVersion, channel = 'main', promote = true,
+}: { commit: string; endpoint: string; bucket: string; archive: string; version: string; dshVersion: string; channel?: PluginChannel; promote?: boolean },
 { execute = run, fetcher = fetch, currentCommit = async () => (await run('git', ['ls-remote', 'origin', 'refs/heads/main'])).split(/\s/)[0] } = {}) {
   const api = new URL(endpoint);
+  const pointerUrl = downloadManifestUrl(channel);
+  if (channel !== 'main') assert.equal(version.includes('-test.'), channel === 'test', 'Plugin version must match its release channel');
   assert(api.protocol === 'https:' && api.hostname.endsWith('.r2.cloudflarestorage.com') && api.href === `${api.origin}/`, 'Require an R2 S3 HTTPS origin');
   assert(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(bucket), 'Require the configured R2 bucket');
   const bytes = await readFile(archive);
@@ -37,12 +39,13 @@ export async function publishPlugin({
     catch (error) { if (!/PreconditionFailed|\(412\)/.test(String(error))) throw error; }
     // Never advertise an upload until its public bytes have been verified.
     await verify(manifest.tarballUrl, bytes);
-    assert.equal(await currentCommit(), commit, 'Main advanced; refusing to promote a stale DSH plugin. Run the workflow on current main.');
+    if (!promote) return manifest;
+    if (channel === 'main') assert.equal(await currentCommit(), commit, 'Main advanced; refusing to promote a stale DSH plugin. Run the workflow on current main.');
     const metadata = Buffer.from(JSON.stringify(manifest, null, 2) + '\n');
     const filename = path.join(staging, 'latest.json');
     await writeFile(filename, metadata);
-    await put(`${downloadPrefix}/main/latest.json`, filename, 'application/json; charset=utf-8', 'no-cache, max-age=0, must-revalidate');
-    await verify(manifestUrl, metadata);
+    await put(`${downloadPrefix}/${channel}/latest.json`, filename, 'application/json; charset=utf-8', 'no-cache, max-age=0, must-revalidate');
+    await verify(pointerUrl, metadata);
     return manifest;
   } finally { await rm(staging, { recursive: true, force: true }); }
 }
