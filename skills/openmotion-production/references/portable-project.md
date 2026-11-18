@@ -27,4 +27,10 @@ For website/registry publication, add an official `registry-item.json` of type `
 
 Save the template folder and its same-named ZIP in the current workspace (the session's working directory), not in plugin caches, temporary or system data directories. The ZIP is the single delivery unit, including for cloud upload. Record reference provenance and verification results in `TEMPLATE.md`. Save the original-versus-template comparison video next to the ZIP as `<template-name>-comparison.mp4`, outside the package: it shows the reference footage, which must not be redistributed with the template. Do not put comparison videos, comparison screenshots or check data files in the package. Keep working files such as frame dumps, measurement scripts and intermediate renders out of the package. They describe what was tested; they do not drive rendering. Video, audio and generated assets used by the selected workflow must be packaged as the exact local media needed by the project. The portable package must render without a provider connection or access to the creator’s asset library.
 
-The team gallery remains a separate integration. This Skill does not register projects or create a local template database. A previously delivered folder/ZIP is reusable directly even when it is not listed by the gallery.
+The team gallery owns catalog registration and template IDs. A delivered folder or ZIP can be reused directly without a gallery listing.
+
+## Import a native ZIP into Studio
+
+Use **Import projects** in Studio, or `openmotion_project_archive` with `action: "import"`, an absolute local `sourcePath`, and a stable `requestId`. To bring an independent folder into Studio, package it as a native ZIP first. Import creates a copy.
+
+Open the copy from Studio's project list before the first managed version read. Wait for the editor to load the project and its referenced media, then call `openmotion_get_project` with the returned project ID and confirm the current version. The pinned Studio runtime adopts larger files after first open. Reading while that is pending can record an incomplete version. If the editor or version cannot be verified, report the specific Studio limitation and keep the independent files usable.

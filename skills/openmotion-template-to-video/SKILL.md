@@ -35,7 +35,7 @@ See the [portable project contract](../openmotion-production/references/portable
 
 For a plugin-managed artifact, use the [runtime adapter](../openmotion-production/references/production.md): confirm projectId/session ownership with `openmotion_get_project`, use `openmotion_import_assets` for supported local media, then read the current revision/version and save through `openmotion_edit_project` with projectId, requestId, expectedRevision and expectedVersionId. After a version conflict, read the newer source and reapply the intended edit while preserving Studio changes. Fonts use the existing batch import path and its metadata/license result.
 
-If Studio is requested for a supplied native ZIP, use `openmotion_project_archive` with `action: "import"`, its absolute `sourcePath` and a stable `requestId`. Read the returned project ID and version before editing the independent copy. Package a standalone folder as a native ZIP first. For local edits or file-only rendering, continue from the actual folder or unpacked copy and record its before-edit source identity.
+If Studio is requested for a supplied folder or ZIP, follow the [native ZIP import flow](../openmotion-production/references/portable-project.md#import-a-native-zip-into-studio) before editing the managed copy. For local edits or file-only rendering, continue from the actual folder or unpacked copy and record its before-edit source identity.
 
 ## Unchanged: open it in the editor; changed: edit the working project
 
