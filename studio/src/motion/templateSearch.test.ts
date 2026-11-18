@@ -1,0 +1,43 @@
+import { describe, expect, it } from 'vitest';
+import type { GalleryTemplate } from '../../../shared/catalog';
+import { matchesTemplateSearch, normalizedTemplateQuery, templateSearchBrief, validReferenceLink } from './templateSearch';
+import translations from '../i18n/template-search-ui.json';
+import { languages, translate } from '../i18n/messages';
+const t = (value: string) => value;
+const entry = (fields: Partial<GalleryTemplate>): GalleryTemplate => ({ id: 'reference-one', title: 'A campaign', tags: [], kind: 'prism', ...fields });
+it('localizes every search and recovery message in every supported non-English locale', () => {
+  const keys = Object.keys(translations['zh-CN']);
+  for (const { locale } of languages.filter(item => item.locale !== 'en')) {
+    const dictionary = translations[locale as keyof typeof translations];
+    expect(Object.keys(dictionary).sort()).toEqual([...keys].sort());
+    for (const key of keys) expect(translate(locale, key)).toBe(dictionary[key as keyof typeof dictionary]);
+  }
+});
+describe('template-only search matching', () => {
+  it('matches confirmed task semantics without assigning them to unrelated brands', () => {
+    for (const word of ['产品演示', '功能演示', ' PRODUCT   DEMO ']) {
+      expect(matchesTemplateSearch(entry({ id: 'product-promo' }), word, t)).toBe(true);
+      expect(matchesTemplateSearch(entry({ uses: ['Product demo'] }), word, t)).toBe(true);
+      expect(matchesTemplateSearch(entry({ uses: ['Brand promotion'] }), word, t)).toBe(false);
+    }
+  });
+  it('preserves names, ids and filters out incidental acronym substrings', () => {
+    expect(matchesTemplateSearch(entry({ title: 'Anything goes' }), 'NYT', t)).toBe(false);
+    expect(matchesTemplateSearch(entry({ id: 'nyt-graph' }), 'NYT', t)).toBe(true);
+    expect(matchesTemplateSearch(entry({ title: 'Figma Motion' }), 'figma motion', t)).toBe(true);
+    expect(normalizedTemplateQuery('  Product   Demo  ')).toBe('product demo');
+  });
+});
+describe('reference handoff', () => {
+  it('only accepts HTTP(S), without fetching or executing supplied references', () => {
+    expect(validReferenceLink('https://example.com/video')).toBe(true);
+    for (const value of ['javascript:alert(1)', 'file:///private/video.mp4', 'not a link']) expect(validReferenceLink(value)).toBe(false);
+  });
+  it('keeps local attachment pending and does not invent a URL or claim sending', () => {
+    const prompt = templateSearchBrief({ mode: 'reference', source: 'local', query: 'launch', reference: '', description: 'Our product' }, t);
+    expect(prompt).toContain('Read the video I attach');
+    expect(prompt).toContain('Our product');
+    expect(prompt).not.toContain('https:');
+    expect(prompt).not.toContain('sent');
+  });
+});

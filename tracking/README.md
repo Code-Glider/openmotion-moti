@@ -450,6 +450,16 @@ backend/data directory. Deterministic coverage lives in
   exposure waits until at least 1% of its text enters the viewport in a visible tab, once per
   detail view. Recreate and Recreate-and-submit carry the same `copy_attempt_id`
   on their `start_use` click and copy result; Open-and-edit has no copy attempt.
+  `library_view_id` identifies an opening, `discovery_id` groups search and
+  recovery activity (reset on reopening or after 30 minutes of inactivity),
+  and `result_set_id` names the results for the current search, filter and sort
+  context. A search can also settle when submitted or used, but not during IME
+  composition. Recovery exposure requires the expanded panel to intersect a
+  visible viewport. `template_search_handoff_result` tracks an instruction
+  copy attempt with a fixed source kind and status. A manual-copy fallback
+  remains distinct from `clipboard_written`. Reference links, descriptions and
+  contact details are excluded. Template request intake is not exposed.
+  Request preparation does not confirm Agent execution.
 
 The adapter preserves fixed actions, counts, booleans and safe catalog/control
 identifiers. It drops messages/stacks, file paths, selectors, composition/block
