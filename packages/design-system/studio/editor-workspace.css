@@ -90,12 +90,16 @@
   color: var(--motion-strong);
   background: transparent;
 }
-:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button > svg {
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button > svg:first-child {
   width: var(--motion-icon);
   height: var(--motion-icon);
   flex: none;
 }
-:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:is([aria-pressed="true"], :hover:enabled) { background: var(--motion-hover); }
-:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button[aria-pressed="true"]:hover:enabled { background: var(--motion-chrome-active); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.motion-timeline-tool-picker { width: auto; min-width: var(--motion-space-28); padding-inline: var(--motion-space-4); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:hover:enabled { background: var(--motion-hover); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button[aria-pressed="true"]:enabled { background: var(--motion-chrome-active); }
 :root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:disabled { color: var(--motion-control-disabled); background: transparent; opacity: 1; }
 :root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:enabled { color: var(--motion-strong); }
+/* Full-editor recording and current-keyframe indicators carry semantic state. */
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.text-danger-ink:enabled { color: var(--motion-danger); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.text-accent-ink:enabled { color: var(--motion-accent); }

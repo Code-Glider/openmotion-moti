@@ -136,7 +136,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
               top: props.rowGeometry.getRowTop(rowIndex) + CLIP_Y,
               left: props.contentOrigin + gap.start * props.pps,
               width: Math.max((gap.end - gap.start) * props.pps, 2),
-              height: TRACK_H - CLIP_Y * 2,
+              height: clipHeightAtRow(rowIndex),
               background: loud ? "var(--timeline-accent-soft)" : "var(--timeline-accent-faint)",
               borderRadius: 4,
               zIndex: 25,
@@ -280,7 +280,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
       {/* Playhead — hidden while dragging a beat so its guideline doesn't
           track the scrub and clutter the beat being moved. Explicit width +
           the half-head offset baked into getTimelinePlayheadTransform keep the
-          inner 1px line's CENTER exactly on contentOrigin + t * pps (the ruler
+          inner 2px line's CENTER exactly on contentOrigin + t * pps (the ruler
           ticks' center), instead of relying on shrink-wrap sizing. */}
       <TimelinePlayheadLayer scrollRef={props.scrollRef} contentOrigin={props.contentOrigin}>
         <div
