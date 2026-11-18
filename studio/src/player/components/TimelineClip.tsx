@@ -191,6 +191,7 @@ export const TimelineClip = memo(function TimelineClip({
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
     >
+      {isMainTrackFollower && <span className="motion-timeline-follower-marker" aria-hidden="true" />}
       {/* Left trim handle */}
       {showHandles && capabilities.canTrimStart && (
         <div

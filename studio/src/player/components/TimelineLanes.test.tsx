@@ -521,8 +521,10 @@ it("previews editable main-track followers without selecting them", () => {
 
   act(() => usePlayerStore.setState({ timelineLinkageEnabled: false }));
   expect(highlighted()).toEqual([]);
+  expect(view.host.querySelector(".motion-timeline-follower-marker")).toBeNull();
   act(() => usePlayerStore.setState({ timelineLinkageEnabled: true }));
   expect(highlighted()).toEqual([["follower", "false"]]);
+  expect(view.host.querySelector('[data-el-id="follower"] .motion-timeline-follower-marker')?.getAttribute("aria-hidden")).toBe("true");
   act(() => view.root.unmount());
 });
 

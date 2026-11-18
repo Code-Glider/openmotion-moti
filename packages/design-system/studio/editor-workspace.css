@@ -57,10 +57,10 @@
 .motion-track-column-resize:is(:hover, :focus-visible, :active)::after { background: var(--motion-accent); }
 .motion-track-column-resize:focus-visible { outline: none; }
 
-.timeline-clip[data-main-track-follower]::after {
-  content: "";
+.motion-timeline-follower-marker {
   position: absolute;
   inset: 0;
+  z-index: 8;
   border: 2px dashed var(--motion-accent);
   border-radius: inherit;
   pointer-events: none;
