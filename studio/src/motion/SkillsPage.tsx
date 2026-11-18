@@ -3,7 +3,7 @@ import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
-import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, skillShortcut, type MotionSkill, type SkillCategory, type SkillMotif, type SkillParameters } from './skillCatalog';
+import { aspectRatios, durations, motionSkills, skillCategories, skillPreviewSnapshot, skillPrompt, skillShortcut, type MotionSkill, type SkillCategory, type SkillMotif, type SkillParameters } from './skillCatalog';
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import { MotionIcon } from './icons';
 import { motionApi } from './useWorkspace';
@@ -153,29 +153,30 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
   </div>;
 }
 
-/** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
+/** Gallery card with viewport playback and manual playback on hover or focus. */
 function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
-  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false), [near, setNear] = useState(false);
+  const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false), [near, setNear] = useState(false);
   const card = useRef<HTMLElement>(null);
-  // Autoplay while at least half the card is on screen (paused off screen, so only the visible few load).
-  // Reduced-motion users keep hover-to-play.
   useEffect(() => {
     const element = card.current;
     if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
-    // Start buffering a screen ahead so playback is smooth when the card arrives.
-    const ahead = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: '100% 0px' });
-    observer.observe(element); ahead.observe(element);
+    const ahead = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setNear(true);
+        ahead.disconnect();
+      }
+    }, { root: element.closest('.om-skills-main'), rootMargin: '100% 0px' });
+    observer.observe(element);
+    ahead.observe(element);
     return () => { observer.disconnect(); ahead.disconnect(); };
   }, []);
-  const active = hovered || visible;
-  const setActive = setHovered;
-  // Keep the cover clean; the task name and what it makes sit under it, so a glance says what the skill does.
   return <article ref={card} className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}
-    onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}>
+    onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
     <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
-      onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
-      <SkillMedia skill={skill} playing={active} near={near || hovered} />
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+      <SkillMedia skill={skill} playing={visible || hovered || focused} near={near} />
       <span className="om-gallery-card-top"><span>{category}</span></span>
     </button>
     <button className="om-skill-card-meta" onClick={onSelect} tabIndex={-1} aria-hidden="true"><strong>{name}</strong><span>{useWhen}</span></button>
@@ -189,38 +190,63 @@ export function SkillMedia({ skill, playing = false, near = false, large = false
   const [failed, setFailed] = useState(false);
   const cover = failed ? undefined : skill.cover;
   const play = large || playing;
-  if (!cover) return <SkillCover motif={skill.motif} name={skill.name} large={large} />;
+  const video = useSkillPreview(cover?.video, near || play);
+  if (!cover || (!video && !cover.poster && !(play && cover.gif))) return <SkillCover motif={skill.motif} name={skill.name} large={large} />;
   // A side-by-side before/after demo becomes a split cover (like an upscale preview):
   // each half fills one side, a divider runs down the middle and the skill name sits on it.
   if (cover.compare) return <span className="om-skill-media om-skill-split" data-large={large}>
     {(['before', 'after'] as const).map(side => <span key={side} className="om-skill-split-half" data-side={side}>
-      <CoverMedia cover={cover} play={play} near={near} large={large} onFail={() => setFailed(true)} />
+      <CoverMedia cover={cover} video={video} play={play} onFail={() => setFailed(true)} />
     </span>)}
     <span className="om-skill-split-divider" aria-hidden="true" />
     <span className="om-skill-split-label" aria-hidden="true"><RemixIcon name="sparkling-line" size={14} />{t('Remove the AI look')}</span>
     <span className="om-skill-split-caption" data-side="before" aria-hidden="true">{t('Before')}</span>
     <span className="om-skill-split-caption" data-side="after" aria-hidden="true">{t('After')}</span>
   </span>;
-  return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} play={play} near={near} large={large} onFail={() => setFailed(true)} /></span>;
+  return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} video={video} play={play} onFail={() => setFailed(true)} /></span>;
 }
 
-/** Poster first; the demo video (or GIF) plays only while the card is active.
- * The video element owns its poster, so playback starts in place with no image-to-video swap,
- * and it starts buffering as soon as the card nears the viewport. */
-function CoverMedia({ cover, play, near, large, onFail }: { cover: NonNullable<MotionSkill['cover']>; play: boolean; near: boolean; large: boolean; onFail: () => void }) {
-  const video = useRef<HTMLVideoElement>(null);
-  // A video the browser cannot load or decode falls back to its poster before the motif illustration.
-  const [videoFailed, setVideoFailed] = useState(false);
+function useSkillPreview(url: string | undefined, active: boolean) {
+  const [source, setSource] = useState<{ original: string; playable: string }>();
+  const snapshot = url?.startsWith(skillPreviewSnapshot);
   useEffect(() => {
-    const element = video.current;
-    if (!element || !cover.video) return;
-    if (play) void element.play().catch(() => {}); else element.pause();
-  }, [play, cover.video]);
-  if (cover.video && !videoFailed) return <video ref={video} src={cover.video} poster={cover.poster} muted playsInline loop
-    preload={large || near || play ? 'auto' : cover.poster ? 'none' : 'metadata'} aria-hidden="true" onError={() => cover.poster ? setVideoFailed(true) : onFail()} />;
-  const still = cover.poster ?? cover.gif;
-  return <>{cover.gif && <img src={play ? cover.gif : still} alt="" loading="lazy" decoding="async" onError={onFail} />}
-    {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" onError={onFail} />}</>;
+    if (!active || !url || !snapshot) return;
+    const controller = new AbortController();
+    let playable: string | undefined;
+    // GitHub Raw serves these MP4s as octet-stream. Give the archived bytes a media type.
+    void fetch(url, { signal: controller.signal, credentials: 'omit', redirect: 'error' }).then(async response => {
+      if (!response.ok) return;
+      const blob = await response.blob();
+      if (controller.signal.aborted) return;
+      playable = URL.createObjectURL(new Blob([blob], { type: 'video/mp4' }));
+      setSource({ original: url, playable });
+    }).catch(() => {});
+    return () => {
+      controller.abort();
+      if (playable) URL.revokeObjectURL(playable);
+      setSource(undefined);
+    };
+  }, [url, snapshot, active]);
+  if (!active) return undefined;
+  if (!snapshot) return url;
+  return source?.original === url ? source?.playable : undefined;
+}
+
+function CoverMedia({ cover, video, play, onFail }: { cover: NonNullable<MotionSkill['cover']>; video?: string; play: boolean; onFail: () => void }) {
+  const player = useRef<HTMLVideoElement>(null);
+  const [animationFailed, setAnimationFailed] = useState(false);
+  useEffect(() => {
+    const element = player.current;
+    if (!element || !video || animationFailed) return;
+    if (play) void element.play().catch(() => {});
+    else element.pause();
+  }, [video, play, animationFailed]);
+  const failAnimation = () => cover.poster ? setAnimationFailed(true) : onFail();
+  if (video && !animationFailed) return <video ref={player} src={video} poster={cover.poster} muted playsInline loop
+    preload="auto" aria-hidden="true" onError={failAnimation} />;
+  const animation = play && !animationFailed ? cover.gif : undefined;
+  const image = animation ?? cover.poster;
+  return image && <img src={image} alt="" loading={animation ? 'eager' : 'lazy'} decoding="async" onError={animation ? failAnimation : onFail} />;
 }
 
 /** Package-token illustration: one motif per technique, animated only when motion is allowed. */

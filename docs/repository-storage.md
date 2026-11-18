@@ -87,11 +87,14 @@ npm run media:pull -- library/skills/openmotion-design-remix
 # Recover original README artwork at its recorded local paths.
 npm run media:pull -- docs/readme
 
-# Restore every registered optional file for full bundles/resource verification.
+# Fetch a prepared Skill preview for local editing.
+npm run media:pull -- studio/src/motion/skill-covers/example.mp4
+
+# Restore registered media used by full bundles and resource verification.
 npm run media:pull
 ```
 
-Only those registered files are downloaded, with size/hash verification and atomic replacement. These commands do not fetch all catalog media. Legacy files still in LFS need the scoped pulls above. Full bundles and resource verification explicitly fetch both stores; npm application packages exclude showcase and optional Library payloads.
+Only those registered files are downloaded, with size/hash verification and atomic replacement. Skill card animations are excluded from an unscoped pull because Studio loads them on demand. These commands do not fetch all catalog media. Legacy files still in LFS need the scoped pulls above. Full bundles and resource verification explicitly fetch both stores; npm application packages exclude showcase and optional Library payloads.
 
 ### Checks and history
 

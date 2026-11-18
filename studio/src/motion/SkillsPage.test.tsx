@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
+// @vitest-environment-options {"settings":{"enableImageFileLoading":false}}
 import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
-import { motionSkills, skillPrompt, skillShortcut } from './skillCatalog';
+import { SkillMedia, SkillsPage, skillSubmissionUrl } from './SkillsPage';
+import { motionSkills, skillPreviewSnapshot, skillPrompt, skillShortcut } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
 
@@ -12,7 +13,12 @@ vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ locale: 'en', t: (text: strin
 vi.mock('./useWorkspace', () => ({ motionApi: vi.fn().mockRejectedValue(new Error('Offline test')) }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, container: HTMLDivElement;
-beforeEach(() => { container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
+beforeEach(() => {
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
+});
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); });
 
 function Host() {
@@ -267,24 +273,53 @@ it('opens the contribution guide section for submitting a skill, like the templa
   expect(section).toContain('draft pull request');
 });
 
-it('bundles the GIF covers as local assets', () => {
-  for (const id of ['anime-js', 'lottie-web']) {
-    const gif = motionSkills.find(skill => skill.id === id)?.cover?.gif;
-    expect(gif, id).toBeDefined();
-    expect(gif, id).not.toMatch(/^https?:/);
-  }
+it('ships static WebP posters for archived previews and fetches a GIF only while active', () => {
+  const archived = motionSkills.filter(skill => (skill.cover?.video ?? skill.cover?.gif)?.startsWith(skillPreviewSnapshot));
+  expect(archived.length).toBeGreaterThan(100);
+  for (const skill of archived) expect(skill.cover?.poster, skill.id).toMatch(/\.webp(?:\?|$)/);
+  const skill = motionSkills.find(skill => skill.id === 'anime-js')!;
+  act(() => root.render(<SkillMedia skill={skill} />));
+  expect(container.querySelector('img')?.getAttribute('src')).toBe(skill.cover?.poster);
+  act(() => root.render(<SkillMedia skill={skill} playing />));
+  const animation = container.querySelector('img')!;
+  expect(animation.getAttribute('src')).toBe(skill.cover?.gif);
+  act(() => animation.dispatchEvent(new Event('error')));
+  expect(container.querySelector('img')?.getAttribute('src')).toBe(skill.cover?.poster);
 });
 
-it('falls back to the poster when a cover video cannot load', () => {
+it('preloads archived video, plays and pauses it without loading again, then frees its URL', async () => {
+  const skill = motionSkills.find(skill => skill.id === 'motionmaxxing')!;
+  const fetcher = vi.mocked(fetch).mockResolvedValue(new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-preview');
+  const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause');
+  act(() => root.render(<SkillMedia skill={skill} />));
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(container.querySelectorAll('img')).toHaveLength(2);
+  await act(async () => root.render(<SkillMedia skill={skill} near />));
+  expect(play).not.toHaveBeenCalled();
+  expect((create.mock.calls[0][0] as Blob).type).toBe('video/mp4');
+  const players = [...container.querySelectorAll('video')];
+  expect(players.map(player => player.getAttribute('src'))).toEqual(['blob:skill-preview', 'blob:skill-preview']);
+  act(() => root.render(<SkillMedia skill={skill} near playing />));
+  expect(play).toHaveBeenCalledTimes(2);
+  pause.mockClear();
+  act(() => root.render(<SkillMedia skill={skill} near />));
+  expect(pause).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  act(() => players.forEach(player => player.dispatchEvent(new Event('error'))));
+  expect(container.querySelectorAll('img')).toHaveLength(2);
+  act(() => root.render(<SkillMedia skill={skill} />));
+  expect(revoke).toHaveBeenCalledWith('blob:skill-preview');
+});
+
+it('keeps the poster when the archived video request fails', async () => {
   act(() => root.render(<Host />));
-  const card = container.querySelector('[data-skill-id="motionmaxxing"]')!;
-  const videos = [...card.querySelectorAll('video')];
-  expect(videos.length).toBeGreaterThan(0);
-  act(() => videos.forEach(node => node.dispatchEvent(new Event('error'))));
-  expect(card.querySelector('.om-skill-cover')).toBeNull();
-  expect(card.querySelectorAll('img').length).toBe(videos.length);
-});
-
-it('serves no cover video from raw GitHub, which sends it as an undecodable octet-stream', () => {
-  expect(motionSkills.filter(skill => skill.cover?.video?.includes('raw.githubusercontent.com')).map(skill => skill.id)).toEqual([]);
+  expect(fetch).not.toHaveBeenCalled();
+  await act(async () => button('Remove the AI look from motion').click());
+  const detail = container.querySelector('.om-skill-detail')!;
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(detail.querySelector('video')).toBeNull();
+  expect(detail.querySelectorAll('img')).toHaveLength(2);
 });

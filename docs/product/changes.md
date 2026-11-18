@@ -1,5 +1,10 @@
 # 公开变更记录
 
+## 2026-11-19: Load Skill card animation on demand
+
+- Bundle static WebP posters for Skills. Load preview videos one screen ahead for viewport autoplay, and keep the poster available when the network is unavailable. Hover, keyboard focus and opening the Skill can start playback.
+- Use the media preparation workflow for new previews and report the default npm package size in PR and release candidate builds.
+
 ## 2026-11-18: Add the Design Styles library Skill
 
 - Add optional [`openmotion-design-styles`](../../library/skills/openmotion-design-styles/SKILL.md): 21 design-style cards and 2 layout cards (palette, open-licensed typefaces, five rules, signature motion, what to avoid, render tier) that an Agent applies to the user's content as a short HyperFrames film.
