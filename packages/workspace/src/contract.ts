@@ -142,6 +142,11 @@ export interface SourcePayload {
   files: SourceFile[];
   resources: { path: string; name: string; bytes: Uint8Array }[];
 }
+/** Caller-owned immutable readers; Workspace resolves each inside the same receipt transaction. */
+export interface SourceReaders {
+  files: SourceFile[];
+  resources: { path: string; name: string; bytes: number; digest: string; read(): Uint8Array }[];
+}
 export interface Session {
   id: string;
   title: string;

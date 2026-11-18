@@ -25,6 +25,12 @@ it("captures without author animation frames and diagnoses a genuinely pending f
   let requested = false;
   try {
     await driver.page.setContent("<main>Painted browser evidence</main>");
+    // setContent confirms DOM readiness; admit an actual painted fixture before suspending author callbacks.
+    await driver.page.waitForFunction(
+      () => performance.getEntriesByType("paint").some((entry) => entry.name === "first-contentful-paint"),
+      {},
+      { polling: 100, timeout: 8000 },
+    );
     await driver.page.evaluate(() => {
       window.requestAnimationFrame = () => 0;
     });

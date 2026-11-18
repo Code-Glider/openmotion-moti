@@ -3,7 +3,8 @@ import { content } from "./content.js";
 import { buffered, zip } from "./write.js";
 
 export { type Archive, limits } from "./contract.js";
-export { read } from "./read.js";
+export { read, readInto } from "./read/index.js";
+export type { Input as ArchiveInput } from "./read/input.js";
 export { prepareSnapshot } from "./snapshot.js";
 /** Owns bounded immutable memory only; transport/staging/reader drain belongs to its caller. */
 export function prepare(payload: SourcePayload) {

@@ -10,9 +10,13 @@ const identity = (s: BigIntStats) => [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs
 export class Upload {
   private path: string;
   private witness?: string;
+  private ranges = new Set<Promise<Uint8Array>>();
+  private readingClosed = false;
+  private drainFault?: unknown;
   constructor(
     root: string,
     private expected: { bytes: number; digest: string },
+    private digestFault: "invalid" | "integrity" = "invalid",
   ) {
     this.path = join(root, `${randomUUID()}.upload`);
   }
@@ -45,8 +49,9 @@ export class Upload {
           at += part.length;
         }
       }
-      if (size !== this.expected.bytes || `sha256:${hash.digest("hex")}` !== this.expected.digest)
-        throw new Fault("invalid", "resource upload does not match fixed bytes/digest");
+      if (size !== this.expected.bytes) throw new Fault("invalid", "resource upload does not match fixed size");
+      if (`sha256:${hash.digest("hex")}` !== this.expected.digest)
+        throw new Fault(this.digestFault, "resource upload does not match fixed digest");
       await file.sync();
       signal.throwIfAborted();
       const info = await file.stat({ bigint: true });
@@ -54,7 +59,10 @@ export class Upload {
       signal.throwIfAborted();
       witness = identity(info);
     } finally {
-      await file.close();
+      await file.close().catch((error) => {
+        this.drainFault = error;
+        throw error;
+      });
       if (!witness) this.close();
     }
     if (signal.aborted) {
@@ -89,7 +97,61 @@ export class Upload {
       closeSync(fd);
     }
   }
+  /** At most64KiB; identity surrounds each actual handle read, including later parser rereads. */
+  range(offset: number, length: number, signal: AbortSignal): Promise<Uint8Array> {
+    if (
+      !this.witness ||
+      this.readingClosed ||
+      !Number.isSafeInteger(offset) ||
+      !Number.isSafeInteger(length) ||
+      offset < 0 ||
+      length < 0 ||
+      length > chunkBytes ||
+      offset + length > this.expected.bytes
+    )
+      return Promise.reject(new Fault("integrity", "resource staging range is invalid or retired"));
+    const witness = this.witness;
+    const pending = (async () => {
+      signal.throwIfAborted();
+      const file = await open(this.path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+      try {
+        const info = await file.stat({ bigint: true });
+        if (!info.isFile() || identity(info) !== witness) throw new Fault("integrity", "resource staging changed");
+        const bytes = Buffer.alloc(length);
+        let size = 0;
+        while (size < length) {
+          signal.throwIfAborted();
+          const next = await file.read(bytes, size, length - size, offset + size);
+          if (!next.bytesRead) throw new Fault("integrity", "resource staging is truncated");
+          size += next.bytesRead;
+        }
+        signal.throwIfAborted();
+        if (identity(await file.stat({ bigint: true })) !== witness)
+          throw new Fault("integrity", "resource staging changed during read");
+        return bytes;
+      } finally {
+        await file.close().catch((error) => {
+          this.drainFault = error;
+          throw error;
+        });
+      }
+    })()
+      .catch((error) => {
+        if (error instanceof Fault || signal.aborted) throw error;
+        throw new Fault("integrity", "resource staging read failed");
+      })
+      .finally(() => this.ranges.delete(pending));
+    this.ranges.add(pending);
+    return pending;
+  }
+  /** Fence any late parser reads and settle native handles before unlink or grant retirement. */
+  async drain() {
+    this.readingClosed = true;
+    await Promise.allSettled([...this.ranges]);
+    if (this.drainFault) throw new Fault("integrity", "resource staging descriptor retirement is uncertain");
+  }
   close() {
+    if (this.ranges.size || this.drainFault) throw new Fault("integrity", "resource staging has not drained");
     try {
       unlinkSync(this.path);
     } catch (error) {

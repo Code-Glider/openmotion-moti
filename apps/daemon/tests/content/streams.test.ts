@@ -8,7 +8,7 @@ import { Readable, Writable } from "node:stream";
 import { setImmediate } from "node:timers/promises";
 import { initialFiles, Workspace } from "@open-motion/workspace";
 import { expect, it, vi } from "vitest";
-import { Archives } from "@/content/archives.js";
+import { Archives } from "@/content/archives/index.js";
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "motion-archive-stream-")),

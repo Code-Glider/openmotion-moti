@@ -12,6 +12,7 @@ import {
   type SourceFile,
   type SourceIntent,
   type SourcePayload,
+  type SourceReaders,
   schemas,
   sourceIntent,
   viewPreferences,
@@ -28,6 +29,11 @@ import { Sessions } from "./sessions.js";
 export * from "./contract.js";
 export { identify as identifyResource } from "./resources/formats.js";
 export type { ResourceReader } from "./resources/reader.js";
+
+const isSourceReader = (
+  entry: SourcePayload["resources"][number] | SourceReaders["resources"][number],
+): entry is SourceReaders["resources"][number] => typeof entry.bytes === "number";
+
 /** The one product transaction authority; consumers supply a sidecar-granted data root. */
 export class Workspace {
   private db: Database;
@@ -87,7 +93,7 @@ export class Workspace {
     return this.db.transaction(() => this.db.receipt<Artifact>("artifact_source_create", data), false);
   }
   /** Workspace atomically owns source-derived project, history and command receipt. */
-  createSource(input: SourceIntent, payload: SourcePayload): Artifact {
+  createSource(input: SourceIntent, payload: SourcePayload | SourceReaders): Artifact {
     if (this.closed) throw new Fault("integrity", "workspace is closed");
     const parsed = sourceIntent.safeParse(input);
     if (!parsed.success) throw new Fault("invalid", "invalid immutable source intent");
@@ -103,15 +109,27 @@ export class Workspace {
       if (!create.success) throw new Fault("invalid", "invalid immutable source files");
       if (!Array.isArray(payload.resources) || payload.resources.length > resourceCountLimit)
         throw new Fault("invalid", "immutable source resources exceed supported bounds");
-      let bytes = 0;
+      let total = 0;
       for (const entry of payload.resources) {
-        if (!entry || !(entry.bytes instanceof Uint8Array)) throw new Fault("invalid", "resource bytes are required");
-        if (!entry.bytes.byteLength || entry.bytes.byteLength > resourceLimit)
+        if (!entry || (!(entry.bytes instanceof Uint8Array) && !isSourceReader(entry)))
+          throw new Fault("invalid", "resource bytes are required");
+        const size = isSourceReader(entry) ? entry.bytes : entry.bytes.byteLength;
+        if (!Number.isSafeInteger(size) || size <= 0 || size > resourceLimit)
           throw new Fault("invalid", "resource bytes outside supported bounds");
-        bytes += entry.bytes.byteLength;
-        if (bytes > resourceBytesLimit) throw new Fault("invalid", "resource snapshot exceeds 64 MiB");
+        if (isSourceReader(entry) && (typeof entry.read !== "function" || !/^sha256:[a-f0-9]{64}$/.test(entry.digest)))
+          throw new Fault("invalid", "immutable resource reader is invalid");
+        total += size;
+        if (total > resourceBytesLimit) throw new Fault("invalid", "resource snapshot exceeds 64 MiB");
       }
-      const resources = payload.resources.map((entry) => this.resources.retain(entry, Buffer.from(entry.bytes)));
+      const resources = payload.resources.map((entry) => {
+        const bytes = isSourceReader(entry) ? entry.read() : entry.bytes;
+        if (!(bytes instanceof Uint8Array) || (isSourceReader(entry) && bytes.byteLength !== entry.bytes))
+          throw new Fault("integrity", "immutable resource reader size changed");
+        const resource = this.resources.retain(entry, Buffer.from(bytes));
+        if (isSourceReader(entry) && resource.digest !== entry.digest)
+          throw new Fault("integrity", "immutable resource reader digest changed");
+        return resource;
+      });
       return this.projects.create({ ...create.data, files: sources(create.data.files) }, resources);
     });
   }

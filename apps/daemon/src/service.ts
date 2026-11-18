@@ -10,7 +10,7 @@ import { type TemplateOperation, templateSchemas } from "@open-motion/templates/
 import type { Binding as PrismBinding } from "@open-motion/templates/host";
 import { Fault, type Input, type Operation, Workspace } from "@open-motion/workspace";
 import { type ArchiveOperation, archiveSchemas } from "./content/archive.js";
-import { Archives } from "./content/archives.js";
+import { Archives } from "./content/archives/index.js";
 import { Generations } from "./content/generation.js";
 import { listGuidance, readGuidance } from "./content/guidance.js";
 import { Previews } from "./content/preview.js";
@@ -78,7 +78,7 @@ export async function serve(options: Options): Promise<Service> {
   const previews = new Previews(workspace, async (input) => templates.execute("template_read", input));
   const exports = new Exports(workspace, options.renderer, options.endpoint);
   const generations = new Generations(workspace, options.gateway);
-  const archives = new Archives(workspace, options.endpoint);
+  const archives = new Archives(workspace, options.endpoint, options.staging);
   const resources = new ResourceTransfers(workspace, options.endpoint, options.staging);
   const requests = new Set<Promise<unknown>>();
   let draining: Promise<void> | undefined, closing: Promise<void> | undefined;
