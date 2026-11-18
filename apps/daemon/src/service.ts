@@ -110,7 +110,13 @@ export async function serve(options: Options): Promise<Service> {
         return;
       }
       if (["GET", "HEAD"].includes(request.method ?? "") && request.url?.startsWith("/preview/")) {
-        previews.serve(request.url, response, request.headers.host, request.headers.range, request.method === "HEAD");
+        await previews.serve(
+          request.url,
+          response,
+          request.headers.host,
+          request.headers.range,
+          request.method === "HEAD",
+        );
         return;
       }
       if (request.method === "OPTIONS") {
@@ -262,6 +268,7 @@ export async function serve(options: Options): Promise<Service> {
       // Reversible archive byte streams abort; project commits remain workspace-owned.
       archives.quiesce();
       resources.quiesce();
+      previews.quiesce();
       // Accepted work and buffered/streamed responses must finish before unused connections retire.
       await Promise.allSettled([...requests]);
       server.closeAllConnections();

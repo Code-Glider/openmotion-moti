@@ -157,6 +157,20 @@ it("imports 16 MiB through raw bytes and confirms original receipts before resta
       range = await fetch(asset, { headers: { range: "bytes=0-43" } });
     expect(range.status).toBe(206);
     expect(Buffer.from(await range.arrayBuffer())).toEqual(bytes.subarray(0, 44));
+    for (const [requested, start, end] of [
+      ["bytes=65530-65542", 65530, 65542],
+      ["bytes=-17", bytes.length - 17, bytes.length - 1],
+    ] as const) {
+      const part = await fetch(asset, { headers: { range: requested } });
+      expect(part.status).toBe(206);
+      expect(part.headers.get("content-range")).toBe(`bytes ${start}-${end}/${bytes.length}`);
+      expect(Buffer.from(await part.arrayBuffer())).toEqual(bytes.subarray(start, end + 1));
+    }
+    const metadata = await fetch(asset, { method: "HEAD", headers: { range: "bytes=0-43" } });
+    expect(metadata.status).toBe(200);
+    expect(metadata.headers.get("content-length")).toBe(String(bytes.length));
+    expect(await metadata.arrayBuffer()).toHaveProperty("byteLength", 0);
+    expect(hash(Buffer.from(await (await fetch(asset)).arrayBuffer()))).toBe(input.digest);
     await api.closePreviews();
     await expect(api.execute("resource_import", { ...input, digest: digest("different") })).rejects.toMatchObject({
       code: "idempotency",
@@ -186,6 +200,7 @@ it("imports 16 MiB through raw bytes and confirms original receipts before resta
       controlBytes: controls.map((value) => value.length),
       sameRequest: controls.every((value) => JSON.parse(value).requestId === input.requestId),
       coldRestart: true,
+      preview: { fullDigest: input.digest, range: true, crossChunkRange: true, suffix: true, head: true },
       history: saved.history,
     });
   } finally {
@@ -347,6 +362,87 @@ it("retains a released slow download slot until abort, then drains another activ
     await f.close();
     draining.destroy();
     await drained;
+  } finally {
+    for (const response of paused) response.destroy();
+    await f.close();
+  }
+  expect((await readDirectory(f.root)).manager.phase).toBe("closed");
+  expect(await observeProcesses(f.root)).toEqual([]);
+}, 30000);
+
+it("revokes a slow preview response and drains another media reader during actual daemon shutdown", async () => {
+  const f = await fixture(),
+    paused: IncomingMessage[] = [];
+  try {
+    const { api } = await f.host(),
+      session = await api.execute("session_create", {
+        requestId: randomUUID(),
+        title: "Preview streams",
+        mode: "motion",
+      }),
+      artifact = await api.execute("artifact_create", {
+        requestId: randomUUID(),
+        sessionId: session.id,
+        title: "Media",
+        files: initialFiles(),
+      }),
+      owner = { sessionId: session.id, artifactId: artifact.id },
+      before = await api.execute("project_read", owner),
+      bytes = wave(),
+      result = await api.importResource(
+        {
+          ...owner,
+          requestId: randomUUID(),
+          expectedRevision: before.revision,
+          path: "assets/slow.wav",
+          name: "Slow",
+          digest: hash(bytes),
+          bytes: bytes.length,
+        },
+        new Blob([Uint8Array.from(bytes)]),
+      );
+    if (!result.project) throw Error("missing imported resource");
+    const first = await api.preview(result.project, "first"),
+      second = await api.preview(result.project, "second");
+    const pause = async (url: string) => {
+      const req = request(url);
+      req.on("error", () => {});
+      req.end();
+      const [response] = (await once(req, "response")) as [IncomingMessage];
+      response.on("error", () => {});
+      expect(response.statusCode).toBe(200);
+      const initial = await new Promise<Buffer>((done) =>
+        response.once("data", (chunk) => {
+          response.pause();
+          done(chunk);
+        }),
+      );
+      expect(initial).toEqual(bytes.subarray(0, initial.length));
+      paused.push(response);
+      return response;
+    };
+    const active = await pause(new URL("assets/slow.wav", first.url).href);
+    const retired = new Promise<void>((done) => active.once("close", done));
+    await api.closePreview(first.id);
+    // Resume the client only to observe EOF/reset; the server must not finish the full representation.
+    let received = active.readableLength;
+    active.on("data", (chunk) => {
+      received += chunk.length;
+    });
+    active.resume();
+    await retired;
+    expect(active.complete).toBe(false);
+    expect(received).toBeLessThan(bytes.length);
+    expect((await fetch(new URL("assets/slow.wav", first.url))).status).toBe(404);
+    const surviving = await fetch(new URL("assets/slow.wav", second.url), { headers: { range: "bytes=65530-65542" } });
+    expect(surviving.status).toBe(206);
+    expect(Buffer.from(await surviving.arrayBuffer())).toEqual(bytes.subarray(65530, 65543));
+    const draining = await pause(new URL("assets/slow.wav", second.url).href);
+    const closed = new Promise<void>((done) => draining.once("close", done));
+    await f.close();
+    draining.resume();
+    await closed;
+    expect(draining.complete).toBe(false);
   } finally {
     for (const response of paused) response.destroy();
     await f.close();
