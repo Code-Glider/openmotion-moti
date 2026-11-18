@@ -170,6 +170,19 @@ describe("applyUndoRestoreToPreview", () => {
     expect(style.getPropertyPriority("visibility")).toBe("important");
   });
 
+  it.each(["audio", "video", "img"])("restores %s timing without reassigning its unchanged media source", tag => {
+    const page = (duration: number) => wrap(`<${tag} id="media" data-hf-id="media" src="assets/media.mp4" data-start="0" data-duration="${duration}"></${tag}>`);
+    const { iframe, doc } = buildLiveIframe(`<${tag} id="media" data-hf-id="media" src="/api/projects/project/preview/assets/media.mp4" data-start="0" data-duration="4" data-hf-preview-lazy></${tag}>`);
+    const node = doc.getElementById("media")!;
+    const set = vi.spyOn(node, "setAttribute");
+    const files = { [ROOT]: { previous: page(4), restored: page(9) } };
+    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, vi.fn())).toBe("soft");
+    expect(node.getAttribute("data-duration")).toBe("9");
+    expect(node.getAttribute("src")).toBe("/api/projects/project/preview/assets/media.mp4");
+    expect(node.hasAttribute("data-hf-preview-lazy")).toBe(true);
+    expect(set.mock.calls.some(([name]) => name === "src")).toBe(false);
+  });
+
   it("takes GSAP's composed transform off the preview it is about to reload", () => {
     // Undoing "enable keyframes" removes the script: no in-place patch expresses that, so the
     // preview reloads — and until it lands it shows where the timeline last put the box, though

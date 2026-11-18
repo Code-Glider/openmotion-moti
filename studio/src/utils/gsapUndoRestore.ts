@@ -18,6 +18,7 @@ import { markScenesStale } from "../player/sceneSwap";
 import { STUDIO_ORIGINAL_INLINE_TRANSLATE_ATTR } from "../components/editor/manualEditsTypes";
 import { countStudioPreviewChange, studioGestureDraws } from "../components/editor/manualEditsDom";
 import { syncPreservedPreviewTiming } from "./previewAuthoredTiming";
+import { PREVIEW_ONLY_ATTRS, RUNTIME_STAMPED_ATTR } from "@hyperframes/core/studio-preview-mark";
 
 type PreviewWindow = Window & {
   __player?: { seek?: (t: number) => void };
@@ -152,11 +153,16 @@ function syncElementAttributes(target: Element, source: Element, base?: Element)
   const draws = base && studioGestureDraws(target);
   const merged = draws ? keepDrawn(target, source, base, draws) : source;
   if (base && syncMountedCompositionAttributes(target, merged, base)) return;
+  // Preview URLs may be rebased or lazy-loaded. Reassigning even an unchanged
+  // media src starts a new load, so timing/style undo must leave those alone.
+  const preserve = (name: string) =>
+    (base && ["src", "srcset", "poster"].includes(name) && base.getAttribute(name) === merged.getAttribute(name)) ||
+    (PREVIEW_ONLY_ATTRS.some(attribute => attribute === name) && name !== RUNTIME_STAMPED_ATTR);
   for (const name of [...target.getAttributeNames()]) {
-    if (!merged.hasAttribute(name)) target.removeAttribute(name);
+    if (!merged.hasAttribute(name) && !preserve(name)) target.removeAttribute(name);
   }
   for (const name of merged.getAttributeNames()) {
-    target.setAttribute(name, merged.getAttribute(name) ?? "");
+    if (!preserve(name) && target.getAttribute(name) !== merged.getAttribute(name)) target.setAttribute(name, merged.getAttribute(name) ?? "");
   }
 }
 
@@ -176,12 +182,13 @@ function syncMountedCompositionAttributes(target: Element, source: Element, base
         if (after.getPropertyValue(property)) live.setProperty(property, after.getPropertyValue(property), after.getPropertyPriority(property));
         else live.removeProperty(property);
       }
+      if (!source.hasAttribute("style") && live.length === 0) target.removeAttribute("style");
       continue;
     }
     const value = source.getAttribute(name);
     syncPreservedPreviewTiming(target, name, value);
     if (value === null) target.removeAttribute(name);
-    else target.setAttribute(name, value);
+    else if (target.getAttribute(name) !== value) target.setAttribute(name, value);
   }
   return true;
 }
