@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -218,6 +218,13 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     assert.equal(metadata.bin.openmotion, 'scripts/npm-installer.mjs');
     const cli = path.join(installer, 'package', metadata.bin.openmotion);
     assert.equal((await runFile(process.execPath, [cli, '--version'])).trim(), version);
+    const installedPackage = path.join(directory, 'node_modules/@openmotion/app');
+    await mkdir(path.join(installedPackage, 'scripts'), { recursive: true });
+    await cp(path.join(installer, 'package/scripts'), path.join(installedPackage, 'scripts'), { recursive: true });
+    await cp(path.join(installer, 'package/package.json'), path.join(installedPackage, 'package.json'));
+    assert.equal((await runFile(process.execPath, [path.join(installedPackage, 'scripts/npm-installer.mjs'), '--version'])).trim(), version,
+      'The outer npm entry must execute inside node_modules without TypeScript stripping');
+
     const help = await runFile(process.execPath, [cli, 'setup', '--help']);
     assert(help.includes('--onboarding-output'), 'The prebuilt installer must expose the no-reload presentation route');
     for (const host of ['codex', 'claude', 'deepseek', 'workbuddy']) assert(help.includes(host), host);

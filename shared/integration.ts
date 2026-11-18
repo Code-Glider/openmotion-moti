@@ -72,6 +72,7 @@ export function apiDiscoveryCommand(info: IntegrationInfo) {
 }
 
 export function guideUrl(info: Pick<IntegrationInfo, 'previewUrl'>, host: IntegrationHost, templateId?: string) { return `${info.previewUrl}/connect/guide?host=${host}${templateId ? '&template=' + encodeURIComponent(templateId) : ''}`; }
+export const setupSkillUrl = 'https://github.com/nexu-io/openmotion/blob/main/skills/openmotion/SKILL.md';
 export const setupReadmeUrl = 'https://github.com/nexu-io/openmotion#quick-start';
 export function setupGuideUrl(info: IntegrationInfo | null) {
   if (!info || info.templateSource === 'repository') return 'https://github.com/nexu-io/openmotion/blob/main/install.md';
@@ -85,6 +86,7 @@ export function setupPrompt(info: IntegrationInfo | null, host: IntegrationHost,
   if (locale === 'en') {
     if (host === 'chatgpt') return 'ChatGPT cloud requires a public HTTPS MCP service. This workspace uses local stdio. Choose Codex, Claude Code, or DeepSeek Harness to start creating.';
     return `Help me install and connect OpenMotion in ${hostNames[host]}.
+Read the primary OpenMotion Skill: ${setupSkillUrl}
 Read the GitHub README: ${setupReadmeUrl}
 Follow the installation guide: ${setupGuideUrl(info)}
 
@@ -95,7 +97,8 @@ Follow the installation guide: ${setupGuideUrl(info)}
   }
   if (host === 'chatgpt') return 'ChatGPT 云端需要公开 HTTPS MCP 服务。当前工作区使用本机 stdio，可先选择 Codex、Claude Code 或 DeepSeek Harness 开始创作。';
   return `帮我在 ${hostNames[host]} 中安装并接入 OpenMotion。
-先阅读 GitHub README：${setupReadmeUrl}
+先阅读 OpenMotion 主 Skill：${setupSkillUrl}
+再阅读 GitHub README：${setupReadmeUrl}
 再按安装指南操作：${setupGuideUrl(info)}
 
 1. 先检查是否已经安装和连接，优先复用现有工作区，保留工程、凭据及其他 MCP 配置。
