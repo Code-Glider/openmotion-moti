@@ -264,6 +264,51 @@ it('prepares link and local-video instructions, retains drafts and distinguishes
   expect(JSON.stringify(tracked)).not.toContain('Private creative notes');
   for (const item of tracked) expect(validProperties(studioEvents, item.event, item.properties), JSON.stringify(item)).toBe(true);
 });
+it('retains the selected video and notes while changing the search or a category', async () => {
+  await mount();
+  await search('missing');
+  await confirmSearch();
+  const initialResult = events('template_search_result').at(-1)!;
+  await act(async () => button('Make a video from a reference', recovery()).click());
+  await act(async () => button('Local video', recovery()).click());
+  const notes = 'Keep the opening transition';
+  await fill(recovery().querySelector('textarea')!, notes);
+  const video = new File(['video'], 'sample.mp4', { type: 'video/mp4' });
+  const picker = recovery().querySelector<HTMLInputElement>('input[type=file]')!;
+  Object.defineProperty(picker, 'files', { value: [video] });
+  const upload = Promise.withResolvers<Response>();
+  vi.mocked(fetch).mockReturnValueOnce(upload.promise);
+  await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
+
+  searchInput().focus();
+  await search('still missing');
+  expect(recovery()).toBeNull();
+  const asset = { id: 'reference-asset', modality: 'video', currentVersionId: 'original', versions: [{ id: 'original' }] };
+  await act(async () => upload.resolve(Response.json({ asset })));
+  expect(events('studio_asset_import_result').at(-1)).toMatchObject({
+    outcome: 'success', result_set_id: initialResult.result_set_id,
+  });
+  await confirmSearch();
+  expect(document.activeElement).toBe(searchInput());
+  expect(recovery().querySelector('textarea')?.value).toBe(notes);
+
+  await act(async () => button('Brand & company films').click());
+  expect(recovery().textContent).toContain(video.name);
+  expect(recovery().querySelector('textarea')?.value).toBe(notes);
+  await act(async () => button('Copy request', recovery()).click());
+  expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining('"assetId":"reference-asset","versionId":"original"'));
+  expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining(notes));
+  expect(vi.mocked(fetch).mock.calls.filter(([, init]) => init?.body === video)).toHaveLength(1);
+
+  await act(async () => button('Video link', recovery()).click());
+  const link = 'https://example.com/video.mp4';
+  await fill(recovery().querySelector<HTMLInputElement>('input[type=url]')!, link);
+  searchInput().focus();
+  await search('another missing result');
+  await confirmSearch();
+  expect(document.activeElement).toBe(searchInput());
+  expect(recovery().querySelector<HTMLInputElement>('input[type=url]')?.value).toBe(link);
+});
 it('keeps description inside the creation path and hides unavailable request intake', async () => {
   await mount();
   await act(async () => button('Nothing suitable?').click());

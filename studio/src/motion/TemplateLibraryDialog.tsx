@@ -214,6 +214,7 @@ export function TemplateLibraryDialog(props: Props) {
   const confirmSearch = () => { if (composing.current || !query.trim()) return; settleSearch(); dialog.current?.scrollTo?.({ top: 0 }); };
   const clearSearch = () => { settleSearch(); tracking.reportRecoveryAction('clear_search', listContext()); setQuery(''); };
   const stableSearch = !searchComposing && (!query.trim() || normalizedTemplateQuery(query) === settledKeyword);
+  const showRecovery = !loading && !error && stableSearch;
   const showEmptyRecovery = !loading && !error && !visible.length;
   const suggestedRemoval = useMemo(() => {
     if (!showEmptyRecovery || !stableSearch || !hasAppliedFilters || !catalog.length) return;
@@ -532,8 +533,8 @@ export function TemplateLibraryDialog(props: Props) {
       </div>
       {loading && !catalog.length && <span className={styles.visuallyHidden} role="status">{t('Loading templates…')}</span>}
       {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
-      {!loading && !error && stableSearch && <>
-        <div data-search-recovery=""><TemplateSearchRecovery key={searchContextKey} query={query} context={listContext()} reason={!catalog.length ? 'catalog_empty' : showEmptyRecovery ? 'no_results' : 'unsuitable'} expanded={showEmptyRecovery || recoveryExpanded}
+      {props.open && <div data-search-recovery="" hidden={!showRecovery}>
+        <TemplateSearchRecovery visible={showRecovery} query={query} context={listContext()} reason={!catalog.length ? 'catalog_empty' : showEmptyRecovery ? 'no_results' : 'unsuitable'} expanded={showEmptyRecovery || recoveryExpanded}
           searchAction={showEmptyRecovery && (!catalog.length ? <button className="om-button" onClick={() => retry(value => value + 1)}>{t('Reload')}</button>
             : suggestedRemoval ? <button className="om-button" onClick={() => {
               if (suggestedRemoval.key === 'editable') toggleEditable(false);
@@ -542,8 +543,8 @@ export function TemplateLibraryDialog(props: Props) {
             }}>{t('Remove {condition} · Show {results}', { condition: suggestedRemoval.label, results: suggestedRemoval.count === 1 ? t('1 template') : t('{count} templates', { count: suggestedRemoval.count }) })}</button>
               : query.trim() ? <button className="om-button" onClick={() => search.current?.focus()}>{t('Edit search')}</button>
                 : hasAppliedFilters ? <button className="om-button" onClick={reset}>{t('Clear filters')}</button> : null)}
-          onExpand={() => { settleSearch(); currentSearchContext.current.activity(); setRecoveryExpanded(true); }} onActivity={() => { currentSearchContext.current.activity(); return listContext(); }} showToast={(message, kind) => showToast(message, kind, 'feedback')} /></div>
-      </>}
+          onExpand={() => { settleSearch(); currentSearchContext.current.activity(); setRecoveryExpanded(true); }} onActivity={() => { currentSearchContext.current.activity(); return listContext(); }} showToast={(message, kind) => showToast(message, kind, 'feedback')} />
+      </div>}
     </main>
     {props.open && referenceTrigger && <TemplateReferenceDialog trigger={referenceTrigger} onClose={() => setReferenceTrigger(null)}
       onActivity={listContext} showToast={(message, kind) => showToast(message, kind, 'feedback')} />}
