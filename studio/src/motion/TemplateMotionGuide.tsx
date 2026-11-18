@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useShownStudioTheme } from '../utils/studioTheme';
 import { prepareMotionGuide, type GuideAppearance } from './templateMotionGuideDocument';
 
-export function TemplateMotionGuide({ url, title, expanded = false }: { url: string; title: string; expanded?: boolean }) {
+export function TemplateMotionGuide({ url, title, expanded = false, onEscape }: { url: string; title: string; expanded?: boolean; onEscape?: () => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const theme = useShownStudioTheme();
   const latestTheme = useRef(theme);
@@ -25,6 +25,16 @@ export function TemplateMotionGuide({ url, title, expanded = false }: { url: str
   }
   useEffect(() => { syncAppearance(); }, [theme]);
   useEffect(() => {
+    if (!expanded || !onEscape) return;
+    function receiveEscape(event: MessageEvent) {
+      const guide = frame.current;
+      if (guide?.hasAttribute('srcdoc') && guide.ownerDocument.activeElement === guide &&
+          event.source === guide.contentWindow && event.origin === 'null' && event.data === 'openmotion:guide-escape') onEscape?.();
+    }
+    window.addEventListener('message', receiveEscape);
+    return () => window.removeEventListener('message', receiveEscape);
+  }, [expanded, onEscape]);
+  useEffect(() => {
     const controller = new AbortController();
     let objectUrl: string | undefined;
     async function load() {
@@ -35,7 +45,7 @@ export function TemplateMotionGuide({ url, title, expanded = false }: { url: str
         if (!controller.signal.aborted) {
           // A blob retains the parent's URL origin for authored postMessage calls.
           // The sandbox still gives its script an opaque security origin.
-          const html = prepareMotionGuide(source, response.url || url, appearance());
+          const html = prepareMotionGuide(source, response.url || url, appearance(), expanded);
           if (expanded) setDocument({ url, src: 'about:blank', html });
           else {
             objectUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));

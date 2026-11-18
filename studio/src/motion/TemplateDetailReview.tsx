@@ -83,6 +83,6 @@ export function TemplateGuideReview({ template, open, onClose, onFullPage }: { t
     </header>
     <p>{t('Try the controls in the walkthrough. Changes affect this demo only, not the reference video or your project.')}
       <small>{t('Walkthrough content keeps its original language.')}</small></p>
-    {open && template.motionGuideUrl && <TemplateMotionGuide expanded key={template.id} url={template.motionGuideUrl} title={t('Interactive walkthrough')} />}
+    {open && template.motionGuideUrl && <TemplateMotionGuide expanded key={template.id} url={template.motionGuideUrl} title={t('Interactive walkthrough')} onEscape={onClose} />}
   </section>;
 }

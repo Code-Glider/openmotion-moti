@@ -17,13 +17,17 @@ const store = new WorkspaceStore(data), context = { nativeRoot: pluginRoot };
 const posterUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="gray"/></svg>');
 const items = Array.from({ length: 7 }, (_, index) => ({ id: `fixture-${index}`, title: `Preview ${index}`, author: 'Fixture author',
   kind: 'prism', hasHtmlProject: false, styles: ['UI'], uses: ['Product launch'], tags: ['clean'], sortOrder: index,
-  description: 'Synthetic template for related preview regression.', posterUrl, previewUrl: '/fixture-preview.mp4' }));
+  description: 'Synthetic template for related preview regression.', posterUrl, previewUrl: '/fixture-preview.mp4',
+  ...(index < 2 ? { brand: 'Figma' } : {}), ...(index === 0 ? { motionGuideUrl: '/fixture-motion-guide.html' } : {}) }));
 let requests = 0, browser;
 const results = [];
 const server = createServer((req, res) => {
   if (req.url.startsWith('/motion-api/template-catalog')) {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ items, total: items.length, next: null, catalogVersion: 'fixture' }));
+  } else if (req.url === '/fixture-motion-guide.html') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<!doctype html><title>Motion guide</title><button id="style-board" onclick="this.setAttribute(\'aria-pressed\', \'true\')">Style board</button>');
   } else if (req.url === '/fixture-preview.mp4') {
     requests++; res.writeHead(503); res.end();
   } else void handler(req, res, store, context);
@@ -113,7 +117,46 @@ try {
       await page.waitForFunction(selector => document.querySelector(`${selector} h2`)?.textContent === 'Preview 1', {}, detail);
     }
   }
+  await page.setViewport({ width: 1440, height: 900 });
+  await page.goto(`${origin}/?page=settings&templates=1&template=fixture-0`, { waitUntil: 'domcontentloaded' });
+  const guideButton = `${detail} button[aria-label="View motion.md guide"]`;
+  await page.waitForSelector(guideButton);
+  await page.click(guideButton);
+  const guide = `${detail} iframe[title="Interactive walkthrough"][srcdoc]`;
+  const guideFrame = await (await page.waitForSelector(guide)).contentFrame();
+  await guideFrame.waitForSelector('#style-board');
+  await guideFrame.click('#style-board');
+  assert.equal(await guideFrame.$eval('#style-board', button => button.getAttribute('aria-pressed')), 'true');
+  assert(await page.$eval(guide, frame => document.activeElement === frame), 'The guide iframe must own keyboard focus');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector(guide, { hidden: true, timeout: 5000 });
+  assert.equal(await page.$eval(`${detail}:modal h2`, title => title.textContent), 'Preview 0', 'Escape returns to the same detail');
+  assert(await page.$eval(`${detail}:modal h2`, title => document.activeElement === title), 'Escape restores focus to the detail');
+  results.push({ mode: 'guide-escape', returnedTo: 'Preview 0' });
+
+  for (const [width, height] of [[640, 360], [568, 320], [390, 844]]) {
+    await page.setViewport({ width, height });
+    await page.goto(`${origin}/?page=settings&templates=1&brandStoriesPreview=1`, { waitUntil: 'domcontentloaded' });
+    const brands = 'button[aria-label="TOP 100 brands"]';
+    await page.waitForSelector(brands);
+    await page.click(brands);
+    const figma = 'button[aria-label="View Figma brand series"]';
+    await page.waitForSelector(figma);
+    await page.click(figma);
+    const stage = 'dialog[aria-label="Figma brand story"][open] [aria-label="Selected release"] [style*="--story-media-ratio"]';
+    const frame = await page.waitForSelector(stage);
+    await frame.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    const geometry = await frame.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height, inViewport: rect.bottom > 0 && rect.top < innerHeight };
+    });
+    assert(geometry.width >= 224 && geometry.height >= 126 && geometry.inViewport, `Brand preview remains visible at ${width}×${height}: ${JSON.stringify(geometry)}`);
+    assert(Math.abs(geometry.width / geometry.height - 16 / 9) < .02, 'The brand preview keeps the video aspect ratio');
+    results.push({ mode: 'brand-preview', viewport: [width, height], ...geometry });
+    await page.screenshot({ path: path.join(output, `brand-${width}x${height}.png`) });
+  }
   console.log('PASS default masonry cards, player budget and same-dialog selection; legacy popup bounds, Retry and Escape in both themes at 640x360, 390x844 and 1440x900');
+  console.log('PASS Escape from the focused guide iframe; visible brand preview in short landscape and mobile portrait');
 } finally {
   await writeFile(path.join(output, 'result.json'), JSON.stringify(results, null, 2));
   await browser?.close(); server.closeAllConnections(); server.close();
