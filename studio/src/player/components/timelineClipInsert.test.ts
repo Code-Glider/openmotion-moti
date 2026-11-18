@@ -47,6 +47,40 @@ it.each([0, 0.18, 1])("makes just enough room in a gap of %ss and leaves later f
   expect(right.start).toBe(4 + gap);
 });
 
+it.each([
+  { name: "occupied splice", pointer: 3.05, expectedStart: 3.05, targets: [] },
+  { name: "snap past the occupied interval", pointer: 3.98, expectedStart: 5, targets: [{ time: 5, type: "clip-edge" as const }] },
+  { name: "free time on the aimed row", pointer: 10, expectedStart: 10, targets: [] },
+])("keeps overlapping selected clips on separate tracks at $name", ({ pointer, expectedStart, targets }) => {
+  const moving = clip("moving", 0, 6, 3), peer = clip("peer", 1, 6, 2);
+  const elements = [moving, peer, clip("left", 1, 0, 3), clip("right", 1, 3, 2)];
+  const selectedKeys = new Set([moving.id, peer.id]);
+  const y = RULER_H + TRACKS_TOP_PAD + TRACK_H / 2;
+  const drag = { pointerId: 0, element: moving, originClientX: 120, originClientY: y,
+    originScrollLeft: 0, originScrollTop: 0, pointerClientX: 120, pointerClientY: y,
+    pointerOffsetX: 0, pointerOffsetY: 20, previewStart: 6, previewTrack: 0, insertRow: null,
+    snapTime: null, snapType: null, started: true } satisfies DraggedClipState;
+  const preview = computeDragPreview(drag, pointer * 20, y + TRACK_H, {
+    scroll: null, pps: 20, duration: 20, trackOrder: [0, 1], elements, selectedKeys,
+    buildSnapTargets: () => targets,
+  });
+  expect(preview).toMatchObject({ previewTrack: 0, previewStart: expectedStart, insertRow: null });
+  expect(preview.insertion).toBeUndefined();
+  const onMoveElements = vi.fn();
+  commitDraggedClipMove(preview, { elements, trackOrder: [0, 1], selectedKeys, updateElement: vi.fn(), onMoveElements });
+  expect(onMoveElements).toHaveBeenCalledExactlyOnceWith([
+    { element: moving, updates: { track: 0, start: expectedStart } },
+    { element: peer, updates: { track: 1, start: expectedStart } },
+  ], undefined, "timing");
+});
+
+it("inserts across tracks when the selected clips fit end to end on the target", () => {
+  const moving = clip("moving", 0, 6, 3), peer = clip("peer", 1, 9, 2);
+  const elements = [moving, peer, clip("left", 1, 0, 3), clip("right", 1, 3, 2)];
+  const plan = previewClipInsert(elements, moving, new Set([moving.id, peer.id]), 1, 3.05, 3.05);
+  expect(plan?.insertion).toEqual(new Map([["moving", 3], ["peer", 6], ["right", 8]]));
+});
+
 it("carries linked overlays of pushed clips and previews each clip's own delta", () => {
   usePlayerStore.setState({ timelineLinkageEnabled: true });
   const moving = clip("moving", 0, 20, 3), left = clip("left", 1, 0, 4), right = clip("right", 1, 4, 3), title = clip("title", 0, 5, 1);

@@ -29,6 +29,7 @@ import { authoredTrackForLane } from "./timelineAuthoredTrack";
 import { resolveGroupMovers } from "./timelineMultiDragPreview";
 import { beginStudioPendingEdit } from "../../utils/studioPendingEdits";
 import { batchElementUpdates } from "../store/batchElementUpdates";
+import { roundTo3 } from "../../utils/rounding";
 
 type StartTrack = TimelineAtomicMoveUpdates;
 export interface TimelineMoveEdit extends TimelineAtomicMoveEdit {
@@ -86,7 +87,6 @@ export interface DragCommitDeps {
 }
 
 const keyOf = (e: TimelineElement) => e.key ?? e.id;
-const round3 = (v: number) => Math.round(v * 1000) / 1000;
 // One deterministic coalesce key shared by both records in a lane-change gesture.
 let laneChangeGestureSeq = 0;
 
@@ -256,7 +256,7 @@ function resolveMultiSelection(
   const keys = new Set(movers.map(keyOf));
   const delta = drag.previewStart - drag.element.start;
   const movedStart = (e: TimelineElement): number =>
-    keyOf(e) === dragKey ? drag.previewStart : Math.max(0, round3(e.start + delta));
+    keyOf(e) === dragKey ? drag.previewStart : Math.max(0, roundTo3(e.start + delta));
   return { keys, movedStart };
 }
 

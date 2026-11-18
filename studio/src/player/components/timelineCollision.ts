@@ -153,6 +153,7 @@ export function resolveZoneDropPlacement(input: {
   allowedInsertRows?: ReadonlySet<number>;
   groupTracks?: ReadonlyMap<number, readonly number[]>;
   start: number;
+  blockedTracks?: ReadonlySet<number>;
   duration: number;
   dragKey: string;
   isAudio: boolean;
@@ -197,7 +198,7 @@ export function resolveZoneDropPlacement(input: {
   const safeStart = Math.max(minStart ?? 0, start);
   if (input.origin?.track === desired && Math.abs(safeStart - input.origin.start) < 0.005)
     return { track: desired, insertRow: null, start: input.origin.start };
-  const placement = resolveTimelinePlacement(openReelPlacementInput(elements, zoneTracks), {
+  const placement = resolveTimelinePlacement(openReelPlacementInput(elements, zoneTracks, input.blockedTracks), {
     targetTrackId: String(desired),
     startTime: safeStart,
     duration,

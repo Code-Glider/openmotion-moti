@@ -31,6 +31,7 @@ const tracksByElements = new WeakMap<readonly TimelineElement[], Map<number, Tra
 export function openReelPlacementInput(
   elements: readonly TimelineElement[],
   trackOrder: readonly number[],
+  blockedTracks?: ReadonlySet<number>,
 ): Project {
   let byTrack = tracksByElements.get(elements);
   if (!byTrack) {
@@ -47,6 +48,9 @@ export function openReelPlacementInput(
     byTrack = lanes;
     tracksByElements.set(elements, byTrack);
   }
-  const tracks = trackOrder.map(track => byTrack.get(track) ?? { id: String(track), locked: false, items: [] });
+  const tracks = trackOrder.map(track => {
+    const lane = byTrack.get(track) ?? { id: String(track), locked: false, items: [] };
+    return blockedTracks?.has(track) && !lane.locked ? { ...lane, locked: true } : lane;
+  });
   return { timeline: { tracks }, itemsByTrack: new Map(tracks.map(track => [track.id, track.items])) };
 }

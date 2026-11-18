@@ -37,6 +37,8 @@ import { findBlockedTrackInsert, layoutAfterTrackInsert } from "./timelineDragLa
 import type { TimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
 import { isPendingTimelineRow } from "./timelinePendingRows";
 import { previewClipInsert } from "./timelineClipInsert";
+import { timelineSpansOverlap } from "./timelineTimeBounds";
+import { roundTo3 } from "../../utils/rounding";
 
 /** Snap-target builder closure supplied by the hook (closes over refs + store). */
 type BuildSnapTargets = (
@@ -176,6 +178,18 @@ function resolveDropPlacement(
   const dragKey = drag.element.key ?? drag.element.id;
   const audioTracks =
     ctx.audioTracks ?? new Set(elements.filter(isAudioTimelineElement).map((e) => e.track));
+  const blockedTracks = new Set<number>();
+  if (group.movers.length > 1) {
+    const start = Math.max(0, previewStart, group.floor);
+    const delta = start - drag.element.start;
+    const grabbed = savedClipEdges(drag.element, start);
+    // Other selected clips retain their rows and travel with the grabbed clip.
+    for (const mover of group.movers) {
+      if (mover.track === drag.element.track) continue;
+      const peer = savedClipEdges(mover, Math.max(0, roundTo3(mover.start + delta)));
+      if (timelineSpansOverlap(grabbed.start, grabbed.end, peer.start, peer.end)) blockedTracks.add(mover.track);
+    }
+  }
   return resolveZoneDropPlacement({
     order: trackOrder,
     audioTracks,
@@ -184,6 +198,7 @@ function resolveDropPlacement(
     deliberateInsertRow: aim.insertRow,
     allowedInsertRows: ctx.allowedInsertRows,
     groupTracks: ctx.groupTracks,
+    blockedTracks,
     start: previewStart,
     duration: drag.element.duration,
     dragKey,
@@ -199,6 +214,7 @@ interface GroupDrag {
   /** Lowest start the grabbed clip may take (see groupMoveFloor). */
   floor: number;
   moving: ReadonlySet<string>;
+  movers: readonly TimelineElement[];
 }
 
 const groupCache = new WeakMap<readonly TimelineElement[], WeakMap<ReadonlySet<string>, Map<TimelineElement, GroupDrag & { shift: ReturnType<typeof heldAudioShiftRange>; hasReadOnlyRows: boolean }>>>();
@@ -212,10 +228,9 @@ function preparedGroup(drag: DraggedClipState, ctx: DragPreviewContext) {
   const cached = groups.get(drag.element);
   if (cached) return cached;
   const group = resolveGroupDrag(drag, ctx);
-  const movers = ctx.elements.filter(element => group.moving.has(element.key ?? element.id));
   const prepared = {
     ...group,
-    shift: heldAudioShiftRange(movers, ctx.elements, group.moving),
+    shift: heldAudioShiftRange(group.movers, ctx.elements, group.moving),
     hasReadOnlyRows: ctx.elements.some(element => element !== drag.element && !canMoveTimelineElement(element)),
   };
   groups.set(drag.element, prepared);
@@ -230,13 +245,14 @@ function resolveGroupDrag(drag: DraggedClipState, ctx: DragPreviewContext): Grou
   );
   if (!movers) {
     const moving = new Set([drag.element.key ?? drag.element.id]);
-    return { obstacles: ctx.elements, floor: groupMoveFloor(drag.element, []), moving };
+    return { obstacles: ctx.elements, floor: groupMoveFloor(drag.element, []), moving, movers: [drag.element] };
   }
   const moving = new Set(movers.map((e) => e.key ?? e.id));
   return {
     obstacles: ctx.elements.filter((e) => !moving.has(e.key ?? e.id)),
     floor: groupMoveFloor(drag.element, movers),
     moving,
+    movers,
   };
 }
 

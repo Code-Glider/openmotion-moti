@@ -4,7 +4,7 @@ import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
 import { resolveGroupMovers, groupMoveFloor } from "./timelineMultiDragPreview";
 import { heldAudioShiftRange, linkedMembersOf } from "./audioClipLink";
 import { isLinkedSelectionOn } from "../../utils/linkedClipPreferences";
-import { timelineSpansOverlap } from "./timelineTimeBounds";
+import { timelineSpansOverlap, timelineTimesTouch } from "./timelineTimeBounds";
 import { classifyZone } from "./timelineZones";
 import { toAuthoredStart, savedClipEdges } from "../store/timelineElement";
 import { collisionLane } from "./timelineCollisionIndex";
@@ -32,9 +32,9 @@ export function previewClipInsert(
     (index > 0 && timelineSpansOverlap(lane[index - 1].start, lane[index - 1].start + lane[index - 1].duration, el.start, el.start + el.duration))
   )) return null;
   const movers = elements.filter(el => moving.has(keyOf(el)));
-  const block = movers.filter(el => el === grabbed || el.track === track);
-  const blockStart = Math.min(grabbed.start, ...block.map(el => el.start));
-  const blockEnd = Math.max(grabbed.start + grabbed.duration, ...block.map(el => el.start + el.duration));
+  const block = [grabbed, ...movers.filter(el => keyOf(el) !== keyOf(grabbed) && el.track === track)];
+  const blockStart = Math.min(...block.map(el => el.start));
+  const blockEnd = Math.max(...block.map(el => el.start + el.duration));
   const leftEnd = lane[rightIndex - 1].start + lane[rightIndex - 1].duration;
   if (lane[rightIndex].start - leftEnd >= blockEnd - blockStart - 0.001) return null;
   const boundary = after(grabbed, leftEnd);
@@ -43,7 +43,12 @@ export function previewClipInsert(
   const start = savedStart(grabbed, grabbed.start + delta);
   if (start < groupMoveFloor(grabbed, movers) || delta < shift.min || delta > shift.max) return null;
   const insertion = new Map(movers.map(el => [keyOf(el), savedStart(el, el.start + delta)]));
-  let end = Math.max(start + grabbed.duration, ...block.map(el => savedStart(el, el.start + delta) + el.duration));
+  const windows = block.map(el => savedClipEdges(el, el.start + delta)).sort((a, b) => a.start - b.start);
+  let end = leftEnd;
+  for (const window of windows) {
+    if (window.start < end && !timelineTimesTouch(window.start, end)) return null;
+    end = Math.max(end, window.end);
+  }
   const pushes: { peer: TimelineElement; delta: number }[] = [];
   for (let index = rightIndex; index < lane.length; index++) {
     const peer = lane[index];
