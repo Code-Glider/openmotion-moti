@@ -17,22 +17,26 @@ import { brandWorkLesson, figmaLearningPaths, readBrandStoryNotes, storyChapterH
 import { seriesId, reportSeriesShown, reportSeriesWork, reportSeriesClick, type SeriesView } from './brandStoryTracking';
 import styles from './BrandStories.module.css';
 
-const shortPurpose = (value: string) => ({ 'Product launch films': '产品发布', 'Product demos & explainers': '功能演示', 'Brand & company films': '商业介绍', 'Fundraising announcements': '融资官宣', 'Event & campaign films': '活动推广', 'Milestones & results': '业绩里程碑', 'Partnership announcements': '合作官宣' }[value] ?? value);
+const compactPurpose: Record<string, string> = {
+  'Product launch films': 'Product launches', 'Product demos & explainers': 'Product demos',
+  'Brand & company films': 'Company introductions', 'Fundraising announcements': 'Fundraising',
+  'Event & campaign films': 'Events and campaigns', 'Milestones & results': 'Milestones',
+};
 
 export function BrandSeriesCard({ series, discovery = false, onOpen }: { series: BrandSeries; discovery?: boolean; onOpen: (series: BrandSeries, element: HTMLButtonElement) => void }) {
   const { t } = useI18n();
   const note = seriesNotes[series.name];
   return <article className={styles.seriesCard} data-brand-series={series.name} data-series-id={seriesId(series.name)}>
-    <button className={styles.seriesButton} onClick={event => onOpen(series, event.currentTarget)} aria-label={'查看 ' + series.name + ' 品牌系列'}>
+    <button className={styles.seriesButton} onClick={event => onOpen(series, event.currentTarget)} aria-label={t('View {brand} brand series', { brand: series.name })}>
       <div className={styles.seriesArt}>
-        <div className={styles.seriesEyebrow}><span>{discovery ? '品牌系列精选' : 'TOP 100 · 品牌合集'}</span><MotionIcon name="arrow-up-right" size={17} /></div>
+        <div className={styles.seriesEyebrow}><span>{t(discovery ? 'Featured brand series' : 'TOP 100 · Brand collection')}</span><MotionIcon name="arrow-up-right" size={17} /></div>
         <div className={styles.coverStack} aria-hidden="true">{series.items.slice(0, 3).reverse().map((item, index, covers) => <div className={styles.stackItem} key={item.id} data-layer={3 - covers.length + index}><TemplatePoster template={item} /></div>)}</div>
         <span className="om-gallery-card-shade" style={{ opacity: 1 }} aria-hidden="true" />
-        <div className={styles.artCaption}><TemplateIdentity template={series.items[0]} brand /><strong>{series.name}</strong><span>{series.items.length} 支作品</span></div>
+        <div className={styles.artCaption}><TemplateIdentity template={series.items[0]} brand /><strong>{series.name}</strong><span>{t('{count} works', { count: series.items.length })}</span></div>
       </div>
       <div className={styles.seriesCopy}>
-        {discovery ? <><h2>{note?.title ?? series.name + '，值得借鉴的表达'}</h2><p>{series.videoInsight ?? note?.focus}</p></> : <div className={styles.seriesPurposes}>{series.purposes.slice(0, 2).map(value => <span key={value}>{shortPurpose(value) === value ? t(value) : shortPurpose(value)}</span>)}</div>}
-        <span className={styles.seriesLink}>{discovery ? '看看怎么讲' : '浏览发布历程'}<MotionIcon name="arrow-right" size={15} /></span>
+        {discovery ? <><h2>{note?.title ?? t('Ideas to borrow from {brand}', { brand: series.name })}</h2><p>{series.videoInsight ?? note?.focus}</p></> : <div className={styles.seriesPurposes}>{series.purposes.slice(0, 2).map(value => <span key={value}>{t(compactPurpose[value] ?? value)}</span>)}</div>}
+        <span className={styles.seriesLink}>{t(discovery ? 'See how they tell it' : 'Browse release history')}<MotionIcon name="arrow-right" size={15} /></span>
       </div>
     </button>
   </article>;
@@ -50,12 +54,12 @@ function BrandWorkActions({ template, onCopy, onDownload, onDetails, trackingVie
     try { setManualCopy(await onCopy(template, submit) ?? ''); }
     finally { setCopying(false); }
   };
-  return <div className={styles.actionDock} aria-label="作品创作操作">
-    <div className={styles.storySpecs} aria-label="作品参数">
+  return <div className={styles.actionDock} aria-label={t('Work actions')}>
+    <div className={styles.storySpecs} aria-label={t('Work specs')}>
       <span className="om-badge">{t(isEditableTemplate(template) ? 'Editable project' : 'Reference creation')}</span>
       {template.duration != null && <span>{t('{value}s', { value: Number(template.duration.toFixed(1)) })}</span>}
       {(template.width || template.ratio) && <span>{templateRatio(template)}</span>}
-      <button className={`om-button ${styles.detailsAction}`} onClick={onDetails}>查看完整详情<MotionIcon name="arrow-up-right" size={14} /></button>
+      <button className={`om-button ${styles.detailsAction}`} onClick={onDetails}>{t('View full details')}<MotionIcon name="arrow-up-right" size={14} /></button>
     </div>
     <div className={styles.storyActions}>
       <div className={styles.recreateRow}>
@@ -102,7 +106,12 @@ export function BrandStoriesDialog({ series, covered, onClose, onTemplate, onCom
   const markReady = () => setMediaState({ key: mediaKey, ready: true, failed: false });
   const markFailed = () => setMediaState({ key: mediaKey, ready: false, failed: true });
   const selectedIndex = visible.findIndex(item => item.id === selected?.id);
+  const workPosition = (id: string | undefined) => chronology.findIndex(item => item.id === id) + 1;
+  const selectedPosition = workPosition(selected?.id);
   const lesson = selected ? brandWorkLesson(selected) : undefined;
+  const learningPaths = series.name === 'Figma' ? figmaLearningPaths.map(path => ({
+    ...path, examples: path.ids.flatMap(id => chronology.find(item => item.id === id) ?? []),
+  })).filter(path => path.examples.length) : [];
   const capturing = motionTime !== undefined;
   const selectedNotes = capturing ? motionNotes?.[selected?.id] : notes?.id === selected?.id ? notes.value : undefined;
   const chapters = storyChapterHighlights(selectedNotes?.chapters ?? []);
@@ -117,13 +126,13 @@ export function BrandStoriesDialog({ series, covered, onClose, onTemplate, onCom
         shownView.current = trackingView.series_view_id; shownWork.current = undefined; reportSeriesShown(trackingView);
       }
       if (shownWork.current !== selected.id) {
-        shownWork.current = selected.id; reportSeriesWork(trackingView, selected, selectedIndex + 1);
+        shownWork.current = selected.id; reportSeriesWork(trackingView, selected, selectedPosition);
       }
     };
     report();
     document.addEventListener('visibilitychange', report);
     return () => document.removeEventListener('visibilitychange', report);
-  }, [trackingView, capturing, covered, selected?.id, selectedIndex]);
+  }, [trackingView, capturing, covered, selected?.id, selectedPosition]);
   const close = () => { reportSeriesClick(trackingView, 'close_detail', selected); onClose(); };
 
   useEffect(() => {
@@ -184,24 +193,24 @@ export function BrandStoriesDialog({ series, covered, onClose, onTemplate, onCom
     reportSeriesClick(trackingView, 'select_chapter', selected, { chapter_index: chapters.indexOf(chapter) + 1 });
     recordBrandReview('brand_chapter', { brand: series.name, templateId: selected.id, start: chapter.start });
   };
-  const choose = (item: GalleryTemplate) => { if (item.id === selected?.id) return; stop(); setSelectedId(item.id); reportSeriesClick(trackingView, 'select_work', item, { series_work_position: visible.findIndex(work => work.id === item.id) + 1 }); recordBrandReview('brand_node', { brand: series.name, templateId: item.id }); };
+  const choose = (item: GalleryTemplate) => { if (item.id === selected?.id) return; stop(); setSelectedId(item.id); reportSeriesClick(trackingView, 'select_work', item, { series_work_position: workPosition(item.id) }); recordBrandReview('brand_node', { brand: series.name, templateId: item.id }); };
   const openTemplate = (item: GalleryTemplate, guide = false) => { stop(); reportSeriesClick(trackingView, 'open_detail', item); recordBrandReview('brand_template', { brand: series.name, templateId: item.id, view: 'timeline' }); onTemplate(item, guide); };
   const purposeChange = (next: string) => { stop(); setPurpose(next); reportSeriesClick(trackingView, 'filter_option', undefined, { purpose: next || 'all', selected: Boolean(next) }); recordBrandReview('brand_purpose', { brand: series.name, purpose: next }); };
-  return <dialog ref={dialog} className={styles.storyDialog} aria-label={series.name + ' 品牌故事'} onCancel={event => { event.preventDefault(); event.stopPropagation(); close(); }} onKeyDown={event => event.stopPropagation()}>
-    <header className={styles.storyHeader}><button className="om-button" onClick={close}><MotionIcon name="arrow-left" size={17} />返回模板库</button><span className={styles.storyHeaderLabel}>品牌发布历程</span><button className="om-button om-icon-button" onClick={close} aria-label="关闭品牌故事" autoFocus><MotionIcon name="close" size={19} /></button></header>
+  return <dialog ref={dialog} className={styles.storyDialog} aria-label={t('{brand} brand story', { brand: series.name })} onCancel={event => { event.preventDefault(); event.stopPropagation(); close(); }} onKeyDown={event => event.stopPropagation()}>
+    <header className={styles.storyHeader}><button className="om-button" onClick={close}><MotionIcon name="arrow-left" size={17} />{t('Back to template library')}</button><span className={styles.storyHeaderLabel}>{t('Brand release history')}</span><button className="om-button om-icon-button" onClick={close} aria-label={t('Close brand story')} autoFocus><MotionIcon name="close" size={19} /></button></header>
     <div className={styles.storyIntro}>
-      <div className={styles.brandHeading}><TemplateIdentity template={series.items[0]} brand /><h1>{series.name}</h1><span className={styles.brandMeta}>{series.items.length} 支作品{years && <> · {years}</>}</span>{series.videoInsight && <p className={styles.brandDescription}>{series.videoInsight}</p>}</div>
+      <div className={styles.brandHeading}><TemplateIdentity template={series.items[0]} brand /><h1>{series.name}</h1><span className={styles.brandMeta}>{t('{count} works', { count: series.items.length })}{years && <> · {years}</>}</span>{series.videoInsight && <p className={styles.brandDescription}>{series.videoInsight}</p>}</div>
     </div>
-    <div className={styles.purposeBar} role="group" aria-label="品牌作品用途"><button className="om-button om-filter-pill" aria-pressed={!purpose} onClick={() => purposeChange('')}>全部用途</button>{series.purposes.map(value => <button key={value} className="om-button om-filter-pill" aria-pressed={purpose === value} onClick={() => purposeChange(purpose === value ? '' : value)}>{t(value)}</button>)}</div>
-    <div id="brand-timeline-panel" role="region" aria-label="发布历程" className={styles.timelinePanel}>
+    <div className={styles.purposeBar} role="group" aria-label={t('Brand work purposes')}><button className="om-button om-filter-pill" aria-pressed={!purpose} onClick={() => purposeChange('')}>{t('All purposes')}</button>{series.purposes.map(value => <button key={value} className="om-button om-filter-pill" aria-pressed={purpose === value} onClick={() => purposeChange(purpose === value ? '' : value)}>{t(value)}</button>)}</div>
+    <div id="brand-timeline-panel" role="region" aria-label={t('Release history')} className={styles.timelinePanel}>
       <BrandFilmstrip brand={series.name} items={visible} selectedId={selected?.id} progress={progress} playing={playing} reduced={reduced} covered={covered} onSelect={choose} onBrowse={(method, direction) => reportSeriesClick(trackingView, 'browse_timeline', selected, { browse_method: method, ...(direction ? { direction } : {}) })} />
-      {selected && <section className={styles.selectedStory} aria-label="当前发布作品"><div className={styles.videoColumn}><div className={styles.videoStage} style={{ '--story-media-ratio': mediaRatio } as CSSProperties} aria-busy={Boolean(selected.previewUrl && !mediaReady && !mediaFailed)}><TemplatePoster template={selected} eager />{selected.previewUrl && !mediaFailed && <video key={mediaKey} ref={video} controls autoPlay={!reduced && !covered} muted playsInline preload={covered ? "none" : reduced ? "metadata" : "auto"} src={covered ? undefined : selected.previewUrl} poster={selected.posterUrl} style={{ opacity: mediaReady ? 1 : 0 }} onLoadedMetadata={event => { const node = event.currentTarget; if (node.videoWidth > 0 && node.videoHeight > 0) setMediaAspect({ id: selected.id, ratio: node.videoWidth / node.videoHeight }); }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onLoadedData={markReady} onCanPlay={markReady} onPlaying={() => { markReady(); setPlaying(true); }} onTimeUpdate={event => { const node = event.currentTarget; setProgress(Number.isFinite(node.duration) && node.duration ? node.currentTime / node.duration : 0); }} onError={() => { markFailed(); }} />}{selected.previewUrl && !mediaReady && !mediaFailed && <div className={styles.mediaStatus} role="status">正在加载原片<Skeleton style={{ width: 100, height: 4 }} /></div>}{mediaFailed && <div className={styles.mediaStatus} role="status">原片暂时无法播放<button className="om-button" onClick={() => { setMediaAttempt(value => value + 1); }}>重试播放</button></div>}</div></div>
-        <div key={selected.id} className={styles.selectedCopy}><div className={styles.workHeader}><div className={styles.selectedMeta}><span>{t(discoveryPurposes(selected)[0] ?? 'Reference')}</span><span>{String(selectedIndex + 1).padStart(2, '0')} / {String(visible.length).padStart(2, '0')}</span></div><h2>{selected.title}</h2></div><div className={styles.inspectorBody}><section className={styles.workObservation} aria-label="这支作品的表达看点"><h3>表达看点</h3>{lesson ? <strong>{lesson.takeaway}</strong> : (selectedNotes?.summary || selected.description) && <p>{selectedNotes?.summary || selected.description}</p>}</section>
-        {chapters.length > 0 && (selected.previewUrl || capturing) && <section className={styles.chapterCues} aria-label="片段看点"><header><h3>片段看点</h3><span>点击跳看</span></header><div>{chapters.map((chapter, index) => <button className="om-button" key={chapter.start} disabled={!mediaReady || mediaFailed || covered} aria-label={'跳看片段 ' + chapter.label} aria-current={progress * (selected.duration ?? 0) >= chapter.start && progress * (selected.duration ?? 0) < chapter.end ? 'true' : undefined} onClick={() => seekChapter(chapter)}><span>{chapters.length === 1 ? '片段' : index === 0 ? '开场' : index === chapters.length - 1 ? '收尾' : '展开'}</span><strong>{chapter.label}</strong><time>{Math.floor(chapter.start / 60).toString().padStart(2,'0')}:{Math.floor(chapter.start % 60).toString().padStart(2,'0')}</time><MotionIcon name="play" size={14} /></button>)}</div></section>}
-        {(lesson?.adapt || selectedNotes?.adaptation) && <details className={styles.adaptAdvice} onToggle={event => { if (event.currentTarget.open) { reportSeriesClick(trackingView, 'expand_learning', selected, { section_id: 'adapt' }); recordBrandReview('brand_adapt_open', { brand: series.name, templateId: selected.id }); } }}><summary>用在你的产品里<MotionIcon name="chevron-down" size={14} /></summary>{lesson && <ol>{lesson.steps.map((step, index) => <li key={step}><span>{String(index + 1).padStart(2,'0')}</span>{step}</li>)}</ol>}<p>{lesson?.adapt || selectedNotes?.adaptation}</p></details>}
-        {series.name === 'Figma' && <details className={styles.brandLearning} onToggle={event => { if (event.currentTarget.open) { reportSeriesClick(trackingView, 'expand_learning', selected, { section_id: 'habits' }); recordBrandReview('brand_learning_open', { brand: series.name }); } }}><summary>再看 Figma 的 3 个表达习惯</summary><div>{figmaLearningPaths.map(path => <section key={path.label}><h3>{path.label}</h3><p>{path.description}</p><div>{path.ids.map(id => { const item = series.items.find(work => work.id === id); return item && <button className="om-button" key={id} onClick={() => { if (purpose && !discoveryPurposes(item).includes(purpose)) setPurpose(''); choose(item); recordBrandReview('brand_learning_example', { brand: series.name, templateId: id }); }}>{item.title}<MotionIcon name="arrow-right" size={14} /></button>; })}</div></section>)}</div></details>}
+      {selected && <section className={styles.selectedStory} aria-label={t('Selected release')}><div className={styles.videoColumn}><div className={styles.videoStage} style={{ '--story-media-ratio': mediaRatio } as CSSProperties} aria-busy={Boolean(selected.previewUrl && !mediaReady && !mediaFailed)}><TemplatePoster template={selected} eager />{selected.previewUrl && !mediaFailed && <video key={mediaKey} ref={video} controls autoPlay={!reduced && !covered} muted playsInline preload={covered ? "none" : reduced ? "metadata" : "auto"} src={covered ? undefined : selected.previewUrl} poster={selected.posterUrl} style={{ opacity: mediaReady ? 1 : 0 }} onLoadedMetadata={event => { const node = event.currentTarget; if (node.videoWidth > 0 && node.videoHeight > 0) setMediaAspect({ id: selected.id, ratio: node.videoWidth / node.videoHeight }); }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onLoadedData={markReady} onCanPlay={markReady} onPlaying={() => { markReady(); setPlaying(true); }} onTimeUpdate={event => { const node = event.currentTarget; setProgress(Number.isFinite(node.duration) && node.duration ? node.currentTime / node.duration : 0); }} onError={() => { markFailed(); }} />}{selected.previewUrl && !mediaReady && !mediaFailed && <div className={styles.mediaStatus} role="status">{t('Loading preview…')}<Skeleton style={{ width: 100, height: 4 }} /></div>}{mediaFailed && <div className={styles.mediaStatus} role="status">{t('Preview unavailable. Try again.')}<button className="om-button" onClick={() => { setMediaAttempt(value => value + 1); }}>{t('Retry')}</button></div>}</div></div>
+        <div key={selected.id} className={styles.selectedCopy}><div className={styles.workHeader}><div className={styles.selectedMeta}><span>{t(discoveryPurposes(selected)[0] ?? 'Reference')}</span><span>{String(selectedIndex + 1).padStart(2, '0')} / {String(visible.length).padStart(2, '0')}</span></div><h2>{selected.title}</h2></div><div className={styles.inspectorBody}><section className={styles.workObservation} aria-label={t('What to notice in this work')}><h3>{t('What to notice')}</h3>{lesson ? <strong>{lesson.takeaway}</strong> : (selectedNotes?.summary || selected.description) && <p>{selectedNotes?.summary || selected.description}</p>}</section>
+        {chapters.length > 0 && (selected.previewUrl || capturing) && <section className={styles.chapterCues} aria-label={t('Chapter highlights')}><header><h3>{t('Chapter highlights')}</h3><span>{t('Select to jump')}</span></header><div>{chapters.map((chapter, index) => <button className="om-button" key={chapter.start} disabled={!mediaReady || mediaFailed || covered} aria-label={t('Jump to {chapter}', { chapter: chapter.label })} aria-current={progress * (selected.duration ?? 0) >= chapter.start && progress * (selected.duration ?? 0) < chapter.end ? 'true' : undefined} onClick={() => seekChapter(chapter)}><span>{t(chapters.length === 1 ? 'Chapter' : index === 0 ? 'Opening' : index === chapters.length - 1 ? 'Closing' : 'Development')}</span><strong>{chapter.label}</strong><time>{Math.floor(chapter.start / 60).toString().padStart(2,'0')}:{Math.floor(chapter.start % 60).toString().padStart(2,'0')}</time><MotionIcon name="play" size={14} /></button>)}</div></section>}
+        {(lesson?.adapt || selectedNotes?.adaptation) && <details className={styles.adaptAdvice} onToggle={event => { if (event.currentTarget.open) { reportSeriesClick(trackingView, 'expand_learning', selected, { section_id: 'adapt' }); recordBrandReview('brand_adapt_open', { brand: series.name, templateId: selected.id }); } }}><summary>{t('Adapt it to your product')}<MotionIcon name="chevron-down" size={14} /></summary>{lesson && <ol>{lesson.steps.map((step, index) => <li key={step}><span>{String(index + 1).padStart(2,'0')}</span>{step}</li>)}</ol>}<p>{lesson?.adapt || selectedNotes?.adaptation}</p></details>}
+        {learningPaths.length > 0 && <details className={styles.brandLearning} onToggle={event => { if (event.currentTarget.open) { reportSeriesClick(trackingView, 'expand_learning', selected, { section_id: 'habits' }); recordBrandReview('brand_learning_open', { brand: series.name }); } }}><summary>{t('More storytelling patterns from Figma')}</summary><div>{learningPaths.map(path => <section key={path.label}><h3>{path.label}</h3><p>{path.description}</p><div>{path.examples.map(item => <button className="om-button" key={item.id} onClick={() => { if (purpose && !discoveryPurposes(item).includes(purpose)) setPurpose(''); choose(item); recordBrandReview('brand_learning_example', { brand: series.name, templateId: item.id }); }}>{item.title}<MotionIcon name="arrow-right" size={14} /></button>)}</div></section>)}</div></details>}
 
-        {discoveryPurposes(selected)[0] && <button className={styles.compareLink} onClick={() => { stop(); reportSeriesClick(trackingView, 'compare_brands', selected, { purpose: discoveryPurposes(selected)[0] }); recordBrandReview('brand_compare', { brand: series.name, templateId: selected.id }); onCompare(discoveryPurposes(selected)[0]); }}>比较其他品牌的「{t(discoveryPurposes(selected)[0])}」<MotionIcon name="arrow-right" size={15} /></button>}</div><BrandWorkActions key={selected.id} template={selected} trackingView={trackingView} onCopy={onCopy} onDownload={onDownload} onDetails={() => openTemplate(selected)} /></div>
+        {discoveryPurposes(selected)[0] && <button className={styles.compareLink} onClick={() => { stop(); reportSeriesClick(trackingView, 'compare_brands', selected, { purpose: discoveryPurposes(selected)[0] }); recordBrandReview('brand_compare', { brand: series.name, templateId: selected.id }); onCompare(discoveryPurposes(selected)[0]); }}>{t('Compare {purpose} from other brands', { purpose: t(discoveryPurposes(selected)[0]) })}<MotionIcon name="arrow-right" size={15} /></button>}</div><BrandWorkActions key={selected.id} template={selected} trackingView={trackingView} onCopy={onCopy} onDownload={onDownload} onDetails={() => openTemplate(selected)} /></div>
       </section>}
     </div>
   </dialog>;

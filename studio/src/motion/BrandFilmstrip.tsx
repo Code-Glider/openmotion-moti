@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip';
 import type { GalleryTemplate } from '../../../shared/catalog';
+import { useI18n } from '../i18n/I18n';
 import { MotionIcon } from './icons';
 import { TemplatePoster } from './TemplateGalleryCard';
 import { popupSurface, POPUP_LAYER } from '../components/ui/floatingSurface';
@@ -13,6 +14,7 @@ export function BrandFilmstrip({ brand, items, selectedId, progress, playing, re
   brand: string; items: GalleryTemplate[]; selectedId?: string; progress: number;
   playing: boolean; reduced: boolean; covered: boolean; onSelect: (item: GalleryTemplate) => void;
 }) {
+  const { t } = useI18n();
   const rail = useRef<HTMLOListElement>(null);
   const drag = useRef<{ pointer: number; x: number; scroll: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
@@ -65,10 +67,10 @@ export function BrandFilmstrip({ brand, items, selectedId, progress, playing, re
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
-  return <section className={styles.filmstrip} aria-label="品牌作品胶片时间轴">
+  return <section className={styles.filmstrip} aria-label={t('Brand filmstrip')}>
     <header className={styles.reelHeading}>
-      <div><MotionIcon name="film" size={18} /><h2>作品时间轴</h2><span>{items.length} 支作品</span></div>
-      <div className={styles.reelControls}><span>拖动浏览 · 点击观看</span><button className="om-button om-icon-button" aria-label="向前浏览胶片" disabled={edges.start} onClick={() => page(-1)}><MotionIcon name="arrow-left" size={16} /></button><button className="om-button om-icon-button" aria-label="向后浏览胶片" disabled={edges.end} onClick={() => page(1)}><MotionIcon name="arrow-right" size={16} /></button></div>
+      <div><MotionIcon name="film" size={18} /><h2>{t('Work timeline')}</h2><span>{t('{count} works', { count: items.length })}</span></div>
+      <div className={styles.reelControls}><span>{t('Drag to browse · Select to watch')}</span><button className="om-button om-icon-button" aria-label={t('Browse earlier works')} disabled={edges.start} onClick={() => page(-1)}><MotionIcon name="arrow-left" size={16} /></button><button className="om-button om-icon-button" aria-label={t('Browse later works')} disabled={edges.end} onClick={() => page(1)}><MotionIcon name="arrow-right" size={16} /></button></div>
     </header>
     <ol ref={rail} className={styles.reelRail} data-dragging={dragging || undefined} onScroll={measure}
       onDragStart={event => event.preventDefault()}
@@ -104,20 +106,20 @@ export function BrandFilmstrip({ brand, items, selectedId, progress, playing, re
             setPeekId(previous => open ? item.id : previous === item.id ? null : previous);
             if (open) recordBrandReview('brand_reel_peek', { brand, templateId: item.id });
           }}>
-          <BaseTooltip.Trigger delay={180} render={<button className={`om-button ${styles.reelFrame}`} aria-label={'选择作品 ' + item.title} aria-current={selected ? 'true' : undefined} aria-pressed={selected} onClick={event => { setPeekId(null); onSelect(item); reveal(event.currentTarget); }} />}>
+          <BaseTooltip.Trigger delay={180} render={<button className={`om-button ${styles.reelFrame}`} aria-label={t('Select work {title}', { title: item.title })} aria-current={selected ? 'true' : undefined} aria-pressed={selected} onClick={event => { setPeekId(null); onSelect(item); reveal(event.currentTarget); }} />}>
             <span className={styles.reelDate}><span>{String(index + 1).padStart(2,'0')}</span>{date && <time dateTime={date.value}>{formatBrandWorkDate(date)}</time>}</span>
             <span className={styles.reelImage}><TemplatePoster template={item} />
-              {selected ? <span className={styles.reelNow} data-playing={playing || undefined}><i /><i /><i /><span>当前观看</span></span> : <span className={styles.reelPlay}><MotionIcon name="play" size={16} /></span>}
-              {item.duration != null && <span className={styles.reelDuration}>{Math.round(item.duration)}s</span>}
+              {selected ? <span className={styles.reelNow} data-playing={playing || undefined}><i /><i /><i /><span>{t('Now viewing')}</span></span> : <span className={styles.reelPlay}><MotionIcon name="play" size={16} /></span>}
+              {item.duration != null && <span className={styles.reelDuration}>{t('{value}s', { value: Math.round(item.duration) })}</span>}
               {selected && <span className={styles.nodeProgress} style={{ width: `${progress * 100}%` }} />}
             </span>
             <strong>{item.title}</strong>
           </BaseTooltip.Trigger>
           <BaseTooltip.Portal container={rail.current?.closest('dialog') ?? undefined}>
             <BaseTooltip.Positioner side="top" sideOffset={12} collisionPadding={16} className={POPUP_LAYER}>
-              <BaseTooltip.Popup role="tooltip" aria-label={'放大预览 ' + item.title} className={`${popupSurface} ${styles.reelPeek}`} data-reduced={reduced || undefined}>
+              <BaseTooltip.Popup role="tooltip" aria-label={t('Enlarged preview of {title}', { title: item.title })} className={`${popupSurface} ${styles.reelPeek}`} data-reduced={reduced || undefined}>
                 <div className={styles.reelPeekMedia}><TemplatePoster template={item} eager /></div>
-                <div className={styles.reelPeekCopy}><strong>{item.title}</strong><span>{date && <time dateTime={date.value}>{formatBrandWorkDate(date)}</time>}<span>{item.duration != null ? `${Math.round(item.duration)}s` : ''}</span></span></div>
+                <div className={styles.reelPeekCopy}><strong>{item.title}</strong><span>{date && <time dateTime={date.value}>{formatBrandWorkDate(date)}</time>}<span>{item.duration != null ? t('{value}s', { value: Math.round(item.duration) }) : ''}</span></span></div>
               </BaseTooltip.Popup>
             </BaseTooltip.Positioner>
           </BaseTooltip.Portal>

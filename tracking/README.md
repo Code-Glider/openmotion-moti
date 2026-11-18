@@ -287,7 +287,8 @@ Discovery carries `ranking_policy=works59-ctr41-v1` and
 snapshot. These identify the shipped rule and fixed input, not a live rank service.
 They do not change the confirmed sampling or 10–14-template spacing.
 
-Work signals use existing `template_id` with `series_work_position`; chapter clicks
+Work signals use existing `template_id` with the one-based `series_work_position`
+within the opened collection’s chronology, regardless of its in-dialog purpose filter. Chapter clicks
 use one-based `chapter_index`, never chapter text/timestamps. Learning sections use
 `adapt|habits`; browse intent uses `browse_method=arrow|drag` and optional
 `direction=previous|next`. Purposes reuse the bounded catalogue `filter_value` slug.

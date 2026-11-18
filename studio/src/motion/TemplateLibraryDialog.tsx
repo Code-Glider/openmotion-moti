@@ -73,7 +73,7 @@ export function TemplateLibraryDialog(props: Props) {
   const { t, locale } = useI18n();
   const [storiesPreview] = useState(() => new URLSearchParams(location.search).get('brandStoriesPreview') === '1');
   const [discoverySeed] = useState(() => Math.floor(Math.random() * 4294967296));
-  const [brandStory, setBrandStory] = useState<{ name: string; view: SeriesView } | null>(null);
+  const [brandStory, setBrandStory] = useState<{ series: BrandSeries; view: SeriesView } | null>(null);
   const [compareWithout, setCompareWithout] = useState('');
   const brandTrigger = useRef<HTMLButtonElement | null>(null);
   const { toasts, showToast, dismissToast } = useToast();
@@ -127,7 +127,7 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, props.returnFocus]);
   useEffect(() => {
     if (!props.open) return;
-    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setQuery(''); setPreview(null); detail.current?.close();
+    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setPreview(null); detail.current?.close();
     shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear(); seriesLists.current.clear(); shownSeries.current.clear();
     const controller = new AbortController();
     let version: string | undefined, pending = false;
@@ -225,7 +225,6 @@ export function TemplateLibraryDialog(props: Props) {
   useTemplateImpressions(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, resultSet, cardSeen);
   const brandGroups = useMemo(() => groupBrandSeries(catalog), [catalog]);
   const visibleBrandGroups = useMemo(() => groupBrandSeries(visible), [visible]);
-  const currentBrand = brandGroups.find(group => group.name === brandStory?.name);
   const insertions = useMemo(() => discoveryInsertions(visible, brandGroups, storiesPreview && !hasFilters, discoverySeed), [visible, brandGroups, storiesPreview, hasFilters, discoverySeed]);
   const seriesCards = storiesPreview && brandsOnly
     ? visibleBrandGroups.map((series, index) => ({ series, placement: 'top100' as const, position: index + 1, rank: index + 1 }))
@@ -247,7 +246,7 @@ export function TemplateLibraryDialog(props: Props) {
     if (!row) return;
     settleLatest.current();
     const view = openSeriesView(seriesContext(series, placement, row.position, row.rank, seriesListId, listContext()));
-    brandTrigger.current = element; setBrandStory({ name: series.name, view });
+    brandTrigger.current = element; setBrandStory({ series, view });
   };
   const closeBrand = () => { setBrandStory(null); brandTrigger.current?.focus({ preventScroll: true }); };
   const active = useTemplatePlayback(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, true, priority);
@@ -465,12 +464,12 @@ export function TemplateLibraryDialog(props: Props) {
           <GallerySortMenu value={sort} options={sortOptions} onChange={changeSort} />
         </div>
       </div>
-      {hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={() => setQuery('')} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>不含 {compareWithout}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}<button onClick={reset}>{t('Clear filters')}</button><span>{t('{count} templates', { count: visible.length })}</span></div>}
+      {hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={() => setQuery('')} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}<button onClick={reset}>{t('Clear filters')}</button><span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>
     <main className={styles.results} aria-busy={loading}>
       {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
       <div className={storiesPreview && brandsOnly ? storyStyles.brandGrid : styles.grid}>
-        <GalleryIntro eyebrow={storiesPreview && brandsOnly ? 'TOP 100 / 品牌系列' : t('Made to move.')} title={storiesPreview && brandsOnly ? '下一次发布，\n从这里找思路。' : t('Find your next motion.')} description={storiesPreview && brandsOnly ? '按品牌看作品，沿时间看变化。选一支，带上你的内容开始做。' : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? `${visibleBrandGroups.length} 个品牌 · ${visible.length} 支作品` : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())} />
+        <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())} />
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
         {storiesPreview && brandsOnly ? visibleBrandGroups.map(series => <BrandSeriesCard key={series.name} series={series} onOpen={(group, element) => openBrand(group, element, 'top100')} />) : visible.map((item, index) => <Fragment key={item.id}>{insertions.get(index) && <BrandSeriesCard series={insertions.get(index)!} discovery onOpen={(group, element) => openBrand(group, element, 'discovery')} />}<TemplateCard template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} /></Fragment>)}
       </div>
@@ -478,8 +477,8 @@ export function TemplateLibraryDialog(props: Props) {
       {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
       {!loading && !visible.length && !error && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching templates. Try another name, creator or style.')}</p><button onClick={reset}>{t('Clear filters')}</button></div>}
     </main>
-    {props.open && storiesPreview && brandStory && currentBrand && <BrandStoriesDialog key={currentBrand.name} series={currentBrand} trackingView={brandStory.view} covered={Boolean(preview)} onCopy={copyBrandInstruction} onDownload={item => downloadMotion(item)} onClose={closeBrand} onTemplate={(item, guide) => { show(item, 'catalog', true, brandStory.view); if (guide) setGuideOpen(true); }} onCompare={purpose => {
-      const name = currentBrand.name;
+    {props.open && storiesPreview && brandStory && <BrandStoriesDialog key={brandStory.view.series_view_id} series={brandStory.series} trackingView={brandStory.view} covered={Boolean(preview)} onCopy={copyBrandInstruction} onDownload={item => downloadMotion(item)} onClose={closeBrand} onTemplate={(item, guide) => { show(item, 'catalog', true, brandStory.view); if (guide) setGuideOpen(true); }} onCompare={purpose => {
+      const name = brandStory.series.name;
       closeBrand(); setBrandsOnly(false); setQuery(''); setEditableOnly(false); setSelected({ uses: [purpose] }); setCompareWithout(name);
     }} />}
     <dialog ref={detail} className={styles.detail} aria-label={t('Template preview')} onCancel={event => { event.preventDefault(); closeDetail(); }} onClose={() => { setPreview(null); setPrompt(''); detailView.current = undefined; }} onKeyDown={event => {
