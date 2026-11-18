@@ -24,7 +24,7 @@ When comparing:
 - Compare the same actual timestamps, including content, wording, composition, motion, pacing and missing stretches.
 - Open the relevant source/rendered frames; optional similarity diagnostics only locate differences, never define visual acceptance.
 - Verify detected cuts against adjacent source frames, then inspect rendered boundaries. Restore missing original hard cuts; automatic candidates can be false positives.
-- Check duration, retained sound and audio offset through actual media evidence. Technical audio presence does not prove the right content or synchronization.
+- Check duration, retained sound and audio offset through actual media evidence. Technical audio presence does not prove the right content or synchronization. For mixed-media shots, compare representative start, action and cut frames for product/subject continuity and for the intended layering and readability. Check narration against the actual voice and caption timing when present.
 
 Fix locatable issues relevant to the request, then re-export the changed source. Use the cause and expected benefit to choose a further correction, a different approach or delivery with a clear limitation. Repeating an unproductive change is not progress; there is no fixed number of permitted rounds. A limitation note does not turn an unresolved defect into a passed check. For reference-to-rebuild comparison, similarity scores locate differences; humans decide visual acceptance. The package self-containment check is below.
 
@@ -37,13 +37,13 @@ Fix locatable issues relevant to the request, then re-export the changed source.
 
 Follow the [portable project contract](../../openmotion-production/references/portable-project.md). Deliver the complete project directory or ZIP with source, required assets, preview, cover and `TEMPLATE.md`. Rendering must not require a local template ID, custom `template.json` or a custom registration tool.
 
-Check that intended content and motion remain reasonably editable. A whole reference video, full-frame sequence or unadaptable contour transcription is not a substitute for that work; ordinary time-driven arrays and functions are allowed. Keep optional root variables as convenient edits, not the only allowed changes. Check local file references and required Studio manifests before packaging.
+Check that intended content and motion remain reasonably editable. A whole reference video, full-frame sequence or unadaptable contour transcription is not a substitute for that work; ordinary time-driven arrays and functions are allowed. Keep optional root variables as convenient edits, not the only allowed changes. Check local file references and required Studio manifests before packaging. For mixed media, render one representative edit from a separate copy: change visible copy independently of its footage and, where the template promises a replaceable media slot, substitute its asset and verify crop, timing and unaffected overlays. Do not send an unchanged render or this local edit back to a generation model.
 
 `preview.mp4` must come from exactly the source being delivered. If source changes after export, re-export before packaging.
 
 ## 4. Verify the delivered copy
 
-This checks that the ZIP works on its own, so later edits can render. It is not a pixel comparison: an unchanged request is served by delivering `preview.mp4` itself.
+This checks that the ZIP works on its own, so later edits can render. It is not a pixel comparison or a new model run: `preview.mp4` is the packaged baseline, while unchanged reuse follows the selected template workflow.
 
 Unpack the ZIP into another directory. Do not use a registered template ID or read files back from the original working project. Run the pinned native CLI there; consult its help for the runtime's supported options. For HyperFrames 0.9.7:
 

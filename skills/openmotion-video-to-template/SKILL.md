@@ -1,19 +1,19 @@
 ---
 name: openmotion-video-to-template
-description: 使用 OpenMotion 将参考动效视频或链接重建为可反复换内容的可编辑模板，交付源码、素材、预览、编辑说明与文件夹或 ZIP。仅在用户要求可复用模板时使用；按参考制作本次成片走 openmotion-recreate，使用已有模板出片或替换内容走 openmotion-template-to-video，原创走 openmotion-director。
+description: 使用 OpenMotion 将参考视频（纯动效或包含商品、真人、声音的混合视频）重建为可反复换内容的可编辑模板，交付源码、素材、预览、编辑说明与文件夹或 ZIP。仅在用户要求可复用模板时使用；按参考制作本次成片走 openmotion-recreate，使用已有模板出片或替换内容走 openmotion-template-to-video，原创走 openmotion-director。
 ---
 
 # OpenMotion Video to Template
 
 This is the openmotion-video-to-template production entry, selected for a requested reusable template. Read [shared context](../openmotion-production/references/context.md) for the current scope and reuse available bodies without returning to the router. MCP-only clients use resources/read `openmotion://workflow/video-to-template/start` for this same file; follow supporting references only when needed. Revisions to an existing template draft use the [shared edit workflow](../openmotion-production/references/edit.md). A request to recreate a finished video without a reusable-template deliverable stays with [openmotion-recreate](../openmotion-recreate/SKILL.md).
 
-Deliver the requested reusable template as a native HyperFrames project with local assets and an actual preview. Phase one covers Motion graphics. Preserve supplied sound when relevant; do not introduce live-action, voice, music or multimodal generation services to complete this workflow.
+Deliver a reusable native HyperFrames project with local assets and an actual preview. Keep controlled text, brand overlays, graphics and timing editable. When reference footage, product imagery or sound carries part of the film, reconstruct that role as a separate, replaceable asset in the same timeline.
 
 Closely match the reference's pictures, composition, motion and pacing while preserving editability. Reproduce texture, depth and lighting present in the reference; do not add decorative effects merely to make it look more polished.
 
-A reference plus change requests is not a phase-one workflow of this Skill. Deliver the faithful template first and report that requested changes belong to `openmotion-template-to-video` applied to the delivered template; do not mix changes into the rebuild.
+When a reference comes with change requests, deliver the faithful template first and apply those changes separately through `openmotion-template-to-video`; do not mix a remix into the faithful baseline.
 
-When selecting, obtaining or replacing source assets, read the [shared material policy](../openmotion-production/references/materials.md) within this workflow's supported media scope. Preserve the reference's identity and fidelity requirements; this does not authorize content substitutions or new generation services.
+Follow the [shared material policy](../openmotion-production/references/materials.md). Use the [mixed-media workflow](references/rebuild.md#rebuild-mixed-media-shots) only when images, footage or audio need to be sourced or recreated. Code-only Motion never enters provider setup or generation.
 
 ## Understand the requested result
 
@@ -21,7 +21,7 @@ Obtain and read the whole reference through the shared [reference reading and me
 
 Preserve the reference's content, wording, brand, composition and motion as they are; do not pre-substitute them. Content replacement happens later with `openmotion-template-to-video`.
 
-Work from start to finish without asking questions. Where the reference is ambiguous, choose the most faithful reasonable option, finish it, and record the choice and trade-off in `TEMPLATE.md`. Stop only when the work cannot proceed, such as an inaccessible link or an undecodable file; then report that specific blocker instead of asking for preferences.
+Work independently on ordinary creative decisions. Where the reference is ambiguous, choose the most faithful reasonable option and record the choice and trade-off in `TEMPLATE.md`. If generation needs spend consent not covered by the task, follow the media Skill for the planned batch. If an input cannot be obtained or decoded, report the specific blocker.
 
 ## Choose an editable representation
 
