@@ -30,6 +30,15 @@ export async function designTokens(checkOnly = false) {
     // The design-styles Skill ships the same marks for its opening and end credit.
     ['brand/openmotion-logo.svg', '../../library/skills/openmotion-design-styles/assets/brand/openmotion-logo.svg'],
     ['brand/loading-mark.svg', '../../library/skills/openmotion-design-styles/assets/brand/loading-mark.svg'],
+    // The sale-carousel Skill ships the same marks for its end-card sign-off.
+    ['brand/openmotion-logo.svg', '../../library/skills/openmotion-sale-carousel/assets/brand/openmotion-logo.svg'],
+    ['brand/loading-mark.svg', '../../library/skills/openmotion-sale-carousel/assets/brand/loading-mark.svg'],
+    // The sale-countdown Skill ships the same marks for its end-card sign-off.
+    ['brand/openmotion-logo.svg', '../../library/skills/openmotion-sale-countdown/assets/brand/openmotion-logo.svg'],
+    ['brand/loading-mark.svg', '../../library/skills/openmotion-sale-countdown/assets/brand/loading-mark.svg'],
+    // The sale-promo Skill ships the same marks for its end-card sign-off.
+    ['brand/openmotion-logo.svg', '../../library/skills/openmotion-sale-promo/assets/brand/openmotion-logo.svg'],
+    ['brand/loading-mark.svg', '../../library/skills/openmotion-sale-promo/assets/brand/loading-mark.svg'],
     ['fonts/NOTICES.txt', '../../web/design-system/fonts/NOTICES.txt'],
     ['fonts/Albert-Sans-OFL.txt', '../../web/design-system/fonts/Albert-Sans-OFL.txt'],
     ['fonts/IBM-Plex-Mono-OFL.txt', '../../web/design-system/fonts/IBM-Plex-Mono-OFL.txt'],
