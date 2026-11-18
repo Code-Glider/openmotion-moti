@@ -95,7 +95,7 @@ const css = `
 .ticket{display:inline-block;background:${t.ink};color:${t.bg};border-radius:${px(30)}px;padding:${px(48)}px ${px(70)}px;position:relative;max-width:${Math.round(W * 0.86)}px}
 .ticket:before,.ticket:after{content:'';position:absolute;top:50%;width:${px(44)}px;height:${px(44)}px;margin-top:${-px(22)}px;border-radius:50%;background:${t.bg}}
 .ticket:before{left:${-px(22)}px}.ticket:after{right:${-px(22)}px}
-.cta{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(60)}px;padding:${px(24)}px ${px(60)}px;border-radius:${px(999)}px}`;
+.cta{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(52)}px;padding:${px(22)}px ${px(54)}px;border-radius:${px(999)}px;white-space:nowrap}`;
 const rows = Math.ceil(H / (wallSize * 0.95)) + 1;
 const hotRow = Math.floor(rows * (portrait ? 0.82 : 0.86));
 const wall = Array.from({ length: rows }, (_, i) => `<div id="w${i}" class="row d${i === hotRow ? ' hot' : ''}" style="top:${Math.round(i * wallSize * 0.95)}px">${esc(wallText)}${esc(wallText)}</div>`).join('');
@@ -117,11 +117,23 @@ ${images.map((im, i) => { const [x, y, r] = spots[i % spots.length]; return `<di
     <div id="unit" class="d" style="font-size:${Math.min(px(64), Math.round(D * 0.085))}px;color:${t.accent};margin-top:${px(2)}px">${esc(L[unit])} ${esc(L.left)}</div>
   </div>
 </div>
-<div id="dt" style="opacity:0;position:absolute;left:0;right:0;top:${wide ? H * 0.3 : H * 0.34}px;text-align:center">
-  <div id="ticket" class="ticket"><div style="font-size:${px(52)}px;font-weight:600">${esc(data.target.label)}</div>${data.teaser ? `<div class="d" style="margin-top:${px(14)}px;font-size:${teaserSize}px;color:${t.bg}">${esc(data.teaser)}</div>` : ''}</div>
-  <div><div id="cta" class="cta" style="margin-top:${px(46)}px">${esc(data.cta)}</div></div>
-  ${data.url ? `<div id="url" style="margin-top:${px(22)}px;font-size:${px(40)}px;font-weight:600;color:${t.ink};opacity:.85">${esc(data.url)}</div>` : ''}
-</div>
+${(() => {
+  // End: the type wall dims, the hero photo returns large, and the date, offer and button sit beside it.
+  const hero = images[images.length - 1];
+  const side = hero && !portrait;
+  const headBottom = Math.max(px(110), wide ? H * 0.08 : H * 0.07) + occSize * 0.92 + px(34);
+  const hx = side ? W * 0.06 : W * 0.15, hy = headBottom, hw = side ? W * (wide ? 0.34 : 0.42) : W * 0.7, hh = side ? H * 0.92 - headBottom : H * 0.4;
+  const tx = side ? hx + hw + W * 0.05 : W * 0.08, ty = side ? headBottom + px(20) : hero ? headBottom + hh + px(50) : H * 0.3, tw = side ? W - tx - W * 0.06 : W * 0.84;
+  const dateSize = fit(data.target.label, tw, px(56), 0.55), tsz = data.teaser ? fit(data.teaser, tw, px(side ? 130 : 150), 0.57) : 0;
+  return `${hero ? `<div id="hero" style="position:absolute;left:${Math.round(hx)}px;top:${Math.round(hy)}px;width:${Math.round(hw)}px;height:${Math.round(hh)}px;border-radius:${px(28)}px;background:url('${src(hero)}') center/cover no-repeat;box-shadow:0 ${px(40)}px ${px(100)}px rgba(0,0,0,.55);opacity:0"></div>` : ''}
+<div id="dt" style="opacity:0;position:absolute;left:${Math.round(tx)}px;top:${Math.round(ty)}px;width:${Math.round(tw)}px;text-align:${side ? 'left' : 'center'};color:${t.ink}">
+  <div id="dlabel" style="font-size:${px(30)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;color:${t.accent}">${esc(mode === 'ends' ? (L.lastCall || 'Last call') : (L.saveDate || 'Save the date'))}</div>
+  <div id="date" style="margin-top:${px(12)}px;font-size:${dateSize}px;font-weight:600">${esc(data.target.label)}</div>
+  <div id="rule" style="margin:${px(26)}px ${side ? '0' : 'auto'} ${px(22)}px;width:${Math.round(tw * 0.5)}px;height:${px(4)}px;background:${t.ink};opacity:.35;transform-origin:${side ? 'left' : 'center'} center"></div>
+  ${data.teaser ? `<div class="mask" style="padding-bottom:${px(6)}px"><div id="teaser" class="d" style="font-size:${tsz}px;line-height:.95">${esc(data.teaser)}</div></div>` : ''}
+  <div><div id="cta" class="cta" style="margin-top:${px(40)}px;font-size:${fit(data.cta, tw - px(110), px(52), 0.55)}px">${esc(data.cta)}</div></div>
+  ${data.url ? `<div id="url" style="margin-top:${px(18)}px;font-size:${px(36)}px;font-weight:600;opacity:.8">${esc(data.url)}</div>` : ''}
+</div>`; })()}
 ${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0')}`;
 
 const f = v => v.toFixed(2);
@@ -143,8 +155,14 @@ ${dealJs}
 tl.fromTo('#dial',{scale:1},{scale:1.07,duration:.15,yoyo:true,repeat:1},${f(B.date - 0.95)});
 tl.to('#dial',{scale:.25,opacity:0,duration:.4,ease:'power3.in'},${f(B.date - 0.35)});
 tl.to(${JSON.stringify(images.map((_, i) => `#cd${i}`))},{y:${px(260)},opacity:0,duration:.4,ease:'power3.in',stagger:.05},${f(B.date - 0.35)});
+${Array.from({ length: rows }, (_, i) => `tl.to('#w${i}',{opacity:${i === hotRow ? 0.25 : 0.05},duration:.5},${f(B.date - 0.3)});`).join('\n')}
+${images.length ? `tl.fromTo('#hero',{opacity:0,scale:.82,rotation:-5,y:${px(80)}},{opacity:1,scale:1,rotation:-2,y:0,duration:.6,ease:'back.out(1.3)'},${f(B.date - 0.1)});
+tl.to('#hero',{scale:1.04,rotation:0,duration:${f(B.end - B.date - 0.5)},ease:'none'},${f(B.date + 0.5)});` : ''}
 tl.set('#dt',{opacity:1},${f(B.date - 0.01)});
-tl.fromTo('#ticket',{y:${px(60)},opacity:0,rotation:-4},{y:0,opacity:1,rotation:0,duration:.5,ease:'back.out(1.6)'},${f(B.date)});
+tl.fromTo('#dlabel',{opacity:0,x:${px(-30)}},{opacity:1,x:0,duration:.35},${f(B.date + 0.1)});
+tl.fromTo('#date',{opacity:0,y:${px(24)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.date + 0.2)});
+tl.fromTo('#rule',{scaleX:0},{scaleX:1,duration:.4,ease:'power2.out'},${f(B.date + 0.35)});
+${data.teaser ? `tl.fromTo('#teaser',{yPercent:110},{yPercent:0,duration:.5,ease:'power4.out'},${f(B.date + 0.45)});` : ''}
 tl.fromTo('#cta',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(2)'},${f(B.cta)});
 ${data.url ? `tl.fromTo('#url',{opacity:0},{opacity:.85,duration:.3},${f(B.cta + 0.2)});` : ''}
 ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(B.cta + 0.4)});`}
