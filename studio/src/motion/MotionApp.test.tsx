@@ -24,6 +24,7 @@ it.each([false, true])('prepares only existing projects while browsing, and crea
     : url.endsWith('/sessions') && init?.method === 'POST' ? { sessionId: id, session: { artifacts: [] } }
     : url.split('?')[0].endsWith('/artifacts') ? { sessionId: id, projectId: id }
     : url.includes('/sessions/') ? { id, artifacts: [artifact] }
+    : url.split('?')[0].endsWith(`/projects/${id}/open`) ? { projectId: id, revision: 'r' }
     : { projectId: existing ? id : 'project', revision: 'r' },
   ));
   vi.stubGlobal('fetch', fetcher);
@@ -40,8 +41,12 @@ it.each([false, true])('prepares only existing projects while browsing, and crea
     expect(posts()).toHaveLength(0);
     const open = [...container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('Open and edit'))!;
     await act(async () => open.click());
-    expect(posts().map(([url]) => url.split('?')[0])).toEqual(['/design-api/sessions', `/design-api/sessions/${id}/artifacts`]);
+    expect(posts().map(([url]) => url.split('?')[0])).toEqual([
+      '/design-api/sessions', `/design-api/sessions/${id}/artifacts`, `/motion-api/projects/${id}/open`,
+    ]);
     expect(JSON.parse(String(posts()[0][1]!.body)).templateId).toBe('product-promo');
+    expect(JSON.parse(String(posts()[1][1]!.body))).toEqual({ templateId: 'product-promo', expectedRevision: 'r', expectedProjectId: existing ? id : 'project' });
+    expect(JSON.parse(String(posts()[2][1]!.body))).toEqual({ expectedRevision: 'r', expectedProjectId: existing ? id : 'project' });
     expect(assign).not.toHaveBeenCalled();
     expect(location.search).toContain(`project=${id}`);
     expect(location.search).not.toContain('templates=1');

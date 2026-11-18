@@ -45,8 +45,42 @@ try {
       await page.evaluateOnNewDocument(theme => {
         localStorage.setItem('motion.studio.locale', 'en');
         localStorage.setItem('hf-studio-ui-preferences', JSON.stringify({ theme }));
+        sessionStorage.removeItem('motion.template-handoff.preview');
       }, theme);
+      // The normal entry now uses the same masonry cards as the library. Keep
+      // the legacy popup regression below as explicit rollback-path coverage.
       await page.goto(`${origin}/?page=settings&templates=1&template=fixture-0`, { waitUntil: 'domcontentloaded' });
+      const shelf = `${detail} section[aria-label="Similar templates"]`;
+      await page.waitForSelector(`${shelf} .om-gallery-masonry .om-gallery-card`);
+      await page.$eval(trigger, element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await page.hover(trigger);
+      const cards = await page.$eval(shelf, element => {
+        const masonry = element.querySelector('.om-gallery-masonry');
+        const card = element.querySelector('.om-gallery-card');
+        const button = card.querySelector('button');
+        const rect = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return { columns: Number.parseInt(getComputedStyle(masonry).columnCount, 10),
+          count: masonry.children.length, reachable: button.contains(hit),
+          card: rect.toJSON(), caption: Boolean(button.querySelector('.om-gallery-card-caption')),
+          players: element.querySelectorAll('video[src]').length,
+          modals: document.querySelectorAll('dialog:modal').length };
+      });
+      assert.equal(cards.count, Math.min(items.length - 1, cards.columns * 2), 'Only matching cards fill up to two complete masonry rows');
+      assert(cards.reachable && cards.caption && cards.card.width > cards.card.height, 'The shared gallery card, hover caption and landscape ratio remain usable');
+      assert(cards.players <= 2, 'Related cards share a two-player budget');
+      assert.equal(cards.modals, 1, 'The detail is the only active modal');
+      assert.equal(await page.$(popup), null, 'The masonry hover does not create a separate preview popup');
+      results.push({ mode: 'masonry', theme, width, height, ...cards });
+      await page.screenshot({ path: path.join(output, `masonry-${theme}-${width}x${height}.png`) });
+      await page.click(trigger);
+      await page.waitForFunction(selector => document.querySelector(`${selector} h2`)?.textContent === 'Preview 1', {}, detail);
+      assert.equal(await page.$$eval('dialog:modal', elements => elements.length), 1, 'Selecting a related card replaces the same detail');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector(`${detail}[open]`, { hidden: true });
+      assert(await page.$('dialog[aria-label="Template library"][open]'), 'Escape returns to the library');
+
+      await page.goto(`${origin}/?page=settings&templates=1&template=fixture-0&templateHandoffPreview=0`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(trigger);
       await page.$eval(trigger, element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
       await page.evaluate(() => document.activeElement?.blur());
@@ -61,7 +95,7 @@ try {
         const retry = button.getBoundingClientRect(), hit = document.elementFromPoint(retry.x + retry.width / 2, retry.y + retry.height / 2);
         return { popup: rect.toJSON(), retry: retry.toJSON(), reachable: button.contains(hit), captionHidden: getComputedStyle(caption).display === 'none' };
       });
-      results.push({ theme, width, height, ...geometry });
+      results.push({ mode: 'legacy', theme, width, height, ...geometry });
       await page.screenshot({ path: path.join(output, `${theme}-${width}x${height}.png`) });
       assert(geometry.popup.top >= 15 && geometry.popup.bottom <= height - 15 && geometry.popup.left >= 15 && geometry.popup.right <= width - 15,
         `${theme} ${width}x${height}: preview must fit the viewport: ${JSON.stringify(geometry)}`);
@@ -79,7 +113,7 @@ try {
       await page.waitForFunction(selector => document.querySelector(`${selector} h2`)?.textContent === 'Preview 1', {}, detail);
     }
   }
-  console.log('PASS related preview bounds, Retry, Escape and selection in both themes at 640x360, 390x844 and 1440x900');
+  console.log('PASS default masonry cards, player budget and same-dialog selection; legacy popup bounds, Retry and Escape in both themes at 640x360, 390x844 and 1440x900');
 } finally {
   await writeFile(path.join(output, 'result.json'), JSON.stringify(results, null, 2));
   await browser?.close(); server.closeAllConnections(); server.close();
