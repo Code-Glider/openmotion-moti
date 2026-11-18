@@ -312,7 +312,7 @@ jobs:
           node --test tests/brand-extraction.browser.test.ts tests/brand-showcase.browser.test.ts
       - name: Repository template runtime regression
         if: steps.scope.outputs.full == 'true'
-        run: node --test tests/repository-template-runtime.test.ts tests/hosted-template-catalog.test.ts tests/template-prompts.test.ts tests/integration-setup.test.ts
+        run: node --test tests/repository-template-runtime.test.ts tests/hosted-template-catalog.test.ts tests/template-guide.test.ts tests/template-prompts.test.ts tests/integration-setup.test.ts
       - name: Workspace, wrapper and session regression
         if: steps.scope.outputs.full == 'true'
         timeout-minutes: 10
