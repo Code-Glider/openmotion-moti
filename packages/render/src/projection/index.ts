@@ -2,16 +2,25 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseHTMLContent } from "@hyperframes/core/compiler";
 import { parseAudioElements } from "@hyperframes/engine";
-import { canonical, digest } from "@odsuite/protocol";
+import { canonical } from "@odsuite/protocol";
 import { assembleProject } from "@open-motion/motion/project";
 import { capture, gsap, runtime } from "@open-motion/motion/runtime";
 import type { ProjectSnapshot, Workspace } from "@open-motion/workspace";
-import { fps, type Specification, specification } from "./jobs/contract.js";
+import { fps, type Specification, specification } from "../jobs/contract.js";
+import { persist } from "./file.js";
 
 export interface Snapshot {
   project: ProjectSnapshot;
-  assets: { path: string; data: string }[];
+  assets: { path: string; chunks(): Iterable<Uint8Array> | AsyncIterable<Uint8Array> }[];
   spec: Specification;
+}
+/** Copy immutable metadata and retain the already pinned byte producers. */
+export function cloneSnapshot(input: Snapshot): Snapshot {
+  return {
+    project: structuredClone(input.project),
+    spec: structuredClone(input.spec),
+    assets: input.assets.map((asset) => ({ path: asset.path, chunks: asset.chunks.bind(asset) })),
+  };
 }
 function fromSource(html: string, frameRate: { num: number; den: number }) {
   const rate = fps.parse(frameRate),
@@ -49,27 +58,19 @@ export function freeze(
     revision: input.revision,
   });
   const spec = fromSource(assembleProject(project.files, project.resources).html, input.fps);
-  const assets = project.resources.map((resource) => ({
-    path: resource.path,
-    data: workspace.execute("resource_read", {
+  const assets = project.resources.map((resource) => {
+    const reader = workspace.readResource({
       sessionId: project.sessionId,
       artifactId: project.artifactId,
       revision: project.revision,
       path: resource.path,
-    }).data,
-  }));
-  return structuredClone({
-    project: workspace.execute("project_snapshot", {
-      sessionId: project.sessionId,
-      artifactId: project.artifactId,
-      revision: project.revision,
-    }),
-    assets,
-    spec,
+    });
+    return { path: resource.path, chunks: reader.chunks.bind(reader) };
   });
+  return { project: structuredClone(project), assets, spec };
 }
 /** An execution projection under a granted staging root, never an editable project authority. */
-export async function materialize(snapshot: Snapshot, root: string) {
+export async function materialize(snapshot: Snapshot, root: string, signal?: AbortSignal) {
   const { project } = snapshot,
     html = assembleProject(project.files, project.resources).html,
     reserved = new Set(["__runtime.js", "__gsap.js"]);
@@ -78,6 +79,7 @@ export async function materialize(snapshot: Snapshot, root: string) {
   await mkdir(root, { mode: 0o700 });
   const paths = new Set<string>();
   const write = async (path: string, bytes: string | Buffer) => {
+    signal?.throwIfAborted();
     if (paths.has(path) || /[\\:%?#]/.test(path) || path.split("/").some((p) => !p || p === "." || p === ".."))
       throw Error("invalid export materialization path");
     paths.add(path);
@@ -89,11 +91,18 @@ export async function materialize(snapshot: Snapshot, root: string) {
     if (file.path !== "index.html") await write(file.path, file.content);
   }
   for (const resource of project.resources) {
-    const asset = snapshot.assets.find((a) => a.path === resource.path),
-      bytes = Buffer.from(asset?.data ?? "", "base64");
-    if (bytes.length !== resource.bytes || digest(bytes) !== resource.digest)
-      throw Error("export resource integrity mismatch");
-    await write(resource.path, bytes);
+    signal?.throwIfAborted();
+    const asset = snapshot.assets.find((a) => a.path === resource.path);
+    if (
+      !asset ||
+      paths.has(resource.path) ||
+      /[\\:%?#]/.test(resource.path) ||
+      resource.path.split("/").some((p) => !p || p === "." || p === "..")
+    )
+      throw Error("invalid export materialization path");
+    paths.add(resource.path);
+    await mkdir(dirname(join(root, resource.path)), { mode: 0o700, recursive: true });
+    await persist(join(root, resource.path), asset.chunks(), signal, resource);
   }
   const document = parseHTMLContent(capture(html, "./", snapshot.spec.fps)),
     policy = document.createElement("meta");
@@ -106,5 +115,6 @@ export async function materialize(snapshot: Snapshot, root: string) {
   await write("index.html", document.toString());
   await write("__gsap.js", gsap);
   await write("__runtime.js", runtime);
+  signal?.throwIfAborted();
   return html;
 }

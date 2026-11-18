@@ -7,10 +7,12 @@ import { canonical, digest } from "@odsuite/protocol";
 import { source } from "@odsuite/serve";
 import type { Context, Factory, Lease } from "@odsuite/sidecar";
 import type { Verification } from "./jobs/contract.js";
-import { materialize, type Snapshot } from "./snapshot.js";
+import { cloneSnapshot, materialize, type Snapshot } from "./projection/index.js";
 
 export { fps, type Progress, type Specification, specification, type Verification } from "./jobs/contract.js";
-export { freeze, type Snapshot } from "./snapshot.js";
+export { freeze, type Snapshot } from "./projection/index.js";
+export { readProjection } from "./projection/read.js";
+export { writeProjection } from "./projection/write.js";
 export interface Tool {
   resource: Resource;
   executable: string;
@@ -32,7 +34,7 @@ export interface Options {
 export async function render(options: Options) {
   if (!/^[a-f0-9-]{36}$/.test(options.id)) throw Error("invalid execution attempt");
   const { factory, library, context, signal } = options,
-    input = structuredClone(options.input),
+    input = cloneSnapshot(options.input),
     id = options.id,
     grant = await factory.grant({ kind: "staging", name: "render", scope: "attempt", owner: id }),
     root = grant.value,
@@ -44,7 +46,8 @@ export async function render(options: Options) {
     retired = true;
   try {
     signal?.throwIfAborted();
-    const html = await materialize(input, view);
+    const html = await materialize(input, view, signal);
+    signal?.throwIfAborted();
     served = await source(factory, { name: "renderpreview", directory: view });
     const payload = Buffer.from(
       canonical({ html, spec: input.spec, origin: served.endpoint.url, view, scratch: root, output }),
@@ -52,6 +55,7 @@ export async function render(options: Options) {
     await writeFile(join(root, "input.json"), payload, { flag: "wx", mode: 0o600, flush: true });
     const temporary = join(root, "tmp");
     await mkdir(temporary, { mode: 0o700 });
+    signal?.throwIfAborted();
     retired = false;
     lease = await factory.start({
       service: "render",
