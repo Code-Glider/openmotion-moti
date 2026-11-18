@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { candidateFixture } from "./release-fixture.mjs";
 import { downloadCandidate, verifyDownloaded } from "../.github/scripts/motion-release.mjs";
 import { runFile } from "../scripts/runtime-assets.mjs";
@@ -159,4 +160,31 @@ test("release workflows build the plugin before sealing and consume it without r
     assert(job.includes("dsh-publication.json"));
     assert(!job.includes("release.ts prepare") && !job.includes("npm run pack"));
   }
+});
+
+test("the publication CLI completes with simulated storage and never rebuilds", async t => {
+  const f = await candidateFixture(t, "main", { dsh: true });
+  await writeFile(path.join(f.directory, "publication.json"), JSON.stringify({ version: f.candidate.version, phase: "verified" }));
+  const preload = path.join(f.work, "storage.mjs"), writes = path.join(f.work, "writes.json");
+  await writeFile(preload, `import cp from 'node:child_process';
+import {syncBuiltinESMExports} from 'node:module';
+import {promisify} from 'node:util';
+import {readFile,writeFile} from 'node:fs/promises';
+const objects=new Map(), keys=[];
+const execute=async(command,args)=>{
+  if(command!=='aws') throw Error('Publication cannot build or spawn another command: '+command);
+  const key=args[args.indexOf('--key')+1];
+  objects.set(key,await readFile(args[args.indexOf('--body')+1]));
+  keys.push(key); await writeFile(process.env.DSH_TEST_WRITES,JSON.stringify(keys));
+  return {stdout:'{}',stderr:''};
+};
+const wrapped=()=>{throw Error('Use the promise adapter');};
+wrapped[promisify.custom]=execute; cp.execFile=wrapped; syncBuiltinESMExports();
+globalThis.fetch=async url=>{const bytes=objects.get(new URL(String(url)).pathname.slice(1)); return new Response(bytes||'missing',{status:bytes?200:404});};
+`);
+  const result = await runFile(process.execPath, ["--import", preload, fileURLToPath(new URL("../integrations/dsh/release.ts", import.meta.url)), "publish", f.directory], {
+    env: { ...process.env, ...f.env, MOTION_R2_ENDPOINT: config.endpoint, MOTION_R2_BUCKET: config.bucket, DSH_TEST_WRITES: writes }, timeout: 10_000,
+  });
+  assert.equal(JSON.parse(result).promoted, true);
+  assert.deepEqual(JSON.parse(await readFile(writes, "utf8")).at(-1), `${downloadPrefix}/test/latest.json`);
 });

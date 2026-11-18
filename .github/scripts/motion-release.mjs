@@ -11,7 +11,7 @@ import { checkReleaseVersion, comparePublicationVersions, releaseTemplateEnviron
 import { generateInstallGuide } from '../../scripts/install-guide.mjs';
 import { publishGuide, storagePlan } from './publish-install-guide.mjs';
 import { scanPackage, scanSource, scanPluginPackage } from './motion-scan.mjs';
-import { pluginCandidateFiles, verifyCandidatePlugin } from '../../integrations/dsh/release.ts';
+import { pluginCandidateFiles, verifyCandidatePlugin } from '../../integrations/dsh/candidate.ts';
 
 export const repository = 'nexu-io/openmotion';
 export const candidateWorkflow = '.github/workflows/motion-candidate.yml';

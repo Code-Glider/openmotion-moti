@@ -123,7 +123,7 @@ test('installation routing and workflow keep plugin distribution separate from n
   const filters = [...workflow.matchAll(/paths:\n((?: +- .+\n)+)/g)].map(match => [...match[1].matchAll(/- '([^']+)'/g)].map(item => item[1]));
   assert.equal(filters.length, 2);
   for (const patterns of filters) {
-    for (const dependency of ['preview.ts', 'mcp.ts', 'install.md', 'server.ts', 'editor-runtime.ts', 'workspace.ts', 'shared/process-lock.ts']) {
+    for (const dependency of ['preview.ts', 'mcp.ts', 'install.md', 'server.ts', 'editor-runtime.ts', 'workspace.ts', 'shared/process-lock.ts', 'scripts/release-version.mjs', '.github/scripts/motion-release.mjs', '.github/scripts/motion-scan.mjs', '.github/workflows/motion-candidate.yml', '.github/workflows/motion-publish-test.yml']) {
       assert(patterns.some(pattern => path.matchesGlob(dependency, pattern)), `DSH checks must run for ${dependency}`);
     }
   }
