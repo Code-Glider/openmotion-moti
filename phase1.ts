@@ -34,8 +34,7 @@ import { atomicJson, cloneFile, fileHash, jsonFile, ProjectVersions, recoverProj
 import type { ContentVersion } from './phase1-versions.ts';
 import { trackPhase1Result, trackingError, type OmTracking } from './shared/tracking.ts';
 import type { HostContext } from './tracking/host.ts';
-import { WorkRounds, workRoundMode } from './inline-video.ts';
-import { TaskLedger } from './tracking/task-ledger.ts';
+import { WorkRounds } from './inline-video.ts';
 import { uuid } from './tracking/core.ts';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -98,8 +97,7 @@ export class Phase1Service {
   readonly store: WorkspaceStore;
   readonly runtimeRoot: string;
   readonly context: Phase1Context;
-  readonly ledger: TaskLedger;
-  constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; this.ledger = new TaskLedger(store.directory); }
+  constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; }
   versions(projectId: string) { return new ProjectVersions(this.store.forProject(projectId), this.runtimeRoot, this.context.nativeUrl(projectId)); }
   get workRounds() { return new WorkRounds(this.store, this.context.tracking); }
   async call(name: string, args: any, host?: HostContext, options?: { attributeEntry?: boolean }) {
@@ -611,15 +609,9 @@ export class Phase1Service {
       });
     })));
     if (name === 'motion_import_assets') return this.importAssets(args);
-    if (name === 'motion_export_cancel') return this.writeRequest(name, args, async () => {
-      const job = await this.context.cancel(args.projectId, args.jobId) as any;
-      if (job?.state === 'cancelled') {
-        await this.ledger.terminal(args.jobId, 'cancelled', 'unknown').catch(() => {});
-        this.context.tracking?.track('task_terminal', { task_id: args.jobId, task_type: 'export', project_id: args.projectId, outcome: 'cancelled', applied: 'unknown', terminal_at: new Date().toISOString() });
-        if (job.workId) this.context.tracking?.track('host_run_cancelled', { run_id: job.workId, task_type: await workRoundMode(this.store, args.projectId, job.workId) ?? 'modify', reason_code: 'EXPORT_CANCELLED' });
-      }
-      return { projectId: args.projectId, job };
-    });
+    if (name === 'motion_export_cancel') return this.writeRequest(name, args, async () => ({
+      projectId: args.projectId, job: await this.context.cancel(args.projectId, args.jobId),
+    }));
     if (name === 'motion_export_request') return this.writeRequest(name, args, async () => {
       if (args.action === 'record_review') {
         if (!args.jobId) throw new ToolInputError('jobId is required', 'jobId', 'missing');

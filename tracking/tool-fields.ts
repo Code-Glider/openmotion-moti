@@ -26,7 +26,12 @@ export const validationRules = ['missing', 'invalid_type', 'invalid_enum', 'inva
 // Keep the ingress allowlist independent of the app and its schema implementation.
 const invalidFields = [
   'action', 'all', 'arguments', 'assetId', 'assetNames', 'assetNames[]', 'assetNames[].name',
-  'assetNames[].path', 'audio', 'brandKit', 'changes', 'changes.currentVersionId', 'changes.name',
+  'assetNames[].path', 'audio', 'brandKit', 'brandKit.catalogId', 'brandKit.expectedUpdatedAt', 'brandKit.file',
+  'brandKit.file.data', 'brandKit.file.name', 'brandKit.kitId', 'brandKit.name', 'brandKit.operation',
+  'brandKit.query', 'brandKit.remove', 'brandKit.requestId', 'brandKit.rules', 'brandKit.rules[]', 'brandKit.style',
+  'brandKit.style.background', 'brandKit.style.bodyFont', 'brandKit.style.foreground', 'brandKit.style.gradient',
+  'brandKit.style.headingFont', 'brandKit.style.onPrimary', 'brandKit.style.primary', 'brandKit.style.radius',
+  'brandKit.style.surface', 'brandKit.url', 'changes', 'changes.currentVersionId', 'changes.name',
   'changes.trashed', 'compositionPath', 'conversationId', 'cursor', 'display', 'display.contentVerified',
   'display.evidence', 'display.hostStatus', 'display.hostTabId', 'display.previewUrl', 'display.revision',
   'display.versionId', 'display.visibility', 'duration', 'embedded', 'entry', 'expectedRevision',

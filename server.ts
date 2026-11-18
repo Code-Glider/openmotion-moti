@@ -70,18 +70,20 @@ async function emitQueueTelemetry(store: WorkspaceStore, tracking?: OmTracking) 
   tracking.track('worker_heartbeat', { collector_id: collectorId, instance_id: workerInstanceId, active: true, queue_count: queued + running }, undefined, 'worker');
 }
 
-export async function cancelExport(store: WorkspaceStore, projectId: string, jobId: string) {
+export async function cancelExport(store: WorkspaceStore, projectId: string, jobId: string, tracking = store.tracking) {
   return store.lock(async () => {
     const job = await store.job(jobId);
     if (!job || job.projectId !== projectId) throw new Error('EXPORT_NOT_FOUND: 任务不属于该项目');
-    if (job.state === 'pending') { job.state = 'cancelled'; job.stage = 'cancelled'; job.terminalAt = Date.now(); job.observedOutcome = 'cancelled'; }
-    else if (job.state === 'running') job.state = 'cancelling';
-    await store.saveJob(job);
-    if (job.state === 'cancelled') {
-      await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
-      await new TaskLedger(store.directory).terminal(job.id, 'cancelled', 'unknown').catch(() => {});
-      trackExportResult(store.tracking, job);
+    if (job.state === 'pending') {
+      job.state = 'cancelled'; job.stage = 'cancelled'; job.terminalAt = Date.now(); job.observedOutcome = 'cancelled';
+      await store.saveJob(job);
+      trackExportResult(tracking, job);
+      await trackExportTerminal(store, job, tracking);
+    } else if (job.state === 'running') {
+      job.state = 'cancelling';
+      await store.saveJob(job);
     }
+    if (job.state === 'cancelled') await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
     if (job.state === 'cancelling') runningExports.get(job.id)?.abort();
     const { token, workerPid, trackingHost, ...safe } = job; return safe;
   });
@@ -112,6 +114,10 @@ export async function trackExportTerminal(store: WorkspaceStore, final: ExportJo
   tracking?.track('task_terminal', { task_id: final.id, task_type: 'export', ...(final.projectId ? { project_id: final.projectId } : {}),
     ...(final.workId ? { run_id: final.workId } : {}), outcome, applied,
     terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(errorCode ? { error_code: errorCode } : {}) }, undefined, 'worker', host);
+  if (tracking && outcome === 'cancelled' && final.workId && final.projectId) {
+    const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
+    tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
+  }
 }
 
 export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tracking?: OmTracking) {
@@ -199,11 +205,12 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
           version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
           result: technicalCheckResult(final), evidence_ref: final.id }, undefined, 'worker', host);
         if (final.workId && final.projectId) {
-          const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
           if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {
             run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
-          else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
-          else tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: final.failureCode ?? 'EXPORT_FAILED', stage: final.failureStage ?? 'unknown' }, undefined, 'worker', host);
+          else if (final.state !== 'cancelled') {
+            const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
+            tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: final.failureCode ?? 'EXPORT_FAILED', stage: final.failureStage ?? 'unknown' }, undefined, 'worker', host);
+          }
           tracking.track('host_state_changed', { run_id: final.workId, sequence: 2,
             state: final.state === 'completed' && final.verification && (final.verification as any).status === 'passed' ? 'delivered' : final.state === 'cancelled' ? 'cancelled' : 'failed',
             phase: 'technical_export', state_reason: final.state === 'completed' ? 'EXPORT_VERIFIED' : final.state === 'cancelled' ? 'EXPORT_CANCELLED' : 'EXPORT_FAILED' }, undefined, 'worker', host);
@@ -467,7 +474,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
           context.phase1Mutation = new Promise<void>(resolve => { release = resolve; });
           try { return await task(); } finally { release(); context.phase1Mutation = undefined; }
         },
-        cancel: (projectId, jobId) => cancelExport(authority, projectId, jobId),
+        cancel: (projectId, jobId) => cancelExport(authority, projectId, jobId, context.tracking),
         tracking: context.tracking,
       });
       const data = await input(req);

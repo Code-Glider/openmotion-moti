@@ -10,7 +10,7 @@ import { omEvents, studioEvents } from '../tracking/events.ts';
 import { assetActions, toolFailureFields, toolInputFields } from '../tracking/tool-fields.ts';
 import { closeTracking, createAppTracking, saveTrackingPreference, trackingError } from '../shared/tracking.ts';
 import { Phase1Service } from '../phase1.ts';
-import { renderNext, technicalCheckResult, trackExportTerminal } from '../server.ts';
+import { cancelExport, renderNext, technicalCheckResult, trackExportTerminal } from '../server.ts';
 import { TaskLedger } from '../tracking/task-ledger.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { fixture } from './fixtures.ts';
@@ -168,6 +168,23 @@ test('tool dimensions use only the published actions, defaults and schema field 
       assert(validProperties(studioEvents, 'webmcp_tool_finished', { ...result, ...normalized }));
       assert(!validProperties(studioEvents, 'webmcp_tool_finished', { ...result, ...normalized, invalid_field: 'PRIVATE_KEY' }));
       assert(!validProperties(studioEvents, 'webmcp_tool_finished', { ...result, ...normalized, error_code: 'PRIVATE_ERROR' }));
+      return true;
+    });
+  }
+});
+
+test('nested tool inputs identify missing fields and invalid operation or command names', () => {
+  const schema = phase1Tools.find(tool => tool.name === 'openmotion_assets_use')!.inputSchema;
+  for (const [args, field, rule] of [
+    [{ action: 'brand_kit', brandKit: { operation: 'PRIVATE_VALUE' } }, 'brandKit.operation', 'invalid_enum'],
+    [{ action: 'brand_kit', brandKit: {} }, 'brandKit.operation', 'missing'],
+    [{ action: 'brand_kit', brandKit: { operation: 'retry' } }, 'brandKit.kitId', 'missing'],
+    [{ action: 'brand_kit', brandKit: [] }, 'brandKit', 'invalid_type'],
+    [{ action: 'transcript', transcript: { command: 'PRIVATE_VALUE' } }, 'transcript.command', 'invalid_enum'],
+    [{ action: 'transcript', transcript: { command: 'get', projectId: 'project' } }, 'transcript.transcriptId', 'missing'],
+  ] as const) {
+    assert.throws(() => validateInput(schema, args), error => {
+      assert.deepEqual(toolFailureFields(error), { error_code: 'INVALID_ARGUMENT', invalid_field: field, validation_rule: rule });
       return true;
     });
   }
@@ -411,6 +428,27 @@ test('cancelled and unfinished exports are unreviewed technical checks, not erro
   assert.equal(technicalCheckResult({ ...base, state: 'completed' }), 'error', 'a completed job without a report is unexpected');
   assert.equal(technicalCheckResult({ ...base, state: 'completed', verification: { status: 'passed' } }), 'pass');
 });
+
+test('repeated MCP cancels leave one terminal export result and one ledger outcome', () => fixture(async store => {
+  const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
+  const service = new Phase1Service(store, pluginRoot, { tracking, origin: () => 'http://127.0.0.1:4173',
+    nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(),
+    cancel: (projectId, jobId) => cancelExport(store, projectId, jobId, tracking) });
+  try {
+    const current = await store.get();
+    const job = await store.requestExport(current.revision);
+    const args = { projectId: store.projectId, jobId: job.id };
+    const [first, second] = await Promise.all([crypto.randomUUID(), crypto.randomUUID()].map(requestId =>
+      service.call('openmotion_export_cancel', { ...args, requestId })));
+    assert.equal(first.job.state, 'cancelled');
+    assert.deepEqual(second.job, first.job);
+    await tracking.flush();
+    assert.equal(events.filter(event => event.event === 'export_result').length, 1);
+    assert.equal(events.filter(event => event.event === 'task_terminal').length, 1);
+    assert.equal(events.filter(event => event.event === 'export_cancel_result').length, 2);
+    assert.equal((await new TaskLedger(store.directory).snapshot())[job.id].outcome, 'cancelled');
+  } finally { tracking.close(); }
+}));
 
 test('worker reports a real terminal render failure once, separately from queue acceptance', () => fixture(async store => {
   const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });

@@ -78,27 +78,32 @@ export function supportsPhase1Tool(health: { mcp?: { protocol?: unknown; tools?:
 }
 
 export function validateInput(schema: any, value: any, field = 'arguments', knownField = 'arguments'): void {
+  const childField = (key: string) => knownField === 'arguments' ? key : knownField === 'unknown_field' ? knownField : knownField + '.' + key;
   if (schema.oneOf) {
     const variants: any[] = schema.oneOf;
     const failures = variants.map(variant => {
       try { validateInput(variant, value, field, knownField); return undefined; }
       catch (error) { if (error instanceof ToolInputError) return error; throw error; }
     });
-    if (failures.filter(error => !error).length !== 1) {
-      const actionBranch = variants.findIndex(variant => variant.properties?.action?.enum?.includes(value?.action));
-      const failure = failures[actionBranch];
-      if (schema.type === 'object' && (!value || typeof value !== 'object' || Array.isArray(value))) {
-        throw new ToolInputError(field + ' must match one action and its required fields', knownField, 'invalid_type');
+    const valid = failures.filter(error => !error).length;
+    if (valid !== 1) {
+      const message = field + ' must match one action and its required fields';
+      if (valid > 1) throw new ToolInputError(message, knownField, 'invalid_combination');
+      if (variants.every(variant => variant.type === 'object') && (!value || typeof value !== 'object' || Array.isArray(value))) {
+        throw new ToolInputError(message, knownField, 'invalid_type');
       }
-      throw new ToolInputError(field + ' must match one action and its required fields',
-        failure?.invalid_field ?? (schema.properties?.action ? 'action' : knownField),
-        failure?.validation_rule ?? (value?.action === undefined ? 'missing' : 'invalid_enum'));
+      const discriminator = ['action', 'command', 'operation'].find(key =>
+        variants.every(variant => variant.properties?.[key]?.enum?.length === 1));
+      if (!discriminator) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const selected = variants.findIndex(variant => variant.properties[discriminator].enum[0] === value?.[discriminator]);
+      const failure = failures[selected];
+      throw new ToolInputError(message, failure?.invalid_field ?? childField(discriminator),
+        failure?.validation_rule ?? (value?.[discriminator] === undefined ? 'missing' : 'invalid_enum'));
     }
   }
   if (schema.enum && !schema.enum.includes(value)) throw new ToolInputError(field, knownField, 'invalid_enum');
   if (schema.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ToolInputError(field + ' must be an object', knownField, 'invalid_type');
-    const childField = (key: string) => knownField === 'arguments' ? key : knownField === 'unknown_field' ? knownField : knownField + '.' + key;
     for (const key of schema.required ?? []) {
       if (!Object.hasOwn(value, key)) throw new ToolInputError(field + '.' + key + ' is required', childField(key), 'missing');
     }
