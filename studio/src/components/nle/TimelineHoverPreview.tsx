@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { loadPlayerModule } from '../../player/components/Player';
 import { usePlayerStore } from '../../player/store/playerStore';
 import { useTimelineHoverStore } from '../../player/store/timelineHoverStore';
@@ -16,7 +16,7 @@ interface HoverPlayer extends HTMLElement {
 }
 
 /** A separate, silent runtime. The editor's live iframe and playhead are never sought. */
-function HoverFrame({ source, time }: { source: string; time: number }) {
+function HoverFrame({ source, time, width, height }: { source: string; time: number; width: number; height: number }) {
   const { t } = useI18n();
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<HoverPlayer | null>(null);
@@ -40,8 +40,8 @@ function HoverFrame({ source, time }: { source: string; time: number }) {
       element.setAttribute('low-power-idle', '');
       element.setAttribute('assets-loading-ui', 'none');
       element.setAttribute('shader-capture-scale', '0.25');
-      element.setAttribute('width', '1920');
-      element.setAttribute('height', '1080');
+      element.setAttribute('width', String(width));
+      element.setAttribute('height', String(height));
       element.style.cssText = 'display:block;width:100%;height:100%;pointer-events:none';
       const ready = () => { element.pause(); element.seek(latestTime.current); };
       const painted = () => {
@@ -62,9 +62,9 @@ function HoverFrame({ source, time }: { source: string; time: number }) {
       };
     }).catch(fail);
     return () => { disposed = true; clearTimeout(deadline); cleanup?.(); };
-  }, [source]);
+  }, [source, width, height]);
   useEffect(() => { if (player.current?.ready) player.current.seek(time); }, [time]);
-  return <div className="motion-timeline-hover-frame" data-hover-preview-status={status}>
+  return <div className="motion-timeline-hover-frame" style={{ aspectRatio: `${width} / ${height}` }} data-hover-preview-status={status}>
     <div ref={host} className="absolute inset-0" style={{ visibility: status === 'ready' ? 'visible' : 'hidden' }} />
     {status === 'loading' && <Skeleton className="absolute inset-0" />}
     {status === 'error' && <span>{t('Frame preview unavailable. Move away and try again.')}</span>}
@@ -73,16 +73,18 @@ function HoverFrame({ source, time }: { source: string; time: number }) {
 
 export function TimelineHoverPreview() {
   const { t } = useI18n();
-  const { iframeRef, timelineSessionEpoch, timelineDisabled, projectId } = useNLEContext();
+  const { iframeRef, timelineSessionEpoch, timelineDisabled, projectId, previewCompositionSize } = useNLEContext();
   const hover = useTimelineHoverStore();
   const isPlaying = usePlayerStore(s => s.isPlaying);
   const revisions = usePlayerStore(s => s.thumbnailRevisions);
   const fps = useCompositionFps();
   const source = iframeRef.current?.getAttribute('src');
   if (hover.time === null || hover.sessionEpoch !== timelineSessionEpoch || timelineDisabled || isPlaying || !source) return null;
+  const size = previewCompositionSize && [previewCompositionSize.width, previewCompositionSize.height].every(value => Number.isFinite(value) && value > 0)
+    ? previewCompositionSize : { width: 1920, height: 1080 };
   const frame = Math.floor(hover.time * fps + 1e-6);
-  return <aside className="motion-timeline-hover-preview" aria-label={t('Timeline frame preview')} data-testid="timeline-hover-preview" data-time={hover.time}>
-    <HoverFrame key={`${projectId}:${source}:${JSON.stringify(revisions)}`} source={source} time={hover.time} />
+  return <div className="motion-timeline-hover-container"><aside className="motion-timeline-hover-preview" style={{ '--motion-hover-ratio': size.width / size.height } as CSSProperties} aria-label={t('Timeline frame preview')} data-testid="timeline-hover-preview" data-time={hover.time}>
+    <HoverFrame key={`${projectId}:${source}:${size.width}:${size.height}:${JSON.stringify(revisions)}`} source={source} time={hover.time} {...size} />
     <div className="motion-timeline-hover-caption"><span>{formatTime(hover.time)} · {frame}f</span><span>{t('Click the ruler to jump')}</span></div>
-  </aside>;
+  </aside></div>;
 }

@@ -66,6 +66,25 @@ try {
     assert.deepEqual([layout.width, layout.height], layout.viewport); assert.equal(layout.hasEditor, false);
     assert(Math.abs(layout.stage[2] / layout.stage[3] - 16 / 9) < 0.01); assert(layout.stage[0] >= -1 && layout.stage[1] >= -1);
     assert.equal(await frame.evaluate(() => window.__fullscreenTest), 'same live player');
+    assert(await page.$eval('[data-fullscreen-playback-surface]', el => document.activeElement === el));
+    const entryTime = await clock();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(time => Number(document.querySelector('input[aria-label="Seek preview"]').value) > time, {}, entryTime);
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(time => Math.abs(Number(document.querySelector('input[aria-label="Seek preview"]').value) - time) < .01, {}, entryTime);
+    await page.keyboard.press('m');
+    assert.equal(await page.$eval('[data-studio-control=mute]', el => el.getAttribute('aria-pressed')), 'true');
+    await page.keyboard.press('m');
+    const loopBefore = await page.$eval('button[aria-label$="loop playback"]', el => el.getAttribute('aria-pressed'));
+    await page.keyboard.down('Shift'); await page.keyboard.press('l'); await page.keyboard.up('Shift');
+    assert.notEqual(await page.$eval('button[aria-label$="loop playback"]', el => el.getAttribute('aria-pressed')), loopBefore);
+    await page.keyboard.down('Shift'); await page.keyboard.press('l'); await page.keyboard.up('Shift');
+    await page.keyboard.press('l');
+    await page.waitForFunction(time => Number(document.querySelector('input[aria-label="Seek preview"]').value) > time + .1, {}, entryTime);
+    await page.keyboard.press('k'); const shuttleTime = await clock();
+    await page.keyboard.press('j');
+    await page.waitForFunction(time => Number(document.querySelector('input[aria-label="Seek preview"]').value) < time - .1, {}, shuttleTime);
+    await page.keyboard.press('k');
     const mute = await page.$('[data-studio-control=mute]');
     await mute.hover();
     const volume = await page.waitForSelector('input[aria-label="Preview volume"]', { visible: true });
@@ -96,7 +115,7 @@ try {
     assert(Math.abs(await clock() - paused) < 0.1);
     assert(await page.$eval('[data-testid=preview-zoom-stage]', el => el.style.transform.includes('scale(2)')));
     assert.deepEqual(await page.$$eval('[data-clip][aria-pressed=true]', nodes => nodes.map(el => el.getAttribute('data-el-id'))), selected);
-    check(`Native fullscreen, playback, menus, idle controls and restoration: ${theme} ${width}px`);
+    check(`Native fullscreen, playback shortcuts, menus, idle controls and restoration: ${theme} ${width}px`);
   }
   await page.focus('[aria-label="Composition preview"]'); await page.keyboard.press('f');
   await page.waitForFunction(() => Boolean(document.fullscreenElement));

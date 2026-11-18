@@ -8,7 +8,8 @@ import { usePlayerStore } from '../../player/store/playerStore';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const context = vi.hoisted(() => ({ iframeRef: { current: null as HTMLIFrameElement | null },
-  projectId: 'p', timelineSessionEpoch: 4, timelineDisabled: false }));
+  projectId: 'p', timelineSessionEpoch: 4, timelineDisabled: false,
+  previewCompositionSize: null as { width: number; height: number } | null }));
 vi.mock('./NLEContext', () => ({ useNLEContext: () => context }));
 vi.mock('../../player/components/Player', () => ({ loadPlayerModule: () => Promise.resolve() }));
 class FakePlayer extends HTMLElement {
@@ -21,9 +22,18 @@ beforeEach(() => {
   vi.useFakeTimers();
   context.iframeRef.current = document.createElement('iframe');
   context.iframeRef.current.src = '/api/projects/p/preview';
+  context.previewCompositionSize = null;
   usePlayerStore.setState({ isPlaying: false, currentTime: 2 });
   useTimelineHoverStore.getState().setHover(5, 4);
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+});
+it.each([[1080, 1920], [1080, 1080], [1440, 1080], [1080, 1440], [1920, 1080]])('uses the composition dimensions %s × %s for the frame and runtime', async (width, height) => {
+  context.previewCompositionSize = { width, height };
+  await act(async () => root.render(<TimelineHoverPreview />));
+  const player = host.querySelector('hyperframes-player')!;
+  expect(player.getAttribute('width')).toBe(String(width));
+  expect(player.getAttribute('height')).toBe(String(height));
+  expect((host.querySelector('.motion-timeline-hover-frame') as HTMLElement).style.aspectRatio).toBe(`${width} / ${height}`);
 });
 afterEach(() => { act(() => root.unmount()); vi.useRealTimers(); document.body.innerHTML = ''; });
 it('seeks only the silent secondary runtime, coalesces boot to the latest time and releases on dismissal', async () => {

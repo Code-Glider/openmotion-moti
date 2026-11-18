@@ -38,10 +38,12 @@ try {
   const sceneTemplate = await readFile(path.join(pluginRoot, 'template-library/decision-tree/compositions/decision_tree.html'), 'utf8');
   const scene = parsers.parseHTML(sceneTemplate).document.querySelector('template').innerHTML;
   const stylePage = await browser.newPage();
+  await stylePage.setViewport({ width: 1080, height: 1920 });
   const inspectRoot = async (html, selector) => {
     const { document } = parsers.parseHTML(html);
     for (const script of document.querySelectorAll('script')) script.remove();
     await stylePage.setContent(document.toString());
+    await stylePage.addStyleTag({ content: 'body { margin: 0 }' });
     return stylePage.$eval(selector, el => {
       const s = getComputedStyle(el);
       return { background: s.backgroundColor, image: s.backgroundImage, size: s.backgroundSize, position: s.position, font: s.fontFamily, overflow: s.overflow, width: s.width, height: s.height };

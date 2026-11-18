@@ -116,6 +116,24 @@ try {
   await hover(8);
   check('Loading reserves geometry; failed preview releases its runtime and recovers on re-hover');
   const after = await client.call('openmotion_get_project', { projectId }); assert.equal(after.revision, before.revision);
+  await page.setViewport({ width: 700, height: 800 });
+  for (const [ratio, width, height] of [['9:16', 1080, 1920], ['1:1', 1080, 1080], ['4:3', 1440, 1080], ['3:4', 1080, 1440], ['16:9', 1920, 1080]]) {
+    await page.mouse.move(5, 5);
+    const current = await client.call('openmotion_get_project', { projectId });
+    await client.call('openmotion_edit_project', { projectId, requestId: `hover-${ratio}`, expectedRevision: current.revision, expectedVersionId: current.currentVersionId, canvas: { compositionPath: 'index.html', ratio, fit: 'contain' } });
+    await page.waitForFunction(ratio => document.querySelector('button[aria-label="Aspect ratio"]')?.textContent === ratio, {}, ratio);
+    await hover(2);
+    const geometry = await page.$eval('[data-testid=timeline-hover-preview]', el => {
+      const frame = el.querySelector('.motion-timeline-hover-frame').getBoundingClientRect(), player = el.querySelector('hyperframes-player');
+      const box = el.getBoundingClientRect(), parent = el.parentElement.getBoundingClientRect();
+      return { ratio: frame.width / frame.height, width: player.getAttribute('width'), height: player.getAttribute('height'), contained: box.top >= parent.top && box.bottom <= parent.bottom && box.left >= parent.left && box.right <= parent.right };
+    });
+    assert(Math.abs(geometry.ratio - width / height) < .01);
+    assert.deepEqual([geometry.width, geometry.height], [String(width), String(height)]);
+    assert(geometry.contained, `The ${ratio} frame and caption fit inside the preview`);
+    await page.screenshot({ path: path.join(out, `hover-ratio-${ratio.replace(':', '-')}.png`) });
+  }
+  check('All five hover frame ratios match their native canvas and fit the narrow preview');
   assert.deepEqual(errors, []);
   await writeFile(path.join(out, 'result.json'), JSON.stringify({ results, errors }, null, 2));
 } catch (error) {
