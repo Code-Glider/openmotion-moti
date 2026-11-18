@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { type Archive, prepare, read } from "@open-motion/portable";
+import { type Archive, prepareSnapshot, read } from "@open-motion/portable";
 import { Fault, type SourcePayload, type Workspace } from "@open-motion/workspace";
 import {
   type ArchiveInput,
@@ -102,22 +102,17 @@ export class Archives {
           artifactId: selected.artifactId,
           revision: selected.revision,
         });
-      archive = prepare({
-        files: snapshot.files,
-        resources: snapshot.resources.map((resource) => ({
-          path: resource.path,
-          name: resource.name,
-          bytes: Buffer.from(
-            this.workspace.execute("resource_read", {
-              sessionId: selected.sessionId,
-              artifactId: selected.artifactId,
-              revision: selected.revision,
-              path: resource.path,
-            }).data,
-            "base64",
-          ),
-        })),
-      });
+      archive = prepareSnapshot(
+        snapshot.files,
+        snapshot.resources.map((resource) =>
+          this.workspace.readResource({
+            sessionId: selected.sessionId,
+            artifactId: selected.artifactId,
+            revision: selected.revision,
+            path: resource.path,
+          }),
+        ),
+      );
       value = {
         id: input.requestId,
         url: `${this.endpoint}/archives/download/${key}`,
@@ -197,7 +192,11 @@ export class Archives {
           ...(origin ? { "access-control-allow-origin": origin, vary: "origin" } : {}),
         });
         if (request.method === "HEAD") response.end();
-        else await pipeline(Readable.from(ticket.archive!.chunks()), response);
+        else
+          await pipeline(
+            Readable.from(ticket.archive!.chunks(), { objectMode: false, highWaterMark: 65536 }),
+            response,
+          );
       }
     } finally {
       clearTimeout(deadline);
