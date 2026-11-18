@@ -19,7 +19,7 @@ beforeEach(() => {
   root = createRoot(container);
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
 });
-afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); });
+afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function Host() {
   const [skill, setSkill] = useState<string | null>(null);
@@ -322,4 +322,27 @@ it('keeps the poster when the archived video request fails', async () => {
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(detail.querySelector('video')).toBeNull();
   expect(detail.querySelectorAll('img')).toHaveLength(2);
+});
+
+it('releases a preloaded card when it leaves the preload band', async () => {
+  const observed = new Map<Element, (isIntersecting: boolean) => void>();
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(private callback: IntersectionObserverCallback, private options: IntersectionObserverInit) {}
+    observe(element: Element) {
+      if (this.options.rootMargin) {
+        observed.set(element, isIntersecting => this.callback([{ isIntersecting } as IntersectionObserverEntry], this as unknown as IntersectionObserver));
+      }
+    }
+    disconnect() {}
+  });
+  vi.mocked(fetch).mockResolvedValue(new Response('sample'));
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preloaded-preview');
+  const revoke = vi.spyOn(URL, 'revokeObjectURL');
+  act(() => root.render(<Host />));
+  const card = container.querySelector('[data-skill-id="motionmaxxing"]')!;
+  await act(async () => observed.get(card)!(true));
+  expect(card.querySelectorAll('video')).toHaveLength(2);
+  act(() => observed.get(card)!(false));
+  expect(card.querySelector('video')).toBeNull();
+  expect(revoke).toHaveBeenCalledWith('blob:preloaded-preview');
 });

@@ -162,12 +162,8 @@ function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { ski
     const element = card.current;
     if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
-    const ahead = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setNear(true);
-        ahead.disconnect();
-      }
-    }, { root: element.closest('.om-skills-main'), rootMargin: '100% 0px' });
+    const ahead = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting),
+      { root: element.closest('.om-skills-main'), rootMargin: '100% 0px' });
     observer.observe(element);
     ahead.observe(element);
     return () => { observer.disconnect(); ahead.disconnect(); };

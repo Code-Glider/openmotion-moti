@@ -79,6 +79,8 @@ For a read-only local preview of the plan, use `npm run media:prepare -- <PR-num
 
 Catalog search and MCP detail read local source and return the public preview/poster URL. They do not download media in the background. HTML and Markdown use public asset URLs. Reading the logical source asset through the local API downloads and verifies its bounded body.
 
+For Skill cards, the registered URL in `repository-media.json` takes precedence. Existing clips without a registry entry use their [pinned public source snapshot](../studio/skill-cover-attribution.md). New clips go through **Prepare and merge PR** to receive a registered URL. If the preview host is unreachable, Studio displays the bundled WebP poster.
+
 Other optional media retains its local logical path in `repository-media.json`. Fetch one scope or the complete legacy set:
 
 ```sh
