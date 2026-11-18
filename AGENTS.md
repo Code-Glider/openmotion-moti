@@ -33,6 +33,16 @@ For repository PR work, follow the [contributor review checklist](CONTRIBUTING.m
 
 Merge and publication authorization remain separate from review cleanup. These steps do not grant permission to merge, bypass required checks or publish a package.
 
+### Automatic waiting during PR follow-up
+
+During an ongoing PR follow-up task, use the current client's available monitoring or waiting tools to continue when CI or reviews change:
+
+- **Claude Code:** when this session exposes `Monitor`, prefer it to watch the PR and resume the review loop on relevant changes. Use persistent monitoring only as supported by the actual tool; inspect its schema rather than assuming every client/version has it.
+- **Codex, OpenCode and other clients:** prefer a native monitor/wait capability when exposed. Otherwise keep a lightweight shell wait active in the current agent session, sampling PR metadata about every 30 seconds and returning when the state changes or its wait deadline is reached. Re-arm the wait while follow-up remains active.
+- Compare the head/base commits, review threads (including replies/edits and resolution), latest reviews and mergeability. Fold checks into one CI phase (`pending`, `passed`, `failed` or `missing`) so each individual green job does not restart the review pass. Wake the Agent for a changed state, then verify the actual feedback/check before acting.
+- Stop when the requested follow-up is complete, the PR closes/merges, the user stops it or an external blocker needs the user. Report the exact remaining state. An approved PR with required checks green still needs existing merge authorization.
+- A session wait does not survive closing the client. Only promise unattended follow-up after session closure when a durable runner has actually been configured for that scope; otherwise leave the PR URL, head, pending items and resume instructions for the next session.
+
 ## Repository contribution Skills
 
 Source-checkout contributor Skills live under `.agents/skills/`. When adding or maintaining a built-in BYOK media provider, read `.agents/skills/add-byok-provider/SKILL.md` in this checkout. It covers provider research, implementation, references and verification. These repository-local Skills are excluded from application/plugin distribution and host installation; root `skills/` continues to hold product workflows. Installed product copies may not contain `.agents/skills/`. Other Agents following `CLAUDE.md` use this same source-checkout guidance.

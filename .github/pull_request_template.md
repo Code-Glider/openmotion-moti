@@ -14,6 +14,8 @@ List checks actually run and their results. Mark unrun checks explicitly; includ
 
 The author owns follow-up after opening this PR. Follow the [review checklist](https://github.com/nexu-io/openmotion/blob/main/CONTRIBUTING.md#follow-through-on-review): verify feedback, push validated fixes, reply with evidence, resolve addressed threads and re-request prior reviewers after changes. If blocked or waiting, report what remains. Complete these as review progresses:
 
+Using an Agent? Ask it to [keep following CI and review changes](https://github.com/nexu-io/openmotion/blob/main/CONTRIBUTING.md#automatic-follow-up-with-an-agent) and report which monitor/wait mechanism is active.
+
 - [ ] Every review thread has an addressed outcome or a clearly reported blocker.
 - [ ] Required checks and merge conflicts have been checked on the latest commit; pending items are reported.
 

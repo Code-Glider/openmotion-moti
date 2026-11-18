@@ -33,6 +33,21 @@ Opening a PR starts the review cycle. The author is responsible for following up
 
 Agents follow the same process through [Repository PR review follow-up](AGENTS.md#repository-pr-review-follow-up). Authors can use any suitable PR interface; installing a particular Skill is not required.
 
+### Automatic follow-up with an Agent
+
+Ask your Agent to keep the review loop active while waiting for CI or comments. Claude Code can use `Monitor` when that tool is available in the session; other clients can use their monitor/wait tools or a lightweight session wait. The [Agent waiting guidance](AGENTS.md#automatic-waiting-during-pr-follow-up) covers state changes, CI aggregation and session lifetime.
+
+```text
+Keep following PR_URL through CI and review in this session. Use an available
+monitor/wait tool, or wait for PR state changes in-session. Verify new feedback,
+fix confirmed issues and required CI/conflicts, push validated changes, reply and
+resolve addressed threads, and re-request prior reviewers when permitted.
+Continue until the review follow-up is ready or a concrete blocker needs me.
+Report the latest state. Do not merge or publish.
+```
+
+Replace `PR_URL` with your PR link. A promise to keep watching is not a running monitor: ask the Agent to identify the active mechanism and its lifetime. Closing a session stops session-only waiting; unattended tracking needs a separately configured durable runner.
+
 ### Submit a video with your Agent
 
 Share your video, reference or editable project with your Agent and paste this brief:
