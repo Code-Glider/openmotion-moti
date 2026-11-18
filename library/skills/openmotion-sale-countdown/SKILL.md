@@ -20,12 +20,12 @@ day of a teaser run instead of reusing yesterday's number.
 
 ## Look
 
-A timer, not a poster: a wall of outlined type scrolls behind, a dial's ring drains as the number rolls down to the true value, and up to four product photos deal in as a stack of tilted cards. The end card is a ticket with the date and offer. Display type is Anton, shipped with the Skill (SIL OFL). Without photos the dial and type wall carry the film alone.
+Depth, not slides: a giant number fills the back of the frame and rolls down to the true value, the product floats in front of it under a moving spotlight, and each tick brings the next product forward. Transparent PNG cutouts give the best result; photos with a background still work but read flatter. At the end the product stays as the hero next to the date, offer and button. Display type is Anton, shipped with the Skill (SIL OFL).
 
 ## 1. Collect the moments
 
 Ask for the occasion, whether the countdown is to the start (`starts`) or the end (`ends`) of the sale,
-the exact start or end time with its time zone, when the video will be posted, up to four product photos, a short teaser line
+the exact start or end time with its time zone, when the video will be posted, up to four product photos (transparent PNG cutouts work best), a short teaser line
 ("Up to 40% off sitewide") if the offer is public, and the call to action. Never invent the date or the
 discount.
 
@@ -49,10 +49,10 @@ cd out && npx hyperframes check && npx hyperframes render -o countdown.mp4
 
 | Beat | Time | What happens |
 | --- | --- | --- |
-| Kicker | 0–1.2 s | The occasion and "starts in" / "ends in" |
-| Roll | 1.2–5.2 s | The number rolls down a few steps inside the dial and lands on the true value; the ring drains and the photo cards deal in; "days to go" / "hours left" |
-| Date | 5.2–7.5 s | A ticket with the exact date as the shop writes it and the teaser |
-| Call to action | 7.5–9.6 s | Button, URL, sign-off |
+| Kicker | 0–1.1 s | The occasion and "starts in" / "ends in" |
+| Roll | 1.1–5.4 s | The giant number rolls down a few steps behind the product and lands on the true value; products take turns in front; "days to go" / "hours left" |
+| Date | 5.4–7.6 s | The product stays as the hero; the exact date and the teaser appear beside or below it |
+| Call to action | 7.6–9.6 s | Button, URL, sign-off |
 
 The unit is days when two or more days are left, otherwise hours; set `unit` to force one. The number
 is a reel moved by the timeline, so every frame is deterministic and editable. `theme`, `brand.accent`

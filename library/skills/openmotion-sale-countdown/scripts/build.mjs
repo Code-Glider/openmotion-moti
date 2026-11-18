@@ -65,104 +65,91 @@ const L = {
 if (checkOnly) { console.log(`✓ ${data.brand.name}: ${data.occasion} ${L[mode]} ${value} ${L[unit]} (posted ${data.postAt}), ${aspect}`); process.exit(0); }
 
 // ---------- layout ----------
-// A timer, not a poster: a wall of scrolling type behind, a dial whose ring drains as the number
-// rolls down, and the product photos as a stack of cards that deal in one after another.
+// Depth, not slides: a giant number fills the back of the frame and rolls down to the true value,
+// the product (ideally a transparent cutout) floats in front of it under a spotlight, and each tick
+// of the number brings the next product forward.
 const [W, H] = SIZES[aspect];
 const t = theme(data);
 const wide = W > H, portrait = H / W > 1.5;
 const u = Math.min(W, H) / 1080;
 const px = n => Math.round(n * u);
-const B = { kick: 0, roll: 1.2, date: 5.2, cta: 7.5, end: 9.6 };
+const B = { kick: 0, roll: 1.1, date: 5.4, cta: 7.6, end: 9.6 };
 const start = Math.min(99, value + Math.max(4, Math.min(9, Math.ceil(value * 0.6))));
 const steps = []; for (let v = start; v >= value; v--) steps.push(v);
-const D = Math.round(Math.min(W, H) * (portrait ? 0.74 : 0.56));            // dial diameter
-const dialX = wide ? W * 0.62 : W / 2, dialY = wide ? H * 0.56 : portrait ? H * 0.47 : H * 0.58;
-const numSize = Math.min(fit(String(start), D * 0.62, px(520), 0.55), Math.round(D * 0.42));
-const rowH = Math.round(numSize * 1.3);
-const occSize = fit(String(data.occasion), wide ? W * 0.9 : W * 0.88, px(wide ? 120 : 150), 0.57);
-const teaserSize = data.teaser ? fit(data.teaser, W * 0.8, px(wide ? 120 : 130), 0.57) : 0;
-const wallSize = px(wide ? 120 : 140);
-const wallText = `${data.occasion} · ${L[mode]} · `.toUpperCase().repeat(6);
-const cardW = Math.round(Math.min(W, H) * (portrait ? 0.46 : 0.36)), cardH = Math.round(cardW * 1.3);
-const R = D / 2 - px(14), C = 2 * Math.PI * R;
+const numSize = Math.min(fit(String(start), W * (wide ? 0.62 : 0.96), px(1400), 0.56), Math.round(H * (portrait ? 0.5 : 0.6)));
+const rowH = Math.round(numSize * 1.2);
+const numY = portrait ? H * 0.47 : H * 0.6;                       // centre of the number
+const occSize = fit(String(data.occasion), W * 0.86, px(wide ? 110 : 130), 0.57);
+const prodW = Math.round(Math.min(W * (portrait ? 0.78 : wide ? 0.4 : 0.6), H * (portrait ? 0.46 : 0.62)));
+const prodY = portrait ? H * 0.5 : H * 0.56;                       // centre of the product
+const shade = `rgba(${t.shade},`;
 const css = `
-#bg{position:absolute;inset:0;background:${t.bg}}
-.row{position:absolute;left:0;white-space:nowrap;font-size:${wallSize}px;color:transparent;-webkit-text-stroke:${px(2)}px ${t.ink};opacity:.16}
-.row.hot{color:${t.accent};-webkit-text-stroke:0;opacity:.9}
-.card{position:absolute;width:${cardW}px;height:${cardH}px;border-radius:${px(22)}px;background:${t.panel} center/cover no-repeat;box-shadow:0 ${px(24)}px ${px(60)}px rgba(0,0,0,.45);border:${px(8)}px solid ${t.ink}}
+#bg{position:absolute;inset:0;background:radial-gradient(60% 45% at 50% ${Math.round((numY / H) * 100)}%,${t.panel} 0,${t.bg} 70%)}
+#spot{position:absolute;left:50%;top:-20%;width:${Math.round(W * 1.1)}px;height:${Math.round(H * 1.1)}px;margin-left:${-Math.round(W * 0.55)}px;background:conic-gradient(from 180deg at 50% 0%,transparent 160deg,${t.ink}14 175deg,${t.ink}22 180deg,${t.ink}14 185deg,transparent 200deg);opacity:.9}
 .mask{overflow:hidden}
-.brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
-.ticket{display:inline-block;background:${t.ink};color:${t.bg};border-radius:${px(30)}px;padding:${px(48)}px ${px(70)}px;position:relative;max-width:${Math.round(W * 0.86)}px}
-.ticket:before,.ticket:after{content:'';position:absolute;top:50%;width:${px(44)}px;height:${px(44)}px;margin-top:${-px(22)}px;border-radius:50%;background:${t.bg}}
-.ticket:before{left:${-px(22)}px}.ticket:after{right:${-px(22)}px}
-.cta{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(52)}px;padding:${px(22)}px ${px(54)}px;border-radius:${px(999)}px;white-space:nowrap}`;
-const rows = Math.ceil(H / (wallSize * 0.95)) + 1;
-const hotRow = Math.floor(rows * (portrait ? 0.82 : 0.86));
-const wall = Array.from({ length: rows }, (_, i) => `<div id="w${i}" class="row d${i === hotRow ? ' hot' : ''}" style="top:${Math.round(i * wallSize * 0.95)}px">${esc(wallText)}${esc(wallText)}</div>`).join('');
-const spots = wide ? [[0.06, 0.2, -8], [0.2, 0.26, 6], [0.1, 0.4, -3], [0.24, 0.12, 9]] : portrait ? [[0.04, 0.6, -9], [0.52, 0.63, 8], [0.08, 0.08, 7], [0.55, 0.1, -6]] : [[0.02, 0.5, -9], [0.66, 0.48, 8], [0.03, 0.06, 6], [0.66, 0.08, -7]];
-const reel = steps.map(v => `<div class="d" style="height:${rowH}px;line-height:${rowH}px">${v}</div>`).join('');
-const body = src => `<div id="bg"></div>${wall}
-${images.map((im, i) => { const [x, y, r] = spots[i % spots.length]; return `<div id="cd${i}" class="card" style="left:${Math.round(W * x)}px;top:${Math.round(H * y)}px;background-image:url('${src(im)}');opacity:0"></div>`; }).join('')}
+.prod{position:absolute;left:${Math.round(W / 2 - prodW / 2)}px;top:${Math.round(prodY - prodW / 2)}px;width:${prodW}px;height:${prodW}px;background:center/contain no-repeat;filter:drop-shadow(0 ${px(40)}px ${px(50)}px rgba(0,0,0,.55));opacity:0}
+#floor{position:absolute;left:50%;top:${Math.round(prodY + prodW * 0.44)}px;width:${Math.round(prodW * 0.8)}px;height:${Math.round(prodW * 0.1)}px;margin-left:${-Math.round(prodW * 0.4)}px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);filter:blur(${px(8)}px)}
+#sweep{position:absolute;top:-20%;bottom:-20%;width:${Math.round(W * 0.18)}px;background:linear-gradient(90deg,transparent,${t.ink}2e,transparent);transform:rotate(18deg);left:-30%}
+.pill{display:inline-block;background:${t.accent};color:${t.accentInk};padding:${px(10)}px ${px(30)}px ${px(4)}px;border-radius:${px(999)}px}
+.cta{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;padding:${px(22)}px ${px(54)}px;border-radius:${px(999)}px;white-space:nowrap}`;
+const reel = steps.map(v => `<div style="height:${rowH}px;line-height:${rowH}px">${v}</div>`).join('');
+const prods = images.length ? images : [];
+const body = src => `<div id="bg"></div><div id="spot"></div>
+<div id="numwrap" style="position:absolute;left:0;right:0;top:${Math.round(numY - rowH / 2)}px;height:${rowH}px;text-align:center" class="mask">
+  <div id="reel" class="d" style="font-size:${numSize}px;color:transparent;background:linear-gradient(180deg,${t.ink} 0%,${t.ink} 45%,${t.ink}00 100%);-webkit-background-clip:text;background-clip:text">${reel}</div>
+</div>
+<div id="sweep"></div>
+<div id="floor"></div>
+${prods.map((im, i) => `<div id="pr${i}" class="prod" style="background-image:url('${src(im)}')"></div>`).join('')}
 <div class="grain" id="grain"></div>
-<div class="brand">${esc(data.brand.name)}</div>
-<div id="head" style="position:absolute;left:${wide ? W * 0.04 : 0}px;right:${wide ? W * 0.44 : 0}px;top:${Math.max(px(110), wide ? H * 0.08 : H * 0.07)}px;text-align:${wide ? 'left' : 'center'};color:${t.ink}">
-  <div class="mask" style="height:${Math.round(occSize * 0.92)}px"><div id="occ" class="d" style="font-size:${occSize}px;white-space:nowrap">${esc(data.occasion)}</div></div>
+<div id="head" style="position:absolute;left:0;right:0;top:${portrait ? H * 0.07 : H * 0.06}px;text-align:center;color:${t.ink}">
+  <div style="font-size:${px(28)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;opacity:.75">${esc(data.brand.name)}</div>
+  <div class="mask" style="height:${Math.round(occSize * 0.92)}px;margin-top:${px(12)}px"><div id="occ" class="d" style="font-size:${occSize}px;white-space:nowrap">${esc(data.occasion)}</div></div>
+  <div id="kick" style="margin-top:${px(10)}px;font-size:${px(34)}px;letter-spacing:.32em;text-transform:uppercase;font-weight:600;color:${t.accent}">${esc(L[mode])}</div>
 </div>
-<div id="dial" style="position:absolute;left:${Math.round(dialX - D / 2)}px;top:${Math.round(dialY - D / 2)}px;width:${D}px;height:${D}px;border-radius:50%;background:${t.bg};box-shadow:0 ${px(30)}px ${px(90)}px rgba(0,0,0,.5)">
-  <svg width="${D}" height="${D}" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="${D / 2}" cy="${D / 2}" r="${R}" fill="none" stroke="${t.ink}" stroke-opacity=".14" stroke-width="${px(18)}"/>
-  <circle id="arc" cx="${D / 2}" cy="${D / 2}" r="${R}" fill="none" stroke="${t.accent}" stroke-width="${px(18)}" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0"/></svg>
-  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:${t.ink}">
-    <div id="kick" style="font-size:${px(34)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;opacity:.8">${esc(L[mode])}</div>
-    <div class="mask" style="height:${rowH}px;margin-top:${px(4)}px"><div id="reel" style="font-size:${numSize}px;text-align:center">${reel}</div></div>
-    <div id="unit" class="d" style="font-size:${Math.min(px(64), Math.round(D * 0.085))}px;color:${t.accent};margin-top:${px(2)}px">${esc(L[unit])} ${esc(L.left)}</div>
-  </div>
-</div>
+<div id="unit" style="position:absolute;left:0;right:0;top:${Math.round(prodY + prodW * 0.5 + px(10))}px;text-align:center"><span class="pill d" style="font-size:${px(wide ? 56 : 64)}px">${esc(L[unit])} ${esc(L.left)}</span></div>
 ${(() => {
-  // End: the type wall dims, the hero photo returns large, and the date, offer and button sit beside it.
-  const hero = images[images.length - 1];
-  const side = hero && !portrait;
-  const headBottom = Math.max(px(110), wide ? H * 0.08 : H * 0.07) + occSize * 0.92 + px(34);
-  const hx = side ? W * 0.06 : W * 0.15, hy = headBottom, hw = side ? W * (wide ? 0.34 : 0.42) : W * 0.7, hh = side ? H * 0.92 - headBottom : H * 0.4;
-  const tx = side ? hx + hw + W * 0.05 : W * 0.08, ty = side ? headBottom + px(20) : hero ? headBottom + hh + px(50) : H * 0.3, tw = side ? W - tx - W * 0.06 : W * 0.84;
-  const dateSize = fit(data.target.label, tw, px(56), 0.55), tsz = data.teaser ? fit(data.teaser, tw, px(side ? 130 : 150), 0.57) : 0;
-  return `${hero ? `<div id="hero" style="position:absolute;left:${Math.round(hx)}px;top:${Math.round(hy)}px;width:${Math.round(hw)}px;height:${Math.round(hh)}px;border-radius:${px(28)}px;background:url('${src(hero)}') center/cover no-repeat;box-shadow:0 ${px(40)}px ${px(100)}px rgba(0,0,0,.55);opacity:0"></div>` : ''}
-<div id="dt" style="opacity:0;position:absolute;left:${Math.round(tx)}px;top:${Math.round(ty)}px;width:${Math.round(tw)}px;text-align:${side ? 'left' : 'center'};color:${t.ink}">
-  <div id="dlabel" style="font-size:${px(30)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;color:${t.accent}">${esc(mode === 'ends' ? (L.lastCall || 'Last call') : (L.saveDate || 'Save the date'))}</div>
-  <div id="date" style="margin-top:${px(12)}px;font-size:${dateSize}px;font-weight:600">${esc(data.target.label)}</div>
-  <div id="rule" style="margin:${px(26)}px ${side ? '0' : 'auto'} ${px(22)}px;width:${Math.round(tw * 0.5)}px;height:${px(4)}px;background:${t.ink};opacity:.35;transform-origin:${side ? 'left' : 'center'} center"></div>
-  ${data.teaser ? `<div class="mask" style="padding-bottom:${px(6)}px"><div id="teaser" class="d" style="font-size:${tsz}px;line-height:.95">${esc(data.teaser)}</div></div>` : ''}
-  <div><div id="cta" class="cta" style="margin-top:${px(40)}px;font-size:${fit(data.cta, tw - px(110), px(52), 0.55)}px">${esc(data.cta)}</div></div>
-  ${data.url ? `<div id="url" style="margin-top:${px(18)}px;font-size:${px(36)}px;font-weight:600;opacity:.8">${esc(data.url)}</div>` : ''}
+  const tw = portrait ? W * 0.84 : W * 0.44;
+  const dateSize = fit(data.target.label, tw, px(52), 0.55), tsz = data.teaser ? fit(data.teaser, tw, px(wide ? 120 : 140), 0.57) : 0;
+  return `<div id="dt" style="opacity:0;position:absolute;${portrait ? `left:0;right:0;top:${Math.round(prodY + prodW * 0.5 - px(10))}px;text-align:center` : `left:${Math.round(W * 0.5)}px;width:${Math.round(W * 0.44)}px;top:${Math.round(H * 0.4)}px;text-align:left`};color:${t.ink}">
+  <div id="date" style="font-size:${dateSize}px;font-weight:600">${esc(data.target.label)}</div>
+  ${data.teaser ? `<div class="mask"><div id="teaser" class="d" style="margin-top:${px(10)}px;font-size:${tsz}px">${esc(data.teaser)}</div></div>` : ''}
+  <div><div id="cta" class="cta" style="margin-top:${px(26)}px;font-size:${fit(data.cta, portrait ? W * 0.7 : W * 0.36, px(52), 0.55)}px">${esc(data.cta)}</div></div>
+  ${data.url ? `<div id="url" style="margin-top:${px(14)}px;font-size:${px(34)}px;font-weight:600;opacity:.8">${esc(data.url)}</div>` : ''}
 </div>`; })()}
-${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0')}`;
+${noCredit ? '' : credit(t, px(24)).replace('opacity:.72', 'opacity:0')}`;
 
 const f = v => v.toFixed(2);
-const stepDur = (B.date - 1.0 - B.roll) / Math.max(1, steps.length - 1);
-const rH = rowH;
+const stepDur = (B.date - 0.9 - B.roll) / Math.max(1, steps.length - 1);
 let rollJs = '';
-steps.forEach((_, i) => { if (i) rollJs += `tl.to('#reel',{y:${-i * rH},duration:${f(Math.min(0.3, stepDur * 0.8))},ease:'power3.inOut'},${f(B.roll + 0.3 + (i - 1) * stepDur)});\n`; });
-// Cards deal in one after another during the roll.
-const dealJs = images.map((_, i) => { const r = spots[i % spots.length][2]; const at = B.roll + 0.2 + i * ((B.date - 1.2 - B.roll) / Math.max(1, images.length)); return `tl.fromTo('#cd${i}',{opacity:0,y:${px(160)},rotation:${r * 3}},{opacity:1,y:0,rotation:${r},duration:.55,ease:'back.out(1.4)'},${f(at)});`; }).join('\n');
+steps.forEach((_, i) => { if (i) rollJs += `tl.to('#reel',{y:${-i * rowH},duration:${f(Math.min(0.32, stepDur * 0.8))},ease:'power3.inOut'},${f(B.roll + 0.3 + (i - 1) * stepDur)});\n`; });
+// Products take turns in front of the number: each one pops in, floats, and hands over to the next.
+let prodJs = '';
+if (prods.length) {
+  const slots = Math.max(1, prods.length), span = (B.date - B.roll) / slots;
+  prods.forEach((_, i) => {
+    const a = i === 0 ? 0.35 : B.roll + i * span, last = i === prods.length - 1;
+    prodJs += `tl.fromTo('#pr${i}',{opacity:0,scale:.6,rotation:${i % 2 ? 12 : -12},y:${px(120)}},{opacity:1,scale:1,rotation:${i % 2 ? 4 : -4},y:0,duration:.6,ease:'back.out(1.5)'},${f(a)});\n`;
+    prodJs += `tl.to('#pr${i}',{y:${-px(26)},rotation:${i % 2 ? -2 : 2},duration:${f(Math.max(0.6, (last ? B.end - a : span) - 0.6))},ease:'sine.inOut'},${f(a + 0.6)});\n`;
+    if (!last) prodJs += `tl.to('#pr${i}',{opacity:0,scale:.7,x:${i % 2 ? px(200) : -px(200)},duration:.4,ease:'power3.in'},${f(B.roll + (i + 1) * span - 0.2)});\n`;
+  });
+}
 const script = `
 tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(B.end)},ease:'steps(${Math.round(B.end * 12)})'},0);
-${Array.from({ length: rows }, (_, i) => `tl.fromTo('#w${i}',{xPercent:${i % 2 ? -50 : 0}},{xPercent:${i % 2 ? 0 : -50},duration:${f(B.end * (1.6 + (i % 3) * 0.4))},ease:'none'},0);`).join('\n')}
+tl.fromTo('#spot',{rotation:-8,transformOrigin:'50% 0%'},{rotation:8,duration:${f(B.end)},ease:'sine.inOut'},0);
 tl.fromTo('#occ',{yPercent:110},{yPercent:0,duration:.55,ease:'power4.out'},0.1);
-tl.fromTo('#dial',{scale:.3,opacity:0,rotation:-60},{scale:1,opacity:1,rotation:0,duration:.7,ease:'back.out(1.3)'},0.25);
-tl.fromTo('#reel',{opacity:0},{opacity:1,duration:.3},0.55);
-${rollJs}// the ring drains to the share of time still left between the first and the true number
-tl.fromTo('#arc',{strokeDashoffset:0},{strokeDashoffset:${(C * (1 - value / start)).toFixed(1)},duration:${f(B.date - 1.0 - B.roll)},ease:'none'},${f(B.roll + 0.3)});
-${dealJs}
-tl.fromTo('#dial',{scale:1},{scale:1.07,duration:.15,yoyo:true,repeat:1},${f(B.date - 0.95)});
-tl.to('#dial',{scale:.25,opacity:0,duration:.4,ease:'power3.in'},${f(B.date - 0.35)});
-tl.to(${JSON.stringify(images.map((_, i) => `#cd${i}`))},{y:${px(260)},opacity:0,duration:.4,ease:'power3.in',stagger:.05},${f(B.date - 0.35)});
-${Array.from({ length: rows }, (_, i) => `tl.to('#w${i}',{opacity:${i === hotRow ? 0.25 : 0.05},duration:.5},${f(B.date - 0.3)});`).join('\n')}
-${images.length ? `tl.fromTo('#hero',{opacity:0,scale:.82,rotation:-5,y:${px(80)}},{opacity:1,scale:1,rotation:-2,y:0,duration:.6,ease:'back.out(1.3)'},${f(B.date - 0.1)});
-tl.to('#hero',{scale:1.04,rotation:0,duration:${f(B.end - B.date - 0.5)},ease:'none'},${f(B.date + 0.5)});` : ''}
+tl.fromTo('#kick',{opacity:0,y:${px(16)}},{opacity:1,y:0,duration:.4},0.35);
+tl.fromTo('#numwrap',{opacity:0,scale:1.25},{opacity:1,scale:1,duration:.7,ease:'power3.out'},0.2);
+${rollJs}tl.fromTo('#unit',{opacity:0,y:${px(30)}},{opacity:1,y:0,duration:.4,ease:'back.out(2)'},${f(B.roll + 0.2)});
+${[0, 1, 2].map(k => `tl.fromTo('#sweep',{left:'-30%'},{left:'120%',duration:.9,ease:'power2.inOut'},${f(0.6 + k * 2.6)});`).join('\n')}
+${prodJs}
+tl.fromTo('#numwrap',{scale:1},{scale:1.06,duration:.15,yoyo:true,repeat:1},${f(B.date - 0.95)});
+tl.to('#unit',{opacity:0,duration:.25},${f(B.date - 0.25)});
+tl.to('#numwrap',{opacity:.18,duration:.5},${f(B.date - 0.2)});
+${!portrait && prods.length ? `tl.to('#pr${prods.length - 1}',{x:${-Math.round(W * (wide ? 0.22 : 0.25))},scale:${wide ? 1 : 0.78},duration:.6,ease:'power3.inOut'},${f(B.date - 0.25)});\ntl.to('#floor',{x:${-Math.round(W * 0.22)},duration:.6,ease:'power3.inOut'},${f(B.date - 0.25)});` : ''}
 tl.set('#dt',{opacity:1},${f(B.date - 0.01)});
-tl.fromTo('#dlabel',{opacity:0,x:${px(-30)}},{opacity:1,x:0,duration:.35},${f(B.date + 0.1)});
-tl.fromTo('#date',{opacity:0,y:${px(24)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.date + 0.2)});
-tl.fromTo('#rule',{scaleX:0},{scaleX:1,duration:.4,ease:'power2.out'},${f(B.date + 0.35)});
-${data.teaser ? `tl.fromTo('#teaser',{yPercent:110},{yPercent:0,duration:.5,ease:'power4.out'},${f(B.date + 0.45)});` : ''}
+tl.fromTo('#date',{opacity:0,y:${px(24)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.date)});
+${data.teaser ? `tl.fromTo('#teaser',{yPercent:110},{yPercent:0,duration:.5,ease:'power4.out'},${f(B.date + 0.2)});` : ''}
 tl.fromTo('#cta',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(2)'},${f(B.cta)});
 ${data.url ? `tl.fromTo('#url',{opacity:0},{opacity:.85,duration:.3},${f(B.cta + 0.2)});` : ''}
 ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(B.cta + 0.4)});`}

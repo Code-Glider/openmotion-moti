@@ -73,6 +73,9 @@ const nowSize = fit($(p.now), (wide || !portrait ? W * 0.42 : W * 0.86), px(wide
 const endSize = fit(String(data.occasion), W * 0.86, px(wide ? 200 : 210), 0.57);
 const codeSize = fit(data.code, (wide || !portrait ? W * 0.42 : W * 0.86) - px(110), px(130), 0.62);
 // Where the photo sits once it becomes a card, and where the price column goes.
+// Card centre relative to the frame centre, so the photo slides with the card and keeps its subject in view.
+const cardShift = wide ? { x: -W * 0.235, y: -H * 0.035 } : portrait ? { x: 0, y: -H * 0.165 } : { x: -W * 0.22, y: -H * 0.075 };
+const cardBox = wide ? [0.05, 0.09, 0.43, 0.75] : portrait ? [0.09, 0.07, 0.82, 0.53] : [0.06, 0.07, 0.44, 0.71];
 const card = wide ? 'inset(9% 52% 16% 5% round 28px)' : portrait ? 'inset(7% 9% 40% 9% round 36px)' : 'inset(7% 50% 22% 6% round 32px)';
 const col = wide ? { left: W * 0.52, top: H * 0.16, w: W * 0.43, align: 'left' } : portrait ? { left: W * 0.06, top: H * 0.61, w: W * 0.88, align: 'left' } : { left: W * 0.53, top: H * 0.16, w: W * 0.42, align: 'left' };
 const tapeText = `${data.occasion} · ${big} ${L.off} · ${L.useCode} ${data.code}`;
@@ -80,7 +83,8 @@ const shade = `rgba(${t.shade},`;
 
 const css = `
 #bg{position:absolute;inset:0;background:${t.bg}}
-#ph{position:absolute;inset:0;background:${img ? `${t.bg} center/cover no-repeat` : `radial-gradient(120% 90% at 70% 20%,${t.accent} 0,${t.bg} 70%)`};transform-origin:50% 45%}
+#ph{position:absolute;inset:0;overflow:hidden}
+#phi{position:absolute;inset:0;background:${img ? `${t.bg} center/cover no-repeat` : `radial-gradient(120% 90% at 70% 20%,${t.accent} 0,${t.bg} 70%)`};transform-origin:50% 45%}
 #shade{position:absolute;inset:0;background:linear-gradient(180deg,${shade}.55) 0,${shade}.05) 35%,${shade}.15) 55%,${shade}.9) 100%)}
 #veil{position:absolute;inset:0;background:${shade}.55);opacity:0}
 .brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
@@ -96,7 +100,8 @@ const css = `
 const echoes = (id, words, size) => words.map((w, i) => `<div class="mask" style="height:${Math.round(size * 0.9)}px"><div id="${id}${i}">${echo(`${id}${i}x`, w, size, t, { copies: 0, align: wide ? 'left' : 'center' })}</div></div>`).join('');
 const headTop = wide ? H * 0.2 : portrait ? H * 0.2 : H * 0.14;
 const body = src => `<div id="bg"></div>
-<div id="ph"${img ? ` style="background-image:url('${src(img)}')"` : ''}></div>
+<div id="ph"><div id="phi"${img ? ` style="background-image:url('${src(img)}')"` : ''}></div></div>
+${img ? `<div id="cimg" style="position:absolute;left:${Math.round(W * cardBox[0])}px;top:${Math.round(H * cardBox[1])}px;width:${Math.round(W * cardBox[2])}px;height:${Math.round(H * cardBox[3])}px;border-radius:${px(30)}px;background:url('${src(img)}') center 22%/cover no-repeat;opacity:0"></div>` : ''}
 <div id="shade"></div><div id="veil"></div>
 <div class="grain" id="grain"></div>
 <div class="brand">${esc(data.brand.name)}</div>
@@ -110,7 +115,7 @@ const body = src => `<div id="bg"></div>
   <div><span class="was">${esc($(p.was))}<span id="strike" class="strike"></span></span></div>
   <div class="mask" style="height:${Math.round(nowSize * 0.95)}px"><div id="now" class="d" style="font-size:${nowSize}px">${esc($(p.was))}</div></div>
 </div>
-<div id="tag" class="tag d" style="width:${px(230)}px;height:${px(230)}px;${wide ? `left:${W * 0.03}px;top:${H * 0.6}px` : portrait ? `right:${W * 0.05}px;top:${H * 0.05}px` : `left:${W * 0.03}px;top:${H * 0.03}px`};font-size:${px(78)}px;line-height:.9;opacity:0">${esc(big)}<span style="font-size:${px(34)}px">${esc(L.save)} ${esc($(p.save))}</span></div>
+<div id="tag" class="tag d" style="width:${px(230)}px;height:${px(230)}px;${wide ? `left:${W * 0.03}px;top:${H * 0.6}px` : portrait ? `right:${W * 0.05}px;top:${H * 0.05}px` : `left:${W * 0.03}px;top:${H * 0.6}px`};font-size:${px(78)}px;line-height:.9;opacity:0">${esc(big)}<span style="font-size:${px(34)}px">${esc(L.save)} ${esc($(p.save))}</span></div>
 <div id="codeb" class="col" style="left:${col.left}px;top:${col.top}px;width:${col.w}px;opacity:0">
   <div style="font-size:${px(34)}px;letter-spacing:.2em;text-transform:uppercase;color:${t.sub};font-weight:600">${esc(L.useCode)}</div>
   <div id="chip" class="chip d" style="font-size:${codeSize}px;margin-top:${px(14)}px">${esc(data.code)}</div>
@@ -129,7 +134,7 @@ const f = v => v.toFixed(2);
 const nowFmt = `new Intl.NumberFormat(${JSON.stringify(loc)},{style:'currency',currency:${JSON.stringify(cur)},minimumFractionDigits:${Math.abs(p.now - Math.round(p.now)) < 0.005 ? 0 : 2},maximumFractionDigits:2})`;
 const script = `
 // world: continuous camera, grain, tape and badge
-tl.fromTo('#ph',{scale:1.22,xPercent:-2},{scale:1.02,xPercent:2,duration:${f(B.end)},ease:'none'},0);
+tl.fromTo('#phi',{scale:1.22},{scale:1.02,duration:${f(B.end)},ease:'none'},0);
 tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(B.end)},ease:'steps(${Math.round(B.end * 12)})'},0);
 tl.fromTo('#tape',{xPercent:-30,opacity:0},{xPercent:0,opacity:1,duration:.5,ease:'power3.out'},0.3);
 tl.fromTo('#tape-run',{xPercent:0},{xPercent:-50,duration:${f(B.end + 4)},ease:'none'},0);
@@ -150,6 +155,9 @@ tl.to('#veil',{opacity:0,duration:.4},${f(B.price - 0.2)});
 tl.set('#disc',{opacity:0},${f(B.price + 0.05)});
 // the photo reframes into a card; the regular price is struck before the sale price lands
 tl.fromTo('#ph',{clipPath:'inset(0% 0% 0% 0% round 0px)'},{clipPath:'${card}',duration:.6,ease:'power3.inOut'},${f(B.price - 0.2)});
+tl.to('#phi',{x:${Math.round(cardShift.x)},y:${Math.round(cardShift.y)},duration:.6,ease:'power3.inOut'},${f(B.price - 0.2)});
+${img ? `tl.fromTo('#cimg',{opacity:0,scale:1.08},{opacity:1,scale:1,duration:.5,ease:'power2.out'},${f(B.price + 0.15)});
+tl.to('#cimg',{opacity:0,duration:.3},${f(B.cta - 0.15)});` : ''}
 tl.fromTo('#pcol',{opacity:0,y:${px(40)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.price + 0.2)});
 tl.fromTo('#strike',{scaleX:0},{scaleX:1,duration:.3,ease:'power2.out'},${f(B.price + 0.6)});
 const fmt=${nowFmt};const nowEl=document.querySelector('#root #now');const o={v:${p.was}};
@@ -162,6 +170,7 @@ tl.fromTo('#chip',{scale:.85},{scale:1,duration:.4,ease:'back.out(2)'},${f(B.cod
 tl.to('#codeb',{opacity:0,duration:.3},${f(B.cta - 0.3)});
 // the photo opens back to full frame for the call to action
 tl.to('#ph',{clipPath:'inset(0% 0% 0% 0% round 0px)',duration:.6,ease:'power3.inOut'},${f(B.cta - 0.2)});
+tl.to('#phi',{x:0,y:0,duration:.6,ease:'power3.inOut'},${f(B.cta - 0.2)});
 tl.to('#veil',{opacity:.8,duration:.5},${f(B.cta)});
 tl.fromTo('#ctab',{opacity:0},{opacity:1,duration:.2},${f(B.cta + 0.1)});
 tl.fromTo('#ctaocc',{yPercent:110},{yPercent:0,duration:.5,ease:'power4.out'},${f(B.cta + 0.1)});
