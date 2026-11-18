@@ -242,7 +242,7 @@ export class TemplateCatalog {
     }
     const guide = template.files?.find(file => file.path === 'TEMPLATE.md');
     const instructions = guide ? (await this.downloadFile(id, guide)).toString('utf8') : templateRecipe(template);
-    return { ...template, instructions, workflowGuide: { workflow: 'template', section: 'start', status: 'ready' }, warning: this.warning };
+    return { ...template, instructions, workflowGuide: { workflow: templateWorkflow(template), section: 'start', status: 'ready' }, warning: this.warning };
   }
 
   async sourceFile(id: string, name: string): Promise<Buffer> {
