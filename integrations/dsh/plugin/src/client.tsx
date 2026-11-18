@@ -1,8 +1,9 @@
 import { IconGlyph } from "../../../../packages/design-system/react/IconGlyph";
 import { useHostTheme } from "./theme";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { registerEditingWorkspace } from "./editing";
 import { studio, configureStudio, studioAssetUrl } from "./studio";
+import { useDashboardList } from "./useDashboardList";
 const selectedKey = "openmotion-dsh-project";
 type Page = "home" | "templates" | "brands" | "assets";
 const pageNames: Record<Page, string> = {
@@ -30,7 +31,7 @@ type Template = {
   title: string;
   posterUrl?: string;
   previewUrl?: string;
-  duration: number;
+  duration?: number;
   brand?: string;
   hasHtmlProject?: boolean;
 };
@@ -61,7 +62,7 @@ const Mark = () => (
     height="24"
   />
 );
-function Dashboard({
+export function Dashboard({
   begin,
   openConversation,
   openProject,
@@ -76,34 +77,13 @@ function Dashboard({
     [project, setProject] = useState(
       localStorage.getItem(selectedKey) || "project",
     );
-  const [projects, setProjects] = useState<Project[]>([]),
-    [templates, setTemplates] = useState<Template[]>([]),
-    [error, setError] = useState(""),
-    [prompt, setPrompt] = useState(""),
-    [loading, setLoading] = useState(true);
-  const load = () => {
-    setLoading(true);
-    setError("");
-    Promise.all([
-      fetch("/openmotion-dsh/data/motion-api/projects").then((r) => {
-        if (!r.ok) throw Error("Could not load projects");
-        return r.json();
-      }),
-      fetch(
-        "/openmotion-dsh/data/api/template-catalog?limit=6&locale=en&covered=true",
-      ).then((r) => {
-        if (!r.ok) throw Error("Could not load templates");
-        return r.json();
-      }),
-    ])
-      .then(([p, t]) => {
-        setProjects(p.projects || []);
-        setTemplates(t.items || []);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  };
-  useEffect(load, []);
+  const [prompt, setPrompt] = useState("");
+  const { items: projects, loading: projectsLoading, error: projectsError, reload: loadProjects } = useDashboardList<Project>(
+    "/openmotion-dsh/data/motion-api/projects", "projects", "Could not load projects",
+  );
+  const { items: templates, loading: templatesLoading, error: templatesError, reload: loadTemplates } = useDashboardList<Template>(
+    "/openmotion-dsh/data/api/template-catalog?limit=6&locale=en&covered=true", "items", "Could not load templates",
+  );
   const choose = (id: string) => {
     localStorage.setItem(selectedKey, id);
     setProject(id);
@@ -231,26 +211,33 @@ function Dashboard({
               </button>
             ))}
           </div>
-          <section className="omd-section">
+          <section className="omd-section" aria-label="Projects" aria-busy={projectsLoading}>
             <div className="omd-section-head">
               <h2>Pick up where you left off</h2>
               <button
                 className="ui-button ui-button--ghost ui-button--sm"
-                onClick={load}
-                disabled={loading}
+                onClick={loadProjects}
+                disabled={projectsLoading}
               >
-                {loading ? "Loading…" : "Refresh"}
+                {projectsLoading ? "Loading…" : "Refresh"}
               </button>
             </div>
-            {error && (
+            {projectsError && (
               <div className="omd-error" role="alert">
-                {error}{" "}
-                <button className="ui-button ui-button--sm" onClick={load}>
+                {projectsError}{" "}
+                <button className="ui-button ui-button--sm" onClick={loadProjects}>
                   Retry
                 </button>
               </div>
             )}
             <div className="omd-project-grid">
+              {projectsLoading && projects.length === 0 && <>
+                <span className="omd-sr" role="status">Loading projects…</span>
+                {Array.from({ length: 2 }, (_, index) => <div className="omd-project" aria-hidden="true" key={index}>
+                  <div className="omd-project-art ui-skeleton" />
+                  <div className="omd-project-meta"><span className="ui-skeleton omd-placeholder-line" /></div>
+                </div>)}
+              </>}
               {projects
                 .filter((p) => !p.trashedAt)
                 .map((p) => (
@@ -289,7 +276,7 @@ function Dashboard({
               </button>
             </div>
           </section>
-          <section className="omd-section">
+          <section className="omd-section" aria-label="Templates" aria-busy={templatesLoading}>
             <div className="omd-section-head">
               <div>
                 <h2>A little inspiration goes a long way</h2>
@@ -297,14 +284,27 @@ function Dashboard({
                   Motion references and editable templates, ready to explore.
                 </p>
               </div>
-              <button
-                className="ui-button ui-button--ghost ui-button--sm"
-                onClick={() => setPage("templates")}
-              >
-                Explore library <Icon name="arrow" size={14} />
-              </button>
+              <div className="omd-list-actions">
+                <button className="ui-button ui-button--ghost ui-button--sm" onClick={loadTemplates} disabled={templatesLoading}>
+                  {templatesLoading ? "Loading…" : "Refresh templates"}
+                </button>
+                <button className="ui-button ui-button--ghost ui-button--sm" onClick={() => setPage("templates")}>
+                  Explore library <Icon name="arrow" size={14} />
+                </button>
+              </div>
             </div>
+            {templatesError && <div className="omd-error" role="alert">
+              {templatesError}{" "}
+              <button className="ui-button ui-button--sm" onClick={loadTemplates}>Retry</button>
+            </div>}
             <div className="omd-template-grid">
+              {templatesLoading && templates.length === 0 && <>
+                <span className="omd-sr" role="status">Loading templates…</span>
+                {Array.from({ length: 6 }, (_, index) => <div className="omd-template" aria-hidden="true" key={index}>
+                  <div className="omd-template-art ui-skeleton" />
+                  <div className="omd-template-meta"><span className="ui-skeleton omd-placeholder-line" /></div>
+                </div>)}
+              </>}
               {templates.map((t) => (
                 <button
                   className="omd-template"
@@ -316,9 +316,9 @@ function Dashboard({
                 >
                   <div className="omd-template-art">
                     <img src={studioAssetUrl(t.posterUrl)} alt="" loading="eager" />
-                    <span className="omd-duration">
+                    {t.duration != null && Number.isFinite(t.duration) && <span className="omd-duration">
                       {Math.round(t.duration)}s
-                    </span>
+                    </span>}
                     <span className="omd-template-play">
                       <Icon size={22} />
                     </span>

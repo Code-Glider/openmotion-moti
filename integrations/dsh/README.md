@@ -94,6 +94,7 @@ The path-scoped **DSH integration** workflow checks, packs and retains the tarba
 
 ```sh
 npm run typecheck --prefix integrations/dsh
+npm run test --prefix integrations/dsh
 node --experimental-strip-types --test tests/dsh-integration.test.ts
 ```
 
@@ -101,8 +102,10 @@ In DSH, confirm the OpenMotion sidebar entry, project/template browsing, Studio 
 
 After configuring a model, ask: “Read my current OpenMotion project and list three templates. Do not modify, create or export anything.” Actual tool calls confirm a model connection; they do not establish video creation or export acceptance.
 
-If activation fails, inspect DSH's log for the failing source path, Node executable or MCP startup. If lists fail, restart the integration and use **Retry**. The host only proxies the two read-only listing APIs; editing remains in Studio and existing MCP tools. Standalone Studio retains its navigation. The layout adapter is pinned to DSH's semantic slot attributes; retest before upgrading DSH. Desktop DSH and other DSH versions have not been validated.
+If activation fails, inspect DSH's log for the failing source path, Node executable or MCP startup. Each dashboard list loads independently, reserves placeholder cards while loading and offers its own **Retry** on failure. A failed template request does not hide projects, and a failed project request does not hide templates. Cards omit unknown duration badges. The host only proxies the two read-only listing APIs; editing remains in Studio and existing MCP tools. Standalone Studio retains its navigation. The layout adapter is pinned to DSH's semantic slot attributes; retest before upgrading DSH. Desktop DSH and other DSH versions have not been validated.
 
 ## Acknowledgements
 
 Uses DSH's native plugin, slot and MCP-client interfaces. DSH and its dependencies retain their respective licenses. OpenMotion UI tokens, controls, icons and artwork come from the repository's maintained design system.
+
+Bundled Remix Icon artwork retains its upstream terms in `remix-icon-LICENSE.txt` and `remix-icon-NOTICE.txt`, included in the installable plugin alongside OpenMotion's `LICENSE`. In the source checkout, those originals are maintained in `packages/design-system/`.

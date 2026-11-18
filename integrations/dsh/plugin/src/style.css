@@ -352,6 +352,15 @@
   font-size: var(--motion-text-sm);
   margin-bottom: 12px;
 }
+.omd-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--motion-space-8);
+}
+.omd-placeholder-line {
+  width: 65%;
+  height: var(--motion-space-16);
+}
 .omd-sr {
   position: absolute;
   width: 1px;

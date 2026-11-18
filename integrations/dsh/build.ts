@@ -15,6 +15,9 @@ export async function buildPlugin(output: string): Promise<void> {
     path.join(directory, "README.md"),
     path.join(output, "README.md"),
   );
+  for (const filename of ["remix-icon-LICENSE.txt", "remix-icon-NOTICE.txt"]) {
+    await copyFile(path.resolve(directory, "../../packages/design-system", filename), path.join(output, filename));
+  }
   await copyFile(
     path.join(directory, "plugin/package.json"),
     path.join(output, "package.json"),

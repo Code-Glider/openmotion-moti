@@ -20,6 +20,8 @@
   "files": [
     "lib",
     "LICENSE",
+    "remix-icon-LICENSE.txt",
+    "remix-icon-NOTICE.txt",
     "README.md"
   ],
   "engines": {

@@ -10,7 +10,8 @@
     "start": "node start.ts",
     "build": "node build.ts",
     "typecheck": "../../node_modules/.bin/tsc -p tsconfig.json",
-    "pack": "node build.ts && npm pack ./dist/plugin --pack-destination ./dist"
+    "pack": "node build.ts && npm pack ./dist/plugin --pack-destination ./dist",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.1"

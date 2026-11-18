@@ -4,6 +4,9 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { buildPlugin } from '../integrations/dsh/build.ts';
 import { downloadOrigin, downloadPrefix, downloadPlugin, manifestUrl, validateDownload } from '../integrations/dsh/download.ts';
 import { publishPlugin } from '../integrations/dsh/publish.ts';
 
@@ -115,4 +118,25 @@ test('installation routing and workflow keep plugin distribution separate from n
   assert(!workflow.slice(0, workflow.indexOf(step)).includes('secrets.'));
   assert(step.includes('run: node integrations/dsh/publish.ts'));
   assert(!workflow.includes('npm publish') && !workflow.includes('id-token: write'));
+  const filters = [...workflow.matchAll(/paths:\n((?: +- .+\n)+)/g)].map(match => [...match[1].matchAll(/- '([^']+)'/g)].map(item => item[1]));
+  assert.equal(filters.length, 2);
+  for (const patterns of filters) {
+    for (const dependency of ['preview.ts', 'mcp.ts', 'install.md', 'server.ts', 'editor-runtime.ts', 'workspace.ts', 'shared/process-lock.ts']) {
+      assert(patterns.some(pattern => path.matchesGlob(dependency, pattern)), `DSH checks must run for ${dependency}`);
+    }
+  }
+  assert(workflow.includes('npm run test --prefix integrations/dsh'));
+});
+
+test('installable plugin carries the licenses for its bundled icon artwork', async t => {
+  const output = await mkdtemp(path.join(tmpdir(), 'dsh-license-package-'));
+  t.after(() => rm(output, { recursive: true, force: true }));
+  await buildPlugin(output);
+  const { stdout } = await promisify(execFile)('npm', ['pack', '--dry-run', '--ignore-scripts', '--json', output]);
+  const files = new Set(JSON.parse(stdout)[0].files.map((file: { path: string }) => file.path));
+  for (const filename of ['remix-icon-LICENSE.txt', 'remix-icon-NOTICE.txt']) {
+    assert(files.has(filename), `Missing bundled artwork license: ${filename}`);
+    assert.deepEqual(await readFile(path.join(output, filename)), await readFile(new URL('../packages/design-system/' + filename, import.meta.url)));
+    assert((await readFile(path.join(output, 'README.md'), 'utf8')).includes(filename));
+  }
 });

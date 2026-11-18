@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - 'integrations/dsh/**'
+      - '*.ts'
+      - 'shared/**'
+      - 'gateway/**'
+      - 'scripts/runtime-*.mjs'
+      - 'scripts/runtime-lock.json'
+      - 'install.md'
       - 'tests/dsh-integration.test.ts'
       - 'tests/dsh-distribution.test.ts'
       - 'packages/design-system/**'
@@ -14,6 +20,12 @@ on:
     branches: [main]
     paths:
       - 'integrations/dsh/**'
+      - '*.ts'
+      - 'shared/**'
+      - 'gateway/**'
+      - 'scripts/runtime-*.mjs'
+      - 'scripts/runtime-lock.json'
+      - 'install.md'
       - 'tests/dsh-integration.test.ts'
       - 'tests/dsh-distribution.test.ts'
       - 'packages/design-system/**'
@@ -53,6 +65,7 @@ jobs:
         run: |
           npm run typecheck --prefix integrations/dsh
           npm run pack --prefix integrations/dsh
+          npm run test --prefix integrations/dsh
           node --test tests/dsh-integration.test.ts tests/dsh-distribution.test.ts
       - name: Retain the plugin for PR testing
         uses: actions/upload-artifact@v7.0.2
