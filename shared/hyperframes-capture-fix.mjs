@@ -13,7 +13,12 @@ function replace(source, before, after, count = 1) {
 export function fixCaptureModule(url, source) {
   if (process.platform === 'darwin' && chromeLauncher.test(url)) {
     // Chrome's desktop search can register a menu bar icon even in headless mode.
-    return replace(source, '        const disabledFeatures = [', "        const disabledFeatures = [\n            'OmniboxEverywhere',");
+    const anchor = '        const disabledFeatures = [';
+    if (source.split(anchor).length !== 2) {
+      process.emitWarning('OpenMotion could not disable Chrome desktop search because the Puppeteer launcher has changed.');
+      return source;
+    }
+    return source.replace(anchor, anchor + "\n            'OmniboxEverywhere',");
   }
   if (url.endsWith('/node_modules/hyperframes/dist/chunk-IAZ2A7D6.js')) {
     source = replace(source, '      canvas.setAttribute("layoutsubtree", "");',

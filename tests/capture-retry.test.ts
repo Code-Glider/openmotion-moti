@@ -23,6 +23,15 @@ test('managed Chrome suppresses the macOS search icon and preserves caller-provi
   assert.equal(disabled.includes('OmniboxEverywhere'), process.platform === 'darwin');
 });
 
+test('an unexpected Chrome launcher still loads with its original options', t => {
+  const url = new URL('../node_modules/puppeteer-core/lib/puppeteer/node/ChromeLauncher.js', import.meta.url);
+  const warn = t.mock.method(process, 'emitWarning', () => {});
+  for (const source of ['const defaultFeatures = [];', '        const disabledFeatures = [\n        const disabledFeatures = [']) {
+    assert.equal(fixCaptureModule(url.href, source), source);
+  }
+  assert.equal(warn.mock.callCount(), process.platform === 'darwin' ? 2 : 0);
+});
+
 test('accelerated canvas injection supports modern and legacy HTML-in-Canvas APIs', async () => {
   const source = fixCaptureModule(captureUrl.href, await readFile(captureUrl, 'utf8'));
   const inject = source.match(/^async function injectDrawElementCanvas\([^]*?^}/m)![0];
