@@ -58,6 +58,35 @@ async function waitText(page: Page, text: string) {
   await page.waitForFunction(text => document.querySelector('section[aria-label="Comments"]')?.textContent?.includes(text), { timeout: 15_000 }, text);
 }
 
+async function assertReviewToolStates(page: Page, theme: string) {
+  const group = '[data-review-player]';
+  for (const label of ['Comment here', 'Draw a comment', 'Review list', 'More review options']) {
+    const selector = `${group} button[aria-label="${label}"]`;
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+    await page.hover(selector);
+    await page.waitForFunction(selector => {
+      const button = document.querySelector(selector)!;
+      const background = getComputedStyle(button).backgroundColor;
+      return background !== 'rgba(0, 0, 0, 0)' && background !== getComputedStyle(button.closest('[data-review-player]')!).backgroundColor;
+    }, { timeout: 2000 }, selector);
+  }
+  await page.screenshot({ path: path.join(output, `review-tool-hover-${theme}.png`) });
+  for (const label of ['Comment here', 'Draw a comment']) {
+    await button(page, label);
+    await page.waitForFunction(label => {
+      const button = document.querySelector(`[data-review-player] button[aria-label="${label}"]`)!;
+      const group = button.closest('[data-review-player]')!;
+      return button.getAttribute('aria-pressed') === 'true' && !button.hasAttribute('disabled')
+        && getComputedStyle(button).color !== getComputedStyle(group).color
+        && getComputedStyle(button).backgroundColor !== getComputedStyle(group).backgroundColor;
+    }, { timeout: 2000 }, label);
+    await page.hover(`${group} button[aria-label="${label}"]`);
+    await page.screenshot({ path: path.join(output, `review-tool-active-${label === 'Comment here' ? 'comment' : 'pen'}-${theme}.png`) });
+    await button(page, 'Cancel');
+  }
+}
+
 async function assertHeaderLayout(page: Page) {
   const issues = await page.evaluate(() => {
     const header = document.querySelector('.motion-studio-header')!;
@@ -121,6 +150,7 @@ test('real review workflow preserves element context, clipboard fallback and Age
     }
     await page.setViewport({ width: 1440, height: 1000 });
     await page.screenshot({ path: path.join(output, 'player-entry-light.png') });
+    await assertReviewToolStates(page, 'light');
     await button(page, 'Play');
     await new Promise(resolve => setTimeout(resolve, 1200));
     await button(page, 'Pause');
@@ -191,6 +221,7 @@ test('real review workflow preserves element context, clipboard fallback and Age
     await page.evaluate(() => localStorage.setItem('hf-studio-ui-preferences', JSON.stringify({ theme: 'dark' })));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-studio-control="playback"]:not(:disabled)', { timeout: 60_000 });
+    await assertReviewToolStates(page, 'dark');
     await button(page, 'Review list'); await waitText(page, 'Increase the heading size.');
     // Locate the saved element after a fresh preview load and verify real selection.
     await page.evaluate(id => {
