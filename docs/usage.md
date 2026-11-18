@@ -194,7 +194,7 @@ node --experimental-strip-types scripts/verify-export.ts /absolute/path/final.mp
 
 ## 视频转模板与模板出片
 
-视频转模板入口用于交付可复用模板。重建尽量匹配参考画面、构图、运动和节奏，保留可编辑的素材与源码。Agent 自行决定常规创作取舍，写入模板内唯一的说明文件 `TEMPLATE.md`。需要生成素材且计划批次尚未获得付费授权时，集中确认一次。常用修改在 Studio Variables 面板提供变量。
+视频转模板入口用于交付可复用模板。重建尽量匹配参考画面、构图、运动和节奏，保留可编辑的素材与源码。Agent 自行决定常规创作取舍，不询问创作偏好，并将取舍写入模板内唯一的说明文件 `TEMPLATE.md`。需要付费生成且计划批次尚未获授权时，在提交请求前集中确认一次。常用修改在 Studio Variables 面板提供变量。
 
 制作时对照原片。打包后解压到另一目录重渲染，检查文件、字体和素材是否齐全，以及帧率、帧数、时长和可见画面是否与预览一致。检查方法见 [模板制作验证](../skills/openmotion-video-to-template/references/verify.md)。交付包括预览、模板、原片对照、可改内容和剩余差异，技术检查写入 `TEMPLATE.md`。
 
