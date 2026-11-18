@@ -58,7 +58,7 @@ Before material grouping, the recreation guidance distinguishes object motion, i
 
 各入口正文先说明职责与目标：production 负责既定决定下的工程接续与交付，director 从产品事实、受众与传播目的判断动态表达，openmotion-template-to-video 负责既有模板出片与内容适配，recreate 根据实际参考重建并核对差距。director v1.4.5 明确局部创作和声音重新设计也可直接进入；替换已选音轨与重新设计声画关系按本轮目标区分，画面锁定只决定保持项。角色定位不增加固定风格或新的专业能力，也不代表多个独立 Agent。
 
-按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 registry 进入 template；video-only reference 进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
+按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 Prism 进入 template；video-only reference、registry 及无工程的资料包进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
 
 专业入口可由宿主 Skill 自动匹配、用户指定或准确模板指引直接选中，只读取共享 context 后继续，不返回 production 重做选路；各入口范围以其 Skill 说明和上表为准。仅脚本或审片停在当前范围；共享质量参考不会要求重启 director 的完整创作流程。Skills 是同一 Agent 的文档，不是相互递归执行的独立进程。
 
