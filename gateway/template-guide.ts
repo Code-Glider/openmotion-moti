@@ -18,12 +18,13 @@ export async function materializeTemplateGuide(catalog: TemplateCatalog, templat
   const manifest = JSON.parse(manifestBytes.toString()) as { files: { path: string }[] };
   // Preserve the selected document's complete relative resource bundle.
   // Native project authority and generated entry files must never come from it.
-  const names = [...new Set(['manifest.json', ...manifest.files.map(file => file.path)])];
-  for (const name of names) {
+  const declared = [...new Set(['manifest.json', ...manifest.files.map(file => file.path)])];
+  for (const name of declared) {
     if (!name || path.isAbsolute(name) || /^[a-z]:/i.test(name) || name.includes('\\')
-      || name.split('/').some(part => !part || part === '.' || part === '..' || part.startsWith('.'))
-      || ['index.html', 'motion-project.json', 'motion-assets.json', 'guide-draft.json', 'assets/gsap.min.js'].includes(name)) throw new Error('GUIDE_SOURCE_PATH_UNAVAILABLE');
+      || name.split('/').some(part => !part || part === '.' || part === '..' || part.startsWith('.'))) throw new Error('GUIDE_SOURCE_PATH_UNAVAILABLE');
   }
+  const reserved = new Set(['index.html', 'hyperframes.json', 'motion-project.json', 'motion-assets.json', 'guide-draft.json', 'assets/gsap.min.js']);
+  const names = declared.filter(name => !reserved.has(name));
   const documents = await Promise.all(names.filter(name => !name.startsWith('assets/')).map(async name => [name, name === 'manifest.json' ? manifestBytes : await catalog.sourceFile(templateId, name)] as const));
   // Source manifests retain omitted original-image identities for provenance.
   // Their published renditions already use absolute URLs in the documents;

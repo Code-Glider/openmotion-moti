@@ -6,7 +6,7 @@ import { authoredTemplateGuide, isTemplateGuideEvent, parseTemplateGuideDraft, u
 import { repositoryCatalogRoot } from '../shared/repository-template-catalog.ts';
 import { materializeTemplateGuide } from '../gateway/template-guide.ts';
 import { TemplateCatalog } from '../prism-templates.ts';
-import { pluginRoot, inspectProject } from '../hyperframes.ts';
+import { pluginRoot, inspectProject, nativeProjectConfig } from '../hyperframes.ts';
 import { Phase1Service } from '../phase1.ts';
 import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
@@ -92,6 +92,25 @@ test('MCP guide creation reuses the request, keeps the original template and rej
   await assert.rejects(service.call('openmotion_create_project', { ...args, guideDraft: { ...args.guideDraft, title: 'Other draft' } }), /REQUEST_ID_CONFLICT/);
   await assert.rejects(service.call('openmotion_create_project', { ...args, requestId: 'unsupported-guide', templateId: 'motion-orbit-launch' }), /GUIDE_NOT_EDITABLE/);
   assert.equal(store.projectCatalog().projects.filter(item => item.id === created.projectId).length, 1);
+}, false));
+
+test('guides with an existing native project keep generated authority and still materialize', () => fixture(async store => {
+  const catalog = new TemplateCatalog(store.directory, { source: 'repository' });
+  const ids = ['motion-0ad92fd0-b2fb-4885-957c-b71152df15fd', 'motion-1e48dea5-903d-48f6-b10e-99a70f1c183d',
+    'motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc', 'motion-664184d9-593e-4984-b473-701248b69cfe',
+    'motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b', 'motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93',
+    'motion-d8eea6d9-b25b-4727-823d-d102070ea694', 'motion-dac924da-010f-4445-baf3-a39cb033e48f',
+    'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044'];
+  for (const id of ids) {
+    const directory = path.join(store.directory, id), draft = { title: 'Preserved guide draft', accent: '#63fe13' };
+    await materializeTemplateGuide(catalog, id, directory, pluginRoot, draft);
+    const html = await readFile(path.join(directory, 'index.html'), 'utf8');
+    assert(html.includes('id="guide-example"')); assert(html.includes(draft.title));
+    assert.deepEqual(JSON.parse(await readFile(path.join(directory, 'hyperframes.json'), 'utf8')), nativeProjectConfig);
+    assert.deepEqual(await readFile(path.join(directory, 'assets/gsap.min.js')), await readFile(path.join(pluginRoot, 'node_modules/gsap/dist/gsap.min.js')));
+    assert.deepEqual(await readFile(path.join(directory, 'demos/scene.js')), await catalog.sourceFile(id, 'demos/scene.js'));
+    assert.equal((await inspectProject(pluginRoot, directory, 'lint')).exitCode, 0, id);
+  }
 }, false));
 
 test('the exact requested URLs serve upgraded pages, while raw source and downloads stay byte-identical', () => fixture(async store => {
