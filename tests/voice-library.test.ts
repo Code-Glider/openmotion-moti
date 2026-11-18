@@ -268,15 +268,23 @@ test('queued speech and restored selections survive voice metadata edits and rec
   } finally { await gateway.close(); }
 }, false));
 
-for (const change of ['trash', 'connection', 'identity'] as const) test(`queued voice jobs still stop on ${change} changes before a provider call`, () => fixture(async store => {
-  const gateway = new ModelGateway(store, { detect: async () => [] }), library = new VoiceLibrary(store);
+for (const change of ['trash', 'connection', 'rebound-connection', 'identity'] as const) test(`queued voice jobs still stop on ${change} changes before a provider call`, () => fixture(async store => {
+  const gateway = new ModelGateway(store, { detect: async () => [] }), library = new VoiceLibrary(store, async () => Response.json({ items: [{ _id: input.externalId, title: input.name }], has_more: false }));
   let submissions = 0; gateway.options.fetcher = async () => { submissions++; throw new Error('Unexpected paid submission'); };
   try {
     await library.connections.configure('fishaudio', { apiKey: 'synthetic-original-connection' });
     const voice = await library.add(input);
     const job = await gateway.submit({ modality: 'audio', model: 'fishaudio:s2-pro', prompt: 'Queued narration', library: {}, voiceRef: { voiceId: voice.id, revision: voice.revision } });
     if (change === 'trash') await library.update(voice.id, voice.revision, { trashed: true });
-    else if (change === 'connection') await library.connections.configure('fishaudio', { apiKey: 'synthetic-changed-connection' });
+    else if (change === 'connection' || change === 'rebound-connection') {
+      await library.connections.configure('fishaudio', { apiKey: 'synthetic-changed-connection' });
+      if (change === 'rebound-connection') {
+        const rebound = await library.check(voice.id, voice.revision); assert.equal(rebound.connection, 'ready');
+        await assert.rejects(library.resolve({ voiceId: voice.id, revision: voice.revision }, 'fishaudio'), /VOICE_CHANGED/);
+        assert.equal((await library.resolve({ voiceId: voice.id, revision: rebound.revision }, 'fishaudio')).externalId, input.externalId);
+        assert.doesNotMatch(JSON.stringify(rebound), /scope/);
+      }
+    }
     else {
       const file = path.join(store.directory, 'asset-library', 'voices', voice.id + '.json');
       await writeFile(file, JSON.stringify({ ...JSON.parse(await readFile(file, 'utf8')), externalId: 'different-remote-identity' }));

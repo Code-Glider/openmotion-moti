@@ -8,7 +8,7 @@ import { AssetLibrary, assetName, atomicAssetJson, libraryId } from './asset-lib
 import { ProviderConnections } from './connections.ts';
 import { apiJson, publicProviderFetch, type Fetcher } from './network.ts';
 
-type SavedVoice = Omit<VoiceAsset, 'connection'> & { scope?: string; receipt?: string };
+type SavedVoice = Omit<VoiceAsset, 'connection'> & { scope?: string; scopeRevision?: number; receipt?: string };
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function providerId(value: unknown): asserts value is VoiceProvider {
   if (!isVoiceProvider(value)) throw new Error('Choose a supported voice provider');
@@ -36,7 +36,7 @@ export class VoiceLibrary {
     return { key, scope: key ? hash(provider + ':' + key) : undefined, enabled: config.providers[provider]?.enabled !== false };
   }
   private async public(record: SavedVoice): Promise<VoiceAsset> {
-    const { scope, receipt, ...voice } = record, current = await this.context(voice.provider);
+    const { scope, scopeRevision, receipt, ...voice } = record, current = await this.context(voice.provider);
     return { ...voice, connection: !current.key || !current.enabled ? 'required' : scope !== current.scope ? 'changed' : 'ready' };
   }
   async get(id: string) { return this.public(await this.saved(id)); }
@@ -106,15 +106,16 @@ export class VoiceLibrary {
       const current = await this.saved(id);
       if (current.revision !== revision || context.scope !== (await this.context(record.provider)).scope) throw new Error('VOICE_CHANGED: Connection changed during the check');
       current.access = found.voices.some((voice: any) => voice.externalId === record.externalId) ? 'listed' : 'not_listed';
+      if (current.scope !== context.scope) current.scopeRevision = current.revision + 1;
       current.checkedAt = Date.now(); current.scope = context.scope; current.revision++; current.updatedAt = Date.now();
       await atomicAssetJson(this.file(id), current); return this.public(current);
     });
   }
   async resolve(reference: VoiceReference, provider: string) {
     if (!reference || !Number.isInteger(reference.revision) || reference.revision < 1 || Object.keys(reference).some(key => !['voiceId','revision'].includes(key))) throw new Error('Invalid voice reference');
-    const voice = await this.get(reference.voiceId);
+    const record = await this.saved(reference.voiceId), voice = await this.public(record);
     // Source identity is immutable; metadata revisions do not invalidate a speech selection.
-    if (voice.trashedAt || voice.revision < reference.revision) throw new Error('VOICE_CHANGED: Select the current voice');
+    if (voice.trashedAt || reference.revision < (record.scopeRevision ?? 1) || voice.revision < reference.revision) throw new Error('VOICE_CHANGED: Select the current voice');
     if (provider !== voice.provider) throw new Error('Voice and speech model must use the same provider');
     if (voice.connection !== 'ready') throw new Error('Check this voice after connecting or changing its provider');
     return { voiceId: voice.id, revision: voice.revision, name: voice.name, provider: voice.provider, externalId: voice.externalId };
