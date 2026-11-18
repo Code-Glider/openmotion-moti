@@ -77,7 +77,7 @@ After setup, the agent opens the local template library and shows the welcome fo
 Source setup above remains the default for repository installation. To explicitly choose the published application with prebuilt Studio and its configured online catalog, copy this instruction into your local agent:
 
 ```text
-Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md#published-npm-application and follow the instructions to install and connect the published npm application in the current agent.
+Read https://releases.open-design.ai/motion and follow the instructions to install and connect the published npm application in the current agent.
 ```
 
 [Published application installation and channel selection](docs/install.md). Published versions can lag behind this checkout.

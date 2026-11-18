@@ -64,7 +64,7 @@ After source setup, follow [Installation-success reply](#installation-success-re
 
 ## Published npm application
 
-Use this alternative only when the user selects npm. Read the [stable guide](https://releases.open-design.ai/open-motion/install.md) or the explicitly selected [test guide](https://releases.open-design.ai/open-motion/dev/install.md). Do not guess a package version or execute unresolved placeholders below. The release generator fills this section and the shared onboarding contract from this same file.
+Use this alternative only when the user selects npm. Read the [stable guide](https://releases.open-design.ai/motion) or the explicitly selected [test guide](https://releases.open-design.ai/open-motion/dev/install.md). Do not guess a package version or execute unresolved placeholders below. The release generator fills this section and the shared onboarding contract from this same file.
 <!-- source-only:end -->
 
 This guide pins the complete npm application `{{PACKAGE_SPEC}}` on the **{{CHANNEL}}** software channel. It includes MCP, the built Studio and production Skills. The default template environment is **{{TEMPLATE_ENVIRONMENT}}**: new test versions embed DEV defaults, stable versions embed prod, and previously published versions keep their original environment.

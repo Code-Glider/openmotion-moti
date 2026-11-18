@@ -69,7 +69,7 @@ https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手�
 上記のソースセットアップがリポジトリインストールの既定です。ビルド済み Studio と設定済みのオンラインテンプレートライブラリを含む公開アプリを明示的に選ぶ場合は、次の指示をローカルエージェントにコピーしてください：
 
 ```text
-https://github.com/nexu-io/openmotion/blob/main/docs/install.md#published-npm-application を読み、手順に従って現在のエージェントに公開 npm アプリをインストールして接続してください。
+https://releases.open-design.ai/motion を読み、手順に従って現在のエージェントに公開 npm アプリをインストールして接続してください。
 ```
 
 [公開アプリのインストールとチャネルの選択](install.md)。公開バージョンはこのチェックアウトより古い場合があります。
