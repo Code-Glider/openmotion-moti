@@ -25,7 +25,7 @@ export async function prepareInstallationOnboarding({ appRoot, dataDirectory, te
   // A missing canonical contract fails before host registration.
   const instructions = await installationInstructions(appRoot);
   const inline = (async () => {
-    if (host !== 'codex') return undefined;
+    // HTML preparation is host-neutral; the Agent selects a supported presentation surface.
     try {
       if (!dataDirectory) {
         const { WorkspaceStore } = await import('../workspace.ts');
@@ -39,7 +39,7 @@ export async function prepareInstallationOnboarding({ appRoot, dataDirectory, te
   let catalog;
   try {
     catalog = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', path.join(appRoot, 'scripts/onboarding-catalog.ts'),
-      ...(dataDirectory ? [dataDirectory] : []), '--template-ids', JSON.stringify(templateIds)], {
+      ...(dataDirectory ? [dataDirectory] : []), '--template-ids', JSON.stringify(templateIds), '--language', language], {
       cwd: appRoot, timeout: 5_000, killSignal: 'SIGKILL',
       env: { ...process.env, MOTION_TEMPLATE_ENV: templateEnvironment },
     }));
@@ -50,7 +50,11 @@ export async function prepareInstallationOnboarding({ appRoot, dataDirectory, te
       warning: 'Approved onboarding recommendations unavailable. Preserve any accepted template ID and report the limitation; do not substitute another template.', templates: [] };
   }
   const inlinePresentation = await inline;
-  return { hostSessionVerified: false, instructions, catalog,
+  if (inlinePresentation && host !== 'codex') inlinePresentation.instructions = onboardingPresentationInstructions('host_cards');
+  return { host, hostSessionVerified: false, instructions, catalog,
+    cardPresentation: { tool: 'openmotion_show_template_recommendations',
+      arguments: { templateIds, language, onboarding: true },
+      instructions: 'Show these exact three cards in order using a supported native MCP App, DSH action card or host HTML surface. Use text with the same IDs only when card presentation is unsupported or fails. Do not substitute templates or create a project.' },
     ...(inlinePresentation ? { inlinePresentation } : {}) };
 }
 
@@ -185,7 +189,7 @@ export function installationSummary(result) {
   if (!result.onboardingComplete) {
     lines.push('ONBOARDING_PENDING: ' + result.onboardingStatus
       + '. Installation is registered; presentation remains unverified. '
-      + onboardingPresentationInstructions(inlinePresentation?.status));
+      + onboardingPresentationInstructions(result.host && result.host !== 'codex' ? 'host_cards' : inlinePresentation?.status));
   }
   if (hostHandoff?.status === 'refresh_requested') lines.push('After this tool step, run recovery.command/recovery.args once to verify the queued refresh; do not reload or prepare again. This does not block the prepared HTML presentation.');
   if (preview?.status !== 'ready') lines.push('LIBRARY_UNAVAILABLE: ' + (preview?.warning || 'No prepared library URL')
@@ -195,7 +199,7 @@ export function installationSummary(result) {
 
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
-    summary: { type: 'boolean' }, 'check-contract': { type: 'boolean' }, resume: { type: 'string' },
+    host: { type: 'string' }, summary: { type: 'boolean' }, 'check-contract': { type: 'boolean' }, resume: { type: 'string' },
     'verify-only': { type: 'boolean' }, 'welcome-delivered': { type: 'boolean' },
   } });
   assert(positionals.length <= 1, 'Pass one application root');
@@ -212,7 +216,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
         { appRoot, welcomeDelivered: values['welcome-delivered'] });
     } else {
       const defaults = JSON.parse(await readFile(path.join(appRoot, 'shared/template-config.json'), 'utf8'));
-      const options = { appRoot, dataDirectory: process.env.MOTION_DATA_DIR, templateEnvironment: process.env.MOTION_TEMPLATE_ENV || defaults.environment };
+      const options = { appRoot, host: values.host || 'codex', dataDirectory: process.env.MOTION_DATA_DIR, templateEnvironment: process.env.MOTION_TEMPLATE_ENV || defaults.environment };
       result = await persistInstallationOnboarding(await prepareInstallationFlow(options), path.join(appRoot, '.artifacts/install'));
     }
     if (values.summary) {

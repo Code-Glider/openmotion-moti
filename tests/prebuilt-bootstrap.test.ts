@@ -69,6 +69,10 @@ test('one maintained guide serves source setup and npm generation while the old 
   assert.match(source, /https:\/\/releases\.open-design\.ai\/motion/);
   assert.match(source, /https:\/\/releases\.open-design\.ai\/open-motion\/dev\/install\.md/);
   assert.match(source, /Do not guess a package version/);
+  assert.match(source, /install.sh --package EXACT_PACKAGE_SPEC/);
+  assert.match(source, /OPENMOTION_INSTALLER_SHA256/);
+  const oldOnboarding = await readFile(new URL('../docs/install-onboarding.md', import.meta.url), 'utf8');
+  assert.match(oldOnboarding, /id="installation-success-reply"/);
   const forward = await readFile(new URL('../install.md', import.meta.url), 'utf8');
   assert.match(forward, /\]\(docs\/install\.md\)/);
   assert.doesNotMatch(forward, /```|npm|onboarding/i);

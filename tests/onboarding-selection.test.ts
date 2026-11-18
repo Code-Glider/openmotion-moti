@@ -180,3 +180,20 @@ test('reference presentation rejects a substituted media URL or missing source i
     assert.throws(() => loadTemplatePresentation({ directory }), /TEMPLATE_PRESENTATION_INVALID/);
   }
 });
+
+for (const host of ['claude', 'deepseek', 'workbuddy', 'opencode']) {
+  test(`${host} prepares the same three cards and shared welcome without requiring Codex`, async t => {
+    const dataDirectory = await mkdtemp(path.join(tmpdir(), 'om-host-onboarding-'));
+    t.after(() => rm(dataDirectory, { recursive: true, force: true }));
+    const result = await prepareInstallationOnboarding({ appRoot, dataDirectory, host, templateEnvironment: 'prod', templateIds: selected, language: 'zh' });
+    assert.equal(result.inlinePresentation.status, 'prepared', result.inlinePresentation.warning);
+    assert.deepEqual(result.inlinePresentation.templateIds, selected);
+    assert.deepEqual(result.cardPresentation.arguments, { templateIds: selected, language: 'zh', onboarding: true });
+    assert.deepEqual(result.catalog.templates.map((template: any) => template.templateId), selected);
+    assert(result.catalog.templates.every((template: any) => template.previewUrl?.startsWith('https:') && template.posterUrl?.startsWith('https:')));
+    assert.match(result.inlinePresentation.welcomeMarkdown, /我是你的开源视频创作搭档/);
+    assert.match(result.inlinePresentation.instructions, /DSH action card/);
+    assert.match(result.inlinePresentation.instructions, /only when no card surface is supported or presentation fails/);
+    assert.equal(result.hostSessionVerified, false);
+  });
+}

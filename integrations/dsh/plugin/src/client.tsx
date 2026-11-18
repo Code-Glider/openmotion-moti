@@ -5,6 +5,7 @@ import { registerEditingWorkspace } from "./editing";
 import { studio, configureStudio, studioAssetUrl } from "./studio";
 import { useDashboardList } from "./useDashboardList";
 import { OPENMOTION_TEMPLATE_ACTION } from "./templateRecommendationAction";
+import { TemplateRecommendationCard } from "./TemplateRecommendationCard";
 const selectedKey = "openmotion-dsh-project";
 type Page = "home" | "templates" | "brands" | "assets";
 const pageNames: Record<Page, string> = {
@@ -66,36 +67,9 @@ const Mark = () => (
   />
 );
 
-function TemplateRecommendationCard(props: any) {
-  const details = props.proposal?.details as { templates?: Template[] };
-  const templates = Array.isArray(details?.templates) ? details.templates : [];
-  const decision = props.decision as { phase?: string } | undefined;
-  return (
-    <div className="omd-recommendation-card" data-phase={decision?.phase || "open"}>
-      <div className="omd-recommendation-list">
-        {templates.map((template) => (
-          <article className="omd-recommendation-item" key={template.id}>
-            {template.posterUrl ? <img src={studioAssetUrl(template.posterUrl)} alt="" loading="lazy" /> : <div className="omd-recommendation-placeholder"><Mark /></div>}
-            <div className="omd-recommendation-copy">
-              <strong>{template.title}</strong>
-              <span>{template.duration != null ? `${Math.round(template.duration)}s · ` : ""}{template.editable ? "Editable template" : "Motion reference"}</span>
-              {template.description && <p>{template.description}</p>}
-            </div>
-            <div className="omd-recommendation-actions">
-              <button type="button" className="ui-button ui-button--ghost ui-button--sm" onClick={() => void props.act("preview", { templateId: template.id })}>Preview</button>
-              <button type="button" className="ui-button ui-button--primary ui-button--sm" onClick={() => void props.act("use", { templateId: template.id })}>Use template</button>
-            </div>
-          </article>
-        ))}
-      </div>
-      {decision?.phase === "selected" && <p className="omd-recommendation-status">Template selected. The Agent will confirm before creating a project.</p>}
-    </div>
-  );
-}
-
 export function registerTemplateRecommendationBody(ctx: any): void {
   if (!ctx.actionCards?.register) return;
-  ctx.locale?.register("openmotionTemplateRecommendations", {
+  ctx.effect(() => ctx.locale?.register("openmotionTemplateRecommendations", {
     en: {},
     zh: {},
     ja: {},
@@ -105,7 +79,7 @@ export function registerTemplateRecommendationBody(ctx: any): void {
     de: {},
     ru: {},
     pt: {},
-  });
+  }));
   ctx.effect(() => ctx.actionCards.register({
     action: OPENMOTION_TEMPLATE_ACTION,
     locale: "openmotionTemplateRecommendations",
@@ -408,9 +382,10 @@ export async function apply(ctx: any) {
       "OpenMotion host connection is unavailable. Restart DSH and inspect its log.",
     );
   configureStudio((await response.json()).studioUrl);
-  registerTemplateRecommendationBody(ctx);
+  ctx.inject(["actionCards"], (inner: any) => registerTemplateRecommendationBody(inner));
   const links = [
     studio + "/design-system/ui.css",
+    studio + "/design-system/studio/feedback.css",
     "/openmotion-dsh/style.css",
   ].map((href) => {
     const link = document.createElement("link");

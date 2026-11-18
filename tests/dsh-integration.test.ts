@@ -92,14 +92,23 @@ test('packaged DSH host shares MCP data and bounds its read-only proxy', async (
       } }],
     });
     await copyFile(new URL('../integrations/dsh/plugin/src/style.css', import.meta.url), path.join(temporary, 'style.css'));
+    const optionalCards: Array<(context: any) => unknown> = [];
     const ctx = {
       bridge: null as any,
+      inject: (keys: string[], register: (context: any) => unknown) => { assert.deepEqual(keys, ["skills", "actionCards"]); optionalCards.push(register); },
       effect: (register: () => unknown) => register(),
       webServer: { register: (route: { path: string; handler: (req: unknown, res: unknown) => Promise<void> }) => { routes.set(route.path, route.handler); return () => routes.delete(route.path); } },
       tools: { definitions: () => [{ name: 'mcp__openmotion__openmotion_get_project' }, { name: 'unrelated' }] },
     };
     const plugin = await import(pathToFileURL(module).href);
     await plugin.apply(ctx, { root: temporary, dataDirectory: data, templateSource: 'hosted' });
+    assert.equal(optionalCards.length, 1, 'Card registration must wait for optional services without blocking MCP');
+    const kinds: any[] = [];
+    optionalCards[0]({ effect: (run: () => unknown) => run(),
+      skills: { registerProvider: () => () => {} },
+      actionCards: { register: (kind: unknown) => { kinds.push(kind); return () => {}; } },
+    });
+    assert.equal(kinds[0].action, 'openmotion_template_recommendation', 'Services loaded after startup still enable cards');
     assert.equal(ctx.bridge.env.MOTION_DATA_DIR, data);
     assert.equal(ctx.bridge.env.MOTION_TEMPLATE_SOURCE, 'hosted');
     assert.equal(ctx.bridge.cwd, temporary);

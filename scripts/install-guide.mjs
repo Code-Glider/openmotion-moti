@@ -40,7 +40,8 @@ export async function generateInstallGuide(tgz, output, candidate = false) {
   const guide = await readFile(new URL('../docs/install.md', import.meta.url), 'utf8');
   // Source checkout commands never belong to a published npm installation.
   const template = guide.replace(/<!-- source-only:start -->[\s\S]*?<!-- source-only:end -->\s*/g, '')
-    .replace(/^# Install OpenMotion$/m, '# Install OpenMotion {{VERSION}}');
+    .replace(/^# Install OpenMotion$/m, '# Install OpenMotion {{VERSION}}')
+    .replace('skills@1.9.0 add nexu-io/openmotion ', `skills@1.9.0 add https://github.com/nexu-io/openmotion/tree/${manifest.commit} `);
   assert(!template.includes('<!-- source-only:'), 'Installation guide has unmatched source-only markers');
   // The repository warning is unnecessary after all release placeholders are resolved.
   const text = (candidate ? '> Build preview only: this candidate is not an approved registry installation entry.\n\n' : '') + template.replace(/^If you are reading this file.*\n\n/m, '').replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, key) => {

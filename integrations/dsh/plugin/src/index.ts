@@ -62,10 +62,8 @@ export async function apply(ctx: HostContext, config: Config) {
     failOnStartupError: true,
     toolCallTimeoutMs: 180_000,
   });
-  // Optional DSH action-card support. Older hosts keep the existing MCP/text flow.
-  if ((ctx as HostContext & { actionCards?: unknown }).actionCards) {
-    registerOpenMotionTemplateCards(ctx as HostContext & { actionCards?: unknown });
-  }
+  // Register when optional services become available, including after this plugin starts.
+  ctx.inject(["skills", "actionCards"], (inner) => registerOpenMotionTemplateCards(inner));
   ctx.effect(() =>
     ctx.webServer.register({
       kind: "exact",

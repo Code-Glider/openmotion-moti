@@ -88,7 +88,8 @@ test('guide rendering pins the exact npm package, built source and hash while re
   assert(text.includes('Permission or checksum failures stop immediately') && text.includes('terminal handoff') && text.includes('A local tgz still needs npm access'), 'Retain fail-closed recovery, terminal handoff and the online dependency boundary');
   assert(text.includes(await installationInstructions(fileURLToPath(new URL('../', import.meta.url)))), 'Published guide must preserve the exact setup reply contract');
   assert.match(text, /^# Install OpenMotion 0\.6\.4-test\.1\n/);
-  assert(text.includes('skills@1.9.0 add nexu-io/openmotion --skill openmotion'));
+  assert(text.includes(`skills@1.9.0 add https://github.com/nexu-io/openmotion/tree/${manifest.commit} --skill openmotion`));
+  assert(!text.includes('skills@1.9.0 add nexu-io/openmotion '), 'A release guide must not pair its app with main-branch Skill instructions');
   assert(text.includes('For DSH, use `universal`'));
   assert(text.includes('Reuse an existing official installation'));
   assert(!text.includes('source-only:') && !text.includes('npm start') && !text.includes('git clone'));
