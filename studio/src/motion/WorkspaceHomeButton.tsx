@@ -1,3 +1,4 @@
+import { PrimaryNavigationButton } from '../../../packages/design-system/react/PrimaryNavigationRail';
 import { Tooltip } from "../components/ui/Tooltip";
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Popover } from '@base-ui/react/popover';
@@ -33,10 +34,10 @@ export function WorkspaceHomeButton({ active, expanded, previewEnabled, onToggle
     setPreviewOpen(previewEnabled && next);
   }}>
     <Tooltip label={previewEnabled ? undefined : t('Home')} wrap side="right"><Popover.Trigger ref={trigger} openOnHover={previewEnabled} delay={180} closeDelay={160}
-      className="om-nav-item om-rail-button" aria-label={t('Home')} aria-pressed={active}
+      render={<PrimaryNavigationButton />} aria-label={t('Home')} aria-pressed={active}
       aria-expanded={expanded || open} {...(expanded ? { 'aria-controls': 'om-project-navigation' } : {})}
       onClick={() => { setPreviewOpen(false); onToggle(); }}>
-      <RemixIcon name="home-line" size={18} />
+      <RemixIcon name="home-line" weight={active ? 'fill' : undefined} size={18} />
     </Popover.Trigger></Tooltip>
     <Popover.Portal container={applicationRef} style={{ display: 'contents' }}>
       <Popover.Positioner anchor={workspaceAnchor} positionMethod="fixed" side="left" align="start"

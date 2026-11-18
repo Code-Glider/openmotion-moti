@@ -1,5 +1,5 @@
 import { useI18n } from "../i18n/I18n";
-import { RemixIcon } from "../icons/RemixIcons";
+import { MotionIcon } from "../motion/icons";
 import { usePlayerStore } from "../player";
 import type { TimelineEditCallbacks } from "../player/components/timelineCallbacks";
 import { applyClipStartTrimDelta, clipStartTrimDeltaBounds, resolveTimelineMinDuration } from "../player/components/timelineGroupEditing";
@@ -27,6 +27,6 @@ export function TimelineTrimButtons({ onResize }: { onResize?: TimelineEditCallb
           const delta = Math.min(bounds.maxDelta, Math.max(bounds.minDelta, time - element.start));
           void onResize?.(element, applyClipStartTrimDelta(element, delta));
         }
-      }}><RemixIcon name={edge === "start" ? "skip-left-line" : "skip-right-line"} size={16} /></button></Tooltip>;
+      }}><MotionIcon name={edge === "start" ? "timeline-trim-left" : "timeline-trim-right"} size={16} /></button></Tooltip>;
   })}</>;
 }

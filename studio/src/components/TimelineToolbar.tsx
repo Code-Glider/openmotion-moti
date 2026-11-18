@@ -2,6 +2,7 @@ import { TimelineBehaviorToggles } from "./TimelineBehaviorToggles";
 import { TimelineTrimButtons } from "./TimelineTrimButtons";
 import type { TimelineEditCallbacks } from "../player/components/timelineCallbacks";
 import { RemixIcon } from "../icons/RemixIcons";
+import { MotionIcon } from "../motion/icons";
 import { trackStudioClick } from "../motion/editorTracking";
 import { useMvpEditor } from "../motion/StudioHost";
 import { useI18n } from "../i18n/I18n";
@@ -275,7 +276,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
                     }}
                     className={canSplit ? flatIdle : flatDisabled}
                   >
-                    <RemixIcon name="scissors-cut-line" size={16} />
+                    <MotionIcon name="timeline-split" size={16} />
                   </button>
                 </Tooltip>
               );

@@ -76,7 +76,7 @@ export function DockStripActions({
     return () => window.removeEventListener("keydown", restore, true);
   }, [api, mvp, previewGroup, maximized]);
   if (mvp) return previewGroup ? (
-    <div className="flex items-center h-full gap-1 pr-1">
+    <div className="motion-preview-header-actions flex items-center h-full">
       <DockHeaderSlot id="preview" />
       <Tooltip
         label={t(maximized ? "Exit immersive preview" : "Immersive preview")}

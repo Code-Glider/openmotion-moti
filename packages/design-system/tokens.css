@@ -106,6 +106,8 @@
   --motion-neutral-n9: #494949;
   --motion-neutral-n10: #353535;
   --motion-neutral-n11: #121212;
+  --motion-editor-divider-light: rgba(0, 0, 0, 0.08);
+  --motion-radius-editor-control: 8px;
 }
 :where([data-motion-ui]) {
   color-scheme: light;

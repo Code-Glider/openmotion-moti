@@ -88,7 +88,7 @@ button, input, select, textarea { font-family: inherit; }
 .motion-asset-name-input { box-sizing: border-box; width: 100%; min-width: 0; padding: 2px 4px; border: 1px solid var(--motion-border-strong); border-radius: var(--motion-radius-sm); background: var(--motion-inset); color: var(--motion-strong); font-size: var(--motion-text-step-10); line-height: 14px; outline: none; }
 .motion-asset-name-input[aria-invalid="true"] { border-color: var(--motion-danger); }
 
-/* Keep resize handles available without permanent lines between panel cards. */
+/* The sash stays transparent around the one-pixel divider. */
 :root[data-motion-ui] .hf-dock .dv-split-view-container > .dv-sash-container > .dv-sash,
 :root[data-motion-ui] .hf-dock .dv-split-view-container > .dv-sash-container > .dv-sash:is(:hover, :active, :focus-visible) { background: transparent; }
 .hf-dock .dv-sash::after { content: ''; position: absolute; pointer-events: none; background: transparent; transition: background 120ms; }
@@ -113,12 +113,24 @@ button, input, select, textarea { font-family: inherit; }
 :root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"]::-webkit-slider-thumb { width: 10px; height: 10px; margin-top: -4px; cursor: grab; }
 :root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"]::-moz-range-thumb { width: 10px; height: 10px; cursor: grab; }
 
-/* Played time uses the shared Design System brand token. */
+/* The native seek input inherits its appearance from the host transport. */
+:root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"] {
+  --preview-seek-track: linear-gradient(to right, var(--preview-progress-fill, var(--motion-brand)) 0 var(--preview-progress, 0%), var(--motion-border-strong) var(--preview-progress, 0%) 100%);
+}
 :root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"]::-webkit-slider-runnable-track {
-  background: linear-gradient(to right, var(--motion-brand) 0 var(--preview-progress, 0%), var(--motion-border-strong) var(--preview-progress, 0%) 100%);
+  height: var(--preview-seek-track-height, var(--motion-space-2));
+  background: var(--preview-seek-track);
 }
 :root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"]::-moz-range-track {
-  background: linear-gradient(to right, var(--motion-brand) 0 var(--preview-progress, 0%), var(--motion-border-strong) var(--preview-progress, 0%) 100%);
+  height: var(--preview-seek-track-height, var(--motion-space-2));
+  background: var(--preview-seek-track);
+}
+:root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"]::-webkit-slider-thumb {
+  margin-top: calc((var(--preview-seek-track-height, var(--motion-space-2)) - var(--motion-space-10)) / 2);
+  background: var(--preview-progress-fill, var(--motion-text));
+}
+:root[data-motion-ui] input[type="range"][data-studio-control="seek-preview"]::-moz-range-thumb {
+  background: var(--preview-progress-fill, var(--motion-text));
 }
 
 /* Product chrome occupies one row; Studio owns all editor panels below it. */

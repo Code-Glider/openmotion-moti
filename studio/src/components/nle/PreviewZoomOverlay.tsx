@@ -83,7 +83,7 @@ export function PreviewZoomOverlay({
   const controls = (
     <div
       className={controlsTarget
-        ? "flex items-center gap-2 px-1 text-xs text-text-0 whitespace-nowrap"
+        ? "motion-preview-header-zoom flex items-center text-xs text-text-0 whitespace-nowrap"
         : "absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-md py-1 pl-2.5 pr-1 text-xs text-white/90 bg-black/80 backdrop-blur-xs"}
       data-testid="preview-zoom-chip"
       onPointerDown={(event) => event.stopPropagation()}

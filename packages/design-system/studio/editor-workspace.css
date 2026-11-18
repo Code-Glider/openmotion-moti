@@ -1,8 +1,17 @@
 /* Continuous editor surfaces. Dockview retains geometry and resize hit targets. */
+[data-motion-studio] {
+  --motion-editor-divider: light-dark(var(--motion-editor-divider-light), var(--motion-neutral-n10));
+}
 [data-motion-studio] .om-application .motion-studio-header-compact,
-[data-motion-studio] .motion-preview-transport { background: var(--motion-panel); color: var(--motion-text); border-radius: 0; }
-[data-motion-studio] .motion-studio-header-compact { border-bottom: 1px solid var(--motion-border-subtle); }
-[data-motion-studio] .motion-preview-transport { padding-block: var(--motion-space-4); border-top: 1px solid var(--motion-border-subtle); }
+[data-motion-studio] .motion-preview-transport { background: var(--motion-workspace); color: var(--motion-text); border-radius: 0; }
+[data-motion-studio] .motion-studio-header-compact { border-bottom: 1px solid var(--motion-editor-divider); }
+[data-motion-studio] .motion-preview-transport {
+  --preview-progress-fill: var(--motion-neutral-n1);
+  --preview-seek-track-height: 3px;
+  padding-block: var(--motion-space-4);
+  border-top: 1px solid transparent;
+}
+[data-motion-studio][data-theme="paper"] .motion-preview-transport { --preview-progress-fill: var(--motion-neutral-n11); }
 [data-motion-studio] .motion-autosave-status { color: var(--motion-muted); font-size: var(--motion-text-xs); font-variant-numeric: tabular-nums; }
 [data-motion-studio] .motion-autosave-status[data-state="error"] { color: var(--motion-danger); }
 [data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: motion-autosave-spin var(--motion-duration-loading) linear infinite; }
@@ -10,7 +19,10 @@
 @media (prefers-reduced-motion: reduce) { [data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: none; } }
 [data-motion-studio] .motion-header-project :is(.motion-project-name-input, .motion-project-name-measure) { height: var(--motion-control-sm); padding: var(--motion-space-4) var(--motion-space-12); font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); line-height: var(--motion-space-18); }
 [data-motion-studio] .motion-project-name-measure { border: 1px solid transparent; }
-[data-motion-studio] .motion-studio-header-compact :is(.motion-header-export, .motion-project-agent-trigger) { height: var(--motion-control-sm); padding-inline: var(--motion-space-16); border-radius: var(--motion-radius-md); flex-shrink: 0; font-size: var(--motion-text-sm); font-weight: var(--motion-weight-semibold); }
+[data-motion-studio] .motion-studio-header-compact :is(.motion-header-export, .motion-project-agent-trigger) { height: var(--motion-control-sm); min-height: var(--motion-control-sm); padding-inline: var(--motion-space-16); border-radius: var(--motion-radius-editor-control); flex-shrink: 0; font-size: var(--motion-text-sm); font-weight: var(--motion-weight-semibold); }
+[data-motion-studio] .motion-studio-header-compact .motion-project-agent-trigger:enabled:not(:hover, :focus-visible) { background: var(--motion-inset); border-color: transparent; }
+[data-motion-studio] .motion-studio-header-compact .motion-header-trailing > button,
+[data-motion-studio] .motion-studio-header-compact .motion-header-history-actions button { width: var(--motion-control-sm); height: var(--motion-control-sm); border-radius: var(--motion-radius-editor-control); }
 @container (max-width: 420px) {
   [data-motion-studio] .motion-studio-header-compact :is(.motion-header-export, .motion-project-agent-trigger) { padding-inline: var(--motion-space-12); }
 }
@@ -23,12 +35,21 @@
 :root[data-motion-ui] .dv-shell .dv-render-overlay { border-radius: 0; overflow: hidden; }
 :root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container,
 :root[data-motion-ui] .motion-timeline-toolbar { border-bottom: 1px solid var(--motion-border-subtle); }
+.motion-preview-viewport { margin-inline: var(--motion-space-12); }
+:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has([data-preview-heading]) {
+  padding-inline-end: var(--motion-space-12);
+  border-bottom-color: transparent;
+  background: var(--motion-workspace);
+}
+.motion-preview-header-actions,
+.motion-preview-header-zoom { gap: var(--motion-space-4); }
+
 /* Collapsed rails continue the same header baseline as expanded panels. */
 :root[data-motion-ui] .hf-dock .hf-dock-side-rail { padding: 0; gap: 0; }
 :root[data-motion-ui] .hf-dock .hf-dock-side-rail-header { display: grid; place-items: center; flex: none; width: 100%; height: calc(var(--dv-tabs-and-actions-container-height) - 1px); }
 :root[data-motion-ui] .hf-dock .hf-dock-side-rail-divider { width: 100%; border-top: 1px solid var(--motion-border-subtle); }
 :root[data-motion-ui] .hf-dock .hf-dock-side-rail-items { padding-block: var(--motion-space-6); }
-:root[data-motion-ui] .hf-dock .dv-sash::after { background: var(--motion-border-subtle); }
+:root[data-motion-ui] .hf-dock .dv-sash::after { background: var(--motion-editor-divider); }
 :root[data-motion-ui] .hf-dock .dv-sash:is(:hover, :active, :focus-visible)::after { background: var(--motion-accent); }
 
 .motion-layout-menu-option { display: flex; align-items: center; gap: var(--motion-space-8); }
