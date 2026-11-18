@@ -1,3 +1,4 @@
+import { reviewCommentsPrompt } from './review-comments.ts';
 import { formatTemplatePrompt } from './template-prompts.ts';
 import { workflowEntryGuide } from './workflow-entry.js';
 import { transcriptWorkflowPrompt } from './transcript-workflow.ts';
@@ -209,6 +210,8 @@ Brand Kits are separate style-only Motion Packages. In Studio, open Brand Kit, e
 新项目用 openmotion_create_project，提供 requestId、projectType、title、requirements。模板可从 Studio 选择，或调用 openmotion_list_templates 取得本地 JSONL 索引路径后用本机工具检索，再用 openmotion_get_template 读取详情。已知 ID 可直接读详情。带可编辑工程的内置及 Prism 模板用 projectType=template 创建；参考视频和无工程的模板资料包按返回的 workflowGuide 走复刻，创建的是重建载体，由宿主 Agent 看参考并编写内容，不宣称已经生成影片。现有项目先 openmotion_get_project 列表/详情核对 projectId、sessionId、revision 与 currentVersionId。
 
 Review comments use openmotion_manage_project with action=comments and operation=list|create|update|delete. Studio provides Comment here and Draw a comment in the playback controls. Click the frame or draw directly; releasing a stroke opens a small floating composer without resizing the video, capturing a composition-local time with the selected element handle/source/text/bounds and saved sourceRevision automatically. More review options offers whole-video feedback. Drawing adds pen/rectangle/ellipse/arrow/text marks, normalized to captured dimensions and bound to the same time/revision; copied records include their vectors. Old marks must not be overlaid on changed artwork. create checks expectedRevision; update and delete check expectedCommentRevision. Writes require a stable requestId. Review list offers Copy pending for Agent by default and Choose comments for a subset. The handoff includes the explicit project/workspace and shared guarded-edit instructions; it does not launch an Agent. Re-read changed records and stale source targets before editing, verify the result before resolving, and delete only when asked. Comments stay in workspace metadata, outside video source, history and shared ZIPs.
+
+${reviewCommentsPrompt({ dataDirectory: info.dataDirectory, previewUrl: info.previewUrl })}
 
 Local project menus use openmotion_manage_project for rename, independent duplicate, directory lookup and reveal in the local file manager. Read info before rename and supply expectedTitle; rename and duplicate require stable requestId values. Duplicate preserves portable sources and local assets, leaves selection unchanged and shares archive limits. Clipboard copying uses the returned path on the client. List Trash with openmotion_get_project trashed=true; use trash, restore, or delete with the explicit projectId and a stable requestId. Delete requires a trashed project.
 

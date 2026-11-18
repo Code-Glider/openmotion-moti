@@ -88,7 +88,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "在播放控制栏选择“评论此刻”或“画笔标注”，然后点击或绘制。小浮窗会显示时间和评论输入框，不会挤压视频。时间、元素和标注会自动附上。Agent 检查最新版本，修改并验证后再标记完成。目标已变化时，先核对保存的上下文。复制不会启动 Agent；评论保存在本地。",
     "Composition": "合成",
-    "Element": "元素"
+    "Element": "元素",
+    "Review data and Agent actions": "评论数据与 Agent 操作",
+    "Read original data": "读取原始数据",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "复制内容包含评论 ID、正文、时间、元素上下文、源版本和完整标注矢量。Agent 通过 MCP 读取最新记录及完整 HTML/CSS/JS；标注不是画面截图。",
+    "Process comments": "逐项处理评论",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "修改并验证视频后，再将已处理评论标记完成。也可以按要求修改评论正文、重新打开或删除指定评论。仅复制不会执行操作。",
+    "Recover safely": "异常恢复",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "连接到同一工作区。评论或源文件变化后，先重新读取再重试。如果元素已消失或无法验证，保留待处理状态并说明原因。"
   },
   "ja": {
     "Comments": "コメント",
@@ -179,7 +186,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "再生コントロールでコメントか描画を選び、画面をクリックするか描きます。動画のサイズを変えずに小さな入力カードが開きます。時刻、要素情報、注釈も含まれます。Agent は最新の版を確認し、編集・検証してから完了にします。対象が変わった場合は保存した情報を確認してください。コピーで Agent は起動せず、コメントはローカルに保存されます。",
     "Composition": "コンポジション",
-    "Element": "要素"
+    "Element": "要素",
+    "Review data and Agent actions": "レビューデータと Agent の操作",
+    "Read original data": "元のデータを読む",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "コピーには ID、本文、時刻、要素の情報、ソースの版、描画の全ベクトルが含まれます。Agent は MCP で最新の記録と完全な HTML/CSS/JS を読みます。描画はスクリーンショットではありません。",
+    "Process comments": "コメントを処理する",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "動画を編集して確認した後、対応したコメントを完了にします。依頼に応じて本文の更新、再開、指定コメントの削除も可能です。コピーだけでは操作は実行されません。",
+    "Recover safely": "問題からの復旧",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "同じワークスペースに接続してください。変更されたコメントやソースを再読してから再試行します。要素が消えた場合や確認できない場合は未対応のままにし、理由を報告します。"
   },
   "ko": {
     "Comments": "댓글",
@@ -270,7 +284,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "재생 컨트롤에서 댓글이나 그리기를 선택한 다음 화면을 클릭하거나 그립니다. 영상 크기를 바꾸지 않는 작은 입력 카드가 열립니다. 댓글 목록에서 미처리 항목을 복사해 이 작업 공간에 연결된 Agent에게 전달합니다. 시간, 요소 정보와 주석이 포함됩니다. Agent는 최신 버전을 확인하고 수정 및 검증 후 완료 처리합니다. 대상이 바뀌었다면 저장된 맥락을 확인하세요. 복사로 Agent가 실행되지는 않으며 댓글은 로컬에 저장됩니다.",
     "Composition": "컴포지션",
-    "Element": "요소"
+    "Element": "요소",
+    "Review data and Agent actions": "리뷰 데이터와 Agent 작업",
+    "Read original data": "원본 데이터 읽기",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "복사 내용에는 ID, 본문, 시간, 요소 정보, 소스 버전과 전체 드로잉 벡터가 포함됩니다. Agent는 MCP로 최신 기록과 전체 HTML/CSS/JS를 읽습니다. 드로잉은 스크린샷이 아닙니다.",
+    "Process comments": "댓글 처리",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "영상을 수정하고 확인한 뒤 처리한 댓글을 완료로 표시합니다. 요청에 따라 댓글 본문 수정, 다시 열기, 특정 댓글 삭제도 가능합니다. 복사만으로 작업이 실행되지는 않습니다.",
+    "Recover safely": "문제 복구",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "같은 워크스페이스에 연결하세요. 변경된 댓글과 소스 파일을 다시 읽고 재시도합니다. 요소가 사라졌거나 확인할 수 없으면 댓글을 미처리 상태로 두고 이유를 설명합니다."
   },
   "de": {
     "Comments": "Kommentare",
@@ -361,7 +382,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "In der Wiedergabesteuerung Kommentieren oder Zeichnen wählen, dann ins Bild klicken oder zeichnen. Eine kleine schwebende Karte öffnet sich, ohne die Videogröße zu ändern. Notizen speichern und offene Einträge aus der Kommentarliste für einen mit diesem Arbeitsbereich verbundenen Agent kopieren. Zeitpunkt, Elementkontext und Markierungen werden mitgegeben. Der Agent prüft aktuelle Versionen, bearbeitet und verifiziert vor dem Abschließen. Bei geänderten Zielen zuerst den gespeicherten Kontext prüfen. Kopieren startet keinen Agent; Kommentare bleiben lokal.",
     "Composition": "Komposition",
-    "Element": "Element"
+    "Element": "Element",
+    "Review data and Agent actions": "Review-Daten und Agent-Aktionen",
+    "Read original data": "Originaldaten lesen",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "Kopierte Notizen enthalten IDs, Text, Zeit, Elementkontext, Quellversionen und vollständige Zeichenvektoren. Der Agent liest aktuelle Einträge und vollständiges HTML/CSS/JS über MCP; Zeichnungen sind keine Screenshots.",
+    "Process comments": "Kommentare bearbeiten",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Das Video bearbeiten und prüfen, dann erledigte Kommentare abschließen. Auf Wunsch kann der Agent Kommentartext ändern, Kommentare wieder öffnen oder gezielt löschen. Kopieren allein führt keine Aktion aus.",
+    "Recover safely": "Fehler beheben",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Mit demselben Arbeitsbereich verbinden. Geänderte Kommentare und Quelldateien vor einem erneuten Versuch neu lesen. Fehlt ein Element oder ist keine Prüfung möglich, bleibt der Kommentar offen und der Agent erklärt das Hindernis."
   },
   "fr": {
     "Comments": "Commentaires",
@@ -452,7 +480,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Choisissez le commentaire ou le dessin dans les commandes de lecture, puis cliquez ou dessinez sur l’image. Une petite carte flottante s’ouvre sans redimensionner la vidéo. Enregistrez vos notes, puis copiez les commentaires non traités vers un Agent connecté à cet espace. L’instant, le contexte des éléments et les annotations sont inclus. L’Agent vérifie les versions actuelles, modifie et contrôle le résultat avant de terminer. Si une cible a changé, consultez son contexte enregistré. La copie ne lance pas d’Agent ; les commentaires restent locaux.",
     "Composition": "Composition",
-    "Element": "Élément"
+    "Element": "Élément",
+    "Review data and Agent actions": "Données de révision et actions de l’Agent",
+    "Read original data": "Lire les données originales",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "Les notes copiées incluent les ID, le texte, le temps, le contexte des éléments, les versions sources et tous les vecteurs de dessin. L’Agent lit les données actuelles et le HTML/CSS/JS complet via MCP ; les dessins ne sont pas des captures d’écran.",
+    "Process comments": "Traiter les commentaires",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Modifier et vérifier la vidéo, puis marquer les commentaires traités comme terminés. Sur demande, l’Agent peut aussi modifier le texte, rouvrir ou supprimer des commentaires précis. Copier ne lance aucune action.",
+    "Recover safely": "Reprendre après une erreur",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Se connecter au même espace de travail. Relire les commentaires et fichiers sources modifiés avant de réessayer. Si un élément a disparu ou si la vérification est impossible, garder le commentaire ouvert et expliquer le blocage."
   },
   "ru": {
     "Comments": "Комментарии",
@@ -543,7 +578,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Выберите комментарий или рисование в управлении воспроизведением, затем нажмите на кадр или нарисуйте. Откроется небольшая плавающая карточка без изменения размера видео. Сохраните замечания и скопируйте открытые комментарии из списка для Agent, подключённого к этому пространству. Время, контекст элементов и пометки включены. Agent проверяет текущие версии, вносит и проверяет изменения перед завершением. Если цель изменилась, проверьте сохранённый контекст. Копирование не запускает Agent; комментарии хранятся локально.",
     "Composition": "Композиция",
-    "Element": "Элемент"
+    "Element": "Элемент",
+    "Review data and Agent actions": "Данные рецензирования и действия Agent",
+    "Read original data": "Чтение исходных данных",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "Копия содержит ID, текст, время, контекст элементов, версии исходников и полные векторы рисунков. Agent читает актуальные записи и полный HTML/CSS/JS через MCP; рисунки не являются скриншотами.",
+    "Process comments": "Обработка комментариев",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Измените и проверьте видео, затем отметьте обработанные комментарии как выполненные. По запросу Agent также может изменить текст, снова открыть или удалить конкретные комментарии. Копирование само по себе ничего не запускает.",
+    "Recover safely": "Восстановление после ошибок",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Подключитесь к тому же рабочему пространству. Перед повтором перечитайте изменённые комментарии и исходные файлы. Если элемент исчез или проверка невозможна, оставьте комментарий открытым и объясните причину."
   },
   "es": {
     "Comments": "Comentarios",
@@ -634,7 +676,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Elige comentar o dibujar en los controles de reproducción y haz clic o dibuja sobre la imagen. Se abre una pequeña tarjeta flotante sin cambiar el tamaño del vídeo. Guarda tus notas y copia los comentarios pendientes de la lista para un Agent conectado a este espacio. Se incluyen el tiempo, el contexto de los elementos y las marcas. El Agent comprueba las versiones actuales, edita y verifica antes de resolver. Si un objetivo cambió, revisa su contexto guardado. Copiar no inicia un Agent; los comentarios son locales.",
     "Composition": "Composición",
-    "Element": "Elemento"
+    "Element": "Elemento",
+    "Review data and Agent actions": "Datos de revisión y acciones del Agent",
+    "Read original data": "Leer datos originales",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "Las notas copiadas incluyen ID, texto, tiempo, contexto de elementos, revisiones de origen y todos los vectores de dibujo. El Agent lee los registros actuales y el HTML/CSS/JS completo mediante MCP; los dibujos no son capturas de pantalla.",
+    "Process comments": "Procesar comentarios",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Edita y verifica el vídeo, y luego marca los comentarios atendidos como completados. Si se solicita, el Agent también puede modificar el texto, reabrir o eliminar comentarios específicos. Copiar no ejecuta ninguna acción.",
+    "Recover safely": "Recuperarse de errores",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Conecta con el mismo espacio de trabajo. Vuelve a leer los comentarios y archivos fuente modificados antes de reintentar. Si un elemento desapareció o no se puede verificar, deja el comentario abierto y explica el impedimento."
   },
   "pt-BR": {
     "Comments": "Comentários",
@@ -725,7 +774,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Escolha comentar ou desenhar nos controles de reprodução e clique ou desenhe na imagem. Um pequeno cartão flutuante aparece sem redimensionar o vídeo. Salve as notas e copie os comentários pendentes da lista para um Agent conectado a este espaço. Tempo, contexto dos elementos e marcações são incluídos. O Agent verifica as versões atuais, edita e valida antes de concluir. Se um alvo mudou, confira o contexto salvo. Copiar não inicia o Agent; os comentários ficam locais.",
     "Composition": "Composição",
-    "Element": "Elemento"
+    "Element": "Elemento",
+    "Review data and Agent actions": "Dados de revisão e ações do Agent",
+    "Read original data": "Ler dados originais",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "As notas copiadas incluem IDs, texto, tempo, contexto dos elementos, revisões de origem e todos os vetores de desenho. O Agent lê os registros atuais e o HTML/CSS/JS completo pelo MCP; os desenhos não são capturas de tela.",
+    "Process comments": "Processar comentários",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Edite e verifique o vídeo antes de marcar os comentários atendidos como concluídos. Quando solicitado, o Agent também pode alterar o texto, reabrir ou excluir comentários específicos. Copiar não executa nenhuma ação.",
+    "Recover safely": "Recuperar de erros",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Conecte-se ao mesmo espaço de trabalho. Releia comentários e arquivos-fonte alterados antes de tentar novamente. Se um elemento desapareceu ou a verificação não for possível, mantenha o comentário aberto e explique o impedimento."
   },
   "it": {
     "Comments": "Commenti",
@@ -816,7 +872,14 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Scegli il commento o il disegno nei controlli di riproduzione, poi fai clic o disegna sul fotogramma. Si apre una piccola scheda sospesa senza ridimensionare il video. Salva le note e copia i commenti aperti dall’elenco per un Agent collegato a questo spazio. Sono inclusi tempo, contesto degli elementi e annotazioni. L’Agent controlla le versioni attuali, modifica e verifica prima di completare. Se un elemento è cambiato, controlla il contesto salvato. La copia non avvia un Agent; i commenti restano locali.",
     "Composition": "Composizione",
-    "Element": "Elemento"
+    "Element": "Elemento",
+    "Review data and Agent actions": "Dati di revisione e azioni dell’Agent",
+    "Read original data": "Leggere i dati originali",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "Le note copiate includono ID, testo, tempo, contesto degli elementi, revisioni sorgenti e tutti i vettori dei disegni. L’Agent legge i dati aggiornati e l’HTML/CSS/JS completo tramite MCP; i disegni non sono screenshot.",
+    "Process comments": "Gestire i commenti",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Modifica e verifica il video, poi segna come completati i commenti risolti. Su richiesta, l’Agent può anche modificare il testo, riaprire o eliminare commenti specifici. La sola copia non esegue alcuna azione.",
+    "Recover safely": "Riprendere dopo un errore",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Collegati allo stesso spazio di lavoro. Rileggi i commenti e i file sorgenti modificati prima di riprovare. Se un elemento è scomparso o non è possibile verificare, lascia il commento aperto e spiega il problema."
   },
   "tr": {
     "Comments": "Yorumlar",
@@ -907,6 +970,13 @@
     "⌘ / Ctrl + Enter": "⌘ / Ctrl + Enter",
     "Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.": "Oynatma kontrollerinden yorum veya çizimi seçin, ardından kareye tıklayın ya da çizin. Videoyu boyutlandırmadan küçük bir yüzen kart açılır. Notları kaydedip yorum listesindeki bekleyenleri bu çalışma alanına bağlı Agent için kopyalayın. Zaman, öğe bağlamı ve işaretler eklenir. Agent güncel sürümleri denetler, düzenler ve tamamlamadan önce doğrular. Hedef değiştiyse kayıtlı bağlamı inceleyin. Kopyalama Agent’ı başlatmaz; yorumlar yerelde kalır.",
     "Composition": "Kompozisyon",
-    "Element": "Öğe"
+    "Element": "Öğe",
+    "Review data and Agent actions": "İnceleme verileri ve Agent işlemleri",
+    "Read original data": "Özgün verileri oku",
+    "Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.": "Kopyalanan notlar kimlikleri, metni, zamanı, öğe bağlamını, kaynak sürümlerini ve tüm çizim vektörlerini içerir. Agent, MCP üzerinden güncel kayıtları ve tam HTML/CSS/JS içeriğini okur; çizimler ekran görüntüsü değildir.",
+    "Process comments": "Yorumları işle",
+    "Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.": "Videoyu düzenleyip doğruladıktan sonra ele alınan yorumları tamamlandı olarak işaretle. Agent, istendiğinde yorum metnini değiştirebilir, belirli yorumları yeniden açabilir veya silebilir. Yalnızca kopyalamak işlem başlatmaz.",
+    "Recover safely": "Hatalardan kurtul",
+    "Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.": "Aynı çalışma alanına bağlan. Yeniden denemeden önce değişen yorumları ve kaynak dosyalarını tekrar oku. Bir öğe kaybolmuşsa veya doğrulama yapılamıyorsa yorumu açık bırak ve engeli açıkla."
   }
 }

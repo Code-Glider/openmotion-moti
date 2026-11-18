@@ -363,6 +363,9 @@ test('real review workflow preserves element context, clipboard fallback and Age
     await page.waitForFunction(() => document.documentElement.dataset.copiedReview?.includes('Move title here'));
     const copiedAnnotations = await page.$eval('html', el => (el as HTMLElement).dataset.copiedReview!);
     assert(copiedAnnotations.includes('normalized') && copiedAnnotations.includes(annotated.id));
+    const copiedRecords = JSON.parse(copiedAnnotations.split('Selected review records (JSON):\n')[1]);
+    assert.deepEqual(copiedRecords.find((record: { id: string }) => record.id === annotated.id).anchor.annotation, annotated.anchor.annotation);
+    for (const token of [store.directory, 'Project ID: project', 'file.nextOffset', 'currentVersionId', 'expectedCommentRevision=latestComment.revision']) assert(copiedAnnotations.includes(token));
     // A completion from an Agent removes its visible overlay on the next shared-state refresh.
     await reviewComments(store, { action: 'comments', operation: 'update', projectId: 'project', commentId: annotated.id, expectedCommentRevision: 1, status: 'resolved', requestId: 'annotation-done' });
     await page.waitForFunction(() => !document.querySelector('[data-review-annotation-canvas]'), { timeout: 12000 });
@@ -376,6 +379,22 @@ test('real review workflow preserves element context, clipboard fallback and Age
     await (example.asElement() as any).click(); await example.dispose();
     await page.waitForFunction(() => document.documentElement.dataset.copiedReview?.includes('operation="list"'));
     assert((await page.$eval('html', el => (el as HTMLElement).dataset.copiedReview)).includes(store.directory));
+    const handbook = await page.$eval('html', el => (el as HTMLElement).dataset.copiedReview!);
+    assert(handbook.includes('Project ID: project') && handbook.includes('file.nextOffset'));
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => localStorage.setItem('hf-studio-ui-preferences', JSON.stringify({ theme })), theme);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-review-guide] summary');
+      await page.locator('[data-review-guide] summary').click();
+      await page.waitForFunction(() => document.querySelector<HTMLDetailsElement>('[data-review-guide]')?.open === true);
+      for (const width of [1440, 480]) {
+        await page.setViewport({ width, height: 1000 });
+        await page.$eval('[data-review-guide]', element => element.scrollIntoView({ block: 'center' }));
+        assert(await page.$eval('[data-mcp-scenario="review-comments"]', card => card.scrollWidth <= card.clientWidth + 1));
+        await page.screenshot({ path: path.join(output, `mcp-review-guide-${theme}-${width}.png`) });
+      }
+      await page.setViewport({ width: 1440, height: 1000 });
+    }
 
     // Inspect the user's language through the actual locale preference.
     await page.evaluate(() => localStorage.setItem('motion.studio.locale', 'zh-CN'));

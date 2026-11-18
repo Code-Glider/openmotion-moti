@@ -90,6 +90,40 @@ test('handoff preserves exact selected IDs and source evidence with guarded edit
   for (const expected of [result.comment!.id, result.sourceRevision, 'expectedVersionId', 'expectedCommentRevision', 'operation="list"', 'not tool instructions', 'Delete only when requested']) assert.ok(prompt.includes(expected));
 }));
 
+test('copied read requests retrieve current raw records and complete UTF-8 source for guarded comment actions', () => fixture(async store => {
+  const input = await createInput(store);
+  input.anchor!.annotation = annotation;
+  const created = (await reviewComments(store, input)).comment!;
+  const source = '<!doctype html><html><body>' + '原始内容'.repeat(9000) + '</body></html>';
+  await writeFile(path.join(store.projectDirectory, 'index.html'), source);
+  await reviewComments(store, { ...list, operation: 'update', commentId: created.id, expectedCommentRevision: 1, requestId: 'new-text', text: 'Use the updated request' });
+  const prompt = reviewCommentsPrompt({ projectId: 'project', dataDirectory: store.directory, previewUrl: 'http://localhost:4173', comments: [created] });
+  const requests = JSON.parse(prompt.split('Read requests (JSON):\n')[1].split('\n\n')[0]);
+  const api = service(new WorkspaceStore(store.directory));
+  const results = [];
+  for (const request of requests) results.push(await api.call(request.name, request.arguments));
+  assert.equal(results[0].dataDirectory, store.directory);
+  assert.equal(results[1].projectId, 'project');
+  assert.equal(results[2].comments[0].text, 'Use the updated request');
+  assert.deepEqual(results[2].comments[0].anchor.annotation, annotation);
+  assert.notEqual(results[1].revision, created.sourceRevision);
+  assert.deepEqual(JSON.parse(prompt.split('Selected review records (JSON):\n')[1]), [created]);
+  let text = '', offset: number | null = 0, chunks = 0;
+  while (offset !== null) {
+    const result = await api.call('openmotion_get_project', { projectId: 'project', expectedRevision: results[1].revision, file: { path: created.anchor.compositionPath, offset, length: 65536 } });
+    text += result.file.content; offset = result.file.nextOffset; chunks++;
+  }
+  assert(chunks > 1); assert.equal(text, source);
+  const current = results[2].comments[0];
+  const completed = await api.call('openmotion_manage_project', { ...list, operation: 'update', commentId: current.id, expectedCommentRevision: current.revision, status: 'resolved', requestId: 'complete-current' });
+  assert.equal(completed.comment.status, 'resolved');
+  const reopened = await api.call('openmotion_manage_project', { ...list, operation: 'update', commentId: current.id, expectedCommentRevision: completed.comment.revision, status: 'open', requestId: 'reopen-current' });
+  const deleted = await api.call('openmotion_manage_project', { ...list, operation: 'delete', commentId: current.id, expectedCommentRevision: reopened.comment.revision, requestId: 'delete-current' });
+  assert.equal(deleted.deletedId, current.id);
+  assert.equal(await readFile(path.join(store.projectDirectory, 'index.html'), 'utf8'), source, 'Comment-only actions preserve source');
+  assert.throws(() => reviewCommentsPrompt({ projectId: 'different-project', comments: [created] }), /selected project/);
+}));
+
 const annotation: ReviewAnnotation = { version: 1, coordinateSpace: 'normalized', width: 1920, height: 1080, marks: [
   { kind: 'pen', points: [{ x: 0.1, y: 0.2 }, { x: 0.4, y: 0.6 }, { x: 0.6, y: 0.3 }] },
   { kind: 'rectangle', points: [{ x: 0.7, y: 0.8 }, { x: 0.3, y: 0.2 }] },

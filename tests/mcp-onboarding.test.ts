@@ -2,7 +2,7 @@ import { reviewCommentsPrompt } from '../shared/review-comments.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
+import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpReviewGuide, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
 import { assetNamingInstruction } from '../shared/asset-names.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
@@ -25,7 +25,7 @@ test('review comments and their handbook scenario are localized across all inter
   const scenario = mcpScenarios.find(item => item.id === 'review-comments')!;
   for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
     assert.deepEqual(Object.keys(values).sort(), keys, language);
-    for (const key of [scenario.title, scenario.description, ...keys]) assert.ok(values[key]?.trim(), `${language}: ${key}`);
+    for (const key of [scenario.title, scenario.description, 'Review data and Agent actions', ...mcpReviewGuide.flat(), ...keys]) assert.ok(values[key]?.trim(), `${language}: ${key}`);
     assert.equal(values.Open, undefined, 'Review status must not override the general Open action');
   }
 });
@@ -52,6 +52,7 @@ test('connection guidance exposes the maintained media workflow without asking f
   const info: IntegrationInfo = { name: 'OpenMotion', version: '1.0.0', dataDirectory: '/fixture/data', previewUrl: 'http://127.0.0.1:4567', tools: phase1Tools,
     transport: { type: 'stdio', command: 'node', args: ['/fixture/mcp.ts'], cwd: '/fixture', env: { MOTION_DATA_DIR: '/fixture/data' } } };
   const guide = agentGuide(info, 'codex');
+  assert.ok(guide.includes(reviewCommentsPrompt({ dataDirectory: info.dataDirectory, previewUrl: info.previewUrl })));
   for (const operation of ['openmotion_media_use', 'inspect', 'reference', 'models', 'schema', 'generate', 'status', 'cancel', 'requestId', 'jobId']) assert.ok(guide.includes(operation), operation);
   assert.doesNotMatch(guide, /不公开生成/);
   assert.match(guide, /Keep credentials in Settings/);

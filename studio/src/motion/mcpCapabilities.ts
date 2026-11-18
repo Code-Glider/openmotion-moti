@@ -39,6 +39,12 @@ export const mcpScenarios = [{
 
 export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'adapt', locale, workspace });
 
+export const mcpReviewGuide = [
+  ['Read original data', 'Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.'],
+  ['Process comments', 'Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.'],
+  ['Recover safely', 'Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.'],
+] as const;
+
 export const mcpBenefits = [
   { icon: 'movie-line', title: 'The workspace behind your Agent', description: 'Your Agent creates and edits through MCP. OpenMotion keeps the project, source files and assets together so each result can become the next starting point.' },
   { icon: 'history-line', title: 'Versions you can return to', description: 'Keep saved versions, revisit an earlier cut and continue from it without losing the later history.' },

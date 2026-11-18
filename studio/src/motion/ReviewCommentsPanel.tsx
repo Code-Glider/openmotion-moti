@@ -40,7 +40,7 @@ function ProjectReviewComments() {
   const placement = useReviewPresentationStore(state => state.placement);
   const time = usePlayerStore(state => state.currentTime), playing = usePlayerStore(state => state.isPlaying);
   const review = useReviewComments(projectId, visible || Boolean(playerHost));
-  const { info } = useIntegrationInfo();
+  const { info, failed: integrationFailed, retry: retryIntegration } = useIntegrationInfo();
   const [selecting, setSelecting] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null), [text, setText] = useState('');
   const [needsRecapture, setNeedsRecapture] = useState(false);
@@ -164,7 +164,7 @@ function ProjectReviewComments() {
     });
   }
   function copy() {
-    if (!checked.length) return;
+    if (!checked.length || !info) return;
     run(async () => {
       await waitForPendingDomEditSaves();
       if (!alive.current) return;
@@ -172,7 +172,7 @@ function ProjectReviewComments() {
       if (!alive.current) return;
       const chosen = current.comments.filter(comment => selecting ? selected.has(comment.id) : comment.status === 'open');
       if (!chosen.length) throw new Error('The selected comments are no longer available.');
-      const prompt = reviewCommentsPrompt({ projectId, dataDirectory: info?.dataDirectory, comments: chosen });
+      const prompt = reviewCommentsPrompt({ projectId, dataDirectory: info?.dataDirectory, previewUrl: info?.previewUrl, sourceRevision: current.sourceRevision, comments: chosen });
       try { await navigator.clipboard.writeText(prompt); if (alive.current) { setManualCopy(''); showToast(t('Copied. Paste into your Agent.')); } }
       catch { if (alive.current) { setManualCopy(prompt); showToast(t('Could not copy. Select and copy the text manually.'), 'error'); } }
     });
@@ -276,7 +276,8 @@ function ProjectReviewComments() {
     {comments.length > 0 && <div className="flex shrink-0 flex-col gap-2 border-t border-border p-3" data-review-footer>
       {selecting && <div className="flex flex-wrap items-center gap-1"><Button size="sm" variant="ghost" disabled={!shown.length} onClick={() => setSelected(new Set(shown.map(comment => comment.id)))}>{t('Select all shown')}</Button>
         <Button size="sm" variant="ghost" disabled={!selected.size} onClick={() => setSelected(new Set())}>{t('Clear comment selection')}</Button></div>}
-      <Button size="sm" variant="primary" className="h-auto min-h-ctl whitespace-normal py-2" disabled={!checked.length || review.busy} onClick={copy}>{t(selecting ? 'Copy for Agent' : 'Copy pending for Agent')} ({checked.length})</Button>
+      {integrationFailed && <div role="alert"><p>{t('Check the connection and try again.')}</p><Button size="sm" variant="ghost" onClick={retryIntegration}>{t('Retry')}</Button></div>}
+      <Button size="sm" variant="primary" className="h-auto min-h-ctl whitespace-normal py-2" disabled={!checked.length || review.busy || !info} onClick={copy}>{t(selecting ? 'Copy for Agent' : 'Copy pending for Agent')} ({checked.length})</Button>
       <Button size="sm" variant="ghost" onClick={() => { setSelecting(value => !value); setSelected(new Set()); }}>{t(selecting ? 'Done selecting' : 'Choose comments')}</Button>
     </div>}
   </section>;
