@@ -303,7 +303,7 @@ export function computeDragPreview(
   const savedStart = keepOrigin || group.moving.size > 1 ||
     authoredStart < group.floor || authoredStart - origin < shift.min || authoredStart - origin > shift.max
     ? previewStart : authoredStart;
-  const insertion = ctx.canInsertClips !== false && drag.pointerId !== null && aim.insertRow === null &&
+  const insertion = !keepOrigin && ctx.canInsertClips !== false && drag.pointerId !== null && aim.insertRow === null &&
     trackOrder[aimedRow] !== undefined && !ctx.groupTracks?.has(desiredTrack) &&
     !isPendingTimelineRow(desiredTrack, ctx.elements) &&
     ((ctx.selectedKeys.size < 2 && !drag.element.expandedHostKey) || !resolveExpandedHostAlias(drag, ctx))
