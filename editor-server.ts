@@ -16,13 +16,15 @@ export async function serveEditorFile(url: URL, res: ServerResponse): Promise<bo
   else if (designFile) relative = 'packages/design-system/' + designFile;
   else if (url.pathname === '/favicon.svg') relative = 'packages/design-system/brand/favicon.svg';
   else if (/^\/editor-assets\/[a-zA-Z0-9_.-]+$/.test(url.pathname)) relative = 'studio/build' + url.pathname;
+  else if (/^\/guide-assets\/viewer\.(js|css)$/.test(url.pathname)) relative = 'studio/build' + url.pathname;
   else if (/^\/web\/catalog\/(?:hyperframes|template-frames|provenance|covers)\.json$/.test(url.pathname) || /^\/web\/catalog\/(?:template-frames|covers)\/[a-f0-9]{24}\.(?:jpg|webp)$/.test(url.pathname)) relative = url.pathname.slice(1);
   else return false;
   const type = mime[path.extname(relative)];
   if (!type) return false;
   try {
     const data = await readFile(path.join(pluginRoot, relative));
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': data.length }); res.end(data);
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': data.length,
+      ...(designFile && /\.(?:ttf|woff2?)$/.test(designFile) ? { 'Access-Control-Allow-Origin': '*' } : {}) }); res.end(data);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });

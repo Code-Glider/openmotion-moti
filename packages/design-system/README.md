@@ -49,6 +49,8 @@ Ordinary HTML pages load `/design-system/ui.css` and set `data-motion-ui` on the
 </section>
 ```
 
+Use `ui-text-link` for quiet inline resource actions such as source links and document downloads. It shares the theme, focus and disabled roles with the other portable controls.
+
 Studio imports `tailwind.css` from its stylesheet and `studio.css` from its application entry. Its existing `data-motion-studio` root maps `paper` to light and the default to dark. Both adapters consume the same `--motion-*` roles. For example, `--color-surface`, catalog surfaces and ordinary control backgrounds derive from shared surface roles; they do not carry separate palettes. Theme-specific recipes belong here, not in component overrides.
 
 `studio/application.css`, included by `studio.css`, supplies the reusable `om-*` navigation, buttons, fields, cards, badges, avatars, switches and dialogs used by the application shell and settings. Load consumer geometry after this entry so responsive visibility and measured sizes can override the primitive defaults. The `shell` role supplies the continuous top/left backdrop; `workspace` supplies the inset content surface. The `chrome-icon`, `chrome-hover` and `chrome-active` roles distinguish quiet navigation from the main content; shared transition recipes respect reduced motion. Provider artwork uses a neutral `brand-surface` tile, with identical local assets shared by lists, details and model choices. Keep colors, materials, focus and disabled states in the package. Composite fields use one visible focus ring around the whole control.

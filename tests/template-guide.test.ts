@@ -1,0 +1,98 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+import { authoredTemplateGuide, isTemplateGuideEvent, parseTemplateGuideDraft, upgradeTemplateGuidePage } from '../shared/template-guide.ts';
+import { repositoryCatalogRoot } from '../shared/repository-template-catalog.ts';
+import { materializeTemplateGuide } from '../gateway/template-guide.ts';
+import { TemplateCatalog } from '../prism-templates.ts';
+import { pluginRoot, inspectProject } from '../hyperframes.ts';
+import { Phase1Service } from '../phase1.ts';
+import { fixture } from './fixtures.ts';
+import { transport } from './http.ts';
+
+const lovable = 'motion-be2a4af0-0183-4979-ab05-2a68413c0890';
+const stripe = 'motion-80dceb1d-5219-4e1f-9394-6baacf5d0166';
+
+test('every catalog preview receives the common interface and retains its own authored content', async () => {
+  const manifest = JSON.parse(await readFile(path.join(repositoryCatalogRoot, 'catalog.json'), 'utf8'));
+  let authored = 0;
+  const examples = new Set<string>();
+  for (const id of manifest.templateIds) {
+    const source = await readFile(path.join(repositoryCatalogRoot, id, 'source/preview.html'), 'utf8');
+    const guide = authoredTemplateGuide(source); if (guide) { authored++; examples.add(JSON.stringify(guide)); }
+    const result = upgradeTemplateGuidePage(source, { id, title: 'This template <script>must stay inert</script>' });
+    assert.equal((result.match(/id="openmotion-guide-page"/g) || []).length, 1, id);
+    assert(result.includes('"id":"' + id + '"'), id);
+    assert(result.includes('/guide-assets/viewer.js'), id);
+    assert(!result.includes('<script>must stay inert</script>'), id);
+    if (guide) {
+      assert(result.includes('data-demo='), id);
+      assert(result.includes('viewer/guide.js'), id);
+      assert(!result.includes('href="viewer/board.css"'), id);
+      assert(!result.includes('openmotion-product-flow'), id);
+    }
+  }
+  assert.equal(manifest.templateIds.length, 287);
+  assert.equal(authored, 286);
+  assert(examples.size > 250, 'entries must retain distinct defaults and durations');
+});
+
+test('guide drafts and analytics reject arbitrary fields and never collect changed text', () => {
+  assert.deepEqual(parseTemplateGuideDraft({ title: 'My own launch', accent: '#ABCDEF' }), { title: 'My own launch', accent: '#abcdef' });
+  for (const value of [{ title: '', accent: '#ffffff' }, { title: 'x'.repeat(61), accent: '#ffffff' }, { title: 'x', accent: 'url(private)' }, { title: 'x', accent: '#ffffff', templateId: stripe }])
+    assert.throws(() => parseTemplateGuideDraft(value), /INVALID_GUIDE_DRAFT/);
+  const event = { action: 'edit', view_id: crypto.randomUUID(), field: 'title' };
+  assert(isTemplateGuideEvent(event)); assert(!isTemplateGuideEvent({ ...event, text: 'Private draft' }));
+  assert(!isTemplateGuideEvent({ ...event, field: 'brand' }));
+});
+
+test('each selected guide materializes its own native canvas, timing and variables', () => fixture(async store => {
+  const catalog = new TemplateCatalog(store.directory, { source: 'repository' });
+  for (const id of [lovable, stripe]) {
+    const directory = path.join(store.directory, id);
+    const draft = { title: 'A "launch" <with content>', accent: '#8dff5c' };
+    const result = await materializeTemplateGuide(catalog, id, directory, pluginRoot, draft);
+    assert.equal(result.source.id, id); assert.equal(result.source.width, 1000); assert.equal(result.source.height, 600);
+    assert.equal(result.source.provenance, 'authored-motion-guide-example');
+    assert.deepEqual(await readFile(path.join(directory, 'demos/scene.js')), await catalog.sourceFile(id, 'demos/scene.js'));
+    const index = await readFile(path.join(directory, 'index.html'), 'utf8');
+    assert(!index.includes(draft.title)); assert(index.includes('\\u003cwith content>'));
+    assert(index.includes('data-composition-variables='));
+    const lint = await inspectProject(pluginRoot, directory, 'lint'); assert.equal(lint.exitCode, 0, JSON.stringify(lint));
+    const info = await inspectProject(pluginRoot, directory, 'info'); assert.equal(info.result.duration, result.source.durationSeconds);
+    assert.equal(info.result.width, 1000); assert.equal(info.result.height, 600);
+    const timeline = await inspectProject(pluginRoot, directory, 'timeline');
+    const clips = timeline.result.timeline.tracks.flatMap((track: any) => track.rows).filter((clip: any) => !clip.nested);
+    assert.deepEqual(clips.map((clip: any) => [clip.id, clip.absStart, clip.absEnd]), [['guide-example', 0, Number(result.source.durationSeconds.toFixed(3))]]);
+  }
+}, false));
+
+test('MCP guide creation reuses the request, keeps the original template and rejects unsupported source', () => fixture(async store => {
+  const service = new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
+  const args = { requestId: 'lovable-guide-draft', projectType: 'template', templateId: lovable, title: 'My version', requirements: 'Continue the selected motion example', guideDraft: { title: 'My launch', accent: '#7050da' } };
+  const created = await service.call('openmotion_create_project', args);
+  const retried = await service.call('openmotion_create_project', args);
+  assert.equal(created.projectId, retried.projectId);
+  assert.equal(created.source.id, lovable); assert.equal(created.source.provenance, 'authored-motion-guide-example');
+  assert.deepEqual(JSON.parse(await readFile(path.join(store.projectDirectoryFor(created.projectId), 'motion-project.json'), 'utf8')).guideDraft, args.guideDraft);
+  await assert.rejects(service.call('openmotion_create_project', { ...args, guideDraft: { ...args.guideDraft, title: 'Other draft' } }), /REQUEST_ID_CONFLICT/);
+  await assert.rejects(service.call('openmotion_create_project', { ...args, requestId: 'unsupported-guide', templateId: 'motion-orbit-launch' }), /GUIDE_NOT_EDITABLE/);
+  assert.equal(store.projectCatalog().projects.filter(item => item.id === created.projectId).length, 1);
+}, false));
+
+test('the exact requested URLs serve upgraded pages, while raw source and downloads stay byte-identical', () => fixture(async store => {
+  const request = transport(store);
+  for (const id of [lovable, stripe, 'motion-orbit-launch']) {
+    const pathName = `/api/template-source/${id}/preview.html`;
+    const response = await request(pathName); assert.equal(response.status, 200);
+    assert((await response.text()).includes('openmotion-guide-page'));
+    assert.equal(await (await request(pathName + '?raw=1')).text(), await readFile(path.join(repositoryCatalogRoot, id, 'source/preview.html'), 'utf8'));
+    const motion = await readFile(path.join(repositoryCatalogRoot, id, 'source/motion.md'), 'utf8');
+    assert.equal(await (await request(`/api/template-source/${id}/motion.md`)).text(), motion);
+    const download = await request(`/api/template-source/${id}/motion.md?download=1`);
+    assert.equal(download.headers.get('content-disposition'), 'attachment; filename="motion.md"');
+    assert.equal(await download.text(), motion);
+  }
+}, false));
