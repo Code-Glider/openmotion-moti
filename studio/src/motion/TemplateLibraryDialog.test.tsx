@@ -89,6 +89,33 @@ it('keeps the search in the header and preserves filters when clearing the keywo
   expect(cards()).toEqual(['one']);
   expect(events('template_search_result').at(-1)).toMatchObject({ search_keyword: 'Figma', result_count: 1 });
 });
+it('opens the reference-link form from the library home without creating a search', async () => {
+  await mount();
+  const trigger = button('Make a video from a reference', host.querySelector('.om-gallery-intro')!);
+  expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+  const initialCards = cards();
+  await act(async () => trigger.click());
+  const popup = host.querySelector<HTMLDialogElement>('dialog[data-search-recovery][open]')!;
+  const input = popup.querySelector<HTMLInputElement>('input[type=url]')!;
+  expect(document.activeElement).toBe(input);
+  expect(button('Copy request', popup).disabled).toBe(true);
+  const link = 'https://example.com/reference.mp4';
+  await fill(input, link);
+  await act(async () => button('Copy request', popup).click());
+  expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining(link));
+  expect(events('ui_click', { element: 'reference', reference_entry: 'library_home' })).toHaveLength(1);
+  expect(events('template_search_handoff_result').at(-1)).toMatchObject({
+    reference_entry: 'library_home', source_kind: 'link', handoff_status: 'clipboard_written',
+  });
+  expect(events('template_search_result')).toHaveLength(0);
+  expect(JSON.stringify(tracked)).not.toContain(link);
+  for (const item of tracked) expect(validProperties(studioEvents, item.event, item.properties), JSON.stringify(item)).toBe(true);
+  await act(async () => popup.dispatchEvent(new Event('cancel', { cancelable: true, bubbles: true })));
+  expect(host.querySelector('dialog[data-search-recovery]')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(cards()).toEqual(initialCards);
+  expect(searchInput().value).toBe('');
+});
 it('commits Enter and debounce once, never commits IME text, and counts A to B to A as three searches', async () => {
   vi.useFakeTimers();
   try {

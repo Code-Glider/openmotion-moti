@@ -457,7 +457,10 @@ backend/data directory. Deterministic coverage lives in
   composition. Recovery exposure requires the expanded panel to intersect a
   visible viewport. `template_search_handoff_result` tracks an instruction
   copy attempt with a fixed source kind and status. A manual-copy fallback
-  remains distinct from `clipboard_written`. Reference links, descriptions and
+  remains distinct from `clipboard_written`. The library home action and its
+  handoff result carry `reference_entry=library_home`; the existing search
+  recovery path omits this field. Using the home action does not emit a search.
+  Reference links, descriptions and
   contact details are excluded. Template request intake is not exposed.
   Request preparation does not confirm Agent execution.
 

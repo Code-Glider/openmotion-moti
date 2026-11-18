@@ -61,6 +61,7 @@ const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
 const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
 const entryFrom = [...mcpEntry, ...providerSetupEntries] as const;
+const referenceEntry = { reference_entry: ['library_home'] } as const;
 const mcp = { mcp_client: mcpClient, setup_method: ['agent', 'manual'], capability_id: 'slug' } as const;
 // A Skill is identified by its catalogue id and group only; the brief text never leaves the browser.
 const skill = { skill_id: 'slug', skill_category: ['talking_head', 'product_promos', 'explainers', 'product_ads', 'brand_covers', 'motion_techniques'] } as const;
@@ -177,7 +178,7 @@ export const omEvents = {
     copy_attempt_id: 'uuid', download_attempt_id: 'uuid',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
-    ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom,
+    ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom, ...referenceEntry,
     doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages },
     required: ['page_name', 'area', 'element'] },
   // Studio UI exports run in the editor's own render pipeline, not the worker that owns export_result.
@@ -215,7 +216,7 @@ export const omEvents = {
     search_keyword: 'text', query_length: 'integer', outcome: ['success', 'failure'], ...templateList },
     required: ['search_id', 'query_length', 'result_count', 'outcome'] },
   template_search_handoff_result: { producers: ['studio'], fields: { page_name: ['studio'], area: ['template_discovery'],
-    handoff_attempt_id: 'uuid', source_kind: ['link', 'local', 'description'], handoff_status: ['clipboard_written', 'manual_fallback', 'draft_added', 'failure'], ...templateList },
+    handoff_attempt_id: 'uuid', source_kind: ['link', 'local', 'description'], handoff_status: ['clipboard_written', 'manual_fallback', 'draft_added', 'failure'], ...templateList, ...referenceEntry },
     required: ['handoff_attempt_id', 'source_kind', 'handoff_status'] },
   template_filter_result: { producers: ['studio'], fields: { page_name: ['home', 'studio'], area: ['template_discovery'],
     action: ['category_select', 'filter_apply', 'filter_clear', 'sort_change'], outcome: ['success', 'failure'], ...templateList },

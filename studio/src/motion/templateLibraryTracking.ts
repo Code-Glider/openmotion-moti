@@ -104,12 +104,13 @@ export function reportDetailLink(template: Template, element: 'view_full_page' |
 }
 
 export type RecoveryAction = 'search_focus' | 'clear_search' | 'reference' | 'describe' | 'copy_brief';
-export function reportRecoveryAction(element: RecoveryAction, context: ListContext) {
-  send('ui_click', { ...studio, area: 'template_discovery', element, ...list(context) });
+type ReferenceEntry = 'library_home';
+export function reportRecoveryAction(element: RecoveryAction, context: ListContext, entry?: ReferenceEntry) {
+  send('ui_click', { ...studio, area: 'template_discovery', element, ...(entry && { reference_entry: entry }), ...list(context) });
 }
 export function reportRecoveryShown(reason: 'no_results' | 'unsuitable' | 'catalog_empty', context: ListContext) {
   send('surface_view', { ...studio, area: 'template_discovery', element: 'search_recovery', recovery_reason: reason, ...list(context) });
 }
-export function reportSearchHandoff(source: 'link' | 'local' | 'description', attemptId: string, status: 'clipboard_written' | 'manual_fallback', context: ListContext) {
-  send('template_search_handoff_result', { ...studio, area: 'template_discovery', source_kind: source, handoff_attempt_id: attemptId, handoff_status: status, ...list(context) });
+export function reportSearchHandoff(source: 'link' | 'local' | 'description', attemptId: string, status: 'clipboard_written' | 'manual_fallback', context: ListContext, entry?: ReferenceEntry) {
+  send('template_search_handoff_result', { ...studio, area: 'template_discovery', source_kind: source, handoff_attempt_id: attemptId, handoff_status: status, ...(entry && { reference_entry: entry }), ...list(context) });
 }

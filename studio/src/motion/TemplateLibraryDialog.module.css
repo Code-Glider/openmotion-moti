@@ -19,6 +19,28 @@
 .stickyHeader { composes: om-gallery-sticky-header from global; }
 .recoveryTeaser { display: flex; justify-content: center; padding: var(--motion-space-32); }
 .searchRecovery { width: min(100% - var(--motion-space-64), 640px); margin: var(--motion-space-48) auto var(--motion-space-48); }
+.referenceDialog {
+  inset: 0;
+  width: min(calc(100% - var(--motion-space-32)), 640px);
+  max-height: calc(100% - var(--motion-space-32));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--motion-radius-step-18);
+  background: transparent;
+  color: inherit;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.referenceDialog::backdrop { background: var(--motion-overlay); }
+.library .referenceEntryButton {
+  align-self: stretch;
+  min-height: var(--motion-space-40);
+  height: auto;
+  white-space: normal;
+  text-align: start;
+}
+.referenceEntryButton > svg { flex: none; }
 .recoveryStatus { display: grid; justify-items: center; gap: var(--motion-space-12); text-align: center; }
 .recoveryMark {
   display: grid;
