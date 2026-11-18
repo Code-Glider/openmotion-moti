@@ -16,7 +16,7 @@ export interface AppToast {
   action?: { key: string; label: string; onClick: () => void | Promise<void> };
   message: string;
   tone: "error" | "info";
-  /** Brief feedback without actions or diagnostics; expires after three seconds. */
+  /** Show the supplied feedback copy instead of summarizing errors; actions control persistence. */
   presentation?: "feedback";
 }
 
@@ -364,7 +364,7 @@ async function probeDroppedAssetDuration(
   assetPath: string,
   kind: TimelineAssetKind,
 ): Promise<number> {
-  if (kind === "image") return 3;
+  if (kind === "image" || kind === "text") return 3;
 
   const media = document.createElement(kind === "video" ? "video" : "audio");
   media.preload = "metadata";
@@ -439,7 +439,7 @@ export async function resolveDroppedAssetDimensions(
   assetPath: string,
   kind: TimelineAssetKind,
 ): Promise<{ width: number; height: number } | null> {
-  if (kind === "audio") return null;
+  if (kind === "audio" || kind === "text") return null;
   const src = buildProjectApiPath(projectId, `/preview/${encodeUrlPath(assetPath)}`);
 
   if (kind === "image") {

@@ -29,8 +29,9 @@ beforeEach(() => {
   act(() => render());
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.useRealTimers(); });
+const connectionNotice = () => [...document.querySelectorAll('[role=status]')].find(node => node.textContent === '连接已断开，正在重连');
 
-it('lays out independent owners and one persistent connection status in the same stack', () => {
+it('expires errors and connection feedback while keeping actions in the shared stack', () => {
   act(() => {
     owners.first.showToast('Some changes were saved, but other changes remain incomplete.');
     owners.second.showToast('Asset removed', 'info', undefined, { key: 'undo', label: 'Undo', onClick: vi.fn() });
@@ -40,14 +41,34 @@ it('lays out independent owners and one persistent connection status in the same
   expect(stack.children).toHaveLength(3);
   expect(stack.textContent).toContain('部分修改已保存');
   expect(stack.textContent).toContain('Undo');
-  act(() => { render(); vi.advanceTimersByTime(10000); });
-  expect(document.querySelectorAll('[data-testid=motion-connection-toast]')).toHaveLength(1);
-  expect(stack.querySelector('[data-testid=motion-connection-toast]')?.textContent).toBe('连接已断开，正在重连');
-  expect(stack.querySelector('[data-testid=motion-connection-toast] button')).toBeNull();
-  act(() => render({ reconnecting: false }));
-  expect(stack.children).toHaveLength(2);
-  expect(stack.textContent).toContain('部分修改已保存');
+  expect(connectionNotice()?.querySelector('button')).toBeNull();
+  act(() => vi.advanceTimersByTime(2999));
+  expect(connectionNotice()).toBeDefined();
+  // Unrelated renders during the same outage do not renew the timer.
+  act(() => render());
+  act(() => vi.advanceTimersByTime(1));
+  expect(connectionNotice()?.classList.contains('hf-toast-exit')).toBe(true);
+  act(() => vi.advanceTimersByTime(160));
+  expect(connectionNotice()).toBeUndefined();
+  expect(stack.children).toHaveLength(1);
   expect(stack.textContent).toContain('Undo');
+  act(() => render());
+  act(() => vi.advanceTimersByTime(10000));
+  expect(connectionNotice()).toBeUndefined();
+  expect(stack.children).toHaveLength(1);
+});
+
+it('clears connection feedback on recovery and gives each new outage its own timer', () => {
+  act(() => vi.advanceTimersByTime(1000));
+  act(() => render({ reconnecting: false }));
+  expect(connectionNotice()).toBeUndefined();
+  act(() => render({ reconnecting: true }));
+  expect(connectionNotice()).toBeDefined();
+  act(() => vi.advanceTimersByTime(2999));
+  expect(connectionNotice()?.classList.contains('hf-toast-exit')).toBe(false);
+  act(() => vi.advanceTimersByTime(161));
+  expect(connectionNotice()).toBeUndefined();
+  expect(document.querySelector('.motion-feedback-layer')).toBeNull();
 });
 
 it('retains each action target and other owners when a source unmounts', async () => {
@@ -64,7 +85,7 @@ it('retains each action target and other owners when a source unmounts', async (
   expect(undoFirst).not.toHaveBeenCalled(); expect(undoSecond).toHaveBeenCalledOnce();
   act(() => vi.advanceTimersByTime(160));
   expect(document.querySelectorAll('.hf-toast-viewport')).toHaveLength(1);
-  expect(document.querySelector('[data-testid=motion-connection-toast]')).not.toBeNull();
+  expect(connectionNotice()).toBeDefined();
   act(() => render({ first: false, reconnecting: false }));
   expect(document.querySelector('.motion-feedback-layer')).toBeNull();
 });
@@ -78,8 +99,7 @@ it('coalesces a repeated owner notice but does not drop unrelated results on rec
   });
   expect(document.querySelector('.hf-toast-viewport')?.children).toHaveLength(2);
   act(() => vi.advanceTimersByTime(3160));
-  expect(document.querySelector('.hf-toast-viewport')?.children).toHaveLength(1);
-  expect(document.body.textContent).toContain('部分修改已保存');
+  expect(document.querySelector('.motion-feedback-layer')).toBeNull();
 });
 
 it('keeps the shared stack and its actions inside the active dialog boundary', async () => {

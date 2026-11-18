@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { Window } from 'happy-dom';
 import { renderInlineOnboarding, prepareInlineOnboarding, publishInlineOnboarding } from '../scripts/inline-onboarding.mjs';
 import { prepareInstallationOnboarding } from '../scripts/install-onboarding.mjs';
+import { languages, welcomeMarkdown } from '../mcp-ui/template-recommendations/i18n.ts';
+import { runFile } from '../scripts/runtime-assets.mjs';
 
 import { onboardingTemplateIds, builtinRecommendationIds } from '../shared/onboarding-templates.ts';
 import { loadTemplatePresentation, loadInlineProjectPreviews } from '../shared/mcp-template-recommendations.ts';
@@ -20,7 +22,7 @@ const appRoot = fileURLToPath(new URL('../', import.meta.url));
 test('curated project previews are self-contained without native MCP activation', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-curated-inline-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const templateIds = ['motion-dac924da-010f-4445-baf3-a39cb033e48f',
+  const templateIds = ['motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b',
     'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd', 'motion-664184d9-593e-4984-b473-701248b69cfe'];
   const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, 'cards.html'), language: 'zh', templateIds });
   assert.equal(result.status, 'prepared');
@@ -41,6 +43,31 @@ test('curated project previews are self-contained without native MCP activation'
   assert.deepEqual(videoTypes, ['video/webm', 'video/webm', 'video/webm']);
   assert.match(window.document.querySelector('.omtc-description')!.textContent!, /^简介：/);
   assert.doesNotMatch(window.document.body.textContent!, /工程预览（静音）/);
+});
+test('HTML project-card summaries use localized introduction labels in every supported language', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-inline-summary-locales-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const prefixes = { zh: '简介：', en: 'Summary: ', ja: '概要：', ko: '소개: ',
+    fr: 'Présentation : ', es: 'Resumen: ', pt: 'Resumo: ' };
+  assert.deepEqual(Object.keys(prefixes), [...languages], 'Every supported language needs an explicit summary label');
+  await Promise.all(languages.map(async language => {
+    const templateIds = [...onboardingTemplateIds].slice(0, 3);
+    const result = await renderInlineOnboarding({ appRoot, output: path.join(directory, language + '.html'), language, templateIds });
+    const window = new Window();
+    try {
+      window.URL.createObjectURL = () => 'blob:summary-locale-test';
+      window.URL.revokeObjectURL = () => {};
+      window.document.body.innerHTML = await readFile(result.path, 'utf8');
+      for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
+      const descriptions = [...window.document.querySelectorAll('.omtc-description')].map(node => node.textContent!);
+      assert.equal(descriptions.length, 3);
+      for (const description of descriptions) {
+        assert(description.startsWith(prefixes[language]), `${language}: ${description}`);
+        assert(description.slice(prefixes[language].length).trim(), 'Keep the localized summary after its label');
+        assert.equal(description.indexOf(prefixes[language], prefixes[language].length), -1, 'Do not duplicate the summary label');
+      }
+    } finally { await window.happyDOM.abort(); }
+  }));
 });
 test('onboarding locale tags normalize to a supported language and other languages fall back to English', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-onboarding-language-'));
@@ -130,6 +157,36 @@ test('host publication verifies and copies the real component to an explicitly s
   assert.equal(await readFile(published.path, 'utf8'), 'existing unrelated content');
 });
 
+test('publication hands off the complete localized reply and suppresses only an already-delivered welcome', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-welcome-reply-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const language of ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'] as const) {
+    const prepared = await renderInlineOnboarding({ appRoot, output: path.join(directory, 'runtime', language + '.html'), language });
+    const options = { source: prepared.path, expectedSHA256: prepared.sha256, hostDirectory: path.join(directory, 'host') };
+    const published = await publishInlineOnboarding(options);
+    assert.equal(published.language, language);
+    assert.equal(published.welcomeMarkdown, welcomeMarkdown(language));
+    assert.equal(published.finalReplyMarkdown, `${prepared.welcomeMarkdown}\n\n${published.contentReference}`);
+    assert.equal(published.nativeMcpSessionVerified, false);
+    const recovered = await publishInlineOnboarding({ ...options, welcomeDelivered: true });
+    assert.equal(recovered.welcomeMarkdown, '');
+    assert.equal(recovered.finalReplyMarkdown, published.contentReference);
+    assert.equal(await readFile(recovered.path, 'utf8'), await readFile(prepared.path, 'utf8'));
+  }
+});
+
+test('publication CLI returns a complete reply from the frozen document language', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-welcome-cli-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const prepared = await renderInlineOnboarding({ appRoot, output: path.join(directory, 'runtime/cards.html'), language: 'zh' });
+  const args = [path.join(appRoot, 'scripts/inline-onboarding.mjs'), '--publish-from', prepared.path,
+    '--sha256', prepared.sha256, '--host-directory', path.join(directory, 'host')];
+  const published = JSON.parse(await runFile(process.execPath, args, { env: { ...process.env, OPENMOTION_ONBOARDING_LANGUAGE: 'en' } }));
+  assert.equal(published.finalReplyMarkdown, `${welcomeMarkdown('zh')}\n\n${published.contentReference}`);
+  const recovered = JSON.parse(await runFile(process.execPath, [...args, '--welcome-delivered']));
+  assert.equal(recovered.finalReplyMarkdown, published.contentReference);
+});
+
 test('every three-reference selection requires native cards with image and video origin permission', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-native-card-selection-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
@@ -146,7 +203,7 @@ test('every three-reference selection requires native cards with image and video
   }
 });
 
-test('all approved project previews and the largest three fit a self-contained document', async t => {
+test('all four three-of-four selections fit the complete HTML budget in every supported language', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-all-project-previews-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const previews = loadInlineProjectPreviews([...onboardingTemplateIds]);
@@ -155,15 +212,29 @@ test('all approved project previews and the largest three fit a self-contained d
     assert(preview.durationSeconds > 10);
     assert.equal(preview.videoMimeType, 'video/webm');
   }
-  const largest = previews.sort((a, b) => (b.videoBase64.length + b.posterBase64.length) - (a.videoBase64.length + a.posterBase64.length)).slice(0, 3).map(item => item.id);
-  for (const [index, templateIds] of [...Array.from({ length: onboardingTemplateIds.length - 2 }, (_, start) => onboardingTemplateIds.slice(start, start + 3)), largest].entries()) {
-    const result = await renderInlineOnboarding({ appRoot, templateIds, output: path.join(directory, index + '.html') });
-    assert.equal(result.status, 'prepared');
-    assert(result.bytes < 1_000_000);
-    const fragment = await readFile(result.path, 'utf8');
-    assert.doesNotMatch(fragment, /https:\/\/r\.open-design\.ai/);
-    assert.deepEqual(result.templateIds, templateIds);
+  let combinations = 0;
+  let largestBytes = 0;
+  for (let a = 0; a < onboardingTemplateIds.length - 2; a++) {
+    for (let b = a + 1; b < onboardingTemplateIds.length - 1; b++) {
+      for (let c = b + 1; c < onboardingTemplateIds.length; c++) {
+        const templateIds = [onboardingTemplateIds[a], onboardingTemplateIds[b], onboardingTemplateIds[c]];
+        combinations++;
+        for (const language of ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt']) {
+          const result = await renderInlineOnboarding({ appRoot, templateIds, language,
+            output: path.join(directory, `${a}-${b}-${c}-${language}.html`) });
+          assert.equal(result.status, 'prepared');
+          const fragment = await readFile(result.path);
+          assert.equal(result.bytes, fragment.length);
+          assert(fragment.length < 1_000_000, `${templateIds.join(',')} (${language}): ${fragment.length} bytes`);
+          assert.doesNotMatch(fragment.toString('utf8'), /https:\/\/r\.open-design\.ai/);
+          assert.deepEqual(result.templateIds, templateIds);
+          largestBytes = Math.max(largestBytes, fragment.length);
+        }
+      }
+    }
   }
+  assert.equal(combinations, 4);
+  t.diagnostic(`All 4 combinations × 7 languages fit; largest HTML: ${largestBytes} bytes`);
 });
 
 test('inline project previews reject changed media and source identities', async t => {

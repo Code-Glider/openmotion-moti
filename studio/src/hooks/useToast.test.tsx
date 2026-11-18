@@ -27,9 +27,10 @@ it.each([
   act(() => api.showToast(message, 'error'));
   expect(host.querySelector('[role=alert]')?.textContent).toBe(expected);
 });
-it('shows feedback without a close button and starts exiting after exactly 3 seconds', () => {
-  act(() => { api.showToast('Copied element', 'info'); });
-  expect(host.querySelector('button')).toBeNull();
+it.each([
+  ['info', undefined], ['error', undefined], ['info', 'feedback'], ['error', 'feedback'],
+] as const)('expires actionless %s/%s notices after exactly 3 seconds', (tone, presentation) => {
+  act(() => { api.showToast('Copied element', tone, presentation); });
   act(() => { vi.advanceTimersByTime(2999); });
   expect(api.toasts[0].leaving).toBeUndefined();
   act(() => { vi.advanceTimersByTime(1); });
@@ -37,15 +38,28 @@ it('shows feedback without a close button and starts exiting after exactly 3 sec
   act(() => { vi.advanceTimersByTime(160); });
   expect(api.toasts).toHaveLength(0);
 });
-it('keeps actionable error notices visible until dismissed and hides raw diagnostics', () => {
+it('allows early dismissal of an error without exposing raw diagnostics', () => {
   act(() => { api.showToast('Could not save /private/project/file.html', 'error'); });
-  act(() => { vi.advanceTimersByTime(10000); });
+  act(() => { vi.advanceTimersByTime(1000); });
   expect(api.toasts).toHaveLength(1);
   expect(host.textContent).not.toContain('/private/');
   const close = host.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')!;
   expect(close).not.toBeNull();
   act(() => close.click());
   act(() => { vi.advanceTimersByTime(160); });
+  expect(api.toasts).toHaveLength(0);
+});
+
+it.each([
+  ['info', undefined], ['error', undefined], ['info', 'feedback'], ['error', 'feedback'],
+] as const)('keeps %s/%s notices with an action until explicitly dismissed', (tone, presentation) => {
+  act(() => api.showToast('Action not completed. Please try again.', tone, presentation, { key: 'retry', label: 'Retry', onClick: vi.fn() }));
+  act(() => vi.advanceTimersByTime(60000));
+  expect(api.toasts).toHaveLength(1);
+  expect(api.toasts[0].leaving).toBeUndefined();
+  expect(host.querySelector('.hf-toast-action:not([aria-label])')?.textContent).toBe('Retry');
+  act(() => host.querySelector<HTMLButtonElement>('[aria-label="Dismiss notification"]')!.click());
+  act(() => vi.advanceTimersByTime(160));
   expect(api.toasts).toHaveLength(0);
 });
 
@@ -60,10 +74,10 @@ it('announces brief failure feedback without actions and removes it after three 
   expect(api.toasts).toHaveLength(0);
 });
 
-it('coalesces repeated feedback and restarts its dismissal window', () => {
-  act(() => { api.showToast('Connection lost. Changes were not saved.', 'error', 'feedback'); });
+it.each([undefined, 'feedback'] as const)('coalesces repeated %s errors and restarts their dismissal window', (presentation) => {
+  act(() => { api.showToast('Connection lost. Changes were not saved.', 'error', presentation); });
   act(() => { vi.advanceTimersByTime(2000); });
-  act(() => { api.showToast('Connection lost. Changes were not saved.', 'error', 'feedback'); });
+  act(() => { api.showToast('Connection lost. Changes were not saved.', 'error', presentation); });
   expect(api.toasts).toHaveLength(1);
   act(() => { vi.advanceTimersByTime(2000); });
   expect(api.toasts[0].leaving).toBeUndefined();
@@ -100,7 +114,23 @@ it('shows one compact notice for repeated errors without diagnostic controls', (
   expect(host.querySelectorAll('button')).toHaveLength(1);
   expect(host.querySelector('pre')).toBeNull();
   act(() => { vi.advanceTimersByTime(10000); });
+  expect(api.toasts).toHaveLength(0);
+});
+
+it('expires action failure feedback while keeping the original action retryable', async () => {
+  const retry = vi.fn().mockRejectedValueOnce(new Error('Could not save /private/project.html')).mockResolvedValueOnce(undefined);
+  act(() => api.showToast('Action not completed. Please try again.', 'error', undefined, { key: 'retry', label: 'Retry', onClick: retry }));
+  await act(async () => host.querySelector<HTMLButtonElement>('.hf-toast-action:not([aria-label])')!.click());
+  expect(api.toasts).toHaveLength(2);
+  expect(host.textContent).not.toContain('/private/');
+  act(() => vi.advanceTimersByTime(3160));
   expect(api.toasts).toHaveLength(1);
+  const action = host.querySelector<HTMLButtonElement>('.hf-toast-action:not([aria-label])')!;
+  expect(action.disabled).toBe(false);
+  await act(async () => action.click());
+  act(() => vi.advanceTimersByTime(160));
+  expect(retry).toHaveBeenCalledTimes(2);
+  expect(api.toasts).toHaveLength(0);
 });
 
 it.each([

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { runFile } from './runtime-assets.mjs';
+import { onboardingPresentationInstructions } from './inline-onboarding.mjs';
 import { prepareCodexHostHandoff } from './codex-host-handoff.mjs';
 import { onboardingTemplateIds, recommendationTemplateIds, selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
 import { installationFallbackWelcome, isLanguage } from '../mcp-ui/template-recommendations/i18n.ts';
@@ -174,6 +175,24 @@ export async function resumeInstallationOnboarding(saved, options = {}) {
     hostSessionVerified: hostHandoff.hostSessionVerified, onboardingComplete: false };
 }
 
+export function installationSummary(result) {
+  const lines = [];
+  const { hostHandoff, preview, inlinePresentation } = result;
+  if (hostHandoff) lines.push('MCP_ACTIVATION: ' + hostHandoff.automaticActivation
+    + (hostHandoff.reason ? ' (' + hostHandoff.reason + ')' : '')
+    + '. Separate from installation and welcome/card delivery.'
+    + (hostHandoff.hostSessionVerified ? ' Reuse this verified read; do not repeat it.' : ' If native tools are available, verify the expected workspace once; otherwise retain the activation blocker.'));
+  if (!result.onboardingComplete) {
+    lines.push('ONBOARDING_PENDING: ' + result.onboardingStatus
+      + '. Installation is registered; presentation remains unverified. '
+      + onboardingPresentationInstructions(inlinePresentation?.status));
+  }
+  if (hostHandoff?.status === 'refresh_requested') lines.push('After this tool step, run recovery.command/recovery.args once to verify the queued refresh; do not reload or prepare again. This does not block the prepared HTML presentation.');
+  if (preview?.status !== 'ready') lines.push('LIBRARY_UNAVAILABLE: ' + (preview?.warning || 'No prepared library URL')
+    + '. Installation remains installed. Do not claim the library is open; report the actual result.');
+  return lines.join('\n');
+}
+
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     summary: { type: 'boolean' }, 'check-contract': { type: 'boolean' }, resume: { type: 'string' },
@@ -196,22 +215,8 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
       const options = { appRoot, dataDirectory: process.env.MOTION_DATA_DIR, templateEnvironment: process.env.MOTION_TEMPLATE_ENV || defaults.environment };
       result = await persistInstallationOnboarding(await prepareInstallationFlow(options), path.join(appRoot, '.artifacts/install'));
     }
-    const { hostHandoff, preview } = result;
-    // Keep the decision and handoff visible instead of burying them after a long
-    // quoted success contract. The full contract remains available for the Agent.
     if (values.summary) {
-      if (hostHandoff) console.error('MCP_ACTIVATION: ' + hostHandoff.automaticActivation + (hostHandoff.reason ? ' (' + hostHandoff.reason + ')' : '')
-        + '. Accept automatic current-chat activation separately from welcome/card presentation.');
-      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + result.onboardingStatus
-        + '. Installation is registered; welcome/cards delivery remains unverified. '
-        + 'If neither inline nor native cards can be delivered, the entire final reply must be the top-level welcomeMarkdown verbatim: only its three paragraphs. Keep installation status, blockers, library URLs and recovery details in diagnostics and the receipt, outside that reply. '
-        + (result.inlinePresentation?.status === 'prepared'
-          ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
-          : result.inlinePresentation?.status === 'native_required'
-            ? 'Open the library once, then invoke the exact prepared native arguments with onboarding:true: welcome and three full-video cards arrive together in one persistent component, without a separate streamed welcome. Use a working native connection even when script host control is unavailable. After a queued host refresh, run recovery.command/recovery.args in this same turn; never repeat preparation or resample. Automatic MCP activation has separate acceptance; neither presentation nor registration proves it. '
-            : 'Open the library and retain the required host action in diagnostics. ')
-        + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
-      if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
+      console.error(installationSummary(result));
       console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined }, null, 2));
     } else console.log(JSON.stringify(result, null, 2));
   }

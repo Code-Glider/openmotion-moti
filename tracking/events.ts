@@ -5,7 +5,7 @@ export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_temp
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
-export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit'] as const;
+export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit', 'transcript'] as const;
 export function assetToolAction(tool: string, input: unknown): typeof assetActions[number] | undefined {
   if (!['openmotion_assets_use', 'openmotion_assets', 'motion_assets_use', 'motion_assets'].includes(tool)) return;
   const action = input && typeof input === 'object' && 'action' in input ? input.action : undefined;
@@ -51,7 +51,7 @@ const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 
   manager_tab: ['projects', 'trash'], selection_count: 'integer' } as const;
 // MCP connection page: which Agent client tab is shown, how the user reached the page and how they set it up.
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
-const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'asset_chat', 'direct_link'] as const;
+const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
 const mcp = { mcp_client: mcpClient, setup_method: ['agent', 'manual'], capability_id: 'slug' } as const;
 // A Skill is identified by its catalogue id and group only; the brief text never leaves the browser.
 const skill = { skill_id: 'slug', skill_category: ['product_promos', 'explainers', 'brand_covers', 'motion_techniques'] } as const;

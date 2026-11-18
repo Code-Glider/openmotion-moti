@@ -174,3 +174,50 @@ it.each(['en', 'zh-CN'] as const)('copies the complete media onboarding flow in 
   expect(instruction).toContain(locale === 'en' ? 'original request' : '原来的需求');
   expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toContain(locale === 'en' ? 'Copied to clipboard' : '已复制');
 });
+
+it.each(['en', 'zh-CN'] as const)('copies the maintained platform workflow with explicit source selection in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const card = [...document.querySelectorAll<HTMLElement>('.om-mcp-feature')].find(node => node.textContent?.includes(locale === 'en' ? 'Prepare a platform version' : '制作平台适配版本'))!;
+  await act(async () => card.querySelector('button')!.click());
+  const { platformExportExample } = await import('./mcpCapabilities');
+  expect(copy.mock.calls[0][0]).toBe(platformExportExample(locale, info));
+  expect(copy.mock.calls[0][0]).toContain('/fixture/data');
+  expect(copy.mock.calls[0][0]).not.toContain('Project ID:');
+  copy.mockRejectedValue(new Error('Denied'));
+  await act(async () => card.querySelector('button')!.click());
+  expect(card.querySelector('textarea')?.value).toBe(copy.mock.calls[1][0]);
+  expect(document.querySelector('.motion-feedback-layer')).not.toBeNull();
+});
+
+it.each(['en', 'zh-CN', 'ja'] as const)('copies the asset naming scenario in %s with shared project safeguards', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const title = { en: 'Name project assets', 'zh-CN': '整理素材名称', ja: '素材名を整理' }[locale];
+  const card = [...document.querySelectorAll('article')].find(node => node.querySelector('h3')?.textContent === title)!;
+  expect(card).toBeDefined();
+  await act(async () => card.querySelector('button')!.click());
+  expect(copy).toHaveBeenCalledOnce();
+  const instruction = copy.mock.calls[0][0];
+  for (const token of ['openmotion_get_project', 'namingLanguage', 'openmotion_edit_project', 'assetNames']) expect(instruction).toContain(token);
+  if (locale === 'zh-CN') expect(instruction).toContain('保留已有可读名称');
+});
+
+it.each([
+  ['en', 'Prefer the host’s video preview', 'never both for the same video'],
+  ['zh-CN', '优先使用宿主自带的视频预览', '同一成片不同时展示两种预览'],
+  ['ja', 'ホストの動画プレビューを優先', '同じ動画を両方に表示しません'],
+] as const)('renders native-first final-video guidance in the real handbook component for %s', async (locale, priority, exclusive) => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  await mount(locale);
+  const faq = [...document.querySelectorAll<HTMLDetailsElement>('.om-mcp-faq details')]
+    .find(item => item.textContent?.includes(priority))!;
+  expect(faq).toBeDefined();
+  await act(async () => faq.querySelector('summary')!.click());
+  expect(faq.open).toBe(true);
+  expect(faq.textContent).toContain(exclusive);
+  expect(faq.textContent).toContain('Codex');
+  expect(faq.textContent).toContain('OpenMotion');
+});

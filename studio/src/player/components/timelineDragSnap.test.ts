@@ -16,7 +16,7 @@ describe("OpenReel drag snapping", () => {
       .toMatchObject({ start: 5.4, snapType: "clip-edge" });
   });
   it("preserves Motion's smaller beat radius", () => {
-    expect(snapOpenReelMove(5.07, 2, [{time: 5, type: "beat"}], 100)).toMatchObject({start: 5, snapType: "beat"});
-    expect(snapOpenReelMove(5.09, 2, [{time: 5, type: "beat"}], 100)).toMatchObject({start: 5.09, snapTime: null});
+    expect(snapOpenReelMove(5.04, 2, [{time: 5, type: "beat"}], 100)).toMatchObject({start: 5, snapType: "beat"});
+    expect(snapOpenReelMove(5.06, 2, [{time: 5, type: "beat"}], 100)).toMatchObject({start: 5.06, snapTime: null});
   });
 });

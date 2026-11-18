@@ -14,9 +14,10 @@ import { ProviderConnections, type GatewayConfig } from './connections.ts';
 import { isGatewayProvider, isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import { compatibleProvider } from './compatible.ts';
 import { OpenDesignAccount } from './account.ts';
+import { accountMediaState } from './account-media.ts';
 import { AssetLibrary } from './asset-library.ts';
 import { requireLibraryMediaRuntime } from './asset-probe.ts';
-import { generationOptions, validateGenerationOptions } from '../shared/generation-options.ts';
+import { generationOptions, resolveGenerationParameters, validateGenerationOptions } from '../shared/generation-options.ts';
 import { MAX_ASSET_BYTES } from '../shared/asset-limits.ts';
 
 /** Queued input-image snapshot; the first keeps its historical name for older jobs. */
@@ -182,7 +183,7 @@ export class ModelGateway {
     await this.connections.setDefault(kind, modelId as string | null);
     return this.status();
   }
-  async status(refreshAgents = false): Promise<GatewayStatus> {
+  async status(refreshAgents = false, options: { refreshAccount?: boolean } = {}): Promise<GatewayStatus> {
     const [config, agents, models] = await Promise.all([this.config(), this.agents(refreshAgents), this.models()]);
     const providers: ProviderState[] = await Promise.all(providerIds.map(async id => {
       const saved = config.providers[id] ?? {};
@@ -203,8 +204,8 @@ export class ModelGateway {
         reason: !active ? 'API key required' : !enabled ? 'Disabled' : definition.baseUrlEditable && !baseUrl ? `${definition.label} API origin required` : verification === 'rejected' ? 'Credentials or permissions rejected; update the key' : verification === 'verified' ? 'A generation request succeeded with this key' : 'Configured; availability and quota are checked when generating' };
     }));
     providers.push(...await this.connections.states());
-    const account = await this.account.summary();
-    providers.push({ id: 'account', label: registeredProvider('account')!.label, enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', reason: account.state === 'signed-in' ? 'Included with your account' : account.state === 'reauth-required' ? 'OpenDesign sign-in expired; sign in again to use your account models' : 'Sign in to use your account models' });
+    const account = await this.account.summary(options.refreshAccount === true);
+    providers.push({ id: 'account', label: registeredProvider('account')!.label, enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', ...accountMediaState(account) });
     const capabilities = modalities.map(kind => {
       const available = models.filter(model => model.modality === kind && providers.find(p => p.id === model.provider)?.available);
       const selected = config.routes[kind] ? available.find(m => m.id === config.routes[kind]) : available.find(m => m.mode.startsWith('text-to-'));
@@ -279,8 +280,9 @@ export class ModelGateway {
       if (previous) { if (previous.requestHash !== requestHash) throw new Error('Idempotency key was already used for another request'); return previous; }
       if (!model || !status.providers.find(p => p.id === model.provider)?.available) throw new Error('Selected model is unavailable; configure an available provider or choose a different model');
       if (model.provider === 'opendesign' && (await this.cloudContext()).identity !== cloudIdentity) throw new Error('Cloud configuration changed; reload models before generating');
-      validateGenerationOptions(model, { ...model.defaults, ...params });
       const referenceCount = (input.library?.references?.length ?? 0) + (input.referenceAsset ? 1 : 0);
+      const resolvedParameters = resolveGenerationParameters(model, params, referenceCount > 0);
+      validateGenerationOptions(model, resolvedParameters);
       // Video sends only a first frame; the project-direct referenceAsset route stays image-only as before.
       const referenceLimit = input.referenceAsset && input.modality !== 'image' ? 0 : modelReferenceLimit(model);
       if (referenceCount && model.provider === 'opendesign' && model.modality === 'image' && model.supportsImageReference === undefined) throw new Error('Image editing capability is unknown. Sync Cloud models before using references.');
@@ -288,7 +290,7 @@ export class ModelGateway {
         : input.referenceAsset ? 'Selected model does not support reference image editing' : 'This model does not support asset references. Choose an image model that supports editing, or remove the reference.');
       if (referenceCount > referenceLimit) throw new Error(`This model accepts at most ${referenceLimit} input image${referenceLimit === 1 ? '' : 's'}`);
       if (referenceCount && input.referenceAsset && input.library) throw new Error('Choose library references or a project referenceAsset');
-      if (model.provider === 'opendesign' && referenceCount && { ...model.defaults, ...params }.images !== undefined) throw new Error('Choose pinned references or parameters.images for Cloud input');
+      if (model.provider === 'opendesign' && referenceCount && resolvedParameters.images !== undefined) throw new Error('Choose pinned references or parameters.images for Cloud input');
       if (input.library) await library.validateGeneration(input.library);
       if (input.library?.assetId && (await library.get(input.library.assetId)).modality !== input.modality) throw new Error('Asset versions must have the same media type');
       if (jobs.filter(j => j.state === 'queued' || j.state === 'running').length >= 20) throw new Error('Generation queue is full (20 jobs)');

@@ -79,9 +79,12 @@ it('summarizes four failures and one success once and displays the successful as
   expect(notices[0].textContent).toBe('Uploaded 1, not uploaded 4. Known issue: files exceed the size limit. Compress or replace those files.');
   expect(container.querySelector('[aria-label="Picture uploaded"]')).not.toBeNull();
   expect(vi.mocked(uploadLibraryAsset)).toHaveBeenCalledTimes(5);
-  await act(async () => vi.advanceTimersByTimeAsync(10000));
-  expect(document.querySelector('[role=alert]')).not.toBeNull();
   expect([...notices[0].querySelectorAll('button')].map(b => b.getAttribute('aria-label'))).toEqual(['Dismiss error']);
+  await act(async () => vi.advanceTimersByTimeAsync(2999));
+  expect(document.querySelector('[role=alert]')).not.toBeNull();
+  await act(async () => vi.advanceTimersByTimeAsync(161));
+  expect(document.querySelector('[role=alert]')).toBeNull();
+  expect(container.querySelector('[aria-label="Picture uploaded"]')).not.toBeNull();
 });
 it('combines only observed causes and keeps unknown results out of the failure count', async () => {
   await render();
