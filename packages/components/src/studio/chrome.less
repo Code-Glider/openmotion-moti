@@ -30,7 +30,7 @@
   &--toolbar { display: flex; flex-wrap: wrap; gap: var(--om-field-gap); align-items: center; }
   &--spread { display: flex; align-items: center; justify-content: space-between; gap: var(--om-control-padding-y); }
   &--fill { display: flex; flex-direction: column; flex: var(--om-flex-fill); min-height: 0; overflow: auto; }
-  &--stage { box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; min-height: 0; height: var(--om-size-full); padding: var(--om-canvas-padding); background: var(--om-canvas); }
+  &--stage { position: relative; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; min-height: 0; height: var(--om-size-full); padding: var(--om-canvas-padding); background: var(--om-canvas); }
   &--scroll { overflow: auto; max-height: var(--om-list-max-height); }
   &--title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--om-label-size); font-weight: var(--om-weight-medium); color: var(--om-strong); }
   &--header { display: flex; flex-wrap: wrap; gap: var(--om-field-gap); align-items: center; justify-content: space-between; flex-shrink: 0; min-height: var(--om-appbar-height); padding: 0 var(--om-control-padding-x); border-bottom: var(--om-focus-width) solid var(--om-border); background: var(--om-inset); }

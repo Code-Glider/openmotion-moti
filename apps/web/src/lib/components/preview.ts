@@ -237,7 +237,7 @@ export class NativePreview {
         window.addEventListener("message", message);
         frame.hidden = true;
         for (const child of [...this.host.children]) if (child !== this.view?.container) child.remove();
-        viewport.element.hidden = true;
+        viewport.pending(true);
         this.host.append(viewport.element);
         frame.src = opened.url;
       });
@@ -255,7 +255,7 @@ export class NativePreview {
       };
       this.view = present;
       frame.hidden = false;
-      viewport.element.hidden = false;
+      viewport.pending(false);
       previous?.container.remove();
       if (previous) {
         try {

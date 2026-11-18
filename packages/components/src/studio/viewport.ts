@@ -33,6 +33,12 @@ export function previewViewport(document: Document) {
     element,
     content,
     resize,
+    pending(value: boolean) {
+      element.classList.toggle("om-preview__canvas--pending", value);
+      element.inert = value;
+      if (value) element.setAttribute("aria-hidden", "true");
+      else element.removeAttribute("aria-hidden");
+    },
     selection(bounds: { x: number; y: number; width: number; height: number } | null) {
       outline.setAttribute("visibility", bounds ? "visible" : "hidden");
       if (!bounds) return;

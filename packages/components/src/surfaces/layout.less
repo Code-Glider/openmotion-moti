@@ -39,7 +39,14 @@
 .om-preview {
   &__image { &[hidden] { display: none; } display: block; max-width: var(--om-size-full); height: auto; border-radius: var(--om-control-radius); background: var(--om-preview-surface); }
   &__selection { fill: none; stroke: var(--om-focus); stroke-width: var(--om-selection-width); pointer-events: none; vector-effect: non-scaling-stroke; }
-  &__canvas { display: flex; align-items: center; justify-content: center; min-height: 0; height: var(--om-size-full); }
+  &__canvas {
+    display: flex; align-items: center; justify-content: center; min-height: 0; height: var(--om-size-full);
+    &--pending {
+      position: absolute; inset: 0; opacity: 0; pointer-events: none;
+      // Keep the unpresented frame paintable: native readiness may await multiple animation frames.
+      .om-preview__frame[hidden] { display: block; }
+    }
+  }
   &__viewport { display: block; width: var(--om-size-full); max-height: var(--om-size-full); height: auto; box-shadow: var(--om-stage-shadow); }
   &__frame {
     background: var(--om-preview-surface);
