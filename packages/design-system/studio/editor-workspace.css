@@ -1,7 +1,9 @@
 /* Continuous editor surfaces. Dockview retains geometry and resize hit targets. */
 [data-motion-studio] {
-  --motion-editor-divider: light-dark(var(--motion-editor-divider-light), var(--motion-neutral-n10));
+  --motion-editor-divider: light-dark(var(--motion-editor-divider-light), var(--motion-neutral-n11));
+  --motion-editor-surface: var(--motion-panel);
 }
+[data-motion-studio][data-theme="paper"] { --motion-editor-surface: var(--motion-neutral-n0); }
 /* Light content wells stay white; editing chrome keeps its quiet panel surface. */
 :root[data-motion-ui][data-theme="paper"] .hf-dock { --dv-group-view-background-color: var(--motion-bg); }
 :root[data-motion-ui][data-theme="paper"] [data-dock-panel="preview"] { --studio-preview-bg: var(--motion-bg); }
@@ -17,11 +19,11 @@
   --timeline-gutter-bg: var(--motion-neutral-n0);
   --timeline-ruler-bg: var(--motion-neutral-n0);
 }
-[data-motion-studio][data-theme="paper"] .motion-project-editor .motion-timeline-toolbar-shell {
-  background: var(--motion-neutral-n0);
+[data-motion-studio] .motion-project-editor .motion-timeline-toolbar-shell {
+  background: var(--motion-editor-surface);
 }
 [data-motion-studio] .om-application .motion-studio-header-compact,
-[data-motion-studio] .motion-preview-transport { background: var(--motion-workspace); color: var(--motion-text); border-radius: 0; }
+[data-motion-studio] .motion-preview-transport { background: var(--motion-editor-surface); color: var(--motion-text); border-radius: 0; }
 [data-motion-studio] .motion-studio-header-compact { border-bottom: 1px solid var(--motion-editor-divider); }
 [data-motion-studio] .motion-preview-transport {
   --preview-progress-fill: var(--motion-neutral-n1);
@@ -57,7 +59,7 @@
 :root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has([data-preview-heading]) {
   padding-inline-end: var(--motion-space-12);
   border-bottom-color: transparent;
-  background: var(--motion-workspace);
+  background: var(--motion-editor-surface);
 }
 .motion-preview-header-actions,
 .motion-preview-header-zoom { gap: var(--motion-space-4); }
