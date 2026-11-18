@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { unlinkSync } from "node:fs";
 import { mkdir, open, readdir, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
@@ -10,6 +11,10 @@ import { afterEach, expect, it, vi } from "vitest";
 import { Archives } from "@/content/archives/index.js";
 import { Staging } from "@/content/archives/staging.js";
 
+vi.mock("node:fs", async (load) => {
+  const actual = await load<typeof import("node:fs")>();
+  return { ...actual, unlinkSync: vi.fn(actual.unlinkSync) };
+});
 vi.mock("node:fs/promises", async (load) => {
   const actual = await load<typeof import("node:fs/promises")>();
   return { ...actual, open: vi.fn(actual.open) };
@@ -259,6 +264,25 @@ it("preserves staging and refuses retirement when a native close cannot be confi
   } finally {
     if (close) await close();
   }
+});
+it.each([false, true])("fences retries after raw unlink fails with prior ready input=%s", async (ready) => {
+  const root = await fixture(),
+    input = archive(),
+    staged = new Staging(root, input);
+  if (ready) await staged.write(chunks(input.chunks()), new AbortController().signal);
+  vi.mocked(unlinkSync).mockImplementationOnce(() => {
+    throw Object.assign(Error("raw cleanup fault"), { code: "EACCES" });
+  });
+  await expect(staged.write(chunks(input.chunks()), new AbortController().signal)).rejects.toThrow("raw cleanup fault");
+  const names = (await readdir(root)).sort();
+  expect(names).toHaveLength(3);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await expect(staged.write(chunks(input.chunks()), new AbortController().signal)).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect((await readdir(root)).sort()).toEqual(names);
+  }
+  expect(() => staged.close()).toThrow("has not drained");
 });
 it("replays a byte-backed archive receipt before an unrelated expired file cleanup fault", async () => {
   const root = await fixture(),

@@ -48,9 +48,9 @@ export class Staging {
       signal.throwIfAborted();
     } finally {
       await raw.drain();
-      this.active = false;
       raw.close();
       this.files = this.files.filter((file) => file !== raw);
+      this.active = false;
       if (!result) this.close();
     }
     if (signal.aborted) {
