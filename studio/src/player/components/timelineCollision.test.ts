@@ -5,7 +5,6 @@ import {
   isInsertAllowedForZone,
   isLaneFree,
   resolveInsertRow,
-  resolveNearestFreeStart,
   resolveZoneDropPlacement,
   timeRangesOverlap,
 } from "./timelineCollision";
@@ -36,67 +35,6 @@ describe("isLaneFree", () => {
 
   it("ignores the excluded (dragged) clip", () => {
     expect(isLaneFree(els, 0, 1, 3, "a")).toBe(true);
-  });
-});
-
-describe("resolveNearestFreeStart", () => {
-  const row = [el("a", 0, 2, 3), el("b", 0, 8, 2)]; // busy [2,5) and [8,10)
-
-  it("keeps a start whose span is already free", () => {
-    expect(resolveNearestFreeStart(row, 0, 5, 3, null)).toBe(5);
-    expect(resolveNearestFreeStart(row, 1, 3, 4, null)).toBe(3); // another row
-  });
-
-  it("keeps the clip's own start between edges no centisecond start fits", () => {
-    const tight = [el("a", 0, 0, 3.333), el("b", 0, 6.666, 4)];
-    expect(resolveNearestFreeStart(tight, 0, 3.333, 3.333, null)).toBe(10.67);
-    expect(resolveNearestFreeStart(tight, 0, 3.333, 3.333, null, 0, 3.333)).toBe(3.333);
-    expect(resolveNearestFreeStart(tight, 0, 3.4, 3.333, null, 0, 3.333)).toBe(3.333);
-  });
-
-  it("keeps the clip's own start when float sums land a hair past a neighbour's edge", () => {
-    const after = [el("a", 0, 0, 0.333), el("b", 0, 2.066, 1)]; // 0.333 + 1.733 = 2.0660000000000003
-    expect(resolveNearestFreeStart(after, 0, 0.333, 1.733, null, 0, 0.333)).toBe(0.333);
-    const before = [el("a", 0, 0.1, 0.2), el("b", 0, 1.3, 1)]; // a ends at 0.30000000000000004
-    expect(resolveNearestFreeStart(before, 0, 0.3, 1, null, 0, 0.3)).toBe(0.3);
-  });
-
-  it("takes the clip's own start only when it is free, not below minStart, and nearest", () => {
-    expect(resolveNearestFreeStart(row, 0, 4, 2, null, 0, 3.5)).toBe(5); // nearer, but its own spot overlaps a
-    expect(resolveNearestFreeStart(row, 0, 0, 1, null, 1, 0.5)).toBe(1); // below the floor
-    expect(resolveNearestFreeStart(row, 0, 6, 1, null, 0, 5.5)).toBe(6); // the release time is nearer
-    expect(resolveNearestFreeStart(row, 0, 6.5, 1, null, 0, 6)).toBe(6.5); // nearer again, not the origin
-  });
-
-  it("moves an overlapping span to the nearest time it fits", () => {
-    expect(resolveNearestFreeStart(row, 0, 4, 2, null)).toBe(5); // 1 s later beats 2 s earlier
-    expect(resolveNearestFreeStart(row, 0, 2.2, 1.5, null)).toBe(0.5); // 1.7 s earlier beats 2.8 s later
-  });
-
-  it("sends a tie to the later time", () => {
-    expect(resolveNearestFreeStart([el("a", 0, 2, 2)], 0, 2, 2, null)).toBe(4); // 0 and 4 both 2 s away
-  });
-
-  it("skips a gap too short for the clip and lands after the row's last clip", () => {
-    expect(resolveNearestFreeStart(row, 0, 5, 4, null)).toBe(10); // the [5,8) gap is 3 s
-    expect(resolveNearestFreeStart([el("a", 0, 0, 30)], 0, 12, 5, null)).toBe(30);
-  });
-
-  it("ignores the excluded (dragged) clip", () => {
-    expect(resolveNearestFreeStart(row, 0, 2, 3, "a")).toBe(2);
-  });
-
-  it("never goes below the lowest allowed start", () => {
-    const blocked = [el("c", 0, 6.4, 3.6)]; // busy [6.4,10)
-    expect(resolveNearestFreeStart(blocked, 0, 6.5, 2, null)).toBe(4.4);
-    expect(resolveNearestFreeStart(blocked, 0, 6.5, 2, null, 6.5)).toBe(10);
-    expect(resolveNearestFreeStart([], 0, 6.667, 2, null, 6.667)).toBe(6.667); // not rounded up
-  });
-
-  it("keeps a gap-bound start on centiseconds so a written start cannot overlap", () => {
-    const start = resolveNearestFreeStart([el("a", 0, 7.1, 2)], 0, 3, 5.045333, null);
-    expect(start).toBe(2.05);
-    expect(start + 5.045333).toBeLessThanOrEqual(7.1);
   });
 });
 

@@ -192,7 +192,6 @@ export function useTimelineAssetDropOps({
             : mediaPlacementPeers(originalContent, peers, placed);
           landing = resolveMediaDropPlacement(gesture.onNewTrack ? placed : livePeers, placement, dropped);
           const resolved = resolveDropTrack({
-            mediaPlacement: true,
             source: originalContent,
             elements: livePeers,
             placed,

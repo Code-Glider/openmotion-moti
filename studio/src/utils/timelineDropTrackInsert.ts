@@ -1,7 +1,7 @@
 import type { TimelineElement } from "../player";
 import { layoutAfterTrackInsert } from "../player/components/timelineDragLanding";
 import { canMoveTimelineElement } from "../player/components/timelineAuthoredMoveTarget";
-import { resolveNearestFreeStart, resolveZoneDropPlacement } from "../player/components/timelineCollision";
+import { resolveZoneDropPlacement } from "../player/components/timelineCollision";
 import { authoredTrackForLane } from "../player/components/timelineAuthoredTrack";
 import { isAudioTimelineElement } from "./timelineInspector";
 import type { TimelineDropPlacement } from "../player/components/timelineCallbacks";
@@ -103,28 +103,6 @@ export function mediaPlacementPeers(
   }));
 }
 
-/** The file track a drop on display row `lane` is written to, and its nearest free start there.
- *  The timeline's own clips decide the track; `placed` clips only block, like same-kind clips there. */
-function resolveRowDrop(
-  elements: TimelineElement[],
-  placed: readonly TimelineElement[],
-  lane: number,
-  dropped: DroppedClip,
-): { track: number; start: number } {
-  const audio = isAudioTimelineElement(dropped);
-  const row = elements.filter((e) => e.track === lane);
-  const otherKindRow = row.length > 0 && !row.some((e) => isAudioTimelineElement(e) === audio);
-  const asClip = { ...dropped, key: dropped.id, track: lane, sourceFile: elements[0]?.sourceFile };
-  const track = otherKindRow ? lane : authoredTrackForLane(lane, elements, asClip);
-  const onTrack = [...elements, ...placed]
-    .filter((e) => isAudioTimelineElement(e) === audio && (e.authoredTrack ?? e.track) === track)
-    .map((e) => ({ ...e, track }));
-  return {
-    track,
-    start: resolveNearestFreeStart(onTrack, track, dropped.start, dropped.duration, null),
-  };
-}
-
 /** Resolve a media drop in visible row order before translating it to authored tracks. */
 export function resolveMediaDropPlacement(
   elements: TimelineElement[],
@@ -150,12 +128,10 @@ export function resolveMediaDropPlacement(
     : { track: result.track, start: result.start, insertRow: result.insertRow, trackOrder: order };
 }
 
-/** Where a dropped clip is written: the aimed row's file track at its nearest free time, or a new track. */
+/** Translate a resolved landing to its authored track or write the requested new lane. */
 export function resolveDropTrack(input: {
   source: string;
   elements: TimelineElement[];
-  /** True when OpenReel has already resolved this media drop. */
-  mediaPlacement?: boolean;
   /** Clips this drop gesture already wrote, which `elements` does not hold yet. */
   placed?: readonly TimelineElement[];
   placement: TimelineDropPlacement;
@@ -188,10 +164,11 @@ export function resolveDropTrack(input: {
     const target = { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile };
     const renumbers = planTimelineLanePersistence(elements, target);
     const persisted = withPersistedTimelineLanes(elements, renumbers);
-    const landing = input.mediaPlacement
-      ? { track: authoredTrackForLane(placement.track, persisted, target), start: dropped.start }
-      : resolveRowDrop(persisted, input.placed ?? [], placement.track, dropped);
-    return { source: applyTrackRenumbers(source, { track: placement.track, renumbers }), ...landing };
+    return {
+      source: applyTrackRenumbers(source, { track: placement.track, renumbers }),
+      track: authoredTrackForLane(placement.track, persisted, target),
+      start: dropped.start,
+    };
   }
   const { insertRow, trackOrder } = placement;
   const plan = planDropTrackInsert({ elements, trackOrder, insertRow, dropped });
