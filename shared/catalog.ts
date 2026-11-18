@@ -32,6 +32,8 @@ export const featuredTemplateIds = [
 ];
 const roleNames: Record<string, string> = { 'a-roll': '口播', hook: '开场', setup: '铺垫', proof: '产品展示', turn: '转场', payoff: '高潮', cta: '结尾' };
 export function isEditableTemplate(template: GalleryTemplate): boolean { return template.kind === 'builtin' || (template.kind === 'prism' && template.hasHtmlProject !== false); }
+// Catalog guidance packages without editable project files are rebuilt from their reference video until they ship a project.
+export function templateWorkflow(template: GalleryTemplate): 'template' | 'recreate' { return template.kind === 'reference' || (template.kind === 'prism' && !isEditableTemplate(template)) ? 'recreate' : 'template'; }
 
 export function templateCategoryLabel(template: GalleryTemplate) {
   if (template.role === 'a-roll' || template.tags.includes('口播')) return 'A-roll Cuts';

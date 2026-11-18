@@ -19,7 +19,7 @@ openmotion 0.6.2 是面向 Agent 的本地创作工作区与 Codex 插件，一�
 
 地址栏支持直接输入 `baidu.com`、前进、后退、刷新和停止；网页由独立本地 Chromium 承载，支持点击、滚动与文字输入，切回 Motion 仍保留编辑状态。需要本机 Chrome / Chromium，或设置 `MOTION_BROWSER_PATH` / `HYPERFRAMES_BROWSER_PATH`。网站音频、文件上传/下载管理等当前边界见 [浏览器运行架构](browser-runtime.md)。
 
-产品名为 openmotion，已有工作区界面保留 OpenDesign 标识。产品内会话、模板、媒体生成与通用 API 继续保留；当前一期给宿主 Agent 的公开 MCP 只含下方 11 个 openmotion_ Tool，未公开的产品能力不因此删除。
+产品名为 openmotion，已有工作区界面保留 OpenDesign 标识。产品内会话、模板、媒体生成与通用 API 继续保留；当前一期给宿主 Agent 的公开 MCP 只含下方 16 个注册的 openmotion_ Tool 名称（含 1 个兼容别名），未公开的产品能力不因此删除。
 
 MCP 打开预览、创建产物、应用/复刻模板时，`previewUrl` 默认包含 `embed=1`，Codex 等宿主直接打开完整地址即可只显示编辑器，隐藏侧栏、会话和产品浏览器外框。`sessionUrl` 或显式 `embedded=false` 返回完整工作区；空会话仍显示会话入口。也可分别配置 `sidebar=0`、`conversation=0`。这些视图使用同一会话与产物。完整接口、失败语义与后续模式扩展见 [会话技术架构](session-architecture.md)。
 
@@ -35,7 +35,7 @@ Studio 与 MCP 共用这套模型和任务服务。云 Key 的填写不等于已
 
 ## 一期 MCP 发布范围
 
-[一期 11 Tool 契约与实现范围](mcp-phase1-tools.md)固定公开名称、输入返回、内容版本与裁剪边界。源码和默认构建均为 phase1，仅暴露这 11 项；`npm run package:phase1` 导出一期插件 ZIP。已补齐契约适配，复用现有 Studio/渲染器，五个随包 Skill 的调用指引同步迁移。内部 legacy 实现保留供兼容回归。
+[一期 Tool 契约与实现范围](mcp-phase1-tools.md)固定公开名称、输入返回、内容版本与裁剪边界。源码和默认构建均为 phase1，仅暴露这 16 个注册名；`npm run package:phase1` 导出一期插件 ZIP。已补齐契约适配，复用现有 Studio/渲染器，五个随包 Skill 的调用指引同步迁移。内部 legacy 实现保留供兼容回归。
 
 ## 产品与文档
 
@@ -131,7 +131,7 @@ Open the printed `studioUrl` or `previewUrl`; do not assume port 4173. `npm star
 
 仓库 Agent 从 [AGENTS.md](../AGENTS.md) 进入，Claude Code 同时读取 [CLAUDE.md](../CLAUDE.md)。按本轮意图直达专业入口：原创/大幅重编进入 [openmotion-director v1.4.5](../skills/openmotion-director/SKILL.md)，已有模板出片或适配进入 [openmotion-template-to-video](../skills/openmotion-template-to-video/SKILL.md)，参考视频复刻进入 [openmotion-recreate](../skills/openmotion-recreate/SKILL.md)（先读用户资料、最多问一次，用现有九个 Tool 在可编辑工程中重建，导出片对照原片测量后，交付在编辑器中打开的工程；规则与测量脚本随该 Skill 分发）。明确要求视频转可复用模板或 ZIP 时，单独进入 [openmotion-video-to-template](../skills/openmotion-video-to-template/SKILL.md)。[openmotion-production](../skills/openmotion-production/SKILL.md) 承接既定决定下的工程修改、预览、技术检查、排错与导出；重新设计局部动作或声音仍可直达 director。已有内容的修改统一复用 [edit 流程](../skills/openmotion-production/references/edit.md)，核对保持项及后续延续；首次补读的结果须先返回模型，再执行依赖操作。
 
-仅有 MCP 时通过 resources/list 与 resources/read 读取 `openmotion://workflow/production/start`；已选专业入口直接读对应路线，无需重新选路。固定引擎指南为 `openmotion://engine/SKILL.md`。详见 [Skill 路由](skills.md)。一期包含 openmotion-production、openmotion-director、openmotion-template-to-video、openmotion-recreate、openmotion-video-to-template 五个入口及参考。MCP workflow 短 ID 依次为 production/director/template/recreate/video-to-template；reference-video 仅留源码兼容入口。
+仅有 MCP 时通过 resources/list 与 resources/read 读取 `openmotion://workflow/production/start`；已选专业入口直接读对应路线，无需重新选路。固定引擎指南为 `openmotion://engine/SKILL.md`。详见 [Skill 路由](skills.md)。一期包含 openmotion-production、openmotion-director、openmotion-template-to-video、openmotion-recreate、openmotion-video-to-template 五个入口及参考。MCP workflow 短 ID 依次为 production/director/template/recreate/video-to-template。
 
 共享上下文列出各范围的必读依赖，Agent 只补齐尚未读取的正文，并复用同一份已读记录。这个约定不等于工具强制执行；七份 Motion 质量参考保持原有内容与风格边界。
 
@@ -224,7 +224,7 @@ Hyperframes 使用 Apache-2.0 许可证，依赖从 npm 官方包安装；其源
 
 ## Template production and reuse
 
-The phase-one plugin and all four local host adapters ship the five canonical motion-* Skills, including openmotion-template-to-video and openmotion-video-to-template. Existing workflow IDs remain stable; MCP Resources expose the same guidance and supporting references. The eleven public Tools do not provide video comparison, reference downloading/analysis or ZIP packaging: these require available host capabilities. Legacy comparison handlers stay internal. Native HyperFrames source, local assets, previews and editing notes remain portable; human review decides visual acceptance.
+The phase-one plugin and all four local host adapters ship the five canonical motion-* Skills, including openmotion-template-to-video and openmotion-video-to-template. Existing workflow IDs remain stable; MCP Resources expose the same guidance and supporting references. The sixteen registered public Tool names do not provide video comparison, reference downloading/analysis or template ZIP packaging: these require available host capabilities. Legacy comparison handlers stay internal. Native HyperFrames source, local assets, previews and editing notes remain portable; human review decides visual acceptance.
 
 The plugin name, install script, data directory and Studio ports are the team base, unchanged by this extension. See [scope](motion-extension-scope.md).
 
