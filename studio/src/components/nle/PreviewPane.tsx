@@ -132,7 +132,7 @@ export function PreviewPane({
       data-studio-fullscreen-target={mvp ? undefined : ""}
     >
       <div
-        className={`flex-1 min-h-0 relative overflow-hidden ${mvp && !isFullscreen ? "mx-3" : ""}`}
+        className={`flex-1 min-h-0 relative overflow-hidden ${mvp && !isFullscreen ? "motion-preview-viewport" : ""}`}
         data-preview-pan-surface="true"
         onPointerDown={(e) =>
           deselectIfPointerOutsideFrame(e, iframeRef.current, onSelectTimelineElement)

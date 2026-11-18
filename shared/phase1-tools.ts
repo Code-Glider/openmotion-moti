@@ -1,3 +1,4 @@
+import { ToolInputError } from './tool-input-error.ts';
 import { inlineVideoUri } from './inline-video.ts';
 import { publicToolName, legacyToolName } from './public-names.mjs';
 import { templateDiscoveryGuide } from './workflow-entry.js';
@@ -33,8 +34,8 @@ export const phase1Tools = [
       parameters: { type: 'object', additionalProperties: true }, refresh: { type: 'boolean' }, query: { type: 'string', maxLength: 200 },
       offset: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 100 } }, ['action']),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
-  { name: 'openmotion_list_templates', title: 'OpenMotion · List Templates', description: 'Index templates from the loaded local repository; NPM installations without repository catalog files read the latest OpenMotion hosted `main` catalog, while explicit CMS mode uses the configured publication. Returns source, indexPath (local JSONL, one summary per template), total and catalogVersion, not search results. Read or grep/jq the file to select a template, then call openmotion_get_template. Repository summaries include localSource paths and hosted entries do not expose local paths. No query or pagination arguments. ' + templateDiscoveryGuide, inputSchema: object({}), annotations: { ...read, openWorldHint: true } },
-  { name: 'openmotion_get_template', title: 'OpenMotion · Get Template', description: 'Read one exact template ID and its TEMPLATE.md guidance. Repository entries include localSource absolute paths and local motionDocument content; hosted catalog entries return motionDocument without localSource paths. Built-in examples resolve locally without a catalog request. Guidance-only examples remain distinct from editable Studio projects. Follow the returned workflowGuide: template means openmotion_create_project with projectType=template copies the editable project; recreate means openmotion-recreate rebuilds from the guidance package and its linked reference video. Known IDs do not require listing first.', inputSchema: object({ templateId: id }, ['templateId']), annotations: { ...read, openWorldHint: true } },
+  { name: 'openmotion_list_templates', title: 'OpenMotion · List Templates', description: 'Index templates and kind=skill video skills for finding techniques by scenario from the loaded local repository; NPM installations without repository catalog files read the latest OpenMotion hosted `main` catalog, while explicit CMS mode uses the configured publication. Returns source, indexPath (local JSONL, one summary per template or kind=skill row), total (templates), skillTotal and catalogVersion, not search results. Read or grep/jq the file to select a template, then call openmotion_get_template. Repository summaries include localSource paths and hosted entries do not expose local paths. No query or pagination arguments. ' + templateDiscoveryGuide, inputSchema: object({}), annotations: { ...read, openWorldHint: true } },
+  { name: 'openmotion_get_template', title: 'OpenMotion · Get Template', description: 'Read one exact template or kind=skill ID. Skills return complete SKILL.md instructions and a file list; follow the instructions and create a natural_language project when needed, never apply or copy a skill as a template. Templates return TEMPLATE.md guidance. Repository entries include localSource absolute paths and local motionDocument content; hosted catalog entries return motionDocument without localSource paths. Built-in examples resolve locally without a catalog request. Guidance-only examples remain distinct from editable Studio projects. Follow the returned workflowGuide: template means openmotion_create_project with projectType=template copies the editable project; recreate means openmotion-recreate rebuilds from the guidance package and its linked reference video. Known IDs do not require listing first.', inputSchema: object({ templateId: id }, ['templateId']), annotations: { ...read, openWorldHint: true } },
   { name: 'openmotion_create_project', title: 'OpenMotion · Create Project', description: 'Create an independent editable native OpenMotion project from a prompt, an editable template ID or reference-video ID. The host Agent authors the film; creation does not generate a finished video. Persist requirements, namingLanguage and source, return project/session IDs and the initial content version. A requestId is required for safe retries.',
     inputSchema: object({ requestId: id, projectType: { enum: ['natural_language', 'template', 'reference_video'] }, title: { type: 'string', minLength: 1, maxLength: 100 }, requirements: text, namingLanguage: { type: 'string', minLength: 2, maxLength: 50, description: 'BCP 47 language for newly assigned asset names. Choose explicit user preference, otherwise initial brief language, otherwise interface language. Saved once; existing meaningful names remain unchanged.' },
       sessionId: projectId, templateId: id, referenceVideoId: id, referenceUrl: { type: 'string', maxLength: 2000 } }, ['requestId', 'projectType', 'title', 'requirements']), annotations: write },
@@ -76,32 +77,58 @@ export function supportsPhase1Tool(health: { mcp?: { protocol?: unknown; tools?:
   return phase1TransportTool(health, tool) !== undefined;
 }
 
-export function validateInput(schema: any, value: any, field = 'arguments'): void {
-  if (schema.oneOf && schema.oneOf.filter((variant: any) => {
-    try { validateInput(variant, value, field); return true; } catch { return false; }
-  }).length !== 1) throw new Error('INVALID_ARGUMENT: ' + field + ' must match one action and its required fields');
-  if (schema.enum && !schema.enum.includes(value)) throw new Error('INVALID_ARGUMENT: ' + field);
-  if (schema.type === 'object') {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_ARGUMENT: ' + field + ' must be an object');
-    for (const key of schema.required ?? []) if (!Object.hasOwn(value, key)) throw new Error('INVALID_ARGUMENT: ' + field + '.' + key + ' is required');
-    for (const [key, child] of Object.entries(value)) {
-      if (!Object.hasOwn(schema.properties ?? {}, key)) {
-        if (schema.additionalProperties === true) continue;
-        if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-          validateInput(schema.additionalProperties, child, field + '.' + key);
-          continue;
-        }
-        throw new Error('INVALID_ARGUMENT: unknown ' + field + '.' + key);
+export function validateInput(schema: any, value: any, field = 'arguments', knownField = 'arguments'): void {
+  const childField = (key: string) => knownField === 'arguments' ? key : knownField === 'unknown_field' ? knownField : knownField + '.' + key;
+  if (schema.oneOf) {
+    const variants: any[] = schema.oneOf;
+    const failures = variants.map(variant => {
+      try { validateInput(variant, value, field, knownField); return undefined; }
+      catch (error) { if (error instanceof ToolInputError) return error; throw error; }
+    });
+    const valid = failures.filter(error => !error).length;
+    if (valid !== 1) {
+      const message = field + ' must match one action and its required fields';
+      if (variants.every(variant => variant.type === 'object') && (!value || typeof value !== 'object' || Array.isArray(value))) {
+        throw new ToolInputError(message, knownField, 'invalid_type');
       }
-      validateInput(schema.properties[key], child, field + '.' + key);
+      const discriminator = ['action', 'command', 'operation'].find(key =>
+        variants.every(variant => variant.properties?.[key]?.enum?.length === 1));
+      if (!discriminator) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const command = value?.[discriminator];
+      if (command === undefined) throw new ToolInputError(message, childField(discriminator), 'missing');
+      if (valid > 1) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const selected = variants.findIndex(variant => variant.properties[discriminator].enum[0] === command);
+      const failure = failures[selected];
+      throw new ToolInputError(message, failure?.invalid_field ?? childField(discriminator), failure?.validation_rule ?? 'invalid_enum');
+    }
+  }
+  if (schema.enum && !schema.enum.includes(value)) throw new ToolInputError(field, knownField, 'invalid_enum');
+  if (schema.type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ToolInputError(field + ' must be an object', knownField, 'invalid_type');
+    for (const key of schema.required ?? []) {
+      if (!Object.hasOwn(value, key)) throw new ToolInputError(field + '.' + key + ' is required', childField(key), 'missing');
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (Object.hasOwn(schema.properties ?? {}, key)) validateInput(schema.properties[key], child, field + '.' + key, childField(key));
+      else if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+        validateInput(schema.additionalProperties, child, field + '.' + key, 'unknown_field');
+      } else if (schema.additionalProperties !== true) {
+        throw new ToolInputError('unknown ' + field + '.' + key, 'unknown_field', 'unknown_field');
+      }
     }
   } else if (schema.type === 'array') {
-    if (!Array.isArray(value) || value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity)) throw new Error('INVALID_ARGUMENT: ' + field);
-    value.forEach((item, i) => validateInput(schema.items, item, field + '[' + i + ']'));
+    if (!Array.isArray(value)) throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+    value.forEach((item, i) => validateInput(schema.items, item, field + '[' + i + ']', knownField === 'unknown_field' ? knownField : knownField + '[]'));
   } else if (schema.type === 'string') {
-    if (typeof value !== 'string' || value.length < (schema.minLength ?? 0) || value.length > (schema.maxLength ?? Infinity) || schema.pattern && !new RegExp(schema.pattern).test(value)) throw new Error('INVALID_ARGUMENT: ' + field);
-  } else if (schema.type === 'boolean' && typeof value !== 'boolean') throw new Error('INVALID_ARGUMENT: ' + field);
-  else if (['number', 'integer'].includes(schema.type) && (typeof value !== 'number' || !Number.isFinite(value) || schema.type === 'integer' && !Number.isSafeInteger(value) || value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity))) throw new Error('INVALID_ARGUMENT: ' + field);
+    if (typeof value !== 'string') throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value.length < (schema.minLength ?? 0) || value.length > (schema.maxLength ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) throw new ToolInputError(field, knownField, 'invalid_format');
+  } else if (schema.type === 'boolean' && typeof value !== 'boolean') throw new ToolInputError(field, knownField, 'invalid_type');
+  else if (['number', 'integer'].includes(schema.type)) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || schema.type === 'integer' && !Number.isSafeInteger(value)) throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+  }
 }
 
 /** Presentation is separate from business operations so authoring never mounts an App. */
