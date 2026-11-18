@@ -11,6 +11,7 @@ import {
   TRACK_H,
   MAIN_TRACK_H,
   TRACKS_TOP_PAD,
+  TRACKS_BOTTOM_PAD,
   createTimelineRowGeometry,
   type TimelineRowGeometry,
   type TimelineTrackPadding,
@@ -278,7 +279,7 @@ export function useTimelineTrackLayout(
     selectedElementId,
     selectedElementIds,
     groups,
-    mvp ? { top: trackPadding?.top ?? TRACKS_TOP_PAD, bottom: trackPadding?.bottom ?? TRACKS_TOP_PAD } : trackPadding,
+    mvp ? { top: trackPadding?.top ?? TRACKS_TOP_PAD, bottom: trackPadding?.bottom ?? TRACKS_BOTTOM_PAD } : trackPadding,
     mvp,
   );
   const rowGeometry = useMemo(() => mvp ? centerTimelineTracks(naturalGeometry, viewportHeight) : naturalGeometry, [mvp, naturalGeometry, viewportHeight]);

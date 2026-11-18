@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const studioCss = readFileSync(new URL("../../styles/components.css", import.meta.url), "utf8");
-const workspaceCss = readFileSync(new URL("../../../../packages/design-system/studio/editor-workspace.css", import.meta.url), "utf8");
+const selectionCss = readFileSync(new URL("../../../../packages/design-system/studio/timeline-selection.css", import.meta.url), "utf8");
 const themeCss = readFileSync(new URL("../../../../packages/design-system/studio/tokens.css", import.meta.url), "utf8") + readFileSync(new URL("../../../../packages/design-system/studio/theme.css", import.meta.url), "utf8");
 const timelineOverlaySources = [
   "TimelineShortcutHint.tsx",
@@ -74,8 +74,8 @@ describe("timeline motion styles", () => {
     const audioClipDraggingRule = expectRule(studioCss, ".timeline-clip.is-audio.is-dragging");
     const activeTimelineClipRule = expectRule(studioCss, ".timeline-clip[data-active]");
     const selectedTimelineClipRule = expectRule(
-      workspaceCss,
-      ':root[data-motion-ui] .timeline-clip.is-selected',
+      selectionCss,
+      ".timeline-clip.is-selected,\n.timeline-clip[data-active].is-selected",
     );
     const bloomOverlayRule = expectRule(studioCss, ".timeline-clip::before");
     const activeBloomOverlayRule = expectRule(studioCss, ".timeline-clip[data-active]::before");

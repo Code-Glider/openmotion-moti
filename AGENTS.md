@@ -112,7 +112,7 @@ Phase one retains sixteen registered domain openmotion_ names (including the ope
 
 ## MCP onboarding and capability maintenance
 
-The Studio **MCP · Connect Agent** page is the maintained product entry for connecting local Agents and discovering OpenMotion capabilities. Its plug icon is distinct from the model-provider sparkle icon. Keep `studio/src/motion/McpConnectionPage.tsx`, `mcpCapabilities.ts`, their interface translations and `shared/integration.ts` aligned with the actual public contract and installation.
+The Studio **MCP · Connect Agent** page is the maintained product entry for connecting local Agents and discovering OpenMotion capabilities. Its plug icon is distinct from the model-provider brain icon. Keep `studio/src/motion/McpConnectionPage.tsx`, `mcpCapabilities.ts`, their interface translations and `shared/integration.ts` aligned with the actual public contract and installation.
 
 When changing local MCP tools, media-generation capabilities, production Skills, host adapters, template handoff or optional MCP Apps presentation, review and update this page in the same change. Cover the affected setup steps, example prompts, template actions, capability descriptions, client compatibility, limits and FAQ. Use the installation's actual transport/configuration and the shared template catalogue; do not invent a remote endpoint, universal model access, free quota or verified Agent connection. Explain image/video/music/speech discovery, provider configuration, job tracking and the separation between generated assets and composition edits where relevant. Distinguish sixteen registered domain names (one compatibility alias) from negotiated presentation extensions.
 

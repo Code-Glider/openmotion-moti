@@ -1,4 +1,3 @@
-import { useI18n } from "../../i18n/I18n";
 import { memo, type CSSProperties } from "react";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { TimelineRulerPart } from "./TimelineRulerPart";
@@ -16,7 +15,6 @@ import { TimelineGestureFeedback } from "./TimelineGestureFeedback";
 
 export const TimelineCanvas = memo(function TimelineCanvas() {
   const mvp = useMvpEditor();
-  const { t } = useI18n();
   const { state, actions } = useTimelineContext();
   const props = state.canvas;
   const { draggedClip, scrollRef, displayTrackOrder } = props;
@@ -109,7 +107,6 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
             height: TRACK_H - CLIP_Y * 2,
           }}
         >
-          {props.acceptsMediaDrop && t("Drop media here")}
         </div>
       )}
 

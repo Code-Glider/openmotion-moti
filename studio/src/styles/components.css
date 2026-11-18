@@ -1,3 +1,5 @@
+@import "../../../packages/design-system/studio/timeline-selection.css";
+
 /* Rules for Studio's components, for any page that renders them. Reads the tokens in
  * theme.css. The app shell (body, #root, preflight) stays in studio.css. */
 

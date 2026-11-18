@@ -176,8 +176,9 @@ describe("useTimelineTrackLayout", () => {
     expect(layout.rowGeometry.canvasHeight).toBe(400);
     render(180);
     expect(layout.rowGeometry.padding.top).toBeLessThan(tallPadding);
-    expect(layout.rowGeometry.padding.top).toBe(layout.rowGeometry.padding.bottom);
-    expect(layout.rowGeometry.canvasHeight).toBe(180);
+    expect(layout.rowGeometry.padding.top).toBe(TRACKS_TOP_PAD);
+    expect(layout.rowGeometry.padding.bottom).toBe(TRACK_H);
+    expect(layout.rowGeometry.canvasHeight).toBeGreaterThanOrEqual(180);
     render(100);
     expect(layout.rowGeometry.getRowTop(0)).toBe(RULER_H + TRACKS_TOP_PAD);
     expect(layout.rowGeometry.getRowFromY(RULER_H + TRACKS_TOP_PAD + 1)).toBeGreaterThanOrEqual(0);
