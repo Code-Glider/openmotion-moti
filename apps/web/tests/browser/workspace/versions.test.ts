@@ -70,6 +70,7 @@ async function start() {
         capability = await factory.issue({ owner: `n${context.incarnation.replaceAll("-", "")}`, service: "daemon" });
         daemon = await daemonServe({
           data: context.roots.data,
+          staging: context.roots.runtime,
           origin: url,
           socket: socket.value,
           token: capability.token,

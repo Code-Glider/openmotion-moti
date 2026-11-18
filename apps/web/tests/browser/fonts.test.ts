@@ -45,6 +45,7 @@ it("imports an actual font through unknown receipts, paints its exact face, pres
           capability = await factory.issue({ owner: `n${context.incarnation.replaceAll("-", "")}`, service: "daemon" });
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             origin: web.endpoint.url,
             socket: socket.value,
             token: capability.token,
@@ -261,6 +262,7 @@ it("edits multiline text and visible text styles through unknown saves, inherita
           capability = await factory.issue({ owner: `n${context.incarnation.replaceAll("-", "")}`, service: "daemon" });
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             origin: web.endpoint.url,
             socket: socket.value,
             token: capability.token,
