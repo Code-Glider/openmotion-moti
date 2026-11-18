@@ -17,7 +17,7 @@
 :root[data-motion-ui][data-theme="paper"] [data-dock-panel] > section > :is([role="tablist"], [data-testid="transcript-toolbar"]) { background: var(--motion-panel); }
 [data-motion-studio][data-theme="paper"] .motion-project-editor {
   --timeline-gutter-bg: var(--motion-neutral-n0);
-  --timeline-ruler-bg: var(--motion-neutral-n0);
+  --timeline-ruler-bg: var(--motion-neutral-n2);
 }
 [data-motion-studio] .motion-project-editor .motion-timeline-toolbar-shell {
   background: var(--motion-editor-surface);
@@ -53,8 +53,8 @@
 :root[data-motion-ui] .hf-dock .dv-view:has(> .dv-groupview) { padding: 0; }
 :root[data-motion-ui] .hf-dock .dv-groupview { border: 0; border-radius: 0; outline: 0; }
 :root[data-motion-ui] .dv-shell .dv-render-overlay { border-radius: 0; overflow: hidden; }
-:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container,
-:root[data-motion-ui] .motion-timeline-toolbar { border-bottom: 1px solid var(--motion-border-subtle); }
+:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container { border-bottom: 1px solid var(--motion-border-subtle); }
+:root[data-motion-ui] .motion-timeline-toolbar { border-bottom: 0; }
 .motion-preview-viewport { margin-inline: var(--motion-space-12); }
 :root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has([data-preview-heading]) {
   padding-inline-end: var(--motion-space-12);
@@ -65,6 +65,23 @@
 .motion-preview-header-zoom { gap: var(--motion-space-4); }
 
 .motion-timeline-toolbar-shell { position: relative; container-type: inline-size; }
+.motion-timeline-caption-actions,
+.motion-timeline-zoom { position: relative; }
+.motion-timeline-caption-actions::before,
+.motion-timeline-zoom::before,
+.motion-timeline-zoom::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: var(--motion-space-16);
+  transform: translateY(-50%);
+  background: var(--motion-border);
+  pointer-events: none;
+}
+.motion-timeline-caption-actions::before { inset-inline-start: -1px; }
+.motion-timeline-zoom::before { left: -7px; }
+.motion-timeline-zoom::after { right: -7px; }
 :root[data-motion-ui] .motion-timeline-zoom input[type="range"] { width: var(--motion-space-48); }
 .motion-timeline-composition-nav { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; }
 .motion-timeline-composition-back { display: inline-flex; align-items: center; gap: var(--motion-space-4); height: var(--motion-space-28); padding: 0 var(--motion-space-8); border: 0; border-radius: var(--motion-radius-md); background: transparent; color: var(--motion-strong); font-size: var(--motion-text-xs); white-space: nowrap; cursor: pointer; }
@@ -128,7 +145,6 @@
 
 /* One continuous control column; all lane content starts at its right edge. */
 :root[data-motion-ui] .motion-timeline-gutter-fill { background: var(--timeline-gutter-bg); border-right: 1px solid var(--timeline-gutter-border); }
-:root[data-motion-ui] .motion-timeline-ruler { border-bottom: 1px solid var(--timeline-row-border); }
 :root[data-motion-ui] .motion-timeline-ruler-corner { border-right: 1px solid var(--timeline-gutter-border); display: flex; align-items: center; padding-inline: var(--motion-space-12); }
 :root[data-motion-ui] [data-timeline-row] [role="rowheader"] { border-right: 1px solid var(--timeline-gutter-border); }
 .motion-timeline-timecode { font-family: var(--motion-font-mono); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); font-variant-numeric: tabular-nums; color: var(--motion-text); }

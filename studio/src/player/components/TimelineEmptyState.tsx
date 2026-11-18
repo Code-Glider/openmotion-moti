@@ -59,7 +59,7 @@ export function TimelineEmptyState({
       />
       {/* Ruler */}
       <div
-        className="shrink-0 border-b border-neutral-800/40 flex items-end relative"
+        className={`relative flex shrink-0 items-end ${mvp ? "bg-[var(--timeline-ruler-bg)]" : "border-b border-neutral-800/40"}`}
         style={{ height: RULER_H, paddingLeft: emptyOrigin }}
       >
         {[0, 10, 20, 30, 40, 50].map((s) => (
