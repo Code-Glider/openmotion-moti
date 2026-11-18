@@ -2,6 +2,16 @@
 
 For an Agent asked to install OpenMotion from this repository, use the source installation below. This is the default repository installation route. Only use npm installation when the user explicitly selects it; follow the [published application guide](docs/install.md) instead of mixing source and package setup. npm remains required to install this checkout's locked dependencies and build Studio.
 
+## Install through the main Skill
+
+```sh
+npx skills add nexu-io/openmotion --skill openmotion
+```
+
+Invoke **openmotion** in the current Agent to finish the runtime, Studio and MCP setup below. The standalone Skill reads production guidance through MCP resources after connection, so sibling Skills are not required. A Skills CLI copy alone is not a complete application installation.
+
+Default Codex source setup also installs this entry globally through the pinned official Skills CLI, selecting only Codex. An existing official installation is reused; use `npx skills update` when you want to update it. `OPENMOTION_SKIP_PUBLIC_SKILL=1` skips this optional step, and alternate host homes are left for explicit profile installation. The CLI's `DISABLE_TELEMETRY` and `DO_NOT_TRACK` opt-outs are preserved. Only genuine official CLI installs can contribute to skills.sh; listing updates and counts are controlled by that service. A failure of this optional step does not invalidate Studio/MCP installation or stop onboarding.
+
 ## DSH: workspace plugin
 
 When the current host is DSH and the user wants the integrated OpenMotion workspace, follow [OpenMotion for DSH](integrations/dsh/README.md#download-and-install-the-plugin) before choosing the Codex or generic MCP route below. This installs the workspace UI and its MCP connection together. Do not also register a second `mcp-openmotion` adapter.

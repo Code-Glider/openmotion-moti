@@ -417,6 +417,10 @@ The following product measures still require agreed observation windows and vali
 
 开始采集前需记录事件定义、观察窗口、样本来源和隐私边界。人物、商业和指标实验的证据写回对应文档，不能用开源仓库热度或模板原帖播放量替代。
 
+## Primary Skill distribution
+
+The GitHub-discoverable `skills/openmotion/SKILL.md` is the primary setup and first-use entry. It follows the source-first installation guide, reuses existing workspaces and reads specialist guidance through MCP resources after connection. It is not another creative workflow and is excluded from the runtime's specialist package list. Source plugin discovery includes it; user-facing commands use `npx skills add`, while automatic installation uses the pinned official Skills CLI. Default Codex source setup and default Codex/Claude npm setup install that entry only when missing, respecting host/profile boundaries and telemetry opt-outs. Optional Skills CLI failures do not roll back a working application or block onboarding. skills.sh discovery/counts are external service results, not installation acceptance. MCP verification resolves filesystem aliases when identifying a workspace; another directory remains a mismatch. npm Codex workflow bundles occupy `openmotion-workflows`; only matching installer-owned legacy bundles migrate transactionally, preserving standalone/foreign entries. Adding another host while that legacy Codex bundle remains defers public-entry installation with explicit Codex migration guidance.
+
 ## Application npm distribution
 
 Default onboarding samples three entries from the four-reference pool, then embeds those projects' prebuilt silent WebM (VP9)/JPEG previews in a self-contained HTML fragment. Source/media hashes and the document size budget are checked; no rendering or media download occurs during installation. The final reply streams the welcome followed by the published cards reference, independently of native MCP discovery. These project renders do not establish fidelity to the original films. Native MCP Apps retain original reference playback with its declared media origin; explicit original-reference document requests return `native_required`. Actual visibility, playback and content acceptance remain separate checks.
