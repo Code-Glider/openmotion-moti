@@ -55,6 +55,12 @@ it("inserts a long clip at its aligned leading edge when grabbed past the right 
   expect(preview).toMatchObject({ previewTrack: 1, previewStart: 10.73 });
   expect(preview.insertion).toEqual(new Map([["moving", 10.73], ["right", 19.26]]));
   expect(computeDragPreview(preview, x + 12, y + TRACK_H, context).insertion).toBeUndefined();
+
+  const gapPreview = computeDragPreview(drag, x, y + TRACK_H, {
+    ...context, elements: [moving, { ...left, duration: 2.73 }, right],
+  });
+  expect(gapPreview.insertion).toBeUndefined();
+  expect(gapPreview.previewStart).toBe(10.73);
 });
 
 it.each([0, 0.18, 1])("makes just enough room in a gap of %ss and leaves later free space alone", gap => {

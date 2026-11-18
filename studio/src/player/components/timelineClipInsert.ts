@@ -30,7 +30,7 @@ export function previewClipInsert(
     const left = lane[index - 1], right = lane[index];
     const leftEnd = left.start + left.duration;
     if (right.start - leftEnd >= grabbed.duration) continue;
-    const distance = Math.min(Math.abs(rawStart - leftEnd), Math.abs(rawStart - right.start));
+    const distance = Math.abs(rawStart - leftEnd);
     if (distance < edgeDistance) {
       edgeIndex = index;
       edgeDistance = distance;
