@@ -383,6 +383,20 @@ The font picker offers detected local fonts, imported project fonts and fonts de
 - **并发边界：** macOS 同目录多个 MCP 连接共用后台，各自绑定工程；工作区使用一个原生 Studio 服务进程，按需保留多个工程的原生上下文；后台仍只有一个等待/运行的导出。导出固定工程与快照，重启将中断任务持久化为失败且不重放。文件锁和 revision 保护工具写入；人工与 Agent 同时编辑同一文件仍需协调，不能当作跨工具数据库事务。
 - **数据归属：** 产品文档描述数据类别与流程，不复制用户的私有工程、访问凭据或个人机器配置。
 
+The template library's opt-in `brandStoriesPreview=1` surface groups the existing
+catalogue into brand posting histories, reached from TOP100 or sparsely interleaved
+masonry cards. It reuses template media, instruction builders and full details;
+there is no parallel project catalogue or automatic creation. Discovery samples
+brands and positions, then ranks the sampled groups using work count (59%) and
+exposure-weighted work CTR (41%) from a pinned snapshot; production statistics do
+not refresh automatically. Series-card exposure and intentional history actions
+share the existing Studio tracking transport. Opaque catalogue-series identity,
+result-set/view UUIDs and copy/download attempt IDs preserve entry and ranking
+attribution across full details without duplicating ordinary template-card clicks.
+Brand Kit identities remain separate. Collection still honors installation opt-out
+and DNT; the local review proxy disables it. See the [series contract](../../tracking/README.md#brand-story-discovery-and-reuse)
+for trigger, deduplication, privacy and observable-result boundaries.
+
 ### Local diagnostic export
 
 Test and stable distributions share `scripts/diagnostics.mjs`, its browser-safe redaction helper and the existing dependency-free ZIP writer. Studio Privacy settings and the crash screen download the same local diagnostic archive through a same-origin POST route; `openmotion diagnostics` and the standalone script can collect without a running editor/MCP or native executables. Collection does not launch probes, replay operations, change projects or upload data.

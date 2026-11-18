@@ -51,7 +51,12 @@
     "Filter categories": "筛选分类",
     "Close filters": "关闭筛选",
     "Search options…": "搜索选项…",
-    "No matching options.": "没有匹配的选项。"
+    "No matching options.": "没有匹配的选项。",
+    "Contribution instruction copied. Paste into your Agent to prepare a reusable template and contribution PR.": "投稿指令已复制。粘贴给 Agent，准备可复用模板与投稿 PR。",
+    "Copied. Paste into your Agent, add your materials and requirements, then send.": "已复制。粘贴给 Agent，补充素材和要求后发送。",
+    "Copy failed. Select the instruction below to copy manually, or try again.": "复制失败。可选中下方指令手动复制，或重试。",
+    "Editable project": "可编辑工程",
+    "Reference creation": "参考创作"
   },
   "ja": {
     "Made to move.": "動き出すアイデア",
