@@ -316,44 +316,17 @@ function useDisplayRowHeights(
   );
 }
 
-function insertPreviewTrack(trackOrder: number[], preview: number) {
-  const result: number[] = [];
-  let inserted = false;
-  for (const key of trackOrder) {
-    if (!inserted && Number.isInteger(key) && key > preview) {
-      result.push(preview);
-      inserted = true;
-    }
-    result.push(key);
-  }
-  if (!inserted) result.push(preview);
-  return result;
-}
-
 function useDisplayTrackOrder(draggedClip: DraggedClipState | null, trackOrder: number[]) {
-  const started = draggedClip?.started === true;
-  const insertRow = draggedClip?.insertRow ?? null;
-  const previewTrack = draggedClip?.previewTrack;
-  const keyboardPickup = draggedClip?.pointerId === null;
+  // Only keyboard pickup reserves a row. Pointer insertions use the committed geometry.
+  const insertRow =
+    draggedClip?.started && draggedClip.pointerId === null ? draggedClip.insertRow : null;
   return useMemo(() => {
-    if (!started || previewTrack === undefined) return trackOrder;
-    if (insertRow !== null) {
-      // Interior pointer seams must not move existing rows under the pointer.
-      // Inserting above or below every row is safe and keeps the new-lane preview visible.
-      if (!keyboardPickup && insertRow > 0 && insertRow < trackOrder.length) return trackOrder;
-      const pendingKey = trackOrder.reduce((lowest, key) => Math.min(lowest, key), 0) - 1;
-      const displayOrder = [...trackOrder];
-      displayOrder.splice(insertRow, 0, pendingKey);
-      return displayOrder;
-    }
-    if (trackOrder.includes(previewTrack)) return trackOrder;
-    // A group's members sit out of raw numeric order (pulled under their
-    // anchor row), so a plain numeric sort here would undo that grouping the
-    // moment a clip drags onto a brand-new track. Insert the new preview
-    // track only relative to other REAL (integer) tracks, leaving any
-    // fractional group-anchor keys exactly where grouping placed them.
-    return insertPreviewTrack(trackOrder, previewTrack);
-  }, [started, insertRow, previewTrack, trackOrder, keyboardPickup]);
+    if (insertRow === null) return trackOrder;
+    const pendingKey = trackOrder.reduce((lowest, key) => Math.min(lowest, key), 0) - 1;
+    const displayOrder = [...trackOrder];
+    displayOrder.splice(insertRow, 0, pendingKey);
+    return displayOrder;
+  }, [insertRow, trackOrder]);
 }
 
 export function useTimelineDisplayLayout(

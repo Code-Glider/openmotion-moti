@@ -80,6 +80,7 @@ it("persists all three drag preferences independently for each project", async (
   const {usePlayerStore}=await import('../store/playerStore');
   const store=usePlayerStore.getState();
   store.beginTimelineSession('capcut-a');
+  expect(usePlayerStore.getState().timelineLinkageEnabled).toBe(false);
   store.setTimelineSnapEnabled(false);store.setRippleEditEnabled(false);store.setTimelineLinkageEnabled(false);
   store.beginTimelineSession('capcut-b');
   store.setTimelineSnapEnabled(true);store.setRippleEditEnabled(true);store.setTimelineLinkageEnabled(true);

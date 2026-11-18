@@ -63,6 +63,14 @@
 .motion-track-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0; width: 100%; }
 .motion-track-kind { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; color: var(--motion-control-disabled); }
 .motion-track-badge { min-width: 24px; width: auto; padding: var(--motion-space-2) var(--motion-space-4); margin-right: var(--motion-space-2); border-radius: var(--motion-radius-xs); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); font-variant-numeric: tabular-nums; color: var(--motion-strong); background: var(--motion-hover); }
+/* Leave room for two controls beside the label so five controls fit on two rows. */
+.motion-track-badge[data-main-track] {
+  display: block;
+  max-width: calc(100% - var(--motion-space-48) - var(--motion-space-2));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .motion-track-controls > div { margin-left: 0; }
 .motion-track-controls button { width: 24px; height: 24px; min-height: 0; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--motion-radius-xs); color: var(--motion-muted); background: transparent; cursor: pointer; }
 .motion-track-controls button > svg { width: 14px; height: 14px; }
@@ -73,6 +81,15 @@
 .motion-track-column-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; }
 .motion-track-column-resize:is(:hover, :focus-visible, :active)::after { background: var(--motion-accent); }
 .motion-track-column-resize:focus-visible { outline: none; }
+
+.motion-timeline-follower-marker {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border: 2px dashed var(--motion-accent);
+  border-radius: inherit;
+  pointer-events: none;
+}
 
 /* One continuous control column; all lane content starts at its right edge. */
 :root[data-motion-ui] .motion-timeline-gutter-fill { background: var(--timeline-gutter-bg); border-right: 1px solid var(--timeline-gutter-border); }

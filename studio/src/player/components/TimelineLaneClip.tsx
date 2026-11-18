@@ -28,6 +28,7 @@ interface TimelineLaneClipProps {
   passengerStyle?: CSSProperties;
   clipBarHeight?: number;
   isSelected: boolean;
+  isMainTrackFollower?: boolean;
   isHovered: boolean;
   isActive: boolean;
   tabIndex: 0 | -1;
@@ -69,6 +70,7 @@ export const TimelineLaneClip = memo(function TimelineLaneClip({
   passengerStyle,
   clipBarHeight,
   isSelected,
+  isMainTrackFollower,
   isHovered,
   isActive,
   tabIndex,
@@ -102,6 +104,7 @@ export const TimelineLaneClip = memo(function TimelineLaneClip({
       clipY={CLIP_Y}
       clipHeight={clipBarHeight}
       isSelected={isSelected}
+      isMainTrackFollower={isMainTrackFollower}
       isHovered={isHovered}
       isDragging={false}
       isActive={isActive}

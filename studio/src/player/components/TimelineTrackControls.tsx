@@ -11,11 +11,12 @@ import type { TimelineEditCallbacks } from './timelineCallbacks';
 import type { TimelineElement } from '../store/timelineElement';
 import { trackKind, type TrackIdentity } from './timelineTrackIdentity';
 
-export function TimelineTrackControls({ elements, track, number, label, hidden, audioOnly, toggleHidden, children, identity }: {
+export function TimelineTrackControls({ elements, track, number, label, hidden, audioOnly, toggleHidden, children, identity, mainTrackLabel }: {
   elements: readonly TimelineElement[]; track: number; number: number | null; label: string;
   hidden: boolean; audioOnly: boolean; toggleHidden: TimelineEditCallbacks['onToggleTrackHidden'];
   children?: ReactNode;
   identity?: TrackIdentity;
+  mainTrackLabel?: string;
 }) {
   const { t } = useI18n();
   const edits = useTimelineEditContextOptional();
@@ -34,12 +35,12 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
   };
   const kind = identity?.kind || trackKind(elements), code = identity?.code || `${kind}${number || 1}`;
   const name = t('Track {number}' , { number: number ?? '' });
-  const kindLabel = t(identity?.isMain ? 'Main track' : identity?.label || 'Track');
+  const badgeDescription = mainTrackLabel ?? t(identity?.isMain ? 'Main track' : identity?.label || 'Track');
   const lockLabel = t(locked ? 'Unlock track' : 'Lock track');
   return <div className="motion-track-controls" aria-label={name}
     onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
-    <Tooltip label={`${code} · ${kindLabel} · ${label}`} wrap><span className="motion-track-kind motion-track-badge" data-track-kind={kind} data-main-track={identity?.isMain || undefined} aria-label={`${code} · ${kindLabel}`}>
-      {code}
+    <Tooltip label={`${code} · ${badgeDescription} · ${label}`} wrap><span className="motion-track-kind motion-track-badge" data-track-kind={kind} data-main-track={!!mainTrackLabel || identity?.isMain || undefined} aria-label={`${code} · ${badgeDescription}`}>
+      {mainTrackLabel ?? code}
     </span></Tooltip>
     <Tooltip label={lockLabel} wrap><button type="button" aria-label={`${lockLabel} · ${name}`}
       aria-pressed={locked} disabled={disabled || !edits.onSetElementsAttributeQuiet}

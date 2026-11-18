@@ -84,6 +84,11 @@ export const TimelineGestureOverlay = memo(function TimelineGestureOverlay({
               {t("+ New track")}<span className="sr-only">{t(", before track")}{" "}{insertRow + 1}</span>
             </span>
           )}
+          {drag.invalidDrop && (
+            <span role="status" className="om-badge absolute bottom-full left-0 z-10">
+              {t("Cannot drop here")}
+            </span>
+          )}
           <TimelineTimeLayer pixelsPerSecond={pixelsPerSecond}>
             <TimelineClip
               el={{ ...element, start: 0 }}

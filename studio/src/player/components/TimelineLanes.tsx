@@ -36,6 +36,7 @@ import { timelineClipFocusId } from "./timelineNavigationIdentity";
 import { useTimelineKeyboardActor } from "./useTimelineKeyboardActor";
 import { TimelineTransitionOverlays } from "./TimelineTransitionOverlays";
 import { deriveTimelineTransitionSeamsByTrack } from "./timelineTransitionSeams";
+import { linkedOverlayKeys, mainVisualTrack } from "./timelineLinkage";
 import { trackIdentities } from './timelineTrackIdentity';
 
 function passengerStyleAt(offsetPx: number): CSSProperties {
@@ -115,6 +116,7 @@ export function TimelineLanes({
   // from resolving into a second timeline that renders the same logical rows.
   const lanesIdPrefix = `timeline-lanes${useId().replaceAll(":", "")}`;
   const expandedClipIds = usePlayerStore((s) => s.expandedClipIds);
+  const linkageEnabled = usePlayerStore((s) => s.timelineLinkageEnabled);
   const { collapsedGroupIds, expandedLaneOwnerIds, toggleGroupExpanded, toggleLaneOwnerExpanded } =
     useTimelineGroupDisclosure();
   const automationLanes = useAutomationLanes();
@@ -129,6 +131,15 @@ export function TimelineLanes({
   const compositionDuration = usePlayerStore((s) => s.duration);
   useAutomationSelectionKeyboard({ lanes: automationLanes });
   const rowIndexes = useTimelineLaneRowIndexes(logicalRows, groups);
+  const trackClips = useMemo(() => tracks.flatMap(([, clips]) => clips), [tracks]);
+  const mainTrack = useMemo(() => mainVisualTrack(trackClips), [trackClips]);
+  const dragging = draggedClip?.started === true;
+  const linkedKeys = useMemo(
+    () => linkageEnabled && selectedElementId && !dragging
+      ? linkedOverlayKeys(trackClips, selectedElementId, selectedElementIds, true)
+      : undefined,
+    [linkageEnabled, selectedElementId, selectedElementIds, dragging, trackClips],
+  );
   const identities = useMemo(() => trackIdentities(trackOrder, new Map(tracks)), [trackOrder, tracks]);
   const { logicalRowsByTrack, groupByAnchor, groupMemberTracks } = rowIndexes;
   const {
@@ -322,6 +333,7 @@ export function TimelineLanes({
             >
               <TimelineTrackHeader
                 trackNumber={trackNum}
+                mainTrackLabel={trackNum === mainTrack ? t("Main track") : undefined}
                 identity={identities.get(trackNum)}
                 // What gets announced. `trackNum` is a fractional z-order sort
                 // key, so it stays out of every label and in every callback.
@@ -446,6 +458,7 @@ export function TimelineLanes({
                           passengerStyle={passengerStyle}
                           clipBarHeight={clipBarHeight}
                           isSelected={isSelected}
+                          isMainTrackFollower={!isSelected && capabilities.canMove && linkedKeys?.has(clipKey)}
                           isHovered={hoveredClip === clipKey}
                           isActive={isTimelineClipActive(previewElement, currentTime)}
                           tabIndex={

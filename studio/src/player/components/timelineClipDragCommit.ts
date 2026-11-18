@@ -1,4 +1,5 @@
-import type { TimelineElement } from "../store/playerStore";
+import { usePlayerStore, type TimelineElement } from "../store/playerStore";
+import { getTimelineElementIndexes } from "../lib/timelineElementIndexes";
 import { clampToHostStart } from "../store/timelineElement";
 import type { DraggedClipState } from "./useTimelineClipDrag";
 // Type-only: erased at runtime, so the timelineZMirror → timelineClipDragCommit
@@ -165,6 +166,13 @@ export function persistMoveEdits(
     const updates: Partial<TimelineElement> = {};
     if (!reassert || isLatestTimelineOptimisticGesture(updateElement, revision, key)) {
       Object.assign(updates, timing);
+      if (reassert && updates.authoredTrack != null) {
+        const live = getTimelineElementIndexes(usePlayerStore.getState().elements).byKey.get(key);
+        // Discovery may already have compacted the saved lane after its source row emptied.
+        if (live && (live.authoredTrack ?? live.track) === updates.authoredTrack) {
+          updates.track = live.track;
+        }
+      }
     }
     if (
       detach &&

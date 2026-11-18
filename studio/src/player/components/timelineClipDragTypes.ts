@@ -29,6 +29,8 @@ export interface DraggedClipState {
    * landing on previewTrack. Drives the opened preview lane.
    */
   insertRow: number | null;
+  /** An incompatible drop target: show feedback and cancel on release. */
+  invalidDrop?: boolean;
   /** Snap target the clip will land on, for the guide highlight. */
   snapTime: number | null;
   snapType: TimelineSnapType | null;
@@ -36,6 +38,8 @@ export interface DraggedClipState {
   started: boolean;
   altKey?: boolean;
   snapDisabled?: boolean;
+  /** Selected and linked clip identities captured at pickup. */
+  movingKeys?: ReadonlySet<string>;
   /** Starts previewed for a same-row insertion, keyed by clip identity. */
   insertion?: ReadonlyMap<string, number>;
 }
