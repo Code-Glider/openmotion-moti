@@ -38,10 +38,10 @@
 .motion-track-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0; width: 100%; }
 .motion-track-kind { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; color: var(--motion-control-disabled); }
 .motion-track-badge { min-width: 24px; width: auto; padding: var(--motion-space-2) var(--motion-space-4); margin-right: var(--motion-space-2); border-radius: var(--motion-radius-xs); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); font-variant-numeric: tabular-nums; color: var(--motion-strong); background: var(--motion-hover); }
-/* Reserve room for one control beside the label at the minimum column width. */
+/* Leave room for two controls beside the label so five controls fit on two rows. */
 .motion-track-badge[data-main-track] {
   display: block;
-  max-width: calc(100% - var(--motion-space-24) - var(--motion-space-2));
+  max-width: calc(100% - var(--motion-space-48) - var(--motion-space-2));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
