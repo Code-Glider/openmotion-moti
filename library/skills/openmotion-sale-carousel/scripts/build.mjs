@@ -89,7 +89,7 @@ const css = `
 .was i{position:absolute;left:-4%;right:-4%;top:50%;height:${Math.max(3, Math.round(cw * 0.012))}px;background:${t.accent};transform:scaleX(0);transform-origin:left center}
 .tag{position:absolute;right:${Math.round(cw * 0.05)}px;top:${Math.round(cw * 0.05)}px;width:${Math.round(cw * 0.3)}px;height:${Math.round(cw * 0.3)}px;border-radius:50%;background:${t.accent};color:${t.accentInk};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:.9}
 .cta{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(56)}px;padding:${px(22)}px ${px(56)}px;border-radius:${px(999)}px}`;
-const card = (it, i, src) => { const p = prices[i]; const nm = fit(it.name, cw * 0.86, Math.round(cw * 0.12), 0.57); return `<div id="pc${i}" class="pc" style="left:${i * pitch}px">
+const card = (it, i, src) => { const p = prices[i]; const nm = fit(it.name, cw * 0.86, Math.round(cw * 0.12), 0.57); return `<div id="pc${i}" class="pc" style="left:${Math.round(W / 2 - cw / 2)}px">
   <div class="im" style="background-image:url('${src(it.image)}')"></div>
   <div id="tg${i}" class="tag d" style="font-size:${Math.round(cw * 0.1)}px">${p.framing === 'percent' ? `${p.percent}%` : esc($(p.save).replace(/\.00$/, ''))}<span style="font-size:${Math.round(cw * 0.05)}px">${esc(L.off)}</span></div>
   <div class="tx"><div class="d" style="font-size:${nm}px">${esc(it.name)}</div>
@@ -97,7 +97,7 @@ const card = (it, i, src) => { const p = prices[i]; const nm = fit(it.name, cw *
 </div>`; };
 const words = [data.occasion, data.title, data.occasion].map((w, i) => `<div id="wd${i}" class="word d" style="top:${Math.round(H * (0.12 + i * 0.32))}px">${esc(`${w} · `.repeat(4))}</div>`).join('');
 const body = src => `<div id="bg"></div>${words}<div id="floor"></div>
-<div id="cam" style="position:absolute;inset:0;transform-origin:50% ${Math.round((rowY / H) * 100)}%"><div id="row" style="position:absolute;left:0;top:0;width:${n * pitch}px;height:${H}px">${items.map((it, i) => card(it, i, src)).join('')}</div></div>
+<div id="cam" style="position:absolute;inset:0;transform-origin:50% ${Math.round((rowY / H) * 100)}%"><div id="row" style="position:absolute;inset:0;perspective:${Math.round(W * 1.6)}px">${items.map((it, i) => card(it, i, src)).join('')}</div></div>
 <div class="grain" id="grain"></div>
 <div class="brand">${esc(data.brand.name)}</div>
 <div id="head" style="position:absolute;left:0;right:0;top:${Math.max(px(104), portrait ? H * 0.08 : H * 0.07)}px;text-align:center;color:${t.ink}">
@@ -105,7 +105,7 @@ const body = src => `<div id="bg"></div>${words}<div id="floor"></div>
   <div class="mask" style="height:${Math.round(titleSize * 0.92)}px;margin-top:${px(6)}px"><div id="title" class="d" style="font-size:${titleSize}px;white-space:nowrap">${esc(data.title)}</div></div>
 </div>
 <div id="count" class="d" style="position:absolute;left:0;right:0;top:${Math.round(rowY + chh * 0.56)}px;text-align:center;font-size:${px(56)}px;color:${t.ink};opacity:0">${items.map((_, i) => `<span id="cn${i}" style="position:absolute;left:0;right:0;opacity:0">${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span>`).join('')}</div>
-<div id="end" style="position:absolute;left:0;right:0;top:${Math.round(rowY + chh * pull * 0.5 - chh * (1 - pull) * 0.3 + px(24))}px;text-align:center;color:${t.ink};opacity:0">
+<div id="end" style="position:absolute;left:0;right:0;top:${Math.round(rowY + chh * (portrait ? 0.45 : 0.3) + px(16))}px;text-align:center;color:${t.ink};opacity:0">
   ${data.code ? `<div class="d" style="display:inline-block;font-size:${px(64)}px;border:${px(5)}px dashed ${t.ink};border-radius:${px(18)}px;padding:${px(10)}px ${px(32)}px ${px(2)}px">${esc(L.useCode)} ${esc(data.code)}</div>` : ''}
   ${data.deadline ? `<div style="margin-top:${px(14)}px;font-size:${px(36)}px;font-weight:600;opacity:.85">${esc(data.deadline.label)}</div>` : ''}
   <div><div id="cta" class="cta" style="margin-top:${px(24)}px">${esc(data.cta)}</div></div>${data.url ? `<div style="margin-top:${px(12)}px;font-size:${px(34)}px;opacity:.8;font-weight:600">${esc(data.url)}</div>` : ''}
@@ -113,34 +113,35 @@ const body = src => `<div id="bg"></div>${words}<div id="floor"></div>
 ${noCredit ? '' : credit(t, px(24)).replace('opacity:.72', 'opacity:0')}`;
 
 const f = v => v.toFixed(2);
+// Coverflow: the focused card sits forward and large; its neighbours turn away in 3D and dim.
+const spread = Math.round(cw * (portrait ? 0.62 : 0.72));
+const state = (j, i) => { const d = j - i, ad = Math.abs(d);
+  return d === 0 ? `{x:0,scale:1.12,rotationY:0,opacity:1,zIndex:${50},filter:'brightness(1)'}`
+    : `{x:${Math.sign(d) * (spread + (ad - 1) * spread * 0.55)},scale:${Math.max(0.55, 0.82 - (ad - 1) * 0.1).toFixed(2)},rotationY:${-Math.sign(d) * 42},opacity:${ad > 3 ? 0 : 1},zIndex:${50 - ad},filter:'brightness(${Math.max(0.35, 0.62 - (ad - 1) * 0.12).toFixed(2)})'}`; };
 let focus = '';
 items.forEach((_, i) => {
   const a = INTRO + i * PER;
-  focus += `tl.to('#row',{x:${xFor(i)},duration:.6,ease:'power3.inOut'},${f(a - 0.3)});
-tl.to('#pc${i}',{scale:1.08,duration:.45,ease:'power2.out'},${f(a)});
+  focus += items.map((__, j) => `tl.to('#pc${j}',${state(j, i).replace('}', `,duration:.6,ease:'power3.inOut'}`)},${f(a - 0.3)});`).join('\n') + `
 tl.fromTo('#st${i}',{scaleX:0},{scaleX:1,duration:.3,ease:'power2.out'},${f(a + 0.3)});
 tl.fromTo('#tg${i}',{scale:0,rotation:-40},{scale:1,rotation:-10,duration:.4,ease:'back.out(2)'},${f(a + 0.45)});
-tl.set('#cn${i}',{opacity:1},${f(a)});${i ? `\ntl.set('#cn${i - 1}',{opacity:0},${f(a)});` : ''}
-tl.to('#pc${i}',{scale:.86,duration:.45,ease:'power2.inOut'},${f(a + PER - 0.3)});\n`;
+tl.set('#cn${i}',{opacity:1},${f(a)});${i ? `\ntl.set('#cn${i - 1}',{opacity:0},${f(a)});` : ''}\n`;
 });
 const endAt = INTRO + n * PER;
 const script = `
 tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(dur)},ease:'steps(${Math.round(dur * 12)})'},0);
 ${[0, 1, 2].map(i => `tl.fromTo('#wd${i}',{xPercent:${i % 2 ? -40 : 0}},{xPercent:${i % 2 ? 0 : -40},duration:${f(dur)},ease:'none'},0);`).join('\n')}
-tl.set(${JSON.stringify(items.map((_, i) => `#pc${i}`))},{scale:.86},0);
-tl.fromTo('#row',{x:${W}},{x:${xFor(0) + Math.round(pitch * 0.6)},duration:${f(INTRO)},ease:'power2.out'},0);
+${items.map((_, j) => `tl.set('#pc${j}',${state(j, -1)},0);`).join('\n')}
+tl.fromTo('#row',{x:${W * 0.6}},{x:0,duration:${f(INTRO)},ease:'power2.out'},0);
 tl.fromTo('#occ',{yPercent:110},{yPercent:0,duration:.5,ease:'power4.out'},0.1);
 tl.fromTo('#title',{yPercent:110},{yPercent:0,duration:.55,ease:'power4.out'},0.25);
 tl.fromTo('#count',{opacity:0},{opacity:.9,duration:.3},${f(INTRO)});
 ${focus}// pull back to the whole shelf
 tl.to('#count',{opacity:0,duration:.2},${f(endAt - 0.3)});
-tl.to('#row',{x:${xFor((n - 1) / 2)},duration:.7,ease:'power3.inOut'},${f(endAt - 0.3)});
-tl.to(${JSON.stringify(items.map((_, i) => `#pc${i}`))},{scale:1,duration:.5},${f(endAt - 0.3)});
-tl.to('#cam',{scale:${pull.toFixed(3)},y:${-Math.round(chh * (1 - pull) * 0.3)},duration:.7,ease:'power3.inOut'},${f(endAt - 0.3)});
+${(() => { const fs = Math.min(1, (W * 0.92) / (n * cw * 0.62 + cw * 0.4)); return items.map((_, j) => { const k = j - (n - 1) / 2; return `tl.to('#pc${j}',{x:${Math.round(k * cw * 0.62 * fs)},y:${Math.round(Math.abs(k) * cw * 0.06 * fs - chh * (portrait ? 0.08 : 0.24))},scale:${(fs * 0.92).toFixed(3)},rotationY:0,rotation:${(k * 5).toFixed(1)},opacity:1,zIndex:${20 + j},filter:'brightness(1)',duration:.7,ease:'back.out(1.2)'},${f(endAt - 0.3 + j * 0.04)});`; }).join('\n'); })()}
 tl.to('#head',{y:${-px(20)},duration:.5},${f(endAt - 0.3)});
 tl.fromTo('#end',{opacity:0,y:${px(40)}},{opacity:1,y:0,duration:.45,ease:'power3.out'},${f(endAt + 0.2)});
 tl.fromTo('#cta',{scale:.6},{scale:1,duration:.4,ease:'back.out(2)'},${f(endAt + 0.4)});
-tl.to('#row',{x:'-=${px(40)}',duration:${f(END - 0.4)},ease:'none'},${f(endAt + 0.4)});
+tl.to('#row',{rotation:1.5,duration:${f(END - 0.4)},ease:'none'},${f(endAt + 0.4)});
 ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(endAt + 0.6)});`}
 tl.set({}, {}, ${f(dur)});`;
 

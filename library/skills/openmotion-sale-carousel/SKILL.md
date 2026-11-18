@@ -19,7 +19,7 @@ regular price and the discount, so a batch of cards never shows a mistyped numbe
 
 ## Look
 
-A product shelf, not slides: every product sits on one row of cards that keeps gliding; each in turn slides to the centre, grows, strikes its old price and pops its discount tag while its neighbours wait at the edges. At the end the camera pulls back over the row with the code and call to action. Outlined title text drifts behind. Display type is Anton, shipped with the Skill (SIL OFL).
+A coverflow, not slides: the focused product card sits forward and large while its neighbours turn away in 3D and dim; each switch swings the whole row, the old price is struck and the discount tag pops. At the end every card fans into an arc above the code and call to action. Outlined title text drifts behind. Display type is Anton, shipped with the Skill (SIL OFL).
 
 ## 1. Collect the products
 
@@ -51,10 +51,10 @@ cd out && npx hyperframes check && npx hyperframes render -o carousel.mp4
 | Beat | What happens |
 | --- | --- |
 | Title | Occasion, title and "N picks" |
-| Product × N | The row glides so this card is centred; it grows, the regular price is struck through beside the sale price, the discount tag pops, the counter reads "01 / 05" |
-| End | The camera pulls back over the row; code, deadline, call to action, sign-off |
+| Product × N | The row swings so this card comes forward; the regular price is struck through beside the sale price, the discount tag pops, the counter reads "01 / 05" |
+| End | Every card fans into an arc; code, deadline, call to action, sign-off |
 
-Card size follows the frame; on narrow frames the end shot centres the middle of the row. The badge shows a percentage
+Card size follows the frame. The badge shows a percentage
 unless the saving is small, where a flat amount reads better. `theme`, `brand.accent`, `locale` and
 `labels` work as in the sale-promo Skill. The film is silent; add music in the editor and cut the
 cards on the beat.
