@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { expect, it } from "vitest";
-import { initialFiles, resourceLimit, Workspace } from "@";
+import { initialFiles, Workspace } from "@";
 
 const hash = (value: Uint8Array) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 function fixture() {
@@ -18,7 +18,7 @@ function fixture() {
       files: initialFiles(),
     }),
     owner = { sessionId: session.id, artifactId: artifact.id },
-    bytes = Buffer.alloc(resourceLimit);
+    bytes = Buffer.alloc(2 * 65536 + 44);
   bytes.write("RIFF");
   bytes.writeUInt32LE(bytes.length - 8, 4);
   bytes.write("WAVEfmt ", 8);
@@ -31,7 +31,8 @@ function fixture() {
   bytes.writeUInt16LE(16, 34);
   bytes.write("data", 36);
   bytes.writeUInt32LE(bytes.length - 44, 40);
-  // Distinct chunks exercise ordering as well as the final whole-resource digest.
+  // Two complete chunks plus a short tail exercise ordering and the final partial read.
+  // Maximum-size import/download/cold replay is covered by the actual HTTP resource journey.
   for (let at = 44; at < bytes.length; at++) bytes[at] = at % 251;
   const before = workspace.execute("project_read", owner),
     input = {
@@ -80,8 +81,8 @@ it("reads bounded repeatable historical chunks after removal and cold reopen wit
       total += chunk.byteLength;
       count++;
     }
-    expect(total).toBe(resourceLimit);
-    expect(count).toBe(256);
+    expect(total).toBe(f.bytes.length);
+    expect(count).toBe(3);
     expect(`sha256:${complete.digest("hex")}`).toBe(f.input.digest);
     expect(Buffer.concat([...reader.chunks()]).equals(f.bytes)).toBe(true);
     expect(() => f.workspace.readResource({ ...f.read, revision: removed.revision })).toThrow("does not belong");
