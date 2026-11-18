@@ -10,12 +10,12 @@ function browserLocale(): Locale | undefined {
   const preferred = navigator.languages?.length ? navigator.languages : [navigator.language];
   for (const value of preferred) {
     if (!value) continue;
-    const normalized = value.replace('_', '-').toLowerCase();
-    const exact = languages.find(locale => locale.toLowerCase() === normalized);
-    if (exact) return exact;
+    const normalized = value.replaceAll('_', '-').toLowerCase();
+    const exact = languages.find(language => language.locale.toLowerCase() === normalized);
+    if (exact) return exact.locale;
     const primary = normalized.split('-')[0];
-    const match = languages.find(locale => locale.toLowerCase().split('-')[0] === primary);
-    if (match) return match;
+    const match = languages.find(language => language.locale.toLowerCase().split('-')[0] === primary);
+    if (match) return match.locale;
   }
   return undefined;
 }
@@ -62,7 +62,7 @@ export function I18nProvider({ children, initialLocale }: { children: ReactNode;
     }
     const onStorage = (event: StorageEvent) => {
       if (event.storageArea && event.storageArea !== localStorage) return;
-      if (event.key === LOCALE_STORAGE_KEY || event.key === null) updateLocale(isLocale(event.newValue) ? event.newValue : 'zh-CN');
+      if (event.key === LOCALE_STORAGE_KEY || event.key === null) updateLocale(isLocale(event.newValue) ? event.newValue : browserLocale() ?? 'zh-CN');
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
