@@ -30,7 +30,7 @@ import * as tracking from './templateLibraryTracking';
 import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './templateLibraryTracking';
 import { TemplateHandoffSteps, TemplateOpenRecovery, type TemplateOpenProgress } from './TemplateHandoffInfo';
 import { TemplateDetailReview, TemplateProductionNotes, TemplateGuideReview, TemplateReviewSpecs } from './TemplateDetailReview';
-import { templateHandoffEnabled, templateHandoffPrompt, preparedTemplateProjects, findPreparedTemplate, type PreparedTemplateProject } from './templateHandoff';
+import { templateHandoffEnabled, templateHandoffPrompt, preparedTemplateProjects, pendingTemplateProjects, rememberTemplateRequest, forgetTemplateRequest, TemplatePreparationBlockedError, findPreparedTemplate, type PreparedTemplateProject } from './templateHandoff';
 
 type Filters = Partial<Record<Facet, string[]>>;
 const toggleValue = (filters: Filters, key: Facet, value: string): Filters => ({ ...filters, [key]: filters[key]?.includes(value) ? filters[key]!.filter(item => item !== value) : [...(filters[key] ?? []), value] });
@@ -116,7 +116,10 @@ export function TemplateLibraryDialog(props: Props) {
     const observer = new ResizeObserver(measure); observer.observe(element);
     return () => observer.disconnect();
   }, [handoffPreview, preview?.id, guideOpen]);
-  const [projectProgress, setProjectProgress] = useState<Record<string, TemplateOpenProgress>>(() => Object.fromEntries(preparedTemplateProjects().filter(item => item.originalProjectId === props.projectId || item.projectId === props.projectId).map(result => [result.templateId, { requestId: result.requestId, state: 'ready' as const, result }])));
+  const [projectProgress, setProjectProgress] = useState<Record<string, TemplateOpenProgress>>(() => Object.fromEntries([
+    ...pendingTemplateProjects().filter(item => item.originalProjectId === props.projectId).map(item => [item.templateId, { requestId: item.requestId, state: 'unknown' as const }]),
+    ...preparedTemplateProjects().filter(item => item.originalProjectId === props.projectId || item.projectId === props.projectId).map(result => [result.templateId, { requestId: result.requestId, state: 'ready' as const, result }]),
+  ]));
   const progressRef = useRef(projectProgress); progressRef.current = projectProgress;
   const previewLatest = useRef(preview); previewLatest.current = preview;
   const openLatest = useRef(props.open); openLatest.current = props.open;
@@ -141,14 +144,23 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportUseClicked(template, 'open_edit', detailView.current, undefined, requestId);
     if (previous?.result) { void revealProject(template, previous.result); return; }
     const attemptId = tracking.newTrackingId(), view = detailView.current;
+    rememberTemplateRequest({ templateId: template.id, originalProjectId: props.projectId, requestId });
     writeProgress(template.id, { requestId, state: 'creating' });
     try {
       const result = await props.onPrepareTemplate(template, requestId);
       tracking.reportProjectResult(template, requestId, attemptId, 'create', 'success', view, result.projectId);
+      forgetTemplateRequest(requestId);
       writeProgress(template.id, { requestId, state: 'ready', result });
       if (openLatest.current && detail.current?.open && previewLatest.current?.id === template.id) void revealProject(template, result, view);
-    } catch {
+    } catch (error) {
+      if (error instanceof TemplatePreparationBlockedError) {
+        forgetTemplateRequest(requestId);
+        tracking.reportProjectResult(template, requestId, attemptId, 'create', 'failure', view);
+        writeProgress(template.id, { requestId, state: 'failed', error: error.message });
+        return;
+      }
       const result = await findPreparedTemplate(template, props.projectId, requestId).catch(() => null);
+      if (result) forgetTemplateRequest(requestId);
       tracking.reportProjectResult(template, requestId, attemptId, 'create', result ? 'success' : 'unknown', view, result?.projectId);
       writeProgress(template.id, result ? { requestId, state: 'ready', result } : { requestId, state: 'unknown', error: t('The connection did not return a complete result. Check this request before creating again.') });
     }
@@ -165,8 +177,13 @@ export function TemplateLibraryDialog(props: Props) {
       return;
     }
     tracking.reportProjectResult(template, progress.requestId, attemptId, 'reconcile', result ? 'success' : 'not_found', view, result?.projectId);
-    if (result) writeProgress(template.id, { requestId: progress.requestId, state: 'ready', result });
-    else showToast(t('No completed project was found for this request. Check again shortly.'), 'info');
+    if (result) {
+      forgetTemplateRequest(progress.requestId);
+      writeProgress(template.id, { requestId: progress.requestId, state: 'ready', result });
+    } else {
+      writeProgress(template.id, { requestId: progress.requestId, state: 'failed' });
+      showToast(t('Project not created'), 'info');
+    }
   }
   const lastRandom = useRef<string>(undefined);
   const info = useRef<IntegrationInfo | null>(null);

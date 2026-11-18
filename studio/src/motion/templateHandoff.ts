@@ -3,6 +3,7 @@ import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalo
 
 const enabledKey = 'motion.template-handoff.preview';
 const resultKey = 'motion.template-handoff.results';
+const pendingKey = 'motion.template-handoff.pending';
 export function templateHandoffEnabled() {
   try {
     const override = new URLSearchParams(location.search).get('templateHandoffPreview');
@@ -15,6 +16,28 @@ export type PreparedTemplateProject = {
   projectId: string; sessionId: string; title: string; templateId: string;
   originalProjectId?: string; requestId: string;
 };
+type TemplateProjectRequest = Pick<PreparedTemplateProject, 'templateId' | 'originalProjectId' | 'requestId'>;
+/** A rejected editor guard proves that no creation request was sent. */
+export class TemplatePreparationBlockedError extends Error {}
+export function pendingTemplateProjects(): TemplateProjectRequest[] {
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem(pendingKey) || '[]');
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is TemplateProjectRequest => item && typeof item === 'object'
+      && ['templateId', 'requestId'].every(key => typeof item[key] === 'string')
+      && (item.originalProjectId === undefined || typeof item.originalProjectId === 'string')).slice(-20);
+  } catch { return []; }
+}
+export function rememberTemplateRequest(request: TemplateProjectRequest) {
+  try {
+    const requests = pendingTemplateProjects().filter(item => item.requestId !== request.requestId);
+    sessionStorage.setItem(pendingKey, JSON.stringify([...requests, request].slice(-20)));
+  } catch { /* The mounted view still retains the request identity. */ }
+}
+export function forgetTemplateRequest(requestId: string) {
+  try { sessionStorage.setItem(pendingKey, JSON.stringify(pendingTemplateProjects().filter(item => item.requestId !== requestId))); }
+  catch { /* A retained request can still be reconciled against its exact session. */ }
+}
 export function preparedTemplateProjects(): PreparedTemplateProject[] {
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem(resultKey) || '[]');
@@ -25,6 +48,7 @@ export function preparedTemplateProjects(): PreparedTemplateProject[] {
   } catch { return []; }
 }
 function remember(result: PreparedTemplateProject) {
+  forgetTemplateRequest(result.requestId);
   try {
     const records = preparedTemplateProjects().filter(item => item.requestId !== result.requestId);
     sessionStorage.setItem(resultKey, JSON.stringify([...records, result].slice(-20)));
@@ -34,8 +58,8 @@ function remember(result: PreparedTemplateProject) {
 const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 /** Reconcile only the explicitly requested session, never the newest project. */
-export async function findPreparedTemplate(template: GalleryTemplate, originalProjectId: string | undefined, requestId: string) {
-  const catalog = await motionApi<ProjectCatalog>('/projects');
+function preparedFromCatalog(catalog: ProjectCatalog, template: GalleryTemplate, originalProjectId: string | undefined, requestId: string) {
+  if (!Array.isArray(catalog.projects) || !Array.isArray(catalog.sessions)) throw new Error('Project lookup did not return a complete catalog.');
   const session = catalog.sessions?.find(item => item.id === requestId && item.templateId === template.id);
   const artifact = session?.artifacts.find(item => item.id === session.activeArtifactId) ?? session?.artifacts[0];
   if (!session || !artifact) return null;
@@ -43,18 +67,26 @@ export async function findPreparedTemplate(template: GalleryTemplate, originalPr
   if (!project) return null;
   return remember({ projectId: project.id, sessionId: session.id, title: project.title, templateId: template.id, originalProjectId, requestId });
 }
+export async function findPreparedTemplate(template: GalleryTemplate, originalProjectId: string | undefined, requestId: string) {
+  return preparedFromCatalog(await motionApi<ProjectCatalog>('/projects'), template, originalProjectId, requestId);
+}
 
 /** Compose existing guarded session/artifact operations into an independent editable project. */
 export async function prepareTemplateProject(template: GalleryTemplate, originalProjectId: string | undefined, requestId: string) {
   if (!isEditableTemplate(template)) throw new Error('此资源只有参考说明，没有可直接打开的工程。');
-  const existing = await findPreparedTemplate(template, originalProjectId, requestId);
+  const catalog = await motionApi<ProjectCatalog>('/projects');
+  const existing = preparedFromCatalog(catalog, template, originalProjectId, requestId);
   if (existing) return existing;
-  const created = await motionApi<{ sessionId: string }>('/sessions', json({ id: requestId, templateId: template.id, mode: 'motion', title: template.title }));
+  const session = catalog.sessions!.find(item => item.id === requestId);
+  if (session && session.templateId !== template.id) throw new Error('The request belongs to a different template.');
+  // An acknowledged empty session is the same request, even if the UI language
+  // (and therefore its display title) changed before the user retried.
+  const sessionId = session?.id ?? (await motionApi<{ sessionId: string }>('/sessions', json({ id: requestId, templateId: template.id, mode: 'motion', title: template.title }))).sessionId;
   const current = await motionApi<WorkspaceStatus>('/project/status', undefined, originalProjectId);
-  const result = await motionApi<WorkspaceStatus>(`/sessions/${created.sessionId}/artifacts`, json({
+  const result = await motionApi<WorkspaceStatus>(`/sessions/${sessionId}/artifacts`, json({
     templateId: template.id, expectedRevision: current.revision, expectedProjectId: current.projectId,
   }), originalProjectId);
-  return remember({ projectId: result.projectId, sessionId: created.sessionId, title: result.projectTitle,
+  return remember({ projectId: result.projectId, sessionId, title: result.projectTitle,
     templateId: template.id, originalProjectId, requestId });
 }
 

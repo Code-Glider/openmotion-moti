@@ -8,6 +8,7 @@ import { TemplateLibraryDialog } from './TemplateLibraryDialog';
 import { MAX_TEMPLATE_PLAYERS } from './useTemplatePlayback';
 import { validProperties } from '../../../tracking/core.ts';
 import { studioEvents } from '../../../tracking/events.ts';
+import { TemplatePreparationBlockedError, pendingTemplateProjects } from './templateHandoff';
 
 const tracked = vi.hoisted(() => [] as { event: string; properties: Record<string, unknown> }[]);
 vi.mock('./tracking', () => ({ trackMotion: async (event: string, properties: Record<string, unknown>) => { tracked.push({ event, properties }); return 'queued'; } }));
@@ -30,7 +31,7 @@ class Observer {
 }
 let motionPreference: EventTarget & { matches: boolean };
 function fetchItems(data = items, templateSource?: 'repository' | 'cms') {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : url.endsWith('/projects') ? { projects: [], sessions: [] } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
 }
 beforeEach(() => {
   sessionStorage.setItem('motion.template-handoff.preview', '0');
@@ -983,8 +984,53 @@ it('keeps an uncertain real creation result separate from failure and prevents a
   expect(button('Open and edit').disabled).toBe(true);
   await act(async () => button('Check creation result').click());
   expect(prepare).toHaveBeenCalledTimes(1);
-  expect(host.textContent).toContain('Creation result needs checking');
+  expect(host.textContent).toContain('Project not created');
+  expect(button('Open and edit').disabled).toBe(false);
   expect(events('template_project_result').map(item => [item.stage, item.outcome])).toEqual([['create', 'unknown'], ['reconcile', 'not_found']]);
+  await act(async () => button('Retry creation').click());
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare.mock.calls[1][1]).toBe(prepare.mock.calls[0][1]);
+  expect(host.textContent).toContain('Creation result needs checking');
+});
+
+it('allows a preflight-blocked creation to retry without treating it as an ambiguous server result', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const prepare = vi.fn().mockRejectedValue(new TemplatePreparationBlockedError('Save your changes first.'));
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} /></I18nProvider>));
+  await act(async () => preview('First'));
+  await act(async () => button('Open and edit').click());
+  expect(host.textContent).toContain('Save your changes first.');
+  expect(host.textContent).toContain('Project not created');
+  expect(host.textContent).not.toContain('Creation result needs checking');
+  expect(pendingTemplateProjects()).toEqual([]);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/projects'))).toBe(false);
+  await act(async () => button('Retry creation').click());
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare.mock.calls[1][1]).toBe(prepare.mock.calls[0][1]);
+  expect(events('template_project_result').map(item => item.outcome)).toEqual(['failure', 'failure']);
+});
+
+it('reconciles a retained request after remount without minting a new creation identity', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const prepare = vi.fn().mockRejectedValue(new Error('Connection interrupted'));
+  const render = () => <I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} /></I18nProvider>;
+  await act(async () => root.render(render()));
+  await act(async () => preview('First'));
+  await act(async () => button('Open and edit').click());
+  const requestId = prepare.mock.calls[0][1];
+  expect(pendingTemplateProjects()).toMatchObject([{ requestId, templateId: 'one', originalProjectId: 'original-A' }]);
+  act(() => root.unmount()); root = createRoot(host);
+  await act(async () => root.render(render()));
+  await act(async () => preview('First'));
+  expect(button('Open and edit').disabled).toBe(true);
+  expect(host.textContent).toContain('Creation result needs checking');
+  expect(prepare).toHaveBeenCalledTimes(1);
+  await act(async () => button('Check creation result').click());
+  await act(async () => button('Retry creation').click());
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare.mock.calls[1][1]).toBe(requestId);
 });
 
 it('keeps a delayed handoff result tied to its initiating detail and does not switch a later selection', async () => {

@@ -476,6 +476,12 @@ another create result. `retry_template_project`, `check_template_project` and
 `open_prepared_project` distinguish explicit recovery intents.
 An opening callback is not evidence that a particular content version became
 visible or that the user approved it; those downstream outcomes remain separate.
+Editor save-guard rejection occurs before creation and reports a confirmed failure,
+not an uncertain server result. An authoritative empty reconciliation enables
+retry with the same request ID. Pending request identities are retained in bounded
+session storage so reopening the library checks that request before creating;
+completed requests are removed from the pending list. Unavailable storage cannot
+guarantee retention after a reload.
 
 Existing copy semantics remain: `clipboard_written` is the only successful copy,
 and manual fallback is not success. No event claims that an external Agent received

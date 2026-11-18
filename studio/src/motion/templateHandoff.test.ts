@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import { motionApi } from './useWorkspace';
-import { findPreparedTemplate, prepareTemplateProject, preparedTemplateProjects, templateHandoffPrompt, templateHandoffEnabled } from './templateHandoff';
+import { findPreparedTemplate, prepareTemplateProject, preparedTemplateProjects, pendingTemplateProjects, rememberTemplateRequest, forgetTemplateRequest, templateHandoffPrompt, templateHandoffEnabled } from './templateHandoff';
 
 vi.mock('./useWorkspace', () => ({ motionApi: vi.fn() }));
 const api = vi.mocked(motionApi);
@@ -59,4 +59,32 @@ it('ignores malformed stored handoff results without blocking the library', () =
   expect(preparedTemplateProjects()).toEqual([]);
   sessionStorage.setItem('motion.template-handoff.results', '[null,{"projectId":42}]');
   expect(preparedTemplateProjects()).toEqual([]);
+});
+
+it('retains only the exact pending request through a remount and clears it after reconciliation', async () => {
+  const request = { templateId: template.id, originalProjectId: 'original-A', requestId: 'operation-one' };
+  rememberTemplateRequest(request);
+  expect(pendingTemplateProjects()).toEqual([request]);
+  rememberTemplateRequest(request);
+  expect(pendingTemplateProjects()).toHaveLength(1);
+  api.mockResolvedValue(catalog());
+  expect(await findPreparedTemplate(template, 'original-A', 'operation-one')).toMatchObject({ projectId: 'new-P' });
+  expect(pendingTemplateProjects()).toEqual([]);
+  rememberTemplateRequest(request);
+  forgetTemplateRequest(request.requestId);
+  expect(pendingTemplateProjects()).toEqual([]);
+});
+
+it('does not interpret an incomplete project lookup as authoritative not-found', async () => {
+  api.mockResolvedValue({ projects: [] });
+  await expect(findPreparedTemplate(template, 'original-A', 'operation-one')).rejects.toThrow('complete catalog');
+});
+
+it('resumes an acknowledged empty session without resubmitting a changed display title', async () => {
+  api.mockResolvedValueOnce({ projects: [], sessions: [{ id: 'operation-one', templateId: template.id, title: 'Earlier title', artifacts: [] }] })
+    .mockResolvedValueOnce({ revision: 'revision-A', projectId: 'original-A' })
+    .mockResolvedValueOnce({ projectId: 'new-P', projectTitle: 'Product Promo' });
+  await prepareTemplateProject({ ...template, title: '不同语言的标题' }, 'original-A', 'operation-one');
+  expect(api.mock.calls.map(([url]) => url)).toEqual(['/projects', '/project/status', '/sessions/operation-one/artifacts']);
+  expect(pendingTemplateProjects()).toEqual([]);
 });
