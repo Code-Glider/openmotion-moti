@@ -467,7 +467,7 @@ export const NLEPreview = memo(function NLEPreview({
     <div className="flex flex-col h-full min-h-0">
       <div
         ref={viewportRef}
-        style={mvp ? { background: "var(--motion-panel)" } : undefined}
+        style={mvp ? { background: "var(--studio-preview-bg, var(--motion-panel))" } : undefined}
         className="relative flex-1 flex items-center justify-center overflow-hidden min-h-0 outline-hidden focus:ring-1 focus:ring-studio-accent/40 bg-[var(--studio-preview-bg,var(--color-neutral-950))]"
         tabIndex={0}
         aria-label={t("Composition preview")}
