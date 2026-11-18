@@ -232,16 +232,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "给我们的背包做个黑五视频：89 美元打 6 折，优惠码 FRIDAY40，12 月 1 日截止",
     "Sale countdown": "大促倒计时",
     "When you want to tease a sale before it starts, or remind people it ends soon": "想在开售前预热，或提醒大家活动快结束了",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "10 秒预告：翻牌数字滚到真实剩余的天数或小时，再给出日期、优惠和行动按钮",
     "The true number of days or hours left.": "真实的剩余天数或小时。",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "按 OpenMotion sale-countdown Skill 执行：确认视频发布时间和活动开始或结束时间，写 countdown.json，运行 build.mjs --check 算出剩余天数或小时，再生成并渲染预告。",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "黑五 11 月 27 日开始：做一条 11 月 20 日发的倒计时",
     "Sale product carousel": "大促商品轮播",
     "When you have several sale products to show in one video, like a gift guide or top deals": "有好几个促销商品要放进一条视频，比如礼物清单或精选好价",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9～16 秒轮播：每个商品一张卡片，有照片、划线原价、促销价和折扣角标，最后是全部商品总览和优惠码",
     "3 to 7 deals in one reel.": "一条视频放 3～7 个好价。",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "按 OpenMotion sale-carousel Skill 执行：收集 3～7 个商品的真实照片、原价和各自一种折扣写法，写 carousel.json，运行 build.mjs --check 并向用户复述价格，再生成并渲染轮播。",
-    "A gift guide under $100 with our five best deals": "做一条 100 美元以内的礼物清单，放我们最好的五个优惠"
+    "A gift guide under $100 with our five best deals": "做一条 100 美元以内的礼物清单，放我们最好的五个优惠",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "10 秒预告：大号数字滚到真实剩余的天数或小时，再给出日期、优惠和行动按钮",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9～17 秒轮播：每个商品一张卡片，有照片、划线原价、促销价和折扣角标，最后是全部商品总览和优惠码"
   },
   "ja": {
     "Skills": "Skills",
@@ -476,16 +476,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "バックパックのブラックフライデー動画：89ドルから40%オフ、コード FRIDAY40、12月1日まで",
     "Sale countdown": "セールカウントダウン",
     "When you want to tease a sale before it starts, or remind people it ends soon": "セール開始前に予告したいとき、もうすぐ終わると知らせたいとき",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "10秒の予告：フリップ式の数字が実際の残り日数・時間まで回り、日付、オファー、行動ボタンへ",
     "The true number of days or hours left.": "本当の残り日数・時間。",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "OpenMotion の sale-countdown Skill に従う：動画の投稿日時とセールの開始・終了日時を確認して countdown.json を書き、build.mjs --check で残り日数・時間を計算してから、予告を生成・レンダリングする。",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "ブラックフライデーは11月27日開始：11月20日に投稿するカウントダウン",
     "Sale product carousel": "セール商品カルーセル",
     "When you have several sale products to show in one video, like a gift guide or top deals": "ギフトガイドや目玉商品など、複数のセール商品を1本の動画で見せたいとき",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9〜16秒のリール：商品ごとに写真、取り消し線付きの定価、セール価格、バッジのカード、最後に全商品の一覧とコード",
     "3 to 7 deals in one reel.": "1本に3〜7件のお得商品。",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "OpenMotion の sale-carousel Skill に従う：実物写真、定価、割引の指定1つを持つ商品を3〜7点集めて carousel.json を書き、build.mjs --check を実行して価格を読み上げてから、リールを生成・レンダリングする。",
-    "A gift guide under $100 with our five best deals": "100ドル以下のギフトガイド、ベスト5のお得商品で"
+    "A gift guide under $100 with our five best deals": "100ドル以下のギフトガイド、ベスト5のお得商品で",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "10秒の予告：フリップ式の数字が実際の残り日数・時間まで回り、日付、オファー、行動ボタンへ",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9〜17秒のリール：商品ごとに写真、取り消し線付きの定価、セール価格、バッジのカード、最後に全商品の一覧とコード"
   },
   "ko": {
     "Skills": "Skills",
@@ -720,16 +720,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "백팩 블랙프라이데이 영상: 89달러에서 40% 할인, 코드 FRIDAY40, 12월 1일 마감",
     "Sale countdown": "세일 카운트다운",
     "When you want to tease a sale before it starts, or remind people it ends soon": "세일 시작 전에 예고하거나 곧 끝난다고 알리고 싶을 때",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "10초 티저: 플립 숫자가 실제 남은 일수나 시간까지 넘어가고, 날짜, 혜택, 행동 유도 버튼",
     "The true number of days or hours left.": "실제 남은 일수나 시간.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "OpenMotion sale-countdown Skill을 따르세요: 영상 게시 시각과 세일 시작 또는 종료 시각을 확인해 countdown.json을 작성하고, build.mjs --check로 남은 일수나 시간을 계산한 뒤 티저를 생성하고 렌더링합니다.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "블랙프라이데이는 11월 27일 시작: 11월 20일에 올릴 카운트다운",
     "Sale product carousel": "세일 상품 캐러셀",
     "When you have several sale products to show in one video, like a gift guide or top deals": "선물 가이드나 인기 딜처럼 여러 세일 상품을 한 영상에 보여 줄 때",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9~16초 릴: 상품마다 사진, 취소선 정가, 할인가, 배지가 있는 카드, 마지막에 전체 상품 그리드와 코드",
     "3 to 7 deals in one reel.": "한 릴에 딜 3~7개.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "OpenMotion sale-carousel Skill을 따르세요: 실제 사진, 정가, 할인 방식 하나씩을 가진 상품 3~7개를 모아 carousel.json을 작성하고, build.mjs --check를 실행해 가격을 확인한 뒤 릴을 생성하고 렌더링합니다.",
-    "A gift guide under $100 with our five best deals": "100달러 이하 선물 가이드, 베스트 딜 다섯 개로"
+    "A gift guide under $100 with our five best deals": "100달러 이하 선물 가이드, 베스트 딜 다섯 개로",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "10초 티저: 플립 숫자가 실제 남은 일수나 시간까지 넘어가고, 날짜, 혜택, 행동 유도 버튼",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9~17초 릴: 상품마다 사진, 취소선 정가, 할인가, 배지가 있는 카드, 마지막에 전체 상품 그리드와 코드"
   },
   "ru": {
     "Skills": "Skills",
@@ -964,16 +964,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Видео к Чёрной пятнице для нашего рюкзака: −40% от $89, код FRIDAY40, до 1 декабря",
     "Sale countdown": "Отсчёт до распродажи",
     "When you want to tease a sale before it starts, or remind people it ends soon": "Когда нужно анонсировать распродажу до старта или напомнить, что она скоро закончится",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "Тизер на 10 секунд: перекидные цифры доходят до реального числа оставшихся дней или часов, затем дата, предложение и призыв",
     "The true number of days or hours left.": "Реальное число оставшихся дней или часов.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "Следуйте Skill OpenMotion sale-countdown: узнайте, когда будет опубликовано видео и когда начинается или заканчивается распродажа, запишите countdown.json, запустите build.mjs --check для расчёта оставшихся дней или часов, затем соберите и отрендерите тизер.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "Чёрная пятница начинается 27 ноября: отсчёт для публикации 20 ноября",
     "Sale product carousel": "Карусель товаров со скидкой",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Когда нужно показать несколько товаров со скидкой в одном видео, например подборку подарков или лучшие предложения",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Ролик на 9–16 секунд: по карточке на товар с фото, зачёркнутой обычной ценой, ценой со скидкой и значком, затем сетка всех товаров с кодом",
     "3 to 7 deals in one reel.": "От 3 до 7 предложений в одном ролике.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "Следуйте Skill OpenMotion sale-carousel: соберите от 3 до 7 товаров с реальными фото, обычными ценами и одним видом скидки для каждого, запишите carousel.json, запустите build.mjs --check и зачитайте цены, затем соберите и отрендерите ролик.",
-    "A gift guide under $100 with our five best deals": "Подборка подарков до $100 с нашими пятью лучшими предложениями"
+    "A gift guide under $100 with our five best deals": "Подборка подарков до $100 с нашими пятью лучшими предложениями",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "Тизер на 10 секунд: перекидные цифры доходят до реального числа оставшихся дней или часов, затем дата, предложение и призыв",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Ролик на 9–17 секунд: по карточке на товар с фото, зачёркнутой обычной ценой, ценой со скидкой и значком, затем сетка всех товаров с кодом"
   },
   "de": {
     "Skills": "Skills",
@@ -1208,16 +1208,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Ein Black-Friday-Video für unseren Rucksack: 40 % auf 89 $, Code FRIDAY40, endet am 1. Dezember",
     "Sale countdown": "Sale-Countdown",
     "When you want to tease a sale before it starts, or remind people it ends soon": "Wenn du einen Sale vor dem Start anteasern oder an das baldige Ende erinnern willst",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "Ein 10-Sekunden-Teaser: Fallblatt-Ziffern laufen bis zu den echten verbleibenden Tagen oder Stunden, dann Datum, Angebot und Call-to-Action",
     "The true number of days or hours left.": "Die echte Zahl der verbleibenden Tage oder Stunden.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "Folge dem OpenMotion-Skill sale-countdown: Kläre, wann das Video veröffentlicht wird und wann der Sale beginnt oder endet, schreibe countdown.json, berechne mit build.mjs --check die verbleibenden Tage oder Stunden, dann erzeuge und rendere den Teaser.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "Black Friday startet am 27. November: ein Countdown zum Posten am 20. November",
     "Sale product carousel": "Sale-Produktkarussell",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Wenn du mehrere Sale-Produkte in einem Video zeigen willst, etwa einen Geschenk-Guide oder Top-Deals",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Ein 9–16-Sekunden-Reel: eine Karte pro Produkt mit Foto, durchgestrichenem Normalpreis, Sale-Preis und Badge, dann ein Raster aller Produkte mit Code",
     "3 to 7 deals in one reel.": "3 bis 7 Deals in einem Reel.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "Folge dem OpenMotion-Skill sale-carousel: Sammle 3 bis 7 Produkte mit echten Fotos, Normalpreisen und je einer Rabattangabe, schreibe carousel.json, führe build.mjs --check aus und lies die Preise vor, dann erzeuge und rendere das Reel.",
-    "A gift guide under $100 with our five best deals": "Ein Geschenk-Guide unter 100 $ mit unseren fünf besten Deals"
+    "A gift guide under $100 with our five best deals": "Ein Geschenk-Guide unter 100 $ mit unseren fünf besten Deals",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "Ein 10-Sekunden-Teaser: Fallblatt-Ziffern laufen bis zu den echten verbleibenden Tagen oder Stunden, dann Datum, Angebot und Call-to-Action",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Ein 9–17-Sekunden-Reel: eine Karte pro Produkt mit Foto, durchgestrichenem Normalpreis, Sale-Preis und Badge, dann ein Raster aller Produkte mit Code"
   },
   "fr": {
     "Skills": "Skills",
@@ -1452,16 +1452,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Une vidéo Black Friday pour notre sac à dos : −40 % sur 89 $, code FRIDAY40, jusqu'au 1er décembre",
     "Sale countdown": "Compte à rebours des soldes",
     "When you want to tease a sale before it starts, or remind people it ends soon": "Pour annoncer des soldes avant leur début, ou rappeler qu'elles finissent bientôt",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "Un teaser de 10 secondes : des chiffres à volets défilent jusqu'au vrai nombre de jours ou d'heures restants, puis la date, l'offre et un appel à l'action",
     "The true number of days or hours left.": "Le vrai nombre de jours ou d'heures restants.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "Suivez le Skill OpenMotion sale-countdown : obtenez la date de publication de la vidéo et le début ou la fin des soldes, écrivez countdown.json, lancez build.mjs --check pour calculer les jours ou heures restants, puis générez et rendez le teaser.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "Le Black Friday commence le 27 novembre : un compte à rebours à publier le 20 novembre",
     "Sale product carousel": "Carrousel de produits en soldes",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Pour montrer plusieurs produits en soldes dans une vidéo, comme un guide cadeaux ou les meilleures offres",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Un reel de 9 à 16 secondes : une carte par produit avec photo, prix normal barré, prix soldé et badge, puis une grille de tous les produits avec le code",
     "3 to 7 deals in one reel.": "3 à 7 bonnes affaires en un reel.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "Suivez le Skill OpenMotion sale-carousel : réunissez 3 à 7 produits avec de vraies photos, leur prix normal et une forme de remise chacun, écrivez carousel.json, lancez build.mjs --check et relisez les prix, puis générez et rendez le reel.",
-    "A gift guide under $100 with our five best deals": "Un guide cadeaux à moins de 100 $ avec nos cinq meilleures offres"
+    "A gift guide under $100 with our five best deals": "Un guide cadeaux à moins de 100 $ avec nos cinq meilleures offres",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "Un teaser de 10 secondes : des chiffres à volets défilent jusqu'au vrai nombre de jours ou d'heures restants, puis la date, l'offre et un appel à l'action",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Un reel de 9 à 17 secondes : une carte par produit avec photo, prix normal barré, prix soldé et badge, puis une grille de tous les produits avec le code"
   },
   "es": {
     "Skills": "Skills",
@@ -1696,16 +1696,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Un vídeo de Black Friday para nuestra mochila: 40 % de descuento sobre 89 $, código FRIDAY40, termina el 1 de diciembre",
     "Sale countdown": "Cuenta atrás de rebajas",
     "When you want to tease a sale before it starts, or remind people it ends soon": "Cuando quieres anticipar unas rebajas antes de que empiecen o recordar que terminan pronto",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "Un teaser de 10 segundos: dígitos de paleta bajan hasta los días u horas que realmente quedan, luego la fecha, la oferta y una llamada a la acción",
     "The true number of days or hours left.": "Los días u horas que realmente quedan.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "Sigue el Skill sale-countdown de OpenMotion: averigua cuándo se publicará el vídeo y cuándo empiezan o terminan las rebajas, escribe countdown.json, ejecuta build.mjs --check para calcular los días u horas restantes y luego genera y renderiza el teaser.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "El Black Friday empieza el 27 de noviembre: una cuenta atrás para publicar el 20 de noviembre",
     "Sale product carousel": "Carrusel de productos rebajados",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Cuando tienes varios productos rebajados para un solo vídeo, como una guía de regalos o las mejores ofertas",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Un reel de 9 a 16 segundos: una tarjeta por producto con foto, precio normal tachado, precio rebajado y distintivo, y al final una cuadrícula con todos y el código",
     "3 to 7 deals in one reel.": "De 3 a 7 ofertas en un reel.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "Sigue el Skill sale-carousel de OpenMotion: reúne de 3 a 7 productos con fotos reales, precio normal y una forma de descuento cada uno, escribe carousel.json, ejecuta build.mjs --check y repasa los precios, luego genera y renderiza el reel.",
-    "A gift guide under $100 with our five best deals": "Una guía de regalos por menos de 100 $ con nuestras cinco mejores ofertas"
+    "A gift guide under $100 with our five best deals": "Una guía de regalos por menos de 100 $ con nuestras cinco mejores ofertas",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "Un teaser de 10 segundos: dígitos de paleta bajan hasta los días u horas que realmente quedan, luego la fecha, la oferta y una llamada a la acción",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Un reel de 9 a 17 segundos: una tarjeta por producto con foto, precio normal tachado, precio rebajado y distintivo, y al final una cuadrícula con todos y el código"
   },
   "pt-BR": {
     "Skills": "Skills",
@@ -1940,16 +1940,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Um vídeo de Black Friday para nossa mochila: 40% off em US$ 89, cupom FRIDAY40, até 1º de dezembro",
     "Sale countdown": "Contagem regressiva da promoção",
     "When you want to tease a sale before it starts, or remind people it ends soon": "Quando você quer anunciar a promoção antes de começar ou lembrar que ela acaba logo",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "Um teaser de 10 segundos: dígitos de painel giram até os dias ou horas que realmente faltam, depois a data, a oferta e uma chamada para ação",
     "The true number of days or hours left.": "Os dias ou horas que realmente faltam.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "Siga o Skill sale-countdown do OpenMotion: descubra quando o vídeo será publicado e quando a promoção começa ou termina, escreva countdown.json, rode build.mjs --check para calcular os dias ou horas restantes e depois gere e renderize o teaser.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "A Black Friday começa em 27 de novembro: uma contagem para postar em 20 de novembro",
     "Sale product carousel": "Carrossel de produtos em promoção",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Quando você tem vários produtos em promoção para um vídeo, como um guia de presentes ou as melhores ofertas",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Um reel de 9 a 16 segundos: um card por produto com foto, preço normal riscado, preço promocional e selo, depois uma grade com todos e o cupom",
     "3 to 7 deals in one reel.": "De 3 a 7 ofertas em um reel.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "Siga o Skill sale-carousel do OpenMotion: reúna de 3 a 7 produtos com fotos reais, preço normal e uma forma de desconto cada, escreva carousel.json, rode build.mjs --check e confirme os preços, depois gere e renderize o reel.",
-    "A gift guide under $100 with our five best deals": "Um guia de presentes abaixo de US$ 100 com nossas cinco melhores ofertas"
+    "A gift guide under $100 with our five best deals": "Um guia de presentes abaixo de US$ 100 com nossas cinco melhores ofertas",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "Um teaser de 10 segundos: dígitos de painel giram até os dias ou horas que realmente faltam, depois a data, a oferta e uma chamada para ação",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Um reel de 9 a 17 segundos: um card por produto com foto, preço normal riscado, preço promocional e selo, depois uma grade com todos e o cupom"
   },
   "it": {
     "Skills": "Skill",
@@ -2184,16 +2184,16 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Un video Black Friday per il nostro zaino: 40% su 89 $, codice FRIDAY40, fino al 1° dicembre",
     "Sale countdown": "Conto alla rovescia dei saldi",
     "When you want to tease a sale before it starts, or remind people it ends soon": "Quando vuoi anticipare i saldi prima che inizino o ricordare che stanno per finire",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "Un teaser di 10 secondi: cifre a palette scorrono fino ai giorni o alle ore che mancano davvero, poi data, offerta e call to action",
     "The true number of days or hours left.": "I giorni o le ore che mancano davvero.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "Segui lo Skill OpenMotion sale-countdown: chiedi quando sarà pubblicato il video e quando iniziano o finiscono i saldi, scrivi countdown.json, esegui build.mjs --check per calcolare i giorni o le ore rimanenti, poi genera e renderizza il teaser.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "Il Black Friday inizia il 27 novembre: un conto alla rovescia da pubblicare il 20 novembre",
     "Sale product carousel": "Carosello di prodotti in saldo",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Quando hai più prodotti in saldo da mostrare in un video, come una guida ai regali o le offerte migliori",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Un reel di 9–16 secondi: una scheda per prodotto con foto, prezzo pieno barrato, prezzo scontato e badge, poi una griglia di tutti con il codice",
     "3 to 7 deals in one reel.": "Da 3 a 7 offerte in un reel.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "Segui lo Skill OpenMotion sale-carousel: raccogli da 3 a 7 prodotti con foto reali, prezzo pieno e una forma di sconto ciascuno, scrivi carousel.json, esegui build.mjs --check e rileggi i prezzi, poi genera e renderizza il reel.",
-    "A gift guide under $100 with our five best deals": "Una guida ai regali sotto i 100 $ con le nostre cinque offerte migliori"
+    "A gift guide under $100 with our five best deals": "Una guida ai regali sotto i 100 $ con le nostre cinque offerte migliori",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "Un teaser di 10 secondi: cifre a palette scorrono fino ai giorni o alle ore che mancano davvero, poi data, offerta e call to action",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "Un reel di 9–17 secondi: una scheda per prodotto con foto, prezzo pieno barrato, prezzo scontato e badge, poi una griglia di tutti con il codice"
   },
   "tr": {
     "Skills": "Skill’ler",
@@ -2428,15 +2428,15 @@
     "A Black Friday video for our backpack: 40% off $89, code FRIDAY40, ends Dec 1": "Sırt çantamız için Black Friday videosu: 89 $ üzerinden %40 indirim, kod FRIDAY40, 1 Aralık'ta bitiyor",
     "Sale countdown": "İndirim geri sayımı",
     "When you want to tease a sale before it starts, or remind people it ends soon": "İndirimi başlamadan önce duyurmak ya da yakında bittiğini hatırlatmak istediğinizde",
-    "A 10 second teaser: split-flap digits roll down to the true days or hours left, then the date, the offer and a call to action": "10 saniyelik tanıtım: dönen rakamlar gerçek kalan gün ya da saate iner, ardından tarih, teklif ve harekete geçirici buton",
     "The true number of days or hours left.": "Gerçek kalan gün ya da saat.",
     "Follow the OpenMotion sale-countdown Skill: get when the video will be posted and when the sale starts or ends, write countdown.json, run build.mjs --check to compute the days or hours left, then build and render the teaser.": "OpenMotion sale-countdown Skill'ini izleyin: videonun ne zaman yayınlanacağını ve indirimin ne zaman başlayıp bittiğini öğrenin, countdown.json yazın, build.mjs --check ile kalan gün ya da saati hesaplayın, ardından tanıtımı oluşturup render edin.",
     "Black Friday starts Nov 27: a countdown to post on Nov 20": "Black Friday 27 Kasım'da başlıyor: 20 Kasım'da paylaşılacak bir geri sayım",
     "Sale product carousel": "İndirimli ürün karuseli",
     "When you have several sale products to show in one video, like a gift guide or top deals": "Hediye rehberi ya da en iyi fırsatlar gibi birden çok indirimli ürünü tek videoda göstermek istediğinizde",
-    "A 9–16 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9–16 saniyelik reel: her ürün için fotoğraf, üstü çizili normal fiyat, indirimli fiyat ve rozetli bir kart, ardından kodla birlikte tüm ürünlerin ızgarası",
     "3 to 7 deals in one reel.": "Tek reel'de 3–7 fırsat.",
     "Follow the OpenMotion sale-carousel Skill: collect 3 to 7 products with real photos, regular prices and one form of discount each, write carousel.json, run build.mjs --check and read the prices back, then build and render the reel.": "OpenMotion sale-carousel Skill'ini izleyin: gerçek fotoğrafı, normal fiyatı ve birer indirim biçimi olan 3–7 ürün toplayın, carousel.json yazın, build.mjs --check çalıştırıp fiyatları teyit edin, ardından reel'i oluşturup render edin.",
-    "A gift guide under $100 with our five best deals": "En iyi beş fırsatımızla 100 $ altı hediye rehberi"
+    "A gift guide under $100 with our five best deals": "En iyi beş fırsatımızla 100 $ altı hediye rehberi",
+    "A 10 second teaser: giant digits roll down to the true days or hours left, then the date, the offer and a call to action": "10 saniyelik tanıtım: dönen rakamlar gerçek kalan gün ya da saate iner, ardından tarih, teklif ve harekete geçirici buton",
+    "A 9–17 second reel: one card per product with its photo, the struck-through regular price, the sale price and a badge, then a grid of every pick with the code": "9–17 saniyelik reel: her ürün için fotoğraf, üstü çizili normal fiyat, indirimli fiyat ve rozetli bir kart, ardından kodla birlikte tüm ürünlerin ızgarası"
   }
 }

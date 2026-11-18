@@ -18,7 +18,7 @@ library/
 ├── skills/openmotion-growth-teardown/          → company growth research → sourced growth-map film
 ├── skills/openmotion-design-styles/            → 21 named design styles + 2 layouts → a film in that style
 ├── skills/openmotion-sale-promo/               → one sale offer → exact was/now promo film
-├── skills/openmotion-sale-countdown/           → true days or hours left → split-flap sale teaser
+├── skills/openmotion-sale-countdown/           → true days or hours left → rolling-number sale teaser
 ├── skills/openmotion-sale-carousel/            → 3–7 sale products → carousel reel with end grid
 ├── skills/openmotion-presenter-story/          → three presenter / motion recipes
 ├── skills/openmotion-design-remix/             → six source / remix profiles

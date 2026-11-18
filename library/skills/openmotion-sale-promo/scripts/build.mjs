@@ -5,7 +5,7 @@
 //   node scripts/build.mjs offer.json out/ [--aspect 9:16|4:5|1:1|16:9] [--duration 10|15] [--no-credit]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit } from './film.mjs';
+import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit, tape, badge, echo } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -52,98 +52,121 @@ const $ = v => money(v, cur, loc);
 if (checkOnly) { console.log(`✓ ${data.brand.name} · ${data.product.name}: ${$(p.was)} → ${$(p.now)} (${p.percent}% off, save ${$(p.save)}), code ${data.code}, ${aspect}, ${dur} s`); process.exit(0); }
 
 // ---------- layout ----------
+// One continuous world: the product photo stays on screen the whole time and reframes,
+// a sale tape scrolls and a badge spins from first frame to last, and display type moves
+// through line masks instead of slides fading in and out.
 const [W, H] = SIZES[aspect];
 const t = theme(data);
 const wide = W > H, portrait = H / W > 1.5;
-const u = Math.min(W, H) / 1080 * (wide ? 1.3 : 1);   // scale unit; landscape frames get larger type
+const u = Math.min(W, H) / 1080;
 const px = n => Math.round(n * u);
-const k = dur / 10;                            // beat stretch
-const B = { hook: 0, disc: 1.6 * k, price: 4.0 * k, code: 7.0 * k, cta: 8.8 * k, end: dur };
-const big = p.framing === 'percent' ? `${p.percent}%` : $(p.save).replace(/\.00$/, '');
-const bigSize = Math.min(px(wide ? 420 : 400), Math.round((wide ? H * 1.3 : W * 0.9) / (0.62 * [...big].length)));
-const occ = String(data.occasion).toUpperCase().split(/\s+/);
-const occSize = Math.min(px(wide ? 230 : 250), Math.round((wide ? W * 0.8 : W * 0.88) / (0.6 * Math.max(...occ.map(w => w.length)))));
+const k = dur / 10;
+const B = { hook: 0, disc: 1.7 * k, price: 4.0 * k, code: 7.0 * k, cta: 8.6 * k, end: dur };
 const img = data.product.image;
-// Long localised prices (e.g. "Rp 1.200.000") shrink to fit the text column.
-const nowSize = fit($(p.was).length >= $(p.now).length ? $(p.was) : $(p.now), wide ? W * 0.42 : W * 0.86, px(wide ? 170 : 190), 0.62);
-// Monospace glyphs are ~0.6 em plus 0.06 em tracking; leave room for the chip's padding and border.
-const codeSize = Math.min(px(118), Math.floor((W * 0.9 - px(130)) / (0.68 * data.code.length)));
-const L = { off: 'OFF', useCode: 'Use code', save: 'Save', ...(data.labels || {}) };
+const L = { off: 'OFF', useCode: 'Use code', save: 'Save', ends: 'Ends', ...(data.labels || {}) };
+const occWords = String(data.occasion).toUpperCase().split(/\s+/);
+const big = p.framing === 'percent' ? `${p.percent}%` : $(p.save).replace(/\.00$/, '');
+const textW = wide ? W * 0.44 : W * 0.88;
+const occSize = fit(occWords.reduce((a, b) => (a.length > b.length ? a : b)), textW, px(wide ? 300 : 330), 0.47);
+const bigSize = fit(big, wide ? W * 0.5 : W * 0.86, px(wide ? 520 : 560), 0.64);
+const nowSize = fit($(p.now), wide ? W * 0.4 : W * 0.8, px(wide ? 230 : 250), 0.6);
+const endSize = fit(String(data.occasion), W * 0.86, px(wide ? 200 : 210), 0.5);
+const codeSize = fit(data.code, wide ? W * 0.38 : W * 0.72, px(130), 0.5);
+// Where the photo sits once it becomes a card, and where the price column goes.
+const card = wide ? 'inset(9% 52% 16% 5% round 28px)' : portrait ? 'inset(7% 9% 40% 9% round 36px)' : 'inset(7% 50% 22% 6% round 32px)';
+const col = wide ? { left: W * 0.52, top: H * 0.16, w: W * 0.43, align: 'left' } : portrait ? { left: W * 0.06, top: H * 0.61, w: W * 0.88, align: 'left' } : { left: W * 0.53, top: H * 0.16, w: W * 0.42, align: 'left' };
+const tapeText = `${data.occasion} · ${big} ${L.off} · ${L.useCode} ${data.code}`;
+const shade = `rgba(${t.shade},`;
 
 const css = `
 #bg{position:absolute;inset:0;background:${t.bg}}
-.beat{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:${t.ink};opacity:0}
-.brand{position:absolute;top:${px(70)}px;left:0;right:0;text-align:center;font-weight:600;font-size:${px(34)}px;letter-spacing:.18em;text-transform:uppercase;color:${t.ink};opacity:0}
-.occ{font-weight:800;line-height:.86;letter-spacing:-.03em;font-size:${occSize}px}
-.bar{width:${px(260)}px;height:${px(16)}px;background:${t.accent};margin-top:${px(46)}px;transform-origin:left center}
-.big{font-weight:800;line-height:.82;letter-spacing:-.05em;font-size:${bigSize}px;color:${t.accent}}
-.off{font-weight:800;font-size:${px(150)}px;letter-spacing:-.02em;line-height:1;margin-top:${px(10)}px}
-.ray{position:absolute;left:50%;top:50%;width:${px(1600)}px;height:${px(1600)}px;margin:${-px(800)}px 0 0 ${-px(800)}px;background:repeating-conic-gradient(${t.accent}22 0 6deg,transparent 6deg 18deg);border-radius:50%;opacity:0}
-.card{display:flex;${wide ? 'flex-direction:row;gap:' + px(70) + 'px' : 'flex-direction:column;gap:' + px(portrait ? 56 : 30) + 'px'};align-items:center}
-.photo{width:${px(wide ? 620 : portrait ? 900 : 600)}px;height:${px(wide ? 620 : portrait ? 960 : 500)}px;border-radius:${px(36)}px;background:${t.panel} center/cover no-repeat;box-shadow:0 ${px(30)}px ${px(80)}px rgba(0,0,0,.35)}
-.noimg{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${px(120)}px;color:${t.accent};letter-spacing:-.04em;padding:${px(40)}px;text-align:center;line-height:.95}
-.pname{font-weight:600;font-size:${px(54)}px;letter-spacing:-.01em}
-.was{position:relative;display:inline-block;font-size:${px(72)}px;color:${t.sub};font-weight:600}
-.strike{position:absolute;left:-4%;right:-4%;top:52%;height:${px(9)}px;background:${t.accent};transform:scaleX(0);transform-origin:left center;border-radius:${px(5)}px}
-.now{font-weight:800;font-size:${nowSize}px;letter-spacing:-.04em;line-height:1;color:${t.ink}}
-.save{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(40)}px;padding:${px(12)}px ${px(26)}px;border-radius:${px(999)}px;margin-top:${px(18)}px}
-.label{font-size:${px(44)}px;color:${t.sub};letter-spacing:.12em;text-transform:uppercase;font-weight:600}
-.chip{margin-top:${px(28)}px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-weight:700;font-size:${codeSize}px;letter-spacing:.06em;padding:${px(26)}px ${px(56)}px;border:${px(7)}px dashed ${t.accent};border-radius:${px(28)}px;background:${t.panel};color:${t.ink}}
-.dl{margin-top:${px(60)}px;font-size:${px(50)}px;font-weight:600;display:flex;align-items:center;gap:${px(18)}px}
-.dot{width:${px(22)}px;height:${px(22)}px;border-radius:50%;background:${t.accent}}
-.cta{font-weight:800;font-size:${px(96)}px;background:${t.accent};color:${t.accentInk};padding:${px(34)}px ${px(84)}px;border-radius:${px(999)}px;letter-spacing:-.01em}
-.url{margin-top:${px(40)}px;font-size:${px(48)}px;color:${t.sub};font-weight:600}
-.endocc{font-size:${px(46)}px;letter-spacing:.16em;text-transform:uppercase;color:${t.sub};font-weight:700;margin-bottom:${px(50)}px}`;
-
+#ph{position:absolute;inset:0;background:${img ? `${t.bg} center/cover no-repeat` : `radial-gradient(120% 90% at 70% 20%,${t.accent} 0,${t.bg} 70%)`};transform-origin:50% 45%}
+#shade{position:absolute;inset:0;background:linear-gradient(180deg,${shade}.55) 0,${shade}.05) 35%,${shade}.15) 55%,${shade}.9) 100%)}
+#veil{position:absolute;inset:0;background:${shade}.55);opacity:0}
+.brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
+.mask{overflow:hidden}
+.col{position:absolute;color:${t.ink}}
+.pname{font-weight:600;font-size:${px(44)}px;letter-spacing:.02em;opacity:.9}
+.was{position:relative;display:inline-block;font-size:${px(64)}px;color:${t.sub};margin-top:${px(10)}px}
+.strike{position:absolute;left:-4%;right:-4%;top:50%;height:${px(8)}px;background:${t.accent};transform:scaleX(0);transform-origin:left center}
+.tag{position:absolute;border-radius:50%;background:${t.accent};color:${t.accentInk};display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.chip{display:inline-block;border:${px(6)}px dashed ${t.ink};border-radius:${px(22)}px;padding:${px(14)}px ${px(40)}px ${px(6)}px;background:${shade}.35)}
+.cta{display:inline-block;background:${t.ink};color:${t.bg};font-weight:700;font-size:${px(64)}px;padding:${px(26)}px ${px(64)}px;border-radius:${px(999)}px}
+`;
+const echoes = (id, words, size) => words.map((w, i) => `<div class="mask" style="height:${Math.round(size * 0.9)}px"><div id="${id}${i}">${echo(`${id}${i}x`, w, size, t, { copies: 0, align: wide ? 'left' : 'center' })}</div></div>`).join('');
+const headTop = wide ? H * 0.2 : portrait ? H * 0.2 : H * 0.14;
 const body = src => `<div id="bg"></div>
-<div id="ray" class="ray"></div>
-<div id="brand" class="brand">${esc(data.brand.name)}</div>
-<div id="b-hook" class="beat"><div class="occ">${occ.map((w, i) => `<div id="occ${i}">${esc(w)}</div>`).join('')}</div><div id="bar" class="bar"></div></div>
-<div id="b-disc" class="beat"><div id="big" class="big">${esc(big)}</div><div id="off" class="off">${esc(L.off)}</div></div>
-<div id="b-price" class="beat"><div class="card">
-  ${img ? `<div id="photo" class="photo" style="background-image:url('${src(img)}')"></div>` : `<div id="photo" class="photo noimg">${esc(data.product.name)}</div>`}
-  <div>
-    ${img ? `<div class="pname">${esc(data.product.name)}</div>` : ''}
-    <div style="margin-top:${px(18)}px"><span class="was">${esc($(p.was))}<span id="strike" class="strike"></span></span></div>
-    <div id="now" class="now">${esc($(p.was))}</div>
-    <div id="save" class="save">${esc(L.save)} ${esc($(p.save))}</div>
-  </div></div></div>
-<div id="b-code" class="beat"><div class="label">${esc(L.useCode)}</div><div id="chip" class="chip">${esc(data.code)}</div><div id="dl" class="dl"><span class="dot"></span>${esc(dl.label)}</div></div>
-<div id="b-cta" class="beat"><div class="endocc">${esc(data.occasion)} · ${esc(data.brand.name)}</div><div id="cta" class="cta">${esc(data.cta)}</div>${data.url ? `<div class="url">${esc(data.url)}</div>` : ''}${noCredit ? '' : credit(t, px(30))}</div>`;
+<div id="ph"${img ? ` style="background-image:url('${src(img)}')"` : ''}></div>
+<div id="shade"></div><div id="veil"></div>
+<div class="grain" id="grain"></div>
+<div class="brand">${esc(data.brand.name)}</div>
+<div id="hook" style="position:absolute;left:${wide ? W * 0.06 : 0}px;right:${wide ? W * 0.5 : 0}px;top:${headTop}px">${echoes('occ', occWords, occSize)}</div>
+<div id="disc" style="opacity:0;position:absolute;left:0;right:0;top:${wide ? H * 0.18 : H * 0.24}px;text-align:center">
+  <div class="mask" style="height:${Math.round(bigSize * 0.92)}px"><div id="big" class="d" style="font-size:${bigSize}px;color:${t.ink}">${esc(big)}</div></div>
+  <div class="mask" style="height:${Math.round(bigSize * 0.42)}px"><div id="off" class="d" style="font-size:${Math.round(bigSize * 0.44)}px;color:${t.ink}">${esc(L.off)}</div></div>
+</div>
+<div id="pcol" class="col" style="left:${col.left}px;top:${col.top}px;width:${col.w}px;text-align:${col.align};opacity:0">
+  <div class="pname">${esc(data.product.name)}</div>
+  <div><span class="was">${esc($(p.was))}<span id="strike" class="strike"></span></span></div>
+  <div class="mask" style="height:${Math.round(nowSize * 0.95)}px"><div id="now" class="d" style="font-size:${nowSize}px">${esc($(p.was))}</div></div>
+</div>
+<div id="tag" class="tag d" style="width:${px(230)}px;height:${px(230)}px;${wide ? `left:${W * 0.03}px;top:${H * 0.6}px` : portrait ? `right:${W * 0.05}px;top:${H * 0.05}px` : `left:${W * 0.03}px;top:${H * 0.03}px`};font-size:${px(78)}px;line-height:.9;opacity:0">${esc(big)}<span style="font-size:${px(34)}px">${esc(L.save)} ${esc($(p.save))}</span></div>
+<div id="codeb" class="col" style="left:${col.left}px;top:${col.top}px;width:${col.w}px;opacity:0">
+  <div style="font-size:${px(34)}px;letter-spacing:.2em;text-transform:uppercase;color:${t.sub};font-weight:600">${esc(L.useCode)}</div>
+  <div id="chip" class="chip d" style="font-size:${codeSize}px;margin-top:${px(14)}px">${esc(data.code)}</div>
+  <div id="dl" style="margin-top:${px(26)}px;font-size:${px(42)}px;font-weight:600">${esc(dl.label)}</div>
+</div>
+<div id="ctab" style="position:absolute;left:0;right:0;top:${portrait ? H * 0.38 : H * 0.3}px;text-align:center;color:${t.ink};opacity:0">
+  <div class="mask" style="height:${Math.round(endSize * 0.92)}px"><div id="ctaocc" class="d" style="font-size:${endSize}px;white-space:nowrap">${esc(data.occasion)}</div></div>
+  <div id="cta" class="cta" style="margin-top:${px(40)}px">${esc(data.cta)}</div>
+  ${data.url ? `<div style="margin-top:${px(26)}px;font-size:${px(40)}px;font-weight:600;color:${t.ink};opacity:.8">${esc(data.url)}</div>` : ''}
+</div>
+${tape('tape', tapeText, t, W, H, { y: portrait ? 0.9 : 0.88, size: px(wide ? 56 : 62) })}
+<div id="badgewrap" style="position:absolute;${portrait ? `right:${W * 0.05}px;top:${H * 0.63}px` : `right:${W * 0.04}px;top:${H * 0.58}px`};width:${px(250)}px;height:${px(250)}px;opacity:0">${badge('bdg', `${data.occasion} • ${big} ${L.off} • ${data.brand.name} • `, t, px(250))}</div>
+${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0').replace(/bottom:\d+px/, `bottom:${Math.round(H * (portrait ? 0.15 : 0.17))}px`)}`;
 
 const f = v => v.toFixed(2);
 const nowFmt = `new Intl.NumberFormat(${JSON.stringify(loc)},{style:'currency',currency:${JSON.stringify(cur)},minimumFractionDigits:${Math.abs(p.now - Math.round(p.now)) < 0.005 ? 0 : 2},maximumFractionDigits:2})`;
 const script = `
-const show=(id,a,b)=>{tl.fromTo(id,{opacity:0},{opacity:1,duration:.18},a);tl.to(id,{opacity:0,duration:.18},b-.18);};
-// hook
-show('#b-hook',${f(B.hook)},${f(B.disc)});
-${occ.map((_, i) => `tl.fromTo('#occ${i}',{scale:1.6,opacity:0},{scale:1,opacity:1,duration:.32,ease:'power4.out'},${f(0.08 + i * 0.16)});`).join('\n')}
-tl.fromTo('#bar',{scaleX:0},{scaleX:1,duration:.4,ease:'power3.out'},${f(0.2 + occ.length * 0.16)});
-tl.fromTo('#brand',{opacity:0},{opacity:.9,duration:.3},${f(B.disc)});
-// discount
-show('#b-disc',${f(B.disc)},${f(B.price)});
-tl.fromTo('#ray',{opacity:0,rotation:0},{opacity:1,rotation:40,duration:${f(B.price - B.disc)},ease:'none'},${f(B.disc)});
-tl.to('#ray',{opacity:0,duration:.2},${f(B.price - 0.2)});
-tl.fromTo('#big',{scale:2.4,opacity:0},{scale:1,opacity:1,duration:.38,ease:'back.out(1.6)'},${f(B.disc + 0.05)});
-tl.fromTo('#off',{y:${px(60)},opacity:0},{y:0,opacity:1,duration:.3,ease:'power3.out'},${f(B.disc + 0.32)});
-// was -> now: the strike draws first, then the new price lands
-show('#b-price',${f(B.price)},${f(B.code)});
-tl.to('#brand',{opacity:0,duration:.15},${f(B.price - 0.15)});
-tl.to('#brand',{opacity:.9,duration:.2},${f(B.code)});
-tl.fromTo('#photo',{y:${px(80)},opacity:0},{y:0,opacity:1,duration:.4,ease:'power3.out'},${f(B.price)});
-tl.fromTo('#strike',{scaleX:0},{scaleX:1,duration:.35,ease:'power2.out'},${f(B.price + 0.45)});
+// world: continuous camera, grain, tape and badge
+tl.fromTo('#ph',{scale:1.22,xPercent:-2},{scale:1.02,xPercent:2,duration:${f(B.end)},ease:'none'},0);
+tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(B.end)},ease:'steps(${Math.round(B.end * 12)})'},0);
+tl.fromTo('#tape',{xPercent:-30,opacity:0},{xPercent:0,opacity:1,duration:.5,ease:'power3.out'},0.3);
+tl.fromTo('#tape-run',{xPercent:0},{xPercent:-50,duration:${f(B.end + 4)},ease:'none'},0);
+tl.fromTo('#bdg',{rotation:0},{rotation:${Math.round(B.end * 24)},transformOrigin:'50% 50%',duration:${f(B.end)},ease:'none'},0);
+tl.fromTo('#badgewrap',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(1.8)'},${f(B.disc + 0.2)});
+// hook: the occasion rises line by line with outline echoes
+${occWords.map((_, i) => `tl.fromTo('#occ${i}',{yPercent:105},{yPercent:0,duration:.55,ease:'power4.out'},${f(0.1 + i * 0.14)});`).join('\n')}
+${occWords.map((_, i) => `tl.to('#occ${i}',{yPercent:-105,duration:.4,ease:'power3.in'},${f(B.disc - 0.35 + i * 0.05)});`).join('\n')}
+tl.to('#hook',{opacity:0,duration:.25},${f(B.disc - 0.2)});
+// discount slams in over a darker veil
+tl.to('#veil',{opacity:1,duration:.3},${f(B.disc - 0.1)});
+tl.set('#disc',{opacity:1},${f(B.disc - 0.01)});
+tl.fromTo('#big',{yPercent:110,scale:1.15},{yPercent:0,scale:1,duration:.5,ease:'power4.out'},${f(B.disc)});
+tl.fromTo('#off',{yPercent:110},{yPercent:0,duration:.4,ease:'power4.out'},${f(B.disc + 0.18)});
+tl.to('#disc',{scale:1.06,duration:${f(B.price - B.disc - 0.4)},ease:'none'},${f(B.disc + 0.4)});
+tl.to(['#big','#off'],{yPercent:-110,duration:.35,ease:'power3.in'},${f(B.price - 0.35)});
+tl.to('#veil',{opacity:0,duration:.4},${f(B.price - 0.2)});
+tl.set('#disc',{opacity:0},${f(B.price + 0.05)});
+// the photo reframes into a card; the regular price is struck before the sale price lands
+tl.fromTo('#ph',{clipPath:'inset(0% 0% 0% 0% round 0px)'},{clipPath:'${card}',duration:.6,ease:'power3.inOut'},${f(B.price - 0.2)});
+tl.fromTo('#pcol',{opacity:0,y:${px(40)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.price + 0.2)});
+tl.fromTo('#strike',{scaleX:0},{scaleX:1,duration:.3,ease:'power2.out'},${f(B.price + 0.6)});
 const fmt=${nowFmt};const nowEl=document.querySelector('#root #now');const o={v:${p.was}};
-tl.fromTo(o,{v:${p.was}},{v:${p.now},duration:.75,ease:'power3.out',onUpdate:()=>{nowEl.textContent=fmt.format(Math.round(o.v*100)/100)}},${f(B.price + 0.85)});
-tl.fromTo('#now',{scale:1},{scale:1.12,duration:.12,yoyo:true,repeat:1,ease:'power2.out'},${f(B.price + 1.6)});
-tl.fromTo('#save',{scale:.6,opacity:0},{scale:1,opacity:1,duration:.3,ease:'back.out(2)'},${f(B.price + 1.75)});
-// code + deadline, held still so they can be read
-show('#b-code',${f(B.code)},${f(B.cta)});
-tl.fromTo('#chip',{scale:.85,opacity:0},{scale:1,opacity:1,duration:.3,ease:'back.out(1.8)'},${f(B.code + 0.1)});
-tl.fromTo('#dl',{y:${px(30)},opacity:0},{y:0,opacity:1,duration:.3,ease:'power3.out'},${f(B.code + 0.3)});
-tl.to('#brand',{opacity:0,duration:.2},${f(B.cta - 0.2)});
-// call to action
-tl.fromTo('#b-cta',{opacity:0},{opacity:1,duration:.2},${f(B.cta)});
-tl.fromTo('#cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.35,ease:'back.out(1.8)'},${f(B.cta + 0.05)});
+tl.fromTo(o,{v:${p.was}},{v:${p.now},duration:.7,ease:'power3.out',onUpdate:()=>{nowEl.textContent=fmt.format(Math.round(o.v*100)/100)}},${f(B.price + 0.95)});
+tl.fromTo('#tag',{opacity:0,scale:0,rotation:-40},{opacity:1,scale:1,rotation:-10,duration:.45,ease:'back.out(2)'},${f(B.price + 1.6)});
+tl.to(['#pcol','#tag'],{opacity:0,duration:.3},${f(B.code - 0.3)});
+// code and deadline beside the card, held still
+tl.fromTo('#codeb',{opacity:0,y:${px(40)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.code)});
+tl.fromTo('#chip',{scale:.85},{scale:1,duration:.4,ease:'back.out(2)'},${f(B.code + 0.05)});
+tl.to('#codeb',{opacity:0,duration:.3},${f(B.cta - 0.3)});
+// the photo opens back to full frame for the call to action
+tl.to('#ph',{clipPath:'inset(0% 0% 0% 0% round 0px)',duration:.6,ease:'power3.inOut'},${f(B.cta - 0.2)});
+tl.to('#veil',{opacity:.8,duration:.5},${f(B.cta)});
+tl.fromTo('#ctab',{opacity:0},{opacity:1,duration:.2},${f(B.cta + 0.1)});
+tl.fromTo('#ctaocc',{yPercent:110},{yPercent:0,duration:.5,ease:'power4.out'},${f(B.cta + 0.1)});
+tl.fromTo('#cta',{scale:.6,opacity:0},{scale:1,opacity:1,duration:.4,ease:'back.out(2)'},${f(B.cta + 0.35)});
+${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(B.cta + 0.5)});`}
 tl.set({}, {}, ${f(B.end)});`;
 
 const out = path.resolve(outDir);

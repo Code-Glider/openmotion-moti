@@ -8,7 +8,7 @@
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, theme, project, readData, credit, parseDate, validISO } from './film.mjs';
+import { SIZES, esc, width, theme, project, readData, credit, parseDate, validISO, fit, tape, badge, checkImage } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -50,6 +50,9 @@ if (validISO(data.postAt || '') && validISO(data.target?.date || '')) {
     if (value > 99) errors.push(`${value} ${unit} is too far out for a countdown; post closer to the date`);
   }
 }
+const images = data.images || [];
+if (!Array.isArray(images) || images.length > 4) errors.push('images must be a list of up to 4 photos');
+else images.forEach((im, i) => checkImage(im, inputDir, `images[${i}]`, errors));
 if (data.teaser && width(data.teaser) > 30) errors.push(`teaser is ${width(data.teaser)} characters; keep it under 30`);
 if (!data.cta) errors.push('cta is required, e.g. "Get early access"');
 else if (width(data.cta) > 20) errors.push(`cta "${data.cta}" is longer than 20 characters`);
@@ -62,80 +65,85 @@ const L = {
 if (checkOnly) { console.log(`✓ ${data.brand.name}: ${data.occasion} ${L[mode]} ${value} ${L[unit]} (posted ${data.postAt}), ${aspect}`); process.exit(0); }
 
 // ---------- layout ----------
+// The photos (if any) fill the frame and change on each flip; a sale tape scrolls and a badge
+// spins for the whole film; the number itself is giant display type rolling through a mask.
 const [W, H] = SIZES[aspect];
 const t = theme(data);
-const wide = W > H;
-const portrait = H / W > 1.5;
+const wide = W > H, portrait = H / W > 1.5;
 const u = Math.min(W, H) / 1080;
 const px = n => Math.round(n * u);
-// Beats: kicker → digits roll down to the true value → date + teaser → call to action.
-const B = { kick: 0, roll: 1.3, date: 5.2, cta: 7.6, end: 9.6 };
+const B = { kick: 0, roll: 1.2, date: 5.2, cta: 7.5, end: 9.6 };
 const start = Math.min(99, value + Math.max(4, Math.min(9, Math.ceil(value * 0.6))));
 const steps = []; for (let v = start; v >= value; v--) steps.push(v);
-const digits = String(value).length < 2 && start < 10 ? 1 : 2;
-const dH = px(portrait ? 470 : 340), dW = Math.round(dH * 0.64);
-const occ = String(data.occasion).toUpperCase();
-
+const numSize = Math.min(fit(String(start), wide ? W * 0.42 : W * 0.8, px(wide ? 640 : 760), 0.55), Math.round(H * (portrait ? 0.4 : wide ? 0.36 : 0.3)));
+const occSize = fit(String(data.occasion), wide ? W * 0.8 : W * 0.88, px(wide ? 140 : 200), 0.5);
+const teaserSize = data.teaser ? fit(data.teaser, W * 0.86, px(wide ? 150 : 170), 0.5) : 0;
+const shade = `rgba(${t.shade},`;
+const tapeText = `${data.occasion} · ${L[mode]} ${value} ${L[unit]}`;
 const css = `
-#bg{position:absolute;inset:0;background:${t.bg}}
-#glow{position:absolute;left:50%;top:44%;width:${px(1300)}px;height:${px(1300)}px;margin:${-px(650)}px 0 0 ${-px(650)}px;border-radius:50%;background:radial-gradient(circle,${t.accent}33 0,transparent 62%);opacity:0}
-.beat{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:${t.ink}}
-.brand{position:absolute;top:${px(70)}px;left:0;right:0;text-align:center;font-weight:600;font-size:${px(34)}px;letter-spacing:.18em;text-transform:uppercase;color:${t.ink};opacity:.9}
-.occ{font-weight:800;font-size:${Math.min(px(portrait ? 190 : 140), Math.round(W * 0.86 / (0.6 * occ.length)))}px;letter-spacing:-.03em;line-height:.9}
-.kick{font-size:${px(56)}px;color:${t.sub};font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-top:${px(26)}px}
-.board{display:flex;gap:${px(18)}px;margin-top:${px(60)}px}
-.cell{position:relative;width:${dW}px;height:${dH}px;border-radius:${px(28)}px;background:${t.panel};overflow:hidden;box-shadow:inset 0 0 0 ${px(3)}px ${t.accent}55}
-.cell:after{content:'';position:absolute;left:0;right:0;top:50%;height:${px(4)}px;background:${t.bg};opacity:.8}
-.reel{position:absolute;left:0;right:0;top:0}
-.reel div{height:${dH}px;line-height:${dH}px;font-weight:800;font-size:${Math.round(dH * 0.78)}px;color:${t.ink};letter-spacing:-.04em}
-.unit{margin-top:${px(40)}px;font-weight:800;font-size:${px(96)}px;color:${t.accent};letter-spacing:.04em;text-transform:uppercase}
-.date{font-weight:700;font-size:${px(66)}px;line-height:1.15;max-width:${Math.round(W * 0.86)}px}
-.teaser{margin-top:${px(44)}px;font-weight:800;font-size:${px(104)}px;line-height:1;letter-spacing:-.03em;color:${t.accent};max-width:${Math.round(W * 0.9)}px}
-.cta{font-weight:800;font-size:${px(84)}px;background:${t.accent};color:${t.accentInk};padding:${px(32)}px ${px(76)}px;border-radius:${px(999)}px}
-.url{margin-top:${px(40)}px;font-size:${px(48)}px;color:${t.sub};font-weight:600}`;
-
-// Each digit is a vertical reel; the timeline moves reels, so every frame is deterministic.
-const digitAt = (v, i) => String(v).padStart(digits, '0')[i];
-const reels = Array.from({ length: digits }, (_, i) => `<div class="cell"><div id="reel${i}" class="reel">${steps.map(v => `<div>${digitAt(v, i)}</div>`).join('')}</div></div>`).join('');
-const body = `<div id="bg"></div><div id="glow"></div>
+#bg{position:absolute;inset:0;background:radial-gradient(110% 80% at 60% 25%,${t.panel} 0,${t.bg} 70%)}
+.ph{position:absolute;inset:0;background:${t.bg} center/cover no-repeat;transform-origin:50% 40%}
+#shade{position:absolute;inset:0;background:linear-gradient(180deg,${shade}.7) 0,${shade}.25) 40%,${shade}.55) 70%,${shade}.92) 100%)}
+.brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
+.mask{overflow:hidden}
+.cta{display:inline-block;background:${t.ink};color:${t.bg};font-weight:700;font-size:${px(64)}px;padding:${px(26)}px ${px(64)}px;border-radius:${px(999)}px}`;
+const rowH = Math.round(numSize * 1.05);
+const reel = steps.map(v => `<div class="d" style="height:${rowH}px;line-height:${rowH}px">${v}</div>`).join('');
+const top = wide ? H * 0.06 : H * 0.12;
+const body = src => `<div id="bg"></div>
+${images.map((im, i) => `<div id="ph${i}" class="ph" style="background-image:url('${src(im)}')"></div>`).join('')}
+<div id="shade"></div><div class="grain" id="grain"></div>
 <div class="brand">${esc(data.brand.name)}</div>
-<div id="b-count" class="beat">
-  <div id="occ" class="occ">${esc(occ)}</div>
-  <div id="kick" class="kick">${esc(L[mode])}</div>
-  <div id="board" class="board">${reels}</div>
-  <div id="unit" class="unit">${esc(L[unit])} ${esc(L.left)}</div>
+<div id="cnt" style="position:absolute;left:0;right:0;top:${top}px;text-align:center;color:${t.ink}">
+  <div class="mask" style="height:${Math.round(occSize * 0.92)}px"><div id="occ" class="d" style="font-size:${occSize}px;white-space:nowrap">${esc(data.occasion)}</div></div>
+  <div id="kick" style="margin-top:${px(18)}px;font-size:${px(40)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;color:${t.ink};opacity:.85">${esc(L[mode])}</div>
+  <div class="mask" style="height:${rowH}px;margin-top:${px(4)}px;position:relative">
+    <div id="reel" style="font-size:${numSize}px;color:${t.ink}">${reel}</div>
+  </div>
+  <div class="mask" style="height:${px(150)}px;margin-top:${px(6)}px"><div id="unit" class="d" style="display:inline-block;font-size:${px(118)}px;line-height:1.1;padding:0 ${px(26)}px;background:${t.accent};color:${t.accentInk}">${esc(L[unit])} ${esc(L.left)}</div></div>
 </div>
-<div id="b-date" class="beat" style="opacity:0"><div id="date" class="date">${esc(data.target.label)}</div>${data.teaser ? `<div id="teaser" class="teaser">${esc(data.teaser)}</div>` : ''}</div>
-<div id="b-cta" class="beat" style="opacity:0"><div id="cta" class="cta">${esc(data.cta)}</div>${data.url ? `<div class="url">${esc(data.url)}</div>` : ''}${noCredit ? '' : credit(t, px(30))}</div>`;
+<div id="dt" style="opacity:0;position:absolute;left:0;right:0;top:${wide ? H * 0.22 : H * 0.3}px;text-align:center;color:${t.ink}">
+  <div id="date" style="font-size:${px(54)}px;font-weight:600;letter-spacing:.04em;opacity:0">${esc(data.target.label)}</div>
+  ${data.teaser ? `<div class="mask" style="height:${Math.round(teaserSize * 1.9)}px;margin-top:${px(30)}px"><div id="teaser" class="d" style="font-size:${teaserSize}px;color:${t.ink};line-height:.95;padding:0 ${px(40)}px">${esc(data.teaser)}</div></div>` : ''}
+  <div id="cta" class="cta" style="margin-top:${px(50)}px;opacity:0">${esc(data.cta)}</div>
+  ${data.url ? `<div id="url" style="margin-top:${px(24)}px;font-size:${px(40)}px;font-weight:600;opacity:0">${esc(data.url)}</div>` : ''}
+</div>
+${tape('tape', tapeText, t, W, H, { y: portrait ? 0.9 : 0.88, size: px(wide ? 56 : 62) })}
+<div id="badgewrap" style="position:absolute;left:${W * 0.05}px;top:${H * (portrait ? 0.7 : 0.52)}px;width:${px(230)}px;height:${px(230)}px;opacity:0">${badge('bdg', `${data.occasion} • ${data.target.label} • `, t, px(230))}</div>
+${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0').replace(/bottom:\d+px/, `bottom:${Math.round(H * (portrait ? 0.15 : 0.17))}px`)}`;
 
 const f = v => v.toFixed(2);
-const stepDur = (B.date - 0.9 - B.roll) / Math.max(1, steps.length - 1);
-let rollJs = '';
-steps.forEach((v, k) => {
-  if (!k) return;
-  const at = B.roll + 0.4 + (k - 1) * stepDur;
-  for (let i = 0; i < digits; i++) {
-    if (digitAt(v, i) === digitAt(steps[k - 1], i)) continue;
-    rollJs += `tl.to('#reel${i}',{y:${-k * dH},duration:${f(Math.min(0.32, stepDur * 0.8))},ease:'power3.inOut'},${f(at)});\n`;
-  }
+const stepDur = (B.date - 1.0 - B.roll) / Math.max(1, steps.length - 1);
+const rH = rowH;
+let rollJs = '', swapJs = '';
+steps.forEach((_, i) => { if (i) rollJs += `tl.to('#reel',{y:${-i * rH},duration:${f(Math.min(0.3, stepDur * 0.8))},ease:'power3.inOut'},${f(B.roll + 0.3 + (i - 1) * stepDur)});\n`; });
+// Photos change in step with the roll, each one wiping up over the last.
+images.forEach((_, i) => {
+  const at = i === 0 ? 0 : B.roll + 0.3 + (i * (steps.length - 1) / images.length) * stepDur;
+  swapJs += i === 0 ? `tl.set('#ph0',{clipPath:'inset(0% 0% 0% 0%)'},0);\n` : `tl.fromTo('#ph${i}',{clipPath:'inset(100% 0% 0% 0%)'},{clipPath:'inset(0% 0% 0% 0%)',duration:.45,ease:'power3.inOut'},${f(at)});\n`;
+  swapJs += `tl.fromTo('#ph${i}',{scale:1.18},{scale:1.02,duration:${f(B.end - at)},ease:'none'},${f(at)});\n`;
 });
 const script = `
-tl.fromTo('#occ',{scale:1.5,opacity:0},{scale:1,opacity:1,duration:.35,ease:'power4.out'},${f(B.kick + 0.05)});
-tl.fromTo('#kick',{y:${px(30)},opacity:0},{y:0,opacity:1,duration:.3},${f(B.kick + 0.35)});
-tl.fromTo('#board',{y:${px(60)},opacity:0},{y:0,opacity:1,duration:.4,ease:'power3.out'},${f(B.roll)});
-${rollJs}tl.fromTo('#unit',{opacity:0},{opacity:1,duration:.3},${f(B.roll + 0.3)});
-tl.fromTo('#glow',{opacity:0,scale:.7},{opacity:1,scale:1.05,duration:.5,ease:'power2.out'},${f(B.date - 0.9)});
-tl.fromTo('#board',{scale:1},{scale:1.08,duration:.14,yoyo:true,repeat:1},${f(B.date - 0.9)});
-tl.to('#b-count',{opacity:0,duration:.2},${f(B.date - 0.2)});
-tl.fromTo('#b-date',{opacity:0},{opacity:1,duration:.2},${f(B.date)});
-tl.fromTo('#date',{y:${px(40)},opacity:0},{y:0,opacity:1,duration:.35,ease:'power3.out'},${f(B.date + 0.05)});
-${data.teaser ? `tl.fromTo('#teaser',{scale:.8,opacity:0},{scale:1,opacity:1,duration:.35,ease:'back.out(1.7)'},${f(B.date + 0.45)});` : ''}
-tl.to('#b-date',{opacity:0,duration:.2},${f(B.cta - 0.2)});
-tl.fromTo('#b-cta',{opacity:0},{opacity:1,duration:.2},${f(B.cta)});
-tl.fromTo('#cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.35,ease:'back.out(1.8)'},${f(B.cta + 0.05)});
+${swapJs}tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(B.end)},ease:'steps(${Math.round(B.end * 12)})'},0);
+tl.fromTo('#tape',{xPercent:-30,opacity:0},{xPercent:0,opacity:1,duration:.5,ease:'power3.out'},0.3);
+tl.fromTo('#tape-run',{xPercent:0},{xPercent:-50,duration:${f(B.end + 4)},ease:'none'},0);
+tl.fromTo('#bdg',{rotation:0},{rotation:${Math.round(B.end * 24)},transformOrigin:'50% 50%',duration:${f(B.end)},ease:'none'},0);
+tl.fromTo('#badgewrap',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(1.8)'},0.8);
+tl.fromTo('#occ',{yPercent:105},{yPercent:0,duration:.55,ease:'power4.out'},0.1);
+tl.fromTo('#kick',{opacity:0,y:20},{opacity:.85,y:0,duration:.5,ease:'power3.out'},0.4);
+tl.fromTo('#reel',{yPercent:0,opacity:0},{opacity:1,duration:.3},${f(B.roll)});
+${rollJs}tl.fromTo('#unit',{yPercent:125},{yPercent:0,duration:.45,ease:'power4.out'},${f(B.roll + 0.4)});
+tl.fromTo('#cnt',{scale:1},{scale:1.08,duration:.15,yoyo:true,repeat:1,transformOrigin:'50% 50%'},${f(B.date - 0.95)});
+tl.to('#cnt',{yPercent:-12,opacity:0,duration:.4,ease:'power3.in'},${f(B.date - 0.3)});
+tl.set('#dt',{opacity:1},${f(B.date - 0.01)});
+tl.fromTo('#date',{opacity:0,y:${px(30)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.date)});
+${data.teaser ? `tl.fromTo('#teaser',{yPercent:105},{yPercent:0,duration:.55,ease:'power4.out'},${f(B.date + 0.3)});` : ''}
+tl.fromTo('#cta',{opacity:0,scale:.6},{opacity:1,scale:1,duration:.4,ease:'back.out(2)'},${f(B.cta)});
+${data.url ? `tl.fromTo('#url',{opacity:0},{opacity:.85,duration:.3},${f(B.cta + 0.2)});` : ''}
+${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(B.cta + 0.4)});`}
 tl.set({}, {}, ${f(B.end)});`;
 
 const out = path.resolve(outDir);
-const { total } = await project({ here, out, inputDir, W, H, dur: B.end, title: `${data.brand.name} · ${data.occasion} countdown`, css, body, script });
+const { total } = await project({ here, out, inputDir, W, H, dur: B.end, title: `${data.brand.name} · ${data.occasion} countdown`, css, body, script, images });
 await writeFile(path.join(out, 'countdown.json'), JSON.stringify({ ...data, aspect, computed: { value, unit, from: start } }, null, 2));
 console.log(`✓ ${data.brand.name}: ${data.occasion} ${L[mode]} ${value} ${L[unit]}, ${aspect}, ${total.toFixed(1)} s → ${out}`);

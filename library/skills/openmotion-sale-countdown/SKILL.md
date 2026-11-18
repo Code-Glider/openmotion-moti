@@ -1,7 +1,7 @@
 ---
 name: openmotion-sale-countdown
 description: >-
-  OpenMotion — Make a short sale countdown teaser: split-flap digits roll down to the true number of
+  OpenMotion — Make a short sale countdown teaser: giant digits roll down to the true number of
   days or hours left, then the date, the offer teaser and a call to action. Use when someone asks for a
   Black Friday or Cyber Monday countdown, a "sale starts in N days" or "ends in N hours" video, a launch
   or drop countdown, or a last-chance reminder. Produces an editable 9.6 second HyperFrames project and
@@ -18,10 +18,14 @@ computes it from two real moments: when the video goes live (`postAt`) and when 
 (`target.date`). It rounds down, so "6 days" never overstates the time left. Post a fresh render each
 day of a teaser run instead of reusing yesterday's number.
 
+## Look
+
+Up to four product photos fill the frame and wipe in one after another as the number rolls, the number is giant display type (Anton, shipped with the Skill, SIL OFL) rolling through a mask, and a sale tape and spinning badge run for the whole film. Without photos the film uses the theme's gradient.
+
 ## 1. Collect the moments
 
 Ask for the occasion, whether the countdown is to the start (`starts`) or the end (`ends`) of the sale,
-the exact start or end time with its time zone, when the video will be posted, a short teaser line
+the exact start or end time with its time zone, when the video will be posted, up to four product photos, a short teaser line
 ("Up to 40% off sitewide") if the offer is public, and the call to action. Never invent the date or the
 discount.
 
@@ -45,12 +49,12 @@ cd out && npx hyperframes check && npx hyperframes render -o countdown.mp4
 
 | Beat | Time | What happens |
 | --- | --- | --- |
-| Kicker | 0–1.3 s | The occasion and "starts in" / "ends in" |
-| Roll | 1.3–5.2 s | Split-flap reels step down a few numbers and land on the true value; "days to go" / "hours left" |
-| Date | 5.2–7.6 s | The exact date as the shop writes it, then the teaser |
-| Call to action | 7.6–9.6 s | Button, URL, sign-off |
+| Kicker | 0–1.2 s | The occasion and "starts in" / "ends in" |
+| Roll | 1.2–5.2 s | The number rolls down a few steps and lands on the true value while the photos change; "days to go" / "hours left" |
+| Date | 5.2–7.5 s | The exact date as the shop writes it, then the teaser |
+| Call to action | 7.5–9.6 s | Button, URL, sign-off |
 
-The unit is days when two or more days are left, otherwise hours; set `unit` to force one. Each digit
+The unit is days when two or more days are left, otherwise hours; set `unit` to force one. The number
 is a reel moved by the timeline, so every frame is deterministic and editable. `theme`, `brand.accent`
 and `labels` work as in the sale-promo Skill. The film is silent; add music in the editor and put a
 tick on each flip if the user wants sound.

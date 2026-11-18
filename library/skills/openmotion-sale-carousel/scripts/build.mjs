@@ -6,7 +6,7 @@
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit } from './film.mjs';
+import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit, tape, badge } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -58,83 +58,93 @@ const L = { off: 'off', useCode: 'Code', ...(data.labels || {}) };
 if (checkOnly) { console.log(`✓ ${data.brand.name} · ${data.title}: ${items.map((it, i) => `${it.name} ${$(prices[i].was)}→${$(prices[i].now)}`).join(', ')}; ${aspect}`); process.exit(0); }
 
 // ---------- layout ----------
+// Each product fills the frame in turn and wipes in over the last one; the counter, the sale
+// tape and the badge stay on screen the whole time; the end grid collects every pick.
 const [W, H] = SIZES[aspect];
 const t = theme(data);
-const wide = W > H, portrait = H / W > 1.5, square = !wide && !portrait;
+const wide = W > H, portrait = H / W > 1.5;
 const u = Math.min(W, H) / 1080;
 const px = n => Math.round(n * u);
 const n = items.length;
-const INTRO = 1.5, PER = 1.7, END = 2.8;
+const INTRO = 1.5, PER = 1.8, END = 2.8;
 const dur = INTRO + n * PER + END;
-// Card geometry: portrait stacks photo over text; square and landscape put them side by side.
-const side = !portrait;
-const cardW = portrait ? px(900) : wide ? Math.round(W * 0.8) : px(980);
-const cardH = portrait ? px(1380) : wide ? Math.round(H * 0.72) : px(760);
-const photoW = side ? Math.round(cardW * 0.56) : cardW, photoH = side ? cardH : Math.round(cardH * 0.66);
-const occ = String(data.occasion).toUpperCase();
-const infoW = (side ? cardW - photoW : cardW) - px(side ? 100 : 60);
-const cols = n <= 3 ? n : n === 4 ? 2 : (portrait ? 2 : (n <= 6 ? 3 : 4));
+const shade = `rgba(${t.shade},`;
+const titleSize = fit(data.title, wide ? W * 0.6 : W * 0.88, px(wide ? 180 : 190), 0.5);
+const occSize = fit(String(data.occasion), wide ? W * 0.6 : W * 0.88, px(110), 0.5);
+const textL = wide ? W * 0.06 : W * 0.07, textW = wide ? W * 0.46 : W * 0.86;
+const cols = n <= 3 ? n : n === 4 ? 2 : n <= 6 ? 3 : 4;
 const rows = Math.ceil(n / cols);
-const gridW = Math.round(W * (portrait ? 0.86 : 0.8)), gridGap = px(22);
-const tile = Math.min(Math.round((gridW - (cols - 1) * gridGap) / cols), Math.round((H * (portrait ? 0.5 : wide ? 0.34 : 0.4) - (rows - 1) * gridGap) / rows));
-
+const gridW = Math.round(W * (portrait ? 0.86 : 0.8)), gridGap = px(18);
+const tile = Math.min(Math.round((gridW - (cols - 1) * gridGap) / cols), Math.round((H * (portrait ? 0.46 : wide ? 0.4 : 0.42) - (rows - 1) * gridGap) / rows));
+const tapeText = `${data.occasion} · ${data.title}${data.code ? ` · ${L.useCode} ${data.code}` : ''}`;
 const css = `
 #bg{position:absolute;inset:0;background:${t.bg}}
-.top{position:absolute;top:${px(64)}px;left:0;right:0;text-align:center;font-weight:600;font-size:${px(32)}px;letter-spacing:.18em;text-transform:uppercase;color:${t.ink};opacity:.9}
-.beat{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:${t.ink};opacity:0}
-.occ{font-weight:800;font-size:${Math.min(px(portrait ? 170 : 150), Math.round(W * 0.86 / (0.6 * occ.length)))}px;letter-spacing:-.03em;line-height:.9;color:${t.accent}}
-.title{margin-top:${px(28)}px;font-weight:800;font-size:${Math.min(px(110), Math.round(W * 0.9 / (0.56 * Math.max(8, width(data.title)))))}px;letter-spacing:-.03em;line-height:1}
-.count{margin-top:${px(30)}px;font-size:${px(42)}px;color:${t.sub};font-weight:600;letter-spacing:.06em}
-.card{position:absolute;left:${Math.round((W - cardW) / 2)}px;top:${Math.round((H - cardH) / 2 + (portrait ? px(40) : px(20)))}px;width:${cardW}px;height:${cardH}px;border-radius:${px(40)}px;background:${t.panel};overflow:hidden;display:flex;flex-direction:${side ? 'row' : 'column'};box-shadow:0 ${px(30)}px ${px(90)}px rgba(0,0,0,.35);opacity:0}
-.ph{width:${photoW}px;height:${photoH}px;background:${t.bg} center/cover no-repeat;flex:none}
-.info{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:${side ? 'flex-start' : 'center'};padding:${px(side ? 50 : 30)}px;gap:${px(10)}px;text-align:${side ? 'left' : 'center'};color:${t.ink}}
-.idx{font-size:${px(30)}px;color:${t.sub};font-weight:600;letter-spacing:.1em}
-.nm{font-size:${px(side ? 52 : 58)}px;font-weight:700;line-height:1.08;letter-spacing:-.01em}
-.row{display:flex;align-items:baseline;gap:${px(22)}px;${side ? '' : 'justify-content:center;'}margin-top:${px(6)}px;flex-wrap:wrap}
-.was{position:relative;font-size:${px(48)}px;color:${t.sub};font-weight:600}
-.was i{position:absolute;left:-4%;right:-4%;top:52%;height:${px(6)}px;background:${t.accent};transform:scaleX(0);transform-origin:left center}
-.now{font-size:${px(side ? 100 : 112)}px;font-weight:800;letter-spacing:-.04em;line-height:1}
-.badge{position:absolute;top:${px(28)}px;${side ? `left:${photoW - px(210)}px` : `right:${px(28)}px`};width:${px(180)}px;height:${px(180)}px;border-radius:50%;background:${t.accent};color:${t.accentInk};display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:${px(56)}px;line-height:.9;box-shadow:0 ${px(10)}px ${px(30)}px rgba(0,0,0,.3)}
-.badge small{font-size:${px(30)}px;font-weight:700;text-transform:uppercase}
+.ph{position:absolute;inset:0;background:${t.bg} center/cover no-repeat;transform-origin:50% 40%}
+.sh{position:absolute;inset:0;background:linear-gradient(${wide ? '90deg' : '180deg'},${shade}.1) 0,${shade}.05) ${wide ? 35 : 45}%,${shade}.92) 100%)}
+.brand{position:absolute;top:${px(54)}px;left:${px(54)}px;font-weight:600;font-size:${px(30)}px;letter-spacing:.22em;text-transform:uppercase;color:${t.ink}}
+.mask{overflow:hidden}
+.info{position:absolute;${wide ? `right:${W * 0.05}px;top:${H * 0.24}px;width:${W * 0.4}px` : `left:${textL}px;width:${textW}px;bottom:${H * (portrait ? 0.15 : 0.17)}px`};color:${t.ink}}
+.was{position:relative;display:inline-block;font-size:${px(56)}px;color:${t.ink};opacity:.78;margin-right:${px(20)}px}
+.was i{position:absolute;left:-4%;right:-4%;top:50%;height:${px(7)}px;background:${t.accent};transform:scaleX(0);transform-origin:left center}
+.tag{position:absolute;border-radius:50%;background:${t.accent};color:${t.accentInk};display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .grid{display:grid;grid-template-columns:repeat(${cols},${tile}px);gap:${gridGap}px;justify-content:center}
-.tile{position:relative;width:${tile}px;height:${tile}px;border-radius:${px(24)}px;background:${t.panel} center/cover no-repeat;overflow:hidden}
-.tile b{position:absolute;left:${px(12)}px;bottom:${px(12)}px;background:${t.accent};color:${t.accentInk};font-size:${Math.max(px(26), Math.round(tile * 0.12))}px;padding:${px(6)}px ${px(14)}px;border-radius:${px(999)}px}
-.code{margin-top:${px(40)}px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-weight:700;font-size:${px(56)}px;border:${px(5)}px dashed ${t.accent};border-radius:${px(20)}px;padding:${px(12)}px ${px(34)}px}
-.dl{margin-top:${px(22)}px;font-size:${px(38)}px;color:${t.sub};font-weight:600}
-.cta{margin-top:${px(40)}px;font-weight:800;font-size:${px(72)}px;background:${t.accent};color:${t.accentInk};padding:${px(26)}px ${px(64)}px;border-radius:${px(999)}px}
-.url{margin-top:${px(22)}px;font-size:${px(40)}px;color:${t.sub};font-weight:600}`;
-
+.tile{position:relative;width:${tile}px;height:${tile}px;border-radius:${px(20)}px;background:${t.panel} center/cover no-repeat;overflow:hidden}
+.tile b{position:absolute;left:${px(10)}px;bottom:${px(10)}px;background:${t.accent};color:${t.accentInk};padding:${px(4)}px ${px(12)}px;border-radius:${px(999)}px}
+.cta{display:inline-block;background:${t.ink};color:${t.bg};font-weight:700;font-size:${px(56)}px;padding:${px(22)}px ${px(56)}px;border-radius:${px(999)}px}`;
+const nameSize = it => fit(it.name, wide ? W * 0.4 : textW, px(wide ? 150 : 170), 0.5);
 const body = src => `<div id="bg"></div>
-<div id="top" class="top">${esc(data.brand.name)}</div>
-<div id="b-intro" class="beat"><div id="occ" class="occ">${esc(occ)}</div><div id="title" class="title">${esc(data.title)}</div><div id="count" class="count">${n} picks</div></div>
-${items.map((it, i) => { const p = prices[i]; return `<div id="card${i}" class="card"><div class="ph" style="background-image:url('${src(it.image)}')"></div>
-  <div class="info"><div class="idx">${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</div><div class="nm">${esc(it.name)}</div>
-  <div class="row"><span class="was" style="font-size:${fit($(p.was), infoW, px(48), 0.62)}px">${esc($(p.was))}<i id="st${i}"></i></span><span class="now" style="font-size:${fit($(p.now), infoW, px(side ? 100 : 112), 0.62)}px">${esc($(p.now))}</span></div></div>
-  <div id="bd${i}" class="badge">${p.framing === 'percent' ? `${p.percent}%<small>${esc(L.off)}</small>` : `${esc($(p.save).replace(/\.00$/, ''))}<small>${esc(L.off)}</small>`}</div></div>`; }).join('\n')}
-<div id="b-end" class="beat" style="padding-bottom:${px(70)}px"><div class="grid">${items.map((it, i) => `<div id="tile${i}" class="tile" style="background-image:url('${src(it.image)}')"><b style="font-size:${fit($(prices[i].now), tile - px(48), Math.max(px(26), Math.round(tile * 0.12)), 0.62)}px">${esc($(prices[i].now))}</b></div>`).join('')}</div>
-  ${data.code ? `<div class="code">${esc(L.useCode)} ${esc(data.code)}</div>` : ''}${data.deadline ? `<div class="dl">${esc(data.deadline.label)}</div>` : ''}
-  <div id="cta" class="cta">${esc(data.cta)}</div>${data.url ? `<div class="url">${esc(data.url)}</div>` : ''}${noCredit ? '' : credit(t, px(26))}</div>`;
+<div id="wall" style="position:absolute;inset:-6%;display:grid;grid-template-columns:repeat(${portrait ? 3 : 4},1fr);gap:${px(10)}px;opacity:.38">${[...items, ...items, ...items].slice(0, portrait ? 12 : 12).map(it => `<div style="background:url('${src(it.image)}') center/cover;aspect-ratio:${portrait ? '3/4' : '4/3'};border-radius:${px(14)}px"></div>`).join('')}</div>
+<div id="wallshade" style="position:absolute;inset:0;background:radial-gradient(70% 50% at 50% 45%,${shade}.92) 0,${shade}.55) 100%)"></div>
+<div id="intro" style="position:absolute;left:0;right:0;top:${H * (portrait ? 0.32 : 0.28)}px;text-align:center;color:${t.ink}">
+  <div class="mask" style="height:${Math.round(occSize * 0.92)}px"><div id="occ" class="d" style="font-size:${occSize}px;color:${t.accent};white-space:nowrap">${esc(data.occasion)}</div></div>
+  <div class="mask" style="height:${Math.round(titleSize * 0.92)}px;margin-top:${px(10)}px"><div id="title" class="d" style="font-size:${titleSize}px;white-space:nowrap">${esc(data.title)}</div></div>
+  <div id="count" style="margin-top:${px(26)}px;font-size:${px(38)}px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;opacity:0">${n} picks</div>
+</div>
+${items.map((it, i) => { const p = prices[i], ns = nameSize(it); return `<div id="s${i}" style="position:absolute;inset:0;clip-path:inset(0% 0% 0% 100%)">
+  <div id="ph${i}" class="ph" style="background-image:url('${src(it.image)}')"></div><div class="sh"></div>
+  <div class="info">
+    <div style="font-size:${px(32)}px;letter-spacing:.28em;font-weight:600;opacity:.8">${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</div>
+    <div class="mask" style="height:${Math.round(ns * 1.0)}px;margin-top:${px(10)}px"><div id="nm${i}" class="d" style="font-size:${ns}px;white-space:nowrap">${esc(it.name)}</div></div>
+    <div style="margin-top:${px(16)}px;display:flex;align-items:baseline;flex-wrap:wrap"><span class="was" style="font-size:${fit($(p.was), textW * 0.4, px(56), 0.6)}px">${esc($(p.was))}<i id="st${i}"></i></span><span id="nw${i}" class="d" style="font-size:${fit($(p.now), textW * 0.6, px(wide ? 130 : 150), 0.55)}px;color:${t.ink}">${esc($(p.now))}</span></div>
+  </div>
+  <div id="tg${i}" class="tag d" style="width:${px(210)}px;height:${px(210)}px;${wide ? `left:${W * 0.4}px;top:${H * 0.12}px` : `right:${W * 0.06}px;top:${H * (portrait ? 0.1 : 0.12)}px`};font-size:${px(70)}px;line-height:.9">${p.framing === 'percent' ? `${p.percent}%` : esc($(p.save).replace(/\.00$/, ''))}<span style="font-size:${px(34)}px">${esc(L.off)}</span></div>
+</div>`; }).join('\n')}
+<div id="end" style="position:absolute;inset:0;background:${t.bg};clip-path:inset(0% 0% 0% 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:${t.ink};padding-bottom:${px(120)}px">
+  <div class="grid">${items.map((it, i) => `<div id="tile${i}" class="tile" style="background-image:url('${src(it.image)}')"><b class="d" style="font-size:${fit($(prices[i].now), tile - px(40), Math.max(px(30), Math.round(tile * 0.14)), 0.55)}px">${esc($(prices[i].now))}</b></div>`).join('')}</div>
+  ${data.code ? `<div class="d" style="margin-top:${px(34)}px;font-size:${px(70)}px;border:${px(5)}px dashed ${t.ink};border-radius:${px(18)}px;padding:${px(10)}px ${px(34)}px ${px(2)}px">${esc(L.useCode)} ${esc(data.code)}</div>` : ''}
+  ${data.deadline ? `<div style="margin-top:${px(18)}px;font-size:${px(38)}px;font-weight:600;opacity:.85">${esc(data.deadline.label)}</div>` : ''}
+  <div id="cta" class="cta" style="margin-top:${px(30)}px">${esc(data.cta)}</div>${data.url ? `<div style="margin-top:${px(16)}px;font-size:${px(36)}px;opacity:.8;font-weight:600">${esc(data.url)}</div>` : ''}
+</div>
+<div class="grain" id="grain"></div>
+<div class="brand">${esc(data.brand.name)}</div>
+${tape('tape', tapeText, t, W, H, { y: portrait ? 0.93 : 0.92, size: px(wide ? 46 : 52) })}
+${noCredit ? '' : credit(t, px(24)).replace('opacity:.72', 'opacity:0').replace(/bottom:\d+px/, `bottom:${px(portrait ? 250 : 190)}px`)}`;
 
 const f = v => v.toFixed(2);
 let cards = '';
 items.forEach((_, i) => {
   const a = INTRO + i * PER;
-  cards += `tl.fromTo('#card${i}',{x:${W},opacity:1,rotation:4},{x:0,rotation:0,duration:.45,ease:'power3.out'},${f(a)});
-tl.fromTo('#st${i}',{scaleX:0},{scaleX:1,duration:.3,ease:'power2.out'},${f(a + 0.5)});
-tl.fromTo('#bd${i}',{scale:0,rotation:-30},{scale:1,rotation:-8,duration:.35,ease:'back.out(2)'},${f(a + 0.7)});
-tl.to('#card${i}',{x:${-W},rotation:-4,duration:.4,ease:'power3.in'},${f(a + PER - 0.3)});\n`;
+  cards += `tl.fromTo('#s${i}',{clipPath:'inset(0% 0% 0% 100%)'},{clipPath:'inset(0% 0% 0% 0%)',duration:.5,ease:'power3.inOut'},${f(a - 0.25)});
+tl.fromTo('#ph${i}',{scale:1.2,xPercent:4},{scale:1.04,xPercent:-2,duration:${f(PER + 0.6)},ease:'none'},${f(a - 0.25)});
+tl.fromTo('#nm${i}',{yPercent:105},{yPercent:0,duration:.5,ease:'power4.out'},${f(a + 0.1)});
+tl.fromTo('#st${i}',{scaleX:0},{scaleX:1,duration:.3,ease:'power2.out'},${f(a + 0.55)});
+tl.fromTo('#nw${i}',{opacity:0,x:${px(30)}},{opacity:1,x:0,duration:.35,ease:'power3.out'},${f(a + 0.75)});
+tl.fromTo('#tg${i}',{scale:0,rotation:-40},{scale:1,rotation:-10,duration:.4,ease:'back.out(2)'},${f(a + 0.9)});\n`;
 });
 const endAt = INTRO + n * PER;
 const script = `
-tl.fromTo('#b-intro',{opacity:0},{opacity:1,duration:.15},0);
-tl.fromTo('#occ',{scale:1.5,opacity:0},{scale:1,opacity:1,duration:.35,ease:'power4.out'},0.05);
-tl.fromTo('#title',{y:${px(40)},opacity:0},{y:0,opacity:1,duration:.35,ease:'power3.out'},0.35);
-tl.fromTo('#count',{opacity:0},{opacity:1,duration:.3},0.65);
-tl.to('#b-intro',{opacity:0,duration:.2},${f(INTRO - 0.2)});
-${cards}tl.to('#top',{opacity:0,duration:.2},${f(endAt - 0.2)});
-tl.fromTo('#b-end',{opacity:0},{opacity:1,duration:.2},${f(endAt - 0.1)});
-${items.map((_, i) => `tl.fromTo('#tile${i}',{scale:.6,opacity:0},{scale:1,opacity:1,duration:.3,ease:'back.out(1.6)'},${f(endAt + i * 0.06)});`).join('\n')}
-tl.fromTo('#cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.35,ease:'back.out(1.8)'},${f(endAt + 0.5)});
+tl.fromTo('#grain',{x:0,y:0},{x:-40,y:30,duration:${f(dur)},ease:'steps(${Math.round(dur * 12)})'},0);
+tl.fromTo('#tape',{xPercent:-30,opacity:0},{xPercent:0,opacity:1,duration:.5,ease:'power3.out'},0.3);
+tl.fromTo('#tape-run',{xPercent:0},{xPercent:-50,duration:${f(dur + 4)},ease:'none'},0);
+tl.fromTo('#wall',{yPercent:4,scale:1.08},{yPercent:-4,scale:1,duration:${f(INTRO + 0.6)},ease:'none'},0);
+tl.fromTo('#occ',{yPercent:105},{yPercent:0,duration:.5,ease:'power4.out'},0.1);
+tl.set(['#intro','#wall','#wallshade'],{opacity:0},${f(INTRO + 0.3)});
+tl.fromTo('#title',{yPercent:105},{yPercent:0,duration:.55,ease:'power4.out'},0.3);
+tl.fromTo('#count',{opacity:0},{opacity:.8,duration:.3},0.7);
+${cards}tl.fromTo('#end',{clipPath:'inset(0% 0% 0% 100%)'},{clipPath:'inset(0% 0% 0% 0%)',duration:.5,ease:'power3.inOut'},${f(endAt - 0.25)});
+${items.map((_, i) => `tl.fromTo('#tile${i}',{scale:.6,opacity:0},{scale:1,opacity:1,duration:.35,ease:'back.out(1.6)'},${f(endAt + i * 0.07)});`).join('\n')}
+tl.fromTo('#cta',{scale:.6,opacity:0},{scale:1,opacity:1,duration:.4,ease:'back.out(2)'},${f(endAt + 0.5)});
+${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f(endAt + 0.6)});`}
 tl.set({}, {}, ${f(dur)});`;
 
 const out = path.resolve(outDir);

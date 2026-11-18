@@ -9,6 +9,7 @@
   "postAt": "2026-11-20T09:00:00-05:00",
   "target": { "date": "2026-11-27T00:00:00-05:00", "label": "Fri, Nov 27 · 12:00 am ET" },
   "unit": "days",
+  "images": ["coat.jpg", "sneakers.jpg", "bag.jpg"],
   "teaser": "Up to 40% off sitewide",
   "cta": "Get early access",
   "url": "fieldworksupply.example",
@@ -23,6 +24,7 @@
 | `postAt`, `target.date` | ISO 8601 with offset. The number on screen is `floor((target − postAt) / unit)`. |
 | `target.label` | Required, ≤ 34 characters: the date the way the shop writes it. |
 | `unit` | Optional `days` or `hours`; default days when ≥ 2 days are left. Result must be 1–99. |
+| `images` | Optional, up to 4 photos next to the file; they fill the frame and change as the number rolls. |
 | `teaser` | Optional, ≤ 30 characters; only a public, real offer. |
 | `cta` | Required, ≤ 20 characters. `url` ≤ 32 characters. |
 | `brand`, `occasion`, `theme`, `aspect`, `labels` | As in the sale-promo Skill. `labels.left` defaults to "to go" (starts) or "left" (ends). |

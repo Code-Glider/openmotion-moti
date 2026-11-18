@@ -10,11 +10,11 @@ export const SIZES = { '9:16': [1080, 1920], '4:5': [1080, 1350], '1:1': [1080, 
 
 // Occasion palettes. A brand accent from the data replaces the theme accent.
 export const THEMES = {
-  'black-friday': { bg: '#0b0b0d', panel: '#18181c', ink: '#ffffff', sub: '#a3a3ad', accent: '#ff3b30', accentInk: '#ffffff' },
-  'cyber-monday': { bg: '#070b24', panel: '#121a42', ink: '#f2f6ff', sub: '#93a0c8', accent: '#22d3ee', accentInk: '#04121a' },
-  holiday: { bg: '#0f3b2c', panel: '#174b39', ink: '#fdf6e8', sub: '#b9cfc2', accent: '#e8453c', accentInk: '#ffffff' },
-  'new-year': { bg: '#101012', panel: '#1d1b16', ink: '#fbf5e6', sub: '#b5ab93', accent: '#e2b44a', accentInk: '#16130a' },
-  light: { bg: '#f5f5f2', panel: '#ffffff', ink: '#121214', sub: '#5d5d66', accent: '#e11d48', accentInk: '#ffffff' },
+  'black-friday': { bg: '#0a0a0b', panel: '#151517', ink: '#ffffff', sub: '#b8b8c0', accent: '#ff2e2e', accentInk: '#ffffff', shade: '10,10,11' },
+  'cyber-monday': { bg: '#06061a', panel: '#10123a', ink: '#f2f6ff', sub: '#9aa6d6', accent: '#2ee6ff', accentInk: '#03121a', shade: '6,6,26' },
+  holiday: { bg: '#0c2f24', panel: '#123d30', ink: '#fdf6e8', sub: '#bcd2c5', accent: '#ff3b30', accentInk: '#ffffff', shade: '8,30,22' },
+  'new-year': { bg: '#0d0c0a', panel: '#1b1914', ink: '#fbf5e6', sub: '#b9ae94', accent: '#f0c24b', accentInk: '#16130a', shade: '13,12,10' },
+  light: { bg: '#efeee9', panel: '#ffffff', ink: '#111113', sub: '#55555e', accent: '#e11d2e', accentInk: '#ffffff', shade: '239,238,233' },
 };
 export const OCCASION_THEME = { 'black friday': 'black-friday', 'cyber monday': 'cyber-monday', christmas: 'holiday', holiday: 'holiday', 'new year': 'new-year' };
 
@@ -120,6 +120,10 @@ export async function project({ here, out, inputDir, W, H, dur, title, lang = 'e
       break;
     }
   }
+  // Anton (SIL OFL) ships inside the Skill for the display type.
+  await mkdir(path.join(out, 'assets', 'fonts'), { recursive: true });
+  await copyFile(path.join(here, '..', 'assets', 'fonts', 'Anton-Regular.woff2'), path.join(out, 'assets', 'fonts', 'Anton-Regular.woff2'));
+  fontCss += `@font-face{font-family:'Anton';src:url('assets/fonts/Anton-Regular.woff2') format('woff2');font-weight:400;font-style:normal}`;
   const copied = new Map();
   for (const rel of images) {
     if (!rel || copied.has(rel)) continue;
@@ -131,7 +135,7 @@ export async function project({ here, out, inputDir, W, H, dur, title, lang = 'e
   const html = `<template>
 <style>${fontCss}
 #root{position:relative;width:${W}px;height:${H}px;overflow:hidden;font-family:'Geist','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-#root *{box-sizing:border-box}
+#root *{box-sizing:border-box}\n.d{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;line-height:.88;letter-spacing:.005em}\n.grain{position:absolute;inset:-10%;pointer-events:none;opacity:.10;mix-blend-mode:overlay;background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")}
 ${css}</style>
 <div id="root" data-composition-id="film" data-width="${W}" data-height="${H}">
 ${typeof body === 'function' ? body(src) : body}
@@ -175,8 +179,29 @@ export async function readData(input) {
 
 // "Made with OpenMotion" sign-off for the end card; the advertiser's brand stays the hero.
 export function credit(t, size) {
-  return `<div id="credit" style="position:absolute;left:0;right:0;bottom:${Math.round(size * 2.2)}px;display:flex;align-items:center;justify-content:center;gap:${Math.round(size * 0.6)}px;opacity:.72">
-  <span style="font-size:${size}px;color:${t.sub};letter-spacing:.04em">Made with</span>
-  <img src="assets/brand/openmotion-logo.svg" alt="OpenMotion" style="height:${Math.round(size * 1.5)}px;width:auto;filter:${t.key === 'light' ? 'none' : 'invert(1) grayscale(1) brightness(1.6)'}">
+  return `<div id="credit" style="position:absolute;top:${Math.round(size * 2)}px;right:${Math.round(size * 2)}px;display:flex;align-items:center;gap:${Math.round(size * 0.5)}px;opacity:.72">
+  <span style="font-size:${size}px;color:${t.ink};letter-spacing:.04em;opacity:.8">Made with</span>
+  <img src="assets/brand/openmotion-logo.svg" alt="OpenMotion" style="height:${Math.round(size * 1.4)}px;width:auto;filter:${t.key === 'light' ? 'none' : 'invert(1) grayscale(1) brightness(1.6)'}">
 </div>`;
+}
+
+// ---------- shared visual layers ----------
+// A diagonal sale tape whose text scrolls for the whole film: the element that carries every beat.
+export function tape(id, text, t, W, H, { y = 0.86, angle = -5, size = 64 } = {}) {
+  const run = Array.from({ length: 14 }, () => `<span>${esc(text)}</span><b style="display:inline-block;width:${Math.round(size * 0.35)}px;height:${Math.round(size * 0.35)}px;border-radius:50%;background:${t.accentInk};margin:0 ${Math.round(size * 0.5)}px;vertical-align:middle;opacity:.85"></b>`).join('');
+  return `<div id="${id}" style="position:absolute;left:${-W * 0.25}px;width:${W * 1.5}px;top:${Math.round(H * y - size)}px;height:${Math.round(size * 1.9)}px;background:${t.accent};transform:rotate(${angle}deg);overflow:hidden;box-shadow:0 ${Math.round(size * .25)}px ${Math.round(size * .8)}px rgba(0,0,0,.35)">
+  <div id="${id}-run" class="d" style="position:absolute;left:0;top:50%;white-space:nowrap;transform:translateY(-46%);font-size:${size}px;color:${t.accentInk};line-height:1">${run}${run}</div></div>`;
+}
+// A circular text badge that keeps spinning.
+export function badge(id, text, t, size, { fill = 'none', ink } = {}) {
+  const r = size / 2 - size * 0.09;
+  return `<svg id="${id}" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="position:absolute;overflow:visible">
+  <defs><path id="${id}-p" d="M ${size / 2} ${size / 2} m -${r} 0 a ${r} ${r} 0 1 1 ${2 * r} 0 a ${r} ${r} 0 1 1 -${2 * r} 0"/></defs>
+  <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${fill}" stroke="${ink || t.ink}" stroke-opacity=".35" stroke-width="2"/>
+  <text font-family="Anton, sans-serif" font-size="${Math.round(size * 0.115)}" letter-spacing="${(size * 0.012).toFixed(1)}" fill="${ink || t.ink}"><textPath href="#${id}-p">${esc(text)}</textPath></text></svg>`;
+}
+// Stacked outline echoes under a solid line of display type.
+export function echo(id, text, size, t, { copies = 3, step = 0.82, align = 'center' } = {}) {
+  const layers = Array.from({ length: copies }, (_, i) => `<div id="${id}-e${i}" class="d" style="position:absolute;left:0;right:0;top:${Math.round((i + 1) * size * step)}px;text-align:${align};font-size:${size}px;color:transparent;-webkit-text-stroke:${Math.max(2, Math.round(size / 70))}px ${t.ink};opacity:${(0.55 - i * 0.15).toFixed(2)}">${esc(text)}</div>`).join('');
+  return `<div id="${id}" style="position:relative;height:${Math.round(size * 0.9)}px">${layers}<div id="${id}-s" class="d" style="position:absolute;left:0;right:0;top:0;text-align:${align};font-size:${size}px;color:${t.ink}">${esc(text)}</div></div>`;
 }

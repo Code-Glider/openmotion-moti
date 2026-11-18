@@ -13,9 +13,13 @@ description: >-
 An OpenMotion Skill. The shop's brand leads the film and its colour can replace the accent; the end
 card carries a small "Made with OpenMotion" sign-off (`--no-credit` removes it).
 
-Give a short list of products, get one reel that walks through them: 1.5 s title, 1.7 s per product,
-2.8 s end grid (12.8 s for five products, 15.9 s for seven). Every price on screen is computed from the
+Give a short list of products, get one reel that walks through them: 1.5 s title, 1.8 s per product,
+2.8 s end grid (13.3 s for five products, 16.9 s for seven). Every price on screen is computed from the
 regular price and the discount, so a batch of cards never shows a mistyped number.
+
+## Look
+
+Each product fills the whole frame in turn and wipes in over the last one with a slow push-in; the counter, a scrolling sale tape and the shop name stay on screen throughout; the title card sits on a moving wall of every product photo. Display type is Anton, shipped with the Skill (SIL OFL).
 
 ## 1. Collect the products
 
@@ -50,7 +54,7 @@ cd out && npx hyperframes check && npx hyperframes render -o carousel.mp4
 | Product × N | A card slides in: photo, "01 / 05", name, the regular price struck through beside the sale price, a discount badge pops; then it slides away |
 | End grid | Every product as a tile with its sale price, the code and deadline, the call to action, the sign-off |
 
-9:16 stacks photo over text; 1:1, 4:5 and 16:9 put them side by side. The badge shows a percentage
+Text sits over the lower part of the photo (to the right in 16:9). The badge shows a percentage
 unless the saving is small, where a flat amount reads better. `theme`, `brand.accent`, `locale` and
 `labels` work as in the sale-promo Skill. The film is silent; add music in the editor and cut the
 cards on the beat.

@@ -248,6 +248,12 @@ const designStylesFiles = [
 ];
 
 const holidaySaleFiles = [
+  'library/skills/openmotion-sale-carousel/assets/fonts/Anton-Regular.woff2',
+  'library/skills/openmotion-sale-carousel/assets/fonts/OFL-Anton.txt',
+  'library/skills/openmotion-sale-countdown/assets/fonts/Anton-Regular.woff2',
+  'library/skills/openmotion-sale-countdown/assets/fonts/OFL-Anton.txt',
+  'library/skills/openmotion-sale-promo/assets/fonts/Anton-Regular.woff2',
+  'library/skills/openmotion-sale-promo/assets/fonts/OFL-Anton.txt',
   'library/skills/openmotion-sale-carousel/assets/brand/README.md',
   'library/skills/openmotion-sale-carousel/assets/brand/loading-mark.svg',
   'library/skills/openmotion-sale-carousel/assets/brand/openmotion-logo.svg',

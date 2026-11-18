@@ -18,7 +18,7 @@ library/
 ├── skills/openmotion-growth-teardown/          → 公司增长调研 → 带出处的增长地图视频
 ├── skills/openmotion-design-styles/            → 21 种设计风格 + 2 种布局 → 按风格规则做成的视频
 ├── skills/openmotion-sale-promo/               → 一个促销优惠 → 原价划线、新价准确的促销短片
-├── skills/openmotion-sale-countdown/           → 真实剩余天数或小时 → 翻牌倒计时预告
+├── skills/openmotion-sale-countdown/           → 真实剩余天数或小时 → 大号数字倒计时预告
 ├── skills/openmotion-sale-carousel/            → 3～7 个促销商品 → 带总览的商品轮播视频
 ├── skills/openmotion-presenter-story/          → three presenter / motion recipes
 ├── skills/openmotion-design-remix/             → six source / remix profiles

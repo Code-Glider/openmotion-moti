@@ -23,6 +23,14 @@ A promo that shows a wrong price is worse than no promo. The script derives the 
 percentage and the saving from the regular price, so they can never disagree; spend the effort on
 getting the offer facts right.
 
+## Look
+
+One continuous world instead of slides: the product photo stays on screen for the whole film (slow
+push-in, then it reframes into a card and opens back out), a diagonal sale tape scrolls the offer from
+first frame to last, a circular badge keeps spinning, and display type (Anton, shipped with the Skill
+under the SIL Open Font License) rises through line masks. Use a real, well-lit product photo on a clean
+backdrop with empty space in the lower third; a weak photo makes a weak film.
+
 ## 1. Collect the offer
 
 Ask for, or read from the user's page: brand name, occasion, product name and photo, regular price,
@@ -56,11 +64,11 @@ cd out && npx hyperframes check && npx hyperframes render -o promo.mp4
 
 | Beat | 10 s | What happens |
 | --- | --- | --- |
-| Hook | 0–1.6 s | The occasion slams in word by word, an accent bar draws |
-| Discount | 1.6–4.0 s | "40% OFF" (or "$50 OFF" for low prices) is the loudest thing on screen |
-| Price | 4.0–7.0 s | Product photo; the regular price is struck through first, then the sale price counts down and lands; a "Save $X" chip |
-| Code | 7.0–8.8 s | The code in a dashed chip and the deadline, held still so they can be read |
-| Call to action | 8.8–10 s | Button, URL, sign-off |
+| Hook | 0–1.7 s | The occasion rises word by word over the full-frame photo |
+| Discount | 1.7–4.0 s | "40% OFF" (or "$50 OFF" for low prices) fills the frame over a darker veil |
+| Price | 4.0–7.0 s | The photo reframes into a card; the regular price is struck through first, then the sale price counts down; a discount tag pops |
+| Code | 7.0–8.6 s | The code in a dashed chip and the deadline beside the card, held still |
+| Call to action | 8.6–10 s | The photo opens back to full frame; occasion, button, URL, sign-off |
 
 15 s stretches every beat. Default is 9:16 (1080×1920) because sale ads run as vertical video;
 `--aspect` writes 4:5, 1:1 or 16:9 from the same data. `theme` picks a palette (`black-friday`,
