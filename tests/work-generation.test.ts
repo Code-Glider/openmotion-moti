@@ -86,7 +86,7 @@ test('blank projects and metadata saves cannot count as generated video; a corre
   tracking.close();
 }, false));
 
-test('Studio content edits and background export keep the originating work after another round begins', () => fixture(async store => {
+test('Studio content edits and background export keep the originating work after another round begins', t => fixture(async store => {
   const { service, tracking, events } = setup(store);
   const { project, work } = await begin(service);
   await writeFile(path.join(store.projectDirectoryFor(project.projectId), 'index.html'), film);
@@ -99,9 +99,12 @@ test('Studio content edits and background export keep the originating work after
   await edit({ outcome: 'failure' });
   await edit({ project_id: crypto.randomUUID() });
   await edit({ edit_kind: 'project_rename' });
+  await edit({ surface: 'assets', edit_kind: 'asset_rename' });
+  await edit({ surface: 'assets', edit_kind: 'asset_delete' });
   await tracking.flush();
   assert.equal(stages(events).length, 2);
-  await Promise.all([edit({}), edit({})]);
+  const insertFromAssets = { surface: 'assets', edit_kind: 'add_asset' };
+  await Promise.all([edit(insertFromAssets), edit(insertFromAssets)]);
   await service.call('openmotion_open_preview', { action: 'begin', mode: 'modify',
     projectId: project.projectId, requestId: crypto.randomUUID() });
   assert.equal(await rounds.latestGenerated(project.projectId), undefined, 'A pending new generation cannot borrow the previous completion');
@@ -112,14 +115,16 @@ test('Studio content edits and background export keep the originating work after
     await rounds.exported(project.projectId, attempt.workId!, 'studio');
   });
   try {
+    t.mock.timers.enable({ apis: ['setInterval'] });
     const { attempt } = attempts.start({ jobId: crypto.randomUUID(), outputPath: output },
       'Video', options => { nativeOutput = options.outputPath; return state; }, crypto.randomUUID(), work.id);
     await writeFile(nativeOutput, 'deterministic renderer fixture');
     state.status = 'complete'; state.progress = 100;
     // The server reconciliation timer runs with no browser or SSE reader.
-    await new Promise(resolve => setTimeout(resolve, 650));
-    assert.equal(attempts.get(attempt.id)?.fileAvailable, true);
+    t.mock.timers.tick(500);
+    await attempts.flushNotifications();
     await rounds.exported(project.projectId, work.id, 'mcp');
+    assert.equal(attempts.get(attempt.id)?.fileAvailable, true);
     await tracking.flush();
     const result = stages(events).filter(e => e.properties.work_id === work.id);
     assert.deepEqual(result.map(e => e.properties.stage), ['started','generated','edited','exported']);

@@ -150,8 +150,7 @@ export class WorkRounds {
   async studioEdited(event: { event: string; occurred_at: string; properties: Record<string, unknown> }) {
     const p = event.properties;
     if (!['studio_edit_result', 'studio_history_step_result'].includes(event.event) || p.outcome !== 'success') return;
-    if (event.event === 'studio_edit_result' && (['project_rename', 'asset_rename'].includes(String(p.edit_kind))
-        || ['header', 'assets'].includes(String(p.surface)))) return;
+    if (event.event === 'studio_edit_result' && ['project_rename', 'asset_rename', 'asset_delete'].includes(String(p.edit_kind))) return;
     if (typeof p.project_id !== 'string') return;
     const at = Date.parse(event.occurred_at);
     const work = await this.latestGenerated(p.project_id, at);
