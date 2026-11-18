@@ -125,6 +125,8 @@ The standalone `openmotion` Skill is owned by the official Skills CLI. Codex npm
 
 The internal ownership marker remains stable across the npm package rename so earlier local installations can be upgraded in place. An installation can serve multiple hosts using the same home/data. `install.json.hosts` retains each host. Skill documentation links are rewritten for flat layouts; Codex/Harness retain bundle-relative links. Re-run setup for each installed host when upgrading Skills. Unowned same-name MCP/Skills are refused. Unrelated settings/Skills and existing projects are retained. A registration failure before the profile changes restores the prior install state and Skills. If Harness has already switched to the new owned bundle, setup retains that bundle and its state even when registration or later onboarding reports an error; rerunning setup reconciles owned profile/state differences. Checked application caches remain available for retry.
 
+Workspace verification accepts filesystem aliases for the same directory while continuing to reject a different workspace.
+
 Compatible phase-one updates do not require closing existing MCP connections or stopping the same workspace's backend. Connections negotiate the API protocol and requested Tool, retaining running exports and completed results; see [shared editor recovery](shared-editor.md). The installer does not terminate existing processes. Incompatible protocols or internal legacy ABIs still require updating the connection and idle backend together. Refresh the host to discover new Tools or reload changed Skills; an already-closed transport needs host reconnection.
 
 <a id="other-local-agents"></a>
