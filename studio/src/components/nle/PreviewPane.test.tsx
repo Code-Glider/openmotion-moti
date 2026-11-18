@@ -15,6 +15,8 @@ vi.mock("../../player", () => ({ PlayerControls: () => <i data-testid="transport
 vi.mock("./NLEPreview", () => ({ NLEPreview: () => <i data-testid="preview" /> }));
 vi.mock("./CompositionBreadcrumb", () => ({ CompositionBreadcrumb: () => <nav data-testid="breadcrumb" /> }));
 vi.mock("./AssetPreviewOverlay", () => ({ AssetPreviewOverlay: () => null }));
+vi.mock("../../motion/ReviewComposerOverlay", () => ({ ReviewComposerOverlay: () => null }));
+vi.mock("../../motion/ReviewAnnotationOverlay", () => ({ ReviewAnnotationOverlay: () => null }));
 vi.mock("./usePreviewBlockDrop", () => ({
   usePreviewBlockDrop: () => ({
     isDragOver: false,

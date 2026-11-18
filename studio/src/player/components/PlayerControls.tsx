@@ -202,7 +202,7 @@ export const PlayerControls = memo(function PlayerControls({
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {mvp ? <div className="flex min-w-0 items-center gap-2">{reviewControls}<span className="motion-player-time min-w-0 justify-self-start whitespace-nowrap font-mono text-[11px] tabular-nums text-neutral-400">
+        {mvp ? <div className="flex min-w-0 items-center gap-2">{reviewControls}<span className="min-w-0 justify-self-start whitespace-nowrap font-mono text-[11px] tabular-nums text-neutral-400">
           <span ref={timeDisplayRef}>{formatTime(0)}</span><span className="mx-0.5">/</span><span>{formatTime(duration)}</span>
         </span></div> : <Tooltip
           label={timeDisplayMode === "time" ? t("Switch to frame display") : t("Switch to time display")}
