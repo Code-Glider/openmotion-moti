@@ -55,7 +55,8 @@ export function price(item, where, errors) {
     errors.push(d.amount != null ? `${where}.discount.amount must be above 0 and below was` : d.percent != null ? `${where} rounds to no discount or a zero price` : `${where}.now must be above 0 and below was`);
     return null;
   }
-  const percent = Math.round((1 - nowC / wasC) * 100);
+  // Never show 0% or 100% for a discount that is neither free nor nothing.
+  const percent = Math.min(99, Math.max(1, Math.round((1 - nowC / wasC) * 100)));
   const saveC = wasC - nowC;
   // Headline framing: a percentage for higher prices, a flat amount for low prices, unless the data chose.
   const framing = d.amount != null ? 'amount' : d.percent != null ? 'percent' : (saveC < 1000 || percent < 10 ? 'amount' : 'percent');
@@ -67,7 +68,7 @@ export const ISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]
 export function validISO(s) {
   const m = ISO.exec(String(s ?? ''));
   if (!m) return false;
-  const [y, mo, d, h, mi, se = '0'] = m.slice(1, 7).map(Number);
+  const [y, mo, d, h, mi, se] = m.slice(1, 7).map(v => (v === undefined ? 0 : Number(v)));
   const probe = new Date(Date.UTC(y, mo - 1, d, h, mi, se));
   return probe.getUTCFullYear() === y && probe.getUTCMonth() === mo - 1 && probe.getUTCDate() === d && h < 24 && mi < 60 && se < 60
     && (m[7] === 'Z' || (Number(m[8]) <= 14 && Number(m[9]) < 60));
@@ -84,6 +85,9 @@ export function theme(data) {
   }
   return { key, ...t };
 }
+
+// Font size at which a string of `text` fits `room` px, given the face's average glyph width in em.
+export const fit = (text, room, max, em = 0.6) => Math.max(12, Math.min(max, Math.floor(room / (em * Math.max(1, [...String(text)].length)))));
 
 export function checkImage(file, baseDir, where, errors) {
   if (!file) return;

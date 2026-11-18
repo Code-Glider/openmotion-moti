@@ -5,7 +5,7 @@
 //   node scripts/build.mjs offer.json out/ [--aspect 9:16|4:5|1:1|16:9] [--duration 10|15] [--no-credit]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO } from './film.mjs';
+import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -64,6 +64,8 @@ const bigSize = Math.min(px(wide ? 420 : 400), Math.round((wide ? H * 1.3 : W * 
 const occ = String(data.occasion).toUpperCase().split(/\s+/);
 const occSize = Math.min(px(wide ? 230 : 250), Math.round((wide ? W * 0.8 : W * 0.88) / (0.6 * Math.max(...occ.map(w => w.length)))));
 const img = data.product.image;
+// Long localised prices (e.g. "Rp 1.200.000") shrink to fit the text column.
+const nowSize = fit($(p.was).length >= $(p.now).length ? $(p.was) : $(p.now), wide ? W * 0.42 : W * 0.86, px(wide ? 170 : 190), 0.62);
 // Monospace glyphs are ~0.6 em plus 0.06 em tracking; leave room for the chip's padding and border.
 const codeSize = Math.min(px(118), Math.floor((W * 0.9 - px(130)) / (0.68 * data.code.length)));
 const L = { off: 'OFF', useCode: 'Use code', save: 'Save', ...(data.labels || {}) };
@@ -83,7 +85,7 @@ const css = `
 .pname{font-weight:600;font-size:${px(54)}px;letter-spacing:-.01em}
 .was{position:relative;display:inline-block;font-size:${px(72)}px;color:${t.sub};font-weight:600}
 .strike{position:absolute;left:-4%;right:-4%;top:52%;height:${px(9)}px;background:${t.accent};transform:scaleX(0);transform-origin:left center;border-radius:${px(5)}px}
-.now{font-weight:800;font-size:${px(wide ? 170 : 190)}px;letter-spacing:-.04em;line-height:1;color:${t.ink}}
+.now{font-weight:800;font-size:${nowSize}px;letter-spacing:-.04em;line-height:1;color:${t.ink}}
 .save{display:inline-block;background:${t.accent};color:${t.accentInk};font-weight:700;font-size:${px(40)}px;padding:${px(12)}px ${px(26)}px;border-radius:${px(999)}px;margin-top:${px(18)}px}
 .label{font-size:${px(44)}px;color:${t.sub};letter-spacing:.12em;text-transform:uppercase;font-weight:600}
 .chip{margin-top:${px(28)}px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-weight:700;font-size:${codeSize}px;letter-spacing:.06em;padding:${px(26)}px ${px(56)}px;border:${px(7)}px dashed ${t.accent};border-radius:${px(28)}px;background:${t.panel};color:${t.ink}}

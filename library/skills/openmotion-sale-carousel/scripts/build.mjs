@@ -6,7 +6,7 @@
 import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO } from './film.mjs';
+import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -72,6 +72,7 @@ const cardW = portrait ? px(900) : wide ? Math.round(W * 0.8) : px(980);
 const cardH = portrait ? px(1380) : wide ? Math.round(H * 0.72) : px(760);
 const photoW = side ? Math.round(cardW * 0.56) : cardW, photoH = side ? cardH : Math.round(cardH * 0.66);
 const occ = String(data.occasion).toUpperCase();
+const infoW = (side ? cardW - photoW : cardW) - px(side ? 100 : 60);
 const cols = n <= 3 ? n : n === 4 ? 2 : (portrait ? 2 : (n <= 6 ? 3 : 4));
 const rows = Math.ceil(n / cols);
 const gridW = Math.round(W * (portrait ? 0.86 : 0.8)), gridGap = px(22);
@@ -108,9 +109,9 @@ const body = src => `<div id="bg"></div>
 <div id="b-intro" class="beat"><div id="occ" class="occ">${esc(occ)}</div><div id="title" class="title">${esc(data.title)}</div><div id="count" class="count">${n} picks</div></div>
 ${items.map((it, i) => { const p = prices[i]; return `<div id="card${i}" class="card"><div class="ph" style="background-image:url('${src(it.image)}')"></div>
   <div class="info"><div class="idx">${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</div><div class="nm">${esc(it.name)}</div>
-  <div class="row"><span class="was">${esc($(p.was))}<i id="st${i}"></i></span><span class="now">${esc($(p.now))}</span></div></div>
+  <div class="row"><span class="was" style="font-size:${fit($(p.was), infoW, px(48), 0.62)}px">${esc($(p.was))}<i id="st${i}"></i></span><span class="now" style="font-size:${fit($(p.now), infoW, px(side ? 100 : 112), 0.62)}px">${esc($(p.now))}</span></div></div>
   <div id="bd${i}" class="badge">${p.framing === 'percent' ? `${p.percent}%<small>${esc(L.off)}</small>` : `${esc($(p.save).replace(/\.00$/, ''))}<small>${esc(L.off)}</small>`}</div></div>`; }).join('\n')}
-<div id="b-end" class="beat" style="padding-bottom:${px(70)}px"><div class="grid">${items.map((it, i) => `<div id="tile${i}" class="tile" style="background-image:url('${src(it.image)}')"><b>${esc($(prices[i].now))}</b></div>`).join('')}</div>
+<div id="b-end" class="beat" style="padding-bottom:${px(70)}px"><div class="grid">${items.map((it, i) => `<div id="tile${i}" class="tile" style="background-image:url('${src(it.image)}')"><b style="font-size:${fit($(prices[i].now), tile - px(48), Math.max(px(26), Math.round(tile * 0.12)), 0.62)}px">${esc($(prices[i].now))}</b></div>`).join('')}</div>
   ${data.code ? `<div class="code">${esc(L.useCode)} ${esc(data.code)}</div>` : ''}${data.deadline ? `<div class="dl">${esc(data.deadline.label)}</div>` : ''}
   <div id="cta" class="cta">${esc(data.cta)}</div>${data.url ? `<div class="url">${esc(data.url)}</div>` : ''}${noCredit ? '' : credit(t, px(26))}</div>`;
 
