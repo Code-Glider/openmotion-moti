@@ -23,6 +23,19 @@
 :root[data-motion-ui] .dv-shell .dv-render-overlay { border-radius: 0; overflow: hidden; }
 :root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container,
 :root[data-motion-ui] .motion-timeline-toolbar { border-bottom: 1px solid var(--motion-border-subtle); }
+.motion-timeline-toolbar-shell { position: relative; container-type: inline-size; }
+:root[data-motion-ui] .motion-timeline-zoom input[type="range"] { width: var(--motion-space-48); }
+.motion-timeline-composition-nav { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; }
+.motion-timeline-composition-back { display: inline-flex; align-items: center; gap: var(--motion-space-4); height: var(--motion-space-28); padding: 0 var(--motion-space-8); border: 0; border-radius: var(--motion-radius-md); background: transparent; color: var(--motion-strong); font-size: var(--motion-text-xs); white-space: nowrap; cursor: pointer; }
+.motion-timeline-composition-back:hover:enabled { background: var(--motion-hover); }
+.motion-timeline-composition-back { max-width: 160px; }
+.motion-timeline-composition-back > svg { flex-shrink: 0; }
+.motion-timeline-composition-back > span { overflow: hidden; text-overflow: ellipsis; }
+.motion-timeline-composition-back:disabled { color: var(--motion-control-disabled); cursor: not-allowed; }
+@container (max-width: 760px) {
+  .motion-timeline-toolbar-shell > .motion-timeline-toolbar:has(~ .motion-timeline-composition-nav) { margin-top: var(--motion-space-28); }
+  .motion-timeline-composition-nav { top: 0; transform: translateX(-50%); }
+}
 /* Collapsed rails continue the same header baseline as expanded panels. */
 :root[data-motion-ui] .hf-dock .hf-dock-side-rail { padding: 0; gap: 0; }
 :root[data-motion-ui] .hf-dock .hf-dock-side-rail-header { display: grid; place-items: center; flex: none; width: 100%; height: calc(var(--dv-tabs-and-actions-container-height) - 1px); }
@@ -59,7 +72,10 @@
   background-image: linear-gradient(to right, var(--timeline-grid-line) 1px, transparent 1px);
   background-size: var(--timeline-grid-step) 100%;
 }
-:root[data-motion-ui] [data-timeline-row]:has([data-clip][aria-pressed="true"]) > [role="row"] > [role="rowheader"] { box-shadow: inset 2px 0 var(--motion-accent); }
+:root[data-motion-ui] .timeline-clip.is-selected {
+  outline: 3px solid var(--timeline-clip-selection);
+  outline-offset: 0;
+}
 .motion-track-id { flex: none; padding: 2px var(--motion-space-4); border-radius: var(--motion-radius-xs); font: var(--motion-weight-semibold) var(--motion-text-xs)/1.25 var(--motion-font-mono); color: var(--motion-text); background: var(--motion-inset); }
 :root[data-motion-ui] .motion-timeline-ghost-lane { border: 0; border-radius: 0; border-bottom: 1px solid var(--timeline-row-border); color: var(--motion-muted); font-size: var(--motion-text-xs); }
 :root[data-motion-ui] .motion-timeline-ghost-lane[data-active] { background: var(--motion-accent-soft); box-shadow: inset 0 0 0 1px var(--motion-accent); color: var(--motion-accent); }

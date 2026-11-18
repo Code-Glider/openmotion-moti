@@ -5,7 +5,7 @@ import { trackStudioEvent } from "../../utils/studioTelemetry";
 export interface CompositionLevel {
   /** Unique id — "master" or composition file path */
   id: string;
-  /** Display label — "Master" or filename without extension */
+  /** Display label — clip name, falling back to filename without extension */
   label: string;
   /** Preview URL for this composition level */
   previewUrl: string;
