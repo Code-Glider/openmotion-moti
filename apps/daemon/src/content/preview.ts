@@ -1,4 +1,6 @@
 import type { ServerResponse } from "node:http";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { assembleProject } from "@open-motion/motion/project";
 import { gsap, preview, runtime } from "@open-motion/motion/runtime";
 import { type TemplateInput, type TemplateOutput, templateSchemas } from "@open-motion/templates/contract";
@@ -32,11 +34,14 @@ const types: Record<string, string> = {
 export class Previews {
   private views = new Map<string, View>();
   private pending = new Map<string, Pending>();
+  private transfers = new Map<AbortController, string>();
+  private closing = false;
   constructor(
     private workspace: Workspace,
     private readTemplate?: (input: TemplateInput<"template_read">) => Promise<TemplateOutput<"template_read">>,
   ) {}
   private available(id: string) {
+    if (this.closing) throw new Fault("invalid", "preview is closing");
     if (this.views.has(id) || this.pending.has(id))
       throw new Fault("idempotency", "preview identity reused with different source");
     if (this.views.size + this.pending.size >= 16)
@@ -52,6 +57,7 @@ export class Previews {
     }
   }
   async openTemplate(raw: unknown) {
+    if (this.closing) throw new Fault("invalid", "preview is closing");
     const parsed = templateSchema.safeParse(raw);
     if (!parsed.success) throw new Fault("invalid", "invalid template preview request");
     const input = parsed.data,
@@ -91,6 +97,7 @@ export class Previews {
     return pending.work;
   }
   open(input: unknown) {
+    if (this.closing) throw new Fault("invalid", "preview is closing");
     const parsed = schema.safeParse(input);
     if (!parsed.success) throw new Fault("invalid", "invalid preview request");
     const existing = this.views.get(parsed.data.id)?.project;
@@ -126,6 +133,7 @@ export class Previews {
     const pending = this.pending.get(parsed.data);
     if (pending) pending.closed = true;
     this.views.delete(parsed.data);
+    for (const [controller, viewId] of this.transfers) if (viewId === parsed.data) controller.abort();
     return { closed: true };
   }
   serve(url: string, response: ServerResponse, host: string | undefined, range?: string, head = false) {
@@ -148,18 +156,17 @@ export class Previews {
     }
     const file = view.files.find((f) => f.path === path);
     const asset = view.resources.find((entry) => entry.path === path);
-    let content: string | Buffer | undefined =
-      path === "__gsap.js" ? gsap : path === "__runtime.js" ? runtime : file?.content;
-    if (asset && view.project) {
-      const result = this.workspace.execute("resource_read", {
-        sessionId: view.project.sessionId,
-        artifactId: view.project.artifactId,
-        revision: view.project.revision,
-        path,
-      });
-      content = Buffer.from(result.data, "base64");
-    }
-    if (content === undefined) {
+    let content: string | undefined = path === "__gsap.js" ? gsap : path === "__runtime.js" ? runtime : file?.content;
+    const reader =
+      asset && view.project
+        ? this.workspace.readResource({
+            sessionId: view.project.sessionId,
+            artifactId: view.project.artifactId,
+            revision: view.project.revision,
+            path,
+          })
+        : undefined;
+    if (content === undefined && !reader) {
       response.writeHead(404);
       response.end();
       return;
@@ -187,12 +194,13 @@ export class Previews {
     const base = `/preview/${viewId}/`;
     // URLs remain within this view. The document has an opaque sandbox origin and no write capability.
     const resource = `${origin.origin}${base}`;
-    const fullLength = Buffer.byteLength(content);
+    const fullLength = reader ? reader.resource.bytes : Buffer.byteLength(content ?? "");
     let status = 200,
       contentRange: string | undefined;
+    let interval: { start: number; end: number } | undefined;
     if (asset && range && !head) {
-      const interval = byteRange(range, fullLength);
-      if (!interval) {
+      const selected = byteRange(range, fullLength);
+      if (!selected) {
         response.writeHead(416, {
           "content-range": `bytes */${fullLength}`,
           "content-length": 0,
@@ -202,7 +210,7 @@ export class Previews {
         response.end();
         return;
       }
-      content = (content as Buffer).subarray(interval.start, interval.end + 1);
+      interval = selected;
       status = 206;
       contentRange = `bytes ${interval.start}-${interval.end}/${fullLength}`;
     }
@@ -210,17 +218,35 @@ export class Previews {
       "content-type": asset ? type : `${type}; charset=utf-8`,
       ...(asset ? { "accept-ranges": "bytes" } : {}),
       ...(contentRange ? { "content-range": contentRange } : {}),
-      "content-length": Buffer.byteLength(content),
+      "content-length": interval ? interval.end - interval.start + 1 : fullLength,
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
       "x-content-type-options": "nosniff",
       "access-control-allow-origin": "*",
       "content-security-policy": `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' ${resource}; style-src 'unsafe-inline' ${resource}; img-src data: ${resource}; font-src data: ${resource}; media-src ${resource}; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts`,
     });
+    if (reader && !head) return this.stream(viewId, reader.chunks(interval), response);
     response.end(head ? undefined : content);
   }
-  close() {
+  private async stream(viewId: string, chunks: Iterable<Uint8Array>, response: ServerResponse) {
+    const controller = new AbortController();
+    this.transfers.set(controller, viewId);
+    try {
+      await pipeline(Readable.from(chunks, { objectMode: false, highWaterMark: 65536 }), response, {
+        signal: controller.signal,
+      });
+    } finally {
+      this.transfers.delete(controller);
+    }
+  }
+  quiesce() {
+    this.closing = true;
     for (const pending of this.pending.values()) pending.closed = true;
     this.views.clear();
+    for (const controller of this.transfers.keys()) controller.abort();
+  }
+  close() {
+    this.quiesce();
+    if (this.transfers.size) throw new Fault("integrity", "preview readers have not drained");
   }
 }

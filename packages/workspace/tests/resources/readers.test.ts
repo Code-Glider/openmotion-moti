@@ -130,3 +130,48 @@ it("refuses corruption before admission and rechecks every chunk after admission
     f.finish();
   }
 });
+
+it("returns exact repeatable intervals across chunk boundaries and refuses invalid bounds", () => {
+  const f = fixture();
+  try {
+    const reader = f.workspace.readResource(f.read);
+    for (const interval of [
+      { start: 65530, end: 65542 },
+      { start: 131072, end: f.bytes.length - 1 },
+      { start: 0, end: 0 },
+    ]) {
+      const chunks = [...reader.chunks(interval)];
+      expect(Buffer.concat(chunks)).toEqual(f.bytes.subarray(interval.start, interval.end + 1));
+      expect(Buffer.concat([...reader.chunks(interval)])).toEqual(Buffer.concat(chunks));
+      expect(chunks.every((chunk) => chunk.byteLength <= 65536)).toBe(true);
+    }
+    for (const interval of [
+      { start: -1, end: 0 },
+      { start: 2, end: 1 },
+      { start: 0, end: f.bytes.length },
+      { start: 0.5, end: 1 },
+    ])
+      expect(() => [...reader.chunks(interval)]).toThrow("invalid resource byte interval");
+  } finally {
+    f.finish();
+  }
+});
+
+it("preverifies the complete resource for a range and rechecks its whole boundary chunk before emitting", () => {
+  const f = fixture(),
+    raw = new DatabaseSync(join(f.root, "workspace.sqlite"));
+  try {
+    const reader = f.workspace.readResource(f.read),
+      changed = Buffer.from(f.bytes.subarray(0, 65536));
+    changed[500] = changed[500]! ^ 1;
+    raw.prepare("UPDATE resource_chunks SET bytes=? WHERE digest=? AND position=0").run(changed, f.input.digest);
+    // A byte outside the selected interval still invalidates its boundary chunk.
+    expect(() => [...reader.chunks({ start: 0, end: 43 })]).toThrow("changed after verification");
+    expect(() => f.workspace.readResource(f.read)).toThrow("bytes are corrupt");
+    // Already-admitted disjoint intervals read only the selected immutable chunks.
+    expect(Buffer.concat([...reader.chunks({ start: 65536, end: 65540 })])).toEqual(f.bytes.subarray(65536, 65541));
+  } finally {
+    raw.close();
+    f.finish();
+  }
+});
