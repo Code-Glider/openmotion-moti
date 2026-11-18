@@ -214,6 +214,23 @@ function beatHighlight(host: HTMLElement): HTMLElement | undefined {
   );
 }
 
+it("moves the main track label when the bottom visual track changes", () => {
+  const overlay = element("overlay", TRACK_A);
+  const main = element("main clip", TRACK_B);
+  const audio = { ...element("audio", 2), tag: "audio" };
+  const view = renderLanes({ elements: [overlay, main, audio] });
+  const markedHeaders = () => [...view.host.querySelectorAll('[role="rowheader"]')]
+    .map((header) => header.textContent)
+    .filter((label) => label?.includes("Main track"));
+
+  expect(markedHeaders()).toEqual([expect.stringContaining("Main track · main clip")]);
+
+  view.rerender({ elements: [overlay, { ...main, track: 0 }, audio] });
+
+  expect(markedHeaders()).toEqual([expect.stringContaining("Main track · overlay")]);
+  act(() => view.root.unmount());
+});
+
 describe("TimelineLanes beat guide", () => {
   it("draws the beat highlight from snapGuide, not from the stale draggedClip prop", () => {
     const view = renderLanes({

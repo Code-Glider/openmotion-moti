@@ -1814,6 +1814,7 @@
   "Delete track": "トラックを削除",
   "Unlock the track before deleting it": "削除する前にトラックのロックを解除してください",
   "Open the composition to delete this track": "このトラックを削除するにはコンポジションを開いてください",
+  "Main track": "メインのトラック",
   "Main track magnet": "メイントラックのマグネット",
   "Timeline linkage": "タイムライン連動",
   "Trim left to playhead": "再生ヘッドまで左をトリム",

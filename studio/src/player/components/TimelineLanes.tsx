@@ -36,6 +36,7 @@ import { timelineClipFocusId } from "./timelineNavigationIdentity";
 import { useTimelineKeyboardActor } from "./useTimelineKeyboardActor";
 import { TimelineTransitionOverlays } from "./TimelineTransitionOverlays";
 import { deriveTimelineTransitionSeamsByTrack } from "./timelineTransitionSeams";
+import { mainVisualTrack } from "./timelineLinkage";
 import { trackIdentities } from './timelineTrackIdentity';
 
 function passengerStyleAt(offsetPx: number): CSSProperties {
@@ -129,6 +130,7 @@ export function TimelineLanes({
   const compositionDuration = usePlayerStore((s) => s.duration);
   useAutomationSelectionKeyboard({ lanes: automationLanes });
   const rowIndexes = useTimelineLaneRowIndexes(logicalRows, groups);
+  const mainTrack = useMemo(() => mainVisualTrack(tracks.flatMap(([, clips]) => clips)), [tracks]);
   const identities = useMemo(() => trackIdentities(trackOrder, new Map(tracks)), [trackOrder, tracks]);
   const { logicalRowsByTrack, groupByAnchor, groupMemberTracks } = rowIndexes;
   const {
@@ -322,6 +324,7 @@ export function TimelineLanes({
             >
               <TimelineTrackHeader
                 trackNumber={trackNum}
+                mainTrackLabel={trackNum === mainTrack ? t("Main track") : undefined}
                 identity={identities.get(trackNum)}
                 // What gets announced. `trackNum` is a fractional z-order sort
                 // key, so it stays out of every label and in every callback.
