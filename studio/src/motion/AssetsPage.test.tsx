@@ -3,13 +3,14 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AssetsPage } from './AssetsPage';
+import type { AssetDraft } from './AssetComposer';
 import { assetRequest, uploadLibraryAsset } from './assetClient';
 import { AssetUploadError } from './assetUploadError';
 import type { LibraryAsset } from '../../../shared/asset-library';
 
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string, values?: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (match, key) => String(values?.[key] ?? match)), formatDate: () => 'Nov 15' }) }));
 vi.mock('./ResizablePane', () => ({ ResizablePane: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
-vi.mock('./AssetComposer', () => ({ AssetComposer: ({ onReference }: { onReference: () => void }) => <><input aria-label="Creation draft" /><button onClick={onReference}>References</button></> }));
+vi.mock('./AssetComposer', () => ({ AssetComposer: ({ draft, onReference }: { draft: AssetDraft; onReference: () => void }) => <><input aria-label="Creation draft" data-reference-count={draft.references.length} /><button onClick={onReference}>References</button></> }));
 vi.mock('./AssetTaskHistory', () => ({ AssetTaskMenu: () => null }));
 vi.mock('./assetClient', () => ({ assetRequest: vi.fn(), uploadLibraryAsset: vi.fn() }));
 vi.mock('./gatewayClient', () => ({ gatewayRequest: async () => ({ conversations: [] }) }));
@@ -166,6 +167,16 @@ it('keeps the existing combined filters and ordering when using the gallery tool
   await click('All');
   expect(latestList()).toMatchObject({ sort: 'name', trash: false });
   expect(latestList()).not.toHaveProperty('modality');
+});
+
+it('opens an audio asset as a new version without adding an image reference', async () => {
+  const audio = fixture('audio');
+  audio.name = 'Narration';
+  audio.modality = 'audio';
+  Object.assign(audio.versions[0], { filename: 'narration.wav', mimeType: 'audio/wav' });
+  records.set(audio.id, audio);
+  await render(); await click('Narration'); await click('Edit as new version');
+  expect(container.querySelector('[aria-label="Creation draft"]')?.getAttribute('data-reference-count')).toBe('0');
 });
 
 it('extracts a gallery video cover from the current immutable version using the editor frame timing', async () => {

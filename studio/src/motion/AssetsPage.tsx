@@ -180,7 +180,7 @@ export function AssetsPage({ active, hasProject = false }: { active: boolean; ha
   const edit = () => {
     if (!selected || !version) return;
     tracking.reportAssetsClick('asset_detail', 'edit_version', { modality: selected.modality });
-    startDraft({ modality: selected.modality, prompt: version.prompt ?? '', model: version.model, parameters: version.parameters, target: { asset: selected, versionId }, references: [{ reference: { assetId: selected.id, versionId }, name: selected.name }] });
+    startDraft({ modality: selected.modality, prompt: version.prompt ?? '', model: version.model, parameters: version.parameters, target: { asset: selected, versionId }, references: selected.modality === 'audio' ? [] : [{ reference: { assetId: selected.id, versionId }, name: selected.name }] });
   };
   const create = () => {
     const modality = kind === 'video' || kind === 'audio' ? kind : 'image';
