@@ -13,7 +13,8 @@
 [data-motion-studio] .om-app-header, [data-motion-studio] .om-app-rail { background: var(--motion-shell); }
 [data-motion-studio] .om-application > .motion-workspace { background: var(--motion-workspace); border-radius: var(--motion-radius-step-10); box-shadow: var(--motion-shadow-md); }
 [data-motion-studio] .motion-sidebar { border-right: 1px solid var(--motion-border-subtle); }
-[data-motion-studio] .om-application :is(.motion-workspace-content, .motion-sidebar, .om-settings-center, .om-settings-navigation) { background: var(--motion-workspace); }
+[data-motion-studio] .om-application :is(.motion-workspace-content, .motion-sidebar) { background: var(--motion-workspace); }
+[data-motion-studio] .om-application :is(.om-assets-host, .om-settings-center, .om-settings-navigation) { background: var(--motion-gallery-surface); }
 [data-motion-studio] .om-inline-input { min-width: 0; height: var(--motion-control-sm); padding: var(--motion-space-4) var(--motion-space-8); border: 1px solid transparent; border-radius: var(--motion-radius-md); background: transparent; color: var(--motion-strong); font: inherit; text-overflow: ellipsis; transition: background-color var(--motion-duration-fast), border-color var(--motion-duration-fast); }
 [data-motion-studio] .om-inline-input:enabled:hover { background: var(--motion-hover); }
 [data-motion-studio] .om-inline-input:focus { background: var(--motion-bg); border-color: var(--motion-selected); outline: none; }
