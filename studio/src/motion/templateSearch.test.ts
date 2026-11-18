@@ -21,6 +21,14 @@ describe('template-only search matching', () => {
       expect(matchesTemplateSearch(entry({ uses: ['Brand promotion'] }), word, t)).toBe(false);
     }
   });
+  it('matches task aliases against catalog purposes and falls back to localized search text', () => {
+    const zh = (value: string) => translate('zh-CN', value);
+    expect(matchesTemplateSearch(entry({ uses: ['Product demo'] }), '功能演示', zh)).toBe(true);
+    expect(matchesTemplateSearch(entry({ title: 'AI 功能演示' }), '功能演示', zh)).toBe(true);
+    expect(matchesTemplateSearch(entry({ uses: ['Product launch'] }), 'product promo', t)).toBe(true);
+    expect(matchesTemplateSearch(entry({ title: 'Summer product promo' }), 'product promo', t)).toBe(true);
+    expect(matchesTemplateSearch(entry({ uses: ['Brand promotion'] }), 'product promo', t)).toBe(false);
+  });
   it('preserves names, ids and filters out incidental acronym substrings', () => {
     expect(matchesTemplateSearch(entry({ title: 'Anything goes' }), 'NYT', t)).toBe(false);
     expect(matchesTemplateSearch(entry({ id: 'nyt-graph' }), 'NYT', t)).toBe(true);
