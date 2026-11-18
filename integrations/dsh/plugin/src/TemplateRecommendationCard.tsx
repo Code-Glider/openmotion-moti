@@ -6,7 +6,7 @@ import { useHostTheme } from "./theme.ts";
 import { studioAssetUrl } from "./studio.ts";
 
 type Props = {
-  proposal: { details: RecommendationDetails };
+  proposal: { callId?: string; details: RecommendationDetails };
   decision?: { phase?: string };
   summary?: React.ReactNode;
   act: (verb: string, payload: { templateId: string }) => Promise<unknown>;

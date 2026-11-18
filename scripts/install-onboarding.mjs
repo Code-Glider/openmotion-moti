@@ -52,8 +52,15 @@ export async function prepareInstallationOnboarding({ appRoot, dataDirectory, te
   const inlinePresentation = await inline;
   if (inlinePresentation && host !== 'codex') inlinePresentation.instructions = onboardingPresentationInstructions('host_cards');
   return { host, hostSessionVerified: false, instructions, catalog,
-    cardPresentation: { tool: 'openmotion_show_template_recommendations',
-      arguments: { templateIds, language, onboarding: true },
+    cardPresentation: { tool: host === 'deepseek' ? 'propose_action' : 'openmotion_show_template_recommendations',
+      ...(host === 'deepseek' ? { skill: 'openmotion-template-recommendations' } : {}),
+      arguments: host === 'deepseek' ? {
+        action: 'openmotion_template_recommendation', title: 'OpenMotion', brief: 'Choose a template to begin',
+        details: { onboarding: true, language, templates: catalog.templates.map(template => ({
+          id: template.templateId, title: template.name, description: template.summary,
+          previewUrl: template.previewUrl, posterUrl: template.posterUrl, duration: template.durationSeconds,
+        })) },
+      } : { templateIds, language, onboarding: true },
       instructions: 'Show these exact three cards in order using a supported native MCP App, DSH action card or host HTML surface. Use text with the same IDs only when card presentation is unsupported or fails. Do not substitute templates or create a project.' },
     ...(inlinePresentation ? { inlinePresentation } : {}) };
 }
@@ -190,6 +197,7 @@ export function installationSummary(result) {
     lines.push('ONBOARDING_PENDING: ' + result.onboardingStatus
       + '. Installation is registered; presentation remains unverified. '
       + onboardingPresentationInstructions(result.host && result.host !== 'codex' ? 'host_cards' : inlinePresentation?.status));
+    if (result.host === 'deepseek') lines.push('DSH_NEXT_ACTION: Refresh the current DSH browser page once if the OpenMotion UI has not loaded; do not kill DSH or restart the conversation. Load cardPresentation.skill and call propose_action with cardPresentation.arguments in this turn. The card opens the template library beside the current chat. Never call an unavailable openmotion_show_template_recommendations tool or report onboarding complete from a prepared receipt or healthy MCP alone.');
   }
   if (hostHandoff?.status === 'refresh_requested') lines.push('After this tool step, run recovery.command/recovery.args once to verify the queued refresh; do not reload or prepare again. This does not block the prepared HTML presentation.');
   if (preview?.status !== 'ready') lines.push('LIBRARY_UNAVAILABLE: ' + (preview?.warning || 'No prepared library URL')

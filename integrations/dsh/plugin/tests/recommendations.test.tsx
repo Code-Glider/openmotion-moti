@@ -51,3 +51,47 @@ it("tracks the host theme without resetting cards or their template identities",
   expect(document.querySelector(".omd-recommendation-card")?.getAttribute("data-theme")).toBe("dark");
   expect(document.querySelectorAll("[data-template-id]")).toHaveLength(3);
 });
+
+it("opens the template library beside the current chat and waits for its load before claiming it opened", async () => {
+  const { registerTemplateRecommendationBody } = await import('../src/client');
+  let Body: React.ComponentType<any> | undefined;
+  const openTab = vi.fn();
+  registerTemplateRecommendationBody({
+    effect: (run: () => unknown) => run(),
+    locale: { register: vi.fn() },
+    actionCards: { register: (registration: any) => { Body = registration.Body; return () => {}; } },
+    sidebarRight: { openTab },
+  });
+  const container = document.createElement('div'); document.body.append(container); root = createRoot(container);
+  await act(async () => root!.render(React.createElement(Body!, { proposal: { details }, act: vi.fn() })));
+  expect(openTab).toHaveBeenCalledExactlyOnceWith('openmotion-studio', { params: { page: 'templates' } });
+  expect(document.body.textContent).not.toContain('右侧就是模板库');
+  await act(async () => { window.dispatchEvent(new Event('openmotion:library-ready')); });
+  expect(document.body.textContent).toContain('右侧就是模板库');
+  expect(openTab).toHaveBeenCalledTimes(1);
+});
+
+it("does not reopen the library over a user's later editor when an old installation card mounts again", async () => {
+  const { registerTemplateRecommendationBody } = await import('../src/client');
+  let Body: React.ComponentType<any> | undefined;
+  const openTab = vi.fn();
+  localStorage.setItem('omd-onboarding:previous-call', 'requested');
+  registerTemplateRecommendationBody({ effect: (run: () => unknown) => run(), locale: { register: vi.fn() },
+    actionCards: { register: (registration: any) => { Body = registration.Body; return () => {}; } }, sidebarRight: { openTab } });
+  const container = document.createElement('div'); document.body.append(container); root = createRoot(container);
+  await act(async () => root!.render(React.createElement(Body!, { proposal: { callId: 'previous-call', details }, act: vi.fn() })));
+  expect(openTab).not.toHaveBeenCalled();
+  localStorage.removeItem('omd-onboarding:previous-call');
+});
+
+it("restores the library after refresh when DSH does not persist tab navigation parameters", async () => {
+  const { StudioWorkspace } = await import('../src/editing');
+  localStorage.setItem('omd-session-page:welcome-session', 'templates');
+  const container = document.createElement('div'); document.body.append(container); root = createRoot(container);
+  await act(async () => root!.render(<StudioWorkspace sessionId="welcome-session" useTabInfo={() => ({ tab: { visible: true, navigation: {} } })} openWorkspace={vi.fn()} closeStudio={vi.fn()} />));
+  const frame = document.querySelector('iframe');
+  expect(frame?.title).toBe('OpenMotion Templates');
+  expect(frame?.src).toContain('templates=1');
+  expect(frame?.src).not.toContain('#project/');
+  localStorage.removeItem('omd-session-page:welcome-session');
+});

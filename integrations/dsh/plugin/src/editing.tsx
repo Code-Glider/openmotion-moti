@@ -5,20 +5,24 @@ import { studio } from "./studio";
 
 type StudioProps = {
   useTabInfo: () => {
-    tab: { visible: boolean; navigation: { params?: { projectId?: string } } };
+    tab: { visible: boolean; navigation: { params?: { projectId?: string; page?: string } } };
   };
   openWorkspace: () => void;
   closeStudio: () => void;
+  sessionId?: string;
 };
 
 export function StudioWorkspace({
   useTabInfo,
   openWorkspace,
   closeStudio,
+  sessionId,
 }: StudioProps): React.JSX.Element | null {
   const { tab } = useTabInfo();
   const theme = useHostTheme();
   const projectId = tab.navigation.params?.projectId || "project";
+  const templates = tab.navigation.params?.page === "templates" ||
+    (!tab.navigation.params?.projectId && sessionId !== undefined && localStorage.getItem("omd-session-page:" + sessionId) === "templates");
   const [focused, setFocused] = useState(
     () => window.matchMedia("(max-width: 960px)").matches,
   );
@@ -71,7 +75,7 @@ export function StudioWorkspace({
             width="20"
             height="20"
           />
-          <strong>Studio</strong>
+          <strong>{templates ? "Templates" : "Studio"}</strong>
         </div>
         <div className="omd-editor-actions">
           <button
@@ -93,9 +97,10 @@ export function StudioWorkspace({
         </div>
       </header>
       <iframe
-        title="OpenMotion Studio"
+        title={templates ? "OpenMotion Templates" : "OpenMotion Studio"}
+        onLoad={() => { if (templates) window.dispatchEvent(new Event("openmotion:library-ready")); }}
         src={
-          studio +
+          templates ? studio + "/?embed=1&templates=1" : studio +
           "/?embed=1&hostChrome=1#project/" +
           encodeURIComponent(projectId)
         }
@@ -144,7 +149,8 @@ export function registerEditingWorkspace(ctx: any): void {
       {
         name: "sidebar.right.pane.tab",
         key: "openmotion.studio",
-        inject: () => ({
+        inject: (sessionId: string) => ({
+          sessionId,
           openWorkspace: () => ctx.layout.selectPanel("openmotion"),
           closeStudio: () => ctx.sidebarRight.toggleExpanded(),
         }),

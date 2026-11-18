@@ -188,7 +188,14 @@ for (const host of ['claude', 'deepseek', 'workbuddy', 'opencode']) {
     const result = await prepareInstallationOnboarding({ appRoot, dataDirectory, host, templateEnvironment: 'prod', templateIds: selected, language: 'zh' });
     assert.equal(result.inlinePresentation.status, 'prepared', result.inlinePresentation.warning);
     assert.deepEqual(result.inlinePresentation.templateIds, selected);
-    assert.deepEqual(result.cardPresentation.arguments, { templateIds: selected, language: 'zh', onboarding: true });
+    if (host === 'deepseek') {
+      assert.equal(result.cardPresentation.tool, 'propose_action');
+      assert.equal(result.cardPresentation.skill, 'openmotion-template-recommendations');
+      assert.equal(result.cardPresentation.arguments.action, 'openmotion_template_recommendation');
+      assert.deepEqual(result.cardPresentation.arguments.details.templates.map((item: any) => item.id), selected);
+      assert.equal(result.cardPresentation.arguments.details.language, 'zh');
+      assert.equal(result.cardPresentation.arguments.details.onboarding, true);
+    } else assert.deepEqual(result.cardPresentation.arguments, { templateIds: selected, language: 'zh', onboarding: true });
     assert.deepEqual(result.catalog.templates.map((template: any) => template.templateId), selected);
     assert(result.catalog.templates.every((template: any) => template.previewUrl?.startsWith('https:') && template.posterUrl?.startsWith('https:')));
     assert.match(result.inlinePresentation.welcomeMarkdown, /我是你的开源视频创作搭档/);

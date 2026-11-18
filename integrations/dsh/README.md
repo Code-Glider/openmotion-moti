@@ -10,6 +10,20 @@ This source-checkout integration targets DSH **0.2.2-rc.1**. It is separate from
 - Run `npm ci` and `npm run build:studio` at the OpenMotion repository root.
 - A model configured in DSH. The plugin neither supplies model access nor copies credentials from another Agent. Media generation additionally needs an OpenMotion media provider.
 
+## Install into the current DSH session
+
+From the intended source checkout, run one command with the actual existing profile and workspace:
+
+```sh
+node integrations/dsh/install.ts --profile PROFILE --data-dir /absolute/workspace/data --language en
+```
+
+The installer checks the environment once, reuses matching locked dependencies and Studio fingerprints, builds the plugin directly, and enables its workspace plus the two native action-card components when absent. Existing inherited card components are reused without enabling unrelated recommendation features. Set `DSH_HOME` or pass `--dsh-home` for a custom profile home. `--url` takes the current local `DSH_WEB_URL`. It also attempts the official main Skill installation with `--agent universal`, scoped to this profile, and returns a compact presentation handoff. Existing onboarding selections are reused; `--resume` can preserve a receipt created by earlier installation commands.
+
+The profile can activate while DSH remains running. **Do not kill or restart the host from its own conversation.** If the old browser has not loaded the new frontend, refresh that page once; server/MCP readiness does not imply that the client UI loaded. Then load `cardPresentation.skill` and call `propose_action` with the returned `cardPresentation.arguments`. The native card opens the template library to the right of Agent chat, with the shared welcome and exactly three recommendations on the left. It does not open or create a sample project. A file, status endpoint or tool list alone is not visible onboarding. Keep a missing refresh/card display pending, or use the shared text fallback with the same IDs when native display is unavailable.
+
+The downloaded tarball route below remains useful for a pinned published release. Do not mix that route into an existing source installation or search multiple channels to finish a local build.
+
 ## Try from source
 
 From the OpenMotion checkout:
@@ -84,6 +98,10 @@ Add this entry to that profile's `cordis.patch.yml`, preserving existing entries
 
 ```yaml
 - insert:
+    - id: action-cards
+      name: '@deepseek-ai/dsh-action-cards'
+    - id: client-ui-action-cards
+      name: '@deepseek-ai/dsh-client-ui-action-cards'
     - id: openmotion-workspace
       name: openmotion-dsh
       config:
@@ -91,9 +109,9 @@ Add this entry to that profile's `cordis.patch.yml`, preserving existing entries
         dataDirectory: /absolute/path/to/your/openmotion-data
 ```
 
-Replace both paths with your local locations. `root` must be a built source checkout containing this integration; the plugin does not download OpenMotion. `dataDirectory` chooses the shared project/asset store. Optional `node` selects the Node executable for OpenMotion; by default it uses DSH's Node. Optional `templateSource` selects `repository` or `hosted`.
+If the profile already inherits either native action-card component, omit that component from the insert list rather than registering another provider. Replace both paths with your local locations. `root` must be a built source checkout containing this integration; the plugin does not download OpenMotion. `dataDirectory` chooses the shared project/asset store. Optional `node` selects the Node executable for OpenMotion; by default it uses DSH's Node. Optional `templateSource` selects `repository` or `hosted`.
 
-Restart DSH. Enabling this one plugin mounts its workspace UI, starts/reuses OpenMotion, and connects the MCP tools. Remove an existing `mcp-openmotion` entry before enabling it: two adapters cannot reserve the same `openmotion` tool namespace. Model configuration remains in DSH's normal settings/profile. Do not commit generated patches, model credentials, authenticated URLs or user data.
+Allow the watched profile to activate, then refresh the browser once if its OpenMotion frontend is missing. Enabling this one plugin mounts its workspace UI, starts/reuses OpenMotion, and connects the MCP tools. Remove an existing `mcp-openmotion` entry before enabling it: two adapters cannot reserve the same `openmotion` tool namespace. Model configuration remains in DSH's normal settings/profile. Do not commit generated patches, model credentials, authenticated URLs or user data.
 
 ### Distribution maintenance
 
