@@ -1,5 +1,4 @@
-import { usePlayerStore, type TimelineElement } from "../store/playerStore";
-import { linkedOverlayKeys } from "./timelineLinkage";
+import type { TimelineElement } from "../store/playerStore";
 import { clampToHostStart } from "../store/timelineElement";
 import { canMoveTimelineElement } from "./timelineAuthoredMoveTarget";
 
@@ -94,8 +93,7 @@ export function resolveGroupMovers(
   selectedKeys: ReadonlySet<string> | null | undefined,
   dragKey: string,
 ): TimelineElement[] | null {
-  selectedKeys = linkedOverlayKeys(elements, dragKey, selectedKeys, usePlayerStore.getState().timelineLinkageEnabled);
-  if (selectedKeys.size <= 1) return null;
+  if (!selectedKeys?.has(dragKey) || selectedKeys.size <= 1) return null;
   return elements.filter((e) => selectedKeys.has(e.key ?? e.id) && canMoveTimelineElement(e));
 }
 

@@ -79,6 +79,13 @@ function outOfRangeZoneInsertRow(
   return desired < Math.min(...zoneTracks) ? zoneTop : zoneBottom;
 }
 
+export interface TimelineDropPlacement {
+  track: number;
+  insertRow: number | null;
+  start: number;
+  invalidDrop?: boolean;
+}
+
 function groupHeaderAim(
   input: Parameters<typeof resolveZoneDropPlacement>[0],
 ):
@@ -113,7 +120,7 @@ export function resolveZoneDropPlacement(input: {
   minStart?: number;
   /** Where the dragged clip sits now. */
   origin?: { track: number; start: number };
-}): { track: number; insertRow: number | null; start: number } {
+}): TimelineDropPlacement {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;
   const audioRow = timelineAudioRow(order, audioTracks, input.groupTracks);
@@ -123,6 +130,10 @@ export function resolveZoneDropPlacement(input: {
     isInsertAllowedForZone(deliberateInsertRow, audioRow, isAudio, input.allowedInsertRows)
   ) {
     return { track: desiredTrack, insertRow: deliberateInsertRow, start };
+  }
+
+  if (!isAudio && audioTracks.has(desiredTrack) && input.origin) {
+    return { ...input.origin, insertRow: null, invalidDrop: true };
   }
 
   const aim = groupHeaderAim(input);

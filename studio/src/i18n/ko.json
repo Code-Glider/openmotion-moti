@@ -1,4 +1,5 @@
 {
+  "Cannot drop here": "여기에 놓을 수 없습니다",
   "+ Add effect": "+ 효과 추가",
   "+ Add variable": "+ 변수 추가",
   "+ New track": "+ 새 트랙",
@@ -1814,8 +1815,10 @@
   "Delete track": "트랙 삭제",
   "Unlock the track before deleting it": "삭제하기 전에 트랙 잠금을 해제하세요",
   "Open the composition to delete this track": "이 트랙을 삭제하려면 컴포지션을 여세요",
+  "Main track": "메인 트랙",
   "Main track magnet": "메인 트랙 자석",
-  "Timeline linkage": "타임라인 연동",
+  "Main track linkage": "메인 트랙 연동",
+  "Moves with the selected main track clip": "선택한 메인 트랙 클립과 함께 이동",
   "Trim left to playhead": "재생 헤드까지 왼쪽 자르기",
   "Trim right to playhead": "재생 헤드까지 오른쪽 자르기",
   "Screen too small to expand this panel": "화면이 너무 작아 패널을 펼칠 수 없습니다"

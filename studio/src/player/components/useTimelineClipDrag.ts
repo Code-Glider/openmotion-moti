@@ -32,6 +32,7 @@ import type {
 } from "./timelineClipDragTypes";
 import { getTimelineElementIndexes } from "../lib/timelineElementIndexes";
 import { dropMisalignedTrimPartners, linkedGestureKeys } from "./audioClipLink";
+import { linkedOverlayKeys } from "./timelineLinkage";
 import { isLinkedSelectionOn } from "../../utils/linkedClipPreferences";
 import { useTimelineClipCapabilities } from "./timelineReadOnly";
 import { timelineClipFocusId } from "./timelineNavigationIdentity";
@@ -232,14 +233,21 @@ export function useTimelineClipDrag({
         return;
       }
       beginGesture("drag", next.pointerId);
-      gestureSelectedKeysRef.current = linkedGestureKeys(
+      const selectedKeys = linkedGestureKeys(
         gestureSelectedKeysRef.current,
         next.element,
         elementsRef.current,
         next.altKey === true,
         isLinkedSelectionOn(),
       );
-      publishDraggedClip(next);
+      const movingKeys = linkedOverlayKeys(
+        elementsRef.current,
+        next.element.key ?? next.element.id,
+        selectedKeys,
+        !next.altKey && usePlayerStore.getState().timelineLinkageEnabled,
+      );
+      gestureSelectedKeysRef.current = movingKeys;
+      publishDraggedClip({ ...next, movingKeys });
     },
     [beginGesture, publishDraggedClip],
   );

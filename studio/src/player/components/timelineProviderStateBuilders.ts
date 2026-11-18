@@ -24,13 +24,14 @@ export function resolveMultiDragPreview(
     const start = starts.get(key);
     return start === undefined ? [] : [[key, start - el.start] as const];
   }));
-  const movers = resolveGroupMovers(elements, selectedKeys, draggedKey);
+  const movingKeys = draggedClip.movingKeys ?? selectedKeys;
+  const movers = resolveGroupMovers(elements, movingKeys, draggedKey);
   return {
     dragStarted: true,
     draggedKey,
     draggedOriginStart: draggedClip.element.start,
     draggedPreviewStart: draggedClip.previewStart,
-    selectedKeys: offsets ? new Set(offsets.keys()) : movers ? new Set(movers.map(getTimelineElementIdentity)) : selectedKeys,
+    selectedKeys: offsets ? new Set(offsets.keys()) : movers ? new Set(movers.map(getTimelineElementIdentity)) : movingKeys,
     offsets,
   };
 }

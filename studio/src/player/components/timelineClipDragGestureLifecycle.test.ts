@@ -91,6 +91,7 @@ function mountGesture(kind: "drag" | "resize", pointerId: number | null = null) 
     previewStart: 3,
   }));
   const onMoveElement = vi.fn();
+  const onLinkEdit = vi.fn();
   const onResizeElement = vi.fn();
   const updateElement = vi.fn();
   const stopAutoScroll = vi.fn();
@@ -126,6 +127,7 @@ function mountGesture(kind: "drag" | "resize", pointerId: number | null = null) 
     onResizeElementRef: { current: onResizeElement },
     onResizeElementsRef: { current: undefined },
     onBlockedEditAttemptRef: { current: undefined },
+    onLinkEditRef: { current: onLinkEdit },
     readZIndexRef: { current: undefined },
     onStackingPatchesRef: { current: undefined },
     refreshAfterLaneMoveRef: { current: undefined },
@@ -138,6 +140,7 @@ function mountGesture(kind: "drag" | "resize", pointerId: number | null = null) 
     applyResizePointer,
     updateDraggedClipPreview,
     onMoveElement,
+    onLinkEdit,
     onResizeElement,
     updateElement,
     stopAutoScroll,
@@ -148,6 +151,27 @@ function mountGesture(kind: "drag" | "resize", pointerId: number | null = null) 
 
 const release = (clientX: number, clientY: number) =>
   window.dispatchEvent(new MouseEvent("pointerup", { clientX, clientY }));
+
+it("cancels an incompatible release without saving a move or unlinking", () => {
+  const g = mountGesture("drag");
+  g.draggedClipRef.current = {
+    ...g.draggedClipRef.current!,
+    element: { ...element, link: "linked" },
+    altKey: true,
+  };
+  g.updateDraggedClipPreview.mockImplementation((previous) => ({ ...previous, invalidDrop: true }));
+  const saveBatch = vi.fn();
+  g.onMoveElementsRef.current = saveBatch;
+
+  release(70, 10);
+
+  expect(g.draggedClipRef.current).toBeNull();
+  expect(g.updateElement).not.toHaveBeenCalled();
+  expect(g.onMoveElement).not.toHaveBeenCalled();
+  expect(saveBatch).not.toHaveBeenCalled();
+  expect(g.onLinkEdit).not.toHaveBeenCalled();
+  g.dispose();
+});
 
 it.each(["drag", "resize"] as const)("uses the %s release coordinate when its last move was never delivered", kind => {
   vi.useFakeTimers();

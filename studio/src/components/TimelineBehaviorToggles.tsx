@@ -46,8 +46,8 @@ export function TimelineBehaviorToggles() {
               <RemixIcon name="align-item-left-line" size={16} />
             </button>
           </Tooltip>
-          <Tooltip label={t("Timeline linkage")}>
-            <button type="button" aria-label={t("Timeline linkage")}
+          <Tooltip label={t("Main track linkage")}>
+            <button type="button" aria-label={t("Main track linkage")}
               aria-pressed={timelineLinkageEnabled}
               onClick={() => setTimelineLinkageEnabled(!timelineLinkageEnabled)}
               className={timelineLinkageEnabled ? flatActive : flatIdle}>

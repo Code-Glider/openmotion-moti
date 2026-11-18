@@ -2,7 +2,7 @@
 
 All default public names use **OpenMotion**: plugin and MCP server `openmotion`, Tools `openmotion_*`, core Skills `openmotion-*`, and resources `openmotion://`. Only canonical Tools/resources are advertised by MCP discovery. The optional Library Skills use the same `openmotion-` prefix.
 
-Old `motion_*` / legacy `design_*` Tool names and `motion://` resource addresses remain accepted at the compatibility boundary. Retired Skill names are no longer shipped or callable: use the five `openmotion-*` production entries and the one hundred canonical Library names (Brandkit, Presenter Story, Motion Design Remix, Growth Teardown and 96 single-style recipes). Library resources live only in canonical folders. From a checkout or full plugin ZIP, `node scripts/install-library-skill.mjs <openmotion-skill-name> <destination-skills-directory>` installs one Library Skill, reuses identical content and refuses to overwrite customized canonical folders. It removes only an unchanged retired Library forwarding folder verified by its complete file hashes; customized, extra-file and symlink folders are preserved and reported as `preservedLegacy` for manual review. Re-run the helper for each Library Skill previously installed separately. npm setup replaces owned bundles and removes obsolete flat entries belonging to the same host/home, with rollback on registration failure. Unowned entries and other installations are preserved; remove any separately installed old core entries manually after checking their contents. Refresh host Skill discovery and update saved invocations to canonical names. An existing `motion` MCP registration may still launch this runtime; new configurations register only `openmotion`.
+Old `motion_*` / legacy `design_*` Tool names and `motion://` resource addresses remain accepted at the compatibility boundary. Retired Skill names are no longer shipped or callable: use the five `openmotion-*` production entries and the one hundred and one canonical Library names (Brandkit, Presenter Story, Motion Design Remix, Growth Teardown, Design Styles and 96 single-style recipes). Library resources live only in canonical folders. From a checkout or full plugin ZIP, `node scripts/install-library-skill.mjs <openmotion-skill-name> <destination-skills-directory>` installs one Library Skill, reuses identical content and refuses to overwrite customized canonical folders. It removes only an unchanged retired Library forwarding folder verified by its complete file hashes; customized, extra-file and symlink folders are preserved and reported as `preservedLegacy` for manual review. Re-run the helper for each Library Skill previously installed separately. npm setup replaces owned bundles and removes obsolete flat entries belonging to the same host/home, with rollback on registration failure. Unowned entries and other installations are preserved; remove any separately installed old core entries manually after checking their contents. Refresh host Skill discovery and update saved invocations to canonical names. An existing `motion` MCP registration may still launch this runtime; new configurations register only `openmotion`.
 
 Renaming does not change schemas, defaults, engine versions, permissions or project data formats. Internal request identities and telemetry keys retain their original names so retries cannot duplicate saved changes or exports. Compatible running backends are negotiated using either Tool spelling. See [installation and migration](npm-installation.md#public-names-and-compatibility). Generic terms such as motion graphics and motion blur remain animation terminology.
 
@@ -21,6 +21,8 @@ The [native engine boundary](../skills/openmotion-production/references/native.m
 可选 [`presenter-story`](../library/skills/openmotion-presenter-story/SKILL.md) 提供三份真人口播 / Motion 设计配方：知识清单、工作流演示、产品讲解。它要求用自己的录制和实际语音时间码编排字幕、画中画与动效；展示媒体为目录里的上游原片及改编，不是新 Skill 的成片验收。它不包含人物素材或可执行模板，仍复用现有制作路线。
 
 可选 [`growth-teardown`](../library/skills/openmotion-growth-teardown/SKILL.md) 把「这家公司是怎么增长起来的」做成带出处的增长地图视频：按研究方法收集带日期的增长动作和指标点，写成 `growth.json`，再由脚本抓取真实证据画面并生成可编辑的九幕 HyperFrames 工程与同步配乐。它是 Library 内容，不注册为 MCP resource，也不改变五个核心制作入口。
+
+可选 [`design-styles`](../library/skills/openmotion-design-styles/SKILL.md) 是设计风格库：21 张风格卡（包豪斯、瑞士国际主义、构成主义、孟菲斯、新粗野主义、装饰艺术、水墨、新浪潮等）和 2 张布局卡（便当盒、瀑布流），每张写明色板、开源字体、五条规则、标志性动法和要避免的做法。Agent 选卡后写 `plan.json`，由 `scripts/style.mjs check` 校验颜色、文字长度、动法和片尾署名，再用 `fonts` 按画面文字下载子集字体，最后按风格规则搭 HyperFrames 工程。它是 Library 内容，不注册为 MCP resource，也不改变五个核心制作入口。
 
 可选的 96 个单风格配方 Skill 各提供一种画面风格或剪辑方法，清单见 [Library 风格配方](../library/README.zh-CN.md#style-recipes)。每个都在 Studio Skills 页有一张卡片和一支 OpenMotion 样片封面；配方本身尚无可执行模板或用户素材实跑对比；它们不注册 MCP，也不改变核心制作入口。
 
@@ -55,11 +57,10 @@ Before material grouping, the recreation guidance distinguishes object motion, i
 | openmotion-template-to-video | 已有模板原样出片、源码适配与内容替换 | 已接入默认 template 路线，共用修改与 revision 规范 |
 | openmotion-video-to-template | 把视频制作成可复用模板文件夹 / ZIP | 已纳入分发与资源读取，不代替普通视频复刻 |
 | openmotion-recreate | 从参考重建用户本次作品 | 已接入实际流程；自带重建、测量参考与脚本 |
-| reference-video | 旧引用的原生编写兼容入口 | 通用正文迁入共享 native，非复刻专业实现 |
 
-各入口正文先说明职责与目标：production 负责既定决定下的工程接续与交付，director 从产品事实、受众与传播目的判断动态表达，openmotion-template-to-video 负责既有模板出片与内容适配，recreate 根据实际参考重建并核对差距；reference-video 继续承担兼容引导。director v1.4.5 明确局部创作和声音重新设计也可直接进入；替换已选音轨与重新设计声画关系按本轮目标区分，画面锁定只决定保持项。角色定位不增加固定风格或新的专业能力，也不代表多个独立 Agent。
+各入口正文先说明职责与目标：production 负责既定决定下的工程接续与交付，director 从产品事实、受众与传播目的判断动态表达，openmotion-template-to-video 负责既有模板出片与内容适配，recreate 根据实际参考重建并核对差距。director v1.4.5 明确局部创作和声音重新设计也可直接进入；替换已选音轨与重新设计声画关系按本轮目标区分，画面锁定只决定保持项。角色定位不增加固定风格或新的专业能力，也不代表多个独立 Agent。
 
-按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 registry 进入 template；video-only reference 进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
+按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 Prism 进入 template；video-only reference、registry 及无工程的资料包进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
 
 专业入口可由宿主 Skill 自动匹配、用户指定或准确模板指引直接选中，只读取共享 context 后继续，不返回 production 重做选路；各入口范围以其 Skill 说明和上表为准。仅脚本或审片停在当前范围；共享质量参考不会要求重启 director 的完整创作流程。Skills 是同一 Agent 的文档，不是相互递归执行的独立进程。
 
@@ -75,12 +76,12 @@ MCP 工具说明和领域执行位于 `mcp-tools.ts`；`mcp.ts` 保留初始化�
 
 | Skill | workflow 短 ID | section |
 | --- | --- | --- |
-| openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials、account、compatible、fal、opendesign、atlascloud、wavespeed、typography、fonts |
+| openmotion-production | production（默认） | start、intake、templates、production、verification、context、native、edit、portable、materials、transcripts、decisions、review、sound、account、compatible、fal、opendesign、atlascloud、wavespeed、typography、fonts、reference（共 23 项） |
 | openmotion-director | director | start、actions、craft、phrases、decisions、sound、review、examples |
-| openmotion-template-to-video | template | start、unchanged |
+| openmotion-template-to-video | template | start、unchanged、firstuse、recipes（共 4 项） |
 | openmotion-recreate | recreate | start、rebuild、reconstruction、rendering、rendercode、verification |
 | openmotion-video-to-template | video-to-template | start、measure、rebuild、project、verification、sources |
-| openmotion-media | media（辅助素材生成，非成片主入口） | start |
+| openmotion-media | media（辅助素材生成，非成片主入口） | start、planning、setup、jobs、inspection、account、compatible、fal、opendesign、atlascloud、wavespeed（共 11 项） |
 
 ```json
 {"uri":"openmotion://workflow/director/start"}
@@ -106,7 +107,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
-一期公开接口已收敛为 [16 个 openmotion_ 注册名](mcp-phase1-tools.md)（15 项领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口：它只转到共享原生编写规范，不另立规则；确认源码安装、旧提示词和宿主配置都不再按名称调用它后，删除该目录，并同步 `tests/package.test.ts` 的核心目录清单。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+一期公开接口已收敛为 [16 个 openmotion_ 注册名](mcp-phase1-tools.md)（15 项领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考；源码中原有的 reference-video 兼容入口已在确认无源码安装、提示词或宿主配置按名称调用后删除。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
 
 ## Shared production reading scope
 

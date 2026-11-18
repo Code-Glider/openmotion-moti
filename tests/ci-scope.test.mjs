@@ -141,7 +141,8 @@ test('parallel CI preserves common gates while separating distribution regressio
   assert(!distribution.includes('npm run design:test'));
   for (const name of ['Related template preview browser regression', 'Transcript workflow browser regression',
     'Platform export Studio and MCP end-to-end regression', 'Brand Kit capture, package and showcase regression',
-    'Repository template runtime regression', 'Built-in template playback and export regression']) {
+    'Repository template runtime regression', 'Workspace, wrapper and session regression',
+    'Built-in template playback and export regression']) {
     assert(stepBody(distributionBrowser, name).includes("steps.scope.outputs.full == 'true'"), name);
     assert(!distribution.includes(`- name: ${name}`), `${name} must not remain serialized behind packaging`);
   }

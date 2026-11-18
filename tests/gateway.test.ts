@@ -1,4 +1,7 @@
 import test from 'node:test';
+import https from 'node:https';
+import { Readable } from 'node:stream';
+import { EventEmitter } from 'node:events';
 import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +11,8 @@ import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
 import { ModelGateway, gatewayFor } from '../gateway/service.ts';
 import { classifyModel, discoverModels, normalizeModels } from '../gateway/catalog.ts';
-import { downloadMedia, mediaType, type Fetcher } from '../gateway/network.ts';
+import { apiJson, downloadMedia, isPublicAddress, mediaType, providerOrigin, publicProviderFetch, type Fetcher } from '../gateway/network.ts';
+import { publicBrandAddress, brandWebsite } from '../gateway/brand-network.ts';
 import { callTool } from '../mcp.ts';
 import { createTracker, validProperties, type PendingEvent } from '../tracking/core.ts';
 import { omEvents, studioEvents } from '../tracking/events.ts';
@@ -286,10 +290,75 @@ test('catalogue discovery classifies output rather than input and follows public
   assert.equal(pages, 2); assert.deepEqual(models.map(m => m.modality), ['image', 'video']);
 });
 
+test('provider JSON stops reading at the response size cap', async () => {
+  let pulled = 0, cancelled = false;
+  const chunk = new Uint8Array(1024 * 1024).fill(120);
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      // A buffering regression must finish draining and fail an assertion, not exhaust memory.
+      if (pulled >= 32 * 1024 * 1024) { controller.close(); return; }
+      pulled += chunk.length; controller.enqueue(chunk);
+    },
+    cancel() { cancelled = true; },
+  });
+  const oversized: Fetcher = async () => new Response(stream, { status: 200 });
+  await assert.rejects(apiJson(oversized, 'https://example.com/v1/models'), /exceeds 16 MB/);
+  // A buffering implementation would drain the body; this one stops a chunk past the cap and cancels.
+  assert.ok(pulled <= 18 * 1024 * 1024, `pulled ${pulled} bytes before rejecting`);
+  assert.ok(cancelled, 'the reader is cancelled once the cap is passed');
+  const small: Fetcher = async () => new Response(JSON.stringify({ ok: true }), { status: 200 });
+  assert.deepEqual(await apiJson(small, 'https://example.com/v1/models'), { ok: true });
+  const bom: Fetcher = async () => new Response(new Uint8Array([0xef, 0xbb, 0xbf, ...Buffer.from('{"ok":true}')]), { status: 200 });
+  assert.deepEqual(await apiJson(bom, 'https://example.com/v1/models'), { ok: true });
+});
+
+test('production JSON transport stops before buffering oversized bodies and keeps media limits separate', async t => {
+  let pulled = 0;
+  const chunk = Buffer.alloc(512, 120);
+  let response: Readable;
+  t.mock.method(https, 'request', (_url: URL, _options: unknown, receive: (body: Readable) => void) => {
+    pulled = 0;
+    response = Object.assign(new Readable({
+      read() {
+        if (pulled >= 20 * 1024) { this.push(null); return; }
+        pulled += chunk.length; this.push(chunk);
+      },
+    }), { statusCode: 200, headers: {} });
+    const request = new EventEmitter() as EventEmitter & { setTimeout: () => unknown; end: () => void };
+    request.setTimeout = () => request;
+    request.end = () => receive(response);
+    return request;
+  });
+  await assert.rejects(apiJson(publicProviderFetch, 'https://8.8.8.8/v1/models', {}, { maxBytes: 1024 }), /Provider response exceeds/);
+  assert.ok(response!.destroyed, 'the production transport destroys the oversized response');
+  assert.ok(pulled <= 2048, `transport buffered ${pulled} bytes before rejecting`);
+  const media = await publicProviderFetch('https://8.8.8.8/media');
+  assert.equal((await media.arrayBuffer()).byteLength, 20 * 1024, 'direct media traffic retains its larger cap');
+});
+
+test('JSON reader honors per-request size limits', async () => {
+  const body = JSON.stringify({ text: 'x'.repeat(1024) });
+  const source: Fetcher = async () => new Response(body);
+  assert.deepEqual(await apiJson(source, 'https://example.com', {}, { maxBytes: 2048 }), JSON.parse(body));
+  await assert.rejects(apiJson(source, 'https://example.com', {}, { maxBytes: 512 }), /Provider response exceeds/);
+});
+
 test('media import rejects non-public URLs, unexpected file signatures and wrong output modalities', async () => {
   for (const url of ['http://example.com/file.png', 'https://127.0.0.1/file.png', 'https://user:pass@example.com/file.png', 'https://[::1]/image']) await assert.rejects(downloadMedia(url, new AbortController().signal));
   assert.throws(() => mediaType(png, 'video'), /valid video/);
   assert.deepEqual(await downloadMedia('data:image/png;base64,' + png.toString('base64'), new AbortController().signal), png);
+});
+
+test('gateway and brand capture share one public-address rule', () => {
+  for (const host of ['[2002:c000:204::1]', '[2001::1]', '[2001:db8::1]', '[2001:0:53aa:64c:0:0:0:1]', '198.18.0.1', '192.0.2.1', '192.0.0.1', '169.254.1.1'])
+    assert.throws(() => providerOrigin(`https://${host}/`), /public HTTPS gateway origin/);
+  for (const host of ['[2606:4700:4700::1111]', '192.0.78.1', '203.0.113.9'])
+    assert.ok(providerOrigin(`https://${host}/`), host);
+  for (const address of ['198.18.0.1', '192.0.2.1', '192.0.78.1', '2002:c000:204::1', '2001::1', '2001:db8::1', '10.0.0.1', '192.168.1.1', '2606:4700::1111'])
+    assert.equal(publicBrandAddress(address), isPublicAddress(address), address);
+  // brandWebsite resolves a concrete URL before capture, so it must keep working after the merge.
+  assert.equal(brandWebsite('https://example.com'), 'https://example.com/');
+  assert.throws(() => brandWebsite('https://127.0.0.1/'), /public HTTPS website/);
 });
 
 test('HTTP and MCP share settings, routes and job state without exposing keys or project data paths', () => fixture(async store => {

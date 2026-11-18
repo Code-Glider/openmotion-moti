@@ -122,6 +122,21 @@ function horizontalDrag(
   return { drag, clientX: originClientX + deltaSeconds * PPS, clientY: originClientY };
 }
 
+it("allows the visual/audio seam, but cancels the landing inside the audio row", () => {
+  const moving = clip("moving", 0, 2, 2, 1);
+  const elements = [moving, clip("peer", 0, 6, 3, 1), clip("audio", 1, 0, 14, 0, "audio")];
+  const context = { ...ctx(undefined, elements), trackOrder: [0, 1], audioTracks: new Set([1]) };
+  const { drag, clientX } = horizontalDrag(moving, 0.5, 4);
+
+  const seam = computeDragPreview(drag, clientX, yForRow(1), context);
+  expect(seam).toMatchObject({ insertRow: 1, previewStart: 6 });
+  const rejected = computeDragPreview(seam, clientX, yForRow(1.5), context);
+  expect(rejected).toMatchObject({ invalidDrop: true, insertRow: null, previewTrack: 0, previewStart: 2 });
+  const backToSeam = computeDragPreview(rejected, clientX, yForRow(1), context);
+  expect(backToSeam.invalidDrop).toBeUndefined();
+  expect(backToSeam).toMatchObject({ insertRow: 1, previewStart: 6 });
+});
+
 describe("computeDragPreview — plain horizontal drag never arms a phantom insert (BUG 1)", () => {
   it("preserves pointer time over an occupied main track without nearest-gap jumps", () => {
     const dragged = clip("ease", 0, 24, 4, 1);

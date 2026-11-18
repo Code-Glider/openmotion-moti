@@ -324,6 +324,7 @@ export function mountTimelineClipDragGestureLifecycle({
     if (!drag.started) return;
     suppressClickRef.current = true;
     clearSuppressedClick();
+    if (drag.invalidDrop) return;
     commitDraggedClipMove(drag, {
       elements: elementsRef.current,
       trackOrder: trackOrderRef.current,
