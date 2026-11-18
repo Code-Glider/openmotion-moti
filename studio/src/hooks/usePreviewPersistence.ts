@@ -251,7 +251,8 @@ export function usePreviewPersistence({
               : Promise.reject(new Error("No project is open to read nested files from.")),
         ),
       );
-      if (!isCurrent() || deferUnderGesture()) return;
+      // A newer write owns the preview; discard the snapshot read before it.
+      if (!isCurrent() || studioFileRevision() !== revision || deferUnderGesture()) return;
       const strategy = applyUndoRestoreToPreview(
         iframe,
         activePath,

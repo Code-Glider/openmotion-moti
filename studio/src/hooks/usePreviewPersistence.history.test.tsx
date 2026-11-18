@@ -4,6 +4,7 @@ import React, { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePlayerStore } from "../player/store/playerStore";
 import type { TimelineElement } from "../player/store/timelineElement";
+import { markStudioWriteToken } from "../utils/studioFileVersion";
 import {
   beginStudioManualEditGesture,
   endStudioManualEditGesture,
@@ -132,6 +133,19 @@ describe("undo that re-runs the top-level script over an element of a nested com
   it("does not apply an old restore after a project switch during a nested read", async () => {
     const { nwid, reloadPreview } = await undo(true, "p1", () => usePlayerStore.setState({ timelineProjectId: "another-project" }));
     expect(nwid.getAttribute("style")).toBe("left: 40px; width: 337px");
+    expect(reloadPreview).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])("preserves a newer edit during a nested read (file readable: %s)", async (fileOk) => {
+    const clips = [{ id: "newer-edit" }] as unknown as TimelineElement[];
+    const { nwid, reloadPreview } = await undo(fileOk, "p1", target => {
+      markStudioWriteToken("newer-edit-during-history-read");
+      target.setAttribute("style", "left: 40px; width: 512px");
+      usePlayerStore.getState().setElements(clips);
+    });
+
+    expect(nwid.getAttribute("style")).toBe("left: 40px; width: 512px");
+    expect(usePlayerStore.getState().elements).toBe(clips);
     expect(reloadPreview).not.toHaveBeenCalled();
   });
 
