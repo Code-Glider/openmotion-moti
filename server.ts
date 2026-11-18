@@ -591,7 +591,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
         const guide = await getWorkflow(registeredProvider(reference[1])?.reference ?? 'compatible', 'media');
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end(guide.content);
       }
-      const provider = url.pathname.match(/^\/api\/models\/providers\/([a-z]+)$/);
+      const provider = url.pathname.match(/^\/api\/models\/providers\/([a-z0-9-]+)$/);
       if (provider && req.method === 'PUT') return json(res, 200, await gateway.configureProvider(provider[1], await input(req)));
       const route = url.pathname.match(/^\/api\/models\/routes\/([a-z]+)$/);
       if (route && req.method === 'PUT') return json(res, 200, await gateway.setRoute(route[1], (await input(req)).model));
