@@ -45,14 +45,26 @@ async function placeComment(page: Page, x = 0.15, y = 0.8) {
   assert.equal(await page.$('textarea[aria-label="Comment"]'), null, 'Tool activation must not open a composer');
   const before = await previewGeometry(page);
   const box = await (await page.$('[data-review-comment-canvas]'))!.boundingBox(); assert(box);
-  await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
+  await page.mouse.move(box.x + box.width * x, box.y + box.height * y);
+  await assertCommentCanvasTransparent(page, 'hover before placing a comment');
+  await page.mouse.down();
+  await assertCommentCanvasTransparent(page, 'pointer held while placing a comment');
+  await page.mouse.up();
   await page.waitForSelector('textarea[aria-label="Comment"]', { visible: true });
+  await assertCommentCanvasTransparent(page, 'composer open over the frame');
   assert.deepEqual(await previewGeometry(page), before, 'Opening a comment must not move or resize the player');
   const contained = await page.$eval('[data-review-composer-overlay]', card => {
     const c = card.getBoundingClientRect(), p = card.parentElement!.getBoundingClientRect();
     return c.left >= p.left && c.right <= p.right + 1 && c.top >= p.top && c.bottom <= p.bottom + 1;
   });
   assert(contained, 'Floating composer must stay inside the preview at the viewport edge');
+}
+async function assertCommentCanvasTransparent(page: Page, state: string) {
+  const surface = await page.$eval('[data-review-comment-canvas]', node => {
+    const style = getComputedStyle(node);
+    return { background: style.backgroundColor, image: style.backgroundImage };
+  });
+  assert.deepEqual(surface, { background: 'rgba(0, 0, 0, 0)', image: 'none' }, `The frame must remain visible: ${state}`);
 }
 async function waitText(page: Page, text: string) {
   await page.waitForFunction(text => document.querySelector('section[aria-label="Comments"]')?.textContent?.includes(text), { timeout: 15_000 }, text);
@@ -83,6 +95,21 @@ async function assertReviewToolStates(page: Page, theme: string) {
     }, { timeout: 2000 }, label);
     await page.hover(`${group} button[aria-label="${label}"]`);
     await page.screenshot({ path: path.join(output, `review-tool-active-${label === 'Comment here' ? 'comment' : 'pen'}-${theme}.png`) });
+    if (label === 'Comment here') {
+      // Keyboard users must see the same frame, with a boundary focus indicator.
+      await page.keyboard.press('Tab');
+      await page.focus('[data-review-comment-canvas]');
+      await assertCommentCanvasTransparent(page, `${theme} keyboard focus`);
+      assert(await page.$eval('[data-review-comment-canvas]', node => node.matches(':focus-visible')
+        && getComputedStyle(node).outlineStyle !== 'none' && parseFloat(getComputedStyle(node).outlineWidth) > 0));
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('textarea[aria-label="Comment"]', { visible: true });
+      await assertCommentCanvasTransparent(page, `${theme} keyboard composer`);
+      await button(page, 'Cancel');
+      await button(page, 'Comment here');
+      await placeComment(page);
+      await page.screenshot({ path: path.join(output, `comment-frame-visible-${theme}.png`) });
+    }
     await button(page, 'Cancel');
   }
 }
