@@ -71,7 +71,7 @@ test('setup works before local discovery and never copies machine-local details'
 });
 
 test('public setup retains repository and published catalog environments', () => {
-  assert.equal(setupGuideUrl(null), 'https://github.com/nexu-io/openmotion/blob/main/install.md');
+  assert.equal(setupGuideUrl(null), 'https://github.com/nexu-io/openmotion/blob/main/docs/install.md');
   assert.equal(setupGuideUrl(info), setupGuideUrl(null));
   const published: IntegrationInfo = { ...info, templateSource: 'cms' };
   assert.equal(setupGuideUrl(published), 'https://releases.open-design.ai/open-motion/install.md');

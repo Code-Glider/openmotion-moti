@@ -110,7 +110,7 @@ test('failed installation catalog preserves the failure instead of offering deci
   const root = await mkdtemp(path.join(tmpdir(), 'om-no-builtin-fallback-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, 'docs'));
-  await writeFile(path.join(root, 'docs/install-onboarding.md'), '<!-- installation-onboarding:start -->Keep the accepted template.<!-- installation-onboarding:end -->');
+  await writeFile(path.join(root, 'docs/install.md'), '<!-- installation-onboarding:start -->Keep the accepted template.<!-- installation-onboarding:end -->');
   // An eligible local builtin must not become a recommendation when catalog preparation fails.
   const builtin = path.join(root, 'template-library/decision-tree');
   await mkdir(builtin, { recursive: true });

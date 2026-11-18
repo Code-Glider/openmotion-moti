@@ -99,7 +99,7 @@ export const setupSkillUrl = 'https://github.com/nexu-io/openmotion/blob/main/sk
 export const setupReadmeUrl = 'https://github.com/nexu-io/openmotion#quick-start';
 export function setupGuideUrl(info: IntegrationInfo | null) {
   if (info?.deployment?.type === 'docker') return 'https://github.com/nexu-io/openmotion/blob/main/deploy/README.md';
-  if (!info || info.templateSource === 'repository') return 'https://github.com/nexu-io/openmotion/blob/main/install.md';
+  if (!info || info.templateSource === 'repository') return 'https://github.com/nexu-io/openmotion/blob/main/docs/install.md';
   const environment = info.templateEnvironment ?? info.transport.env.MOTION_TEMPLATE_ENV ?? 'prod';
   return `https://releases.open-design.ai/open-motion/${environment === 'dev' ? 'dev/' : ''}install.md`;
 }

@@ -12,7 +12,7 @@ import { onboardingTemplateIds, recommendationTemplateIds, selectOnboardingTempl
 import { installationFallbackWelcome, isLanguage } from '../mcp-ui/template-recommendations/i18n.ts';
 
 export async function installationInstructions(appRoot) {
-  const guide = await readFile(path.join(appRoot, 'docs/install-onboarding.md'), 'utf8');
+  const guide = await readFile(path.join(appRoot, 'docs/install.md'), 'utf8');
   const sections = [...guide.matchAll(/<!-- installation-onboarding:start -->([\s\S]*?)<!-- installation-onboarding:end -->/g)];
   assert.equal(sections.length, 1, 'Installation guide must contain one onboarding contract');
   assert(sections[0][1].trim(), 'Installation onboarding contract is empty');

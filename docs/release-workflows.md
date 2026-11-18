@@ -1,6 +1,6 @@
 # Motion releases: build, test, publish
 
-> Repository installation defaults to the [source guide](../install.md). Published npm installation is an explicit alternative through the [application guide](install.md). Candidate builds, publication and snapshot recovery use the manual [release workflow](release-workflows.md); merging changes does not publish an npm application package or update hosted application installation guides.
+> Repository installation defaults to the [source guide](install.md). Published npm installation is an explicit alternative through the [application guide](install.md). Candidate builds, publication and snapshot recovery use the manual [release workflow](release-workflows.md); merging changes does not publish an npm application package or update hosted application installation guides.
 
 Use two manual Actions entries: **Motion candidate build**, then **Motion npm publication**, in `nexu-io/openmotion` on `main`. The daily flow is **build → optional local testing → manual publish**. Neither entry runs on pushes, PR merges, tags or a schedule. Merging a workflow change does not publish a package or configure npm permissions. Daily development branches from the latest `origin/main` and PRs target `main`.
 
@@ -24,9 +24,9 @@ Keep these control files together:
 
 - `.github/workflows/motion-candidate.yml`, `motion-publish-test.yml`, `motion-publication-recovery.yml` and `motion-install-check.yml` (read-only manual rechecks).
 - `.github/scripts/motion-release.mjs`, `motion-scan.mjs`, `motion-registry.mjs`, `motion-registry-smoke.mjs`, `motion-release-notes.mjs`, `publish-install-guide.mjs` and `.github/gitleaks.toml`.
-- `scripts/runtime-assets.mjs`, `release-version.mjs`, `install-guide.mjs`, `docs/install-onboarding.md`, `docs/templates/npm-install.md`, `docs/templates/release-record.md` and `docs/templates/candidate-install.md`.
+- `scripts/runtime-assets.mjs`, `release-version.mjs`, `install-guide.mjs`, `docs/install.md`, `docs/templates/release-record.md` and `docs/templates/candidate-install.md`.
 
-The generator's two documentation inputs are `docs/templates/npm-install.md` (the published guide template) and `docs/install-onboarding.md` (inlined as the installation-success contract). The short `docs/install.md` in the source repository routes explicitly selected npm installations to the published stable or test guide; editing it does not change a generated guide or the default source route.
+`docs/install.md` is the single maintained source for source setup, the main Skill installation, npm setup and onboarding. `scripts/install-guide.mjs` omits its marked source-only blocks and fills the released npm identity before publication. The root `install.md` and former onboarding URL only forward to this guide; they contain no separate installation rules.
 
 Protect changes to the trusted control files and `main`; keep default-branch registration aligned. There is no `motion-test-publish` GitHub Environment prerequisite or Review deployments step in this version.
 
