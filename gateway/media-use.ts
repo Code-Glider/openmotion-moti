@@ -1,3 +1,4 @@
+import { ToolInputError } from '../shared/tool-input-error.ts';
 import type { OmTracking } from '../shared/tracking.ts';
 import type { WorkspaceStore } from '../workspace.ts';
 import type { GenerateInput } from '../shared/gateway.ts';
@@ -10,7 +11,7 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
   const connections = await gateway.connections.list();
   const supported = (id: string) => isMediaProvider(id) || registeredProvider(id)?.integration === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
   const referenceSection = (id: string) => registeredProvider(id)?.reference ?? 'compatible';
-  if (args.provider !== undefined && !supported(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
+  if (args.provider !== undefined && !supported(args.provider)) throw new ToolInputError('unsupported media provider', 'provider', 'invalid_enum');
   if (args.action === 'inspect') {
     const status = await gateway.status(false, { refreshAccount: true });
     return { providers: status.providers.filter(p => supported(p.id) && (isMediaProvider(p.id) || p.configured || p.id === 'account')),
@@ -21,7 +22,7 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }
   if (args.action === 'reference') {
-    if (!args.provider) throw new Error('INVALID_ARGUMENT: provider is required');
+    if (!args.provider) throw new ToolInputError('provider is required', 'provider', 'missing');
     return getWorkflow(referenceSection(args.provider), 'media');
   }
   if (args.action === 'models') {
@@ -31,7 +32,10 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
   }
   if (!args.projectId || !store.projectCatalog().projects.some(p => p.id === args.projectId)) throw new Error('PROJECT_NOT_FOUND');
   if (args.action === 'generate') {
-    if (!args.provider || !args.model || !args.requestId || !args.modality || typeof args.prompt !== 'string') throw new Error('INVALID_ARGUMENT: provider, model, projectId, requestId, modality and prompt are required');
+    const missing = ['provider', 'model', 'requestId', 'modality'].find(field => !args[field]);
+    if (missing || typeof args.prompt !== 'string') {
+      throw new ToolInputError('provider, model, projectId, requestId, modality and prompt are required', missing ?? 'prompt', 'missing');
+    }
     const job = await gateway.submit({ projectId: args.projectId, model: `${args.provider}:${args.model}`, modality: args.modality,
       prompt: args.prompt, parameters: args.parameters, mode: args.mode, referenceAsset: args.referenceAsset, idempotencyKey: args.requestId } as GenerateInput);
     return { projectId: job.projectId, job, next: { action: 'status', projectId: job.projectId, jobId: job.id } };
@@ -39,9 +43,9 @@ export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTr
   if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save' || args.action === 'resume') {
     const job = await gateway.getJob(args.jobId);
     if (job.projectId !== args.projectId || job.model.provider === 'codex') throw new Error('GENERATION_NOT_FOUND: job does not belong to this project');
-    if (args.action !== 'status' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
+    if (args.action !== 'status' && !args.requestId) throw new ToolInputError('requestId is required', 'requestId', 'missing');
     if (args.action === 'resume') return { projectId: job.projectId, job: await gateway.resume(job.id, args.requestId) };
     return { projectId: job.projectId, job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
-  throw new Error('INVALID_ARGUMENT: unsupported media action');
+  throw new ToolInputError('unsupported media action', 'action', 'invalid_enum');
 }

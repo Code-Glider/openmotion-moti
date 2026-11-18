@@ -1,3 +1,5 @@
+import type { ExportFailure } from './tracking/tool-fields.ts';
+import { toolFailureFields } from './tracking/tool-fields.ts';
 import { transcriptsFor, closeTranscripts } from './gateway/transcription.ts';
 import { projectArchiveHttp } from './gateway/project-archive-http.ts';
 import { modelMetadata } from './gateway/model-metadata.ts';
@@ -10,7 +12,7 @@ import { createReadStream } from 'node:fs';
 import { access, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { WorkspaceStore, Conflict, createBlankProject, validateProjectTitle, interruptedExport } from './workspace.ts';
+import { WorkspaceStore, Conflict, createBlankProject, validateProjectTitle, interruptedExport, trackExportResult } from './workspace.ts';
 import type { ExportJob } from './workspace.ts';
 import { cliPath, ensureRuntime, execute, HYPERFRAMES_VERSION, inspectProject, pluginRoot, runHyperframes, startStudio, stopCommands } from './hyperframes.ts';
 import type { Studio } from './hyperframes.ts';
@@ -69,17 +71,20 @@ async function emitQueueTelemetry(store: WorkspaceStore, tracking?: OmTracking) 
   tracking.track('worker_heartbeat', { collector_id: collectorId, instance_id: workerInstanceId, active: true, queue_count: queued + running }, undefined, 'worker');
 }
 
-export async function cancelExport(store: WorkspaceStore, projectId: string, jobId: string) {
+export async function cancelExport(store: WorkspaceStore, projectId: string, jobId: string, tracking = store.tracking) {
   return store.lock(async () => {
     const job = await store.job(jobId);
     if (!job || job.projectId !== projectId) throw new Error('EXPORT_NOT_FOUND: 任务不属于该项目');
-    if (job.state === 'pending') { job.state = 'cancelled'; job.stage = 'cancelled'; job.terminalAt = Date.now(); job.observedOutcome = 'cancelled'; }
-    else if (job.state === 'running') job.state = 'cancelling';
-    await store.saveJob(job);
-    if (job.state === 'cancelled') {
-      await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
-      await new TaskLedger(store.directory).terminal(job.id, 'cancelled', 'unknown').catch(() => {});
+    if (job.state === 'pending') {
+      job.state = 'cancelled'; job.stage = 'cancelled'; job.terminalAt = Date.now(); job.observedOutcome = 'cancelled';
+      await store.saveJob(job);
+      trackExportResult(tracking, job);
+      await trackExportTerminal(store, job, tracking);
+    } else if (job.state === 'running') {
+      job.state = 'cancelling';
+      await store.saveJob(job);
     }
+    if (job.state === 'cancelled') await rm(store.snapshotDirectory(job.id), { recursive: true, force: true });
     if (job.state === 'cancelling') runningExports.get(job.id)?.abort();
     const { token, workerPid, trackingHost, ...safe } = job; return safe;
   });
@@ -104,11 +109,16 @@ export async function trackExportTerminal(store: WorkspaceStore, final: ExportJo
   if (final.observedOutcome === 'unknown') return;
   const outcome = final.state === 'completed' ? 'success' : final.state === 'cancelled' ? 'cancelled' : 'failure';
   const applied = outcome === 'success' ? 'true' : 'unknown';
-  await new TaskLedger(store.directory).terminal(final.id, outcome, applied, outcome === 'failure' ? 'EXPORT_FAILED' : undefined).catch(() => {});
+  const errorCode = outcome === 'failure' ? final.failureCode ?? 'EXPORT_FAILED' : undefined;
+  await new TaskLedger(store.directory).terminal(final.id, outcome, applied, errorCode).catch(() => {});
   const host = validHostContext(final.trackingHost) ? final.trackingHost : undefined;
   tracking?.track('task_terminal', { task_id: final.id, task_type: 'export', ...(final.projectId ? { project_id: final.projectId } : {}),
     ...(final.workId ? { run_id: final.workId } : {}), outcome, applied,
-    terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(outcome === 'failure' ? { error_code: 'EXPORT_FAILED' } : {}) }, undefined, 'worker', host);
+    terminal_at: new Date(final.terminalAt ?? Date.now()).toISOString(), ...(errorCode ? { error_code: errorCode } : {}) }, undefined, 'worker', host);
+  if (tracking && outcome === 'cancelled' && final.workId && final.projectId) {
+    const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
+    tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
+  }
 }
 
 export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tracking?: OmTracking) {
@@ -121,6 +131,7 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
   working.add(key);
   let job;
   let control: AbortController | undefined;
+  let failure: ExportFailure = { failureStage: 'lint', failureCode: 'EXPORT_LINT_FAILED' };
   try {
     // A queued job whose deadline passed, or a claimed job whose worker vanished, is closed before claiming.
     if (pending && interruptedExport(pending)) await trackInterruptedExport(store, pending, tracking);
@@ -137,36 +148,47 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
     await stage('checking');
     const lint = await inspectProject(runtimeRoot, directory, 'lint', control.signal);
     if (lint.exitCode) throw new Error('Hyperframes lint 失败：' + JSON.stringify(lint.result));
+    failure = { failureStage: 'output', failureCode: 'EXPORT_OUTPUT_INVALID' };
     const output = store.exportPath(job);
     await mkdir(path.dirname(output), { recursive: true });
     // The service owns this job; a short-lived Agent client must not cancel it.
+    failure = { failureStage: 'render', failureCode: 'EXPORT_RENDER_FAILED' };
     await stage('rendering');
     // Let the engine read the snapshot's exact data-fps (including rational rates).
     const result = await runHyperframes(runtimeRoot, directory, ['render', '.', ...(job.compositionPath ? ['--composition', job.compositionPath] : []), '--output', output, '--format', 'mp4', '--json'], 25 * 60_000, { HYPERFRAMES_RENDER_DETACHED: '1' }, control.signal);
     await writeFile(path.join(store.directory, 'jobs', job.id, 'render.log'), result.stdout + '\n' + result.stderr, { mode: 0o600 });
     if (result.code) throw new Error('Hyperframes render 失败：' + (result.stderr || result.stdout).slice(-1800));
     // Never label an absent or non-MP4 output as completed, even after exit code 0.
+    failure = { failureStage: 'output', failureCode: 'EXPORT_OUTPUT_INVALID' };
     const file = await (await import('node:fs/promises')).open(output, 'r');
     try {
       const header = Buffer.alloc(12); await file.read(header, 0, 12, 0);
       if (header.subarray(4, 8).toString() !== 'ftyp') throw new Error('Hyperframes 未生成有效的 MP4');
     } finally { await file.close(); }
     if (job.phase1) {
+      failure = { failureStage: 'verification', failureCode: 'EXPORT_VERIFICATION_FAILED' };
       await stage('verifying');
       const report = await verifyExport(output, job.expected!, undefined, control.signal);
       await stage('verified', report);
-      if (report.status !== 'passed') throw new Error('EXPORT_VERIFICATION_FAILED: ' + JSON.stringify(report.checks));
+      if (report.status !== 'passed') {
+        if (report.status === 'blocked') failure.failureCode = 'EXPORT_VERIFICATION_BLOCKED';
+        throw new Error('EXPORT_VERIFICATION_FAILED: ' + JSON.stringify(report.checks));
+      }
     }
+    failure = { failureStage: 'finalize', failureCode: 'EXPORT_FINALIZE_FAILED' };
     const finished = await store.finishExport(job.id, job.token!);
     if (finished.state === 'cancelled') await rm(output, { force: true });
   } catch (error) {
     if (!job) throw error;
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (failure.failureStage === 'render' && code === 'COMMAND_TIMEOUT') failure.failureCode = 'EXPORT_RENDER_TIMEOUT';
+    if (failure.failureStage === 'output' && code === 'ENOENT') failure.failureCode = 'EXPORT_OUTPUT_MISSING';
     await recordDiagnostic(store.directory, { kind: 'export_failed', jobId: job.id, projectId: job.projectId,
       message: error instanceof Error ? error.message : 'Render failed' });
     await rm(store.exportPath(job), { force: true });
     const current = await store.job(job.id);
     if (current && ['running', 'cancelling'].includes(current.state)) {
-      try { await store.finishExport(job.id, job.token!, error instanceof Error ? error.message : '渲染失败'); }
+      try { await store.finishExport(job.id, job.token!, error instanceof Error ? error.message : '渲染失败', failure); }
       catch {
         tracking?.track('incident_confirmed', { incident_id: job.id, incident_type: 'other', severity: 'sev1', subject_id: job.id, evidence_ref: 'terminal_persist_failed' }, undefined, 'worker', validHostContext(job.trackingHost) ? job.trackingHost : undefined);
       }
@@ -174,13 +196,8 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
   } finally {
     if (job && tracking) {
       const final = await store.job(job.id).catch(() => null);
-      if (final && ['completed', 'failed', 'cancelled'].includes(final.state)) {
-        tracking.track('export_result', {
-          job_id: final.id, job_state: final.state as 'completed' | 'failed' | 'cancelled',
-          duration_ms: Math.min(86_400_000, Math.max(0, Date.now() - final.createdAt)),
-          technical_check: (final.verification as any)?.status === 'passed' ? 'passed'
-            : (final.verification as any)?.status === 'failed' ? 'failed' : 'unknown',
-        }, undefined, 'worker', validHostContext(final.trackingHost) ? final.trackingHost : undefined);
+      if (final && final.observedOutcome !== 'unknown' && ['completed', 'failed', 'cancelled'].includes(final.state)) {
+        trackExportResult(tracking, final);
         await trackExportTerminal(store, final, tracking);
         if (final.state === 'completed' && final.projectId && final.workId)
           await new WorkRounds(store, tracking).exported(final.projectId, final.workId, 'mcp').catch(() => {});
@@ -189,11 +206,12 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
           version_id: final.versionId, subject_id: final.id, checklist_version: 'export-v1', checker_type: 'automated',
           result: technicalCheckResult(final), evidence_ref: final.id }, undefined, 'worker', host);
         if (final.workId && final.projectId) {
-          const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
           if (final.state === 'completed' && final.verification && (final.verification as any).status === 'passed') tracking.track('host_run_delivered', {
             run_id: final.workId, delivery_mode: 'technical_export', project_id: final.projectId, revision: final.revision, delivery_evidence_ref: final.id }, undefined, 'worker', host);
-          else if (final.state === 'cancelled') tracking.track('host_run_cancelled', { run_id: final.workId, task_type: taskType, reason_code: 'EXPORT_CANCELLED' }, undefined, 'worker', host);
-          else tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: 'EXPORT_FAILED', stage: final.stage ?? 'unknown' }, undefined, 'worker', host);
+          else if (final.state !== 'cancelled') {
+            const taskType = await workRoundMode(store, final.projectId, final.workId) ?? 'modify';
+            tracking.track('host_run_failed', { run_id: final.workId, task_type: taskType, error_code: final.failureCode ?? 'EXPORT_FAILED', stage: final.failureStage ?? 'unknown' }, undefined, 'worker', host);
+          }
           tracking.track('host_state_changed', { run_id: final.workId, sequence: 2,
             state: final.state === 'completed' && final.verification && (final.verification as any).status === 'passed' ? 'delivered' : final.state === 'cancelled' ? 'cancelled' : 'failed',
             phase: 'technical_export', state_reason: final.state === 'completed' ? 'EXPORT_VERIFIED' : final.state === 'cancelled' ? 'EXPORT_CANCELLED' : 'EXPORT_FAILED' }, undefined, 'worker', host);
@@ -457,7 +475,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
           context.phase1Mutation = new Promise<void>(resolve => { release = resolve; });
           try { return await task(); } finally { release(); context.phase1Mutation = undefined; }
         },
-        cancel: (projectId, jobId) => cancelExport(authority, projectId, jobId),
+        cancel: (projectId, jobId) => cancelExport(authority, projectId, jobId, context.tracking),
         tracking: context.tracking,
       });
       const data = await input(req);
@@ -481,7 +499,10 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
       catch (error) {
         const message = error instanceof Error ? error.message : 'Tool failed';
-        return json(res, 400, { error: message, applied: (error as any)?.applied === false || message.startsWith('VERSION_NOT_RESTORABLE:') ? false : 'unknown' });
+        const { error_code, invalid_field, validation_rule } = toolFailureFields(error);
+        return json(res, 400, { error: message, ...(error_code !== 'TOOL_FAILED' ? { code: error_code } : {}),
+          ...(invalid_field ? { invalid_field, validation_rule } : {}),
+          applied: (error as any)?.applied === false || message.startsWith('VERSION_NOT_RESTORABLE:') ? false : 'unknown' });
       }
     }
     if (req.method === 'GET' && ['/api/integration', '/connect/guide', '/connect/config'].includes(url.pathname)) {

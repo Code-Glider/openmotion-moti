@@ -709,7 +709,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'scripts/repository-media.ts', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'scripts/build-template-cards.mjs',
     'shared/asset-name-ui.json', 'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
     'gateway/brand-capture/LICENSE', 'gateway/brand-capture/NOTICE.md',
-    'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
+    'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/tool-fields.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
     'mcp-ui/template-recommendations/project-previews/manifest.json',

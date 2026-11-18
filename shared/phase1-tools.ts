@@ -1,3 +1,4 @@
+import { ToolInputError } from './tool-input-error.ts';
 import { inlineVideoUri } from './inline-video.ts';
 import { templateGuideDraftSchema } from './template-guide.ts';
 import { publicToolName, legacyToolName } from './public-names.mjs';
@@ -77,32 +78,58 @@ export function supportsPhase1Tool(health: { mcp?: { protocol?: unknown; tools?:
   return phase1TransportTool(health, tool) !== undefined;
 }
 
-export function validateInput(schema: any, value: any, field = 'arguments'): void {
-  if (schema.oneOf && schema.oneOf.filter((variant: any) => {
-    try { validateInput(variant, value, field); return true; } catch { return false; }
-  }).length !== 1) throw new Error('INVALID_ARGUMENT: ' + field + ' must match one action and its required fields');
-  if (schema.enum && !schema.enum.includes(value)) throw new Error('INVALID_ARGUMENT: ' + field);
-  if (schema.type === 'object') {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_ARGUMENT: ' + field + ' must be an object');
-    for (const key of schema.required ?? []) if (!Object.hasOwn(value, key)) throw new Error('INVALID_ARGUMENT: ' + field + '.' + key + ' is required');
-    for (const [key, child] of Object.entries(value)) {
-      if (!Object.hasOwn(schema.properties ?? {}, key)) {
-        if (schema.additionalProperties === true) continue;
-        if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-          validateInput(schema.additionalProperties, child, field + '.' + key);
-          continue;
-        }
-        throw new Error('INVALID_ARGUMENT: unknown ' + field + '.' + key);
+export function validateInput(schema: any, value: any, field = 'arguments', knownField = 'arguments'): void {
+  const childField = (key: string) => knownField === 'arguments' ? key : knownField === 'unknown_field' ? knownField : knownField + '.' + key;
+  if (schema.oneOf) {
+    const variants: any[] = schema.oneOf;
+    const failures = variants.map(variant => {
+      try { validateInput(variant, value, field, knownField); return undefined; }
+      catch (error) { if (error instanceof ToolInputError) return error; throw error; }
+    });
+    const valid = failures.filter(error => !error).length;
+    if (valid !== 1) {
+      const message = field + ' must match one action and its required fields';
+      if (variants.every(variant => variant.type === 'object') && (!value || typeof value !== 'object' || Array.isArray(value))) {
+        throw new ToolInputError(message, knownField, 'invalid_type');
       }
-      validateInput(schema.properties[key], child, field + '.' + key);
+      const discriminator = ['action', 'command', 'operation'].find(key =>
+        variants.every(variant => variant.properties?.[key]?.enum?.length === 1));
+      if (!discriminator) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const command = value?.[discriminator];
+      if (command === undefined) throw new ToolInputError(message, childField(discriminator), 'missing');
+      if (valid > 1) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const selected = variants.findIndex(variant => variant.properties[discriminator].enum[0] === command);
+      const failure = failures[selected];
+      throw new ToolInputError(message, failure?.invalid_field ?? childField(discriminator), failure?.validation_rule ?? 'invalid_enum');
+    }
+  }
+  if (schema.enum && !schema.enum.includes(value)) throw new ToolInputError(field, knownField, 'invalid_enum');
+  if (schema.type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ToolInputError(field + ' must be an object', knownField, 'invalid_type');
+    for (const key of schema.required ?? []) {
+      if (!Object.hasOwn(value, key)) throw new ToolInputError(field + '.' + key + ' is required', childField(key), 'missing');
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (Object.hasOwn(schema.properties ?? {}, key)) validateInput(schema.properties[key], child, field + '.' + key, childField(key));
+      else if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+        validateInput(schema.additionalProperties, child, field + '.' + key, 'unknown_field');
+      } else if (schema.additionalProperties !== true) {
+        throw new ToolInputError('unknown ' + field + '.' + key, 'unknown_field', 'unknown_field');
+      }
     }
   } else if (schema.type === 'array') {
-    if (!Array.isArray(value) || value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity)) throw new Error('INVALID_ARGUMENT: ' + field);
-    value.forEach((item, i) => validateInput(schema.items, item, field + '[' + i + ']'));
+    if (!Array.isArray(value)) throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+    value.forEach((item, i) => validateInput(schema.items, item, field + '[' + i + ']', knownField === 'unknown_field' ? knownField : knownField + '[]'));
   } else if (schema.type === 'string') {
-    if (typeof value !== 'string' || value.length < (schema.minLength ?? 0) || value.length > (schema.maxLength ?? Infinity) || schema.pattern && !new RegExp(schema.pattern).test(value)) throw new Error('INVALID_ARGUMENT: ' + field);
-  } else if (schema.type === 'boolean' && typeof value !== 'boolean') throw new Error('INVALID_ARGUMENT: ' + field);
-  else if (['number', 'integer'].includes(schema.type) && (typeof value !== 'number' || !Number.isFinite(value) || schema.type === 'integer' && !Number.isSafeInteger(value) || value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity))) throw new Error('INVALID_ARGUMENT: ' + field);
+    if (typeof value !== 'string') throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value.length < (schema.minLength ?? 0) || value.length > (schema.maxLength ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) throw new ToolInputError(field, knownField, 'invalid_format');
+  } else if (schema.type === 'boolean' && typeof value !== 'boolean') throw new ToolInputError(field, knownField, 'invalid_type');
+  else if (['number', 'integer'].includes(schema.type)) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || schema.type === 'integer' && !Number.isSafeInteger(value)) throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+  }
 }
 
 /** Presentation is separate from business operations so authoring never mounts an App. */

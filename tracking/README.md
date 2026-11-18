@@ -318,8 +318,9 @@ backend/data directory. Deterministic coverage lives in
 ## Implemented signals and limits
 
 - All registered phase-one stdio tools: accepted start and observed finish, including
-  early-return catalog tools, input rejection, partial import and idempotent replay.
-- All nineteen page WebMCP tools: `webmcp_tool_started` and
+  early-return catalog tools, the two negotiated presentation tools, input rejection,
+  partial import and idempotent replay.
+- All twenty-one page WebMCP tools: `webmcp_tool_started` and
   `webmcp_tool_finished`, correlated by a fresh `call_id` per invocation, with
   the public `tool_name`, `transport=webmcp`, observed `outcome` and bounded
   `duration_ms`. These are browser-call measurements, separate from stdio MCP
@@ -330,15 +331,14 @@ backend/data directory. Deterministic coverage lives in
   reply into a cancelled operation. Arguments, results, handles, paths and raw errors are
   excluded. Host Agent fields retain their existing page-handoff meaning; the
   transport marker does not identify the calling browser agent.
-- Asset call action: `mcp_tool_started/finished` and
-  `webmcp_tool_started/finished` include an optional closed `action` category for
-  asset tools: `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`,
-  `cancel`, `import_to_project`, `read`. The shared extractor ignores other tools,
-  missing/malformed actions and unknown values; no raw arguments or media are sent.
-  The action is captured once at invocation start and retained on finish, including
-  failure and input rejection. Stdio keeps `tool_name=motion_assets` for both public
-  asset names; WebMCP keeps their public names. Historical events without action
-  remain valid and cannot be backfilled. Registration has no action.
+- Tool dimensions: `mcp_tool_started/finished` and `webmcp_tool_started/finished`
+  carry allowlisted actions for assets, media discovery, preview, export request,
+  archive and project management. Preview also has `target`. Missing actions mean
+  `open` for preview and `request` for export; invalid values are omitted.
+  A failed call can carry `error_code` and schema-declared `invalid_field` and
+  `validation_rule`, with array indices collapsed and unknown keys bucketed.
+  Both stdio asset names still use `tool_name=motion_assets`; WebMCP uses the
+  original public name. Older events may omit these dimensions.
   To measure `read`, filter `product=openmotion`, exclude `env=test`, select the
   appropriate `*_tool_finished` event and `action=read`: count distinct `call_id`
   for observed calls, divide successful calls (`outcome=success`) by all observed
@@ -349,6 +349,15 @@ backend/data directory. Deterministic coverage lives in
   Browser and stdio are separate transports; do not sum starts and finishes or add
   domain-result events to call counts. This measures observed call outcomes, not
   paid generation completion, human media acceptance or guaranteed billing usage.
+- For MCP exports, use `export_request_result` to measure submission and join its
+  `job_id` to `export_result` for the one terminal worker record. A failed terminal
+  job has a bounded `failure_stage` and `error_code`, including interrupted or
+  expired jobs. Polling success means the read worked. Studio UI exports use their
+  existing separate pipeline.
+- `asset_import_result` includes requested, added, reused and failed item counts when
+  a batch result is available. `asset_import_item_failure` reports one count per
+  allowlisted failure category per committed request. Sum its `failed_count` to
+  break down item failures, keeping it separate from call-level outcomes.
 - WebMCP registration: `webmcp_registration_result` records one result per
   attempted tool registration (`success`, `failure` or `cancelled`), including
   validation/duplicate refusals and teardown cancellation. Use this event for
