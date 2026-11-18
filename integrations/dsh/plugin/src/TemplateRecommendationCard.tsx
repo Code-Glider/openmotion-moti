@@ -1,3 +1,4 @@
+import { IconGlyph } from "../../../../packages/design-system/react/IconGlyph";
 import React, { useEffect, useRef, useState } from "react";
 import { translations, resolveLanguage } from "../../../../mcp-ui/template-recommendations/i18n.ts";
 import { createInlineFeedback } from "../../../../packages/design-system/inline-feedback.ts";
@@ -60,16 +61,18 @@ export function TemplateRecommendationCard({ proposal, decision, summary, act }:
       <div className="omd-recommendation-list">
         {details.templates.map(template => (
           <article className="omd-recommendation-item" key={template.id} data-template-id={template.id}>
-            {template.previewUrl ? <video controls preload="none" playsInline poster={studioAssetUrl(template.posterUrl)} src={studioAssetUrl(template.previewUrl)} aria-label={template.title} />
-              : template.posterUrl ? <img src={studioAssetUrl(template.posterUrl)} alt="" loading="lazy" /> : <div className="omd-recommendation-placeholder" />}
-            <div className="omd-recommendation-copy">
-              <strong>{template.title}</strong>
-              {template.duration != null && <span>{Math.round(template.duration)}s</span>}
-              {template.description && <p>{template.description}</p>}
-            </div>
-            <div className="omd-recommendation-actions">
-              <button type="button" className="ui-button ui-button--ghost ui-button--sm" onClick={() => enlarge(template)}>{ui.preview}</button>
-              <button type="button" className="ui-button ui-button--primary ui-button--sm" disabled={pending} onClick={() => void choose("use", template.id)}>{ui.clone}</button>
+            <button type="button" className="omd-recommendation-cover" aria-label={`${ui.preview}: ${template.title}`} onClick={() => enlarge(template)}>
+              {template.previewUrl ? <video muted preload="none" playsInline poster={studioAssetUrl(template.posterUrl)} src={studioAssetUrl(template.previewUrl)} />
+                : template.posterUrl ? <img src={studioAssetUrl(template.posterUrl)} alt="" loading="lazy" /> : <span className="omd-recommendation-placeholder" />}
+              <span className="omd-recommendation-preview-label">{ui.preview}</span>
+            </button>
+            <div className="omd-recommendation-info">
+              <div className="omd-recommendation-heading">
+                <strong title={template.title}>{template.title}</strong>
+                {template.duration != null && <span>{Math.round(template.duration)}s</span>}
+              </div>
+              <p className="omd-recommendation-description">{template.description}</p>
+              <button type="button" className="omd-recommendation-clone ui-button ui-button--primary" disabled={pending} onClick={() => void choose("use", template.id)}>{ui.clone}</button>
             </div>
           </article>
         ))}
@@ -80,7 +83,9 @@ export function TemplateRecommendationCard({ proposal, decision, summary, act }:
           if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setPreview(null);
         } }}>
         {preview && <>
-          <header><strong>{preview.title}</strong><button type="button" className="ui-button ui-button--ghost ui-button--sm" onClick={() => setPreview(null)}>{ui.back}</button></header>
+          <header><strong>{preview.title}</strong><button type="button" className="ui-button ui-button--ghost ui-button--icon" aria-label={ui.close} title={ui.close} onClick={() => setPreview(null)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><IconGlyph id="ri-close-line" /></svg>
+          </button></header>
           {preview.previewUrl && <video ref={player} controls muted playsInline preload="metadata" poster={studioAssetUrl(preview.posterUrl)}
             src={studioAssetUrl(preview.previewUrl)} aria-label={preview.title} onError={() => setPreviewFailed(true)} />}
           {(previewFailed || !preview.previewUrl) && <p role="status">{ui.failed}</p>}

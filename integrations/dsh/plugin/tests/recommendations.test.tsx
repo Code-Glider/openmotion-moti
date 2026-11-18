@@ -22,22 +22,25 @@ function mount(value: RecommendationDetails, actCard = vi.fn().mockResolvedValue
   act(() => root!.render(<TemplateRecommendationCard proposal={{ details: value }} act={actCard} />));
   return actCard;
 }
-it("shows the shared Chinese onboarding above the same three playable cards", async () => {
+it("shows the shared Chinese onboarding with cover previews and separate template choices", async () => {
   const actCard = mount(details);
   expect(document.body.textContent).toContain("我是你的开源视频创作搭档");
   expect(document.body.textContent).toContain("先看看我挑的这 3 个");
   expect([...document.querySelectorAll("[data-template-id]")].map(el => el.getAttribute("data-template-id"))).toEqual(["one", "two", "three"]);
-  expect(document.querySelectorAll("video[controls]")).toHaveLength(3);
+  expect(document.querySelectorAll(".omd-recommendation-cover video")).toHaveLength(3);
+  expect(document.querySelectorAll("video[controls]")).toHaveLength(0);
   expect(document.querySelector("video")?.getAttribute("src")).toBe("http://localhost:4173/one.mp4");
   expect(document.querySelector("video")?.hasAttribute("autoplay")).toBe(false);
-  const buttons = document.querySelectorAll("button");
-  await act(async () => (buttons[2] as HTMLButtonElement).click());
+  await act(async () => (document.querySelectorAll<HTMLButtonElement>(".omd-recommendation-cover")[1]).click());
   expect(actCard).not.toHaveBeenCalled();
   expect(document.querySelector('dialog')?.open).toBe(true);
   expect(document.querySelector('dialog video')?.getAttribute('src')).toBe('http://localhost:4173/two.mp4');
+  expect(document.querySelector('dialog button')?.getAttribute('aria-label')).toBe('关闭预览');
   await act(async () => (document.querySelector('dialog button') as HTMLButtonElement).click());
   expect(document.querySelector('dialog')?.open).toBe(false);
-  await act(async () => (buttons[5] as HTMLButtonElement).click());
+  expect(document.querySelector('dialog video')).toBeNull();
+  expect(actCard).not.toHaveBeenCalled();
+  await act(async () => (document.querySelectorAll<HTMLButtonElement>(".omd-recommendation-clone")[2]).click());
   expect(actCard).toHaveBeenLastCalledWith("use", { templateId: "three" });
 });
 it("does not claim a right-hand library opened when opening was not confirmed", () => {
@@ -47,7 +50,7 @@ it("does not claim a right-hand library opened when opening was not confirmed", 
 });
 it("keeps selection available after an action fails", async () => {
   mount(details, vi.fn().mockResolvedValue({ status: "refused" }));
-  await act(async () => (document.querySelector('.omd-recommendation-actions button:last-child') as HTMLButtonElement).click());
+  await act(async () => (document.querySelector('.omd-recommendation-clone') as HTMLButtonElement).click());
   expect(document.querySelector("[role=status]")?.textContent).toContain("未能填入");
   expect((document.querySelector("button") as HTMLButtonElement).disabled).toBe(false);
 });
@@ -77,7 +80,7 @@ it("opens the template library beside the current chat and waits for its load be
   await act(async () => { window.dispatchEvent(new Event('openmotion:library-ready')); });
   expect(document.body.textContent).toContain('右侧就是模板库');
   expect(openTab).toHaveBeenCalledTimes(1);
-  await act(async () => (document.querySelector('.omd-recommendation-actions')!.parentElement!.querySelector('button') as HTMLButtonElement).click());
+  await act(async () => (document.querySelector('.omd-recommendation-cover') as HTMLButtonElement).click());
   expect(openTab).toHaveBeenCalledTimes(1);
   expect(document.querySelector('dialog')?.open).toBe(true);
 });
