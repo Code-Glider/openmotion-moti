@@ -37,7 +37,7 @@ export function WorkspaceHomeButton({ active, expanded, previewEnabled, onToggle
       render={<PrimaryNavigationButton />} aria-label={t('Home')} aria-pressed={active}
       aria-expanded={expanded || open} {...(expanded ? { 'aria-controls': 'om-project-navigation' } : {})}
       onClick={() => { setPreviewOpen(false); onToggle(); }}>
-      <RemixIcon name="home-line" weight={active ? 'fill' : undefined} size={18} />
+      <RemixIcon name="home-4-line" weight={active ? 'fill' : undefined} size={18} />
     </Popover.Trigger></Tooltip>
     <Popover.Portal container={applicationRef} style={{ display: 'contents' }}>
       <Popover.Positioner anchor={workspaceAnchor} positionMethod="fixed" side="left" align="start"
