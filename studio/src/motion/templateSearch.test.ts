@@ -41,9 +41,14 @@ describe('reference handoff', () => {
     expect(validReferenceLink('https://example.com/video')).toBe(true);
     for (const value of ['javascript:alert(1)', 'file:///private/video.mp4', 'not a link']) expect(validReferenceLink(value)).toBe(false);
   });
-  it('keeps local attachment pending and does not invent a URL or claim sending', () => {
-    const prompt = templateSearchBrief({ mode: 'reference', source: 'local', query: 'launch', reference: '', description: 'Our product' }, t);
-    expect(prompt).toContain('Read the video I attach');
+  it('pins the same local video version for MCP and direct playback', () => {
+    const mediaUrl = 'http://127.0.0.1:4173/motion-api/assets/asset/versions/version/file';
+    const prompt = templateSearchBrief({
+      mode: 'reference', source: 'local', query: 'launch', description: 'Our product',
+      asset: { assetId: 'asset', versionId: 'version' }, mediaUrl,
+    }, t);
+    expect(prompt).toContain('openmotion_assets_use {"action":"read","assetId":"asset","versionId":"version"}');
+    expect(prompt).toContain(mediaUrl);
     expect(prompt).toContain('Our product');
     expect(prompt).not.toContain('https:');
     expect(prompt).not.toContain('sent');

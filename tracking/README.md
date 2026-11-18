@@ -457,12 +457,20 @@ backend/data directory. Deterministic coverage lives in
   composition. Recovery exposure requires the expanded panel to intersect a
   visible viewport. `template_search_handoff_result` tracks an instruction
   copy attempt with a fixed source kind and status. A manual-copy fallback
-  remains distinct from `clipboard_written`. The library home action and its
-  handoff result carry `reference_entry=library_home`; the existing search
-  recovery path omits this field. Using the home action does not emit a search.
-  Reference links, descriptions and
-  contact details are excluded. Template request intake is not exposed.
-  Request preparation does not confirm Agent execution.
+  remains distinct from `clipboard_written`. In the library, the reference entry
+  emits `surface_view` with `element=reference` once per result set when at least
+  half of the button is visible for one second, or when clicked sooner. Count
+  distinct `result_set_id` on this view and the corresponding reference click
+  for entry click-through. Reference source changes, opening the local file
+  picker and copy attempts use `ui_click` with the fixed `source_kind`.
+  A selected file produces one `studio_asset_import_result` with
+  `entry_point=template_reference` and `outcome=success|failure|unknown`.
+  Cancelling the picker produces no import result. Unknown uploads do not count
+  as failures. Events from the home entry carry `reference_entry=library_home`;
+  search recovery keeps its existing attribution. Using the home action does
+  not emit a search. File names, paths, asset and version IDs, reference links,
+  descriptions and contact details are excluded from these events. Copying a
+  request does not confirm Agent execution. Template request intake is not exposed.
 
 The adapter preserves fixed actions, counts, booleans and safe catalog/control
 identifiers. It drops messages/stacks, file paths, selectors, composition/block

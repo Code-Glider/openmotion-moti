@@ -97,7 +97,7 @@ export function AssetsPage({ active, hasProject = false }: { active: boolean; ha
     const summary: AssetUploadSummary = { uploaded: 0, failed: 0, unknown: 0, reasons: new Set() };
     try {
       for (const file of files) {
-        try { const asset = await uploadLibraryAsset(file, targetId, parentVersionId); summary.uploaded++; if (newVersion && request === selectionRequest.current && selectedAsset.current?.id === targetId) open(asset); }
+        try { const asset = await uploadLibraryAsset(file, { assetId: targetId, parentVersionId }); summary.uploaded++; if (newVersion && request === selectionRequest.current && selectedAsset.current?.id === targetId) open(asset); }
         catch (error) {
           if (error instanceof AssetUploadError && error.outcome === 'rejected') {
             summary.failed++; if (error.reason) summary.reasons.add(error.reason);

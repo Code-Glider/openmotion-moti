@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { MotionIcon } from './icons';
+import { RemixIcon } from '../icons/RemixIcons';
+import { assetMediaUrl, type AssetReference } from '../../../shared/asset-library';
+import { uploadLibraryAsset } from './assetClient';
+import { AssetUploadError } from './assetUploadError';
 import { templateSearchBrief, validReferenceLink } from './templateSearch';
 import * as tracking from './templateLibraryTracking';
 import type { ListContext } from './templateLibraryTracking';
@@ -30,6 +34,9 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
   const [reference, setReference] = useState(''), [referenceNotes, setReferenceNotes] = useState('');
   const [description, setDescription] = useState(''), [manual, setManual] = useState('');
   const [copying, setCopying] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [localVideo, setLocalVideo] = useState<(AssetReference & { name: string }) | null>(null);
+  const filePicker = useRef<HTMLInputElement>(null);
   const busy = useRef(false), shown = useRef<string | undefined>(undefined), section = useRef<HTMLElement>(null);
   const start = useRef<HTMLButtonElement>(null), focusStart = useRef(false);
   const context = props.home ? undefined : props.context;
@@ -59,24 +66,63 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
     if (props.home) { props.onClose(); return; }
     focusStart.current = true; setMode(undefined); setManual('');
   }
-  const valid = mode === 'reference' ? source === 'local' || validReferenceLink(reference) : Boolean(description.trim());
+  function selectSource(next: 'link' | 'local') {
+    if (next === source) return;
+    tracking.reportRecoveryAction('reference_source_select', onActivity(), entry, next);
+    setSource(next);
+    setManual('');
+  }
+  async function importVideo(file: File) {
+    const importContext = onActivity();
+    setImporting(true);
+    setManual('');
+    try {
+      const asset = await uploadLibraryAsset(file, { modality: 'video' });
+      setLocalVideo({ assetId: asset.id, versionId: asset.currentVersionId, name: file.name });
+      tracking.reportReferenceImport('success', importContext, entry);
+    } catch (error) {
+      const rejection = error instanceof AssetUploadError && error.outcome === 'rejected' ? error : undefined;
+      tracking.reportReferenceImport(rejection ? 'failure' : 'unknown', importContext, entry, rejection?.reason);
+      const message = rejection?.reason === 'size' ? 'Choose a video up to 500 MB.'
+        : rejection ? 'Choose a readable video file.'
+          : 'Could not confirm the video import. Check Assets or choose the video again.';
+      showToast(t(message), 'error');
+    } finally {
+      setImporting(false);
+    }
+  }
+  const valid = mode === 'reference'
+    ? source === 'local' ? Boolean(localVideo) && !importing : validReferenceLink(reference)
+    : Boolean(description.trim());
   async function copy() {
     if (busy.current || !mode || !valid) return;
+    const draft = { query, description: mode === 'reference' ? referenceNotes : description };
+    let brief: string;
+    if (mode === 'reference' && source === 'local') {
+      if (!localVideo) return;
+      const { assetId, versionId } = localVideo;
+      const mediaUrl = new URL(assetMediaUrl(assetId, versionId), window.location.origin).href;
+      brief = templateSearchBrief({ ...draft, mode, source, asset: { assetId, versionId }, mediaUrl }, t);
+    } else {
+      brief = templateSearchBrief(mode === 'describe' ? { ...draft, mode } : { ...draft, mode, source: 'link', reference }, t);
+    }
     busy.current = true; setCopying(true);
     const attemptId = tracking.newTrackingId();
     const actionContext = onActivity();
-    const brief = templateSearchBrief({ mode, source, query, reference, description: mode === 'reference' ? referenceNotes : description }, t);
-    tracking.reportRecoveryAction('copy_brief', actionContext, entry);
+    const sourceKind = mode === 'reference' ? source : 'description';
+    tracking.reportRecoveryAction('copy_brief', actionContext, entry, sourceKind);
     try {
       await navigator.clipboard.writeText(brief); setManual('');
-      tracking.reportSearchHandoff(mode === 'reference' ? source : 'description', attemptId, 'clipboard_written', actionContext, entry);
+      tracking.reportSearchHandoff(sourceKind, attemptId, 'clipboard_written', actionContext, entry);
       showToast(t('Request copied. Paste the request in your chat and send it.'), 'info');
     } catch {
       setManual(brief);
-      tracking.reportSearchHandoff(mode === 'reference' ? source : 'description', attemptId, 'manual_fallback', actionContext, entry);
+      tracking.reportSearchHandoff(sourceKind, attemptId, 'manual_fallback', actionContext, entry);
       showToast(t('Copy failed. Select and copy the instruction below.'), 'error');
     } finally { busy.current = false; setCopying(false); }
   }
+  const pickerLabel = t(importing ? 'Importing…' : localVideo ? 'Replace video' : 'Choose local video');
+  const fileNameId = `${recoveryId}-filename`;
   const form = mode && <form aria-labelledby={formTitleId} className={styles.recoveryForm} onSubmit={event => { event.preventDefault(); void copy(); }}>
     <div className={styles.recoveryHeading}>
       <div><h3 id={formTitleId} className="om-media-detail-title">{t(mode === 'reference' ? 'Add your reference' : 'Describe your video')}</h3>
@@ -86,11 +132,28 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
     </div>
     {mode === 'reference' && <>
       <div className={styles.recoveryActions} role="group" aria-label={t('Reference video')}>
-        <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'link'} disabled={copying} onClick={() => { setSource('link'); setManual(''); }}>{t('Video link')}</button>
-        <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'local'} disabled={copying} onClick={() => { setSource('local'); setManual(''); }}>{t('Local video')}</button>
+        <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'link'} disabled={copying} onClick={() => selectSource('link')}>{t('Video link')}</button>
+        <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'local'} disabled={copying} onClick={() => selectSource('local')}>{t('Local video')}</button>
       </div>
       {source === 'link' ? <label className="om-label">{t('Reference video')}<span className={`om-field ${styles.recoveryField}`}><input autoFocus autoComplete="off" type="url" required maxLength={2000} value={reference} disabled={copying} onChange={event => { setReference(event.target.value); setManual(''); }} placeholder="https://…" /></span></label>
-        : <p className={styles.recoveryNote}>{t('Attach the video in your Agent before sending.')}</p>}
+        : <div className={styles.referenceFile}>
+          <input ref={filePicker} type="file" accept="video/*" hidden onChange={event => {
+            const file = event.currentTarget.files?.[0];
+            event.currentTarget.value = '';
+            if (file) void importVideo(file);
+          }} />
+          <button type="button" className="om-button" disabled={copying || importing}
+            aria-label={pickerLabel} aria-describedby={localVideo ? fileNameId : undefined} onClick={() => {
+              tracking.reportRecoveryAction('choose_local_video', onActivity(), entry, 'local');
+              filePicker.current?.click();
+            }}>
+            <RemixIcon name="folder-open-line" size={16} />
+            {localVideo ? <>
+              <span id={fileNameId} className={styles.referenceFilename} role="status" title={localVideo.name}>{localVideo.name}</span>
+              <span className={styles.referenceFileAction}>{pickerLabel}</span>
+            </> : pickerLabel}
+          </button>
+        </div>}
     </>}
     <label key={mode} className="om-label">{t(mode === 'describe' ? 'What video do you want to make?' : 'What would you like to keep or change? (optional)')}
       <span className={`om-field ${styles.recoveryField}`}>
@@ -118,17 +181,25 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
   const title = t(reason === 'no_results' ? 'No templates match the current conditions.' : reason === 'catalog_empty' ? 'No templates available yet.' : 'Nothing suitable?');
   return <section ref={section} className={styles.searchRecovery} data-form={mode ? 'open' : undefined} aria-label={t('Find another starting point')}>
     <div className={styles.recoveryStatus}>
-      <span className={styles.recoveryMark} aria-hidden="true"><MotionIcon name="search" size={24} /></span>
-      <div className={styles.recoveryStatusCopy}><h2>{title}</h2>
-        <p>{t(reason === 'catalog_empty' ? 'You can still make a video from a reference.' : 'Keep looking, or make the video you had in mind.')}</p></div>
+      <span className={styles.recoveryMark} aria-hidden="true"><MotionIcon name="search" size={20} /></span>
+      <div className={styles.recoveryStatusCopy}>
+        <h2 className="om-media-detail-title">{title}</h2>
+        <p className="om-muted">{t(reason === 'catalog_empty' ? 'You can still make a video from a reference.' : 'Keep looking, or make the video you had in mind.')}</p>
+      </div>
       {props.searchAction && <div className={styles.recoverySearchAction}>{props.searchAction}</div>}
     </div>
     <div className={styles.recoveryBody}>
       {form || <div className={styles.recoveryIntro}>
-        <span aria-hidden="true" className={styles.recoveryFilm}><MotionIcon name="film" size={22} /></span>
-        <div><h3>{t('Start with a reference')}</h3>
-          <p>{t('Share a video in your chat. Your Agent can use it to make an editable OpenMotion project.')}</p></div>
-        <button ref={start} className="om-button" data-primary onClick={() => choose('reference')}>{t('Make a video from a reference')}<MotionIcon name="arrow-right" size={16} /></button>
+        <span aria-hidden="true" className="om-avatar"><MotionIcon name="film" size={18} /></span>
+        <div>
+          <h3 className="om-title">{t('Start with a reference')}</h3>
+          <p className="om-muted">{t('Use a video link or local video to create an editable project.')}</p>
+        </div>
+        <div className={styles.recoveryPrimary}>
+          <button ref={start} className="om-button" data-primary onClick={() => choose('reference')}>
+            {t('Make a video from a reference')}<MotionIcon name="arrow-right" size={16} />
+          </button>
+        </div>
       </div>}
     </div>
   </section>;
@@ -149,7 +220,10 @@ export function TemplateReferenceDialog({ trigger, onClose, ...callbacks }: Requ
     };
   }, [trigger]);
   return <dialog ref={dialog} className={styles.referenceDialog} data-search-recovery="" aria-labelledby={titleId}
-    onCancel={event => { event.preventDefault(); onClose(); }}>
+    onCancel={event => {
+      if (event.target !== event.currentTarget) return;
+      event.preventDefault(); onClose();
+    }}>
     <TemplateSearchRecovery home titleId={titleId} onClose={onClose} {...callbacks} />
   </dialog>;
 }

@@ -111,6 +111,7 @@ export function TemplateLibraryDialog(props: Props) {
   const [settledKeyword, setSettledKeyword] = useState(''), [searchComposing, setSearchComposing] = useState(false);
   const [recoveryExpanded, setRecoveryExpanded] = useState(false), [catalogVersion, setCatalogVersion] = useState('');
   const [referenceTrigger, setReferenceTrigger] = useState<HTMLButtonElement | null>(null);
+  const referenceShownFor = useRef<string | undefined>(undefined);
   const searchShortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
   useEffect(() => { if (props.open && props.error) showToast(props.error, 'error'); }, [props.open, props.error, showToast]);
   useEffect(() => { if (props.open && warning) showToast(warning, 'info'); }, [props.open, warning, showToast]);
@@ -251,6 +252,16 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardShown(items[index], index + 1, listContext());
     return true;
   }, [listContext]);
+  const referenceSeen = (context = listContext()) => {
+    if (document.hidden || !context.resultSetId) return false;
+    if (referenceShownFor.current !== context.resultSetId) {
+      referenceShownFor.current = context.resultSetId;
+      tracking.reportReferenceEntryShown(context);
+    }
+    return true;
+  };
+  const referenceVisible = props.open && !loading && !error && !query.trim() && visible.length > 0 && !preview && !brandStory && !referenceTrigger;
+  useTemplateImpressions(dialog, 'library_home', referenceVisible, searchContextKey, () => referenceSeen(), 'data-reference-entry');
   useTemplateImpressions(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, resultSet, cardSeen);
   const brandGroups = useMemo(() => groupBrandSeries(catalog), [catalog]);
   const visibleBrandGroups = useMemo(() => groupBrandSeries(visible), [visible]);
@@ -505,13 +516,17 @@ export function TemplateLibraryDialog(props: Props) {
       {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
       <div className={storiesPreview && brandsOnly ? storyStyles.brandGrid : styles.grid}>
         {!showEmptyRecovery && <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())}
-          afterActions={!query.trim() && <button type="button" className={`om-button ${styles.referenceEntryButton}`} aria-haspopup="dialog" aria-label={t('Paste a video link to make your own')} onClick={event => {
-            tracking.reportRecoveryAction('reference', listContext(), 'library_home');
-            setReferenceTrigger(event.currentTarget);
-          }}>
-            <span className={styles.referenceEntryCopy}><span>{t('Nothing suitable?')}</span><strong>{t('Paste a video link to make your own')}</strong></span>
-            <MotionIcon name="arrow-right" size={16} />
-          </button>} />}
+          afterActions={!query.trim() && <div className={`om-media-detail-actions ${styles.referenceEntry}`}>
+            <span className={styles.referenceEntryLabel}>{t('Nothing suitable?')}</span>
+            <button type="button" className="om-button" data-primary data-reference-entry="library_home" aria-haspopup="dialog" aria-label={t('Paste a video link to make your own')} onClick={event => {
+              const context = listContext();
+              referenceSeen(context);
+              tracking.reportRecoveryAction('reference', context, 'library_home');
+              setReferenceTrigger(event.currentTarget);
+            }}>
+              <span>{t('Paste a video link to make your own')}</span><MotionIcon name="arrow-right" size={16} />
+            </button>
+          </div>} />}
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
         {storiesPreview && brandsOnly ? visibleBrandGroups.map(series => <BrandSeriesCard key={series.name} series={series} onOpen={(group, element) => openBrand(group, element, 'top100')} />) : visible.map((item, index) => <Fragment key={item.id}>{insertions.get(index) && <BrandSeriesCard series={insertions.get(index)!} discovery onOpen={(group, element) => openBrand(group, element, 'discovery')} />}<TemplateCard template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} /></Fragment>)}
       </div>

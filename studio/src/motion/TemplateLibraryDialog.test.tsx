@@ -100,10 +100,16 @@ it('opens the reference-link form from each category without changing browsing o
   const trigger = button(actionLabel, intro);
   const actions = intro.querySelector('.om-gallery-intro-actions')!;
   expect(actions.querySelector('a')?.textContent).toBe('Submit video');
-  expect(actions.nextElementSibling).toBe(trigger);
+  expect(actions.querySelector('a')?.classList.contains('om-gallery-submit')).toBe(true);
+  expect(button('Surprise me', actions).classList.contains('om-gallery-surprise')).toBe(true);
+  expect(actions.nextElementSibling?.contains(trigger)).toBe(true);
+  expect(trigger.hasAttribute('data-primary')).toBe(true);
   expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
   const initialCards = cards();
+  expect(events('surface_view', { element: 'reference' })).toHaveLength(0);
   await act(async () => trigger.click());
+  const [referenceImpression] = events('surface_view', { element: 'reference' });
+  expect(referenceImpression).toMatchObject({ reference_entry: 'library_home', result_set_id: expect.any(String) });
   const popup = host.querySelector<HTMLDialogElement>('dialog[data-search-recovery][open]')!;
   const input = popup.querySelector<HTMLInputElement>('input[type=url]')!;
   expect(document.activeElement).toBe(input);
@@ -119,12 +125,48 @@ it('opens the reference-link form from each category without changing browsing o
   expect(events('template_search_result')).toHaveLength(0);
   expect(JSON.stringify(tracked)).not.toContain(link);
   for (const item of tracked) expect(validProperties(studioEvents, item.event, item.properties), JSON.stringify(item)).toBe(true);
+  await act(async () => button('Local video', popup).click());
+  const picker = popup.querySelector('input[type=file]')!;
+  await act(async () => button('Choose local video', popup).click());
+  await act(async () => picker.dispatchEvent(new Event('cancel', { bubbles: true })));
+  expect(events('ui_click', { element: 'choose_local_video' })).toEqual([expect.objectContaining({
+    reference_entry: 'library_home', source_kind: 'local', result_set_id: referenceImpression.result_set_id,
+  })]);
+  expect(events('studio_asset_import_result')).toHaveLength(0);
+  expect(popup.open).toBe(true);
+  expect(button('Copy request', popup).disabled).toBe(true);
   await act(async () => popup.dispatchEvent(new Event('cancel', { cancelable: true, bubbles: true })));
   expect(host.querySelector('dialog[data-search-recovery]')).toBeNull();
   expect(document.activeElement).toBe(trigger);
   expect(cards()).toEqual(initialCards);
   expect(button('Brand & company films').getAttribute('aria-pressed')).toBe('true');
   expect(searchInput().value).toBe('');
+  await act(async () => trigger.click());
+  expect(events('surface_view', { element: 'reference' })).toHaveLength(1);
+});
+it('counts the home reference entry after visible dwell once per result set', async () => {
+  vi.useFakeTimers();
+  try {
+    await mount();
+    const impressions = () => events('surface_view', { element: 'reference', reference_entry: 'library_home' });
+    const currentObserver = () => Observer.instances.findLast(instance => !instance.disconnected &&
+      instance.elements.some(element => element.hasAttribute('data-reference-entry')))!;
+    const initial = currentObserver();
+    initial.emit(0.49);
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(impressions()).toHaveLength(0);
+    initial.emit(0.5);
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(impressions()).toHaveLength(1);
+    initial.emit();
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(impressions()).toHaveLength(1);
+    await act(async () => button('Brand & company films').click());
+    currentObserver().emit();
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(impressions()).toHaveLength(2);
+    expect(impressions()[0].result_set_id).not.toBe(impressions()[1].result_set_id);
+  } finally { vi.useRealTimers(); }
 });
 it('commits Enter and debounce once, never commits IME text, and counts A to B to A as three searches', async () => {
   vi.useFakeTimers();
@@ -174,11 +216,49 @@ it('prepares link and local-video instructions, retains drafts and distinguishes
   await act(async () => button('Make a video from a reference', recovery()).click());
   expect(recovery().querySelector<HTMLInputElement>('input[type=url]')!.value).toBe(reference);
   await act(async () => button('Local video', recovery()).click());
+  await act(async () => button('Local video', recovery()).click());
+  const searchContext = events('template_search_result').at(-1)!;
+  expect(events('ui_click', { element: 'reference_source_select' })).toEqual([expect.objectContaining({
+    source_kind: 'local', result_set_id: searchContext.result_set_id, search_id: searchContext.search_id,
+  })]);
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  const picker = recovery().querySelector<HTMLInputElement>('input[type=file]')!;
+  expect(picker.accept).toBe('video/*');
+  const file = new File(['video'], 'private-reference.mp4', { type: 'video/mp4' });
+  const asset = { id: 'pinned-asset', modality: 'video', currentVersionId: 'pinned-version', versions: [{ id: 'pinned-version' }] };
+  Object.defineProperty(picker, 'files', { value: [file] });
+  vi.mocked(fetch).mockResolvedValueOnce(Response.json({ error: 'Unsupported media type' }, { status: 400 }));
+  await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  expect(document.querySelector('[data-feedback-layer]')?.textContent).toContain('Choose a readable video file.');
+  vi.mocked(fetch).mockRejectedValueOnce(new Error('private network error'));
+  await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  const upload = Promise.withResolvers<Response>();
+  vi.mocked(fetch).mockReturnValueOnce(upload.promise);
+  await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  expect(fetch).toHaveBeenLastCalledWith(expect.stringContaining('modality=video'), expect.objectContaining({ body: file }));
+  await act(async () => upload.resolve(Response.json({ asset })));
+  expect(button('Copy request', recovery()).disabled).toBe(false);
+  expect(button('Replace video', recovery())).toBeDefined();
+  expect(recovery().textContent).toContain(file.name);
+  expect(events('studio_asset_import_result')).toEqual([
+    expect.objectContaining({ entry_point: 'template_reference', outcome: 'failure', failed_count: 1, error_category: 'unsupported_format' }),
+    expect.objectContaining({ entry_point: 'template_reference', outcome: 'unknown', failed_count: 0, unknown_count: 1 }),
+    expect.objectContaining({ entry_point: 'template_reference', outcome: 'success', added_count: 1 }),
+  ]);
+  expect(events('studio_asset_import_result').every(event => event.result_set_id === searchContext.result_set_id &&
+    event.search_id === searchContext.search_id && event.reference_entry === undefined)).toBe(true);
   vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('denied'));
   await act(async () => button('Copy request', recovery()).click());
   expect(events('template_search_handoff_result').at(-1)).toMatchObject({ source_kind: 'local', handoff_status: 'manual_fallback' });
   const manual = recovery().querySelector<HTMLTextAreaElement>('textarea[readonly]')!;
-  expect(manual.value).toContain('Read the video I attach');
+  expect(manual.value).toContain('openmotion_assets_use {"action":"read","assetId":"pinned-asset","versionId":"pinned-version"}');
+  expect(manual.value).toContain('/motion-api/assets/pinned-asset/versions/pinned-version/file');
+  expect(JSON.stringify(tracked)).not.toContain(file.name);
+  expect(JSON.stringify(tracked)).not.toContain(asset.id);
+  expect(JSON.stringify(tracked)).not.toContain('private network error');
   expect(manual.value).not.toContain(reference);
   expect(JSON.stringify(tracked)).not.toContain(reference);
   expect(JSON.stringify(tracked)).not.toContain('Private creative notes');

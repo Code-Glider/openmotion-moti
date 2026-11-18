@@ -5,6 +5,7 @@ import type { SeriesAttribution } from './brandStoryTracking';
 import { studioEvents } from '../../../tracking/events.ts';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
 import { optionId, send, slugField, searchKeyword } from './reporting';
+import type { AssetUploadReason } from './assetUploadError';
 
 import type { Fields } from './reporting';
 type Click = Fields<'ui_click'>;
@@ -103,14 +104,32 @@ export function reportDetailLink(template: Template, element: 'view_full_page' |
   send('ui_click', { ...studio, area: actionArea(view), element, ...templateId(template), ...detail(view) });
 }
 
-export type RecoveryAction = 'search_focus' | 'clear_search' | 'reference' | 'describe' | 'copy_brief';
+export type RecoveryAction = 'search_focus' | 'clear_search' | 'reference' | 'describe' | 'reference_source_select' | 'choose_local_video' | 'copy_brief';
 type ReferenceEntry = 'library_home';
-export function reportRecoveryAction(element: RecoveryAction, context: ListContext, entry?: ReferenceEntry) {
-  send('ui_click', { ...studio, area: 'template_discovery', element, ...(entry && { reference_entry: entry }), ...list(context) });
+type ReferenceSource = Fields<'template_search_handoff_result'>['source_kind'];
+export function reportRecoveryAction(element: RecoveryAction, context: ListContext, entry?: ReferenceEntry, source?: ReferenceSource) {
+  send('ui_click', { ...studio, area: 'template_discovery', element, ...(entry && { reference_entry: entry }),
+    ...(source && { source_kind: source }), ...list(context) });
+}
+export function reportReferenceEntryShown(context: ListContext) {
+  send('surface_view', { ...studio, area: 'template_discovery', element: 'reference', reference_entry: 'library_home', ...list(context) });
+}
+
+const referenceImportErrors = {
+  size: 'too_large', unreadable: 'unreadable', unsupported: 'unsupported_format',
+} as const satisfies Record<AssetUploadReason, Fields<'studio_asset_import_result'>['error_category']>;
+
+export function reportReferenceImport(outcome: 'success' | 'failure' | 'unknown', context: ListContext, entry?: ReferenceEntry, reason?: AssetUploadReason) {
+  send('studio_asset_import_result', {
+    entry_point: 'template_reference', outcome, requested_count: 1, added_count: Number(outcome === 'success'),
+    failed_count: Number(outcome === 'failure'), ...(outcome === 'unknown' && { unknown_count: 1 }),
+    ...(outcome === 'failure' && { error_category: reason ? referenceImportErrors[reason] : 'other' }),
+    ...(entry && { reference_entry: entry }), ...list(context),
+  });
 }
 export function reportRecoveryShown(reason: 'no_results' | 'unsuitable' | 'catalog_empty', context: ListContext) {
   send('surface_view', { ...studio, area: 'template_discovery', element: 'search_recovery', recovery_reason: reason, ...list(context) });
 }
-export function reportSearchHandoff(source: 'link' | 'local' | 'description', attemptId: string, status: 'clipboard_written' | 'manual_fallback', context: ListContext, entry?: ReferenceEntry) {
+export function reportSearchHandoff(source: ReferenceSource, attemptId: string, status: 'clipboard_written' | 'manual_fallback', context: ListContext, entry?: ReferenceEntry) {
   send('template_search_handoff_result', { ...studio, area: 'template_discovery', source_kind: source, handoff_attempt_id: attemptId, handoff_status: status, ...(entry && { reference_entry: entry }), ...list(context) });
 }
