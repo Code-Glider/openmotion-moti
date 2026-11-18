@@ -85,14 +85,13 @@ it.runIf(process.env.OPEN_MOTION_NATIVE_HANDOFF === "1")(
           env: { ...process.env, npm_config_update_notifier: "false" },
         },
       ).catch((error) => {
-        let response: { ok?: boolean };
+        let response: unknown;
         try {
           response = JSON.parse(error.stdout);
         } catch {
           throw error;
         }
-        if (response.ok !== false) throw error;
-        return { stdout: error.stdout as string };
+        throw Error(`installed ${args[0]} exited ${error.code}: ${JSON.stringify(response)}`);
       });
       const response = JSON.parse(result.stdout);
       if (!response.ok) throw Error(`installed ${args[0]} failed: ${JSON.stringify(response.error)}`);
@@ -151,7 +150,9 @@ it.runIf(process.env.OPEN_MOTION_NATIVE_HANDOFF === "1")(
     try {
       const installed = await command(["setup", "--carrier", "standalone"]);
       // About 153 MiB of three pinned cold archives plus tree verification; product loader deadlines are unchanged.
-      expect((await command(["prepare"], 180000)).state).toBe("ready");
+      const preparation = await command(["prepare"], 180000);
+      report.preparation = preparation;
+      expect(preparation.state).toBe("ready");
       expect((await readDirectory(data)).manager.phase).toBe("closed");
       expect(await observeProcesses(data)).toEqual([]);
       const started: { runtime: Status } = await command(["start"]);
