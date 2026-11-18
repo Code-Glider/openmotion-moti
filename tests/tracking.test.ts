@@ -176,6 +176,8 @@ test('tool dimensions use only the published actions, defaults and schema field 
 test('nested tool inputs identify missing fields and invalid operation or command names', () => {
   const schema = phase1Tools.find(tool => tool.name === 'openmotion_assets_use')!.inputSchema;
   for (const [args, field, rule] of [
+    [{}, 'action', 'missing'],
+    [{ unknown: true }, 'action', 'missing'],
     [{ action: 'brand_kit', brandKit: { operation: 'PRIVATE_VALUE' } }, 'brandKit.operation', 'invalid_enum'],
     [{ action: 'brand_kit', brandKit: {} }, 'brandKit.operation', 'missing'],
     [{ action: 'brand_kit', brandKit: { operation: 'retry' } }, 'brandKit.kitId', 'missing'],

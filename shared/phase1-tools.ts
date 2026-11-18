@@ -88,17 +88,18 @@ export function validateInput(schema: any, value: any, field = 'arguments', know
     const valid = failures.filter(error => !error).length;
     if (valid !== 1) {
       const message = field + ' must match one action and its required fields';
-      if (valid > 1) throw new ToolInputError(message, knownField, 'invalid_combination');
       if (variants.every(variant => variant.type === 'object') && (!value || typeof value !== 'object' || Array.isArray(value))) {
         throw new ToolInputError(message, knownField, 'invalid_type');
       }
       const discriminator = ['action', 'command', 'operation'].find(key =>
         variants.every(variant => variant.properties?.[key]?.enum?.length === 1));
       if (!discriminator) throw new ToolInputError(message, knownField, 'invalid_combination');
-      const selected = variants.findIndex(variant => variant.properties[discriminator].enum[0] === value?.[discriminator]);
+      const command = value?.[discriminator];
+      if (command === undefined) throw new ToolInputError(message, childField(discriminator), 'missing');
+      if (valid > 1) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const selected = variants.findIndex(variant => variant.properties[discriminator].enum[0] === command);
       const failure = failures[selected];
-      throw new ToolInputError(message, failure?.invalid_field ?? childField(discriminator),
-        failure?.validation_rule ?? (value?.[discriminator] === undefined ? 'missing' : 'invalid_enum'));
+      throw new ToolInputError(message, failure?.invalid_field ?? childField(discriminator), failure?.validation_rule ?? 'invalid_enum');
     }
   }
   if (schema.enum && !schema.enum.includes(value)) throw new ToolInputError(field, knownField, 'invalid_enum');
