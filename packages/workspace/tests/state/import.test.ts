@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -274,5 +274,131 @@ it("rejects an oversized batch before decoding any claimed media bytes", () => {
     expect(f.workspace.sourceReceipt(f.intent)).toBeUndefined();
   } finally {
     f.workspace.close();
+  }
+});
+
+function readers(source: SourcePayload) {
+  return {
+    files: source.files,
+    resources: source.resources.map((entry) => ({
+      path: entry.path,
+      name: entry.name,
+      bytes: entry.bytes.byteLength,
+      digest: `sha256:${createHash("sha256").update(entry.bytes).digest("hex")}`,
+      read: () => entry.bytes,
+    })),
+  };
+}
+it("creates the same content from individual readers in one transaction without changing the selected project", () => {
+  const f = fixture();
+  try {
+    const source = payload(),
+      direct = f.workspace.createSource(f.intent, source),
+      requested: string[] = [],
+      staged = readers(source);
+    for (const entry of staged.resources) {
+      const read = entry.read;
+      entry.read = () => {
+        requested.push(entry.path);
+        return read();
+      };
+    }
+    const imported = f.workspace.createSource({ ...f.intent, requestId: randomUUID() }, staged),
+      first = f.workspace.execute("project_read", { sessionId: f.intent.sessionId, artifactId: direct.id }),
+      second = f.workspace.execute("project_read", { sessionId: f.intent.sessionId, artifactId: imported.id });
+    expect(second.revision).toBe(first.revision);
+    expect(second.resources).toEqual(first.resources);
+    expect(requested).toEqual(source.resources.map((entry) => entry.path));
+    expect(f.workspace.execute("workspace_state", {}).selection).toEqual(f.state.selection);
+    expect(f.workspace.execute("project_read", f.owner)).toEqual(f.original);
+  } finally {
+    f.workspace.close();
+  }
+});
+it.each(["throw", "short", "digest", "format"])(
+  "rolls back every reader-derived row and receipt on %s failure after earlier media writes",
+  (kind) => {
+    const f = fixture(),
+      before = inventory(f.root),
+      staged = readers(payload());
+    let called = 0;
+    const second = staged.resources[1]!;
+    const normal = second.read;
+    second.read = () => {
+      called++;
+      if (kind === "throw") throw Error("staged input unavailable");
+      if (kind === "short") return Buffer.from([1]);
+      const bytes = Buffer.from(normal());
+      if (kind === "digest") bytes[bytes.length - 1]! ^= 1;
+      else bytes.fill(0);
+      return bytes;
+    };
+    try {
+      expect(() => f.workspace.createSource(f.intent, staged)).toThrow();
+      expect(called).toBe(1);
+      expect(inventory(f.root)).toEqual(before);
+      expect(f.workspace.sourceReceipt(f.intent)).toBeUndefined();
+      expect(f.workspace.execute("project_read", f.owner)).toEqual(f.original);
+      const sql = new DatabaseSync(join(f.root, "workspace.sqlite"), { readOnly: true });
+      try {
+        expect(sql.prepare("SELECT count(*) AS n FROM resource_chunks").get()?.n).toBe(0);
+      } finally {
+        sql.close();
+      }
+      expect(f.workspace.createSource(f.intent, readers(payload()))).toMatchObject({ sessionId: f.intent.sessionId });
+    } finally {
+      f.workspace.close();
+    }
+  },
+);
+it("preflights aggregate reader bounds before touching any staged file", () => {
+  const f = fixture();
+  let reads = 0;
+  try {
+    const staged = {
+      files: initialFiles(),
+      resources: Array.from({ length: 5 }, (_, at) => ({
+        path: `assets/${at}.wav`,
+        name: "Large",
+        bytes: 16 * 1024 * 1024,
+        digest: `sha256:${"0".repeat(64)}`,
+        read: () => {
+          reads++;
+          throw Error("must not resolve over-limit input");
+        },
+      })),
+    };
+    expect(() => f.workspace.createSource(f.intent, staged)).toThrow("64 MiB");
+    expect(reads).toBe(0);
+    expect(f.workspace.sourceReceipt(f.intent)).toBeUndefined();
+  } finally {
+    f.workspace.close();
+  }
+});
+it("returns original byte-backed receipts before reader lookup across later edits and cold reopen", () => {
+  const f = fixture();
+  let workspace = f.workspace;
+  try {
+    const artifact = workspace.createSource(f.intent, payload()),
+      owner = { sessionId: f.intent.sessionId, artifactId: artifact.id },
+      before = workspace.execute("project_read", owner),
+      later = workspace.execute("project_save", {
+        ...owner,
+        requestId: randomUUID(),
+        expectedRevision: before.revision,
+        files: [...before.files, { path: "later.txt", content: "retained" }],
+      }),
+      unavailable = readers(payload());
+    for (const entry of unavailable.resources)
+      entry.read = () => {
+        throw Error("retired staged file");
+      };
+    expect(workspace.createSource(f.intent, unavailable)).toEqual(artifact);
+    workspace.close();
+    workspace = new Workspace(f.root);
+    expect(workspace.createSource(f.intent, unavailable)).toEqual(artifact);
+    expect(workspace.execute("project_read", owner)).toEqual(later);
+  } finally {
+    workspace.close();
   }
 });

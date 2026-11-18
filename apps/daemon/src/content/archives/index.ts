@@ -2,8 +2,8 @@ import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { type Archive, prepareSnapshot, read } from "@open-motion/portable";
-import { Fault, type SourcePayload, type Workspace } from "@open-motion/workspace";
+import { type Archive, prepareSnapshot } from "@open-motion/portable";
+import { Fault, type SourceReaders, type Workspace } from "@open-motion/workspace";
 import {
   type ArchiveInput,
   type ArchiveOperation,
@@ -12,7 +12,9 @@ import {
   archiveSchemas,
   type Download,
   type Upload,
-} from "./archive.js";
+} from "../archive.js";
+
+import { Staging } from "./staging.js";
 
 interface Ticket {
   id: string;
@@ -21,11 +23,12 @@ interface Ticket {
   kind: "upload" | "download";
   value: Upload | Download;
   archive?: Archive;
-  payload?: SourcePayload;
+  payload?: SourceReaders;
+  staging?: Staging;
   busy: boolean;
   retired: boolean;
 }
-/** Bounded business byte grants only. No filesystem, process, listener or editable store. */
+/** Business tickets use the existing injected runtime grant; no path allocation or editable store. */
 export class Archives {
   private tickets = new Map<string, Ticket>();
   private transfers = new Set<() => void>();
@@ -33,19 +36,23 @@ export class Archives {
   constructor(
     private workspace: Workspace,
     private endpoint?: string,
+    private staging?: string,
   ) {}
   private prune() {
     for (const [id, ticket] of this.tickets)
-      if (!ticket.busy && (ticket.retired || ticket.value.expiresAt <= Date.now())) this.tickets.delete(id);
+      if (!ticket.busy && (ticket.retired || ticket.value.expiresAt <= Date.now())) {
+        ticket.staging?.close();
+        this.tickets.delete(id);
+      }
   }
   private available(ticket?: Ticket): ticket is Ticket {
     return !!ticket && !ticket.retired && ticket.value.expiresAt > Date.now();
   }
   execute<K extends ArchiveOperation>(operation: K, raw: unknown): ArchiveOutput<K> {
     if (this.closing) throw new Fault("invalid", "archive transfers are closing");
-    this.prune();
     const parsed = archiveSchemas[operation].safeParse(raw);
     if (!parsed.success) throw new Fault("invalid", "invalid archive request");
+    if (operation !== "archive_import") this.prune();
     if (operation === "archive_release") {
       const ticket = this.tickets.get((parsed.data as ArchiveInput<"archive_release">).id);
       if (ticket) ticket.retired = true;
@@ -64,6 +71,7 @@ export class Archives {
       if (prior) return { artifact: prior } as ArchiveOutput<K>;
       this.workspace.execute("session_get", { sessionId: input.sessionId });
       if (!input.uploadId) return { artifact: null } as ArchiveOutput<K>;
+      this.prune();
       const ticket = this.tickets.get(input.uploadId);
       if (!this.available(ticket) || ticket.kind !== "upload" || !ticket.payload)
         throw new Fault("missing", "verified archive upload expired or is unavailable; stage the same bytes again");
@@ -123,6 +131,7 @@ export class Archives {
         expiresAt,
       };
     } else {
+      if (!this.staging) throw new Fault("invalid", "archive staging must be sidecar-injected");
       const selected = input as ArchiveInput<"archive_upload">;
       value = {
         id: selected.requestId,
@@ -132,7 +141,17 @@ export class Archives {
         expiresAt,
       };
     }
-    this.tickets.set(value.id, { id: value.id, key, kind, signature, archive, value, busy: false, retired: false });
+    this.tickets.set(value.id, {
+      id: value.id,
+      key,
+      kind,
+      signature,
+      archive,
+      value,
+      staging: kind === "upload" ? new Staging(this.staging!, value) : undefined,
+      busy: false,
+      retired: false,
+    });
     return { ...value } as ArchiveOutput<K>;
   }
   async transfer(request: IncomingMessage, response: ServerResponse, origin?: string) {
@@ -148,28 +167,19 @@ export class Archives {
     if (ticket.kind === "upload" && request.headers["content-type"] !== "application/zip")
       throw new Fault("invalid", "archive upload requires application/zip");
     ticket.busy = true;
+    const cancellation = new AbortController();
     const abort = () => {
+      cancellation.abort();
       request.destroy(Error("archive transfer is closing"));
       response.destroy();
     };
     this.transfers.add(abort);
-    const deadline = setTimeout(() => {
-      request.destroy(Error("archive transfer deadline exceeded"));
-      response.destroy();
-    }, archiveLimits.transfer);
+    const deadline = setTimeout(abort, archiveLimits.transfer);
     deadline.unref();
     try {
       if (ticket.kind === "upload") {
-        let size = 0;
-        const source = async function* () {
-          for await (const chunk of request) {
-            size += chunk.length;
-            if (size > ticket.value.bytes) throw new Fault("invalid", "archive upload exceeds fixed size");
-            yield chunk;
-          }
-          if (size !== ticket.value.bytes) throw new Fault("invalid", "archive upload size differs from fixed intent");
-        };
-        const payload = await read(source(), ticket.value.digest);
+        if (!ticket.staging) throw new Fault("integrity", "archive staging is missing");
+        const payload = await ticket.staging.write(request, cancellation.signal);
         if (!this.available(ticket)) throw new Fault("missing", "archive upload expired during transfer");
         ticket.payload = payload;
         const body = JSON.stringify({ id: ticket.id, ready: true });

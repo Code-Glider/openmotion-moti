@@ -45,6 +45,7 @@ it("downloads the saved native revision and imports the real ZIP once through a 
             port = await context.allocate({ kind: "port", name: "daemon", scheme: "http" });
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             origin: url,
             socket: socket.value,
             token: "archive-browser-fixture",

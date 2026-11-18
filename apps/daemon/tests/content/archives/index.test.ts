@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { request as httpRequest, type IncomingMessage } from "node:http";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,7 +29,9 @@ function wave() {
   return b;
 }
 it("transfers a ZIP beyond JSON limits, retires the source and confirms the original import after a lost response and cold restart", async () => {
-  const evidence = fileURLToPath(new URL(`../../../../.artifacts/archive-transfer/${randomUUID()}/`, import.meta.url)),
+  const evidence = fileURLToPath(
+      new URL(`../../../../../.artifacts/archive-transfer/${randomUUID()}/`, import.meta.url),
+    ),
     root = join(evidence, "sidecar"),
     token = "archive-fixture-authority",
     report: Record<string, unknown> = {};
@@ -64,7 +66,7 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
       },
     });
     if (!api) throw Error("Daemon missing");
-    return { api: api as Client, endpoint, owner };
+    return { api: api as Client, endpoint, owner, staging: owner.context.roots.runtime };
   };
   try {
     const sender = await host("sender"),
@@ -200,6 +202,10 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
       upload = await target.api.execute("archive_upload", uploadInput);
     expect(await target.api.execute("archive_upload", uploadInput)).toEqual(upload);
     await target.api.uploadArchive(upload, zip);
+    const stagedFiles = (await readdir(target.staging)).sort();
+    expect(stagedFiles).toHaveLength(6);
+    await target.api.uploadArchive(upload, zip);
+    expect((await readdir(target.staging)).sort()).toEqual(stagedFiles);
     let lost = true;
     const losing = new Client(target.endpoint, token, async (url, init) => {
       const response = await fetch(url, init);
@@ -213,6 +219,7 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
     await expect(losing.execute("archive_import", { ...intent, uploadId: upload.id })).rejects.toThrow(
       "lost after commit",
     );
+    expect(await readdir(target.staging)).toEqual([]);
     const created = await target.api.execute("archive_import", intent);
     if (!created.artifact) throw Error("receipt absent");
     expect(created.artifact.id).not.toBe(original.id);
@@ -273,11 +280,13 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
 }, 60000);
 
 it("bounds tickets, verifies uploads and releases business grants without creating projects", async () => {
-  const evidence = fileURLToPath(new URL(`../../../../.artifacts/archive-faults/${randomUUID()}/`, import.meta.url)),
+  const evidence = fileURLToPath(new URL(`../../../../../.artifacts/archive-faults/${randomUUID()}/`, import.meta.url)),
     root = join(evidence, "sidecar");
   await mkdir(evidence, { recursive: true });
   const manager = await serve(managerEndpoint(root), { root });
-  let daemon: Awaited<ReturnType<typeof daemonServe>> | undefined, api: Client | undefined;
+  let daemon: Awaited<ReturnType<typeof daemonServe>> | undefined,
+    api: Client | undefined,
+    staging = "";
   try {
     await manager.factory({ channel: channel("dev"), namespace: namespace("faults") }).expose({
       identity: { service: "daemon", generation: digest("faults") },
@@ -286,9 +295,10 @@ it("bounds tickets, verifies uploads and releases business grants without creati
         initialize: async (context) => {
           const socket = await context.allocate({ kind: "socket", name: "daemon" }),
             port = await context.allocate({ kind: "port", name: "daemon", scheme: "http" });
+          staging = context.roots.runtime;
           daemon = await daemonServe({
             data: context.roots.data,
-            staging: context.roots.runtime,
+            staging,
             socket: socket.value,
             token: "fixture",
             origin: "http://fixture.invalid",
@@ -325,17 +335,23 @@ it("bounds tickets, verifies uploads and releases business grants without creati
     await client.execute("archive_release", { id: third.id });
     expect((await client.execute("workspace_state", {})).sessions).toEqual([]);
     const held = await client.execute("archive_upload", { ...input, requestId: randomUUID() });
-    const opening = () => {
+    const opening = async () => {
       const req = httpRequest(
         held.url,
-        { method: "POST", headers: { "content-type": "application/zip", "content-length": held.bytes } },
+        {
+          method: "POST",
+          headers: { "content-type": "application/zip", "content-length": held.bytes, expect: "100-continue" },
+        },
         (response) => response.resume(),
       );
       req.on("error", () => {});
+      // Confirm server admission before a competing request can reserve the same ticket.
+      req.flushHeaders();
+      await once(req, "continue");
       req.write(Buffer.from([0]));
       return req;
     };
-    const req = opening();
+    const req = await opening();
     const competing = () =>
       fetch(held.url, { method: "POST", headers: { "content-type": "application/zip" }, body: new Blob() }).then(
         async (response) => {
@@ -366,10 +382,15 @@ it("bounds tickets, verifies uploads and releases business grants without creati
     const stopping = await client.execute("archive_upload", { ...input, requestId: randomUUID() });
     const stalled = httpRequest(
       stopping.url,
-      { method: "POST", headers: { "content-type": "application/zip", "content-length": stopping.bytes } },
+      {
+        method: "POST",
+        headers: { "content-type": "application/zip", "content-length": stopping.bytes, expect: "100-continue" },
+      },
       (response) => response.resume(),
     );
     stalled.on("error", () => {});
+    stalled.flushHeaders();
+    await once(stalled, "continue");
     stalled.write(Buffer.from([0]));
     await expect
       .poll(() =>
@@ -381,6 +402,8 @@ it("bounds tickets, verifies uploads and releases business grants without creati
         ),
       )
       .toBe(409);
+    await daemon?.close();
+    expect(await readdir(staging)).toEqual([]);
     await manager.close();
     expect((await readDirectory(root)).manager.phase).toBe("closed");
     expect(await observeProcesses(root)).toEqual([]);
