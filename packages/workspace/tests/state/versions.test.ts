@@ -6,6 +6,13 @@ import { DatabaseSync } from "node:sqlite";
 import { expect, it } from "vitest";
 import { Fault, type Input, initialFiles, Workspace } from "@";
 
+function legacyResources(raw: DatabaseSync) {
+  expect(raw.prepare("SELECT count(*) AS n FROM resources").get()?.n).toBe(0);
+  raw.exec(
+    "DROP TABLE resource_chunks; DROP TABLE resources; CREATE TABLE resources(digest TEXT PRIMARY KEY,bytes BLOB NOT NULL)",
+  );
+}
+
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "motion-versions-"));
   let db = new Workspace(root);
@@ -206,13 +213,13 @@ it("verifies historical media atomically, rolls back failed version writes and r
       selection = f.db.execute("workspace_state", {}).selection,
       count = () => raw.prepare("SELECT COUNT(*) AS n FROM requests").get()?.n;
     const receipts = count();
-    raw.prepare("UPDATE resources SET bytes=? WHERE digest=?").run(Buffer.from("corrupt"), digest);
+    raw.prepare("UPDATE resource_chunks SET bytes=? WHERE digest=?").run(Buffer.from("corrupt"), digest);
     expect(f.versions().versions.find((v) => v.id === version.id)?.unavailableFiles).toEqual(["assets/picture.png"]);
     expect(() => f.db.execute("project_restore", request)).toThrow("missing or corrupt");
     expect(f.read()).toEqual(before);
     expect(count()).toBe(receipts);
     expect(f.db.execute("workspace_state", {}).selection).toEqual(selection);
-    raw.prepare("UPDATE resources SET bytes=? WHERE digest=?").run(bytes, digest);
+    raw.prepare("UPDATE resource_chunks SET bytes=? WHERE digest=?").run(bytes, digest);
     raw.exec(
       "CREATE TRIGGER reject_version BEFORE INSERT ON versions BEGIN SELECT RAISE(ABORT,'version failure'); END",
     );
@@ -267,11 +274,12 @@ it("upgrades accepted format3 in place, preserves all rows and receipts, and lab
       ],
       rows = () => Object.fromEntries(tables.map((table) => [table, raw.prepare(`SELECT * FROM ${table}`).all()])),
       before = rows();
+    legacyResources(raw);
     raw.exec("DROP TABLE preferences; DROP TABLE versions; PRAGMA user_version=3");
     try {
       f.cold();
       expect(rows()).toEqual(before);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(8);
       const legacy = inventory(f);
       expect(legacy).toHaveLength(4);
       expect(legacy.every((v) => v.kind === "legacy" && v.createdAt === null)).toBe(true);
@@ -300,6 +308,7 @@ it("refuses an incomplete accepted schema3 head without leaving a partial upgrad
   try {
     f.db.close();
     const raw = new DatabaseSync(file);
+    legacyResources(raw);
     raw.exec("DROP TABLE preferences; DROP TABLE versions; PRAGMA user_version=3");
     raw.prepare("UPDATE projects SET current_revision=?").run("sha256:" + "0".repeat(64));
     raw.close();

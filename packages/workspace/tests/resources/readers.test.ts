@@ -115,10 +115,12 @@ it("refuses corruption before admission and rechecks every chunk after admission
     if (first.done) throw Error("missing first chunk");
     expect(Buffer.from(first.value).equals(f.bytes.subarray(0, 65536))).toBe(true);
     changed[65536] = changed[65536]! ^ 1;
-    raw.prepare("UPDATE resources SET bytes=? WHERE digest=?").run(changed, f.input.digest);
+    raw
+      .prepare("UPDATE resource_chunks SET bytes=? WHERE digest=? AND position=1")
+      .run(changed.subarray(65536, 131072), f.input.digest);
     expect(() => stream.next()).toThrow("changed after verification");
     expect(() => f.workspace.readResource(f.read)).toThrow("bytes are corrupt");
-    raw.prepare("UPDATE resources SET bytes=? WHERE digest=?").run(f.bytes.subarray(0, 65536), f.input.digest);
+    raw.prepare("DELETE FROM resource_chunks WHERE digest=? AND position=2").run(f.input.digest);
     expect(() => [...reader.chunks()]).toThrow("missing or truncated");
     raw.prepare("DELETE FROM resources WHERE digest=?").run(f.input.digest);
     expect(() => f.workspace.readResource(f.read)).toThrow("missing or truncated");

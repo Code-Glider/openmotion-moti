@@ -7,6 +7,13 @@ import { expect, it } from "vitest";
 import { initialFiles, Workspace } from "@";
 import { locales } from "@/contract.js";
 
+function legacyResources(raw: DatabaseSync) {
+  expect(raw.prepare("SELECT count(*) AS n FROM resources").get()?.n).toBe(0);
+  raw.exec(
+    "DROP TABLE resource_chunks; DROP TABLE resources; CREATE TABLE resources(digest TEXT PRIMARY KEY,bytes BLOB NOT NULL)",
+  );
+}
+
 it("persists independent preferences, fences competing clients and replays original receipts without rewinding later choices", () => {
   const root = mkdtempSync(join(tmpdir(), "view-preferences-"));
   let db = new Workspace(root);
@@ -94,6 +101,7 @@ it("upgrades schema5 without rewriting old preference JSON or receipt bytes, the
     const raw = new DatabaseSync(join(root, "workspace.sqlite"));
     try {
       // Reconstruct the accepted schema5 layout and original response, not a new-format replay.
+      legacyResources(raw);
       raw.exec(
         "ALTER TABLE preferences DROP COLUMN embedded_theme; ALTER TABLE preferences DROP COLUMN locale; PRAGMA user_version=5",
       );
@@ -108,7 +116,7 @@ it("upgrades schema5 without rewriting old preference JSON or receipt bytes, the
       const receipts = raw.prepare("SELECT * FROM requests ORDER BY id").all();
       const stored = raw.prepare("SELECT version,value FROM preferences").get();
       db = new Workspace(root);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(8);
       expect(raw.prepare("SELECT version,value FROM preferences").get()).toEqual(stored);
       expect(raw.prepare("SELECT * FROM requests ORDER BY id").all()).toEqual(receipts);
       expect(db.execute("workspace_configure", intent)).toEqual(original);
@@ -159,6 +167,7 @@ it("upgrades accepted schema4 atomically without changing content, history, sele
     db.close();
     const raw = new DatabaseSync(join(root, "workspace.sqlite"));
     try {
+      legacyResources(raw);
       raw.exec("DROP TABLE preferences; PRAGMA user_version=4");
       const tables = raw
         .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -168,7 +177,7 @@ it("upgrades accepted schema4 atomically without changing content, history, sele
       const before = rows();
       db = new Workspace(root);
       expect(rows()).toEqual(before);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(8);
       expect(db.execute("workspace_preferences", {}).value).toEqual({
         theme: "light",
         layout: "edit",
@@ -210,6 +219,7 @@ it("upgrades schema6 byte-preserving, separates embedded choices and retains omi
     db.close();
     const raw = new DatabaseSync(join(root, "workspace.sqlite"));
     try {
+      legacyResources(raw);
       raw.exec("ALTER TABLE preferences DROP COLUMN embedded_theme; PRAGMA user_version=6");
       raw.prepare("UPDATE requests SET result=? WHERE id=?").run(JSON.stringify(receipt), original.requestId);
       const tables = raw
@@ -220,7 +230,7 @@ it("upgrades schema6 byte-preserving, separates embedded choices and retains omi
       const before = rows(),
         stored = raw.prepare("SELECT version,value,locale FROM preferences").get();
       db = new Workspace(root);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(8);
       expect(rows()).toEqual(before);
       expect(raw.prepare("SELECT version,value,locale FROM preferences").get()).toEqual(stored);
       expect(db.execute("workspace_configure", original)).toEqual(receipt);

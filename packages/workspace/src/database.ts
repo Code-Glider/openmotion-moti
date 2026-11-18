@@ -3,6 +3,7 @@ import { lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { Fault, locales, type Operation } from "./contract.js";
+import { migrateResourceBytes } from "./resources/migrate.js";
 export class Database {
   readonly sql: DatabaseSync;
   constructor(root: string) {
@@ -18,7 +19,7 @@ export class Database {
       this.sql.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;");
       this.transaction(() => {
         const version = Number(this.one("PRAGMA user_version")?.user_version);
-        if (![0, 3, 4, 5, 6, 7].includes(version))
+        if (![0, 3, 4, 5, 6, 7, 8].includes(version))
           throw new Fault("integrity", "unsupported workspace database schema");
         if (version === 0) {
           if (this.one("SELECT name FROM sqlite_master WHERE type='table'"))
@@ -79,6 +80,7 @@ export class Database {
           this.sql.exec(`ALTER TABLE preferences ADD COLUMN embedded_theme TEXT NOT NULL DEFAULT 'system'
             CHECK(embedded_theme IN ('light','dark','system')); PRAGMA user_version=7;`);
         }
+        if (version < 8) migrateResourceBytes(this);
       });
     } catch (error) {
       this.sql.close();
