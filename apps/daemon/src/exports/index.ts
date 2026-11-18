@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { link, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { link, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { canonical, digest } from "@odsuite/protocol";
 import { type Connection, Peer } from "@odsuite/sidecar";
-import { freeze } from "@open-motion/render";
+import { freeze, readProjection, writeProjection } from "@open-motion/render";
 import {
   type ExportInput,
   type ExportOperation,
@@ -51,27 +50,27 @@ export class Exports {
     if (operation === "export_create") {
       const create = input as ExportInput<"export_create">,
         snapshot = freeze(this.workspace, create),
-        bytes = Buffer.from(canonical(snapshot)),
-        identity = digest(bytes),
         directory = join(this.binding.root, "inbox"),
-        path = join(directory, `${identity.slice(7)}.json`);
+        temporary = join(directory, `${randomUUID()}.tmp`);
       await mkdir(directory, { recursive: true, mode: 0o700 });
       // Content identity makes retry independent of the active project or a previous HTTP response.
-      const temporary = join(directory, `${randomUUID()}.tmp`);
+
+      let projection: { digest: string; bytes: number };
       try {
-        await writeFile(temporary, bytes, { flag: "wx", mode: 0o600, flush: true });
+        projection = await writeProjection(snapshot, temporary);
+        const path = join(directory, `${projection.digest.slice(7)}.json`);
         try {
           await link(temporary, path);
         } catch (e) {
           if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-          if (digest(await readFile(path)) !== identity) throw new Fault("integrity", "frozen input changed");
+          await readProjection(path, projection);
         }
       } finally {
         await rm(temporary, { force: true });
       }
       return this.call("export_create", {
         ...create,
-        projection: { digest: identity, bytes: bytes.length },
+        projection,
       }) as Promise<ExportOutput<K>>;
     }
     return this.call(operation as Exclude<ExportOperation, "export_create" | "export_download">, input) as Promise<

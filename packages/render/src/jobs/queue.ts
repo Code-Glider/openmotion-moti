@@ -1,10 +1,10 @@
-import { lstat, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Library } from "@odsuite/blob";
 import { digest } from "@odsuite/protocol";
 import type { Context, Factory } from "@odsuite/sidecar";
 import { render, type Tools } from "../index.js";
-import type { Snapshot } from "../snapshot.js";
+import { readProjection } from "../projection/read.js";
 import type { Receipt } from "./contract.js";
 import { type Record, Store } from "./store.js";
 
@@ -94,17 +94,7 @@ export class Queue {
       this.active = { record, abort };
       try {
         const path = join(this.options.context.roots.data, "inbox", `${record.projection.digest.slice(7)}.json`),
-          info = await lstat(path);
-        if (
-          !info.isFile() ||
-          info.isSymbolicLink() ||
-          info.size !== record.projection.bytes ||
-          info.size > 128 * 1024 ** 2
-        )
-          throw Error("invalid frozen export input");
-        const bytes = await readFile(path);
-        if (digest(bytes) !== record.projection.digest) throw Error("frozen export input integrity mismatch");
-        const input = JSON.parse(bytes.toString()) as Snapshot;
+          input = await readProjection(path, record.projection, abort.signal);
         if (
           input.project.revision !== record.job.revision ||
           input.project.sessionId !== record.job.sessionId ||
