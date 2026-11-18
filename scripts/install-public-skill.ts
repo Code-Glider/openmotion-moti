@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { lstat, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -45,6 +46,14 @@ export async function installPublicSkill(options: Options) {
       return null;
     });
     if (!existing) { allPresent = false; continue; }
+    const scope = await readFile(path.join(target, 'scope.json'), 'utf8').then(JSON.parse).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== 'ENOENT') throw error;
+      return null;
+    });
+    if (scope?.managedBy === '@openmotion/installer' && typeof scope.installHome === 'string' && scope.installHome
+      && (!scope.host || scope.host === 'codex')) {
+      return { status: 'skipped', reason: 'legacy Codex workflow bundle; rerun Codex setup to migrate before installing the public Skill' };
+    }
     if (!owned) throw new Error('Public Skill target is not owned by Skills CLI: ' + target);
     // A stale lock must not authorize replacement of a legacy runtime bundle.
     const content = await readFile(path.join(target, 'SKILL.md'), 'utf8');
@@ -58,11 +67,11 @@ export async function installPublicSkill(options: Options) {
   return { status: 'installed', source, ref };
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   try { console.log(JSON.stringify(await installPublicSkill({ host: process.argv[2] || 'codex', ref: process.argv[3] || 'main' }))); }
   catch (error) {
     console.error('OpenMotion public Skill was not installed: ' + (error instanceof Error ? error.message : String(error)));
-    console.error('Runtime installation remains usable. Retry with: npx skills@1.9.0 add nexu-io/openmotion --skill openmotion -g');
+    console.error('Runtime installation remains usable. Retry with: npx skills add nexu-io/openmotion --skill openmotion -g');
     process.exitCode = 1;
   }
 }

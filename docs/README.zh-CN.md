@@ -504,12 +504,12 @@ bash scripts/install-motion.command
 主入口是 [openmotion](https://github.com/nexu-io/openmotion/blob/main/skills/openmotion/SKILL.md)。可单独安装后，让 Agent 使用 OpenMotion 完成 Studio、运行时与 MCP 接入；已有安装会复用。Skills CLI 本身只安装说明文件。
 
 ```sh
-npx skills@1.9.0 add nexu-io/openmotion --skill openmotion
+npx skills add nexu-io/openmotion --skill openmotion
 ```
 
 ```sh
-npx skills@1.9.0 add nexu-io/openmotion --list
-npx skills@1.9.0 add nexu-io/openmotion --skill openmotion-director openmotion-production openmotion-template-to-video openmotion-recreate openmotion-video-to-template
+npx skills add nexu-io/openmotion --list
+npx skills add nexu-io/openmotion --skill openmotion-director openmotion-production openmotion-template-to-video openmotion-recreate openmotion-video-to-template
 ```
 
 这只复制指引，不安装运行时或注册 MCP。保持共享文档可用并单独连接应用，或使用上面的一体化本地安装器。

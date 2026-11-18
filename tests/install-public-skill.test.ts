@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { installPublicSkill, skillsCliVersion } from '../scripts/install-public-skill.ts';
 
 async function fixture(t: any) {
@@ -73,4 +75,30 @@ test('XDG state lock is reused and CLI errors are reported without a second invo
   await writeFile(path.join(state, 'skills/.skill-lock.json'), JSON.stringify({ version: 3, skills: { openmotion: { source: 'nexu-io/openmotion' } } }));
   assert.equal((await installPublicSkill({ ...options, env: { XDG_STATE_HOME: state } })).status, 'present');
   await assert.rejects(installPublicSkill({ ...options, homeDirectory: path.join(options.homeDirectory, 'empty'), run: async () => { throw new Error('offline'); } }), /offline/);
+});
+
+test('the CLI runs through a symlinked checkout instead of silently succeeding', async t => {
+  const options = await fixture(t);
+  const checkout = path.join(options.homeDirectory, 'checkout');
+  await symlink(fileURLToPath(new URL('../', import.meta.url)), checkout, 'junction');
+  const result = spawnSync(process.execPath, [path.join(checkout, 'scripts/install-public-skill.ts'), 'codex'], {
+    env: { ...process.env, OPENMOTION_SKIP_PUBLIC_SKILL: '1' }, encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { status: 'skipped', reason: 'disabled' });
+});
+
+test('a legacy Codex bundle defers public Skill installation when adding Claude', async t => {
+  const options = await fixture(t);
+  const directory = path.join(options.homeDirectory, '.agents/skills/openmotion');
+  await mkdir(directory, { recursive: true });
+  const scope = JSON.stringify({ managedBy: '@openmotion/installer', host: 'codex', installHome: path.join(options.homeDirectory, 'runtime') });
+  await writeFile(path.join(directory, 'scope.json'), scope);
+  await writeFile(path.join(directory, 'keep.txt'), 'legacy workflow bundle');
+  const result = await installPublicSkill({ ...options, host: 'claude' });
+  assert.equal(result.status, 'skipped');
+  assert.match(result.reason!, /legacy Codex.*migrat/i);
+  assert.equal(await readFile(path.join(directory, 'scope.json'), 'utf8'), scope);
+  assert.equal(await readFile(path.join(directory, 'keep.txt'), 'utf8'), 'legacy workflow bundle');
+  assert.equal(options.calls.length, 0);
 });

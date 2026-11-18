@@ -6,7 +6,15 @@
 - Install the public entry through pinned official Skills CLI on supported default host profiles. Reuse existing official entries, preserve telemetry opt-outs and report optional failures independently of runtime installation.
 - Move Codex npm workflow bundles to `openmotion-workflows`, with transactional migration only for matching installer-owned legacy bundles. Generate the outer npm helper as JavaScript for execution inside `node_modules`.
 - Verify workspace identity through filesystem aliases during MCP diagnostics, installed CLI calls and same-chat onboarding recovery; a different workspace remains rejected.
+- Simplify user-facing commands to `npx skills add`, retaining the pinned CLI for automatic installation. Execute the public-entry helper through aliased checkout paths and defer installation over legacy Codex bundles with explicit migration guidance.
 - Keep the five creative routes, MCP operations and runtime specialist distribution unchanged. skills.sh listing/counts and target-host onboarding remain separate verification boundaries.
+
+## 2026-11-17: Optional DSH workspace plugin
+
+- Package a source-checkout integration as an installable `openmotion-dsh` tarball. Enabling it starts/reuses local OpenMotion and connects DSH's native MCP adapter to the same project data.
+- Add project/template browsing, embedded Brand Kits/Assets and a native Studio tab alongside Agent chat. Focus mode preserves the mounted editor; narrow windows switch between editor and conversation.
+- Keep DSH dependencies optional, model configuration in DSH, runtime state outside the checkout and standalone Studio navigation intact. No npm publication or release-workflow change.
+- New-project handoff remains manual; validation distinguishes plugin installation, browser layout and read-only model/tool calls from video creation/export acceptance. See `integrations/dsh/README.md` in the source checkout.
 
 ## 2026-11-17: Add 96 single-style library Skills and their Skills-page cards
 

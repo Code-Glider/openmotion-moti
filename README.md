@@ -59,7 +59,7 @@ OpenMotion is a **full-stack agentic video** studio and an **open-source alterna
 Install the main Skill with the [Skills CLI](https://github.com/vercel-labs/skills):
 
 ```sh
-npx skills@1.9.0 add nexu-io/openmotion --skill openmotion
+npx skills add nexu-io/openmotion --skill openmotion
 ```
 
 Then ask your agent: **Use OpenMotion to install and connect the local Studio and MCP, then help me make a video.** The Skill completes the source setup below when needed and reuses an existing workspace. Installing the Skill alone copies instructions; it does not yet install Studio or connect MCP.
@@ -522,8 +522,8 @@ The main Skill, plugin and MCP server are named `openmotion`; Tools, specialist 
 Discover the main Skill and optional specialist workflows from GitHub with the [Skills CLI](https://github.com/vercel-labs/skills):
 
 ```sh
-npx skills@1.9.0 add nexu-io/openmotion --list
-npx skills@1.9.0 add nexu-io/openmotion --skill openmotion-director openmotion-production openmotion-template-to-video openmotion-recreate openmotion-video-to-template
+npx skills add nexu-io/openmotion --list
+npx skills add nexu-io/openmotion --skill openmotion-director openmotion-production openmotion-template-to-video openmotion-recreate openmotion-video-to-template
 ```
 
 This copies instructions; it does not install the runtime or register MCP. Keep the shared documentation available and connect the app separately, or use the integrated local installer above.
