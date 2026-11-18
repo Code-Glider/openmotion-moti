@@ -86,7 +86,9 @@ test('packaged DSH host shares MCP data and bounds its read-only proxy', async (
       outfile: module, bundle: true, format: 'esm', platform: 'node',
       plugins: [{ name: 'mcp-fixture', setup(builder) {
         builder.onResolve({ filter: /^@deepseek-ai\/dsh-mcp-client$/ }, () => ({ path: 'bridge', namespace: 'fixture' }));
-        builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: 'export async function apply(ctx, config) { ctx.bridge = config; }', loader: 'js' }));
+        builder.onLoad({ filter: /^bridge$/, namespace: 'fixture' }, () => ({ contents: 'export async function apply(ctx, config) { ctx.bridge = config; }', loader: 'js' }));
+        builder.onResolve({ filter: /^@deepseek-ai\/dsh-llm$/ }, () => ({ path: 'llm', namespace: 'fixture' }));
+        builder.onLoad({ filter: /^llm$/, namespace: 'fixture' }, () => ({ contents: 'export function createUserMessage(input) { return { id: \"fixture-message\", ...input }; }', loader: 'js' }));
       } }],
     });
     await copyFile(new URL('../integrations/dsh/plugin/src/style.css', import.meta.url), path.join(temporary, 'style.css'));

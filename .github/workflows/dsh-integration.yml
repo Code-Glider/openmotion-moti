@@ -18,6 +18,7 @@ on:
       - 'tests/dsh-integration.test.ts'
       - 'tests/dsh-distribution.test.ts'
       - 'tests/dsh-release.test.ts'
+      - 'tests/dsh-template-cards.test.ts'
       - 'packages/design-system/**'
       - 'package.json'
       - 'package-lock.json'
@@ -40,6 +41,7 @@ on:
       - 'tests/dsh-integration.test.ts'
       - 'tests/dsh-distribution.test.ts'
       - 'tests/dsh-release.test.ts'
+      - 'tests/dsh-template-cards.test.ts'
       - 'packages/design-system/**'
       - 'package.json'
       - 'package-lock.json'
@@ -78,7 +80,7 @@ jobs:
           npm run typecheck --prefix integrations/dsh
           npm run pack --prefix integrations/dsh
           npm run test --prefix integrations/dsh
-          node --test tests/dsh-integration.test.ts tests/dsh-distribution.test.ts tests/dsh-release.test.ts
+          node --test tests/dsh-integration.test.ts tests/dsh-distribution.test.ts tests/dsh-release.test.ts tests/dsh-template-cards.test.ts
       - name: Retain the plugin for PR testing
         uses: actions/upload-artifact@v7.0.2
         with:
