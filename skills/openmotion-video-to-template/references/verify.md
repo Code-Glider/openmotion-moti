@@ -57,6 +57,8 @@ node /absolute/path/to/hyperframes/bin/hyperframes.mjs render /absolute/path/to/
 
 Do not compare every frame, and do not spend repair rounds on pixel differences that are not visible (for example GPU antialiasing). Fix a failed render, a missing file or a visible difference. Record the result in `TEMPLATE.md` as passed, failed or not run.
 
+When the handoff includes Studio import, validate the exact ZIP through the available archive import flow in an isolated workspace and read the resulting project. Import has its own native validation. If it rejects nested timeline media, use top-level timed layers or the pinned guide's native sub-compositions, then rerender and repackage the corrected source. Record the import result separately from the unpacked render.
+
 This is a self-containment check, not independent-agent proof. Do not claim an independent test happened inside the creating session.
 
 ## 5. Delivery
