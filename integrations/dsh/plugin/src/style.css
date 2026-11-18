@@ -480,3 +480,19 @@
   min-height: 0;
   border: 0;
 }
+
+/* A read-only video preview stays inside the plugin; the host shell is untouched. */
+.omd-video-preview {
+  margin: auto;
+  width: min(1000px, calc(100vw - 48px));
+  max-height: calc(100dvh - 48px);
+  padding: var(--motion-space-12);
+  border: 1px solid var(--motion-border);
+  border-radius: var(--motion-radius-xl);
+  background: var(--motion-panel);
+  color: var(--motion-text);
+  box-shadow: var(--motion-shadow-lg);
+}
+.omd-video-preview::backdrop { background: var(--motion-dialog-scrim); backdrop-filter: var(--motion-dialog-backdrop); }
+.omd-video-preview header { display: flex; align-items: center; justify-content: space-between; gap: var(--motion-space-12); margin-bottom: var(--motion-space-12); }
+.omd-video-preview video { display: block; width: 100%; max-height: calc(100dvh - 140px); object-fit: contain; background: var(--motion-inset); }

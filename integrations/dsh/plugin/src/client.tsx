@@ -101,14 +101,7 @@ export function registerTemplateRecommendationBody(ctx: any): void {
         }
         return () => window.removeEventListener("openmotion:library-ready", ready);
       }, [props.proposal.callId, props.proposal.details.onboarding]);
-      return <TemplateRecommendationCard {...props} onPreview={templateId => {
-        ctx.sidebarRight.openTab("openmotion-studio", { params: { page: "templates", templateId } });
-        const sessionId = ctx.sidebarRight.mounted?.getSnapshot();
-        if (sessionId) {
-          localStorage.setItem("omd-session-page:" + sessionId, "templates");
-          localStorage.setItem("omd-session-template:" + sessionId, templateId);
-        }
-      }} proposal={{ ...props.proposal,
+      return <TemplateRecommendationCard {...props} proposal={{ ...props.proposal,
         details: { ...props.proposal.details, libraryOpened } }} />;
     },
   }), "openmotion-dsh: template recommendation body");
@@ -446,7 +439,6 @@ export async function apply(ctx: any) {
         if (mounted.getSnapshot() !== sessionId) return;
         localStorage.setItem("omd-session:" + sessionId, projectId);
         localStorage.removeItem("omd-session-page:" + sessionId);
-        localStorage.removeItem("omd-session-template:" + sessionId);
         ctx.sidebarRight.openTab("openmotion-studio", { params: { projectId } });
       });
       return true;

@@ -1,13 +1,17 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { TemplateRecommendationCard } from "../src/TemplateRecommendationCard";
 import { configureStudio } from "../src/studio";
 import type { RecommendationDetails } from "../src/templateRecommendationAction";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
-afterEach(() => { act(() => root?.unmount()); document.body.replaceChildren(); document.body.removeAttribute("data-ds-dark-theme"); });
+beforeEach(() => {
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+});
+afterEach(() => { act(() => root?.unmount()); document.body.replaceChildren(); document.body.removeAttribute("data-ds-dark-theme"); vi.restoreAllMocks(); });
 const details: RecommendationDetails = {
   onboarding: true, language: "zh", libraryOpened: true,
   templates: ["one", "two", "three"].map(id => ({ id, title: id, description: "简介", previewUrl: "/" + id + ".mp4", posterUrl: "/" + id + ".jpg" })),
@@ -28,7 +32,11 @@ it("shows the shared Chinese onboarding above the same three playable cards", as
   expect(document.querySelector("video")?.hasAttribute("autoplay")).toBe(false);
   const buttons = document.querySelectorAll("button");
   await act(async () => (buttons[2] as HTMLButtonElement).click());
-  expect(actCard).toHaveBeenCalledWith("preview", { templateId: "two" });
+  expect(actCard).not.toHaveBeenCalled();
+  expect(document.querySelector('dialog')?.open).toBe(true);
+  expect(document.querySelector('dialog video')?.getAttribute('src')).toBe('http://localhost:4173/two.mp4');
+  await act(async () => (document.querySelector('dialog button') as HTMLButtonElement).click());
+  expect(document.querySelector('dialog')?.open).toBe(false);
   await act(async () => (buttons[5] as HTMLButtonElement).click());
   expect(actCard).toHaveBeenLastCalledWith("use", { templateId: "three" });
 });
@@ -39,7 +47,7 @@ it("does not claim a right-hand library opened when opening was not confirmed", 
 });
 it("keeps selection available after an action fails", async () => {
   mount(details, vi.fn().mockResolvedValue({ status: "refused" }));
-  await act(async () => (document.querySelector("button") as HTMLButtonElement).click());
+  await act(async () => (document.querySelector('.omd-recommendation-actions button:last-child') as HTMLButtonElement).click());
   expect(document.querySelector("[role=status]")?.textContent).toContain("未能填入");
   expect((document.querySelector("button") as HTMLButtonElement).disabled).toBe(false);
 });
@@ -70,7 +78,8 @@ it("opens the template library beside the current chat and waits for its load be
   expect(document.body.textContent).toContain('右侧就是模板库');
   expect(openTab).toHaveBeenCalledTimes(1);
   await act(async () => (document.querySelector('.omd-recommendation-actions')!.parentElement!.querySelector('button') as HTMLButtonElement).click());
-  expect(openTab).toHaveBeenLastCalledWith('openmotion-studio', { params: { page: 'templates', templateId: 'one' } });
+  expect(openTab).toHaveBeenCalledTimes(1);
+  expect(document.querySelector('dialog')?.open).toBe(true);
 });
 
 it("does not reopen the library over a user's later editor when an old installation card mounts again", async () => {
@@ -88,7 +97,8 @@ it("does not reopen the library over a user's later editor when an old installat
 
 it("restores the library after refresh when DSH does not persist tab navigation parameters", async () => {
   const { StudioWorkspace } = await import('../src/editing');
-  (window as any).happyDOM.settings.disableIframePageLoading = true;
+  const settings = (window as any).happyDOM?.settings;
+  if (settings) settings.disableIframePageLoading = true;
   localStorage.setItem('omd-session-page:welcome-session', 'templates');
   const container = document.createElement('div'); document.body.append(container); root = createRoot(container);
   await act(async () => root!.render(<StudioWorkspace sessionId="welcome-session" useTabInfo={() => ({ tab: { visible: true, navigation: {} } })} />));

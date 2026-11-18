@@ -3,7 +3,7 @@ import { useHostTheme } from "./theme";
 import { studio } from "./studio";
 
 type StudioProps = {
-  useTabInfo: () => { tab: { visible: boolean; navigation: { params?: { projectId?: string; page?: string; templateId?: string } } } };
+  useTabInfo: () => { tab: { visible: boolean; navigation: { params?: { projectId?: string; page?: string } } } };
   sessionId?: string;
 };
 
@@ -13,9 +13,8 @@ export function StudioWorkspace({ useTabInfo, sessionId }: StudioProps): React.J
   const theme = useHostTheme();
   const params = tab.navigation.params;
   const templates = params?.page === "templates" || (!params?.projectId && sessionId !== undefined && localStorage.getItem("omd-session-page:" + sessionId) === "templates");
-  const templateId = params?.templateId || (sessionId && localStorage.getItem("omd-session-template:" + sessionId));
   if (!tab.visible) return null;
-  const url = templates ? studio + "/?embed=1&templates=1" + (templateId ? "&template=" + encodeURIComponent(templateId) : "")
+  const url = templates ? studio + "/?embed=1&templates=1"
     : studio + "/?embed=1&hostChrome=1#project/" + encodeURIComponent(params?.projectId || "project");
   return <section className="omd-studio-seat" data-motion-ui data-theme={theme}>
     <iframe title={templates ? "OpenMotion Templates" : "OpenMotion Studio"} src={url}
