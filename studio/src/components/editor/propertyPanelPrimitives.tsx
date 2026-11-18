@@ -1,3 +1,4 @@
+import { NativeSelect } from "../ui/FormField";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -268,9 +269,9 @@ export function SelectField({
   const track = useTrackDesignInput();
   const renderedOptions = value && !options.includes(value) ? [value, ...options] : options;
   return (
-    <label className={`${FIELD} flex items-center gap-3`}>
+    <label className={`${FIELD} flex items-center gap-3`} data-form-field="intrinsic">
       <span className="shrink-0 text-[11px] font-medium text-neutral-500">{t(label)}</span>
-      <select
+      <NativeSelect appearance="embedded"
         value={value}
         disabled={disabled}
         onChange={(e) => {
@@ -284,7 +285,7 @@ export function SelectField({
             {options.includes(option) ? t(option) : option}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   );
 }

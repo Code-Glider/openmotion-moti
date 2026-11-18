@@ -2,7 +2,7 @@ import * as tracking from './pageTracking';
 import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { Menu, MenuItem, MenuSeparator } from '../components/ui/Menu';
+import { Menu, MenuItem } from '../components/ui/Menu';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Button } from '../components/ui/Button';
 import { Popover } from '../components/ui/Popover';
@@ -302,20 +302,17 @@ export function ProjectArchiveMenu({ projectId, title, trashed = false, archives
   const { t } = useI18n();
   const trigger = useRef<HTMLButtonElement>(null);
   const revealLabel = /Mac/i.test(navigator.platform) ? 'Reveal in Finder' : /Win/i.test(navigator.platform) ? 'Show in File Explorer' : 'Show in file manager';
-  return <Menu modal={false} align="end" trigger={<button ref={trigger} type="button" className="motion-icon-button om-nav-row-action" disabled={archives.locked} aria-label={t('Actions for {title}', { title })}><RemixIcon name="more-line" size={16} /></button>}>
+  return <Menu modal={false} align="end" presentation="panel" aria-label={t('Actions for {title}', { title })} trigger={<button ref={trigger} type="button" className="motion-icon-button om-nav-row-action" disabled={archives.locked} aria-label={t('Actions for {title}', { title })}><RemixIcon name="more-2-line" size={16} /></button>}>
     {trashed ? <>
-      <MenuItem onClick={() => void archives.projectAction('restore', projectId, title)}>{t('Restore project')}</MenuItem>
-      <MenuItem tone="danger" onClick={() => void archives.projectAction('delete', projectId, title, trigger.current)}>{t('Delete permanently')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="history-line" size={14} />} onClick={() => void archives.projectAction('restore', projectId, title)}>{t('Restore project')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="delete-bin-line" size={14} />} tone="danger" onClick={() => void archives.projectAction('delete', projectId, title, trigger.current)}>{t('Delete permanently')}</MenuItem>
     </> : <>
-      <MenuItem onClick={() => void archives.beginRename(projectId, title, trigger.current)}>{t('Rename project')}</MenuItem>
-      <MenuItem onClick={() => void archives.projectAction('duplicate', projectId, title)}>{t('Duplicate project')}</MenuItem>
-      <MenuSeparator />
-      <MenuItem onClick={() => void archives.exportProject(projectId)}>{t('Export project')}</MenuItem>
-      <MenuSeparator />
-      <MenuItem onClick={() => void archives.projectAction('reveal', projectId, title)}>{t(revealLabel)}</MenuItem>
-      <MenuItem onClick={() => void archives.projectAction('info', projectId, title)}>{t('Copy path')}</MenuItem>
-      <MenuSeparator />
-      <MenuItem tone="danger" onClick={() => void archives.projectAction('trash', projectId, title)}>{t('Move to trash')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="edit-line" size={14} />} onClick={() => void archives.beginRename(projectId, title, trigger.current)}>{t('Rename project')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="file-copy-line" size={14} />} onClick={() => void archives.projectAction('duplicate', projectId, title)}>{t('Duplicate project')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="download-2-line" size={14} />} onClick={() => void archives.exportProject(projectId)}>{t('Export project')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="folder-open-line" size={14} />} onClick={() => void archives.projectAction('reveal', projectId, title)}>{t(revealLabel)}</MenuItem>
+      <MenuItem icon={<RemixIcon name="clipboard-line" size={14} />} onClick={() => void archives.projectAction('info', projectId, title)}>{t('Copy path')}</MenuItem>
+      <MenuItem icon={<RemixIcon name="delete-bin-line" size={14} />} tone="danger" onClick={() => void archives.projectAction('trash', projectId, title)}>{t('Move to trash')}</MenuItem>
     </>}
   </Menu>;
 }

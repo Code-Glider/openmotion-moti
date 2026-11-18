@@ -1,3 +1,4 @@
+import { FieldInput, NativeSelect } from "../ui/FormField";
 import { systemMessage } from "../../i18n/systemMessages";
 import { useI18n } from "../../i18n/I18n";
 /**
@@ -202,7 +203,7 @@ export function FxParamRow({
         <span className="hf-fx-label w-[86px] shrink-0 wrap-break-word text-[10px] leading-tight text-panel-text-2">
           {t(param.label)}
         </span>
-        <select
+        <NativeSelect
           className="hf-fx-select min-w-0 flex-1 rounded-[3px] bg-panel-surface px-1 py-0.5 font-mono text-[10px] text-panel-text-0"
           value={String(value)}
           disabled={disabled}
@@ -217,7 +218,7 @@ export function FxParamRow({
               {t(o.label)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
     );
   }
@@ -261,7 +262,7 @@ export function FxParamRow({
         onKeyUp={commit}
         onBlur={commit}
       />
-      <input
+      <FieldInput
         className="hf-fx-number w-[54px] shrink-0 rounded-[3px] bg-panel-surface px-1 py-0.5 text-right font-mono text-[10px] text-panel-text-0"
         type="number"
         min={param.min}

@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useState } from "react";
 import { MetricField } from "./propertyPanelPrimitives";
@@ -92,29 +93,7 @@ export function BorderRadiusEditor({
           disabled={disabled}
           title={linked ? t("Unlink corners") : t("Link all corners")}
         >
-          {linked ? (
-            <svg
-              width={14}
-              height={14}
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path d="M6 12H4a4 4 0 010-8h2M10 4h2a4 4 0 010 8h-2M5 8h6" />
-            </svg>
-          ) : (
-            <svg
-              width={14}
-              height={14}
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path d="M6 12H4a4 4 0 010-8h2M10 4h2a4 4 0 010 8h-2" />
-            </svg>
-          )}
+          <RemixIcon name={linked ? "link" : "link-unlink"} size={14} />
         </button>
       </div>
 

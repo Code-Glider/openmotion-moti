@@ -285,9 +285,11 @@ export const StudioRightPanels = memo(function StudioRightPanels({
 
   return (
     <>
-      <Dock.Panel id="design">{designBody}</Dock.Panel>
+      <Dock.Panel id="design">
+        <div className="motion-inspector-surface h-full min-h-0">{designBody}</div>
+      </Dock.Panel>
       <Dock.Panel id="layers">
-        <LayersPanel />
+        <div className="motion-inspector-surface h-full min-h-0"><LayersPanel /></div>
       </Dock.Panel>
       <Dock.Panel
         id="renders"

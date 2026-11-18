@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GsapAnimation } from "@hyperframes/core/gsap-parser";
@@ -227,15 +228,7 @@ export const AnimationCard = memo(function AnimationCard({
         >
           {easeLabel}
         </span>
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="currentColor"
-          className={`shrink-0 transition-transform ${flat ? "text-panel-text-5" : "text-neutral-500"} ${expanded ? "" : "-rotate-90"}`}
-        >
-          <path d="M2 3l3 4 3-4z" />
-        </svg>
+        <RemixIcon name="arrow-down-s-fill" size={10} className={`shrink-0 transition-transform ${flat ? "text-panel-text-5" : "text-neutral-500"} ${expanded ? "" : "-rotate-90"}`} />
       </button>
 
       {expanded && (

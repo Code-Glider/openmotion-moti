@@ -159,18 +159,26 @@ describe("InlineTextToolbar", () => {
     expect(seen).toEqual([]);
   });
 
-  // A colour input has a user-agent minimum width, so an invisible one pinned
-  // only by `inset-0` spills across its neighbours: hovering bold opened the
-  // colour picker.
-  it("keeps the invisible colour input inside its own swatch", () => {
-    const { element, session, iframe } = scene("hello world");
-    const { host } = render(session, iframe);
-    selectAll(element);
+  it("applies picker edits to the saved selection after focus moves out of the preview", () => {
+    const { element, host } = renderSelected('<span style="color: #f00">hello world</span>');
+    const trigger = toolbarIn(host)!.querySelector<HTMLButtonElement>("[data-flat-color-trigger]")!;
+    act(() => trigger.click());
+    const red = document.querySelector<HTMLInputElement>('.motion-color-picker[data-open] input[aria-label="Red"]')!;
+    expect(red.value).toBe("255");
 
-    const input = host.ownerDocument.querySelector<HTMLInputElement>('input[type="color"]')!;
-    expect(input.className).toContain("w-full");
-    expect(input.className).toContain("h-full");
-    expect(input.className).toContain("min-w-0");
+    act(() => {
+      red.focus();
+      document.getSelection()!.removeAllRanges();
+      document.dispatchEvent(new Event("selectionchange"));
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(red, "42");
+      red.dispatchEvent(new Event("input", { bubbles: true }));
+      red.blur();
+    });
+
+    expect(element.querySelector("span")?.style.color).toBe("rgb(42, 0, 0)");
+    act(() => trigger.click());
+    expect(document.getSelection()!.toString()).toBe("hello world");
   });
 
   it("styles the selected characters when a control is used", () => {
@@ -249,11 +257,8 @@ describe("InlineTextToolbar", () => {
 
     selectAll(element);
 
-    const swatch = toolbarIn(host)!.querySelector<HTMLElement>("span[aria-hidden]")!;
+    const swatch = toolbarIn(host)!.querySelector<HTMLElement>("[data-color-field-swatch]")!;
     expect(swatch.style.backgroundImage).toBe("linear-gradient(135deg, red 0.00%, lime 100.00%)");
-    // Without this the gradient repeats under the border, painting the end
-    // colour along the leading edge and the start colour along the trailing one.
-    expect(swatch.style.backgroundOrigin).toBe("border-box");
   });
 
   it("shows a plain swatch when the whole selection is one colour", () => {
@@ -262,20 +267,11 @@ describe("InlineTextToolbar", () => {
 
     selectAll(element);
 
-    const swatch = toolbarIn(host)!.querySelector<HTMLElement>("span[aria-hidden]")!;
+    const swatch = toolbarIn(host)!.querySelector<HTMLElement>("[data-color-field-swatch]")!;
     expect(swatch.style.backgroundColor).toBe("red");
   });
 
-  it("opens the colour input on a shorthand hex selection", () => {
-    const { element, session, iframe } = scene('<span style="color: #f00">Hello world</span>');
-    const { host } = render(session, iframe);
 
-    selectAll(element);
-
-    expect(host.ownerDocument.querySelector<HTMLInputElement>('input[type="color"]')?.value).toBe(
-      "#ff0000",
-    );
-  });
 });
 
 describe("swatchBackground", () => {

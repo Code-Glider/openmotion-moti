@@ -1,3 +1,4 @@
+import { NativeSelect } from "../../components/ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { memo, useCallback } from "react";
 import { useCaptionStore } from "../store";
@@ -101,7 +102,7 @@ function AnimationPhase({
   return (
     <Section label={label}>
       <Row label={t("Preset")}>
-        <select
+        <NativeSelect
           value={preset}
           disabled={disabled}
           aria-label={t("{label} preset", { label: label })}
@@ -113,7 +114,7 @@ function AnimationPhase({
               {p}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </Row>
 
       <Row label={t("Duration")}>
@@ -129,7 +130,7 @@ function AnimationPhase({
       </Row>
 
       <Row label={t("Ease")}>
-        <select
+        <NativeSelect
           value={ease}
           disabled={disabled}
           aria-label={t("{label} ease", { label: label })}
@@ -141,7 +142,7 @@ function AnimationPhase({
               {e}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </Row>
 
       <Row label={t("Stagger")}>

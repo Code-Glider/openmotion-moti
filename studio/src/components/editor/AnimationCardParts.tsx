@@ -1,3 +1,5 @@
+import { FieldInput, NativeSelect } from "../ui/FormField";
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { MetricField } from "./propertyPanelPrimitives";
 import {
@@ -51,16 +53,7 @@ function RemoveButton({ onClick, title }: { onClick: () => void; title: string }
       title={title}
       aria-label={title}
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      >
-        <path d="M3 3l6 6M9 3l-6 6" />
-      </svg>
+      <RemixIcon name="close-line" size={12} />
     </button>
   );
 }
@@ -122,7 +115,7 @@ export function PropertyRow({
             <span className="shrink-0 text-[11px] font-medium text-neutral-500">
               {t(PROP_LABELS[prop] ?? prop)}
             </span>
-            <input
+            <FieldInput
               type="text"
               defaultValue={String(val)}
               className="flex-1 bg-transparent text-[11px] text-neutral-200 outline-hidden"
@@ -191,7 +184,7 @@ export function AddPropertyTrigger({
   const { t } = useI18n();
   if (adding && available.length > 0) {
     return (
-      <select
+      <NativeSelect
         autoFocus
         className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-100 outline-hidden"
         defaultValue=""
@@ -208,7 +201,7 @@ export function AddPropertyTrigger({
             {PROP_LABELS[p] ?? p}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     );
   }
   if (available.length === 0) return null;

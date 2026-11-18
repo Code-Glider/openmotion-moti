@@ -197,3 +197,36 @@
 /* Full-editor recording and current-keyframe indicators carry semantic state. */
 :root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.text-danger-ink:enabled { color: var(--motion-danger); }
 :root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.text-accent-ink:enabled { color: var(--motion-accent); }
+
+:root[data-motion-ui] :is(
+  .motion-inspector-surface,
+  .hf-dock .dv-tabs-and-actions-container:has(.hf-dock-tab[data-panel-zone="right"])
+) {
+  --color-panel-bg: var(--motion-editor-card);
+  background-color: var(--motion-editor-card);
+}
+
+/* The first inspector label starts at the same 16px inset as the field labels. */
+:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has(.hf-dock-tab[data-panel-zone="right"]) {
+  padding-inline-start: var(--motion-space-8);
+}
+
+:root[data-motion-ui] .hf-dock .dv-groupview .dv-tabs-container > .dv-tab:has(.hf-dock-tab:is([data-panel-zone="left"], [data-panel-zone="right"])) {
+  align-self: center;
+  height: min(100%, var(--motion-space-28));
+  padding-inline: var(--motion-space-8);
+  border-radius: var(--motion-radius-editor-control);
+  background: transparent;
+  color: light-dark(var(--motion-neutral-n8), var(--motion-neutral-n5));
+  font-size: var(--motion-text-sm);
+  font-weight: var(--motion-weight-regular);
+  transition: background-color var(--motion-duration-control) var(--motion-ease-out), color var(--motion-duration-control) var(--motion-ease-out);
+}
+:root[data-motion-ui] .hf-dock .dv-groupview .dv-tabs-container > .dv-tab:has(.hf-dock-tab:is([data-panel-zone="left"], [data-panel-zone="right"])):not(.dv-active-tab):is(:hover, :focus-visible) {
+  color: var(--motion-button-ink);
+}
+:root[data-motion-ui] .hf-dock .dv-groupview .dv-tabs-container > .dv-tab.dv-active-tab:has(.hf-dock-tab:is([data-panel-zone="left"], [data-panel-zone="right"])) {
+  background: var(--motion-button-tab-selected);
+  color: var(--motion-button-ink-strong);
+  font-weight: var(--motion-weight-semibold);
+}

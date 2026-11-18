@@ -1,3 +1,4 @@
+import { FieldInput } from "../../components/ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -80,7 +81,7 @@ export function NumberField({
   };
 
   return (
-    <input
+    <FieldInput
       type="number"
       className={inputCls}
       value={display}

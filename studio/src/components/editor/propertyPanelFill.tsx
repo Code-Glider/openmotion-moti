@@ -1,3 +1,5 @@
+import { NativeSelect } from "../ui/FormField";
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { buildProjectApiPath } from "../../utils/projectRouting";
 import { useMemo, useRef, useState } from "react";
@@ -9,7 +11,6 @@ import {
   serializeGradient,
   type GradientModel,
 } from "./gradientValue";
-import { ReverseGradientIcon } from "../icons/ReverseGradientIcon";
 import { IMAGE_EXT } from "../../utils/mediaTypes";
 import type { DomEditSelection } from "./domEditing";
 import { FIELD, LABEL, RESPONSIVE_GRID } from "./propertyPanelHelpers";
@@ -190,8 +191,8 @@ export function ImageFillField({
                 />
               </div>
             )}
-            <div className={FIELD}>
-              <select
+            <div className={FIELD} data-form-field="intrinsic">
+              <NativeSelect appearance="embedded"
                 value={selectedAsset ?? ""}
                 disabled={disabled}
                 onChange={(e) => {
@@ -212,7 +213,7 @@ export function ImageFillField({
                     {asset}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
         ) : (
@@ -383,7 +384,7 @@ export function GradientField({
             }}
             className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 text-[11px] font-medium text-neutral-300 transition-colors hover:border-neutral-600 hover:text-text-0 disabled:cursor-not-allowed disabled:text-neutral-600"
           >
-            <ReverseGradientIcon size={16} />
+            <RemixIcon name="exchange-2-line" size={16} />
             {t("Reverse")}</button>
         </div>
       </div>
@@ -477,6 +478,7 @@ export function GradientField({
               className="grid min-w-0 grid-cols-[minmax(0,1fr)_68px_28px] gap-2"
             >
               <ColorField
+                layout="stacked"
                 label={t("Stop {value0}", { value0: index + 1 })}
                 value={stop.color}
                 disabled={disabled}
