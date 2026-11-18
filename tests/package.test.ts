@@ -5,8 +5,11 @@ import { zip } from '../scripts/package.ts';
 import { distributionFiles } from '../scripts/distribution.ts';
 import { getWorkflow, workflowRegistry } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, copyFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 test('onboarding Skill is discoverable from the registered plugin roots', async () => {
   const manifest = JSON.parse(await readFile(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8'));
@@ -47,7 +50,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('docs/release-guide.md'), 'The public test/stable manual must ship');
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
     assert(![...files].some(file => (file.startsWith('library/templates/catalog/') && !onboardingSourceFiles.includes(file)) || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
-    for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'gateway/asset-read.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
+    for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/account-media.ts', 'gateway/asset-chat.ts', 'gateway/asset-read.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
     for (const file of ['scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/import-font.ts', 'skills/openmotion-production/fonts/catalog.json']) assert(files.has(file), 'Missing font dependency: ' + file);
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
     for (const file of ['docs/brand-kits.md', 'shared/brand-kit.ts', 'shared/brand-catalog.ts', 'gateway/brand-catalog.ts', 'library/brand-kits/catalog.json', 'library/brand-kits/OPENDESIGN-LICENSE.txt', 'library/brand-kits/THIRD-PARTY-NOTICES.txt', 'library/brand-kits/NOTICE.md', 'library/brand-kits/assets/gsap.min.js', 'gateway/brand-http.ts', 'gateway/brand-kits.ts', 'gateway/brand-network.ts', 'gateway/brand-extract.ts', 'gateway/brand-sampler.mjs', 'gateway/brand-assets.ts', 'gateway/brand-context.ts', 'shared/brand-capture.ts', 'gateway/brand-capture/design-style-extractor.mjs', 'gateway/brand-capture/token-extractor.mjs', 'gateway/brand-capture/browser-helpers.mjs', 'gateway/brand-capture/LICENSE', 'gateway/brand-capture/NOTICE.md', 'gateway/brand-package.ts', 'gateway/brand-showcase.ts']) assert(files.has(file), 'Missing Brand Kit runtime dependency: ' + file);
@@ -91,7 +94,7 @@ test('ZIP stores UTF-8 names and file sizes in local and central headers', () =>
 test('source and distribution expose only canonical Skill folders', async () => {
   const { readdir } = await import('node:fs/promises');
   const core = ['openmotion-director', 'openmotion-media', 'openmotion-production', 'openmotion-recreate', 'openmotion-reference-video', 'openmotion-template-to-video', 'openmotion-video-to-template'];
-  const library = ['openmotion-brandkit', 'openmotion-design-remix', 'openmotion-growth-teardown', 'openmotion-presenter-story'];
+  const library = ['openmotion-ad-script', 'openmotion-adaptive-layout', 'openmotion-ai-assistant-tour', 'openmotion-archive-collage', 'openmotion-article-illustrations', 'openmotion-aurora-gradient', 'openmotion-before-after', 'openmotion-bilingual-captions', 'openmotion-bold-type-poster', 'openmotion-brandkit', 'openmotion-bubble-field', 'openmotion-caption-styling', 'openmotion-card-carousel', 'openmotion-cards-and-text', 'openmotion-chalk-blueprint', 'openmotion-cinematic-logo', 'openmotion-clay-explainer', 'openmotion-color-pop-poster', 'openmotion-content-cover', 'openmotion-coral-title-cards', 'openmotion-corner-frames', 'openmotion-dark-premium-poster', 'openmotion-design-remix', 'openmotion-doc-promo', 'openmotion-echo-stack-type', 'openmotion-edit-to-script', 'openmotion-editorial-explainer', 'openmotion-editorial-poster', 'openmotion-editorial-webinar', 'openmotion-electric-impact-type', 'openmotion-felt-stop-motion', 'openmotion-flat-beat', 'openmotion-flat-card-explainer', 'openmotion-flat-lay-product', 'openmotion-folder-pop', 'openmotion-footage-to-handpainted', 'openmotion-giant-flip-type', 'openmotion-glitch-logo-sting', 'openmotion-growth-teardown', 'openmotion-hand-drawn-explainer', 'openmotion-hidden-feature-demo', 'openmotion-highlighter-notes', 'openmotion-in-hand-product', 'openmotion-ink-ribbon', 'openmotion-isometric-card-flight', 'openmotion-juicy-splash-poster', 'openmotion-light-shadow-product', 'openmotion-liquid-blob', 'openmotion-liquid-glass-logo', 'openmotion-liquid-logo', 'openmotion-livestream-clips', 'openmotion-magnet-particles', 'openmotion-manifesto-pop', 'openmotion-monochrome-magazine', 'openmotion-motion-graphic-placement', 'openmotion-multi-clips-to-reels', 'openmotion-multicam-edit', 'openmotion-mystery-box-reveal', 'openmotion-neon-outline-type', 'openmotion-nova-intro', 'openmotion-one-bit-dither', 'openmotion-orange-unfiltered', 'openmotion-paper-collage-explainer', 'openmotion-paper-diorama', 'openmotion-paper-map-journey', 'openmotion-paper-stop-motion', 'openmotion-pastel-flat-2d', 'openmotion-pixel-art-explainer', 'openmotion-pop-style', 'openmotion-premium-halo', 'openmotion-presenter-story', 'openmotion-push-in-type', 'openmotion-quantum-particles', 'openmotion-red-pen-archive', 'openmotion-relight-reveal', 'openmotion-retro-flat-scene', 'openmotion-retro-print-poster', 'openmotion-ring-mask-reveal', 'openmotion-runway-rebel', 'openmotion-shortlist-shorts', 'openmotion-shot-breakdown', 'openmotion-shutter-bands', 'openmotion-smooth-wipes', 'openmotion-spec-sheet', 'openmotion-splash-float-product', 'openmotion-split-slot-type', 'openmotion-step-by-step-tutorial', 'openmotion-sticker-bounce', 'openmotion-sticker-peel', 'openmotion-storyboard-to-motion', 'openmotion-storybook-myth', 'openmotion-surreal-3d-poster', 'openmotion-talking-head-recreation', 'openmotion-time-freeze', 'openmotion-translucent-glass', 'openmotion-velocity-lines', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker', 'openmotion-wireframe-style'];
   assert.deepEqual((await readdir(new URL('../skills/', import.meta.url))).filter(name => !name.startsWith('.')).sort(), core);
   assert.deepEqual((await readdir(new URL('../library/skills/', import.meta.url))).sort(), library);
   for (const profile of ['phase1', 'legacy']) {
@@ -122,4 +125,26 @@ test('asset naming contracts and runtime dependencies survive lightweight distri
     const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|ts|json|ya?ml)$/.test(file)));
     for (const file of ['project-asset-names.ts', 'shared/asset-names.ts', 'shared/asset-name-ui.json', 'skills/openmotion-production/references/materials.md']) assert.ok(files.has(file), file);
   }
+});
+
+test('packaged server imports without local dependencies and captions use the separate native runtime', async () => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const extracted = await mkdtemp(path.join(tmpdir(), 'motion-caption-package-'));
+  try {
+    const files = await distributionFiles('phase1', file => /\.(?:md|mjs|js|ts|json|ya?ml|txt|svg)$/.test(file));
+    await Promise.all(files.map(async file => {
+      const target = path.join(extracted, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.join(root, file), target);
+    }));
+    const script = `
+      await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'server.ts')).href)});
+      const { loadCaptionSourceOperations } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/transcript-captions.ts')).href)});
+      const { manualCaptionSource, captionTracks } = await loadCaptionSourceOperations(${JSON.stringify(root)});
+      const result = manualCaptionSource('<div data-composition-id="main" data-duration="3"></div>', '11111111-1111-4111-8111-111111111111', { segments: [{ id: 'cue', text: 'Packaged caption', start: 0, end: 2 }] });
+      if (captionTracks(result.content)[0]?.cueCount !== 1) throw new Error('Packaged caption operation failed');
+    `;
+    const result = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', script], { cwd: extracted, encoding: 'utf8', timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr || result.error?.message);
+  } finally { await rm(extracted, { recursive: true, force: true }); }
 });

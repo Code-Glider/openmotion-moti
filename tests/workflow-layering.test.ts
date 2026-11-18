@@ -29,7 +29,15 @@ test('provider guides belong to the media Skill while older production resources
     assert.equal(previous.documentId, current.documentId);
     assert.equal(previous.contentHash, current.contentHash);
     assert.deepEqual(workflowReferences(`[guide](references/providers/${provider}.md)`, 'skills/openmotion-media/SKILL.md'), [{ workflow: 'media', section: provider, documentId: current.documentId }]);
-    assert.doesNotMatch(current.content, /```bash|"projectId"/, `${provider} templates must use the asset Tool without shell wire examples`);
+    assert.doesNotMatch(current.content, /```bash/, `${provider} templates must not use shell wire examples`);
+    for (const block of current.content.matchAll(/```json\n([\s\S]*?)\n```/g)) {
+      const input = JSON.parse(block[1]);
+      assert.ok(!Object.hasOwn(input, 'projectId'), `${provider} generation must remain project-independent`);
+      if (input.action === 'transcript' && input.transcript.command === 'submit') {
+        assert.equal(input.transcript.projectId, 'PROJECT_ID', 'Transcription must identify the project-owned source');
+        assert.ok(input.transcript.sourcePath);
+      }
+    }
   }
 });
 

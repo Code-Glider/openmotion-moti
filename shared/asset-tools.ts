@@ -1,5 +1,6 @@
 import { voiceProviders } from './voice-library.ts';
 import { brandKitToolArguments } from './brand-kit-tool.ts';
+import { transcriptToolArguments, transcriptToolDescription } from './transcript-tool.ts';
 
 const id = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
 const object = <T extends Record<string, unknown>>(properties: T, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -39,11 +40,11 @@ export const assetUseTool = {
 };
 export const workspaceAssetUseTool = {
   ...assetUseTool,
-  description: assetUseTool.description + ' Use action=voice with a voice command to list/get/add/update/check/discover saved Fish Audio and MiniMax Speech voices. Management never generates audio or deletes remote voices. A voiceRef pins a local voice revision when generating speech. List presence proves visibility, not synthesis; missing entries do not prove deletion. Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.',
+  description: assetUseTool.description + ' Use action=voice with a voice command to list/get/add/update/check/discover saved Fish Audio and MiniMax Speech voices. Management never generates audio or deletes remote voices. A voiceRef pins a local voice revision when generating speech. List presence proves visibility, not synthesis; missing entries do not prove deletion. Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.' + transcriptToolDescription,
   annotations: { ...assetUseTool.annotations, destructiveHint: true },
   inputSchema: {
     ...assetUseTool.inputSchema, properties: { ...assetUseTool.inputSchema.properties,
-      action: { enum: [...assetUseTool.inputSchema.properties.action.enum, 'brand_kit', 'voice'] }, brandKit: brandKitToolArguments,
+      action: { enum: [...assetUseTool.inputSchema.properties.action.enum, 'brand_kit', 'transcript', 'voice'] }, brandKit: brandKitToolArguments, transcript: transcriptToolArguments,
       voice: object({ command: { enum: ['list','get','add','update','check','discover'] }, voiceId: id, revision: { type: 'integer', minimum: 1 },
         provider: { enum: voiceProviders }, externalId: { type: 'string', minLength: 1, maxLength: 256 },
         name: { type: 'string', minLength: 1, maxLength: 200 }, description: { type: 'string', maxLength: 2000 },
@@ -51,6 +52,6 @@ export const workspaceAssetUseTool = {
         trash: { type: 'boolean' }, page: { type: 'integer', minimum: 1, maximum: 1000 },
         changes: object({ name: { type: 'string', minLength: 1, maxLength: 200 }, description: { type: 'string', maxLength: 2000 }, trashed: { type: 'boolean' }, preview: reference }),
       }, ['command']) },
-    oneOf: [...assetUseTool.inputSchema.oneOf, { type: 'object', properties: { action: { enum: ['brand_kit'] } }, required: ['brandKit'], additionalProperties: true }, { type: 'object', properties: { action: { enum: ['voice'] } }, required: ['voice'], additionalProperties: true }],
+    oneOf: [...assetUseTool.inputSchema.oneOf, { type: 'object', properties: { action: { enum: ['transcript'] } }, required: ['transcript'], additionalProperties: true }, { type: 'object', properties: { action: { enum: ['brand_kit'] } }, required: ['brandKit'], additionalProperties: true }, { type: 'object', properties: { action: { enum: ['voice'] } }, required: ['voice'], additionalProperties: true }],
   },
 };

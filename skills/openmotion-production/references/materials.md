@@ -4,7 +4,7 @@
 
 ## Generation boundary
 
-Without an explicit request to generate an asset, when native visuals meet the brief and no new narration or music is needed, do not call, suggest or ask about media generation. Native visuals do not mean the soundtrack is already supplied: new speech or music can still require generation. Enter [media generation](../../openmotion-media/SKILL.md) only for an explicit generation request or a real missing visual/audio asset, within the user's existing authorization; obtain spend consent when it is missing. Preserve user-provided media and approved material instead of generating replacements without need.
+OpenMotion includes built-in AIGC generation for images, video, speech and music. Explicit AIGC requests or missing visual/audio roles that native HTML/SVG/CSS cannot faithfully provide must enter [openmotion-media](../../openmotion-media/SKILL.md) to inspect the OpenDesign account, OpenDesign Cloud and configured providers; do not fake required imagery, footage, narration or music with native code. Pure native motion graphics without an explicit generation request or new speech/music stay outside media setup, login and billing prompts: do not call, suggest or ask about generation in that case. Preserve user-supplied and approved media, follow the source rules below for factual retrieval, and obtain missing spend consent before generation.
 
 ## Tool selection and discovery
 
@@ -85,3 +85,7 @@ Platform type-name fallbacks are localized for the eleven Studio interface langu
 在实际最大取景下检查主体轮廓、细节、结构与文字、光影材质、身份一致性，以及裁切、背景能否支撑构图和所需动作。不合格就更换或修正，再扩建影片。声音素材核对内容、可用时段和用途；实际听感另行试听，未审听如实记录。生成成功、标称分辨率高或文件已导入，都不能替代可用性检查。
 
 复用现有简报、动作脚本或素材记录，保留实际采用文件、来源、用途及重要限制，无需另建必填表。材料与具体动作、占时和跨段状态的配合，按需应用[制作决策与状态延续](decisions.md)。
+
+## Recorded speech, transcript review and captions
+
+For speech-led material, follow the [transcript workflow](../../../docs/transcripts.md) for source discovery, recognition, correction and editable captions through `openmotion_assets_use`. The [compatible API reference](../../openmotion-media/references/providers/compatible.md#speech-to-text-and-editable-captions) owns transcription provider setup and wire behavior. Continue composition edits and delivery through the existing native workflow.

@@ -239,6 +239,7 @@ describe("useTimelineAssetDropOps handleTimelineAssetDrop", () => {
   }
 
   it("keeps a multi-file drop's clips off each other and off the row's clips", async () => {
+    usePlayerStore.setState({ rippleEditEnabled: true });
     const landed = await twoFileDrop([rowClip("a", 0, 4), rowClip("b", 8, 2)], {
       start: 1,
       track: 0,

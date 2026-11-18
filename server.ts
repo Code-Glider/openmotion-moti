@@ -1,3 +1,4 @@
+import { transcriptsFor, closeTranscripts } from './gateway/transcription.ts';
 import { projectArchiveHttp } from './gateway/project-archive-http.ts';
 import { modelMetadata } from './gateway/model-metadata.ts';
 import { assetConversations } from './gateway/asset-chat.ts';
@@ -140,7 +141,7 @@ export async function renderNext(store: WorkspaceStore, runtimeRoot: string, tra
     // The service owns this job; a short-lived Agent client must not cancel it.
     await stage('rendering');
     // Let the engine read the snapshot's exact data-fps (including rational rates).
-    const result = await runHyperframes(runtimeRoot, directory, ['render', '.', '--output', output, '--format', 'mp4', '--json'], 25 * 60_000, { HYPERFRAMES_RENDER_DETACHED: '1' }, control.signal);
+    const result = await runHyperframes(runtimeRoot, directory, ['render', '.', ...(job.compositionPath ? ['--composition', job.compositionPath] : []), '--output', output, '--format', 'mp4', '--json'], 25 * 60_000, { HYPERFRAMES_RENDER_DETACHED: '1' }, control.signal);
     await writeFile(path.join(store.directory, 'jobs', job.id, 'render.log'), result.stdout + '\n' + result.stderr, { mode: 0o600 });
     if (result.code) throw new Error('Hyperframes render 失败：' + (result.stderr || result.stdout).slice(-1800));
     // Never label an absent or non-MP4 output as completed, even after exit code 0.
@@ -447,7 +448,9 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       const data = await input(req);
       try {
         const host = validHostContext(data.trackingHost) ? data.trackingHost : unknownHost;
-        let result = await context.phase1.call(data.name, data.arguments ?? {}, host);
+        let result = await context.phase1.call(data.name, data.arguments ?? {}, host, {
+          attributeEntry: Object.hasOwn(data, 'trackingHost'),
+        });
         if (host.host_agent !== 'unknown' && context.tracking?.enabled() && (result.previewUrl || result.previewHandoff)) {
           const hosts = context.trackingHosts ??= new Map();
           for (const [key, value] of hosts) if (Date.now() - value.createdAt > 86_400_000) hosts.delete(key);
@@ -796,11 +799,12 @@ export async function startServer(store = sharedStore, port = Number(process.env
   const tick = () => {
     void renderNext(store, runtimeRoot, context.tracking).catch(error => console.error(error.message));
     void gateway.tick().catch(() => console.error('Model gateway queue could not be processed'));
+    void transcriptsFor(store).tick().catch(() => console.error('Transcription queue could not be processed'));
   };
   const timer = setInterval(tick, 500); tick();
   return { server, get activeToolCalls() { return (context.phase1?.pending ?? 0) + assetConversations(store).pending; }, openProject: async (projectId: string) => openProject(store, context, origin, (await store.get()).revision, { projectId }, store.projectId), get studio() { return context.studio!; }, ensureStudio: context.ensureStudio,
     info: async () => ({ previewUrl: origin, studioUrl: context.studio?.alive() ? `${origin}/#project/${store.projectId}` : undefined, engine: 'hyperframes', ready: true, editorReady: Boolean(context.studio?.alive()), ffmpeg, revision: (await store.get()).revision, dataDirectory: store.directory, browserOpened: false, nativeRuntime: await nativeRuntimeStatus(pluginRoot), authoringGuide: path.join(runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'), hyperframesCli: cliPath(runtimeRoot) }),
-    close: async () => { clearInterval(timer); await context.browser?.close(); await brandKitsFor(store.directory).close(); await gateway.close(); await assetConversations(store).close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
+    close: async () => { clearInterval(timer); await closeTranscripts(store); await context.browser?.close(); await brandKitsFor(store.directory).close(); await gateway.close(); await assetConversations(store).close(); server.closeAllConnections(); server.close(); await context.studio?.close(); await closeTracking(context.tracking); } };
 }
 if (isMain(import.meta.url)) {
   try {

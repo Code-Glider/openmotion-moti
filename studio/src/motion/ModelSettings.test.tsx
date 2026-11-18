@@ -202,3 +202,16 @@ it('groups MiniMax regions, switches independent key forms and keeps search insi
   expect(document.querySelector('[aria-label="MiniMax Speech"] .om-provider-item-name')?.textContent).toContain('International');
   expect(document.querySelectorAll('.om-provider-item')).toHaveLength(1);
 });
+
+it('shows the advisory OpenDesign Plus guidance on configured Free/Go accounts without blocking text models', async () => {
+  const goAccount = { ...account, configured: true, enabled: true, available: true, credentialSource: 'account',
+    reason: 'Signed in; multimodal generation requires OpenDesign Plus or above' };
+  const textModel = { id: 'account:language-one', provider: 'account', modelId: 'language-one', label: 'Language One', kind: 'text', enabled: true, source: 'live' };
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ providers: [goAccount], models: [textModel], defaults: {} })));
+  await mount('account');
+  expect(document.body.textContent).toContain('Signed in; multimodal generation requires OpenDesign Plus or above');
+  expect(document.body.textContent).toContain('Manage account');
+  expect(document.body.textContent).toContain('Language One');
+  const useDefault = document.querySelector<HTMLButtonElement>('[aria-label="Use Language One as default"]')!;
+  expect(useDefault.disabled).toBe(false);
+});

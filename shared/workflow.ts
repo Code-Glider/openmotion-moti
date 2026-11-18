@@ -19,6 +19,7 @@ export const workflowRegistry = {
       edit: 'skills/openmotion-production/references/edit.md',
       portable: 'skills/openmotion-production/references/portable-project.md',
       materials: 'skills/openmotion-production/references/materials.md',
+      transcripts: 'docs/transcripts.md',
       decisions: 'skills/openmotion-production/references/decisions.md',
       review: 'skills/openmotion-production/references/review.md',
       sound: 'skills/openmotion-production/references/sound.md',
