@@ -1,5 +1,9 @@
 // Resolved once from the host plugin's authenticated local configuration.
 export let studio = "";
+export function studioAssetUrl(value?: string): string | undefined {
+  return value ? new URL(value, studio + "/").href : undefined;
+}
+
 export function configureStudio(origin: string): void {
   const url = new URL(origin);
   if (

@@ -2,7 +2,7 @@ import { IconGlyph } from "../../../../packages/design-system/react/IconGlyph";
 import { useHostTheme } from "./theme";
 import React, { useState, useEffect } from "react";
 import { registerEditingWorkspace } from "./editing";
-import { studio, configureStudio } from "./studio";
+import { studio, configureStudio, studioAssetUrl } from "./studio";
 const selectedKey = "openmotion-dsh-project";
 type Page = "home" | "templates" | "brands" | "assets";
 const pageNames: Record<Page, string> = {
@@ -24,7 +24,7 @@ function libraryUrl(page: Page, templateId: string | null): string {
     (page === "brands" ? "brand-kit" : "assets")
   );
 }
-type Project = { id: string; title: string; trashedAt?: string };
+type Project = { id: string; title: string; trashedAt?: number };
 type Template = {
   id: string;
   title: string;
@@ -85,7 +85,7 @@ function Dashboard({
     setLoading(true);
     setError("");
     Promise.all([
-      fetch("/openmotion-dsh/data/api/projects").then((r) => {
+      fetch("/openmotion-dsh/data/motion-api/projects").then((r) => {
         if (!r.ok) throw Error("Could not load projects");
         return r.json();
       }),
@@ -315,7 +315,7 @@ function Dashboard({
                   }}
                 >
                   <div className="omd-template-art">
-                    <img src={t.posterUrl} alt="" loading="eager" />
+                    <img src={studioAssetUrl(t.posterUrl)} alt="" loading="eager" />
                     <span className="omd-duration">
                       {Math.round(t.duration)}s
                     </span>

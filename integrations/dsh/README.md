@@ -21,7 +21,7 @@ npm start --prefix integrations/dsh
 
 Open the authenticated URL printed by DSH. Its isolated profile, configuration and project data default to `~/.openmotion-dsh/`; existing DSH profiles remain separate. Choose a workspace folder in DSH before using **Create with agent**. The action prepares an unsent draft and preserves an existing draft. Pick a project to open Studio, or use **Studio** in a conversation.
 
-The host plugin starts or reuses the local OpenMotion service and connects DSH's maintained stdio MCP adapter to the same data directory. Use **Refresh** on the workspace after an Agent creates a project, then select it. New projects do not automatically replace the selected Studio tab. DSH and Studio retain their own theme preferences.
+The host plugin uses OpenMotion's maintained `preview.ts` entrypoint to discover or start the local service on each platform, then connects DSH's maintained stdio MCP adapter to the same data directory. Discovery reuses a compatible, healthy service for that directory and leaves unrelated occupied ports alone. Use **Refresh** on the workspace after an Agent creates a project, then select it. New projects do not automatically replace the selected Studio tab. DSH and Studio retain their own theme preferences.
 
 Press Ctrl+C to stop this DSH instance and disconnect its MCP child. The shared OpenMotion editor can remain running and projects are retained. If the launcher crashed, confirm its DSH process has stopped before removing `launch.lock` from the configured integration home.
 

@@ -1,12 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, copyFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, realpath, copyFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
 import { build } from 'esbuild';
 import { integrationConfig, integrationPatch, studioOrigin } from '../integrations/dsh/config.ts';
+import { configureStudio, studioAssetUrl } from '../integrations/dsh/plugin/src/studio.ts';
+
+test('template posters resolve against Studio while retaining hosted asset URLs', () => {
+  configureStudio('http://127.0.0.1:53801');
+  assert.equal(studioAssetUrl('/api/templates/example/poster'), 'http://127.0.0.1:53801/api/templates/example/poster');
+  assert.equal(studioAssetUrl('api/template-source/example/poster.png'), 'http://127.0.0.1:53801/api/template-source/example/poster.png');
+  assert.equal(studioAssetUrl('https://releases.open-design.ai/poster.png'), 'https://releases.open-design.ai/poster.png');
+  assert.equal(studioAssetUrl(undefined), undefined);
+});
 
 test('DSH launch configuration isolates state and quotes machine-specific values', () => {
   const root = path.resolve('checkout with spaces');
@@ -31,12 +40,22 @@ test('DSH rejects remote, credential-bearing and non-origin Studio addresses', (
 });
 
 test('packaged DSH host shares MCP data and bounds its read-only proxy', async () => {
-  const temporary = await mkdtemp(path.join(tmpdir(), 'openmotion-dsh-test-'));
+  const temporary = await realpath(await mkdtemp(path.join(tmpdir(), 'openmotion-dsh-test-')));
+  const data = path.join(temporary, 'data');
+  const manifest = await readFile(new URL('../package.json', import.meta.url), 'utf8');
+  const version = JSON.parse(manifest).version;
+  const projects = [{ id: 'example' }, { id: 'removed', trashedAt: 123 }];
   const requests: string[] = [];
   const upstream = createServer((req, res) => {
     requests.push(req.url!);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(req.url!.startsWith('/api/projects') ? { projects: [{ id: 'example' }] } : { items: [], total: 0 }));
+    if (req.url === '/api/health') {
+      res.end(JSON.stringify({ service: 'motion-preview', protocol: 2, version, ready: true, dataDirectory: data, studioUrl: origin }));
+    } else if (req.url!.startsWith('/motion-api/projects')) {
+      res.end(JSON.stringify({ projects }));
+    } else {
+      res.end(JSON.stringify({ items: [], total: 0 }));
+    }
   });
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${(upstream.address() as { port: number }).port}`;
@@ -46,11 +65,22 @@ test('packaged DSH host shares MCP data and bounds its read-only proxy', async (
     if (route) void route(req, res); else { res.writeHead(404); res.end(); }
   });
   try {
-    await writeFile(path.join(temporary, 'server.ts'), `console.log(JSON.stringify({previewUrl:${JSON.stringify(origin)}}));`);
+    // Run the maintained preview CLI and its real health/registry reuse path.
+    // Keep its runtime imports external so their source-relative assets resolve normally.
+    await build({
+      entryPoints: [fileURLToPath(new URL('../preview.ts', import.meta.url))],
+      outfile: path.join(temporary, 'preview.ts'), bundle: true, format: 'esm', platform: 'node',
+      plugins: [{ name: 'runtime-imports', setup(builder) {
+        builder.onResolve({ filter: /^\.\// }, args => ({ path: path.resolve(path.dirname(args.importer), args.path), external: true }));
+      } }],
+    });
+    await mkdir(data);
+    await writeFile(path.join(data, 'preview.json'), JSON.stringify({ port: Number(new URL(origin).port) }));
+    await writeFile(path.join(temporary, 'server.ts'), 'throw new Error("The registered service must be reused, not started again.");');
     const module = path.join(temporary, 'plugin.js');
-    await writeFile(path.join(temporary, 'package.json'), '{"type":"module"}');
+    await writeFile(path.join(temporary, 'package.json'), manifest);
     // Only the native MCP bridge is replaced. Exercise the actual compiled host,
-    // subprocess receipt, HTTP routes and network requests without model calls.
+    // preview entrypoint, HTTP routes and network requests without model calls.
     await build({
       entryPoints: [fileURLToPath(new URL('../integrations/dsh/plugin/src/index.ts', import.meta.url))],
       outfile: module, bundle: true, format: 'esm', platform: 'node',
@@ -67,7 +97,6 @@ test('packaged DSH host shares MCP data and bounds its read-only proxy', async (
       tools: { definitions: () => [{ name: 'mcp__openmotion__openmotion_get_project' }, { name: 'unrelated' }] },
     };
     const plugin = await import(pathToFileURL(module).href);
-    const data = path.join(temporary, 'data');
     await plugin.apply(ctx, { root: temporary, dataDirectory: data, templateSource: 'hosted' });
     assert.equal(ctx.bridge.env.MOTION_DATA_DIR, data);
     assert.equal(ctx.bridge.env.MOTION_TEMPLATE_SOURCE, 'hosted');
@@ -78,18 +107,19 @@ test('packaged DSH host shares MCP data and bounds its read-only proxy', async (
     await new Promise<void>(resolve => host.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${(host.address() as { port: number }).port}/openmotion-dsh`;
     const status = await (await fetch(base + '/status')).json();
-    assert.equal(status.studioUrl, origin);
+    assert.equal(status.studioUrl, origin.replace('127.0.0.1', 'localhost'));
     assert.deepEqual(status.tools, ['mcp__openmotion__openmotion_get_project']);
     assert.ok((await (await fetch(base + '/style.css')).text()).includes('.omd-studio-seat'));
-    assert.deepEqual(await (await fetch(base + '/data/api/projects')).json(), { projects: [{ id: 'example' }] });
+    assert.deepEqual(await (await fetch(base + '/data/motion-api/projects')).json(), { projects });
     assert.equal((await fetch(base + '/data/api/template-catalog?limit=6')).status, 200);
-    for (const [endpoint, method] of [['/api/projects', 'POST'], ['/api/projects/example', 'GET'], ['/api/assets', 'GET'], ['/api/projects/../settings', 'GET']]) {
+    for (const [endpoint, method] of [['/motion-api/projects', 'POST'], ['/api/projects', 'GET'], ['/motion-api/projects/example', 'GET'], ['/api/assets', 'GET'], ['/motion-api/projects/../settings', 'GET']]) {
       assert.equal((await fetch(base + '/data' + endpoint, { method })).status, 404);
     }
-    assert.deepEqual(requests, ['/api/projects', '/api/template-catalog?limit=6']);
+    assert.ok(requests.includes('/api/health'), 'activation must probe the existing service');
+    assert.deepEqual(requests.filter(url => url !== '/api/health'), ['/motion-api/projects', '/api/template-catalog?limit=6']);
     upstream.closeAllConnections();
     await new Promise<void>(resolve => upstream.close(() => resolve()));
-    assert.equal((await fetch(base + '/data/api/projects')).status, 503);
+    assert.equal((await fetch(base + '/data/motion-api/projects')).status, 503);
   } finally {
     host.closeAllConnections(); upstream.closeAllConnections();
     await Promise.all([new Promise<void>(resolve => host.close(() => resolve())), new Promise<void>(resolve => upstream.close(() => resolve()))]);

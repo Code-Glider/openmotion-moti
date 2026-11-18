@@ -41,7 +41,7 @@ export async function apply(ctx: HostContext, config: Config) {
   };
   const { stdout } = await execute(
     executable,
-    ["--experimental-strip-types", "server.ts"],
+    ["--experimental-strip-types", "preview.ts"],
     { cwd: root, env, timeout: 120_000 },
   );
   const origin = studioOrigin(JSON.parse(stdout).previewUrl);
@@ -105,7 +105,7 @@ export async function apply(ctx: HostContext, config: Config) {
         const endpoint = url.pathname.slice("/openmotion-dsh/data".length);
         if (
           req.method !== "GET" ||
-          !["/api/projects", "/api/template-catalog"].includes(endpoint)
+          !["/motion-api/projects", "/api/template-catalog"].includes(endpoint)
         ) {
           res.writeHead(404);
           res.end();
