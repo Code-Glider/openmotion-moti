@@ -48,16 +48,16 @@ it('keeps the four sections and exact reference identity in the instruction', ()
 });
 
 it.each([
-  ['ja', '使用方法：', '編集可能なプロジェクト', '参照動画'],
-  ['ko', '사용 안내:', '편집 가능한 프로젝트', '참고 영상'],
-  ['de', 'Anleitung:', 'Editierbares Projekt', 'Videoreferenz'],
-  ['fr', 'Instructions :', 'Projet modifiable', 'Vidéo de référence'],
-  ['es', 'Instrucciones:', 'Proyecto editable', 'Vídeo de referencia'],
-  ['it', 'Istruzioni:', 'Progetto modificabile', 'Video di riferimento'],
-  ['ru', 'Инструкции:', 'Редактируемый проект', 'Видео для примера'],
-  ['tr', 'Talimatlar:', 'Düzenlenebilir proje', 'referans video'],
-  ['pt-BR', 'Instruções:', 'Projeto editável', 'Vídeo de referência'],
-])('keeps the %s handoff in the UI language and distinguishes project and reference inputs', (locale, intro, editableLabel, referenceLabel) => {
+  ['ja', '使用方法：', '編集可能なプロジェクト', '参照動画', ['必須素材', '無音', '同じプロジェクト']],
+  ['ko', '사용 안내:', '편집 가능한 프로젝트', '참고 영상', ['필수 자료', '무음', '같은 프로젝트']],
+  ['de', 'Anleitung:', 'Editierbares Projekt', 'Videoreferenz', ['fehlendem Material', 'Stille', 'selben Projekt']],
+  ['fr', 'Instructions :', 'Projet modifiable', 'Vidéo de référence', ['éléments indispensables', 'muet', 'même projet']],
+  ['es', 'Instrucciones:', 'Proyecto editable', 'Vídeo de referencia', ['materiales imprescindibles', 'silencio', 'mismo proyecto']],
+  ['it', 'Istruzioni:', 'Progetto modificabile', 'Video di riferimento', ['materiali essenziali', 'silenzio', 'stesso progetto']],
+  ['ru', 'Инструкции:', 'Редактируемый проект', 'Видео для примера', ['обязательные материалы', 'тишину', 'этом же проекте']],
+  ['tr', 'Talimatlar:', 'Düzenlenebilir proje', 'referans video', ['zorunlu malzemeleri', 'sessiz', 'aynı projede']],
+  ['pt-BR', 'Instruções:', 'Projeto editável', 'Vídeo de referência', ['materiais essenciais', 'silêncio', 'mesmo projeto']],
+] as const)('keeps %s project and reference instructions and acceptance requirements in the UI language', (locale, intro, editableLabel, referenceLabel, requirements) => {
   const editable = templateHandoffPrompt(template, locale);
   const reference = templateHandoffPrompt({ ...template, id: 'reference-id', hasHtmlProject: false }, locale);
   expect(editable.startsWith(intro)).toBe(true);
@@ -67,6 +67,10 @@ it.each([
   expect(reference).toContain('reference-id');
   expect(reference).toContain(referenceLabel);
   expect(reference).not.toContain(editableLabel);
+  for (const requirement of requirements) {
+    expect(editable).toContain(requirement);
+    expect(reference).toContain(requirement);
+  }
 });
 
 it('enables the accepted detail flow from the ordinary entry without a preview flag', () => {
