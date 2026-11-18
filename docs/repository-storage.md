@@ -48,32 +48,32 @@ git lfs pull --include="docs/readme/**,library/**,examples/**" --exclude="librar
 
 For a contributed catalog template, use the [template-specific pull command](template-repository.md#contribute-media-without-cms-access). LFS objects are fetched from the selected remote; reviewing a fork contribution requires the remote that holds its objects. A pointer is not playable video or an executable archive. Full bundles and Library Skill copying refuse unresolved pointers with a download command. Fetch the selected Motion Design profile before materializing it. Once fetched, those resources retain their existing offline behavior.
 
-## Prepare final PR media before merging
+## Transfer merged media after review
 
-Contributors edit their original PR normally. A new catalog video, audio file or large image/font can be committed under `<id>/source/assets/` (at most 50 MiB per file). Git LFS remains a supported input, not a required account or separate upload step. Keep small imported assets and small README artwork in ordinary Git. Raw media can make the policy check red until final preparation; do not repeatedly transfer every draft update.
+Contributors edit their original PR normally. A new catalog video, audio file or large image/font can be committed under `<id>/source/assets/` (at most 50 MiB per file). Git LFS remains a supported input, not a required account or separate upload step. Keep small imported assets and small README artwork in ordinary Git. Raw media may temporarily remain in the merged commit; the trusted post-merge workflow transfers it immediately and creates a sanitized `main` commit.
 
-After the content review, a maintainer opens **Actions → Prepare and merge PR → Run workflow**, selects `main` and enters the original PR number. Starting this workflow authorizes preparation and subsequent Squash merge of the prepared commit:
+After the content review, merge the reviewed PR through GitHub. The trusted **Publish merged template media** workflow starts from the closed merged PR and sanitizes `main` after transferring eligible media:
 
-1. Lock the current PR commit and check maintainer identity, fork edit permission and Squash-only repository settings.
-2. Build and validate a cleanup commit without running PR code, hooks, dependencies or `.lfsconfig`.
+1. Lock the merged PR commit and its first parent, and read both trees through the GitHub API.
+2. Build and validate a cleanup commit without running contributor code, hooks, dependencies or `.lfsconfig`.
 3. Upload only changed media to immutable `open-motion/media/sha256/` keys in the public R2 bucket. Read the public objects back and verify their SHA-256 and sizes.
-4. Push one cleanup commit to the original PR. Catalog media becomes `template.json.remoteAssets`; relative guide references become public URLs. Other optional media is registered in `repository-media.json`, with its local path ignored by Git.
-5. A separate job, without R2 credentials, waits up to 30 minutes for the prepared commit's CI, resolved review threads and required reviews. It calls GitHub's Squash merge API with that exact head SHA. A contributor push, CI failure, change request, conflict or hold stops the merge. Missing checks or pending reviews time out with the PR open; fix the blocker and start a fresh run.
+4. Push one cleanup commit to `main`, guarded by the merge SHA. Catalog media becomes `template.json.remoteAssets`; relative guide references become public URLs. Skill and other optional media is registered in `repository-media.json`, with its local path ignored by Git.
+5. The normal main catalog workflow publishes the cleaned tree. If `main` advances before cleanup, the workflow stops without rewriting it and can be rerun.
 
-The PR author stays unchanged. On a personal-account fork, the contributor must enable **Allow edits from maintainers**. Missing permission, a changed PR head, failed upload, wrong public bytes or a rejected push stops preparation. Failed attempts can leave harmless immutable objects in storage; they do not advance to the merge job. Reruns reuse already verified objects. If the contributor edits media after preparation, process that new revision before merging.
+The PR author and merged history stay unchanged. Fork write access is not needed because cleanup is pushed to `main`. A changed `main` head, failed upload, wrong public bytes or a rejected push stops cleanup without undoing the merge. Failed attempts can leave harmless immutable objects in storage; reruns reuse already verified objects.
 
 ### One-time maintainer setup
 
-- Merge this workflow into `main` to register its manual Actions entry.
-- Configure **Squash merge only**: enable Squash merging and disable merge commits and rebase merging. CI verifies these settings before accepting sanitized PR trees. Existing history is unchanged.
-- Add Actions secret `OPENMOTION_MEDIA_MAINTAINER_TOKEN` for a maintainer user identity with upstream write access and access to allowed fork edits. A classic PAT with `public_repo` access is suitable for public repositories; organization SSO and token policies still apply. A base-repository installation token or default `GITHUB_TOKEN` cannot edit an arbitrary fork. Do not store a token in a checked-in file.
+- Merge this workflow into `main` to register the closed-PR Actions trigger.
+- Configure the repository's normal merge policy. The workflow compares the merge commit with its first parent and does not require contributor fork write access.
+- Grant the workflow `contents: write` and configure the existing R2 release-bucket secrets and variables. Do not store a token in a checked-in file.
 - The workflow reuses the existing `CLOUDFLARE_R2_RELEASES_AK` / `CLOUDFLARE_R2_RELEASES_SK` secrets and bucket/endpoint variables. It writes only under the media prefix and never publishes an application or changes installation guides. No contributor receives these credentials.
 
 Ordinary code PRs with no changed media skip upload and cleanup and keep their original head; fork edit permission is needed only when a cleanup commit must be pushed. Template metadata/text changes still receive normal policy checks but do not upload media.
 
-Only a maintainer starts the Action after review. There is no upload on PR open, push or approval, no contribution label, replacement PR or contributor-applied patch. Ordinary PR CI has no storage or maintainer token. The workflow checks out only its trusted main commit and reads PR blobs as data. It is an explicit Actions merge entry, not a hook on GitHub's native Merge button. The native button does not start media preparation.
+The Action starts automatically only after a PR targeting `main` is merged. There is no upload on PR open, push or approval, no contribution label, replacement PR or contributor-applied patch. Ordinary PR CI has no storage credentials. The workflow checks out only its trusted base-branch control code and reads the merged tree as data; it never executes contributor code.
 
-For a read-only local preview of the plan, use `npm run media:prepare -- <PR-number>` with GitHub CLI authentication. `--apply` performs the same transfer/write operation using the maintainer identity and configured AWS CLI credentials; use the Action to reuse the repository's R2 credentials.
+For a read-only local preview of the existing media policy, use `npm run media:prepare -- <PR-number>` with GitHub CLI authentication. Production transfer and cleanup run through the trusted Action so its R2 credentials stay in Actions.
 
 ### Read and package transferred media
 

@@ -15,7 +15,7 @@ export type CleanupPlan = { schemaVersion: 1; sourceSHA: string; pullNumber: num
 const execute = promisify(execFile);
 const repository = 'nexu-io/openmotion';
 export type TreeFile = { path: string; mode: string; sha: string; size: number; type: string };
-type Inputs = { head: TreeFile[]; base: TreeFile[]; sourceSHA: string; pullNumber: number };
+type Inputs = { head: TreeFile[]; base: TreeFile[]; sourceSHA: string; pullNumber: number; forcePaths?: RegExp };
 type Transfer = (file: MediaLock, bytes: Buffer) => Promise<void>;
 const textFile = /\.(?:md|html?|css|json|[cm]?[jt]sx?|txt|ya?ml)$/i;
 const mediaFile = /\.(?:mp4|mov|webm|m4v|avi|mp3|wav|ogg|m4a|aac|flac|png|jpe?g|webp|avif|gif|woff2?|ttf|otf|motion)$/i;
@@ -51,7 +51,7 @@ export async function prepareMediaCleanup(inputs: Inputs, read: (file: TreeFile)
     }
     return originals.get(name)!;
   };
-  const candidates = inputs.head.filter(file => file.type === 'blob' && previous.get(file.path) !== file.sha && mediaFile.test(file.path) &&
+  const candidates = inputs.head.filter(file => file.type === 'blob' && (inputs.forcePaths?.test(file.path) || previous.get(file.path) !== file.sha) && mediaFile.test(file.path) &&
     /^(?:library|docs\/readme|examples)\//.test(file.path) && (videoOrAudio.test(file.path) || file.size > (catalogAsset.test(file.path) ? 100_000 : 1024 * 1024)));
   assert(candidates.length <= 100, 'Too many media files; split this PR');
   let total = 0;
