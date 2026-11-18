@@ -48,17 +48,7 @@ export class Staging {
         );
       signal.throwIfAborted();
     } finally {
-      try {
-        await raw.drain();
-        raw.close();
-        this.files = this.files.filter((file) => file !== raw);
-        if (!result) this.clear();
-      } catch (error) {
-        this.fenced = true;
-        throw error;
-      } finally {
-        this.active = false;
-      }
+      await this.finish(raw, !!result);
     }
     if (signal.aborted) {
       if (!prior) this.close();
@@ -71,6 +61,19 @@ export class Staging {
   close() {
     if (this.active) throw new Fault("integrity", "archive staging has not drained");
     this.clear();
+  }
+  private async finish(raw: Upload, hasResult: boolean) {
+    try {
+      await raw.drain();
+      raw.close();
+      this.files = this.files.filter((file) => file !== raw);
+      if (!hasResult) this.clear();
+    } catch (error) {
+      this.fenced = true;
+      throw error;
+    } finally {
+      this.active = false;
+    }
   }
   private clear() {
     for (const file of this.files) file.close();
