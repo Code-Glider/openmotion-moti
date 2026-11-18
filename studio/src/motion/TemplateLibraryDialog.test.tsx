@@ -63,6 +63,114 @@ async function search(value: string) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
+const recovery = () => host.querySelector<HTMLElement>('section[aria-label="Find another starting point"]')!;
+async function fill(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')!.set!.call(element, value);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+const searchInput = () => host.querySelector<HTMLInputElement>('input[type=search]')!;
+const confirmSearch = () => act(async () => searchInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
+const clearKeyword = () => act(async () => button(`Remove filter ${searchInput().value}`).click());
+it('keeps the search in the header and preserves filters when clearing the keyword', async () => {
+  await mount();
+  expect(host.querySelectorAll('input[type=search]')).toHaveLength(1);
+  expect(searchInput().closest('header')?.querySelector('a[href*="github.com"]')).not.toBeNull();
+  await act(async () => button('Brand & company films').click());
+  await search('not-here');
+  await confirmSearch();
+  await clearKeyword();
+  expect(cards()).toEqual(['three']);
+  expect(button('Remove filter Brand & company films')).toBeDefined();
+  await act(async () => button('Clear filters').click());
+  await search('Figma');
+  await confirmSearch();
+  expect(cards()).toEqual(['one']);
+  expect(events('template_search_result').at(-1)).toMatchObject({ search_keyword: 'Figma', result_count: 1 });
+});
+it('commits Enter and debounce once, never commits IME text, and counts A to B to A as three searches', async () => {
+  vi.useFakeTimers();
+  try {
+    await mount();
+    const input = host.querySelector<HTMLInputElement>('input[type=search]')!;
+    await act(async () => input.dispatchEvent(new Event('compositionstart', { bubbles: true })));
+    await search('产品');
+    await act(async () => { vi.advanceTimersByTime(700); });
+    expect(events('template_search_result')).toHaveLength(0);
+    await confirmSearch();
+    expect(events('template_search_result')).toHaveLength(0);
+    expect(recovery()).toBeNull();
+    await act(async () => input.dispatchEvent(new Event('compositionend', { bubbles: true })));
+    await search('Ada');
+    await confirmSearch();
+    await act(async () => { vi.advanceTimersByTime(700); });
+    expect(events('template_search_result')).toHaveLength(1);
+    await search('Other');
+    await act(async () => { vi.advanceTimersByTime(500); });
+    await search('Ada');
+    await confirmSearch();
+    const results = events('template_search_result');
+    expect(results.map(result => result.search_keyword)).toEqual(['Ada', 'Other', 'Ada']);
+    expect(new Set(results.map(result => result.search_id)).size).toBe(3);
+    expect(new Set(results.map(result => result.discovery_id)).size).toBe(1);
+    expect(new Set(results.map(result => result.result_set_id)).size).toBe(3);
+    await act(async () => preview('First'));
+    expect(events('surface_view', { area: 'template_detail' }).at(-1)).toMatchObject({ search_id: results[2].search_id, discovery_id: results[2].discovery_id, result_set_id: results[2].result_set_id });
+  } finally { vi.useRealTimers(); }
+});
+it('prepares link and local-video instructions, retains drafts and distinguishes copy failure from sending', async () => {
+  await mount(); await search('missing');
+  await confirmSearch();
+  await act(async () => button('Make a video from a reference', recovery()).click());
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  await fill(recovery().querySelector<HTMLInputElement>('input[type=url]')!, 'javascript:alert(1)');
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  const reference = 'https://example.com/private-reference';
+  await fill(recovery().querySelector<HTMLInputElement>('input[type=url]')!, reference);
+  await fill(recovery().querySelector('textarea')!, 'Private creative notes');
+  await act(async () => button('Copy request', recovery()).click());
+  expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining(reference));
+  expect(events('template_search_handoff_result').at(-1)).toMatchObject({ source_kind: 'link', handoff_status: 'clipboard_written' });
+  expect(document.querySelector('[data-feedback-layer]')?.textContent).toContain('Paste the request in your chat and send it.');
+  await act(async () => button('Back', recovery()).click());
+  await act(async () => button('Make a video from a reference', recovery()).click());
+  expect(recovery().querySelector<HTMLInputElement>('input[type=url]')!.value).toBe(reference);
+  await act(async () => button('Local video', recovery()).click());
+  vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('denied'));
+  await act(async () => button('Copy request', recovery()).click());
+  expect(events('template_search_handoff_result').at(-1)).toMatchObject({ source_kind: 'local', handoff_status: 'manual_fallback' });
+  const manual = recovery().querySelector<HTMLTextAreaElement>('textarea[readonly]')!;
+  expect(manual.value).toContain('Read the video I attach');
+  expect(manual.value).not.toContain(reference);
+  expect(JSON.stringify(tracked)).not.toContain(reference);
+  expect(JSON.stringify(tracked)).not.toContain('Private creative notes');
+  for (const item of tracked) expect(validProperties(studioEvents, item.event, item.properties), JSON.stringify(item)).toBe(true);
+});
+it('keeps description inside the creation path and hides unavailable request intake', async () => {
+  await mount();
+  await act(async () => button('Nothing suitable?').click());
+  expect(button('Describe your video', recovery())).toBeUndefined();
+  await act(async () => button('Make a video from a reference', recovery()).click());
+  await act(async () => button('Describe your video', recovery()).click());
+  expect(button('Copy request', recovery()).disabled).toBe(true);
+  await fill(recovery().querySelector('textarea')!, 'An original launch film');
+  await act(async () => button('Copy request', recovery()).click());
+  expect(events('template_search_handoff_result').at(-1)).toMatchObject({ source_kind: 'description', handoff_status: 'clipboard_written' });
+  expect(button('Request a template', recovery())).toBeUndefined();
+  expect(JSON.stringify(tracked)).not.toContain('An original launch film');
+});
+it('offers a verified single-filter recovery without clearing the keyword or unrelated conditions', async () => {
+  await mount();
+  await act(async () => button('Brand & company films').click());
+  await search('Figma');
+  await confirmSearch();
+  expect(cards()).toHaveLength(0);
+  await act(async () => button('Remove Brand & company films · Show 1 template', recovery()).click());
+  expect(cards()).toEqual(['one']);
+  expect(host.querySelector<HTMLInputElement>('input[type=search]')!.value).toBe('Figma');
+  expect(events('template_filter_result').at(-1)).toMatchObject({ result_count: 1 });
+});
 it('uses one ordered gallery without a duplicate featured section and combines category, search and facets', async () => {
   await mount();
   expect(host.textContent).not.toContain('Popular templates');
@@ -75,10 +183,13 @@ it('uses one ordered gallery without a duplicate featured section and combines c
   expect(gallery.scrollTop).toBe(0);
   expect(cards()).toEqual(['one']);
   await act(async () => button('Clear filters').click());
+  expect(cards()).toEqual(['one']);
+  expect(host.querySelector<HTMLInputElement>('input[type=search]')!.value).toBe('Ada clean');
+  await clearKeyword();
   expect(cards()).toHaveLength(3);
   await act(async () => button('Filters').click());
   await act(async () => button('Reference brands').click());
-  await act(async () => button('Figma').click());
+  await act(async () => button('Figma', host.querySelector('[role=dialog][aria-label=Filters]')!).click());
   expect(cards()).toHaveLength(3);
   expect(events('ui_click', { element: 'filter_option' })).toHaveLength(0);
   expect(host.querySelector('[role=dialog][aria-label=Filters]')).not.toBeNull();
@@ -158,6 +269,9 @@ it('filters brand templates directly and preserves category, search and reset be
   expect(events('template_filter_result').at(-1)).toMatchObject({ action: 'filter_apply', result_count: 3, applied_filter_count: 0 });
   await act(async () => button('TOP 100 brands').click());
   await act(async () => button('Clear filters').click());
+  expect(cards()).toHaveLength(3);
+  expect(host.querySelector<HTMLInputElement>('input[type=search]')!.value).toBe('Ada');
+  await clearKeyword();
   expect(cards()).toHaveLength(5);
   expect(button('All').getAttribute('aria-pressed')).toBe('true');
 
@@ -243,13 +357,17 @@ it('navigates the filtered order with wraparound and keyboard, then follows rela
   expect(detail.hasAttribute('open')).toBe(false);
   expect(cards()).toEqual(['two', 'three']);
 });
-it('returns an actionable empty state and disables random discovery for no matches', async () => {
+it('gives recovery priority when nothing matches and restores the gallery after clearing', async () => {
   await mount(); await search('nothing-matches');
   expect(cards()).toHaveLength(0);
-  expect(button('Surprise me').disabled).toBe(true);
-  expect(host.textContent).toContain('No matching templates');
-  await act(async () => button('Clear filters').click());
+  expect(button('Surprise me')).toBeUndefined();
+  await confirmSearch();
+  expect(host.textContent).toContain('No templates match the current conditions.');
+  expect(button('Make a video from a reference')).toBeDefined();
+  expect(button('Clear filters')).toBeUndefined();
+  await clearKeyword();
   expect(cards()).toHaveLength(3);
+  expect(button('Surprise me').disabled).toBe(false);
 });
 it('reveals metadata labels only while truncated and hides the tooltip when space becomes available', async () => {
   const observers: ResizeObserverStub[] = [];
@@ -491,9 +609,9 @@ it('distinguishes brand-filtered impressions even when all templates have a bran
 });
 it('reports the library funnel with registered fields: library, card open, detail, instruction, copy and download', async () => {
   await mount();
-  expect(events('surface_view', { area: 'template_library' })).toEqual([{ page_name: 'studio', area: 'template_library', element: 'library' }]);
+  expect(events('surface_view', { area: 'template_library' })).toEqual([{ page_name: 'studio', area: 'template_library', element: 'library', library_view_id: expect.any(String) }]);
   await act(async () => preview('First'));
-  expect(events('ui_click', { element: 'open_detail' })).toEqual([{ page_name: 'studio', area: 'template_card', element: 'open_detail', template_id: 'one', resource_kind: 'editable_project', placement: 'catalog', position: 2, sort: 'recommended', applied_filter_count: 0 }]);
+  expect(events('ui_click', { element: 'open_detail' })).toEqual([{ page_name: 'studio', area: 'template_card', element: 'open_detail', template_id: 'one', resource_kind: 'editable_project', placement: 'catalog', position: 2, sort: 'recommended', applied_filter_count: 0, library_view_id: expect.any(String), result_set_id: expect.any(String) }]);
   const [shown] = events('surface_view', { area: 'template_detail' });
   expect(shown).toMatchObject({ template_id: 'one', placement: 'catalog', position: 2, detail_mode: 'modal' });
   expect(shown.detail_view_id).toMatch(uuid);
@@ -523,8 +641,8 @@ it('reports discovery choices with the list they produced, and one search per se
   try {
     await mount();
     await act(async () => button('Product launch films').click());
-    expect(events('ui_click', { element: 'category_select' })).toEqual([{ page_name: 'studio', area: 'template_discovery', element: 'category_select', filter_group: 'uses', filter_value: 'product-launch-films', selected: true, sort: 'recommended', applied_filter_count: 0 }]);
-    expect(events('template_filter_result')).toEqual([{ page_name: 'studio', area: 'template_discovery', action: 'category_select', result_count: 2, outcome: 'success', sort: 'recommended', applied_filter_count: 1 }]);
+    expect(events('ui_click', { element: 'category_select' })).toEqual([{ page_name: 'studio', area: 'template_discovery', element: 'category_select', filter_group: 'uses', filter_value: 'product-launch-films', selected: true, sort: 'recommended', applied_filter_count: 0, library_view_id: expect.any(String), result_set_id: expect.any(String) }]);
+    expect(events('template_filter_result')).toEqual([{ page_name: 'studio', area: 'template_discovery', action: 'category_select', result_count: 2, outcome: 'success', sort: 'recommended', applied_filter_count: 1, library_view_id: expect.any(String), discovery_id: expect.any(String), result_set_id: expect.any(String) }]);
     await search('Ad'); await search('Ada');
     expect(events('template_search_result')).toHaveLength(0);
     await act(async () => { vi.advanceTimersByTime(500); });
@@ -537,7 +655,8 @@ it('reports discovery choices with the list they produced, and one search per se
     await act(async () => host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!.close());
     await act(async () => button('Clear filters').click());
     expect(events('ui_click', { element: 'filter_clear' })).toHaveLength(1);
-    expect(events('template_filter_result', { action: 'filter_clear' })).toEqual([expect.objectContaining({ result_count: 3, applied_filter_count: 0 })]);
+    expect(events('template_filter_result', { action: 'filter_clear' })).toEqual([expect.objectContaining({ result_count: 1, applied_filter_count: 0 })]);
+    await clearKeyword();
     await act(async () => button('Sort').click());
     await act(async () => [...host.querySelectorAll<HTMLElement>('[role=menuitemradio]')].find(el => el.textContent === 'Duration')!.click());
     expect(events('ui_click', { element: 'sort_option' })).toEqual([expect.objectContaining({ sort: 'duration', previous_sort: 'recommended', changed: true })]);
@@ -564,7 +683,7 @@ it('counts a card impression after an unbroken visible second, once per result s
     expect(seen()).toHaveLength(0);
     await act(async () => impressions().emit(1, card('two')));
     await act(async () => { vi.advanceTimersByTime(1000); });
-    expect(seen()).toEqual([{ page_name: 'studio', area: 'template_card', element: 'card', template_id: 'two', resource_kind: 'reference', placement: 'catalog', position: 1, sort: 'recommended', applied_filter_count: 0 }]);
+    expect(seen()).toEqual([{ page_name: 'studio', area: 'template_card', element: 'card', template_id: 'two', resource_kind: 'reference', placement: 'catalog', position: 1, sort: 'recommended', applied_filter_count: 0, library_view_id: expect.any(String), result_set_id: expect.any(String) }]);
     await act(async () => { vi.advanceTimersByTime(3000); });
     expect(seen()).toHaveLength(1);
     await act(async () => button('Sort').click());
@@ -587,7 +706,7 @@ it('counts each library opening while catalog loading is pending or failed, with
     : new Promise<Response>((_resolve, reject) => { fail = reject; })));
   await mount();
   expect(events('surface_view', { area: 'template_library' })).toEqual([
-    { page_name: 'studio', area: 'template_library', element: 'library' },
+    { page_name: 'studio', area: 'template_library', element: 'library', library_view_id: expect.any(String) },
   ]);
   await act(async () => fail(new Error('CATALOG_OFFLINE')));
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('CATALOG_OFFLINE');
@@ -696,11 +815,11 @@ it('discards unapplied changes on dismissal and starts from the committed filter
   await act(async () => button('Product launch films').click());
   await act(async () => button('Filters').click());
   await act(async () => button('Reference brands').click());
-  await act(async () => button('Figma').click());
+  await act(async () => button('Figma', host.querySelector('[role=dialog][aria-label=Filters]')!).click());
   await act(async () => button('Close filters').click());
   expect(cards()).toEqual(['two', 'one']);
   await act(async () => button('Filters').click());
-  expect(button('Figma').getAttribute('aria-checked')).toBe('false');
+  expect(button('Figma', host.querySelector('[role=dialog][aria-label=Filters]')!).getAttribute('aria-checked')).toBe('false');
   await act(async () => button('Video purpose').click());
   const popup = host.querySelector('[role=dialog][aria-label=Filters]')!;
   expect(button('Product launch films', popup).getAttribute('aria-checked')).toBe('true');

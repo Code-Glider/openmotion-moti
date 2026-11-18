@@ -15,9 +15,9 @@ export type TemplateAction = NonNullable<Click['template_action']>;
 export type FilterAction = Fields<'template_filter_result'>['action'];
 type Template = GalleryTemplate;
 /** What the list looked like when something happened: the active search, the sort and how many filters were on. */
-export type ListContext = { searchId?: string; sort: Sort; filterCount: number };
+export type ListContext = { searchId?: string; sort: Sort; filterCount: number; libraryViewId?: string; discoveryId?: string; resultSetId?: string };
 /** One opened detail: its id and how the user got there. */
-export type DetailView = { id: string; placement: Placement; series?: SeriesAttribution };
+export type DetailView = { id: string; placement: Placement; context?: ListContext; series?: SeriesAttribution };
 /** Timeline actions have a series view, without inventing a template detail view. */
 export type ActionView = DetailView | { series: SeriesAttribution };
 
@@ -27,15 +27,19 @@ export const asSort = (value: string): Sort => SORTS.includes(value) ? value as 
 const studio = { page_name: 'studio' } as const;
 /** A catalogue id is sent only when it is a bounded slug; anything else is left out, never rewritten. */
 const templateId = (template: Template) => slugField('template_id', template.id);
-const list = (context: ListContext) => ({ sort: context.sort, applied_filter_count: context.filterCount, ...(context.searchId ? { search_id: context.searchId } : {}) });
-const detail = (view: ActionView | undefined) => view ? { ...('id' in view ? { detail_view_id: view.id, detail_mode: 'modal' as const } : {}), ...view.series } : {};
+const contextIds = (context: Pick<ListContext, 'libraryViewId' | 'discoveryId' | 'resultSetId'>) => ({
+  ...(context.libraryViewId ? { library_view_id: context.libraryViewId } : {}), ...(context.discoveryId ? { discovery_id: context.discoveryId } : {}),
+  ...(context.resultSetId ? { result_set_id: context.resultSetId } : {}),
+});
+const list = (context: ListContext) => ({ ...contextIds(context), sort: context.sort, applied_filter_count: context.filterCount, ...(context.searchId ? { search_id: context.searchId } : {}) });
+const detail = (view: ActionView | undefined) => view ? { ...('id' in view ? { detail_view_id: view.id, detail_mode: 'modal' as const, ...(view.context ? list(view.context) : {}) } : {}), ...view.series } : {};
 const actionArea = (view: ActionView | undefined) => view?.series?.series_surface === 'timeline' ? 'template_series_detail' as const : 'template_detail' as const;
 const resource = (template: Template) => ({ resource_kind: isEditableTemplate(template) ? 'editable_project' as const : 'reference' as const });
 const instruction = (template: Template, submit = false) => ({
   instruction_kind: submit ? 'recreate_submit' as const : isEditableTemplate(template) ? 'template_use' as const : 'reference_recreate' as const });
 
-export function reportLibraryShown() {
-  send('surface_view', { ...studio, area: 'template_library', element: 'library' });
+export function reportLibraryShown(context: Pick<ListContext, 'libraryViewId'> = {}) {
+  send('surface_view', { ...studio, area: 'template_library', element: 'library', ...contextIds(context) });
 }
 /** The denominator for a card's click-through rate. The caller decides when a card was really seen and reports it once per result set. */
 export function reportCardShown(template: Template, position: number, context: ListContext) {
@@ -75,7 +79,7 @@ export function reportSearchResult(searchId: string, query: string, resultCount:
   const keyword = searchKeyword(query);
   if (!keyword) return;
   send('template_search_result', { ...studio, area: 'template_discovery', search_id: searchId, search_keyword: keyword, query_length: query.trim().length,
-    result_count: resultCount, outcome: 'success', sort: context.sort, applied_filter_count: context.filterCount });
+    result_count: resultCount, outcome: 'success', sort: context.sort, applied_filter_count: context.filterCount, ...contextIds(context) });
 }
 export function reportDiscoveryClick(element: Extract<Click['element'], 'category_select' | 'filter_open' | 'filter_clear' | 'filter_option' | 'sort_option' | 'submit_video'>,
   context: ListContext, extra: Pick<Click, 'filter_group' | 'selected' | 'previous_sort' | 'changed'> & { option?: string } = {}) {
@@ -97,4 +101,15 @@ export function reportDownloadResult(template: Template, downloadAttemptId: stri
 /** Links that leave the detail: the full motion guide, the template's repository directory, or the original post. */
 export function reportDetailLink(template: Template, element: 'view_full_page' | 'view_repository' | 'view_source', view: ActionView | undefined) {
   send('ui_click', { ...studio, area: actionArea(view), element, ...templateId(template), ...detail(view) });
+}
+
+export type RecoveryAction = 'search_focus' | 'clear_search' | 'reference' | 'describe' | 'copy_brief';
+export function reportRecoveryAction(element: RecoveryAction, context: ListContext) {
+  send('ui_click', { ...studio, area: 'template_discovery', element, ...list(context) });
+}
+export function reportRecoveryShown(reason: 'no_results' | 'unsuitable' | 'catalog_empty', context: ListContext) {
+  send('surface_view', { ...studio, area: 'template_discovery', element: 'search_recovery', recovery_reason: reason, ...list(context) });
+}
+export function reportSearchHandoff(source: 'link' | 'local' | 'description', attemptId: string, status: 'clipboard_written' | 'manual_fallback', context: ListContext) {
+  send('template_search_handoff_result', { ...studio, area: 'template_discovery', source_kind: source, handoff_attempt_id: attemptId, handoff_status: status, ...list(context) });
 }

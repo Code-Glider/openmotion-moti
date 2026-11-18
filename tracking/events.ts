@@ -45,7 +45,8 @@ const templateSeries = { search_id: 'uuid', sort: sortOrder, applied_filter_coun
   ranking_policy: ['works59-ctr41-v1', 'catalog-v1'], ranking_snapshot: ['ctr-20261118-v2'] } as const;
 const templateDetail = { detail_view_id: 'uuid', detail_mode: ['modal'], resource_kind: ['reference', 'editable_project', 'motion_guide'],
   instruction_kind: ['template_use', 'reference_recreate', 'recreate_submit'] } as const;
-const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer' } as const;
+const templateSearchContext = { library_view_id: 'uuid', discovery_id: 'uuid', result_set_id: 'uuid' } as const;
+const templateList = { ...templateSearchContext, result_count: 'integer', search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer' } as const;
 // Application pages that report their own views and clicks. The template library keeps page_name=studio.
 const pages = ['home', 'studio', 'skills', 'brand_kit', 'mcp', 'assets', 'settings', 'projects'] as const;
 // Workspace assets: which shelf the library shows and what kind of media an action is about.
@@ -144,7 +145,7 @@ export const omEvents = {
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'select_work', 'select_chapter', 'browse_timeline', 'expand_learning', 'compare_brands',
       'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
-      'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
+      'search_focus', 'clear_search', 'reference', 'describe', 'copy_brief', 'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source',
       'submit_skill', 'copy_instruction', 'open_command', 'copy_command', 'close_detail',
       'collection_tab', 'new_brand_kit', 'download_package',
@@ -205,23 +206,26 @@ export const omEvents = {
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.
   // A card counts once it is at least half visible for a second, once per result set.
-  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
-    element: ['library', 'card', 'detail', 'instruction'], placement, position: 'integer', ...templateList, ...templateDetail, ...template, ...templateSeries,
-    ...skill, ...brand, brand_state: brandState },
+  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
+    element: ['library', 'card', 'detail', 'instruction', 'search_recovery'], placement, position: 'integer', ...templateList, ...templateDetail, ...template, ...templateSeries,
+    ...skill, ...brand, brand_state: brandState, recovery_reason: ['no_results', 'unsuitable', 'catalog_empty'] },
     required: ['page_name', 'area', 'element'] },
   // One per settled query, never per keystroke. `search_keyword` is the only free-text field in this registry.
   template_search_result: { producers: ['studio'], fields: { page_name: ['home', 'studio'], area: ['template_discovery'],
     search_keyword: 'text', query_length: 'integer', outcome: ['success', 'failure'], ...templateList },
     required: ['search_id', 'query_length', 'result_count', 'outcome'] },
+  template_search_handoff_result: { producers: ['studio'], fields: { page_name: ['studio'], area: ['template_discovery'],
+    handoff_attempt_id: 'uuid', source_kind: ['link', 'local', 'description'], handoff_status: ['clipboard_written', 'manual_fallback', 'draft_added', 'failure'], ...templateList },
+    required: ['handoff_attempt_id', 'source_kind', 'handoff_status'] },
   template_filter_result: { producers: ['studio'], fields: { page_name: ['home', 'studio'], area: ['template_discovery'],
     action: ['category_select', 'filter_apply', 'filter_clear', 'sort_change'], outcome: ['success', 'failure'], ...templateList },
     required: ['action', 'result_count', 'outcome'] },
   // `browser_save_requested` means the save was handed to the browser; nothing confirms the file reached disk.
   resource_download_result: { producers: ['studio'], fields: { page_name: pages, resource_kind: ['motion_guide', 'brand_kit_package'], download_attempt_id: 'uuid',
-    delivery_status: ['browser_save_requested', 'fetch_failed', 'unknown'], error_code: 'code', detail_view_id: 'uuid', detail_mode: ['modal'], ...template, ...brand, ...templateSeries },
+    delivery_status: ['browser_save_requested', 'fetch_failed', 'unknown'], error_code: 'code', ...templateList, detail_view_id: 'uuid', detail_mode: ['modal'], ...template, ...brand, ...templateSeries },
     required: ['resource_kind', 'download_attempt_id', 'delivery_status'] },
   template_instruction_copy_result: { producers: ['studio'], fields: { host_product: hosts, copy_status: ['clipboard_written', 'manual_fallback_shown', 'failed'],
-    page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateDetail, ...project, ...template, ...templateSeries }, required: ['host_product', 'copy_status'] },
+    page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateList, ...templateDetail, ...project, ...template, ...templateSeries }, required: ['host_product', 'copy_status'] },
   // Skills page. One search result per settled query; the brief itself is reduced to its choices and two yes/no flags.
   skill_search_result: { producers: ['studio'], fields: { page_name: ['skills'], area: ['skill_discovery'], search_id: 'uuid', search_keyword: 'text',
     query_length: 'integer', result_count: 'integer', outcome: ['success'], skill_category: skill.skill_category },
