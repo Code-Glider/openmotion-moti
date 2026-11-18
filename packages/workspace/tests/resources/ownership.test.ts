@@ -213,7 +213,7 @@ it("detects corruption of persistent bytes instead of serving a different payloa
         data: png,
       });
     const raw = new DatabaseSync(join(f.root, "workspace.sqlite"));
-    raw.prepare("UPDATE resources SET bytes=?").run(Buffer.from("corrupt"));
+    raw.prepare("UPDATE resource_chunks SET bytes=?").run(Buffer.from("corrupt"));
     raw.close();
     expect(() =>
       f.workspace.execute("resource_read", { ...f.owner, revision: imported.revision, path: "assets/red.png" }),

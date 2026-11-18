@@ -59,6 +59,7 @@ guard:
       - apps/web/tests/browser/workspace
       - apps/web/tests/workspace
       - packages/workspace/tests/state
+      - packages/workspace/tests/resources
       - packages/theme/src/tokens
       - packages/theme/src/themes
       - packages/theme/src/fonts

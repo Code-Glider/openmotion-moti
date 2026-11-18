@@ -1,14 +1,18 @@
 import { Fault, type Input, type Resource, resourceBytesLimit, resourceCountLimit } from "../contract.js";
 import type { Database } from "../database.js";
 import type { Projects } from "../projects.js";
-import { checksum, identify } from "./formats.js";
+import { ResourceBytes } from "./bytes.js";
+import { identify } from "./formats.js";
 import { resourceReader } from "./reader.js";
 /** Persistent user bytes. Only owned immutable revision manifests grant reads; no cache/GC authority. */
 export class Resources {
+  private bytes: ResourceBytes;
   constructor(
     private db: Database,
     private projects: Projects,
-  ) {}
+  ) {
+    this.bytes = new ResourceBytes(db);
+  }
   importBytes(
     input: Pick<Input<"resource_import">, "sessionId" | "artifactId" | "expectedRevision" | "path" | "name">,
     bytes: Buffer,
@@ -30,11 +34,8 @@ export class Resources {
   }
   /** Called only inside the workspace transaction owning the resulting manifest. */
   retain(input: Pick<Resource, "path" | "name">, bytes: Buffer) {
-    const resource = identify(input.path, input.name, bytes),
-      prior = this.db.one("SELECT bytes FROM resources WHERE digest=?", resource.digest);
-    if (prior && !Buffer.from(prior.bytes as Uint8Array).equals(bytes))
-      throw new Fault("integrity", "persistent resource content mismatch");
-    this.db.run("INSERT OR IGNORE INTO resources VALUES(?,?)", resource.digest, bytes);
+    const resource = identify(input.path, input.name, bytes);
+    this.bytes.retain(resource.digest, bytes);
     return resource;
   }
   remove(input: Input<"resource_remove">) {
@@ -50,7 +51,7 @@ export class Resources {
   read(input: Input<"resource_read">) {
     const resource = this.projects.snapshot(input).resources.find((entry) => entry.path === input.path);
     if (!resource) throw new Fault("missing", "resource does not belong to this revision");
-    return { resource, data: this.bytes(resource).toString("base64") };
+    return { resource, data: this.bytes.read(resource).toString("base64") };
   }
   open(input: Input<"resource_read">, assertOpen: () => void) {
     const resource = this.projects.snapshot(input).resources.find((entry) => entry.path === input.path);
@@ -61,20 +62,12 @@ export class Resources {
   verify(resources: Resource[]): string[] {
     return resources.flatMap((resource) => {
       try {
-        this.bytes(resource);
+        this.bytes.verify(resource);
         return [];
       } catch {
         return [resource.path];
       }
     });
-  }
-  private bytes(resource: Resource): Buffer {
-    const entry = this.db.one("SELECT bytes FROM resources WHERE digest=?", resource.digest);
-    if (!entry) throw new Fault("integrity", "persistent resource bytes are missing");
-    const bytes = Buffer.from(entry.bytes as Uint8Array);
-    if (bytes.length !== resource.bytes || checksum(bytes) !== resource.digest)
-      throw new Fault("integrity", "persistent resource bytes are corrupt");
-    return bytes;
   }
   private current(input: Pick<Input<"resource_import">, "sessionId" | "artifactId" | "expectedRevision">) {
     const project = this.projects.read(input);
