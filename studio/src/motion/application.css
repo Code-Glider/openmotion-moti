@@ -167,7 +167,7 @@
 
   .om-app-navigation { margin-left: auto; }
   .om-app-header-actions { margin-left: 0; }
-  .om-app-header-links a span, .om-app-header .om-model-switcher > span { display: none; }
+  .om-app-header-links a span { display: none; }
   .om-provider-list { flex: 1; }
   .om-provider-list-state { display: block; }
   .om-provider-detail { display: none; }
