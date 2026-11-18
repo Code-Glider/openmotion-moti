@@ -20,6 +20,7 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(async function () { this.dispatchEvent(new Event('playing')); });
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   dialog = document.createElement('dialog'); host = document.createElement('div');
   dialog.append(host); document.body.append(dialog); dialog.showModal(); root = createRoot(host); select.mockClear();
 });
@@ -89,4 +90,111 @@ it('ignores a late playback rejection after switching to another card', async ()
   await act(async () => reject(new Error('Previous player stopped')));
   expect(player()?.getAttribute('src')).toBe('/1.mp4');
   expect(dialog.querySelector('[role=status]')).toBeNull();
+});
+
+it('reuses masonry cards and their hover content with two visible players and no popup', async () => {
+  let report!: (entries: { target: Element; isIntersecting: boolean; intersectionRatio: number }[]) => void;
+  const observed: Element[] = [];
+  const disconnect = vi.fn();
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(callback: typeof report) { report = callback; }
+    observe(element: Element) { observed.push(element); }
+    disconnect = disconnect;
+  });
+  const shelfItems = [...templates, { ...templates[0], id: 'extra', title: 'Extra' }].map(item => ({ ...item, uses: ['Product launch films'] }));
+  const currentTemplate = { id: 'current', uses: ['Product launch'] } as GalleryTemplate;
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide currentTemplate={currentTemplate} templates={shelfItems} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  expect(host.querySelector('.om-gallery-masonry')).not.toBeNull();
+  expect(host.querySelector('section.om-gallery-results')).not.toBeNull();
+  expect(host.querySelector('.om-mcp-template-caption')).toBeNull();
+  expect(host.querySelectorAll('.om-gallery-card')).toHaveLength(4);
+  expect(card('First').querySelector('.om-gallery-card-top')).not.toBeNull();
+  expect(card('First').querySelector('.om-gallery-card-caption strong')?.textContent).toBe('First');
+  expect(host.querySelector('.om-gallery-card-footer')).toBeNull();
+  expect(host.querySelector('section > header h3')?.textContent).toBe('Similar templates');
+  expect(host.querySelector('section > header p')?.textContent).toBe('Product launch films');
+  expect(player()).toBeNull();
+  await act(async () => report(observed.map(target => ({ target, isIntersecting: true, intersectionRatio: 1 }))));
+  expect(dialog.querySelectorAll('video[src]')).toHaveLength(2);
+  expect(dialog.querySelector('[data-base-ui-portal]')).toBeNull();
+  await act(async () => card('Extra').focus());
+  expect(dialog.querySelector('[data-template-id="extra"] video[src]')).not.toBeNull();
+  expect(dialog.querySelectorAll('video[src]')).toHaveLength(2);
+  await act(async () => { vi.spyOn(document, 'hidden', 'get').mockReturnValue(true); document.dispatchEvent(new Event('visibilitychange')); });
+  expect(player()).toBeNull();
+  await act(async () => { vi.spyOn(document, 'hidden', 'get').mockReturnValue(false); document.dispatchEvent(new Event('visibilitychange')); });
+  expect(dialog.querySelectorAll('video[src]')).toHaveLength(2);
+  await act(async () => report(observed.map(target => ({ target, isIntersecting: false, intersectionRatio: 0 }))));
+  expect(player()).toBeNull();
+  await act(async () => card('Second').click());
+  expect(select).toHaveBeenCalledWith(shelfItems[1], 2);
+  expect(dialog.querySelectorAll('dialog')).toHaveLength(0);
+  await act(async () => root.render(null));
+  expect(disconnect).toHaveBeenCalled();
+});
+
+it('fills two rows using the shared masonry column count and updates on resize', async () => {
+  let columns = 4;
+  let resize!: () => void;
+  const disconnect = vi.fn();
+  vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({ columnCount: String(columns) }) as CSSStyleDeclaration);
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback: () => void) { resize = callback; }
+    observe() {}
+    disconnect = disconnect;
+  });
+  const shelfItems = Array.from({ length: 10 }, (_, index) => ({ ...templates[0], id: `shelf-${index}`, title: `Shelf ${index}` }));
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide templates={shelfItems} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  const ids = () => [...host.querySelectorAll<HTMLElement>('.om-gallery-masonry > .om-gallery-card')].map(item => item.dataset.templateId);
+  expect(ids()).toEqual(shelfItems.slice(0, 8).map(item => item.id));
+  for (const count of [5, 3, 2, 4]) {
+    await act(async () => { columns = count; resize(); });
+    expect(ids()).toEqual(shelfItems.slice(0, count * 2).map(item => item.id));
+  }
+  await act(async () => card('Shelf 7').click());
+  expect(select).toHaveBeenCalledWith(shelfItems[7], 8);
+  await act(async () => root.render(null));
+  expect(disconnect).toHaveBeenCalled();
+});
+
+it('does not stretch a short related list with placeholders or unrelated cards', async () => {
+  vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({ columnCount: '4' }) as CSSStyleDeclaration);
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide templates={templates.slice(0, 2)} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  const masonry = host.querySelector('.om-gallery-masonry')!;
+  expect(masonry.children).toHaveLength(2);
+  expect([...masonry.children].map(item => item.getAttribute('data-template-id'))).toEqual(['0', '1']);
+  expect(host.querySelector('section > header p')).toBeNull();
+});
+
+it.each([
+  { locale: 'en', motion: 'Interface animation', heading: 'Similar templates', context: 'Product demos & explainers · Interface animation' },
+  { locale: 'zh-CN', motion: '界面动效', heading: '相似模板', context: '产品功能演示 · 界面动效' },
+] as const)('shows concise shared labels in $locale', async ({ locale, motion, heading, context }) => {
+  const currentTemplate = { id: 'current', uses: ['Product demo'], styles: [motion] } as GalleryTemplate;
+  const shelfItems = templates.map(item => ({ ...item, uses: ['Product demo'], styles: [motion] }));
+  await act(async () => root.render(<I18nProvider initialLocale={locale}><RelatedTemplatePreviews wide currentTemplate={currentTemplate} templates={shelfItems} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  expect(host.querySelector('section > header h3')?.textContent).toBe(heading);
+  expect(host.querySelector('section > header p')?.textContent).toBe(context);
+  expect(host.querySelector('section')?.getAttribute('aria-label')).toBe(heading);
+  expect(host.querySelector('section > header button')).toBeNull();
+});
+
+it('does not label a mixed shelf as one common purpose or motion', async () => {
+  const currentTemplate = { id: 'current', uses: ['Product demo'], styles: ['Interface animation'] } as GalleryTemplate;
+  const shelfItems = [
+    { ...templates[0], uses: ['Product demo'] },
+    { ...templates[1], styles: ['Interface animation'] },
+  ];
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide currentTemplate={currentTemplate} templates={shelfItems} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  expect(host.querySelector('section > header p')?.textContent).toBe('Similar purpose or motion');
+});
+
+it('shows only the common motion when recommended purposes differ', async () => {
+  const currentTemplate = { id: 'current', uses: ['Product demo'], styles: ['Interface animation'] } as GalleryTemplate;
+  const shelfItems = [
+    { ...templates[0], uses: ['Product demo'], styles: ['Interface animation'] },
+    { ...templates[1], uses: ['Product launch'], styles: ['Interface animation'] },
+  ];
+  await act(async () => root.render(<I18nProvider initialLocale="en"><RelatedTemplatePreviews wide currentTemplate={currentTemplate} templates={shelfItems} panel={{ current: host }} onSelect={select} /></I18nProvider>));
+  expect(host.querySelector('section > header p')?.textContent).toBe('Interface animation');
 });

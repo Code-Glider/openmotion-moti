@@ -1,0 +1,48 @@
+// @vitest-environment happy-dom
+import { afterEach, expect, it, vi } from 'vitest';
+import type { GalleryTemplate } from '../../../shared/catalog';
+import { motionApi } from './useWorkspace';
+import { findPreparedTemplate, prepareTemplateProject, preparedTemplateProjects, templateHandoffPrompt } from './templateHandoffPreview';
+
+vi.mock('./useWorkspace', () => ({ motionApi: vi.fn() }));
+const api = vi.mocked(motionApi);
+const template = { id: 'product-promo', title: 'Product Promo', hasHtmlProject: true, tags: [], kind: 'prism' } as unknown as GalleryTemplate;
+const catalog = (id = 'operation-one', source = template.id) => ({ projects: [{ id: 'original-A', title: 'Original' }, { id: 'new-P', title: 'Product Promo' }], sessions: [{ id, templateId: source, activeArtifactId: 'artifact-one', artifacts: [{ id: 'artifact-one', projectId: 'new-P' }] }] });
+afterEach(() => { api.mockReset(); sessionStorage.clear(); });
+
+it('refuses to create a project from reference-only guidance', async () => {
+  await expect(prepareTemplateProject({ ...template, hasHtmlProject: false }, 'original-A', 'operation-one')).rejects.toThrow('只有参考说明');
+  expect(api).not.toHaveBeenCalled();
+});
+it('reuses the exact completed operation instead of making a second project', async () => {
+  api.mockResolvedValue(catalog());
+  const result = await prepareTemplateProject(template, 'original-A', 'operation-one');
+  expect(result).toMatchObject({ projectId: 'new-P', originalProjectId: 'original-A', requestId: 'operation-one', templateId: template.id });
+  expect(api).toHaveBeenCalledTimes(1);
+  expect(preparedTemplateProjects()).toEqual([result]);
+});
+it('keeps the explicit session identity and save guard when creating an independent project', async () => {
+  api.mockResolvedValueOnce({ projects: [], sessions: [] })
+    .mockResolvedValueOnce({ sessionId: 'operation-one' })
+    .mockResolvedValueOnce({ revision: 'revision-A', projectId: 'original-A' })
+    .mockResolvedValueOnce({ projectId: 'new-P', projectTitle: 'Product Promo' });
+  const result = await prepareTemplateProject(template, 'original-A', 'operation-one');
+  expect(JSON.parse(api.mock.calls[1][1]!.body as string)).toMatchObject({ id: 'operation-one', templateId: 'product-promo' });
+  expect(api.mock.calls[3][0]).toBe('/sessions/operation-one/artifacts');
+  expect(JSON.parse(api.mock.calls[3][1]!.body as string)).toEqual({ templateId: 'product-promo', expectedRevision: 'revision-A', expectedProjectId: 'original-A' });
+  expect(result.projectId).not.toBe(result.originalProjectId);
+});
+it('does not guess a result from another operation or another selected source', async () => {
+  api.mockResolvedValueOnce(catalog('a-newer-operation')).mockResolvedValueOnce(catalog('operation-one', 'nyt-graph'));
+  expect(await findPreparedTemplate(template, 'original-A', 'operation-one')).toBeNull();
+  expect(await findPreparedTemplate(template, 'original-A', 'operation-one')).toBeNull();
+  expect(preparedTemplateProjects()).toEqual([]);
+});
+it('keeps the four sections and exact reference identity in the instruction', () => {
+  const text = templateHandoffPrompt({ ...template, id: 'reference-id', hasHtmlProject: false }, 'zh-CN');
+  for (const section of ['使用说明：', '指定模板：', '创作要求：', '我的要求：']) expect(text).toContain(section);
+  expect(text).toContain('reference-id');
+  expect(text).toContain('没有原片工程');
+  expect(text).toContain('返回准确工程链接');
+  expect(text).not.toContain('基于完整模板');
+});

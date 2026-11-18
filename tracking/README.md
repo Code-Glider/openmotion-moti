@@ -340,6 +340,11 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
   exposure waits until at least 1% of its text enters the viewport in a visible tab, once per
   detail view. Recreate and Recreate-and-submit carry the same `copy_attempt_id`
   on their `start_use` click and copy result; Open-and-edit has no copy attempt.
+  The enhanced handoff detail reuses the same click/copy-result events rather than
+  skipping them because its layout flag is active. Clipboard failure reports
+  `manual_fallback_shown`, and editable-project preparation reports `open_edit`.
+  The isolated local review entry disables collection without removing those
+  instrumentation calls. Project/source continuation remains a separate gap.
 
 The adapter preserves fixed actions, counts, booleans and safe catalog/control
 identifiers. It drops messages/stacks, file paths, selectors, composition/block

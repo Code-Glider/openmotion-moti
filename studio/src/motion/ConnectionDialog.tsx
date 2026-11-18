@@ -9,8 +9,10 @@ import { MotionIcon } from './icons';
 import { reportTemplateEvent } from './editorTracking';
 import '../../../web/connect.css';
 import '../../../web/template-gallery.css';
+import type { GalleryTemplate } from '../../../shared/catalog';
+import type { PreparedTemplateProject } from './templateHandoffPreview';
 
-type Props = { open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string };
+type Props = { open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** The original integration page lives inside one modal; Studio stays mounted beneath it. */
 export function ConnectionDialog(props: Props) {

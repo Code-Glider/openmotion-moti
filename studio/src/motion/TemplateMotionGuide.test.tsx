@@ -60,6 +60,17 @@ it('falls back to the untouched remote iframe when CORS or the fetch fails', asy
   expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
 });
 
+it('loads the expanded walkthrough eagerly without a blob-navigation dependency', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(source, { headers: { 'content-type': 'text/html' } })));
+  await act(async () => root.render(<TemplateMotionGuide expanded url={url} title="Walkthrough" />));
+  const frame = host.querySelector('iframe')!;
+  expect(frame.getAttribute('srcdoc')).toContain('runtime.js');
+  expect(frame.getAttribute('srcdoc')).toContain(`<base href="${url}">`);
+  expect(frame.getAttribute('loading')).toBe('eager');
+  expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+});
+
 it('aborts a stale guide and cannot overwrite a newer selection', async () => {
   let resolveFirst!: (value: Response) => void;
   const fetcher = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { resolveFirst = resolve; })).mockResolvedValue(new Response(source.replace('Guide', 'Second'), { headers: { 'content-type': 'text/html' } }));
