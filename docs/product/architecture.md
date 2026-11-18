@@ -111,6 +111,8 @@ README 参考 OpenDesign 的产品导览和 HTML Anything 的贡献、来源表�
 
 ### AI 原生时间轴：当前能力与产品方向
 
+Constant video/audio speed edits in the media inspector preserve the selected source range by changing both playback rate and clip duration in one native undo transaction. Main-track magnet mode shifts subsequent clips by the duration difference, retaining existing gaps; optional main-track linkage carries eligible overlays with those clips. Other lanes retain neighbour start times and bound an extension to the available gap with a Toast. Linked audio/video members share the operation when Linked Selection is enabled; locked affected members refuse the transaction. Constant-speed edits pin the current timeline scale and synchronize saved timing through the existing soft-preview diff and runtime rebind, preserving the live media elements; unsupported diffs fall back to reload. Variable-rate automation remains a separate envelope-editing operation. Agent source edits use the existing revision-checked project tools and must explicitly author the corresponding timing changes; the source-save API does not infer retiming from a rate attribute alone.
+
 核心产品是围绕时间轴持续改稿的 AI 剪辑应用。素材、叙事、图片替换、动效、声音与导出都归属同一份可编辑工程；Agent 执行剪辑意图，Studio 保留人工调整入口，导出使用固定版本。参考 [OpenChatCut](https://github.com/0xsline/OpenChatCut) 的连续编辑理念组织公开说明，本次未引入其代码或移植其能力。
 
 | 产品主线 | 当前已实现路径 | 已确认方向，尚未实现为通用能力 |

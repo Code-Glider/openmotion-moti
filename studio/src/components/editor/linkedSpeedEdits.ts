@@ -9,12 +9,17 @@ import {
 import type { CommitDomAttributeBatch } from "../../hooks/domEditCommitTypes";
 import { buildPatchTarget } from "../../hooks/timelineEditingHelpers";
 import type { DomEditSelection } from "./domEditingTypes";
+import { planClipSpeedTiming, type SpeedTimingPlan } from './clipSpeedTiming';
+import { useStudioShellContextOptional } from '../../contexts/StudioContext';
+import { useRef } from 'react';
+import { bumpDomEditCommitMapVersion } from '../../hooks/domEditCommitRunner';
 
 type AttributeValueFor = (current: string | undefined) => string | null;
 
 /** Writes a speed attribute on the selection and every `data-link` partner as one undo step. */
 export interface LinkedSpeedCommit {
   commitAttribute: (attr: string, valueFor: AttributeValueFor, label: string) => Promise<boolean>;
+  commitRate?: (value: string) => Promise<boolean>;
 }
 
 const keyOf = (el: TimelineElement) => el.key ?? el.id;
@@ -57,16 +62,44 @@ export function fanOutAttributeInSource(
   );
 }
 
-/** Null when the selection has no link partner, so unlinked clips keep their usual write path. */
+/** A constant speed edit always uses one atomic rate/timing commit, even without a partner. */
 export function useLinkedSpeedCommit(
   selection: DomEditSelection,
   commit: CommitDomAttributeBatch | undefined,
 ): LinkedSpeedCommit | null {
   const elements = usePlayerStore((s) => s.elements);
+  const shell = useStudioShellContextOptional();
+  const rateVersions = useRef(new Map<string, symbol>());
   if (!commit) return null;
   const partners = linkedPartnerTargets(selection, elements);
-  if (partners.length === 0) return null;
   return {
+    commitRate: async value => {
+      const state = usePlayerStore.getState();
+      const self = state.elements.find(el => isSelected(el, selection));
+      if (!self) return false;
+      const keys = expandToLinkedMembers([keyOf(self)], state.elements, isLinkedSelectionOn());
+      state.pinTimelineZoom(state.timelinePps, state.timelineFitPps);
+      let plan: SpeedTimingPlan | undefined;
+      const latest = bumpDomEditCommitMapVersion(rateVersions.current, `${selection.sourceFile}:${keyOf(self)}`);
+      let ok: boolean;
+      try { ok = await commit(selection, [{ type: 'attribute', property: 'playback-rate', value }], {
+        label: 'Edit speed',
+        syncTimingInPlace: true,
+        // Slider events waiting behind a save should not replay obsolete widths after release.
+        shouldSave: latest,
+        validateContent: html => {
+          if (selection.isInsideLockedComposition) throw new Error('Unlock the composition before changing speed');
+          plan = planClipSpeedTiming(html, self, state.elements, keys, Number(value),
+            state.rippleEditEnabled, state.timelineLinkageEnabled);
+        },
+        prepareContent: html => {
+          if (!plan) throw new Error('Speed timing was not validated');
+          return plan.apply(html);
+        },
+      }); } finally { latest.release(); }
+      if (ok && plan?.limited) shell?.showToast('Speed change limited to the available gap', 'info');
+      return ok;
+    },
     commitAttribute: (attr, valueFor, label) => {
       const property = dataProperty(attr);
       return commit(
@@ -89,6 +122,7 @@ export function withLinkedPlaybackRate(
   if (!linked) return onSetAttribute;
   return async (attr, value) => {
     if (attr !== "playback-rate") return onSetAttribute(attr, value);
+    if (linked.commitRate) { await linked.commitRate(value); return; }
     await linked.commitAttribute("data-playback-rate", () => value, "Edit speed");
   };
 }
