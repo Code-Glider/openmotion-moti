@@ -44,6 +44,7 @@ it("extends and trims a static image while keeping its end, source attributes, r
           capability = await factory.issue({ owner: `n${context.incarnation.replaceAll("-", "")}`, service: "daemon" });
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             origin: web.endpoint.url,
             socket: socket.value,
             token: capability.token,

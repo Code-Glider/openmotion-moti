@@ -50,6 +50,7 @@ it("transfers a ZIP beyond JSON limits, retires the source and confirms the orig
           endpoint = port.value;
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             socket: socket.value,
             token,
             origin: "http://fixture.invalid",
@@ -287,6 +288,7 @@ it("bounds tickets, verifies uploads and releases business grants without creati
             port = await context.allocate({ kind: "port", name: "daemon", scheme: "http" });
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             socket: socket.value,
             token: "fixture",
             origin: "http://fixture.invalid",

@@ -48,6 +48,7 @@ export class Daemon {
         ...(options.renderer ? { ODSUITE_RUNTIME_RENDERER: JSON.stringify(options.renderer) } : {}),
         ODSUITE_RUNTIME_SOCKET: socket.value,
         ODSUITE_RUNTIME_DATA: context.roots.data,
+        ODSUITE_RUNTIME_STAGING: context.roots.runtime,
         ODSUITE_RUNTIME_ORIGIN: options.origin,
         ODSUITE_RUNTIME_TOKEN: this.capability.token,
         ODSUITE_RUNTIME_CARRIER: encode(options.environment),
