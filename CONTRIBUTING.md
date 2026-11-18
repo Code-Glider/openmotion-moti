@@ -21,6 +21,18 @@ For published motion guidance source and locale metadata, use the [catalog contr
 
 ## PR workflow
 
+### Follow through on review
+
+Opening a PR starts the review cycle. The author is responsible for following up on comments, checks and conflicts until the change is ready or a clear blocker is reported. This applies to code, templates, media and Skills, including PRs created by an Agent.
+
+1. Read every unresolved review thread and the latest CI results. Verify each claim against the current code or contribution before changing it; automated feedback can be wrong.
+2. Fix confirmed issues, run the applicable checks, and push follow-up commits. Reply on each thread with the fix, commit and validation. If you disagree, explain the evidence and proposed outcome instead of ignoring the comment.
+3. Resolve addressed threads when your permissions allow. A resolved thread must have a verified outcome; do not mark unanswered feedback resolved just to clear a merge warning. If you cannot resolve it or a disagreement remains, explain what still needs the reviewer.
+4. Fix failing required checks and merge conflicts. After a fix push, re-request review from reviewers who already reviewed the PR and have not reviewed the new commit, when your permissions allow; otherwise report that re-review is pending. A reply alone does not re-request review.
+5. Before reporting review follow-up complete, refresh the PR state and report remaining threads, CI, conflicts or pending re-review. Green CI alone does not mean the review is complete or authorize merging or publishing.
+
+Agents follow the same process through [Repository PR review follow-up](AGENTS.md#repository-pr-review-follow-up). Authors can use any suitable PR interface; installing a particular Skill is not required.
+
 ### Submit a video with your Agent
 
 Share your video, reference or editable project with your Agent and paste this brief:

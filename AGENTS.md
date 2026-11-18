@@ -21,6 +21,18 @@ Keep persistent user instructions for repository work in this file, and keep `CL
 3. Before committing or submitting repository content, verify that it follows these English-language requirements.
 4. Branch new work from the latest `main` and target all pull requests at `main`. Merge reviewed changes directly into `main` when authorized; do not use `feature/motion` as an intermediate integration branch.
 
+## Repository PR review follow-up
+
+For repository PR work, follow the [contributor review checklist](CONTRIBUTING.md#follow-through-on-review). Creating a PR or pushing a fix does not finish an active review task.
+
+1. Read the live PR head, unresolved threads, latest reviews, CI and mergeability before acting. Do not rely on a previous commit's status.
+2. Verify each review claim. Fix real issues, run boundary-appropriate validation and push follow-up commits while preserving shared history. For incorrect feedback, reply with concrete code or reproduction evidence.
+3. Reply to each addressed thread with the commit and checks, then resolve it when permitted. Keep unanswered or disputed feedback visible and report what remains; do not dismiss change requests or close discussions merely to unblock merging.
+4. Address failing required CI and conflicts. Use an isolated worktree when the active checkout contains unrelated work. After a fix push, re-request prior reviewers who have not reviewed the new head when permitted; otherwise report pending re-review. Do not add or ping unrelated people to solicit a merge.
+5. Re-read the live state before reporting. Summarize what was fixed, unresolved threads, CI and conflicts, including pending re-review or an external blocker. When waiting, state what is pending rather than claiming completion.
+
+Merge and publication authorization remain separate from review cleanup. These steps do not grant permission to merge, bypass required checks or publish a package.
+
 ## Repository contribution Skills
 
 Source-checkout contributor Skills live under `.agents/skills/`. When adding or maintaining a built-in BYOK media provider, read `.agents/skills/add-byok-provider/SKILL.md` in this checkout. It covers provider research, implementation, references and verification. These repository-local Skills are excluded from application/plugin distribution and host installation; root `skills/` continues to hold product workflows. Installed product copies may not contain `.agents/skills/`. Other Agents following `CLAUDE.md` use this same source-checkout guidance.
