@@ -12,7 +12,7 @@ const preview = (html: string) => {
 beforeEach(() => usePlayerStore.getState().reset());
 
 it("updates restored timing immediately without a runtime message and retains selection and metadata", () => {
-  const original = { ...clip("scene", 5, 7), label: "My scene", compositionSrc: "scene.html", volume: 0.7 };
+  const original = { ...clip("scene", 5, 7), label: "My scene", compositionSrc: "scene.html", sourceDuration: 10 };
   usePlayerStore.setState({ elements: [original], selectedElementId: original.id, currentTime: 6, duration: 20 });
   const doc = preview('<div id="scene" data-start="2" data-hf-authored-duration="4" data-composition-file="scene.html" data-hf-scene="scene"></div>');
   syncRestoredTimelineFromPreview(doc);
@@ -47,4 +47,17 @@ it("does not discover extra nodes, clear clips or replace unchanged arrays", () 
   expect(elements).toHaveLength(1);
   syncRestoredTimelineFromPreview(null);
   expect(usePlayerStore.getState().elements).toBe(elements);
+});
+
+it("restores audio-group controls and expanded child state without waiting for a manifest", () => {
+  const doc = preview('<div id="scene" data-composition-id="scene" data-composition-file="scene.html" data-start="0" data-duration="20"><div data-hf-inner-root><hf-audio-group id="voice" data-label="Restored voice" data-volume="0.4" data-hidden></hf-audio-group><audio id="a" data-audio-group="voice" data-volume="0.7" data-fade-in="1" data-fx-chain=\'{"version":1,"nodes":[]}\'></audio></div></div>');
+  usePlayerStore.setState({
+    elements: [{ ...clip("a", 0, 20), tag: "audio", sourceFile: "scene.html", audioGroup: "voice", audioGroupVolume: 1, audioGroupHidden: false }],
+    clipManifest: [{ id: "scene", kind: "composition", tagName: "div", start: 0, duration: 20, track: 0, compositionId: "scene" }],
+    duration: 20,
+  });
+  syncRestoredTimelineFromPreview(doc);
+  expect(usePlayerStore.getState().elements[0]).toMatchObject({ audioGroupVolume: 0.4, audioGroupHidden: true, audioGroupLabel: "Restored voice", volume: 0.7, fadeIn: 1 });
+  expect(usePlayerStore.getState().subCompositionHostState.get("a")?.fxChain).toBe('{"version":1,"nodes":[]}');
+  expect(usePlayerStore.getState().domClipChildren.some(child => child.id === "a")).toBe(true);
 });

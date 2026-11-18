@@ -18,6 +18,7 @@ import {
   applyUndoRestoreToPreview,
   diffSoftReloadableRestore,
   showRestoreInPlace,
+  readUndoNestedFiles,
 } from "./gsapUndoRestore";
 import { recordLiveSet } from "./softReloadTargets";
 import { applyPatch } from "./sourcePatcher";
@@ -114,6 +115,36 @@ function buildLiveIframe(bodyHtml: string) {
 
 describe("applyUndoRestoreToPreview", () => {
   const ROOT = "index.html";
+
+  it.each([
+    ["move", 'data-start="3"', 'data-start="1"'],
+    ["track", 'data-track-index="4"', 'data-track-index="1"'],
+    ["volume", 'data-volume="0.4"', 'data-volume="0.8"'],
+    ["fade", 'data-fade-in="2"', 'data-fade-in="0.5"'],
+    ["lock", 'data-timeline-locked', ''],
+    ["effect", 'data-fx-chain=\'{"version":1,"nodes":[{"id":"gain"}]}\'', ''],
+    ["automation", 'data-automation=\'{"version":1,"lanes":[{"target":"volume"}]}\'', ''],
+  ])("restores %s through one path across multiple scripted files without nested reads or media reloads", (_label, before, after) => {
+    const script = '<script>window.__timelines.main=gsap.timeline({paused:true});</script>';
+    const root = (attrs: string) => wrap(`<div id="a" data-hf-id="a" ${attrs}></div>${script}`);
+    const nested = (attrs: string) => `<template><div data-composition-id="scene"><audio id="b" data-hf-id="b" src="track.mp3" ${attrs}></audio>${script}</div></template>`;
+    const { iframe, doc, contentWindow } = buildLiveIframe(`<div id="a" data-hf-id="a" ${before}></div><div data-composition-file="scene.html"><audio id="b" data-hf-id="b" src="/preview/track.mp3" ${before}></audio></div>${script}`);
+    const a = doc.getElementById("a")!, b = doc.getElementById("b")!;
+    Object.assign(a, { _gsap: {} });
+    const sourceWrites = vi.spyOn(b, "setAttribute");
+    const reload = vi.fn(), read = vi.fn();
+    const files = { [ROOT]: { previous: root(before), restored: root(after) }, "scene.html": { previous: nested(before), restored: nested(after) } };
+    expect(readUndoNestedFiles(iframe, ROOT, files, read)).toBeNull();
+    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, reload)).toBe("soft");
+    expect(reload).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+    expect(sourceWrites.mock.calls.some(([name]) => name === "src")).toBe(false);
+    expect(contentWindow.__player.seek).toHaveBeenCalled();
+    const expected = new DOMParser().parseFromString(root(after), "text/html").getElementById("a")!;
+    const attr = new DOMParser().parseFromString(root(before), "text/html").getElementById("a")!.getAttributeNames().find(name => !["id", "data-hf-id"].includes(name))!;
+    expect(a.getAttribute(attr)).toBe(expected.getAttribute(attr));
+    expect(b.getAttribute(attr)).toBe(expected.getAttribute(attr));
+  });
 
   it("restores a scene's timing without reloading unrelated scenes that reuse identities", () => {
     const source = (duration: number) => wrap(
@@ -607,7 +638,7 @@ describe("applyUndoRestoreToPreview", () => {
     expect(reloadPreview).toHaveBeenCalledTimes(1);
   });
 
-  it("full-reloads a sub-composition restore whose file has a GSAP script", () => {
+  it("restores attributes inside an unchanged scripted sub-composition without reloading", () => {
     const { iframe, doc } = buildLiveIframe(host(`style="clip-path: inset(0px 40px 0px 0px);"`));
     const reloadPreview = vi.fn();
     const script = `<script>gsap.timeline().to("#target", { x: 10 });</script>`;
@@ -619,9 +650,9 @@ describe("applyUndoRestoreToPreview", () => {
         restored: scripted(""),
       },
     };
-    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, reloadPreview)).toBe("full");
-    expect(reloadPreview).toHaveBeenCalledTimes(1);
-    expect(doc.querySelector('[data-hf-id="hf-t"]')?.getAttribute("style")).toContain("clip-path");
+    expect(applyUndoRestoreToPreview(iframe, ROOT, files, 3, reloadPreview)).toBe("soft");
+    expect(reloadPreview).not.toHaveBeenCalled();
+    expect(doc.querySelector('[data-hf-id="hf-t"]')?.getAttribute("style")).toBeNull();
   });
 
   it("full-reloads when the restore touches a sub-comp, not the active comp", () => {

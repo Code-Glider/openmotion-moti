@@ -246,7 +246,7 @@ function hasAmbiguousGsapScriptChange(
 }
 
 type RestoreTarget = { live: Element; restored: Element; previous?: Element };
-type RestorePlan = { targets: RestoreTarget[]; scripted: boolean };
+type RestorePlan = { targets: RestoreTarget[]; scripted: boolean; scriptChanged: boolean };
 
 /** Whether either side has a GSAP script, or null when its scripts rule out an in-place restore. */
 function restoreScripted(prevDoc: Document, nextDoc: Document, isActive: boolean): boolean | null {
@@ -255,8 +255,14 @@ function restoreScripted(prevDoc: Document, nextDoc: Document, isActive: boolean
   );
   const scripted = before!.length > 0 || after!.length > 0;
   // Only the active document's GSAP script can be re-run in place.
-  if (scripted && !isActive) return null;
+  if (scripted && !isActive) return before!.join("\n") === after!.join("\n") ? false : null;
   return hasAmbiguousGsapScriptChange(before!, after!) ? null : scripted;
+}
+
+function requiresGsapReparse(targets: readonly RestoreTarget[]): boolean {
+  return targets.some(({ live, restored, previous }) =>
+    "_gsap" in live && restored.getAttribute("style") !== previous?.getAttribute("style"),
+  );
 }
 
 // The active document is the whole preview; a sub-composition lives in each host that inlines it.
@@ -307,7 +313,11 @@ function fileTargets(
     scopeTargets(scope, keys, restoredByKey, previousByKey),
   );
   if (!found.length || found.includes(null)) return null;
-  return { targets: (found as RestoreTarget[][]).flat(), scripted };
+  const targets = (found as RestoreTarget[][]).flat();
+  // An unchanged nested script needs no execution for timing/audio/visibility.
+  // A changed GSAP-managed style still requires the file's scoped runtime.
+  if (!isActive && requiresGsapReparse(targets)) return null;
+  return { targets, scripted, scriptChanged: extractGsapScriptText(file.previous) !== extractGsapScriptText(file.restored) };
 }
 
 /** Every live element a restore changes with its restored markup, or null when it needs a reload. */
@@ -316,12 +326,13 @@ function planRestoreTargets(
   activeDocPath: string,
   files: RestoreFiles,
 ): RestorePlan | null {
-  const plan: RestorePlan = { targets: [], scripted: false };
+  const plan: RestorePlan = { targets: [], scripted: false, scriptChanged: false };
   for (const [path, file] of Object.entries(files)) {
     const found = fileTargets(doc, path, path === activeDocPath, file);
     if (!found) return null;
     plan.targets.push(...found.targets);
     plan.scripted ||= found.scripted;
+    plan.scriptChanged ||= found.scriptChanged;
   }
   return plan;
 }
@@ -352,7 +363,7 @@ export function showRestoreInPlace(
   const doc = iframe?.contentDocument;
   const win = iframe?.contentWindow as PreviewWindow | null;
   const plan = doc && win ? planRestoreTargets(doc, activeCompPath ?? "index.html", files) : null;
-  if (!iframe || !doc || !win || !plan || plan.scripted) return null;
+  if (!iframe || !doc || !win || !plan || plan.scriptChanged || (plan.scripted && requiresGsapReparse(plan.targets))) return null;
   countStudioPreviewChange(doc);
   const before = plan.targets.map(
     ({ live, restored }) => [live, live.cloneNode(false) as Element, restored] as const,
@@ -378,7 +389,10 @@ export function readUndoNestedFiles(
 ): Promise<Map<string, string>> | null {
   const active = files?.[activeCompPath ?? "index.html"];
   const script = active ? extractGsapScriptText(active.restored) : null;
-  return script ? readNestedFiles(iframe, script, readFile) : null;
+  const doc = iframe?.contentDocument;
+  const plan = doc && files ? planRestoreTargets(doc, activeCompPath ?? "index.html", files) : null;
+  if (!script || !plan || (!plan.scriptChanged && !requiresGsapReparse(plan.targets))) return null;
+  return readNestedFiles(iframe, script, path => Promise.resolve(files?.[path]?.restored ?? readFile(path)));
 }
 
 /** A preview about to reload still shows the timeline's last composed transform; take it back to the file. */
@@ -457,7 +471,7 @@ export function applyUndoRestoreToPreview(
   const active = files[activeDocPath];
   const restoredScript = active ? extractGsapScriptText(active.restored) : null;
   const previousScript = active ? extractGsapScriptText(active.previous) : null;
-  const reparse = plan.scripted && plan.targets.some(({ live }) => "_gsap" in live);
+  const reparse = plan.scripted && requiresGsapReparse(plan.targets);
   if (reparse && !restoredScript) {
     reloadPreview();
     return "full";
