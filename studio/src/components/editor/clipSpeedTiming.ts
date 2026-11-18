@@ -4,6 +4,9 @@ import { mainVisualTrack } from '../../player/components/timelineLinkage';
 import { buildPatchTarget } from '../../hooks/timelineEditingHelpers';
 import { applyPatchByTarget, readAttributeByTarget, findTagByTarget, type PatchTarget } from '../../utils/sourcePatcher';
 import { scanHtmlOpeningTags } from '@hyperframes/parsers';
+import { isCompositionTemplate } from '@hyperframes/parsers/hf-ids';
+import { parseSavedSource } from '../../utils/authoredSource';
+import { rootCompositionDurationOf } from '../../utils/rootDuration';
 import { setCompositionDurationToContent } from '../../utils/timelineAssetDrop';
 import { furthestClipEndFromDocument } from '../../player/lib/timelineElementHelpers';
 
@@ -11,6 +14,19 @@ type Row = { element: TimelineElement; target: PatchTarget; start: number; durat
 type Change = { row: Row; start: number; duration: number; rate?: number };
 export interface SpeedTimingPlan { apply: (html: string) => string; limited: boolean }
 const key = (el: TimelineElement) => el.key ?? el.id;
+
+/** Inspect composition templates as mounted markup without reserializing the authored source. */
+export function parseClipSpeedSource(html: string): Document {
+  const doc = parseSavedSource(html);
+  const unwrap = (root: ParentNode) => {
+    for (const template of Array.from(root.querySelectorAll('template')).filter(isCompositionTemplate)) {
+      unwrap(template.content);
+      template.replaceWith(template.content);
+    }
+  };
+  unwrap(doc);
+  return doc;
+}
 
 /** Preserve the selected source range, and plan every timing write before any mutation. */
 export function planClipSpeedTiming(
@@ -24,6 +40,8 @@ export function planClipSpeedTiming(
 ): SpeedTimingPlan {
   if (!Number.isFinite(rate) || rate <= 0) throw new Error('Speed must be greater than zero');
   const rows: Row[] = elements.filter(el => sameCompositionScope(el, self)).flatMap(element => {
+    // Untimed root text spans the composition implicitly and never moves with media edits.
+    if (element.implicitTextTiming) return [];
     const target = buildPatchTarget(element);
     if (!target) return [];
     const attr = (name: string) => readAttributeByTarget(html, target, `data-${name}`);
@@ -95,7 +113,8 @@ export function planClipSpeedTiming(
       }
     }
     // Other composition scopes and authored clips outside the visible lane list still count.
-    const end = furthestClipEndFromDocument(new DOMParser().parseFromString(source, 'text/html'));
-    return setCompositionDurationToContent(source, end);
+    const doc = parseClipSpeedSource(source);
+    const end = furthestClipEndFromDocument(doc);
+    return setCompositionDurationToContent(source, end, rootCompositionDurationOf(doc));
   } };
 }

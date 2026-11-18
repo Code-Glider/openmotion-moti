@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHappyDomRootHarness } from "../../player/components/testRootHarness";
 import { usePlayerStore, type TimelineElement } from "../../player/store/playerStore";
 import type { CommitDomAttributeBatch } from "../../hooks/domEditCommitTypes";
@@ -121,6 +121,26 @@ function renderLinked(sel: DomEditSelection, commit: CommitDomAttributeBatch) {
 }
 
 describe("linked speed edits", () => {
+  beforeEach(() => usePlayerStore.setState({ rippleEditEnabled: false, timelineLinkageEnabled: false }));
+  it.each(['video', 'audio'])('retimes a nested %s absent from the flat store with its source peers', async tag => {
+    const html = `<template><section data-composition-id="scene" data-duration="8"><${tag} id="nested" data-start="0" data-duration="4" data-track-index="0" data-link="pair"></${tag}><audio id="partner" data-start="0" data-duration="4" data-track-index="-1" data-link="pair"></audio><${tag} id="next" data-start="4" data-duration="4" data-track-index="0"></${tag}></section></template>`;
+    usePlayerStore.setState({ elements: [{ ...clip('host', 'div'), compositionSrc: 'compositions/scene.html' }], rippleEditEnabled: true });
+    useLinkedClipPreferences.setState({ linkedSelection: true });
+    const sel = { ...selection('nested'), tagName: tag, sourceFile: 'compositions/scene.html', compositionPath: 'compositions/scene.html' };
+    let saved = '';
+    const commit = vi.fn<CommitDomAttributeBatch>(async (_selection, _ops, options) => {
+      options.validateContent?.(html);
+      saved = options.prepareContent?.(html) ?? '';
+      return true;
+    });
+    const probe = renderLinked(sel, commit);
+    expect(await probe.linked()?.commitRate?.('2')).toBe(true);
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(saved).toMatch(/id="nested"[^>]*data-duration="2"/);
+    expect(saved).toMatch(/id="partner"[^>]*data-duration="2"/);
+    expect(saved).toMatch(new RegExp(`id="next"[^>]*data-start="${tag === 'video' ? 2 : 4}"`));
+  });
+
   it("fans a playback-rate edit out to the partner in one batch commit", async () => {
     usePlayerStore.getState().setElements(elements);
     const commit = vi.fn<CommitDomAttributeBatch>(async () => true);

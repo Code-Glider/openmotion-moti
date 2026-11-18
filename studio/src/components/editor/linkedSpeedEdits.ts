@@ -9,9 +9,10 @@ import {
 import type { CommitDomAttributeBatch } from "../../hooks/domEditCommitTypes";
 import { buildPatchTarget } from "../../hooks/timelineEditingHelpers";
 import type { DomEditSelection } from "./domEditingTypes";
-import { planClipSpeedTiming, type SpeedTimingPlan } from './clipSpeedTiming';
+import { parseClipSpeedSource, planClipSpeedTiming, type SpeedTimingPlan } from './clipSpeedTiming';
 import { useStudioShellContextOptional } from '../../contexts/StudioContext';
 import { useRef } from 'react';
+import { parseTimelineFromDOM } from '../../player/lib/timelineDOM';
 import { bumpDomEditCommitMapVersion } from '../../hooks/domEditCommitRunner';
 
 type AttributeValueFor = (current: string | undefined) => string | null;
@@ -75,12 +76,10 @@ export function useLinkedSpeedCommit(
   return {
     commitRate: async value => {
       const state = usePlayerStore.getState();
-      const self = state.elements.find(el => isSelected(el, selection));
-      if (!self) return false;
-      const keys = expandToLinkedMembers([keyOf(self)], state.elements, isLinkedSelectionOn());
+      const storedSelf = state.elements.find(el => isSelected(el, selection));
       state.pinTimelineZoom(state.timelinePps, state.timelineFitPps);
       let plan: SpeedTimingPlan | undefined;
-      const latest = bumpDomEditCommitMapVersion(rateVersions.current, `${selection.sourceFile}:${keyOf(self)}`);
+      const latest = bumpDomEditCommitMapVersion(rateVersions.current, `${selection.sourceFile}:${selection.hfId ?? selection.id ?? selection.selector}:${selection.selectorIndex ?? 0}`);
       let ok: boolean;
       try { ok = await commit(selection, [{ type: 'attribute', property: 'playback-rate', value }], {
         label: 'Edit speed',
@@ -89,7 +88,14 @@ export function useLinkedSpeedCommit(
         shouldSave: latest,
         validateContent: html => {
           if (selection.isInsideLockedComposition) throw new Error('Unlock the composition before changing speed');
-          plan = planClipSpeedTiming(html, self, state.elements, keys, Number(value),
+          // Nested media is intentionally absent from the flat store. Resolve its
+          // composition peers from the fresh saved source using the maintained parser.
+          const peers = storedSelf ? state.elements : parseTimelineFromDOM(parseClipSpeedSource(html), Infinity)
+            .map(el => ({ ...el, sourceFile: selection.sourceFile }));
+          const self = storedSelf ?? peers.find(el => isSelected(el, selection));
+          if (!self) throw new Error('Selected media is unavailable in the saved source');
+          const keys = expandToLinkedMembers([keyOf(self)], peers, isLinkedSelectionOn());
+          plan = planClipSpeedTiming(html, self, peers, keys, Number(value),
             state.rippleEditEnabled, state.timelineLinkageEnabled);
         },
         prepareContent: html => {

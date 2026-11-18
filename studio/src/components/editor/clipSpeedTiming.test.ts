@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { planClipSpeedTiming } from './clipSpeedTiming';
 import type { TimelineElement } from '../../player/store/playerStore';
+import { parseTimelineFromDOM } from '../../player/lib/timelineDOM';
 import { readAttributeByTarget } from '../../utils/sourcePatcher';
 
 const clip = (id: string, tag = 'video', start = 0, duration = 4, track = 0): TimelineElement =>
@@ -13,6 +14,23 @@ const plan = (els: TimelineElement[], rate: number, ripple = false, linkage = fa
   planClipSpeedTiming(html, els[0], els, new Set(keys), rate, ripple, linkage);
 
 describe('constant clip speed timing', () => {
+  it('allows unrelated implicit text without materializing its timing', () => {
+    const html = '<div data-composition-id="main" data-duration="4"><video id="a" data-start="0" data-duration="4"></video><p id="title">Title</p></div>';
+    const els = parseTimelineFromDOM(new DOMParser().parseFromString(html, 'text/html'), 4);
+    expect(els.find(el => el.domId === 'title')?.implicitTextTiming).toBe(true);
+    const self = els.find(el => el.domId === 'a')!;
+    const next = planClipSpeedTiming(html, self, els, new Set([self.key ?? self.id]), 2, false, false).apply(html);
+    expect(attr(next, 'a', 'duration')).toBe(2);
+    expect(next).toContain('<p id="title">Title</p>');
+  });
+  it.each([[0.5, 8], [2, 2]])('updates a template composition root at %sx', (rate, duration) => {
+    const els = [{ ...clip('a', 'audio'), sourceFile: 'compositions/scene.html' }];
+    const html = '<template><section data-composition-id="scene" data-duration="4"><audio id="a" data-start="0" data-duration="4"></audio></section></template>';
+    const next = plan(els, rate, false, false, ['a'], html).apply(html);
+    expect(attr(next, 'a', 'duration')).toBe(duration);
+    expect(next).toContain(`data-composition-id="scene" data-duration="${duration}"`);
+    expect(next.startsWith('<template>')).toBe(true);
+  });
   it.each(['video', 'audio'])('halves a %s clip and preserves its source in-point', tag => {
     const els = [clip('a', tag, 1.07, 15)];
     const html = source(els).replace('data-track-index="0"', 'data-track-index="0" data-media-start="2"');
