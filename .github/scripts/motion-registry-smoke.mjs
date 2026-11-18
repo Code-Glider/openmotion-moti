@@ -103,7 +103,7 @@ export async function registrySmoke(directory) {
   assert.equal(state.templateEnvironment, manifest.templateEnvironment);
   const templateConfig = JSON.parse(await readFile(path.join(first.appRoot, 'shared/template-config.json')));
   assert.equal(templateConfig.environment, manifest.templateEnvironment);
-  for (const skill of manifest.skills) await access(path.join(skills, 'openmotion/skills', skill, 'SKILL.md'));
+  for (const skill of manifest.skills) await access(path.join(state.skillsDirectory, 'skills', skill, 'SKILL.md'));
   console.log('Preparing the checksum-pinned browser, FFmpeg and ffprobe');
   await checkpoint('native-prepare');
   await cli([...command, 'prepare', '--home', home]);

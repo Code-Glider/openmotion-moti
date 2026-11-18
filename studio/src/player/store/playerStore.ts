@@ -445,7 +445,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     writeStudioUiPreferences({ timelineSnapEnabled: enabled }, undefined, usePlayerStore.getState().timelineProjectId);
     set({ timelineSnapEnabled: enabled });
   },
-  timelineLinkageEnabled: true,
+  timelineLinkageEnabled: readStudioUiPreferences().timelineLinkageEnabled ?? false,
   setTimelineLinkageEnabled: (enabled) => {
     writeStudioUiPreferences({ timelineLinkageEnabled: enabled }, undefined, usePlayerStore.getState().timelineProjectId);
     set({ timelineLinkageEnabled: enabled });
@@ -570,7 +570,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         ...createTimelineResetState(),
         timelineSnapEnabled: readStudioUiPreferences(undefined, projectId).timelineSnapEnabled ?? true,
         rippleEditEnabled: readStudioUiPreferences(undefined, projectId).rippleEditEnabled ?? false,
-        timelineLinkageEnabled: readStudioUiPreferences(undefined, projectId).timelineLinkageEnabled ?? true,
+        timelineLinkageEnabled: readStudioUiPreferences(undefined, projectId).timelineLinkageEnabled ?? false,
         timelineSessionEpoch: state.timelineSessionEpoch + 1,
         timelineProjectId: projectId,
       };

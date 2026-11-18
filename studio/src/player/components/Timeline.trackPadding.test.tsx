@@ -92,7 +92,7 @@ describe("Timeline trackPadding", () => {
     act(() => root.unmount());
   });
 
-  it("drags a clip onto the host's rows and opens a new track in the bottom pad", async () => {
+  it("shows pointer insertion lines at all boundaries without moving existing rows", async () => {
     const { host, root } = await mountThreeTracks({
       onMoveElement: vi.fn(),
       onResizeElement: vi.fn(),
@@ -107,18 +107,15 @@ describe("Timeline trackPadding", () => {
     const committedTops = [0, 1, 2].map((row) =>
       top(host.querySelector(`[data-timeline-row="${row}"]`)),
     );
-    pointer(window, "pointermove", RULER_H + TRACK_H);
-    await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
-    expect(host.querySelector("[data-timeline-new-track-lane]")).toBeNull();
-    expect([0, 1, 2].map((row) => top(host.querySelector(`[data-timeline-row="${row}"]`))))
-      .toEqual(committedTops);
-    pointer(window, "pointermove", RULER_H + 3 * TRACK_H + TRACK_H / 2);
-    await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
-    const lane = host.querySelector<HTMLElement>("[data-timeline-new-track-lane]");
-    expect(top(lane)).toBe(`${RULER_H + 3 * TRACK_H}px`);
-    expect(lane?.style.height).toBe(`${TRACK_H}px`);
-    expect([0, 1, 2].map((row) => top(host.querySelector(`[data-timeline-row="${row}"]`))))
-      .toEqual(committedTops);
+    for (const boundary of [1, 0, 3]) {
+      const lineTop = RULER_H + boundary * TRACK_H;
+      pointer(window, "pointermove", lineTop + (boundary === 3 ? TRACK_H / 2 : 0));
+      await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
+      expect(top(host.querySelector('[data-testid="timeline-insert-line"]'))).toBe(`${lineTop - 0.5}px`);
+      expect(host.querySelector("[data-timeline-new-track-lane]")).toBeNull();
+      expect([0, 1, 2].map((row) => top(host.querySelector(`[data-timeline-row="${row}"]`))))
+        .toEqual(committedTops);
+    }
     act(() => root.unmount());
   });
 });

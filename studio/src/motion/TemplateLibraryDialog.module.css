@@ -117,12 +117,7 @@
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Local review extends the existing detail; gallery geometry and filters remain shared. */
-.handoffInfo { display: grid; justify-items: start; gap: var(--motion-space-12); margin-block: var(--motion-space-20); padding-block: var(--motion-space-16); border-block: 1px solid var(--motion-border-subtle); }
-.handoffInfo p, .handoffInfo dd, .handoffRecovery p, .handoffSteps p { margin: 0; color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); overflow-wrap: anywhere; }
-.handoffInfo dl { display: grid; gap: var(--motion-space-8); margin: 0; }
-.handoffInfo dl > div { display: grid; grid-template-columns: auto minmax(0,1fr); gap: var(--motion-space-12); }
-.handoffInfo dt { color: var(--motion-text); font-size: var(--motion-text-sm); }
-.handoffInfo dd { margin: 0; }
+.handoffRecovery p, .handoffSteps p { margin: 0; color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); overflow-wrap: anywhere; }
 .handoffActions { display: grid; gap: var(--motion-space-8); margin-bottom: var(--motion-space-16); }
 .handoffActions > p { margin: 0; color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); }
 .handoffActions > button { width: 100%; }
@@ -145,24 +140,13 @@
 .stageNavigation { position: absolute; inset: auto var(--motion-space-24) var(--motion-space-16); display: flex; justify-content: space-between; align-items: center; gap: var(--motion-space-8); }
 .stageNavigation > span { color: var(--motion-muted); font-size: var(--motion-text-xs); }
 .library .stageNavigation button { background: var(--color-template-surface); border: 1px solid var(--motion-border-subtle); }
-.topRepository { margin-bottom: var(--motion-space-16); }
 .reviewOverview { display: grid; gap: var(--motion-space-16); margin-block: var(--motion-space-16); }
 .reviewSpecs { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-12); font-size: var(--motion-text-xs); color: var(--motion-muted); }
-.reviewAbility { margin: 0; font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); color: var(--motion-muted); }
-.reviewHighlight p { margin: var(--motion-space-8) 0 0; font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); color: var(--motion-muted); }
-.reviewUse { display: grid; gap: var(--motion-space-8); font-size: var(--motion-text-xs); color: var(--motion-muted); }
-.reviewUse > div { display: flex; gap: var(--motion-space-6); flex-wrap: wrap; }
-.reviewMaterials { padding: var(--motion-space-12); border-radius: var(--motion-radius-md); background: var(--motion-panel); }
-.reviewMaterials ul { display: grid; gap: var(--motion-space-8); margin: var(--motion-space-12) 0 0; padding-left: var(--motion-space-16); color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); }
 .reviewColors { display: flex; justify-content: space-between; gap: var(--motion-space-12); align-items: center; font-size: var(--motion-text-xs); color: var(--motion-muted); }
 .palette { display: flex; padding-left: var(--motion-space-6); }
 .palette > * { margin-left: calc(-1 * var(--motion-space-6)); }
 .library .colorSwatch { display: block; width: var(--motion-space-32); height: var(--motion-space-32); min-width: var(--motion-space-32); border-radius: var(--motion-radius-full); border: 2px solid var(--color-template-surface); transition: transform var(--motion-duration-normal) var(--motion-ease-out); }
 .colorSwatch:hover { transform: translateY(-3px); }
-.library .guideLaunch { justify-content: space-between; text-align: left; padding: var(--motion-space-12); border: 1px solid var(--motion-border); }
-.guideLaunch > span { display: grid; gap: var(--motion-space-4); }
-.guideLaunch strong { font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); }
-.guideLaunch small { font-size: var(--motion-text-xs); color: var(--motion-muted); }
 .reviewGuideEntry { margin-top: var(--motion-space-12); }
 .library .guideEntry { display: flex; width: 100%; justify-content: flex-start; gap: var(--motion-space-8); font-size: var(--motion-text-sm); }
 .guideEntry > span { flex: 1; text-align: left; }
@@ -173,15 +157,11 @@
 .productionText { composes: om-media-detail-instruction from global; display: grid; gap: var(--motion-space-16); }
 .productionText h4 { margin: 0 0 var(--motion-space-8); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-medium); }
 .productionText p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--motion-text-xs); line-height: var(--motion-leading-prose); color: var(--motion-muted); }
-.reviewMore { margin-block: var(--motion-space-12); font-size: var(--motion-text-xs); color: var(--motion-muted); }
-.reviewMore summary, .handoffSteps summary { cursor: pointer; padding-block: var(--motion-space-8); }
-.reviewMore p { line-height: var(--motion-leading-body); margin-block: var(--motion-space-8); }
-.reviewMore .metadata { margin-block: var(--motion-space-8); }
+.handoffSteps summary { cursor: pointer; padding-block: var(--motion-space-8); }
 .reviewDetail .handoffSteps { margin-block: var(--motion-space-12); }
 .reviewDetail .handoffSteps ol { margin: 0; }
 .reviewDetail .handoffSteps li { font-size: var(--motion-text-xs); line-height: var(--motion-leading-body); }
 .reviewDetail .instruction { padding-block: var(--motion-space-12); border-block: 1px solid var(--motion-border-subtle); }
-.reviewDetail .instruction header { display: none; }
 .reviewDetail .instruction .expandInstruction { margin-top: 0; }
 .reviewDetail .resourceLinks { margin-top: var(--motion-space-12); }
 .reviewDetail .relatedShelf { padding-block-start: var(--motion-space-48); margin: 0; border-top: 1px solid var(--motion-border-subtle); }
@@ -219,18 +199,6 @@
 .reviewFooter .handoffActions { margin-bottom: 0; }
 .reviewFooter .handoffRecovery { margin-block: var(--motion-space-8) 0; }
 .reviewResources { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--motion-space-8) var(--motion-space-16); margin-bottom: var(--motion-space-20); }
-.motionDownload { display: flex; flex-wrap: wrap; align-items: center; gap: var(--motion-space-8); margin-top: var(--motion-space-12); color: var(--motion-muted); }
-.motionDownload small { font-size: var(--motion-text-xs); }
-.reviewShare { padding-block: var(--motion-space-16); border-top: 1px solid var(--motion-border-subtle); }
-.reviewShare > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--motion-space-12); list-style: none; cursor: pointer; }
-.reviewShare > summary::-webkit-details-marker { display: none; }
-.reviewShare > summary span { display: grid; gap: var(--motion-space-4); }
-.reviewShare > summary strong { font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); color: var(--motion-text); }
-.reviewShare > summary small { font-size: var(--motion-text-xs); color: var(--motion-muted); }
-.reviewShare > summary > svg { flex: none; color: var(--motion-muted); }
-.reviewShare[open] > summary > svg { transform: rotate(180deg); }
-.reviewContribution { display: grid; justify-items: start; gap: var(--motion-space-12); padding-top: var(--motion-space-12); }
-.reviewContribution p { margin: 0; line-height: var(--motion-leading-body); }
 @media (max-width: 699px) {
   .reviewGrid .detailInfo { display: block; overflow: visible; }
   .reviewGrid .detailBody { overflow: visible; }
@@ -255,19 +223,14 @@
 .reviewModule .reviewMetadata { margin: 0; }
 .reviewModule .reviewMetadata > div { border: 0; padding-block: var(--motion-space-6); gap: var(--motion-space-12); }
 .reviewModule .reviewColors { margin-top: var(--motion-space-12); }
-.reviewModule.reviewMaterials { padding-inline: 0; border-radius: 0; background: transparent; }
-.reviewModule.reviewMaterials ul { margin-top: 0; }
-.reviewModule .guideLaunch { width: 100%; margin-top: var(--motion-space-16); }
 .reviewDetail .reviewCreation { padding-block: var(--motion-space-20); border-top: 1px solid var(--motion-border-subtle); border-bottom: 0; }
-.reviewDetail .reviewCreation header { display: flex; margin-bottom: var(--motion-space-12); }
-.reviewCreationActions { margin-top: var(--motion-space-12); }
+.reviewDetail .reviewCreation header { margin-bottom: var(--motion-space-12); }
 .reviewCreation .handoffSteps { margin-block: var(--motion-space-12) 0; }
 .reviewCreation .handoffActions { margin-bottom: 0; }
 .reviewCreation .handoffRecovery { margin-bottom: 0; }
 
 /* The fifth review promotes facts and the action, with materials inside handoff steps. */
 .reviewGrid .reviewSpecs { margin-block: 0 var(--motion-space-20); }
-.reviewModule > .guideLaunch { margin-top: 0; }
 .handoffMaterials > strong { font-weight: var(--motion-weight-medium); }
 .handoffMaterials > p { font-size: inherit; line-height: var(--motion-leading-body); margin-top: var(--motion-space-4); }
 @media (max-width: 699px) {

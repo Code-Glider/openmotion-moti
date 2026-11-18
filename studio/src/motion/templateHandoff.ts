@@ -1,5 +1,6 @@
 import { motionApi, type ProjectCatalog, type WorkspaceStatus } from './useWorkspace';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
+import { formatLocalizedTemplateHandoff } from '../../../shared/template-prompts';
 
 const enabledKey = 'motion.template-handoff.preview';
 const resultKey = 'motion.template-handoff.results';
@@ -92,6 +93,8 @@ export async function prepareTemplateProject(template: GalleryTemplate, original
 
 export function templateHandoffPrompt(template: GalleryTemplate, locale: string) {
   const editable = isEditableTemplate(template);
+  const localized = formatLocalizedTemplateHandoff(template, editable, locale);
+  if (localized !== undefined) return localized;
   return locale === 'zh-CN' ? `使用说明：请使用已连接的 OpenMotion 插件；未安装时先按 https://github.com/nexu-io/openmotion 安装并验证连接。
 指定模板：${template.title}（${template.id}）；资源类型：${editable ? '可编辑工程' : '参考创作，仅有参考视频与动效说明，没有原片工程'}。
 创作要求：先读取这条准确资源，${editable ? '基于完整模板创建独立工程，再按我的要求修改' : '根据参考和我的内容创建独立作品，不承诺精确复刻'}；保留已有工程。先核对产品名、功能文案；需要界面展示时核对截图或录屏，缺必要材料先说明。Logo可用文字品牌，未提供音频时静音。交付时返回准确工程链接，打开并检查自己的内容，后续在同一工程接着改。

@@ -47,6 +47,28 @@ it('keeps the four sections and exact reference identity in the instruction', ()
   expect(text).not.toContain('基于完整模板');
 });
 
+it.each([
+  ['ja', '使用方法：', '編集可能なプロジェクト', '参照動画'],
+  ['ko', '사용 안내:', '편집 가능한 프로젝트', '참고 영상'],
+  ['de', 'Anleitung:', 'Editierbares Projekt', 'Videoreferenz'],
+  ['fr', 'Instructions :', 'Projet modifiable', 'Vidéo de référence'],
+  ['es', 'Instrucciones:', 'Proyecto editable', 'Vídeo de referencia'],
+  ['it', 'Istruzioni:', 'Progetto modificabile', 'Video di riferimento'],
+  ['ru', 'Инструкции:', 'Редактируемый проект', 'Видео для примера'],
+  ['tr', 'Talimatlar:', 'Düzenlenebilir proje', 'referans video'],
+  ['pt-BR', 'Instruções:', 'Projeto editável', 'Vídeo de referência'],
+])('keeps the %s handoff in the UI language and distinguishes project and reference inputs', (locale, intro, editableLabel, referenceLabel) => {
+  const editable = templateHandoffPrompt(template, locale);
+  const reference = templateHandoffPrompt({ ...template, id: 'reference-id', hasHtmlProject: false }, locale);
+  expect(editable.startsWith(intro)).toBe(true);
+  expect(editable).toContain(template.id);
+  expect(editable).toContain(editableLabel);
+  expect(reference.startsWith(intro)).toBe(true);
+  expect(reference).toContain('reference-id');
+  expect(reference).toContain(referenceLabel);
+  expect(reference).not.toContain(editableLabel);
+});
+
 it('enables the accepted detail flow from the ordinary entry without a preview flag', () => {
   sessionStorage.clear();
   expect(templateHandoffEnabled()).toBe(true);

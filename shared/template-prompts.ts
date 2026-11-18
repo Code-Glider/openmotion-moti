@@ -18,6 +18,57 @@ export const templatePrompts: Record<string, string> = {
 /** Shared creation brief; source capabilities are resolved after the user submits it. */
 export function formatTemplatePrompt(template: { id: string; title: string }, locale = 'zh-CN'): string {
   const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
+  return fillTemplatePrompt(message, template);
+}
+
+function fillTemplatePrompt(message: string, template: { id: string; title: string }): string {
   const values = { installUrl: 'https://github.com/nexu-io/openmotion', name: template.title, id: template.id };
   return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);
+}
+
+const handoffBriefs: Record<string, { editable: string; reference: string }> = {
+  de: {
+    editable: 'Editierbares Projekt: Lies die ausgewählte Vorlage und erstelle daraus ein eigenes Projekt. Passe es an meine Anforderungen und Anhänge an. Behalte vorhandene Projekte und gib mir den Link zum neuen Projekt.',
+    reference: 'Videoreferenz ohne editierbares Original: Lies die Referenz und erstelle mit meinen Anforderungen und Anhängen ein eigenes Projekt. Versprich keine exakte Kopie. Behalte vorhandene Projekte und gib mir den Link zum neuen Projekt.',
+  },
+  fr: {
+    editable: 'Projet modifiable : lis le modèle sélectionné, crée un projet indépendant et adapte-le à mes exigences et pièces jointes. Préserve mes projets existants et donne-moi le lien du nouveau projet.',
+    reference: 'Vidéo de référence sans projet original modifiable : lis la référence et crée un projet indépendant avec mes exigences et pièces jointes, sans promettre une copie exacte. Préserve mes projets existants et donne-moi le lien du nouveau projet.',
+  },
+  es: {
+    editable: 'Proyecto editable: lee la plantilla seleccionada, crea un proyecto independiente y adáptalo a mis requisitos y archivos adjuntos. Conserva los proyectos existentes y dame el enlace al nuevo proyecto.',
+    reference: 'Vídeo de referencia sin proyecto original editable: lee la referencia y crea un proyecto independiente con mis requisitos y archivos adjuntos, sin prometer una copia exacta. Conserva los proyectos existentes y dame el enlace al nuevo proyecto.',
+  },
+  it: {
+    editable: 'Progetto modificabile: leggi il modello selezionato, crea un progetto indipendente e adattalo ai miei requisiti e allegati. Conserva i progetti esistenti e dammi il link al nuovo progetto.',
+    reference: 'Video di riferimento senza progetto originale modificabile: leggi il riferimento e crea un progetto indipendente con i miei requisiti e allegati, senza promettere una copia esatta. Conserva i progetti esistenti e dammi il link al nuovo progetto.',
+  },
+  ja: {
+    editable: '編集可能なプロジェクト：指定のテンプレートを確認し、別のプロジェクトを作成して、私の要望と添付素材に合わせて編集してください。既存のプロジェクトは残し、新しいプロジェクトのリンクを返してください。',
+    reference: '参照動画（編集可能な元プロジェクトなし）：動画を参照し、私の要望と添付素材を使って別のプロジェクトを作成してください。完全な再現は約束せず、既存のプロジェクトを残し、新しいプロジェクトのリンクを返してください。',
+  },
+  ko: {
+    editable: '편집 가능한 프로젝트: 지정한 템플릿을 확인하고 별도 프로젝트를 만든 뒤 내 요구사항과 첨부 자료에 맞게 편집해 주세요. 기존 프로젝트는 보존하고 새 프로젝트 링크를 알려 주세요.',
+    reference: '참고 영상(편집 가능한 원본 프로젝트 없음): 영상을 확인하고 내 요구사항과 첨부 자료를 사용해 별도 프로젝트를 만들어 주세요. 정확한 복제를 약속하지 말고 기존 프로젝트를 보존한 뒤 새 프로젝트 링크를 알려 주세요.',
+  },
+  ru: {
+    editable: 'Редактируемый проект: изучите выбранный шаблон, создайте отдельный проект и адаптируйте его с учётом моих требований и вложений. Сохраните существующие проекты и дайте ссылку на новый проект.',
+    reference: 'Видео для примера без редактируемого исходного проекта: изучите видео и создайте отдельный проект с учётом моих требований и вложений. Не обещайте точную копию, сохраните существующие проекты и дайте ссылку на новый проект.',
+  },
+  tr: {
+    editable: 'Düzenlenebilir proje: Seçilen şablonu inceleyin, ayrı bir proje oluşturun ve isteklerime ve eklerime göre uyarlayın. Mevcut projeleri koruyun ve yeni projenin bağlantısını paylaşın.',
+    reference: 'Düzenlenebilir özgün projesi olmayan referans video: Videoyu inceleyin ve isteklerimle eklerimi kullanarak ayrı bir proje oluşturun. Birebir kopya vaat etmeyin, mevcut projeleri koruyun ve yeni projenin bağlantısını paylaşın.',
+  },
+  'pt-br': {
+    editable: 'Projeto editável: consulte o modelo selecionado, crie um projeto independente e adapte-o aos meus requisitos e anexos. Preserve os projetos existentes e forneça o link para o novo projeto.',
+    reference: 'Vídeo de referência sem projeto original editável: consulte o vídeo e crie um projeto independente com meus requisitos e anexos, sem prometer uma cópia exata. Preserve os projetos existentes e forneça o link para o novo projeto.',
+  },
+};
+
+export function formatLocalizedTemplateHandoff(template: { id: string; title: string }, editable: boolean, locale: string): string | undefined {
+  const language = catalogLocale(Object.keys(templatePrompts), locale, 'en');
+  const brief = handoffBriefs[language];
+  if (!brief) return undefined;
+  const [connection, selection, , requirements] = templatePrompts[language].split('\n');
+  return fillTemplatePrompt([connection, selection, editable ? brief.editable : brief.reference, requirements, ''].join('\n'), template);
 }

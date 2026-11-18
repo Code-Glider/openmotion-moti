@@ -24,20 +24,20 @@ const GHOST_MID = getTimelineRowTop(3) + TRACK_H / 2;
 const ROW1_MID = getTimelineRowTop(1) + TRACK_H / 2;
 
 describe("Timeline ghost lane", () => {
-  it("draws one empty track below the last with a drop hint", async () => {
+  it("draws one empty track below the last without a persistent hint", async () => {
     const { root, ghost } = await mountThreeTracks({ onAssetDrop: vi.fn() });
-    expect(ghost()?.textContent).toBe("Drop media here");
+    expect(ghost()?.textContent).toBe("");
     expect(ghost()?.getAttribute("aria-hidden")).toBe("true");
     expect(ghost()?.style.top).toBe(`${getTimelineRowTop(3) + CLIP_Y}px`);
     expect(ghost()?.dataset.active).toBeUndefined();
     act(() => root.unmount());
   });
 
-  it("localizes the drop hint in the product language", async () => {
+  it("keeps the lane text-free in other product languages", async () => {
     const onAssetDrop = vi.fn();
     const { root, ghost } = await mountThreeTracks({ onAssetDrop });
     act(() => root.render(<I18nProvider initialLocale="de"><Timeline onAssetDrop={onAssetDrop} /></I18nProvider>));
-    expect(ghost()?.textContent).toBe("Medien hier ablegen");
+    expect(ghost()?.textContent).toBe("");
     act(() => root.unmount());
   });
 
@@ -66,7 +66,7 @@ describe("Timeline ghost lane", () => {
     act(() => root.unmount());
   });
 
-  it.each([0, 2])("lights up under clip c%i dragged into it", async (track) => {
+  it.each([0, 2])("uses an insertion line in place of the media hint for clip c%i", async (track) => {
     const { host, root, ghost } = await mountThreeTracks({
       onMoveElement: vi.fn(),
       onResizeElement: vi.fn(),
@@ -76,13 +76,13 @@ describe("Timeline ghost lane", () => {
     pointer(window, "pointermove", ROW1_MID);
     expect(ghost()?.dataset.active).toBeUndefined();
     await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
-    // A collision with row 1 may open a preview row. Aim at the rendered ghost,
-    // rather than the old bottom row's now-stale coordinates.
-    const ghostMid = Number.parseFloat(ghost()!.style.top) + TRACK_H / 2;
-    pointer(window, "pointermove", ghostMid);
+    pointer(window, "pointermove", GHOST_MID);
     await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
-    expect(ghost()?.dataset.active).toBe("true");
-    // Once the bottom insert is armed, its preview occupies the committed bottom-pad row.
+    expect(ghost()).toBeNull();
+    expect(host.querySelector<HTMLElement>('[data-testid="timeline-insert-line"]')?.style.top)
+      .toBe(`${getTimelineRowTop(3) - 0.5}px`);
+    pointer(window, "pointercancel", GHOST_MID);
+    expect(ghost()?.dataset.active).toBeUndefined();
     expect(ghost()?.style.top).toBe(`${getTimelineRowTop(3) + CLIP_Y}px`);
     act(() => root.unmount());
   });

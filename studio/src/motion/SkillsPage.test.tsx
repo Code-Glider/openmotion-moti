@@ -24,9 +24,10 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(122);
+  expect(motionSkills).toHaveLength(123);
   expect(motionSkills[0].id).toBe('motionmaxxing');
   expect(motionSkills[1].id).toBe('openmotion-growth-teardown');
+  expect(motionSkills[2].id).toBe('openmotion-design-styles');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
   // Skills without an upstream repository are OpenMotion Library Skills (library/skills/<id>).
   for (const skill of motionSkills) if (!skill.repository) expect(skill.id).toMatch(/^openmotion-[a-z0-9-]+$/);
@@ -49,6 +50,18 @@ it('presents the growth teardown as an OpenMotion skill', async () => {
   expect(text).toContain('Make a video with the OpenMotion "Growth Teardown" skill.');
   expect(text).toContain('Source: OpenMotion skill');
   expect(text).toContain('growth-teardown Skill');
+});
+
+it('presents the design style library with its upstream repository', async () => {
+  const write = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: write } });
+  act(() => root.render(<Host />));
+  act(() => button('Design style library').click());
+  expect(container.querySelector<HTMLAnchorElement>('a.om-skill-source')!.href).toBe('https://github.com/guanmo-ai/design-style');
+  await act(async () => button('Copy for Agent').click());
+  const text = write.mock.calls[0][0] as string;
+  expect(text).toContain('design-styles Skill');
+  expect(text).toContain('github.com/guanmo-ai/design-style');
 });
 
 it('filters by category and search', () => {

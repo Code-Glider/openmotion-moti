@@ -80,6 +80,7 @@ interface RenderLanesOptions {
   keyframeCache?: Map<string, KeyframeCacheEntry>;
   animations?: Map<string, GsapAnimation[]>;
   expandedClipIds?: string[];
+  selectedElementId?: string;
   selectedElementIds?: Set<string>;
   multiDragPreview?: MultiDragPreviewInput | null;
   draggedClip?: DraggedClipState | null;
@@ -144,7 +145,7 @@ function renderLanes(options: RenderLanesOptions = {}): {
             tracks,
             displayTrackOrder,
             laneCounts,
-            selectedElementId: null,
+            selectedElementId: next.selectedElementId ?? null,
             selectedElementIds: next.selectedElementIds ?? new Set(),
             expandedClipIds: new Set(next.expandedClipIds ?? []),
             collapsedGroupIds: new Set(),
@@ -162,7 +163,7 @@ function renderLanes(options: RenderLanesOptions = {}): {
           trackStyles={new Map()}
           groups={[]}
           laneCounts={laneCounts}
-          selectedElementId={null}
+          selectedElementId={next.selectedElementId ?? null}
           selectedElementIds={next.selectedElementIds ?? new Set()}
           hoveredClip={next.hoveredClip ?? null}
           renderClipContent={next.renderClipContent}
@@ -213,6 +214,24 @@ function beatHighlight(host: HTMLElement): HTMLElement | undefined {
     (div.style.boxShadow ?? "").includes("34,197,94"),
   );
 }
+
+it("preserves track names when the bottom visual track changes", () => {
+  const overlay = element("overlay", TRACK_A);
+  const main = element("main clip", TRACK_B);
+  const audio = { ...element("audio", 2), tag: "audio" };
+  const view = renderLanes({ elements: [overlay, main, audio] });
+  const headerText = () => [...view.host.querySelectorAll('[role="rowheader"]')]
+    .map((header) => header.textContent).join(" ");
+
+  expect(headerText()).toContain("main clip");
+  expect(headerText()).not.toContain("Main track");
+
+  view.rerender({ elements: [overlay, { ...main, track: 0 }, audio] });
+
+  expect(headerText()).toContain("overlay");
+  expect(headerText()).not.toContain("Main track");
+  act(() => view.root.unmount());
+});
 
 describe("TimelineLanes beat guide", () => {
   it("draws the beat highlight from snapGuide, not from the stale draggedClip prop", () => {
@@ -491,6 +510,23 @@ describe("TimelineLanes disclosure target", () => {
     expect(beforeLane?.style.transform).not.toBe(startOffset);
     act(() => view.root.unmount());
   });
+});
+
+it("previews editable main-track followers without selecting them", () => {
+  const main = { ...element("main", TRACK_B), domId: "main", duration: 5 };
+  const follower = { ...element("follower", TRACK_A), domId: "follower", start: 3 };
+  const locked = { ...element("locked", TRACK_A), domId: "locked", start: 1, timelineLocked: true };
+  const view = renderLanes({ elements: [main, follower, locked], selectedElementId: main.id });
+  const highlighted = () => [...view.host.querySelectorAll("[data-main-track-follower]")]
+    .map((el) => [el.getAttribute("data-el-id"), el.getAttribute("aria-pressed")]);
+
+  act(() => usePlayerStore.setState({ timelineLinkageEnabled: false }));
+  expect(highlighted()).toEqual([]);
+  expect(view.host.querySelector(".motion-timeline-follower-marker")).toBeNull();
+  act(() => usePlayerStore.setState({ timelineLinkageEnabled: true }));
+  expect(highlighted()).toEqual([["follower", "false"]]);
+  expect(view.host.querySelector('[data-el-id="follower"] .motion-timeline-follower-marker')?.getAttribute("aria-hidden")).toBe("true");
+  act(() => view.root.unmount());
 });
 
 describe("TimelineLanes selection", () => {

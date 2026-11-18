@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
-import type { TimelineElement } from "../store/playerStore";
+import { usePlayerStore, type TimelineElement } from "../store/playerStore";
 import type { DraggedClipState } from "./useTimelineClipDrag";
 import {
   commitDraggedClipMove,
@@ -1619,6 +1619,38 @@ describe("persistMoveEdits convergence", () => {
     expect(isStudioEditSaving()).toBe(false);
     reapply?.();
     expect(current.start).toBe(4);
+  });
+
+  it("keeps the rediscovered display row when the saved move emptied its source row", async () => {
+    const solo = el("solo", 1, 2, 2);
+    const elements = [el("top", 0, 0, 1), solo, el("peer", 2, 7, 2), el("bottom", 3, 11, 1)];
+    const store = usePlayerStore.getState();
+    let releaseSave!: () => void;
+    const pendingSave = new Promise<void>((resolve) => { releaseSave = resolve; });
+    store.setElements(elements);
+    try {
+      const persisted = persistMoveEdits(
+        [{ element: solo, updates: { start: 2, track: 2 }, persistTrack: 2 }],
+        {
+          elements,
+          trackOrder: [0, 1, 2, 3],
+          updateElement: store.updateElement,
+          onMoveElements: () => pendingSave,
+        },
+        undefined,
+        "lane-reorder",
+      );
+      // Discovery removes the vacated row before the save callback reasserts.
+      store.setElements(normalizeToZones(usePlayerStore.getState().elements));
+      releaseSave();
+      await expect(persisted).resolves.toBe(true);
+      expect(usePlayerStore.getState().elements.find((element) => element.id === "solo"))
+        .toMatchObject({ track: 1, authoredTrack: 2 });
+      expect(usePlayerStore.getState().elements.find((element) => element.id === "bottom")?.track)
+        .toBe(2);
+    } finally {
+      store.reset();
+    }
   });
 
   it("reasserts a saved lane after a stale runtime sync", async () => {
