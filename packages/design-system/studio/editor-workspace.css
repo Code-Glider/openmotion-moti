@@ -171,6 +171,8 @@
 
 .motion-track-badge[data-main-track] { color: var(--motion-accent); background: var(--motion-accent-soft); }
 
+:root[data-motion-ui] .motion-timeline-icon-controls > div { padding-block: var(--motion-space-4); }
+
 /* Timeline toggles share icon scale and ink; their background conveys on/off. */
 :root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button {
   width: var(--motion-space-28);
