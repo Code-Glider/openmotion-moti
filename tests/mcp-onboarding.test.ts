@@ -1,3 +1,4 @@
+import { reviewCommentsPrompt } from '../shared/review-comments.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -17,13 +18,25 @@ test('every capability and benefit has a real shared icon', () => {
   for (const { icon } of [...mcpCapabilities, ...mcpScenarios, ...mcpBenefits]) assert.ok(sprite.includes(`id="ri-${icon}"`), icon);
 });
 
+test('review comments and their handbook scenario are localized across all interface languages', () => {
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/review-ui.json', import.meta.url), 'utf8'));
+  assert.equal(Object.keys(translations).length, 10);
+  const keys = Object.keys(translations['zh-CN']).sort();
+  const scenario = mcpScenarios.find(item => item.id === 'review-comments')!;
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    assert.deepEqual(Object.keys(values).sort(), keys, language);
+    for (const key of [scenario.title, scenario.description, ...keys]) assert.ok(values[key]?.trim(), `${language}: ${key}`);
+    assert.equal(values.Open, undefined, 'Review status must not override the general Open action');
+  }
+});
+
 test('handbook scenarios compose public tools and keep their copyable instructions aligned', () => {
   const names = new Set(phase1Tools.map(tool => tool.name));
   for (const scenario of mcpScenarios) {
     assert.ok(scenario.title && scenario.description);
     for (const tool of scenario.tools) {
       assert.ok(names.has(tool), tool);
-      assert.ok((scenario.id === 'asset-naming' ? assetNamingInstruction : platformExportExample('en')).includes(tool), tool);
+      assert.ok((scenario.id === 'review-comments' ? reviewCommentsPrompt() : scenario.id === 'asset-naming' ? assetNamingInstruction : platformExportExample('en')).includes(tool), tool);
     }
   }
 });

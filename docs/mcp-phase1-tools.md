@@ -26,7 +26,7 @@ Production reads a prebuilt browser bundle, three integrity-locked builtin MP4 p
 
 | 公开 Tool | 复用来源 | 本次实现到的边界 |
 | --- | --- | --- |
-| openmotion_manage_project | Shared project management service | Read saved title/path, rename with conflict protection, duplicate independently, or reveal the local directory |
+| openmotion_manage_project | Shared project management and review services | Manage local projects and revision-guarded time/element review comments |
 | openmotion_project_archive | Shared project archive service | Export selected/all projects and import ZIP copies with bounded validation and request deduplication; see [Project archives](project-archives.md) |
 | openmotion_assets_use | Workspace assets, Brand Kits and Model Gateway | Style-only Brand Kit commands, list/get, bounded media read, upload, generate/jobs/status/cancel/retry_save, rename/trash/restore, immutable versions/references and explicit version import into projects; see [Assets](assets.md) |
 | openmotion_assets | Compatibility name | The original operations plus save-only recovery, shared records and request identities |
@@ -80,6 +80,8 @@ The `work_generation_stage` event follows started, generated, edited and exporte
 ## 各 Tool 的输入、返回与失败边界
 
 ### openmotion_manage_project
+
+`action=comments` exposes `operation=list|create|update|delete` for local review records. See [Video review comments](#video-review-comments) for time/element anchors, revision guards, retries and the shared Studio/Agent workflow.
 
 Every action requires an explicit `projectId`. `info` returns the persisted `title`, absolute project `path` and server `platform`; clients can copy that path to their own clipboard. `rename` requires `title`, `expectedTitle` from info and a stable `requestId`. A changed title returns `PROJECT_NAME_CONFLICT`; a reused request with different inputs returns `REQUEST_ID_CONFLICT`. Renaming clears the built-in localized title without moving the directory or changing source versions.
 
@@ -285,3 +287,27 @@ For NEW generated media, use openmotion_media_use inspect/reference/models to di
 `openmotion_edit_project` accepts optional `namingLanguage` and `assetNames: [{path, name}]` with its existing `expectedRevision`, `expectedVersionId` and stable `requestId` guards. Use `files: []` for a metadata-only update; the batch is atomic, versioned and retry-safe. Set an unpinned language before assigning new names; change a saved language only on explicit user instruction. A display rename retains original-name metadata, stored bytes, paths, IDs and composition references. Unsupported or missing paths reject the entire batch. Reread after a version conflict instead of overwriting newer names.
 
 Imports accept readable `items[].name`; library generation/import accepts `name`. `import_to_project` defaults to the saved library name, including later library renames; provide `name` only for an explicit rename or missing-name repair. Project captions omit known media extensions and disambiguate duplicates with display-only numeric suffixes. UUID storage names fall back to parsed font metadata or localized type/sequence labels. Platform fallbacks cover Studio's eleven languages, with English for unsupported languages; the Agent can supply names in other languages. See the [shared Agent naming contract](../skills/openmotion-production/references/materials.md#asset-naming).
+
+
+## Video review comments
+
+Use `openmotion_manage_project` with `action: "comments"` and an explicit `projectId`:
+
+| Operation | Required fields | Result |
+| --- | --- | --- |
+| `list` | None beyond action/project/operation | `comments` and the current `sourceRevision` |
+| `create` | `requestId`, `expectedRevision`, `text`, `anchor` | New `comment` and current list |
+| `update` | `requestId`, `commentId`, `expectedCommentRevision`, `text` and/or `status` | Updated record; status is `open` or `resolved` |
+| `delete` | `requestId`, `commentId`, `expectedCommentRevision` | `deletedId` and current list |
+
+Creation uses the current saved source revision. `anchor.scope` is `project`, `frame` or `element`; `compositionPath` is project-relative. Frame/element anchors require `time` in that composition's seconds. Element anchors also retain `element.handle`, `sourceFile`, `label`, `tagName`, optional DOM/hf IDs, selector/occurrence, a bounded text excerpt and bounds. Whole-video anchors omit time and element. Studio captures this context after flushing pending native saves; source changes before submission produce `VERSION_CONFLICT`.
+
+Frame and element anchors may include `annotation: { version: 1, coordinateSpace: "normalized", width, height, marks }`. Width and height record the captured composition dimensions, each greater than zero and at most 16,384. Each mark has `kind` and `points`, with x/y coordinates in [0, 1] measured from the composition's top-left. `pen` uses 2–1,000 points; `rectangle` and `ellipse` use two opposite corners; `arrow` uses a start and arrowhead point; `text` uses one point and a nonempty `text` label of at most 160 characters. At most 20 marks and 2,048 total points are accepted per comment. Markup belongs to the recorded frame/revision, never the editor viewport or rendered video. Anchors are immutable; text and status remain editable.
+
+In Studio, use **Comment here** or **Draw a comment** in the existing playback controls. Click the frame to place a comment, or draw directly with the pen. Releasing a stroke opens a small anchored, non-modal composer with the captured time and element context. Tool activation and composing never shrink the video or add a player row. Playback pauses; pending native saves finish before capture. **More review options** offers whole-video feedback. **Continue drawing** hides the card while retaining the written feedback; **More annotation tools** offers rectangle, arrow, ellipse, text, redo and clear. Text labels are entered in the card, then placed on the frame. Save the note in the floating card. Undo/redo and clear affect only the draft marks. Leaving the captured time hides the overlay and provides **Return to annotated frame**; resizing or zooming preserves normalized placement. Clicking a saved comment restores its time and markup. Source-revision changes prevent overlaying old marks on new artwork; explicit recapture retains the comment text and clears the old marks. Saved vector previews and the Agent brief retain the original geometry. These previews show markup only, not a stored screenshot of the video. The interaction was reviewed against [OpenDesign's drawing overlay](https://github.com/nexu-io/open-design/blob/main/apps/web/src/components/PreviewDrawOverlay.tsx); OpenMotion's implementation adds composition-local time and revision guards.
+
+Each record has a stable UUID, project ID, comment revision, text, open/resolved status, original `sourceRevision`, anchor and creation/update timestamps. Text is limited to 8,000 characters and each project to 2,000 current comments. `COMMENT_CONFLICT` requires re-reading before retrying. Keep the same request ID for the same write; changed requests require a new ID. Receipts and records commit atomically, so replay cannot undo later status changes or resurrect deleted records. These operations do not change source files, content versions, editor selection or rendered output.
+
+The player’s **Review list** opens the Comments sidebar. Its compact cards show the time, feedback and completion action; saved context and deletion are under each card’s menu. Filtering and batch actions appear only once comments exist. **Copy pending for Agent** copies all open records by default; **Choose comments** enables an explicit subset. The list can also seek/select, mark complete and reopen records. The MCP handbook uses the same handoff builder. Re-read selected records and the latest project before editing; compare the original revision and source/element identity. Missing or changed targets require review, not guessed reattachment. Use `openmotion_edit_project` with current revision/version guards for actual source changes; verify the result before resolving each addressed comment. Delete only when requested. Agent completion does not establish human acceptance.
+
+Comments remain local workspace metadata, survive video edits/restores and project Trash, and are removed on permanent project deletion. Independent copies and project ZIPs omit comments. Copying requires a client clipboard or manual text selection and does not launch an Agent. Replies, remote collaboration, captured-frame image attachments and automatic anchor migration are outside this contract.

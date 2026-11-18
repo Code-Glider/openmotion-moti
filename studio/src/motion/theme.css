@@ -253,10 +253,7 @@ button, input, select, textarea { font-family: inherit; }
   box-shadow: var(--motion-shadow-sm);
 }
 
-/* Compact editor actions; application navigation lives above the project toolbar. */
-.motion-studio-header.motion-studio-header-compact { height: var(--motion-space-32); min-height: var(--motion-space-32); padding-block: var(--motion-space-2); display: flex; flex-wrap: nowrap; gap: var(--motion-space-12); }
-.motion-studio-header.motion-studio-header-compact > div { min-width: 0; width: auto; }
-.motion-studio-header.motion-studio-header-compact > div:last-child { flex-wrap: nowrap; gap: 16px; }
+/* Compact header layout is maintained in application.css. */
 .motion-studio-header-compact .motion-header-history-actions,
 .motion-studio-header-compact .motion-header-history-actions > .motion-history-actions { gap: 4px; }
 .motion-studio-header-compact .motion-header-history-actions { position: relative; }
@@ -267,12 +264,8 @@ button, input, select, textarea { font-family: inherit; }
 .motion-workspace-actions .motion-icon { color: var(--motion-strong); }
 /* Measure the editor host, including when it sits beside an open sidebar. */
 @container (max-width: 700px) {
-  .motion-studio-header.motion-studio-header-compact {
-    gap: 8px;
-  }
   .motion-studio-header-compact .motion-header-history-actions,
   .motion-studio-header-compact .motion-template-label { display: none; }
-  .motion-studio-header.motion-studio-header-compact > div:first-child { gap: 6px; }
   .motion-studio-header-compact .motion-workspace-actions .motion-button {
     width: 28px;
     padding: 0;

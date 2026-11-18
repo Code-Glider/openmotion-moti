@@ -12,6 +12,9 @@ import { useNLEContext } from "./NLEContext";
 import { AssetPreviewOverlay } from "./AssetPreviewOverlay";
 import { PreviewGuides } from "../editor/PreviewGuides";
 import { PreviewOverlayProvider } from "../editor/PreviewOverlayProvider";
+import { ReviewComposerOverlay } from '../../motion/ReviewComposerOverlay';
+import { ReviewAnnotationOverlay } from '../../motion/ReviewAnnotationOverlay';
+import { ReviewPlayerControls } from '../../motion/ReviewPlayerControls';
 
 function subscribeFullscreen(cb: () => void) {
   document.addEventListener("fullscreenchange", cb);
@@ -169,6 +172,7 @@ export function PreviewPane({
         {!empty && <PreviewOverlayProvider>
           <PreviewGuides />
           {!isFullscreen && previewOverlay}
+          {mvp && !isFullscreen && <><ReviewAnnotationOverlay /><ReviewComposerOverlay /></>}
         </PreviewOverlayProvider>}
         {empty && <PreviewEmptyState />}
       </div>
@@ -178,6 +182,7 @@ export function PreviewPane({
           <CompositionBreadcrumb stack={compositionStack} onNavigate={handleNavigateComposition} />
         )}
         <PlayerControls
+          reviewControls={mvp && !isFullscreen ? <ReviewPlayerControls projectId={projectId} disabled={timelineDisabled || compositionLoading} /> : undefined}
           onTogglePlay={togglePlay}
           onSeek={seek}
           disabled={timelineDisabled}

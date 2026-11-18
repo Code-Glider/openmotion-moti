@@ -34,6 +34,15 @@
 [data-motion-studio][data-theme="paper"] .motion-preview-transport { --preview-progress-fill: var(--motion-neutral-n11); }
 [data-motion-studio] .motion-autosave-status { color: var(--motion-muted); font-size: var(--motion-text-xs); font-variant-numeric: tabular-nums; }
 [data-motion-studio] .motion-autosave-status[data-state="error"] { color: var(--motion-danger); }
+/* Dual-tone review ink remains legible over authored artwork in either theme. */
+[data-motion-studio] .motion-review-player { border-radius: var(--motion-radius-md); background: var(--motion-hover); }
+[data-motion-studio] .motion-review-composer { max-height: inherit; overflow-y: auto; background: var(--motion-bg); color: var(--motion-text); border: 1px solid var(--motion-border-subtle); border-radius: var(--motion-radius-lg); box-shadow: var(--motion-shadow-lg); }
+[data-motion-studio] .motion-review-hint { background: var(--motion-bg); color: var(--motion-muted); box-shadow: var(--motion-shadow-sm); }
+[data-motion-studio] .motion-review-pin { fill: var(--motion-selected); stroke: var(--motion-panel); stroke-width: 2px; }
+[data-motion-studio] .motion-review-label-input { background: var(--motion-bg); border-radius: var(--motion-radius-md); }
+[data-motion-studio] .om-review-annotation-ink { stroke: var(--motion-selected); }
+[data-motion-studio] .om-review-annotation-outline { stroke: var(--motion-panel); }
+[data-motion-studio] .om-review-annotation-label { fill: var(--motion-selected); stroke: var(--motion-panel); stroke-width: 2px; paint-order: stroke; font-family: var(--motion-font-sans); font-weight: var(--motion-weight-semibold); }
 [data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: motion-autosave-spin var(--motion-duration-loading) linear infinite; }
 @keyframes motion-autosave-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { [data-motion-studio] .motion-autosave-status[data-state="saving"] > svg { animation: none; } }

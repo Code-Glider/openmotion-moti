@@ -699,7 +699,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'package.json', 'package-lock.json',
     'skills/openmotion-recreate/assets/reconstruction.js',
     'server.ts', 'browser.ts', 'workspace.ts', 'mcp.ts', 'mcp-tools.ts', 'editor-runtime.ts',
-    'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'project-asset-names.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
+    'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'review-comments.ts', 'project-asset-names.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
     'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts',
     'scripts/runtime-assets.mjs', 'scripts/vision-runtime.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/install-public-skill.ts', 'scripts/recover-workspace-lock.ts', 'scripts/cleanup-harness-bundles.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',

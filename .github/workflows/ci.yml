@@ -299,6 +299,12 @@ jobs:
       - name: Transcript workflow browser regression
         if: steps.scope.outputs.full == 'true'
         run: node tests/transcript-browser.mjs "$RUNNER_TEMP/transcript-workflow"
+      - name: Video review comments and annotation regression
+        if: steps.scope.outputs.full == 'true'
+        timeout-minutes: 5
+        run: |
+          node --test tests/review-comments.test.ts
+          node --test tests/review-comments-browser.ts
       - name: Platform export Studio and MCP end-to-end regression
         if: steps.scope.outputs.full == 'true'
         timeout-minutes: 10
