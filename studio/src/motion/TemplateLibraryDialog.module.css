@@ -65,7 +65,7 @@
   box-shadow: var(--motion-shadow-sm);
 }
 .recoveryStatusCopy h2 { margin: 0; color: var(--motion-strong); font-size: var(--motion-text-step-28); font-weight: var(--motion-weight-semibold); line-height: var(--motion-leading-tight); overflow-wrap: anywhere; }
-.recoveryStatusCopy p, .recoveryIntro p, .recoveryHeading p { margin: var(--motion-space-6) 0 0; color: var(--motion-muted); font-size: var(--motion-text-body); line-height: var(--motion-leading-body); }
+.recoveryStatusCopy p, .recoveryIntro p { margin: var(--motion-space-6) 0 0; color: var(--motion-muted); font-size: var(--motion-text-body); line-height: var(--motion-leading-body); }
 .recoverySearchAction { max-width: 100%; }
 .library .recoverySearchAction > button { white-space: normal; min-height: var(--motion-control); border-radius: var(--motion-radius-full); padding-inline: var(--motion-space-16); }
 .recoveryBody { margin-top: var(--motion-space-28); }
@@ -89,7 +89,7 @@
   color: var(--motion-accent);
   background: var(--motion-accent-soft);
 }
-.recoveryIntro h3, .recoveryHeading h3 { margin: 0; color: var(--motion-strong); font-size: var(--motion-text-step-18); font-weight: var(--motion-weight-semibold); line-height: var(--motion-leading-tight); }
+.recoveryIntro h3 { margin: 0; color: var(--motion-strong); font-size: var(--motion-text-step-18); font-weight: var(--motion-weight-semibold); line-height: var(--motion-leading-tight); }
 .library .recoveryIntro > button { max-width: 26ch; min-height: var(--motion-space-40); white-space: normal; padding-inline: var(--motion-space-12); border-radius: var(--motion-radius-lg); }
 .recoveryIntro > button svg { flex: none; }
 .searchRecovery[data-form="open"] { margin-top: var(--motion-space-24); }
@@ -109,21 +109,23 @@
   padding: var(--motion-space-24);
   border: 1px solid var(--library-line);
   border-radius: var(--motion-radius-step-18);
-  background: var(--motion-raised);
+  background: var(--color-template-surface);
   box-shadow: var(--motion-shadow-sm);
 }
-.recoveryHeading, .recoveryFooter { display: flex; justify-content: space-between; gap: var(--motion-space-16); }
-.recoveryHeading { align-items: flex-start; }
+.recoveryHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--motion-space-16); }
+.recoveryHeading p { margin: 0; }
 .recoveryHeading > button { flex: none; }
-.recoveryFooter { align-items: center; flex-wrap: wrap; padding-top: var(--motion-space-12); border-top: 1px solid var(--library-line); }
+.library .recoveryDismiss { background: var(--color-template-controls-bg); }
+.library .recoveryDismiss:hover { background: var(--color-template-hover); }
+.recoveryFooter { display: grid; gap: var(--motion-space-8); padding-top: var(--motion-space-12); border-top: 1px solid var(--library-line); }
+.recoveryPrimary { composes: om-media-detail-actions from global; }
+.recoveryFooter > .recoveryPrimary { margin: 0; }
+.recoveryPrimary > button { white-space: normal; }
+.library .recoveryFooter .repositoryLink { white-space: normal; text-align: start; }
 .recoveryActions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8); }
-.recoveryForm label { display: grid; gap: var(--motion-space-8); font-size: var(--motion-text-body); font-weight: var(--motion-weight-medium); }
-.recoveryForm :is(input, textarea) { width: 100%; min-width: 0; padding: var(--motion-space-12); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-lg); color: var(--motion-text); background: var(--motion-panel); font: inherit; font-weight: var(--motion-weight-regular); }
-.recoveryForm textarea { resize: vertical; min-height: var(--motion-space-64); line-height: var(--motion-leading-body); }
+.library[data-motion-template-library] .recoveryField { padding: var(--motion-space-10) var(--motion-space-12); border-radius: var(--motion-radius-lg); background: var(--color-template-prompt-bg); }
+.recoveryField textarea { resize: vertical; min-height: var(--motion-space-64); line-height: var(--motion-leading-body); }
 .recoveryNote { margin: 0; color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-prose); }
-.recoveryNote a { display: inline-flex; align-items: center; gap: var(--motion-space-4); text-decoration: underline; text-underline-offset: .18em; }
-.library[data-motion-template-library] .recoveryTextButton { border-color: transparent; background: transparent; }
-.library[data-motion-template-library] .recoveryTextButton:hover:not(:disabled) { background: var(--motion-hover); }
 
 @media (max-width: 699px) {
   .searchRecovery { width: min(100% - var(--motion-space-32), 640px); margin: var(--motion-space-24) auto var(--motion-space-32); }

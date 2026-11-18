@@ -79,9 +79,9 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
   }
   const form = mode && <form aria-labelledby={formTitleId} className={styles.recoveryForm} onSubmit={event => { event.preventDefault(); void copy(); }}>
     <div className={styles.recoveryHeading}>
-      <div><h3 id={formTitleId}>{t(mode === 'reference' ? 'Add your reference' : 'Describe your video')}</h3>
-        <p>{t('Copy the request, then paste it into the chat where you use OpenMotion and send it to start.')}</p></div>
-      {props.home ? <button type="button" className="om-button om-icon-button" onClick={back} aria-label={t('Close')}><MotionIcon name="close" size={16} /></button>
+      <div><h3 id={formTitleId} className="om-media-detail-title">{t(mode === 'reference' ? 'Add your reference' : 'Describe your video')}</h3>
+        <p className={styles.description}>{t('Copy the request, then paste it into the chat where you use OpenMotion and send it to start.')}</p></div>
+      {props.home ? <button type="button" className={`${styles.iconButton} ${styles.recoveryDismiss}`} onClick={back} aria-label={t('Close')}><MotionIcon name="close" size={20} /></button>
         : <button type="button" className="om-button" onClick={back} disabled={copying}>{t('Back')}</button>}
     </div>
     {mode === 'reference' && <>
@@ -89,23 +89,28 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
         <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'link'} disabled={copying} onClick={() => { setSource('link'); setManual(''); }}>{t('Video link')}</button>
         <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'local'} disabled={copying} onClick={() => { setSource('local'); setManual(''); }}>{t('Local video')}</button>
       </div>
-      {source === 'link' ? <label>{t('Reference video')}<input autoFocus autoComplete="off" type="url" required maxLength={2000} value={reference} disabled={copying} onChange={event => { setReference(event.target.value); setManual(''); }} placeholder="https://…" /></label>
+      {source === 'link' ? <label className="om-label">{t('Reference video')}<span className={`om-field ${styles.recoveryField}`}><input autoFocus autoComplete="off" type="url" required maxLength={2000} value={reference} disabled={copying} onChange={event => { setReference(event.target.value); setManual(''); }} placeholder="https://…" /></span></label>
         : <p className={styles.recoveryNote}>{t('Attach the video in your Agent before sending.')}</p>}
     </>}
-    <label key={mode}>{t(mode === 'describe' ? 'What video do you want to make?' : 'What would you like to keep or change? (optional)')}
-      <textarea autoFocus={mode === 'describe'} maxLength={1000} required={mode === 'describe'} rows={3}
-        value={mode === 'describe' ? description : referenceNotes} disabled={copying} onChange={event => {
-          const update = mode === 'describe' ? setDescription : setReferenceNotes;
-          update(event.target.value); setManual('');
-        }} /></label>
-    {manual && <label>{t('Creation instruction')}<textarea className={styles.manualCopy} readOnly value={manual} rows={5} onFocus={event => event.target.select()} /></label>}
+    <label key={mode} className="om-label">{t(mode === 'describe' ? 'What video do you want to make?' : 'What would you like to keep or change? (optional)')}
+      <span className={`om-field ${styles.recoveryField}`}>
+        <textarea autoFocus={mode === 'describe'} maxLength={1000} required={mode === 'describe'} rows={3}
+          value={mode === 'describe' ? description : referenceNotes} disabled={copying} onChange={event => {
+            const update = mode === 'describe' ? setDescription : setReferenceNotes;
+            update(event.target.value); setManual('');
+          }} />
+      </span>
+    </label>
+    {manual && <label className="om-label">{t('Creation instruction')}<span className={`om-field ${styles.recoveryField}`}><textarea readOnly value={manual} rows={5} onFocus={event => event.target.select()} /></span></label>}
     <div className={styles.recoveryFooter}>
-      <div className={styles.recoveryActions}>
-        <button className="om-button" data-primary disabled={copying || !valid}><MotionIcon name="copy" size={16} />{t('Copy request')}</button>
-        <button type="button" className={`om-button ${styles.recoveryTextButton}`} disabled={copying} onClick={() => choose(mode === 'reference' ? 'describe' : 'reference')}>
-          {t(mode === 'reference' ? 'Describe your video' : 'Add your reference')}</button>
+      <div className={styles.recoveryPrimary}>
+        <button type="submit" className="om-button" data-primary disabled={copying || !valid}>{t('Copy request')}<MotionIcon name="copy" size={16} /></button>
       </div>
-      <p className={styles.recoveryNote}><a href="?page=mcp" target="_blank" rel="noopener noreferrer">{t('Connect an Agent')}<MotionIcon name="arrow-up-right" size={14} /></a></p>
+      <div className={styles.resourceLinks}>
+        <button type="button" className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={copying} onClick={() => choose(mode === 'reference' ? 'describe' : 'reference')}>
+          {t(mode === 'reference' ? 'Describe your video' : 'Add your reference')}</button>
+        <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href="?page=mcp" target="_blank" rel="noopener noreferrer">{t('Connect an Agent')}<MotionIcon name="arrow-up-right" size={14} /></a>
+      </div>
     </div>
   </form>;
   if (props.home) return form;

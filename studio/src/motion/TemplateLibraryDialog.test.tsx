@@ -89,10 +89,15 @@ it('keeps the search in the header and preserves filters when clearing the keywo
   expect(cards()).toEqual(['one']);
   expect(events('template_search_result').at(-1)).toMatchObject({ search_keyword: 'Figma', result_count: 1 });
 });
-it('opens the reference-link form from the library home without creating a search', async () => {
+it('opens the reference-link form from each category without changing browsing or creating a search', async () => {
   await mount();
+  const actionLabel = 'Paste a video link to make your own';
+  for (const category of ['All', 'TOP 100 brands', 'Product demos & explainers', 'Brand & company films']) {
+    await act(async () => button(category).click());
+    expect(button(actionLabel)).toBeDefined();
+  }
   const intro = host.querySelector('.om-gallery-intro')!;
-  const trigger = button('Paste a video link to make your own', intro);
+  const trigger = button(actionLabel, intro);
   const actions = intro.querySelector('.om-gallery-intro-actions')!;
   expect(actions.querySelector('a')?.textContent).toBe('Submit video');
   expect(actions.nextElementSibling).toBe(trigger);
@@ -118,6 +123,7 @@ it('opens the reference-link form from the library home without creating a searc
   expect(host.querySelector('dialog[data-search-recovery]')).toBeNull();
   expect(document.activeElement).toBe(trigger);
   expect(cards()).toEqual(initialCards);
+  expect(button('Brand & company films').getAttribute('aria-pressed')).toBe('true');
   expect(searchInput().value).toBe('');
 });
 it('commits Enter and debounce once, never commits IME text, and counts A to B to A as three searches', async () => {
@@ -184,9 +190,11 @@ it('keeps description inside the creation path and hides unavailable request int
   expect(button('Describe your video', recovery())).toBeUndefined();
   await act(async () => button('Make a video from a reference', recovery()).click());
   await act(async () => button('Describe your video', recovery()).click());
-  expect(button('Copy request', recovery()).disabled).toBe(true);
+  const copyRequest = button('Copy request', recovery());
+  expect(copyRequest.disabled).toBe(true);
+  expect(copyRequest.parentElement?.nextElementSibling?.textContent).toContain('Connect an Agent');
   await fill(recovery().querySelector('textarea')!, 'An original launch film');
-  await act(async () => button('Copy request', recovery()).click());
+  await act(async () => copyRequest.click());
   expect(events('template_search_handoff_result').at(-1)).toMatchObject({ source_kind: 'description', handoff_status: 'clipboard_written' });
   expect(button('Request a template', recovery())).toBeUndefined();
   expect(JSON.stringify(tracked)).not.toContain('An original launch film');
