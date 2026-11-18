@@ -26,7 +26,7 @@ it("persists independent preferences, fences competing clients and replays origi
     };
     expect(db.execute("workspace_preferences", {})).toEqual({
       version: 0,
-      value: { theme: "light", layout: "edit", locale: "zh-CN" },
+      value: { theme: "light", layout: "edit", locale: "zh-CN", embeddedTheme: "system" },
     });
     const intent = {
       requestId: randomUUID(),
@@ -94,7 +94,9 @@ it("upgrades schema5 without rewriting old preference JSON or receipt bytes, the
     const raw = new DatabaseSync(join(root, "workspace.sqlite"));
     try {
       // Reconstruct the accepted schema5 layout and original response, not a new-format replay.
-      raw.exec("ALTER TABLE preferences DROP COLUMN locale; PRAGMA user_version=5");
+      raw.exec(
+        "ALTER TABLE preferences DROP COLUMN embedded_theme; ALTER TABLE preferences DROP COLUMN locale; PRAGMA user_version=5",
+      );
       const original = { version: receipt.version, value: intent.value };
       const originalFingerprint = createHash("sha256")
         .update(JSON.stringify(["workspace_configure", intent]))
@@ -106,7 +108,7 @@ it("upgrades schema5 without rewriting old preference JSON or receipt bytes, the
       const receipts = raw.prepare("SELECT * FROM requests ORDER BY id").all();
       const stored = raw.prepare("SELECT version,value FROM preferences").get();
       db = new Workspace(root);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(6);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
       expect(raw.prepare("SELECT version,value FROM preferences").get()).toEqual(stored);
       expect(raw.prepare("SELECT * FROM requests ORDER BY id").all()).toEqual(receipts);
       expect(db.execute("workspace_configure", intent)).toEqual(original);
@@ -166,13 +168,107 @@ it("upgrades accepted schema4 atomically without changing content, history, sele
       const before = rows();
       db = new Workspace(root);
       expect(rows()).toEqual(before);
-      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(6);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
       expect(db.execute("workspace_preferences", {}).value).toEqual({
         theme: "light",
         layout: "edit",
         locale: "zh-CN",
+        embeddedTheme: "system",
       });
       expect(db.execute("artifact_create", command)).toEqual(artifact);
+    } finally {
+      raw.close();
+    }
+  } finally {
+    db.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("upgrades schema6 byte-preserving, separates embedded choices and retains omitted fields through competing writes and cold replay", () => {
+  const root = mkdtempSync(join(tmpdir(), "embedded-theme-upgrade-"));
+  let db = new Workspace(root);
+  try {
+    const session = db.execute("session_create", { requestId: randomUUID(), title: "Keep", mode: "motion" });
+    const artifact = db.execute("artifact_create", {
+      requestId: randomUUID(),
+      sessionId: session.id,
+      title: "Keep",
+      files: initialFiles(),
+    });
+    const owner = { sessionId: session.id, artifactId: artifact.id };
+    const original = {
+      requestId: randomUUID(),
+      expectedVersion: 0,
+      value: { theme: "dark" as const, layout: "edit" as const, locale: "de" as const },
+    };
+    const accepted = db.execute("workspace_configure", original),
+      receipt = { version: accepted.version, value: original.value },
+      observation = db.execute("workspace_observe", {}),
+      project = db.execute("project_read", owner),
+      versions = db.execute("project_versions", owner);
+    db.close();
+    const raw = new DatabaseSync(join(root, "workspace.sqlite"));
+    try {
+      raw.exec("ALTER TABLE preferences DROP COLUMN embedded_theme; PRAGMA user_version=6");
+      raw.prepare("UPDATE requests SET result=? WHERE id=?").run(JSON.stringify(receipt), original.requestId);
+      const tables = raw
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name!='preferences' ORDER BY name")
+        .all()
+        .map((r) => String(r.name));
+      const rows = () => tables.map((name) => raw.prepare(`SELECT * FROM ${name}`).all());
+      const before = rows(),
+        stored = raw.prepare("SELECT version,value,locale FROM preferences").get();
+      db = new Workspace(root);
+      expect(raw.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
+      expect(rows()).toEqual(before);
+      expect(raw.prepare("SELECT version,value,locale FROM preferences").get()).toEqual(stored);
+      expect(db.execute("workspace_configure", original)).toEqual(receipt);
+      const initial = db.execute("workspace_preferences", {});
+      expect(initial).toEqual({ version: accepted.version, value: { ...original.value, embeddedTheme: "system" } });
+      const embedded = {
+        requestId: randomUUID(),
+        expectedVersion: initial.version,
+        value: { ...initial.value, embeddedTheme: "light" as const },
+      };
+      const saved = db.execute("workspace_configure", embedded);
+      const peer = new Workspace(root);
+      try {
+        expect(() => peer.execute("workspace_configure", { ...embedded, requestId: randomUUID() })).toThrow("changed");
+        const later = peer.execute("workspace_configure", {
+          requestId: randomUUID(),
+          expectedVersion: saved.version,
+          value: { theme: "system", layout: "preview" },
+        });
+        expect(later.value).toEqual({ theme: "system", layout: "preview", locale: "de", embeddedTheme: "light" });
+        expect(db.execute("workspace_configure", embedded)).toEqual(saved);
+        expect(db.execute("workspace_preferences", {})).toEqual(later);
+        expect(
+          db.execute("workspace_configure", {
+            requestId: randomUUID(),
+            expectedVersion: later.version,
+            value: later.value,
+          }),
+        ).toEqual(later);
+        expect(() =>
+          db.execute("workspace_configure", {
+            ...embedded,
+            requestId: randomUUID(),
+            expectedVersion: later.version,
+            value: { ...later.value, embeddedTheme: "invalid" } as never,
+          }),
+        ).toThrow("schema");
+        expect(db.execute("workspace_observe", {})).toEqual(observation);
+        expect(db.execute("project_read", owner)).toEqual(project);
+        expect(db.execute("project_versions", owner)).toEqual(versions);
+        db.close();
+        db = new Workspace(root);
+        expect(db.execute("workspace_preferences", {})).toEqual(later);
+        expect(db.execute("workspace_configure", embedded)).toEqual(saved);
+        expect(db.execute("workspace_configure", original)).toEqual(receipt);
+      } finally {
+        peer.close();
+      }
     } finally {
       raw.close();
     }
