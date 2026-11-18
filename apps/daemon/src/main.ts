@@ -7,11 +7,13 @@ const data = process.env.ODSUITE_RUNTIME_DATA;
 const origin = process.env.ODSUITE_RUNTIME_ORIGIN;
 const socket = process.env.ODSUITE_RUNTIME_SOCKET;
 const token = process.env.ODSUITE_RUNTIME_TOKEN;
-if (!data || !origin || !socket || !token) throw new Error("daemon resources are required");
+const staging = process.env.ODSUITE_RUNTIME_STAGING;
+if (!data || !origin || !socket || !token || !staging) throw new Error("daemon resources are required");
 
 const environment = process.env.ODSUITE_RUNTIME_CARRIER;
 const service = await serve({
   data,
+  staging,
   origin,
   socket,
   token,

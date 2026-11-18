@@ -67,6 +67,7 @@ it("recovers explicit I/O after reload without resubmitting on lookup, rewinding
             env: {
               HYPERFRAMES_NO_TELEMETRY: "1",
               ODSUITE_RUNTIME_DATA: context.roots.data,
+              ODSUITE_RUNTIME_STAGING: context.roots.runtime,
               ODSUITE_RUNTIME_ORIGIN: web.endpoint.url,
               ODSUITE_RUNTIME_SOCKET: socket.value,
               ODSUITE_RUNTIME_ENDPOINT: port.value,

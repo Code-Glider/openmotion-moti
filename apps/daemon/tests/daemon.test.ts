@@ -114,8 +114,13 @@ describe("daemon", () => {
       { namespace: scope, channel: channel("stable") },
       { kind: "port", name: "daemon", owner, scope: "attempt", scheme: "http" },
     );
+    const staging = await client.grant(
+      { namespace: scope, channel: channel("stable") },
+      { kind: "staging", name: "uploads", owner, scope: "attempt" },
+    );
     const env = {
       ODSUITE_RUNTIME_DATA: data.value,
+      ODSUITE_RUNTIME_STAGING: staging.value,
       ODSUITE_RUNTIME_ORIGIN: "open-motion://carrier",
       ODSUITE_RUNTIME_SOCKET: socket.value,
       ODSUITE_RUNTIME_TOKEN: token,

@@ -75,6 +75,7 @@ it("stages exact historical inputs through HTTP, reuses an existing inbox after 
           daemon = await context.background(() =>
             daemonServe({
               data: context.roots.data,
+              staging: context.roots.runtime,
               socket: socket.value,
               token: "projection-fixture",
               origin: "http://fixture.invalid",

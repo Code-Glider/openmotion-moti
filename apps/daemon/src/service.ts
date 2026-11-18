@@ -22,6 +22,8 @@ import { type ResourceOperation, resourceSchemas } from "./transport/resource.js
 import { ResourceTransfers } from "./transport/resources.js";
 export interface Options {
   data: string;
+  /** Composer-owned transient grant; never a public path or persistent upload authority. */
+  staging?: string;
   origin: string;
   socket: string;
   token: string;
@@ -77,7 +79,7 @@ export async function serve(options: Options): Promise<Service> {
   const exports = new Exports(workspace, options.renderer, options.endpoint);
   const generations = new Generations(workspace, options.gateway);
   const archives = new Archives(workspace, options.endpoint);
-  const resources = new ResourceTransfers(workspace, options.endpoint);
+  const resources = new ResourceTransfers(workspace, options.endpoint, options.staging);
   const requests = new Set<Promise<unknown>>();
   let draining: Promise<void> | undefined, closing: Promise<void> | undefined;
   const server = createServer((request, response) => {

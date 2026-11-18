@@ -1,13 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { writeFile } from "node:fs/promises";
+import { readdir, writeFile } from "node:fs/promises";
 import { type IncomingMessage, request } from "node:http";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { channel, digest, namespace } from "@odsuite/protocol";
 import { managerEndpoint, observeProcesses, readDirectory, serve } from "@odsuite/sidecar";
 import { initialFiles, resourceLimit } from "@open-motion/workspace";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { serve as daemonServe } from "@/service.js";
 import { Client } from "@/transport/client.js";
 
@@ -36,7 +36,8 @@ async function fixture() {
   const host = async () => {
     let daemon: Awaited<ReturnType<typeof daemonServe>> | undefined,
       api: Client | undefined,
-      endpoint = "";
+      endpoint = "",
+      stagingRoot = "";
     await manager.factory({ channel: channel("dev"), namespace: namespace("resources") }).expose({
       identity: { service: "daemon", generation: digest("resource-transfer") },
       handlers: {},
@@ -45,8 +46,10 @@ async function fixture() {
           const socket = await context.allocate({ kind: "socket", name: "daemon" }),
             port = await context.allocate({ kind: "port", name: "daemon", scheme: "http" });
           endpoint = port.value;
+          stagingRoot = context.roots.runtime;
           daemon = await daemonServe({
             data: context.roots.data,
+            staging: context.roots.runtime,
             socket: socket.value,
             token,
             origin: "http://fixture.invalid",
@@ -60,7 +63,7 @@ async function fixture() {
       },
     });
     if (!api) throw Error("missing fixture");
-    return { api: api as Client, endpoint };
+    return { api: api as Client, endpoint, staging: stagingRoot, closeDaemon: () => daemon!.close() };
   };
   return {
     root,
@@ -79,7 +82,7 @@ it("imports 16 MiB through raw bytes and confirms original receipts before resta
   const f = await fixture();
   const report: Record<string, unknown> = {};
   try {
-    const { api, endpoint } = await f.host(),
+    const { api, endpoint, staging } = await f.host(),
       session = await api.execute("session_create", {
         requestId: randomUUID(),
         title: "Raw resources",
@@ -126,6 +129,7 @@ it("imports 16 MiB through raw bytes and confirms original receipts before resta
     await expect(lossy.importResource(input, file)).rejects.toThrow("response lost");
     const committed = await api.execute("project_read", owner);
     expect(committed.history.version).toBe(1);
+    expect(await readdir(staging)).toEqual([]);
     expect(committed.resources[0]).toMatchObject({ bytes: resourceLimit, digest: input.digest, type: "audio/wav" });
     expect(await lossy.importResource(input, new Blob(["receipt must precede bytes"]))).toEqual({ project: committed });
     expect(uploads).toBe(1);
@@ -216,7 +220,7 @@ it("imports 16 MiB through raw bytes and confirms original receipts before resta
 it("bounds upload capacity and size, rejects bad digests/formats atomically and drains a partial upload on shutdown", async () => {
   const f = await fixture();
   try {
-    const { api } = await f.host(),
+    const { api, staging, closeDaemon } = await f.host(),
       bytes = Buffer.from("test"),
       intent = { digest: hash(bytes), bytes: bytes.length },
       first = await api.execute("resource_upload", { requestId: randomUUID(), ...intent }),
@@ -228,7 +232,9 @@ it("bounds upload capacity and size, rejects bad digests/formats atomically and 
       api.execute("resource_upload", { requestId: randomUUID(), digest: intent.digest, bytes: resourceLimit + 1 }),
     ).rejects.toMatchObject({ code: "invalid" });
     await expect(api.uploadResource(first, new Blob(["best"]))).rejects.toMatchObject({ code: "invalid" });
+    expect(await readdir(staging)).toEqual([]);
     await api.uploadResource(first, new Blob([bytes]));
+    expect(await readdir(staging)).toHaveLength(1);
     const session = await api.execute("session_create", { requestId: randomUUID(), title: "Invalid", mode: "motion" }),
       artifact = await api.execute("artifact_create", {
         requestId: randomUUID(),
@@ -252,6 +258,7 @@ it("bounds upload capacity and size, rejects bad digests/formats atomically and 
     expect(await api.execute("resource_import", input)).toEqual({ project: null });
     expect(await api.execute("project_read", owner)).toEqual(before);
     await api.execute("resource_release", { id: first.id });
+    expect(await readdir(staging)).toEqual([]);
     expect(
       (await fetch(first.url, { method: "POST", headers: { "content-type": "application/octet-stream" }, body: bytes }))
         .status,
@@ -270,6 +277,8 @@ it("bounds upload capacity and size, rejects bad digests/formats atomically and 
       code: "conflict",
     });
     const closed = new Promise<void>((done) => req.once("close", done));
+    await closeDaemon();
+    expect(await readdir(staging)).toEqual([]);
     await f.close();
     await closed;
     await expect(api.uploadResource(second, new Blob([bytes]))).rejects.toThrow();
@@ -450,3 +459,31 @@ it("revokes a slow preview response and drains another media reader during actua
   expect((await readDirectory(f.root)).manager.phase).toBe("closed");
   expect(await observeProcesses(f.root)).toEqual([]);
 }, 30000);
+
+it("removes expired idle staging and drains ready staging before the attempt grant retires", async () => {
+  const f = await fixture();
+  try {
+    const { api, staging, closeDaemon } = await f.host(),
+      bytes = Buffer.from("idle staging"),
+      intent = { bytes: bytes.length, digest: hash(bytes) },
+      first = await api.execute("resource_upload", { requestId: randomUUID(), ...intent });
+    await api.uploadResource(first, new Blob([bytes]));
+    expect(await readdir(staging)).toHaveLength(1);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 600001);
+    try {
+      await expect(api.uploadResource(first, new Blob([bytes]))).rejects.toMatchObject({ code: "missing" });
+      expect(await readdir(staging)).toEqual([]);
+      const next = await api.execute("resource_upload", { requestId: randomUUID(), ...intent });
+      await api.uploadResource(next, new Blob([bytes]));
+      expect(await readdir(staging)).toHaveLength(1);
+      await closeDaemon();
+      expect(await readdir(staging)).toEqual([]);
+    } finally {
+      clock.mockRestore();
+    }
+  } finally {
+    await f.close();
+  }
+  expect((await readDirectory(f.root)).manager.phase).toBe("closed");
+  expect(await observeProcesses(f.root)).toEqual([]);
+}, 15000);
