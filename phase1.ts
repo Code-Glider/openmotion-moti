@@ -1,3 +1,5 @@
+import { ToolInputError } from './shared/tool-input-error.ts';
+import { assetImportError, toolFailureFields } from './tracking/tool-fields.ts';
 import { readProjectAssetNames } from './project-asset-names.ts';
 import { namingLanguage, projectAssetKind, validateAssetDisplayName } from './shared/asset-names.ts';
 import { projectArchive } from './project-archive.ts';
@@ -33,8 +35,7 @@ import { atomicJson, cloneFile, fileHash, jsonFile, ProjectVersions, recoverProj
 import type { ContentVersion } from './phase1-versions.ts';
 import { trackPhase1Result, trackingError, type OmTracking } from './shared/tracking.ts';
 import type { HostContext } from './tracking/host.ts';
-import { WorkRounds, workRoundMode } from './inline-video.ts';
-import { TaskLedger } from './tracking/task-ledger.ts';
+import { WorkRounds } from './inline-video.ts';
 import { uuid } from './tracking/core.ts';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -97,8 +98,7 @@ export class Phase1Service {
   readonly store: WorkspaceStore;
   readonly runtimeRoot: string;
   readonly context: Phase1Context;
-  readonly ledger: TaskLedger;
-  constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; this.ledger = new TaskLedger(store.directory); }
+  constructor(store: WorkspaceStore, runtimeRoot: string, context: Phase1Context) { this.store = store; this.runtimeRoot = runtimeRoot; this.context = context; }
   versions(projectId: string) { return new ProjectVersions(this.store.forProject(projectId), this.runtimeRoot, this.context.nativeUrl(projectId)); }
   get workRounds() { return new WorkRounds(this.store, this.context.tracking); }
   async call(name: string, args: any, host?: HostContext, options?: { attributeEntry?: boolean }) {
@@ -131,13 +131,12 @@ export class Phase1Service {
     if (!definition) throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);
     validateInput(definition.inputSchema, args);
     if (name === 'motion_open_preview' && args.entry !== undefined && args.target !== 'providers') {
-      throw new Error('INVALID_ARGUMENT: entry is only supported when target=providers');
+      throw new ToolInputError('entry is only supported when target=providers', 'entry', 'invalid_combination');
     }
     if (name === 'motion_open_preview' && (args.target === 'templates' || args.target === 'providers')) {
       const allowed = args.target === 'providers' ? ['target', 'action', 'embedded', 'presentation', 'entry'] : ['target', 'action', 'embedded', 'presentation'];
-      if (args.action && args.action !== 'open' || Object.keys(args).some(key => !allowed.includes(key))) {
-        throw new Error('INVALID_ARGUMENT: workspace page opening does not accept project, session or version arguments');
-      }
+      const unsupported = args.action && args.action !== 'open' ? 'action' : Object.keys(args).find(key => !allowed.includes(key));
+      if (unsupported) throw new ToolInputError('workspace page opening does not accept project, session or version arguments', unsupported, 'invalid_combination');
       return args.target === 'providers'
         ? providerSettingsPreview(this.context.origin(), { ...args, attributeEntry: options?.attributeEntry })
         : templateLibraryPreview(this.context.origin(), args);
@@ -163,14 +162,17 @@ export class Phase1Service {
     const result = this.tail.then(run, run).finally(() => { this.pending--; }); this.tail = result.catch(() => {}); return result;
   }
   async writeRequest(name: string, args: any, task: (record: any) => Promise<any>) {
-    if (!args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
+    if (!args.requestId) throw new ToolInputError('requestId is required', 'requestId', 'missing');
     const file = path.join(this.store.directory, 'phase1', 'requests', digest(args.requestId) + '.json');
     const inputHash = digest({ name, args });
     const previous = await jsonFile<any>(file, null);
     if (previous) {
       if (previous.inputHash !== inputHash) throw new Error('REQUEST_ID_CONFLICT: 相同 requestId 不能使用不同输入');
       if (previous.state === 'completed') return { ...previous.result, ...(previous.result.job ? { job: await this.publicJob(previous.result.job.id) } : {}), replayed: true };
-      if (previous.state === 'failed') throw new Error(previous.error);
+      if (previous.state === 'failed') {
+        const { code, invalid_field, validation_rule } = previous.failure ?? {};
+        throw Object.assign(new Error(previous.error), { code, invalid_field, validation_rule });
+      }
       if (name === 'motion_open_preview' && args.action === 'complete_generation') {
         const work = await this.workRounds.get(args.projectId, args.workId);
         if (work.generation?.completionRequestId === args.requestId) {
@@ -224,7 +226,10 @@ export class Phase1Service {
     }
     catch (error) {
       if (workAccepted) await this.workRounds.failed(args.projectId, args.workId, errorText(error));
-      await atomicJson(file, { ...record, state: 'failed', error: errorText(error) }); throw error;
+      const { error_code, ...validation } = toolFailureFields(error);
+      await atomicJson(file, { ...record, state: 'failed', error: errorText(error),
+        ...(error_code !== 'TOOL_FAILED' ? { failure: { code: error_code, ...validation } } : {}) });
+      throw error;
     }
     await atomicJson(file, { ...record, state: 'completed', result }); return result;
   }
@@ -342,7 +347,7 @@ export class Phase1Service {
       projectId: detail.projectId, sessionId: detail.sessionId, revision: detail.revision, versionId: detail.currentVersionId }, args.presentation, record, true, display.previewUrl, record.hostTabId), display: record };
   }
   async review(args: any, objectId?: string) {
-    if (!args.review) throw new Error('INVALID_ARGUMENT: review is required');
+    if (!args.review) throw new ToolInputError('review is required', 'review', 'missing');
     const review = args.review, index = await this.versions(args.projectId).index();
     if (!index.versions.some(version => version.versionId === review.versionId)) throw new Error('VERSION_NOT_FOUND');
     if (objectId && review.objectId !== objectId) throw new Error('REVIEW_OBJECT_MISMATCH');
@@ -412,7 +417,7 @@ export class Phase1Service {
     }
     if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);
     if (name === 'motion_get_project' && !args.projectId) {
-      if (args.file || args.exportJobId || args.expectedRevision || args.workId || args.includeVideo) throw new Error('INVALID_ARGUMENT: projectId is required for details');
+      if (args.file || args.exportJobId || args.expectedRevision || args.workId || args.includeVideo) throw new ToolInputError('projectId is required for details', 'projectId', 'missing');
       const scope = (args.trashed ? 'trash:' : '') + (args.sessionId ?? 'workspace');
       const page = parseCursor(args.cursor, 'projects', scope);
       const catalog = this.store.projectCatalog();
@@ -432,15 +437,15 @@ export class Phase1Service {
       return { dataDirectory: this.store.directory, projects, pageSize: 5, hasMore: visible.length > 5, nextCursor: visible.length > 5 ? cursor({ kind: 'projects', scope, after: [last!.createdAt ?? 0, last!.id] }) : null };
     }
     if (name === 'motion_get_project') {
-      if (args.cursor || args.trashed !== undefined) throw new Error('INVALID_ARGUMENT: cursor and trashed are for project lists');
+      if (args.cursor || args.trashed !== undefined) throw new ToolInputError('cursor and trashed are for project lists', args.cursor ? 'cursor' : 'trashed', 'invalid_combination');
       if (args.sessionId && !this.store.projectCatalog().sessions!.some(session => session.id === args.sessionId && session.artifacts.some(artifact => artifact.projectId === args.projectId))) throw new Error('PROJECT_SESSION_MISMATCH');
       if (args.workId) {
-        if (args.file || args.exportJobId || args.expectedRevision) throw new Error('INVALID_ARGUMENT: workId cannot combine file or export queries');
+        if (args.file || args.exportJobId || args.expectedRevision) throw new ToolInputError('workId cannot combine file or export queries', 'workId', 'invalid_combination');
         this.store.forProject(args.projectId);
         return { projectId: args.projectId, inlineWork: await this.workRounds.read(args.projectId, args.workId),
           ...(args.includeVideo ? { _inlineMedia: await this.workRounds.media(args.projectId, args.workId) } : {}) };
       }
-      if (args.includeVideo) throw new Error('INVALID_ARGUMENT: includeVideo requires workId');
+      if (args.includeVideo) throw new ToolInputError('includeVideo requires workId', 'workId', 'missing');
       return this.detail(args.projectId, args);
     }
     if (name === 'motion_list_versions') {
@@ -455,8 +460,8 @@ export class Phase1Service {
       }, 30_000);
     }
     if (name === 'motion_create_project') return this.writeRequest(name, args, async record => {
-      if (args.projectType === 'natural_language' && (args.templateId || args.referenceVideoId || args.referenceUrl) || args.projectType === 'template' && (args.referenceVideoId || args.referenceUrl) || args.projectType === 'reference_video' && (args.templateId || args.referenceVideoId && args.referenceUrl)) throw new Error('INVALID_ARGUMENT: creation source must match projectType');
-      if (args.projectType === 'template' && !args.templateId || args.projectType === 'reference_video' && !args.referenceVideoId && !args.referenceUrl) throw new Error('INVALID_ARGUMENT: creation source is required');
+      if (args.projectType === 'natural_language' && (args.templateId || args.referenceVideoId || args.referenceUrl) || args.projectType === 'template' && (args.referenceVideoId || args.referenceUrl) || args.projectType === 'reference_video' && (args.templateId || args.referenceVideoId && args.referenceUrl)) throw new ToolInputError('creation source must match projectType', 'projectType', 'invalid_combination');
+      if (args.projectType === 'template' && !args.templateId || args.projectType === 'reference_video' && !args.referenceVideoId && !args.referenceUrl) throw new ToolInputError('creation source is required', args.projectType === 'template' ? 'templateId' : 'referenceVideoId', 'missing');
       const source = args.templateId ? await templateCatalogFor(this.store.directory).get(args.templateId) : args.referenceVideoId ? getTemplate(args.referenceVideoId) : null;
       if (args.projectType === 'template' && (!source || !isEditableTemplate(source))) throw new Error('TEMPLATE_NOT_COPYABLE: 请在 Studio 选择可编辑原生模板；参考视频需由 Agent 重建');
       if (args.referenceUrl && !['https:', 'http:'].includes(new URL(args.referenceUrl).protocol)) throw new Error('INVALID_REFERENCE_URL');
@@ -493,13 +498,13 @@ export class Phase1Service {
     });
     if (name === 'motion_open_preview') {
       if (args.action === 'record_display') {
-        if (!args.projectId || !args.display) throw new Error('INVALID_ARGUMENT: projectId and display are required');
+        if (!args.projectId || !args.display) throw new ToolInputError('projectId and display are required', !args.projectId ? 'projectId' : 'display', 'missing');
         const detail = await this.detail(args.projectId);
         if (args.display.revision !== detail.revision || args.display.versionId !== detail.currentVersionId) throw new Error('VERSION_CONFLICT: preview display refers to a different content version');
         return this.writeRequest(name, args, () => this.recordDisplay(args, detail));
       }
       if (args.action === 'begin') {
-        if (!args.projectId || !args.mode) throw new Error('INVALID_ARGUMENT: begin requires projectId and mode');
+        if (!args.projectId || !args.mode) throw new ToolInputError('begin requires projectId and mode', !args.projectId ? 'projectId' : 'mode', 'missing');
         return this.writeRequest(name, args, async record => {
           const project = await this.detail(args.projectId);
           const inlineWork = await this.workRounds.create(project, args.mode, record.workId, args.generation !== false);
@@ -511,14 +516,14 @@ export class Phase1Service {
         });
       }
       if (args.action === 'complete_generation') {
-        if (!args.projectId || !args.workId || !args.expectedRevision || !args.expectedVersionId)
-          throw new Error('INVALID_ARGUMENT: complete_generation requires projectId, workId and both version identities');
+        const missing = ['projectId', 'workId', 'expectedRevision', 'expectedVersionId'].find(key => !args[key]);
+        if (missing) throw new ToolInputError('complete_generation requires projectId, workId and both version identities', missing, 'missing');
         return this.writeRequest(name, args, async () => ({
           projectId: args.projectId, generation: await this.completeGeneration(args),
         }));
       }
       if (args.action === 'record_review') {
-        if (!args.projectId) throw new Error('INVALID_ARGUMENT: projectId is required for review');
+        if (!args.projectId) throw new ToolInputError('projectId is required for review', 'projectId', 'missing');
         return this.writeRequest(name, args, () => this.review(args));
       }
       const catalog = this.store.projectCatalog();
@@ -616,24 +621,18 @@ export class Phase1Service {
       });
     })));
     if (name === 'motion_import_assets') return this.importAssets(args);
-    if (name === 'motion_export_cancel') return this.writeRequest(name, args, async () => {
-      const job = await this.context.cancel(args.projectId, args.jobId) as any;
-      if (job?.state === 'cancelled') {
-        await this.ledger.terminal(args.jobId, 'cancelled', 'unknown').catch(() => {});
-        this.context.tracking?.track('task_terminal', { task_id: args.jobId, task_type: 'export', project_id: args.projectId, outcome: 'cancelled', applied: 'unknown', terminal_at: new Date().toISOString() });
-        if (job.workId) this.context.tracking?.track('host_run_cancelled', { run_id: job.workId, task_type: await workRoundMode(this.store, args.projectId, job.workId) ?? 'modify', reason_code: 'EXPORT_CANCELLED' });
-      }
-      return { projectId: args.projectId, job };
-    });
+    if (name === 'motion_export_cancel') return this.writeRequest(name, args, async () => ({
+      projectId: args.projectId, job: await this.context.cancel(args.projectId, args.jobId),
+    }));
     if (name === 'motion_export_request') return this.writeRequest(name, args, async () => {
       if (args.action === 'record_review') {
-        if (!args.jobId) throw new Error('INVALID_ARGUMENT: jobId is required');
+        if (!args.jobId) throw new ToolInputError('jobId is required', 'jobId', 'missing');
         const job = await this.store.job(args.jobId);
         if (!job || job.projectId !== args.projectId || job.state !== 'completed') throw new Error('EXPORT_NOT_COMPLETED');
         if (args.review?.versionId !== job.versionId) throw new Error('REVIEW_VERSION_MISMATCH');
         return this.review(args, job.id);
       }
-      if (!args.versionId || !args.expectedRevision) throw new Error('INVALID_ARGUMENT: versionId and expectedRevision are required');
+      if (!args.versionId || !args.expectedRevision) throw new ToolInputError('versionId and expectedRevision are required', !args.versionId ? 'versionId' : 'expectedRevision', 'missing');
       const detail = await this.detail(args.projectId);
       if (detail.currentVersionId !== args.versionId || detail.revision !== args.expectedRevision) throw new Error('VERSION_CONFLICT');
       const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio, compositionPath: args.compositionPath,
@@ -693,7 +692,7 @@ export class Phase1Service {
             const asset = { itemId: item.itemId, assetId, inputHash, path: relative, mimeType: media.mimeType, size: media.bytes,
               sha256, width: media.width, height: media.height, duration: media.duration, originalName: path.basename(item.sourcePath), name: item.name?.trim() ? validateAssetDisplayName(item.name) : path.basename(item.sourcePath) };
             changes.push({ path: relative, source: staged }); added.push(asset); items.push({ ...asset, status: 'completed' });
-          } catch (error) { items.push({ itemId: item.itemId, status: 'failed', error: errorText(error) }); }
+          } catch (error) { items.push({ itemId: item.itemId, status: 'failed', error: errorText(error), error_code: assetImportError(error) }); }
         }
         let saved: any = null;
         if (added.length) saved = await this.context.mutation(() => this.store.lock(() => versions.withHistory(async history => {

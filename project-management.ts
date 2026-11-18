@@ -1,3 +1,4 @@
+import { ToolInputError } from './shared/tool-input-error.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { lstat } from 'node:fs/promises';
@@ -17,7 +18,7 @@ export function projectRevealCommand(directory: string, platform: string) {
 export async function manageProject(store: WorkspaceStore, input: ProjectManagementInput, runtimeRoot?: string,
   launch = async (command: string, args: string[]) => { await execute(command, args, { timeout: 10_000, windowsHide: true }); }) {
   if (input.action === 'trash' || input.action === 'restore' || input.action === 'delete') {
-    if (!input.requestId || !/^[\w-]{1,100}$/.test(input.requestId)) throw new Error('INVALID_ARGUMENT: Stable requestId required');
+    if (!input.requestId || !/^[\w-]{1,100}$/.test(input.requestId)) throw new ToolInputError('Stable requestId required', 'requestId', input.requestId ? 'invalid_format' : 'missing');
     return input.action === 'trash' ? store.trashProject(input.projectId, input.requestId)
       : input.action === 'restore' ? store.restoreProject(input.projectId, input.requestId) : store.deleteProject(input.projectId, input.requestId);
   }
@@ -26,14 +27,14 @@ export async function manageProject(store: WorkspaceStore, input: ProjectManagem
   const info: ProjectLocation = { projectId: project.id, title: project.title, titleKey: project.titleKey, path: scoped.projectDirectory, platform: process.platform };
   if (input.action === 'info') return info;
   if (input.action === 'rename' || input.action === 'duplicate') {
-    if (!input.requestId || !/^[\w-]{1,100}$/.test(input.requestId)) throw new Error('INVALID_ARGUMENT: Stable requestId required');
+    if (!input.requestId || !/^[\w-]{1,100}$/.test(input.requestId)) throw new ToolInputError('Stable requestId required', 'requestId', input.requestId ? 'invalid_format' : 'missing');
     if (input.action === 'duplicate') return duplicateProject(store, { ...input, requestId: input.requestId }, runtimeRoot);
-    if (typeof input.expectedTitle !== 'string') throw new Error('INVALID_ARGUMENT: Read info and supply expectedTitle before renaming');
+    if (typeof input.expectedTitle !== 'string') throw new ToolInputError('Read info and supply expectedTitle before renaming', 'expectedTitle', 'missing');
     const catalog = await store.renameProject(input.projectId, input.title!, { requestId: input.requestId, expectedTitle: input.expectedTitle });
     const updated = catalog.projects.find(item => item.id === project.id)!;
     return { ...info, title: updated.title, titleKey: updated.titleKey };
   }
-  if (input.action !== 'reveal') throw new Error('INVALID_ARGUMENT: Unknown project action');
+  if (input.action !== 'reveal') throw new ToolInputError('Unknown project action', 'action', 'invalid_enum');
   const directory = await lstat(info.path).catch(() => null);
   if (!directory?.isDirectory() || directory.isSymbolicLink()) throw new Error('PROJECT_NOT_READY: Project directory is unavailable');
   const { command, args } = projectRevealCommand(info.path, process.platform);
