@@ -4,7 +4,8 @@
 :root[data-motion-ui][data-theme="paper"] [data-dock-panel="preview"] { --studio-preview-bg: var(--motion-bg); }
 :root[data-motion-ui][data-theme="paper"] .motion-preview-transport { background: var(--motion-bg); }
 :root[data-motion-ui][data-theme="paper"] .hf-dock-side-rail,
-:root[data-motion-ui][data-theme="paper"] .hf-dock .dv-tabs-and-actions-container:has(.hf-dock-side-actions) { background: var(--motion-bg); }
+:root[data-motion-ui][data-theme="paper"] .hf-dock .dv-tabs-and-actions-container { background: var(--motion-bg); }
+:root[data-motion-ui][data-theme="paper"] .motion-studio-header-compact { border-bottom: 0; }
 :root[data-motion-ui][data-theme="paper"] [data-studio-timeline] { --timeline-row-bg: var(--motion-bg); }
 :root[data-motion-ui][data-theme="paper"] .motion-timeline-toolbar-shell,
 :root[data-motion-ui][data-theme="paper"] [data-dock-panel] > section > :is([role="tablist"], [data-testid="transcript-toolbar"]) { background: var(--motion-panel); }
