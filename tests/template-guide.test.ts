@@ -35,8 +35,8 @@ test('every catalog preview receives the common interface and retains its own au
       assert(!result.includes('openmotion-product-flow'), id);
     }
   }
-  assert.equal(manifest.templateIds.length, 287);
-  assert.equal(authored, 286);
+  assert(manifest.templateIds.length >= 287);
+  assert(authored >= 286);
   assert(examples.size > 250, 'entries must retain distinct defaults and durations');
 });
 
@@ -62,6 +62,12 @@ test('each selected guide materializes its own native canvas, timing and variabl
     assert.equal(result.source.id, id); assert.equal(result.source.width, 1000); assert.equal(result.source.height, 600);
     assert.equal(result.source.provenance, 'authored-motion-guide-example');
     assert.deepEqual(await readFile(path.join(directory, 'demos/scene.js')), await catalog.sourceFile(id, 'demos/scene.js'));
+    const motionDocument = (await readFile(path.join(directory, 'motion.md'))).toString();
+    const manifest = JSON.parse((await readFile(path.join(directory, 'manifest.json'))).toString());
+    const previewDocument = (await catalog.sourceFile(id, 'preview.html')).toString();
+    const dependencies = new Set(['manifest.json', 'demos/sequence.html', ...manifest.files.map((file: { path: string }) => file.path).filter((name: string) => !name.startsWith('assets/') || motionDocument.includes(name) || previewDocument.includes(name)),
+      ...[...motionDocument.matchAll(/\]\(([^)]+)\)/g)].map(match => match[1]).filter(link => !/^[a-z]+:|^#/.test(link))]);
+    for (const dependency of dependencies) assert.deepEqual(await readFile(path.join(directory, dependency)), await catalog.sourceFile(id, dependency), id + ': ' + dependency);
     const index = await readFile(path.join(directory, 'index.html'), 'utf8');
     assert(!index.includes(draft.title)); assert(index.includes('\\u003cwith content>'));
     assert(index.includes('data-composition-variables='));

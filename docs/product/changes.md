@@ -1,5 +1,11 @@
 # 公开变更记录
 
+## 2026-11-18: Continue authored template-guide examples
+
+- Unify existing catalog guide pages while preserving each entry's own example, reference and breakdown. Declared text/accent trials can continue into an independent native project with the complete linked guide-source bundle.
+- Document this explicit guide-example scope in the Studio MCP handbook, shared connection instructions and template workflow. It does not reconstruct the reference film or change ordinary reference routing.
+- Preserve complete creation arguments across retries and language changes; only confirmed, cleaned-up creation failures permit a new request. Copying and editor-only handoff do not automatically export or send a task.
+
 ## 2026-11-18: Add the Design Styles library Skill
 
 - Add optional [`openmotion-design-styles`](../../library/skills/openmotion-design-styles/SKILL.md): 21 design-style cards and 2 layout cards (palette, open-licensed typefaces, five rules, signature motion, what to avoid, render tier) that an Agent applies to the user's content as a short HyperFrames film.

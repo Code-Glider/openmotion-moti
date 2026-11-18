@@ -14,12 +14,28 @@ export async function materializeTemplateGuide(catalog: TemplateCatalog, templat
   const canvas = sequence.match(/<canvas\s+width="(\d+)"\s+height="(\d+)"/);
   if (!canvas || Number(canvas[1]) > 4096 || Number(canvas[2]) > 4096) throw new Error('GUIDE_CANVAS_UNAVAILABLE');
   const [width, height] = canvas.slice(1).map(Number);
-  const files = await Promise.all(['data.js', 'common.js', 'scene.js'].map(async name => [name, await catalog.sourceFile(templateId, 'demos/' + name)] as const));
-  const motion = await catalog.sourceFile(templateId, 'motion.md');
+  const manifestBytes = await catalog.sourceFile(templateId, 'manifest.json');
+  const manifest = JSON.parse(manifestBytes.toString()) as { files: { path: string }[] };
+  // Preserve the selected document's complete relative resource bundle.
+  // Native project authority and generated entry files must never come from it.
+  const names = [...new Set(['manifest.json', ...manifest.files.map(file => file.path)])];
+  for (const name of names) {
+    if (!name || path.isAbsolute(name) || /^[a-z]:/i.test(name) || name.includes('\\')
+      || name.split('/').some(part => !part || part === '.' || part === '..' || part.startsWith('.'))
+      || ['index.html', 'motion-project.json', 'motion-assets.json', 'guide-draft.json', 'assets/gsap.min.js'].includes(name)) throw new Error('GUIDE_SOURCE_PATH_UNAVAILABLE');
+  }
+  const documents = await Promise.all(names.filter(name => !name.startsWith('assets/')).map(async name => [name, name === 'manifest.json' ? manifestBytes : await catalog.sourceFile(templateId, name)] as const));
+  // Source manifests retain omitted original-image identities for provenance.
+  // Their published renditions already use absolute URLs in the documents;
+  // copy only assets still referenced by a local relative path.
+  const localReferences = documents.filter(([name]) => name !== 'manifest.json').map(([, bytes]) => bytes.toString()).join('\n');
+  const assets = await Promise.all(names.filter(name => name.startsWith('assets/') && localReferences.includes(name)).map(async name => [name, await catalog.sourceFile(templateId, name)] as const));
+  const files = [...documents, ...assets];
   await createBlankProject(directory, runtimeRoot, draft.title);
-  await mkdir(path.join(directory, 'demos'), { recursive: true });
-  for (const [name, bytes] of files) await writeFile(path.join(directory, 'demos', name), bytes);
-  await writeFile(path.join(directory, 'motion.md'), motion);
+  for (const [name, bytes] of files) {
+    await mkdir(path.dirname(path.join(directory, name)), { recursive: true });
+    await writeFile(path.join(directory, name), bytes);
+  }
   await writeFile(path.join(directory, 'guide-draft.json'), jsonForHtml({ templateId, ...draft }));
   const variables = [{ id: 'title', label: 'Title', type: 'string', default: draft.title }, { id: 'accent', label: 'Accent color', type: 'color', default: draft.accent }];
   const html = `<!doctype html><html data-composition-variables='${attribute(jsonForHtml(variables))}'><head><meta charset="utf-8"><style>
