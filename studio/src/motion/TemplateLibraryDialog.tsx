@@ -137,9 +137,9 @@ export function TemplateLibraryDialog(props: Props) {
     if (!isEditableTemplate(template) || !props.onPrepareTemplate || props.openingDisabled || props.busy) return;
     const previous = progressRef.current[template.id];
     if (previous?.state === 'creating' || previous?.state === 'opening' || previous?.state === 'unknown') return;
-    tracking.reportUseClicked(template, 'open_edit', detailView.current);
-    if (previous?.result) { void revealProject(template, previous.result); return; }
     const requestId = previous?.requestId ?? crypto.randomUUID();
+    tracking.reportUseClicked(template, 'open_edit', detailView.current, undefined, requestId);
+    if (previous?.result) { void revealProject(template, previous.result); return; }
     const attemptId = tracking.newTrackingId(), view = detailView.current;
     writeProgress(template.id, { requestId, state: 'creating' });
     try {

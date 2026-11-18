@@ -78,9 +78,9 @@ export function reportDetailShown(template: Template, view: DetailView, position
     placement: view.placement, ...(position ? { position } : {}) });
 }
 /** Open-and-edit or a recreate button. A click is intent only; the copy result and the project result say what happened. */
-export function reportUseClicked(template: Template, action: TemplateAction, view: DetailView | undefined, copyAttemptId?: string) {
+export function reportUseClicked(template: Template, action: TemplateAction, view: DetailView | undefined, copyAttemptId?: string, operationId?: string) {
   send('ui_click', { ...studio, area: 'template_detail', element: 'start_use', ...templateId(template), ...resource(template), template_action: action,
-    ...(copyAttemptId ? { copy_attempt_id: copyAttemptId } : {}), ...detail(view) });
+    ...(copyAttemptId ? { copy_attempt_id: copyAttemptId } : {}), ...(operationId ? { operation_id: operationId } : {}), ...detail(view) });
 }
 export function reportInstructionShown(template: Template, view: DetailView | undefined) {
   send('surface_view', { ...studio, area: 'template_instruction', element: 'instruction', ...templateId(template), ...resource(template), ...instruction(template), ...detail(view) });

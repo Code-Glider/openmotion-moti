@@ -514,6 +514,9 @@ test('template handoff admits observed results and rejects content, made-up outc
   const ids = { template_id: 'motion-example', operation_id: crypto.randomUUID(), handoff_attempt_id: crypto.randomUUID(), detail_view_id: crypto.randomUUID() };
   const valid = { ...ids, page_name: 'studio', stage: 'open', outcome: 'success', project_id: crypto.randomUUID() };
   assert.equal(validProperties(studioEvents, 'template_project_result', valid), true);
+  const click = { page_name: 'studio', area: 'template_detail', element: 'start_use', template_action: 'open_edit', operation_id: ids.operation_id };
+  assert.equal(validProperties(studioEvents, 'ui_click', click), true);
+  assert.equal(validProperties(studioEvents, 'ui_click', { ...click, operation_id: 'private-path' }), false);
   for (const stage of ['create', 'reconcile', 'open']) for (const outcome of ['success', 'failure', 'unknown', 'not_found']) {
     assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, stage, outcome }), true);
   }

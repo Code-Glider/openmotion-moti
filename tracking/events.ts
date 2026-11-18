@@ -167,7 +167,7 @@ export const omEvents = {
       '0.25', '0.5', '1', '1.5', '2', 'featured', 'ads', 'clone', 'motion', 'script', 'pinned', 'other'],
     interaction_method: ['pointer', 'keyboard'], ...project, ...template,
     placement, position: 'integer', template_action: ['recreate', 'recreate_submit', 'open_edit'], target_agent: hosts,
-    copy_attempt_id: 'uuid', download_attempt_id: 'uuid', source_template_id: 'slug',
+    copy_attempt_id: 'uuid', download_attempt_id: 'uuid', source_template_id: 'slug', operation_id: 'uuid',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
     ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom,

@@ -965,6 +965,7 @@ it('retries opening the exact prepared project without creating another one afte
   const results = events('template_project_result');
   expect(results.map(item => [item.stage, item.outcome])).toEqual([['create', 'success'], ['open', 'failure'], ['open', 'success']]);
   expect(new Set(results.map(item => item.operation_id)).size).toBe(1);
+  expect(events('ui_click', { template_action: 'open_edit' })[0].operation_id).toBe(results[0].operation_id);
   expect(new Set(results.map(item => item.handoff_attempt_id)).size).toBe(3);
   expect(results.every(item => item.project_id === 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b')).toBe(true);
 });
