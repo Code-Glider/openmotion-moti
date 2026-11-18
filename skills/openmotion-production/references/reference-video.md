@@ -12,7 +12,7 @@ A catalog guidance package returned by `openmotion_get_template` without editabl
 
 Read the reference as a whole before choosing an implementation. Inspect representative frames and consecutive frames around every cut, entrance, exit and transition. Explain what persists, enters, changes, holds and exits; keep an object's identity across cuts when it is the same object.
 
-Review sound with a player or tool that supports listening. Keep extracted tracks local unless the analysis host explicitly accepts audio attachments. Use `measure events --map` to locate candidate cues and compare decoded audio for precise onset or offset checks. Continue the visual and timing work and record the listening status using the [shared audiovisual evidence rules](verification.md#verification-scope).
+Keep extracted sound as a local file and use a supported player or dedicated file-based audio analyzer for listening. For model-side listening, require documented audio-input support for the active model and connection before sending an audio attachment. A tool's audio-output helper only describes that tool's output. Keep encoded audio, including base64, out of shell and generic tool results. If model audio input is unavailable or unknown, use `measure events --map` for candidate cues and compare decoded audio for precise onset or offset checks. Continue the visual and timing work and record the listening status using the [shared audiovisual evidence rules](verification.md#verification-scope).
 
 At each change, read four things: where an element comes from and how (pop, scale, fade, type, word by word, wipe); how it changes on screen (colour, fill, counting, morphing); how it leaves; and whether its edges are solid, stroked, gradient or glowing.
 

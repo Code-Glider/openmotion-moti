@@ -17,7 +17,7 @@ Follow the [shared material policy](../openmotion-production/references/material
 
 ## Understand the requested result
 
-Obtain and read the whole reference through the shared [reference reading and measurement](../openmotion-production/references/reference-video.md) method before choosing implementation. Preserve the link's URL and the local copy's checksum.
+Obtain and read the whole reference through the shared [reference reading and measurement](../openmotion-production/references/reference-video.md) method before choosing implementation. Use its local sound checks when the active model's audio input is unavailable or unknown. Preserve the link's URL and the local copy's checksum.
 
 Preserve the reference's content, wording, brand, composition and motion as they are; do not pre-substitute them. Content replacement happens later with `openmotion-template-to-video`.
 
