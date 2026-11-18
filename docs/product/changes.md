@@ -7,6 +7,13 @@
 - Keep DSH dependencies optional, model configuration in DSH, runtime state outside the checkout and standalone Studio navigation intact. No npm publication or release-workflow change.
 - New-project handoff remains manual; validation distinguishes plugin installation, browser layout and read-only model/tool calls from video creation/export acceptance. See `integrations/dsh/README.md` in the source checkout.
 
+## 2026-11-17: Add 96 single-style library Skills and their Skills-page cards
+
+- Add 96 Library Skills, one written style recipe each: 10 talking-head overlays, 15 narrated explainers, 35 product promos, 12 product-ad and shopping styles, 10 brand and cover pieces, 2 motion effects and 12 editing methods. Each states its look, motion rules with timings, required inputs, what to avoid and review checks; skills that need generated stills or clips route discovery through `openmotion_media_use` and generation through `openmotion_assets_use` with consent.
+- The Studio Skills page lists all 96 as cards with an 8-second OpenMotion sample cover (rendered with HyperFrames, under 450 KB each) and localized copy in all 11 languages. Three categories are added (Talking-head, Product ads, Editing) and the analytics `skill_category` enum is extended to match. Talking-head cards follow the first two cards (Remove the AI look, Growth Teardown).
+- All are recipes/drafts: covers are OpenMotion samples with invented content, not runs on user material, and no executable template is claimed.
+- The standalone installer, the positive distribution list and package tests include the new Skills; `npm run check` validates Library Skill frontmatter.
+
 ## 2026-11-17: Add the Growth Teardown library Skill
 
 - Add optional [`openmotion-growth-teardown`](../../library/skills/openmotion-growth-teardown/SKILL.md): name a company, research its dated growth moves and metric points with sources, and generate an editable nine-scene HyperFrames film (map, three plays with real evidence, plays to copy).
