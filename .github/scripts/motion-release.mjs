@@ -270,7 +270,7 @@ export async function findCandidate(version, fetcher = fetch, candidateRunId) {
   const result = await github(`${scope}?name=${encodeURIComponent(name)}&per_page=100`, fetcher);
   assert(result.total_count <= 100, 'Too many matching artifacts; refusing an incomplete lookup');
   const matches = result.artifacts.filter(a => a.name === name && !a.expired);
-  assert.equal(matches.length, 1, `Expected one unexpired candidate for ${version}; found ${matches.length}. Copy the exact version from a successful Motion candidate build. Changing this publication field cannot rename a candidate; build and accept a new unique version if needed.`);
+  assert.equal(matches.length, 1, `Expected one unexpired candidate for ${version}; found ${matches.length}. Use the exact version and run ID from a successful candidate. To create a new candidate, run Motion package and release on main in prepublish mode. Changing the version input cannot rename an existing candidate.`);
   assert(Number.isSafeInteger(matches[0].workflow_run?.id) && matches[0].workflow_run.id > 0);
   if (candidateRunId) assert.equal(String(matches[0].workflow_run.id), candidateRunId, 'Artifact belongs to a different run');
   return matches[0];

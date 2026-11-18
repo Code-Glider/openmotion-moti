@@ -179,6 +179,7 @@ test('the sealed candidate detects tgz, guide, identity and provenance tampering
   assert.equal((await verifyDownloaded(directory, candidate.tgzSHA256)).version, candidate.version);
   const checklist = await readFile(path.join(directory, 'acceptance.md'), 'utf8');
   assert(checklist.includes(candidate.tgzSHA256) && checklist.includes(candidate.sourceCommit));
+  assert.match(checklist, /Motion package and release[^\n]+mode=publish[^\n]+candidate_run_id/);
   const instructions = await readFile(path.join(directory, 'candidate-install.md'), 'utf8');
   assert(instructions.includes(candidate.tgz) && instructions.includes(candidate.tgzSHA256) && instructions.includes(candidate.sourceCommit));
   assert(instructions.includes('npx --yes --package "./' + candidate.tgz + '"'));
