@@ -11,6 +11,7 @@ import { mediaUse } from './gateway/media-use.ts';
 import { assetOperation } from './gateway/asset-operations.ts';
 import { transcriptOperation } from './gateway/transcript-operations.ts';
 import { transcriptsFor } from './gateway/transcription.ts';
+import { compositionCanvasSource } from './shared/composition-canvas.ts';
 import { loadCaptionSourceOperations } from './shared/transcript-captions.ts';
 import { brandKitOperation } from './gateway/brand-kit-operation.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
@@ -379,16 +380,18 @@ export class Phase1Service {
             ? { projectId: input.projectId, compositionPath: name, ...exportCaptionSource(source, input.format, input.transcriptId) }
             : { tracks: captionTracks(source) };
         }
-        if (!['captions', 'caption_update', 'caption_add'].includes(input.command)) return transcriptOperation(this.store, input);
+        if (!['captions', 'caption_update', 'caption_add', 'caption_toggle'].includes(input.command)) return transcriptOperation(this.store, input);
         return this.writeRequest('transcript_captions', input, () => this.context.mutation(() => this.store.lock(async () => {
           const versions = this.versions(input.projectId), scoped = versions.store;
           const name = projectPath(input.compositionPath);
           if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
           const file = await scoped.safePath(name), source = await readFile(file, 'utf8');
-          const { manualCaptionSource, updateCaptionTrackSource, transcriptCaptionSource } = await loadCaptionSourceOperations(this.runtimeRoot);
+          const { manualCaptionSource, updateCaptionTrackSource, transcriptCaptionSource, toggleCaptionSource } = await loadCaptionSourceOperations(this.runtimeRoot);
           let captions;
-          const trackId = input.command === 'caption_add' ? crypto.randomUUID() : input.transcriptId;
-          if (input.command === 'caption_add') {
+          let trackId = ['caption_add', 'caption_toggle'].includes(input.command) ? crypto.randomUUID() : input.transcriptId;
+          if (input.command === 'caption_toggle') {
+            captions = toggleCaptionSource(source, trackId, input.visible); trackId = captions.trackId;
+          } else if (input.command === 'caption_add') {
             captions = manualCaptionSource(source, trackId, input);
           } else if (input.command === 'caption_update') {
             if (!input.remove && !input.captionSettings) throw new Error('Supply caption settings or remove');
@@ -401,7 +404,7 @@ export class Phase1Service {
           }
           return versions.withHistory(async history => ({ projectId: input.projectId, trackId, captionCount: captions.count,
             ...await versions.transaction(history, input.expectedRevision, input.expectedVersionId, input.requestId,
-              [{ path: name, content: captions.content }], { label: input.command === 'caption_add' ? (input.textKind === 'text' ? 'Add text' : 'Add captions') : input.command === 'caption_update' ? (input.remove ? 'Remove caption track' : 'Update caption track') : 'Apply transcript captions' }),
+              [{ path: name, content: captions.content }], { label: input.command === 'caption_toggle' ? (input.visible ? 'Enable captions' : 'Disable captions') : input.command === 'caption_add' ? (input.textKind === 'text' ? 'Add text' : 'Add captions') : input.command === 'caption_update' ? (input.remove ? 'Remove caption track' : 'Update caption track') : 'Apply transcript captions' }),
             changedFiles: [name], previewSync: this.context.nativeUrl(input.projectId) ? 'file_watcher_notified' : 'not_open' }));
         })));
       }
@@ -561,13 +564,22 @@ export class Phase1Service {
     if (name === 'motion_edit_project') return this.writeRequest(name, args, () => this.context.mutation(() => this.store.lock(async () => {
       const versions = this.versions(args.projectId), scoped = versions.store;
       const names = new Set<string>(); let bytes = 0;
-      for (const file of args.files) {
+      for (const file of args.files ?? []) {
         projectPath(file.path);
         if (!textExtensions.has(path.extname(file.path)) || [metadataPath, assetIndexPath].includes(file.path)) throw new Error('INVALID_FILE_TYPE_OR_RESERVED_PATH');
         if (names.has(file.path)) throw new Error('DUPLICATE_FILE_PATH'); names.add(file.path); bytes += Buffer.byteLength(file.content);
       }
       if (bytes > 8388608) throw new Error('SOURCE_BATCH_TOO_LARGE: 8 MiB limit');
-      const changes = [...args.files];
+      const changes = [...(args.files ?? [])];
+      let canvas;
+      if (args.canvas) {
+        const name = projectPath(args.canvas.compositionPath);
+        if (!name.endsWith('.html') || names.has(name)) throw new Error('Supply one canvas edit per HTML composition without a competing file edit');
+        const { parseHTML } = await loadCaptionSourceOperations(this.runtimeRoot);
+        const result = compositionCanvasSource(await readFile(await scoped.safePath(name), 'utf8'), parseHTML, args.canvas);
+        canvas = result.canvas; changes.push({ path: name, content: result.content });
+      }
+      if (args.files === undefined && !args.canvas && args.requirements === undefined && args.namingLanguage === undefined && !args.assetNames?.length) throw new Error('Supply files or canvas settings');
       if (args.requirements !== undefined || args.namingLanguage !== undefined) {
         if (args.requirements !== undefined) validateInstruction(args.requirements);
         const meta = await jsonFile<any>(path.join(scoped.projectDirectory, metadataPath), { schemaVersion: 1, projectType: 'legacy' });
@@ -591,7 +603,7 @@ export class Phase1Service {
       }
       return versions.withHistory(async history => ({ projectId: args.projectId,
         ...await versions.transaction(history, args.expectedRevision, args.expectedVersionId, args.requestId, changes, { label: args.summary ?? 'Agent source edit' }),
-        ...await readProjectAssetNames(scoped, undefined, undefined, this.runtimeRoot), changedFiles: changes.map(file => file.path), previewSync: this.context.nativeUrl(args.projectId) ? 'file_watcher_notified' : 'not_open' }));
+        ...(canvas ? { canvas } : {}), ...await readProjectAssetNames(scoped, undefined, undefined, this.runtimeRoot), changedFiles: changes.map(file => file.path), previewSync: this.context.nativeUrl(args.projectId) ? 'file_watcher_notified' : 'not_open' }));
     })));
     if (name === 'motion_restore_version') return this.writeRequest(name, args, () => this.context.mutation(() => this.store.lock(async () => {
       const versions = this.versions(args.projectId);
