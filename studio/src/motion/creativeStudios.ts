@@ -1,5 +1,5 @@
 import { modelReferenceLimit, type Model, type Modality } from '../../../shared/gateway';
-import { creativeStudios, studioScenes, type MediaStudio, type TechniqueStudio, type StudioScene } from '../../../shared/studio-catalog';
+import { creativeStudios, studioScenes, type CreativeStudio, type MediaStudio, type TechniqueStudio, type StudioScene } from '../../../shared/studio-catalog';
 
 export { creativeStudios, studioScenes, type StudioScene };
 export const motionStudio = creativeStudios.find(studio => studio.surface === 'editor')!;
@@ -18,6 +18,10 @@ export function scenesForStudio(studio: GeneratingStudio) {
 export function studioDestination(studio: GeneratingStudio, sceneId?: string | null, model: string | null = null): StudioDestination {
   const scenes = scenesForStudio(studio);
   return { studio, scene: scenes.find(scene => scene.id === sceneId) ?? scenes[0], model };
+}
+
+export function studioIconTone(studio: CreativeStudio): Modality {
+  return studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality;
 }
 
 export function sceneDestination(scene: StudioScene, current?: StudioDestination | null, model: string | null = null): StudioDestination {

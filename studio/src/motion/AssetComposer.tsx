@@ -105,7 +105,11 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
   </div>;
 
   return <aside className="om-asset-composer om-creation-surface" data-active={active} data-mode={mode} aria-label={t('Create asset')}>
-    {scene ? <header className={canvas ? "om-sr-only" : "om-studio-form-heading"} data-landing={studio?.destination.landing}>{!canvas && <img src={studioExamples(studio!.destination)[0].poster} alt="" />}{!studio?.destination.landing && <h2 className="om-title">{t(scene.label)}</h2>}<p className="om-muted">{t(scene.hint)}</p></header> : <header className="om-task-toolbar">
+    {scene ? <header className={canvas ? "om-sr-only" : "om-studio-form-heading"} data-landing={studio?.destination.landing}>
+      {!canvas && scene.modality !== 'video' && <img src={studioExamples(studio!.destination)[0].poster} alt="" />}
+      {!studio?.destination.landing && <h2 className="om-title">{t(scene.label)}</h2>}
+      <p className="om-muted">{t(scene.hint)}</p>
+    </header> : <header className="om-task-toolbar">
       <h2 className="om-sr-only">{t(draft.target ? 'Create a new version' : 'Creative studio')}</h2>
       {/* Temporarily hide the Agent tab; existing conversations remain available in Tasks. */}
       <div className="om-choice-tabs om-task-modes" role="group" aria-label={t('Task type')}>{(['direct'] as const).map(value => <Tooltip label={t(value === 'direct' ? 'Direct generation' : 'Agent conversation')} wrap key={value}><button className="om-nav-item" aria-pressed={mode === value} aria-label={t(value === 'direct' ? 'Direct generation' : 'Agent conversation')} disabled={switching} onClick={() => onMode(value)}><RemixIcon name={value === 'direct' ? 'sparkling-line' : 'chat-1-line'} size={15} /><span>{t(value === 'direct' ? 'Generate' : 'Agent')}</span></button></Tooltip>)}</div>

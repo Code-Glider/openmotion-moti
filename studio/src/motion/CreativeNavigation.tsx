@@ -6,7 +6,7 @@ import { Popover } from '../components/ui/Popover';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { workspacePageHref } from './workspacePageRouting';
-import { creativeStudios, mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
+import { creativeStudios, studioIconTone, mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
 import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
 import { Tooltip } from '../components/ui/Tooltip';
@@ -47,6 +47,15 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
                   <span className="om-image-demo-send">↑</span>
                 </span>
               </span>
+            </span>
+          ) : scene.id === 'image-edit' ? (
+            <span className="om-scene-tile-art om-edit-demo" aria-hidden="true">
+              <img src={example.poster} alt="" />
+              <span className="om-edit-demo-before">
+                <img src={example.poster} alt="" />
+                <small>{t('Before')}</small>
+              </span>
+              <small className="om-edit-demo-after">{t('After')}</small>
             </span>
           ) : (
             <span className="om-scene-tile-art"><img src={example.poster} alt="" style={{ objectPosition: example.posterPosition }} /></span>
@@ -181,7 +190,7 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
     return <button className="om-nav-item" aria-current={isCurrent ? 'page' : undefined}
       aria-label={t(studio.title)} aria-describedby={badgeId} onClick={() => { track('nav_studio', { navTarget: studio.id, studio: studio.id, inOverflow: inPanel }); choose(() => onChooseStudio(studio)); }}>
-      {inPanel && <RemixIcon name={studio.icon} size={17} />}
+      {inPanel && <span className="om-studio-heading-icon" data-tone={studioIconTone(studio)}><RemixIcon name={studio.icon} size={17} /></span>}
       {t(studio.title)}{badge && <span className="om-badge" data-nav-badge={badge} id={badgeId} lang="en">{badge}</span>}
     </button>;
   }

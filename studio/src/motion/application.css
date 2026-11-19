@@ -300,7 +300,29 @@
 .om-media-menu-grid .om-scene-tile:hover strong { text-decoration: none; }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .om-media-menu-grid img { transition: transform var(--motion-duration-fast) var(--motion-ease-out); }
-  .om-media-menu-grid button:hover .om-scene-tile-art:not(.om-image-demo) img { transform: scale(1.04); }
+  .om-media-menu-grid button:hover .om-scene-tile-art:not(.om-image-demo, .om-edit-demo) img { transform: scale(1.04); }
+}
+.om-edit-demo-before { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); }
+.om-edit-demo-before img { filter: grayscale(1); }
+.om-edit-demo small {
+  position: absolute; bottom: var(--motion-space-6); left: var(--motion-space-6);
+  padding: var(--motion-space-2) var(--motion-space-6); border-radius: var(--motion-radius-full);
+  font-size: var(--motion-text-xs); line-height: var(--motion-leading-body);
+  background: var(--motion-video-overlay); color: var(--motion-overlay-ink);
+}
+.om-edit-demo-after { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .om-scene-tile:is(:hover, :focus-visible) .om-edit-demo-before { animation: om-edit-reveal 3.6s ease-in-out both; }
+  .om-scene-tile:is(:hover, :focus-visible) .om-edit-demo-after { animation: om-edit-caption 3.6s ease-in-out both; }
+}
+@keyframes om-edit-reveal {
+  0% { opacity: 0; clip-path: inset(0); }
+  12%, 38% { opacity: 1; clip-path: inset(0); }
+  78%, 100% { opacity: 1; clip-path: inset(0 100% 0 0); }
+}
+@keyframes om-edit-caption {
+  0%, 72% { opacity: 0; }
+  80%, 100% { opacity: 1; }
 }
 .om-scene-tile-art.om-image-demo {
   container-type: inline-size;

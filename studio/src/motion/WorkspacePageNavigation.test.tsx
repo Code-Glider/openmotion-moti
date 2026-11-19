@@ -779,7 +779,7 @@ it('lists each primary destination once in order, with only three scene choices 
   await click('Image · Scenes');
   const menu = document.querySelector('.om-creative-menu')!;
   expect(menu.querySelector('h2')).toBeNull();
-  expect(menu.querySelectorAll('button img')).toHaveLength(3);
+  expect(menu.querySelectorAll('button:has(.om-scene-tile-art img)')).toHaveLength(3);
   expect([...menu.querySelectorAll('button')].map(node => node.querySelector('strong')?.textContent)).toEqual(['Text to image', 'Image editing', 'Shot still']);
   const still = [...menu.querySelectorAll('button')].find(node => node.textContent?.startsWith('Shot still'))!;
   await act(async () => still.click());
@@ -814,7 +814,7 @@ it('retains the active model and scene on same-modality entry and switches a Cin
 it('opens image editing from its scene shortcut and returns to the same Explore collection', async () => {
   await mount(); await click('Explore'); await click('Product films');
   await click('Image · Scenes');
-  const edit = [...document.querySelectorAll<HTMLButtonElement>('.om-creative-menu button')].find(node => node.textContent?.startsWith('Image editing'))!;
+  const edit = [...document.querySelectorAll<HTMLButtonElement>('.om-creative-menu button')].find(node => node.querySelector('strong')?.textContent === 'Image editing')!;
   await act(async () => edit.click());
   expect(page()).toMatchObject({ community: 'product-films', studio: { landing: true, scene: { id: 'image-edit' } } });
   expect(container.querySelector('.om-studio-bar h1')?.textContent).toBe('Image editing');

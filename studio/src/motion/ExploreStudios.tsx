@@ -29,7 +29,11 @@ const cardArea = (section: string): { area: ExploreArea; collection?: string } =
 
 const templateVideoDestination = studioDestination(findMediaStudio('cinema')!, 'text-to-video');
 const discoveryStudios = [motionStudio, ...creativeStudios.filter(studio => studio.surface !== 'editor')];
-const mediaCollectionNames = { image: 'Image design', video: 'Cinematic shots', audio: 'Music and voiceover' } as const;
+const mediaCollections = {
+  image: { title: 'Image design', description: 'Create an image from a description or edit a reference image.' },
+  video: { title: 'Cinematic shots', description: 'Create a video shot from text or bring a still frame to life.' },
+  audio: { title: 'Music and voiceover', description: 'Set a mood with music or turn a script into voiceover.' },
+} as const;
 type ExploreProps = {
   onSkill: (id: string) => void;
   onChooseStudio: (studio: CreativeStudio) => void;
@@ -128,11 +132,13 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
 } & Pick<ExploreProps, 'onChooseStudio' | 'onSkill' | 'onNavigate'>) {
   const { t } = useI18n();
   const community = exploreCommunities.find(item => item.studios[0] === studio.id);
-  const description = studio.surface === 'editor' ? 'Animate type and shapes, then edit their timing on the timeline.' : community?.description;
+  let description: string;
   let cards: ReactNode[];
   let title: string;
   if (studio.surface === 'media') {
-    title = mediaCollectionNames[studio.primaryModality];
+    const collection = mediaCollections[studio.primaryModality];
+    title = collection.title;
+    description = collection.description;
     cards = scenesForStudio(studio).filter(scene => !medium || medium === scene.modality).flatMap(scene => {
       const target = studioDestination(studio, scene.id);
       const examples = studio.id === 'design' ? sceneExamples[scene.id] : sceneExamples[scene.id].slice(0, 1);
@@ -142,6 +148,7 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
   } else {
     if (medium && medium !== 'video') return null;
     title = community?.label ?? studio.title;
+    description = studio.surface === 'editor' ? 'Animate type and shapes, then edit their timing on the timeline.' : community?.description ?? studio.briefHint;
     const techniques = studio.surface === 'techniques' ? studio.techniques : community?.source === 'templates' ? community.skills : [];
     cards = techniques.slice(0, 5).flatMap(id => {
       const skill = motionSkills.find(item => item.id === id);
@@ -150,7 +157,7 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
   }
   if (!cards.length) return null;
   return <section className="om-studio-collection" aria-label={t(title)} data-studio={studio.id}>
-    <header className="om-discovery-heading"><div><h2>{t(title)}</h2>{description && <p className="om-muted">{t(description)}</p>}</div>
+    <header className="om-discovery-heading"><div><h2>{t(title)}</h2><p className="om-muted">{t(description)}</p></div>
       <button className="om-button" onClick={() => { track('explore_collection', 'open_studio', { studio: studio.id, collection: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}<RemixIcon name="arrow-right-line" size={16} /></button>
     </header>
     <div className="om-studio-collection-cards">{cards}</div>
