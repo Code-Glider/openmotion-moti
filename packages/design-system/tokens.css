@@ -66,6 +66,7 @@
   --motion-ease-standard: cubic-bezier(0.33, 0, 0.67, 1);
   --motion-glass-backdrop: blur(28px) saturate(1.8);
   --motion-scrim-backdrop: blur(50px);
+  --motion-media-preview-backdrop: blur(4px);
   --motion-control-disabled: color-mix(in srgb, var(--motion-strong) 30%, var(--motion-panel));
   --motion-text-step-9: 9px;
   --motion-text-step-10: 10px;

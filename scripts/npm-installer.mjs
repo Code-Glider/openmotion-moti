@@ -41,7 +41,7 @@ Setup options:
   --dsh FILE         Harness executable (macOS Desktop CLI is detected automatically)
   --profile NAME     Harness profile (default: web); use the selected host profile
   --manifest FILE    Explicit release manifest for controlled local installations
-  --onboarding-output FILE  Optional host-readable HTML path override; Codex welcome/cards are prepared by default
+  --onboarding-output FILE  Optional host-readable HTML path override; welcome/cards are prepared for every host
 
 Setup starts native preparation in the background; editing does not wait for it.
 Use prepare to wait explicitly for every video component or retry failed preparation.
@@ -80,7 +80,6 @@ export async function localManifest(filename) {
 
 export async function setup(options) {
   if (options.onboardingOutput) {
-    assert((options.host || 'codex') === 'codex', 'Inline onboarding is selected by the Codex host only');
     assert(path.isAbsolute(options.onboardingOutput) && options.onboardingOutput.endsWith('.html'), 'Use an absolute .html path readable by the calling host');
     const present = await lstat(options.onboardingOutput).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
     assert(!present, 'Refusing to overwrite an existing onboarding document');

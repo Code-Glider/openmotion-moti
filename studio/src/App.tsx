@@ -1,3 +1,4 @@
+import { TimelineCanvasMenu } from './motion/TimelineCanvasMenu';
 import { TimelineCaptionActions } from './motion/TimelineCaptionActions';
 import { TimelineCaptionsMenu } from './motion/TimelineCaptionsMenu';
 import { useOwnPreviewIframe, usePreviewIframeStore } from "./player/store/previewIframeStore";
@@ -490,7 +491,7 @@ export function StudioApp({ readOnlyPreview = false, readOnlyPreviewReason, reso
     () => (
       <TimelineToolbar
         leftActions={<TimelineCaptionActions onAddToTimeline={handleAddAssetAtPlayhead} />}
-        rightActions={<TimelineCaptionsMenu />}
+        rightActions={<><TimelineCanvasMenu /><TimelineCaptionsMenu /></>}
         domEditSession={toolbarSession}
         onResizeElement={timelineEditing.handleTimelineElementResize}
         onSplitElement={timelineEditing.handleTimelineElementSplit}

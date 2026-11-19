@@ -156,7 +156,7 @@ jobs:
           npm ci --prefix integrations/dsh --ignore-scripts --no-audit --no-fund
           npm run typecheck --prefix integrations/dsh
           npm run test --prefix integrations/dsh
-          node --test tests/dsh-integration.test.ts tests/dsh-distribution.test.ts
+          node --test tests/dsh-integration.test.ts tests/dsh-distribution.test.ts tests/dsh-release.test.ts tests/dsh-template-cards.test.ts
       - name: Freeze and scan the matching DSH plugin once
         if: ${{ hashFiles('source/integrations/dsh/build.ts') != '' }}
         env:

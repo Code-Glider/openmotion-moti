@@ -258,7 +258,7 @@ export const PlayerControls = memo(function PlayerControls({
             setLoopEnabled={setLoopEnabled}
           />
           </span>
-          {!mvp && onToggleFullscreen && (
+          {onToggleFullscreen && (
             <FullscreenButton isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
           )}
           {!mvp && <ShortcutsButton disabled={disabled} onSeek={onSeek} sections={shortcutSections} />}

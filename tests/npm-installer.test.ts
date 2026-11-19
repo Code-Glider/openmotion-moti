@@ -35,7 +35,7 @@ async function setupFixture(t: any) {
   const directory = await fixture(t), application = path.join(directory, 'source'), home = path.join(directory, 'install'), skillsDirectory = path.join(directory, 'skills');
   for (const name of ['scripts', 'shared', 'studio/build', 'skills/openmotion-production', 'docs', 'mcp-ui/template-recommendations']) await mkdir(path.join(application, name), { recursive: true });
   for (const name of ['mcp.ts', 'scripts/npm-runtime.mjs', 'studio/build/index.html', 'README.md', 'AGENTS.md', 'CLAUDE.md']) await writeFile(path.join(application, name), 'fixture');
-  for (const file of ['docs/install-onboarding.md', 'scripts/install-onboarding.mjs', 'scripts/inline-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/check-installed-mcp.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs', 'scripts/open-template-library.ts', 'shared/workspace-url.ts', 'mcp-ui/template-recommendations/i18n.ts']) await cp(new URL('../' + file, import.meta.url), path.join(application, file));
+  for (const file of ['docs/install.md', 'scripts/install-onboarding.mjs', 'scripts/inline-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/check-installed-mcp.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs', 'scripts/open-template-library.ts', 'shared/workspace-url.ts', 'mcp-ui/template-recommendations/i18n.ts']) await cp(new URL('../' + file, import.meta.url), path.join(application, file));
   await writeFile(path.join(application, 'workspace.ts'), 'export class WorkspaceStore { constructor(directory = process.env.MOTION_DATA_DIR) { this.directory = directory; } }');
   await writeFile(path.join(application, 'preview.ts'), `export async function ensureService(store) { if (store.directory !== process.env.MOTION_DATA_DIR) throw new Error('Wrong workspace'); return { previewUrl: 'http://127.0.0.1:4173' }; }`);
   await writeFile(path.join(application, 'skills/openmotion-production/SKILL.md'), '---\nname: openmotion-production\ndescription: fixture\n---\nFixture');
@@ -641,7 +641,7 @@ async function harnessRecoveryFixture(t: any) {
     if(state.hosts.deepseek.bundleDirectory!==bundle)throw new Error('Launcher state is not ready');
     const mode=fs.existsSync(${JSON.stringify(fail)})?fs.readFileSync(${JSON.stringify(fail)},'utf8'):'';
     if(mode==='register'){console.error('partial registration');process.exit(1);}
-    if(mode==='onboarding'){const scope=JSON.parse(fs.readFileSync(path.join(bundle,'scope.json'),'utf8'));fs.writeFileSync(path.join(scope.runtimeRoot,'docs/install-onboarding.md'),'invalid contract');}`);
+    if(mode==='onboarding'){const scope=JSON.parse(fs.readFileSync(path.join(bundle,'scope.json'),'utf8'));fs.writeFileSync(path.join(scope.runtimeRoot,'docs/install.md'),'invalid contract');}`);
   return { options: { ...options, host: 'deepseek', dsh: cli }, fail, config: path.join(dshHome, 'profiles/web/package.json') };
 }
 
@@ -649,7 +649,7 @@ for (const mode of ['register', 'onboarding']) {
   test(`Harness keeps the registered bundle after ${mode} failure and setup can retry`, async t => {
     const { options, fail, config } = await harnessRecoveryFixture(t);
     const first = await setup(options);
-    const guide = path.join(first.appRoot, 'docs/install-onboarding.md'), originalGuide = await readFile(guide);
+    const guide = path.join(first.appRoot, 'docs/install.md'), originalGuide = await readFile(guide);
     await writeFile(fail, mode);
     await assert.rejects(setup(options), mode === 'register' ? /partial registration/ : /onboarding contract/);
     const state = JSON.parse(await readFile(path.join(options.home, 'install.json'), 'utf8'));

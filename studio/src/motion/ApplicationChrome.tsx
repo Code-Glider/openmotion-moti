@@ -15,6 +15,8 @@ import type { ReactNode } from 'react';
 import type { MouseEvent } from 'react';
 import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
 
+const avatarSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
 export function ApplicationHeader({ settings }: { settings: SettingsSection | null }) {
   const { t } = useI18n();
   const { openHome, openModelSettings, navigationCollapsed, toggleNavigation } = useWorkspaceChrome();
@@ -31,7 +33,8 @@ export function ApplicationHeader({ settings }: { settings: SettingsSection | nu
 export function ApplicationRail({ settings, openSettings, home }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void; home: ReactNode }) {
   const { t, locale, setLocale } = useI18n(), { account } = useAccountSummary();
   const { openLibrary, openConnections, openAssets, assetsOpen, openSkills, skillsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
-  const userName = account?.user?.name || account?.user?.email || t('Account');
+  const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
+  const avatarInitial = avatarSegmenter.segment(userName)[Symbol.iterator]().next().value?.segment;
   const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false, disabled = false) => (
     <Tooltip label={t(label)} side="right">
       <PrimaryNavigationButton aria-label={t(label)} aria-pressed={active} onClick={action} disabled={disabled}>
@@ -43,7 +46,7 @@ export function ApplicationRail({ settings, openSettings, home }: { settings: Se
     {item('Help', 'question-line', () => openSettings('help'), settings === 'help')}
     {item('Settings', 'settings-3-line', () => openSettings('general'), Boolean(settings && !['mcp', 'brand-kit', 'providers', 'help', 'account', 'subscription'].includes(settings)))}
     {item('Model providers', 'brain-line', () => openSettings('providers'), settings === 'providers')}
-    <Menu tooltip={t('Account menu')} modal={false} side="top" align="start" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<PrimaryNavigationButton className="om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar">{account?.state === 'signed-in' ? userName.slice(0, 2).toUpperCase() : <RemixIcon name="user-3-line" size={18} />}</span></PrimaryNavigationButton>}>
+    <Menu tooltip={t('Account menu')} modal={false} side="top" align="start" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<PrimaryNavigationButton className="om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <RemixIcon name="user-3-line" size={18} />}</span></PrimaryNavigationButton>}>
       <MenuItem onClick={() => openSettings('account')}><span className="om-menu-label"><RemixIcon name="user-3-line" size={16} /><strong>{userName}</strong></span></MenuItem><MenuSeparator />
       <MenuItem onClick={() => openSettings('subscription')}><span className="om-menu-label"><RemixIcon name="bank-card-line" size={16} />{t('Subscription & usage')}</span></MenuItem>
       <MenuSeparator />
