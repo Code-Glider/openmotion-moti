@@ -141,9 +141,9 @@ try {
     await page.waitForSelector(brands);
     await page.click(brands);
     const figma = 'button[aria-label="View Figma brand series"]';
-    await page.waitForSelector(figma);
-    await page.click(figma);
-    const stage = 'dialog[aria-label="Figma brand story"][open] [aria-label="Selected release"] [style*="--story-media-ratio"]';
+    await page.waitForSelector(figma, { visible: true });
+    await page.$eval(figma, element => element.click());
+    const stage = 'dialog[aria-label="Figma brand story"][open] [aria-label="Selected release"] [aria-busy]';
     const frame = await page.waitForSelector(stage);
     await frame.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
     const geometry = await frame.evaluate(element => {
