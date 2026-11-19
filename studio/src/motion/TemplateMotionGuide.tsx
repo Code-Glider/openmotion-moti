@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useShownStudioTheme } from '../utils/studioTheme';
 import { prepareMotionGuide, type GuideAppearance } from './templateMotionGuideDocument';
 
-export function TemplateMotionGuide({ url, title }: { url: string; title: string }) {
+export function TemplateMotionGuide({ url, title, expanded = false, onEscape }: { url: string; title: string; expanded?: boolean; onEscape?: () => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const theme = useShownStudioTheme();
   const latestTheme = useRef(theme);
   latestTheme.current = theme;
-  const [document, setDocument] = useState<{ url: string; src: string }>({ url: '', src: 'about:blank' });
+  const [document, setDocument] = useState<{ url: string; src: string; html?: string }>({ url: '', src: 'about:blank' });
   function appearance(): GuideAppearance {
     const style = getComputedStyle(frame.current!);
     return {
@@ -25,6 +25,16 @@ export function TemplateMotionGuide({ url, title }: { url: string; title: string
   }
   useEffect(() => { syncAppearance(); }, [theme]);
   useEffect(() => {
+    if (!expanded || !onEscape) return;
+    function receiveEscape(event: MessageEvent) {
+      const guide = frame.current;
+      if (guide?.hasAttribute('srcdoc') && guide.ownerDocument.activeElement === guide &&
+          event.source === guide.contentWindow && event.origin === 'null' && event.data === 'openmotion:guide-escape') onEscape?.();
+    }
+    window.addEventListener('message', receiveEscape);
+    return () => window.removeEventListener('message', receiveEscape);
+  }, [expanded, onEscape]);
+  useEffect(() => {
     const controller = new AbortController();
     let objectUrl: string | undefined;
     async function load() {
@@ -35,9 +45,12 @@ export function TemplateMotionGuide({ url, title }: { url: string; title: string
         if (!controller.signal.aborted) {
           // A blob retains the parent's URL origin for authored postMessage calls.
           // The sandbox still gives its script an opaque security origin.
-          const html = prepareMotionGuide(source, response.url || url, appearance());
-          objectUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-          setDocument({ url, src: objectUrl });
+          const html = prepareMotionGuide(source, response.url || url, appearance(), expanded);
+          if (expanded) setDocument({ url, src: 'about:blank', html });
+          else {
+            objectUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+            setDocument({ url, src: objectUrl });
+          }
         }
       } catch {
         // Keep guides usable when a remote host does not permit CORS reads.
@@ -49,8 +62,8 @@ export function TemplateMotionGuide({ url, title }: { url: string; title: string
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [url]);
+  }, [url, expanded]);
   const current = document.url === url ? document : undefined;
-  return <iframe ref={frame} src={current?.src ?? 'about:blank'} title={title} onLoad={syncAppearance}
-    sandbox="allow-scripts" loading="lazy" referrerPolicy="no-referrer" />;
+  return <iframe ref={frame} src={current?.html ? undefined : current?.src ?? 'about:blank'} srcDoc={current?.html} title={title} onLoad={syncAppearance}
+    sandbox="allow-scripts" loading={expanded ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />;
 }

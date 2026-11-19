@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 
 export const MAX_TEMPLATE_PLAYERS = 8;
 /** One observer and a bounded decoder budget for the whole gallery. No offscreen video sources. */
-export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalogKey: string, enabled: boolean, autoplay: boolean, priority: string | null, priorityOnly = false) {
+export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalogKey: string, enabled: boolean, autoplay: boolean, priority: string | null, priorityOnly = false, playerBudget = MAX_TEMPLATE_PLAYERS) {
   const [active, setActive] = useState<Set<string>>(new Set());
   const controls = useRef({ autoplay, priority });
   const refresh = useRef<() => void>(() => {});
@@ -22,7 +22,7 @@ export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalog
       // user is actively hovering/focusing instead of starting several iframe
       // runtimes as soon as the masonry enters the viewport.
       const scoped = priorityOnly ? (priority ? candidates.filter(([id]) => id === priority) : []) : candidates;
-      const ids = allowed ? scoped.filter(([id]) => !connection?.saveData || id === priority).slice(0, compact.matches ? 4 : MAX_TEMPLATE_PLAYERS).map(([id]) => id) : [];
+      const ids = allowed ? scoped.filter(([id]) => !connection?.saveData || id === priority).slice(0, Math.min(playerBudget, compact.matches ? 4 : MAX_TEMPLATE_PLAYERS)).map(([id]) => id) : [];
       setActive(previous => previous.size === ids.length && ids.every(id => previous.has(id)) ? previous : new Set(ids));
     };
     refresh.current = update;
@@ -45,6 +45,6 @@ export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalog
       observer.disconnect(); document.removeEventListener('visibilitychange', update);
       media.removeEventListener('change', update); compact.removeEventListener('change', update); connection?.removeEventListener('change', update);
     };
-  }, [root, catalogKey, enabled, priorityOnly]);
+  }, [root, catalogKey, enabled, priorityOnly, playerBudget]);
   return active;
 }
