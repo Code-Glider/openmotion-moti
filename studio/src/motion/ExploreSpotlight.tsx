@@ -90,7 +90,7 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
           <span><RemixIcon name={slide.icon} size={16} />{t(slide.subtitle)}</span>
           <h2>{t(slide.title)}</h2><p>{t(slide.hint)}</p>
           <button className="om-button" data-primary="media" onClick={scene ? () => onNavigate(scene.target, t(scene.prompt)) : onOpenMotion}>
-            {scene ? t(scene.target.scene.label) : t('Open in {studio}', { studio: motionStudio.title })}<RemixIcon name="arrow-right-line" size={16} />
+            {scene ? t(scene.target.scene.label) : t('Open in {studio}', { studio: t(motionStudio.title) })}<RemixIcon name="arrow-right-line" size={16} />
           </button>
         </div>
       </div>;

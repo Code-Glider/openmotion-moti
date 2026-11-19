@@ -113,7 +113,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
     <div className="om-creative-strip">
       <button className="om-nav-item" aria-current={currentPage === 'explore' ? 'page' : undefined} onClick={() => choose(() => onOpenPage('explore'))}>{t('Explore')}</button>
       <button className="om-nav-item" aria-current={motionActive ? 'page' : undefined} onClick={() => choose(() => onChooseStudio(motionStudio))}>
-        <RemixIcon name={motionStudio.icon} size={16} />{motionStudio.title}
+        <RemixIcon name={motionStudio.icon} size={16} />{t(motionStudio.title)}
       </button>
       {modalities.map(kind => <Popover key={kind} container={popupHost} modal={false} openOnHover open={open === kind}
         onOpenChange={value => setOpen(previous => value ? kind : previous === kind ? null : previous)}
@@ -136,7 +136,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
       <span className="om-divider om-creative-divider" aria-hidden="true" />
       {creativeStudios.filter(studio => studio.surface !== 'editor').map(studio => <button key={studio.id} className="om-nav-item"
         aria-current={((studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id) ? 'page' : undefined}
-        onClick={() => choose(() => onChooseStudio(studio))}>{studio.title}</button>)}
+        onClick={() => choose(() => onChooseStudio(studio))}>{t(studio.title)}</button>)}
     </div>
   </nav>;
 }

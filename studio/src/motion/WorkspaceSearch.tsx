@@ -58,8 +58,8 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
   const matches = (...fields: string[]) => terms.every(term => fields.join(' ').toLocaleLowerCase().includes(term));
   const providers = new Map(catalog.catalog?.status.providers.map(provider => [provider.id, provider.label]));
   const groups: [string, Result[]][] = [
-    ['Studios', creativeStudios.filter(studio => matches(studio.title)).map(studio =>
-      ({ id: studio.id, label: studio.title, icon: searchIcon(studio.icon, studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality), open: () => onStudio(studio) }))],
+    ['Studios', creativeStudios.filter(studio => matches(studio.title, t(studio.title))).map(studio =>
+      ({ id: studio.id, label: t(studio.title), icon: searchIcon(studio.icon, studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality), open: () => onStudio(studio) }))],
     ['Scenes', studioScenes.filter(scene => query && matches(scene.id, t(scene.label), t(scene.hint), t(mediaLabels[scene.modality]))).map(scene =>
       ({ id: scene.id, label: t(scene.label), detail: t(mediaLabels[scene.modality]), icon: searchIcon(scene.icon, scene.modality), open: () => onScene(sceneDestination(scene, destination)) }))],
     ['Skills', motionSkills.filter(skill => query && matches(skill.name, t(skill.title), t(skill.tagline), t(skill.category))).map(skill =>

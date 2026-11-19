@@ -2,11 +2,11 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
+import { I18nProvider } from '../i18n/I18n';
 import { WorkspaceSearch } from './WorkspaceSearch';
 import { assetRequest } from './assetClient';
 
 vi.mock('./assetClient', () => ({ assetRequest: vi.fn() }));
-vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('./useMediaCatalog', () => ({ useMediaCatalog: () => ({ catalog: {
   status: { providers: [{ id: 'atlascloud', label: 'Atlas Cloud' }] },
   models: [{ id: 'atlascloud:bytedance/seedance-2.0/text-to-video', modelId: 'bytedance/seedance-2.0/text-to-video',
@@ -73,6 +73,35 @@ it('shows the model identity, serving provider and matched text while keeping th
     expect(row.querySelector('.om-badge')?.getAttribute('data-tone')).toBe('video');
     await act(async () => row.click());
     expect(onScene).toHaveBeenCalledWith(expect.objectContaining({ model: 'atlascloud:bytedance/seedance-2.0/text-to-video' }));
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it('finds a Studio by its localized or English name and opens the same destination', async () => {
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  vi.mocked(assetRequest).mockResolvedValue({ assets: [], nextOffset: null });
+  const container = document.body.appendChild(document.createElement('div'));
+  const root = createRoot(container);
+  const onStudio = vi.fn(), noop = vi.fn();
+  try {
+    await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><WorkspaceSearch destination={null}
+      onSkill={noop} onAsset={noop} onStudio={onStudio} onScene={noop} onAccount={noop} onLibrary={noop} onCommunity={noop} />
+    </I18nProvider>));
+    for (const term of ['营销', 'Marketing']) {
+      await act(async () => container.querySelector('button')!.click());
+      const input = document.querySelector<HTMLInputElement>('.om-workspace-search input')!;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, term);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      const row = document.querySelector<HTMLButtonElement>('.om-search-results button[aria-label="营销工作室"]');
+      expect(row?.textContent).toBe('营销工作室');
+      await act(async () => row!.click());
+      expect(onStudio).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'marketing' }));
+    }
+    expect(onStudio).toHaveBeenCalledTimes(2);
   } finally {
     await act(async () => root.unmount());
     container.remove();

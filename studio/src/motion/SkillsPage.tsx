@@ -132,7 +132,7 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
       </div>
       <main className="om-gallery-results">
         {studio ? <section className="om-specialty-intro">
-          <div><h1 className="om-title">{studio.title}</h1><p className="om-muted">{t(studio.briefHint)}</p>
+          <div><h1 className="om-title">{t(studio.title)}</h1><p className="om-muted">{t(studio.briefHint)}</p>
             {onCreate && <div className="om-specialty-actions">
               <button className="om-button" data-primary onClick={() => onCreate(studioDestination(studio))}><RemixIcon name="add-line" size={16} />{t(studio.createLabel)}</button>
               {studio.id === 'marketing' && <button className="om-button" onClick={() => onCreate(studioDestination(studio, 'text-to-video'))}>{t('Create an ad clip')}</button>}

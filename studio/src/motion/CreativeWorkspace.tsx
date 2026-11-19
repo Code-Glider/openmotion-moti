@@ -37,10 +37,10 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
   return <div className="om-assets-host om-creative-workspace">
     <header className="om-studio-bar">
-      {studio.surface === 'techniques' ? <button className="om-nav-item om-studio-back" onClick={() => onCollection(studio)} aria-label={t('Back to {studio}', { studio: studio.title })}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Skills')}</span></button> : <button className="om-nav-item om-studio-back" onClick={onExplore} aria-label={t('Back to Explore')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Explore')}</span></button>}
-      <h1 className="om-subtitle"><span className="om-creation-icon" data-tone={scene.modality}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : studio.title}</h1>
+      {studio.surface === 'techniques' ? <button className="om-nav-item om-studio-back" onClick={() => onCollection(studio)} aria-label={t('Back to {studio}', { studio: t(studio.title) })}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Skills')}</span></button> : <button className="om-nav-item om-studio-back" onClick={onExplore} aria-label={t('Back to Explore')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Explore')}</span></button>}
+      <h1 className="om-subtitle"><span className="om-creation-icon" data-tone={scene.modality}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
       {destination.landing ? <button className="om-button" onClick={() => onNavigate(studioDestination(studio, scene.id, destination.model))}>
-        {t('Open in {studio}', { studio: studio.title })}<RemixIcon name="arrow-right-line" size={15} />
+        {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />
       </button> : <nav className="om-asset-tabs" aria-label={t('Scenes')}>{scenesForStudio(studio).map(item => <button className="om-nav-item" key={item.id}
         aria-current={item.id === scene.id ? 'page' : undefined} onClick={() => { if (item.id !== scene.id) onNavigate({ studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null }); }}>{t(item.label)}</button>)}</nav>}
       <button className="om-nav-item om-studio-library-link" onClick={openAssets} aria-label={t('Workspace assets')}><RemixIcon name="folder-open-line" size={16} /><span>{t('Workspace assets')}</span></button>

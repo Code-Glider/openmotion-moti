@@ -66,7 +66,7 @@ function CommunitySpotlight({ community, skill, onChooseStudio }: {
   return <section className="om-discovery-hero" aria-label={t(community.label)}>
     {skill?.cover?.poster && <img src={skill.cover.poster} alt="" />}
     <div className="om-discovery-hero-copy"><span>{t('Communities')}</span><h2>{t(community.label)}</h2>
-      <p>{t(community.description)}</p><button className="om-button" data-primary="media" onClick={() => onChooseStudio(lead)}>{lead.title}<RemixIcon name="arrow-right-line" size={16} /></button>
+      <p>{t(community.description)}</p><button className="om-button" data-primary="media" onClick={() => onChooseStudio(lead)}>{t(lead.title)}<RemixIcon name="arrow-right-line" size={16} /></button>
     </div>
   </section>;
 }
@@ -90,7 +90,7 @@ function TechniqueCollection({ community, onChooseStudio, onSkill, ...playback }
   const studio = findTechniqueStudio(community.studio)!;
   return <section className="om-technique-collection" aria-label={t(community.label)}>
     <header className="om-discovery-heading"><div><h2>{t(community.label)}</h2><p className="om-muted">{t(community.description)}</p></div>
-      <button className="om-button" onClick={() => onChooseStudio(studio)}>{studio.title}<RemixIcon name="arrow-right-line" size={16} /></button>
+      <button className="om-button" onClick={() => onChooseStudio(studio)}>{t(studio.title)}<RemixIcon name="arrow-right-line" size={16} /></button>
     </header>
     <div className="om-technique-cards">{studio.techniques.map(id => {
       const skill = motionSkills.find(item => item.id === id);
@@ -117,7 +117,7 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
           <MediaModelChoices onModel={onModel} {...gateway} kind={kind} onNavigate={onNavigate} openProviders={openModelSettings} />
         </div>}
       </div>)}
-      <div><h3>{t('Studios')}</h3>{creativeStudios.map(studio => <button className="om-nav-item" key={studio.id} onClick={() => onChooseStudio(studio)}>{studio.title}</button>)}</div>
+      <div><h3>{t('Studios')}</h3>{creativeStudios.map(studio => <button className="om-nav-item" key={studio.id} onClick={() => onChooseStudio(studio)}>{t(studio.title)}</button>)}</div>
       <div><h3>{t('Workspace')}</h3>
         <button className="om-nav-item" onClick={event => openLibrary(event.currentTarget)}>{t('Template library')}</button>
         <button className="om-nav-item" onClick={onBrandKit}>{t('Brand Kit')}</button>
@@ -161,12 +161,12 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
   const playing = useTemplatePlayback(root, catalogKey, active && showMotion, true, priority);
   const sceneCards = scenes.filter(scene => community || medium || !featuredSceneIds.includes(scene.id)).map(scene => {
     const example = sceneExamples[scene.id][0], target = sceneDestination(scene);
-    return <FeedCard key={scene.id} sceneId={scene.id} icon={scene.icon} label={example.title === scene.label ? target.studio.title : target.studio.title + ' · ' + t(scene.label)}
+    return <FeedCard key={scene.id} sceneId={scene.id} icon={scene.icon} label={example.title === scene.label ? t(target.studio.title) : t(target.studio.title) + ' · ' + t(scene.label)}
       title={t(example.title)} description={t(scene.hint)} poster={example.poster} credit={example.credit}
       onClick={() => onNavigate(target, t(example.prompt))} />;
   });
   const skillCards = showMotion ? skills.map(skill => <SkillFeedCard key={skill.id} section="feed" skill={skill} icon={specialty?.icon ?? 'puzzle-line'}
-    label={specialty?.title ?? t('Skills')} onSkill={onSkill} playing={playing} onPriority={setPriority} />) : [];
+    label={t(specialty?.title ?? 'Skills')} onSkill={onSkill} playing={playing} onPriority={setPriority} />) : [];
   const tryVideoPrompt = (prompt: string) => onNavigate(templateVideoDestination, prompt);
   const templateCard = (item: GalleryTemplate) => <ExploreTemplateCard key={item.id} item={item} active={playing.has(item.id)} onPriority={setPriority}
     onTry={tryVideoPrompt} />;
