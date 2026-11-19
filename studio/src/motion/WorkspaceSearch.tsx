@@ -43,7 +43,8 @@ function useAssetMatches(query: string, offset: number) {
   return { result: result?.query === query && result.offset === offset ? result : undefined, retry: () => { setResult(undefined); setAttempt(value => value + 1); } };
 }
 
-export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommunity, destination, onLibrary, onAccount }: {
+export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommunity, destination, onLibrary, onAccount, onChoose }: {
+  onChoose?: () => void;
   onSkill: (id: string) => void; onScene: (scene: StudioDestination) => void; onStudio: (studio: CreativeStudio) => void;
   onAsset: (id: string, version: string) => void; onCommunity: (community: ExploreCommunity) => void;
   destination: StudioDestination | null; onLibrary: () => void; onAccount: () => void;
@@ -72,10 +73,10 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
     ['Workspace assets', (assets.result?.assets ?? []).map(asset =>
       ({ id: asset.id, label: asset.name, detail: t(mediaLabels[asset.modality]), icon: searchIcon(creationKinds.find(kind => kind.id === asset.modality)!.icon, asset.modality), open: () => onAsset(asset.id, asset.currentVersionId) }))],
   ];
-  const choose = (action: () => void) => { setOpen(false); action(); };
+  const choose = (action: () => void) => { setOpen(false); onChoose?.(); action(); };
   const loading = query && ((!catalog.catalog && !catalog.failed) || !assets.result);
-  return <Popover modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Search workspace')} className="om-selection-panel om-workspace-search"
-    trigger={<button className="om-nav-item" title={t('Search workspace')} aria-label={t('Search workspace')}><RemixIcon name="search-line" size={17} /></button>}>
+  return <Popover tooltip={onChoose ? undefined : t('Search workspace')} modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Search workspace')} className="om-selection-panel om-workspace-search"
+    trigger={<button className={onChoose ? 'om-nav-item om-workspace-search-trigger' : 'om-nav-item om-workspace-search-trigger om-header-icon'} aria-label={t('Search workspace')}><RemixIcon name="search-line" size={17} />{onChoose && t('Search workspace')}</button>}>
     {open && <>
       <label className="om-field"><RemixIcon name="search-line" size={16} /><input autoFocus type="search" maxLength={180} value={input} onChange={event => { setInput(event.target.value); setOffset(0); }} placeholder={t('Search workspace')} aria-label={t('Search workspace')} /></label>
       <div className="om-search-shortcuts"><button className="om-nav-item" onClick={() => choose(onLibrary)}>{searchIcon('folder-open-line', 'audio')}{t('Workspace assets')}</button><button className="om-nav-item" onClick={() => choose(onAccount)}>{searchIcon('user-3-line', 'agent')}{t('Account')}</button></div>

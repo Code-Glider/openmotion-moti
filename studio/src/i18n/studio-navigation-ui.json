@@ -10,6 +10,7 @@
     "Image design": "图像设计",
     "Cinematic shots": "电影镜头",
     "Music and voiceover": "配乐与旁白",
+    "More Studio": "更多工作室",
     "Studios": "工作室",
     "Setup required": "待配置",
     "Use prompt": "使用提示词",
@@ -88,7 +89,7 @@
     "Explainer Studio": "讲解视频工作室",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "在 Explore 的创作者目录中选择署名或来源账号，打开作品并复制模板指令给 Agent。",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "用简报中的模板 ID 调用 openmotion_get_template。检查可编辑源码或复刻指南，改编时保留作品署名。",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "用 openmotion_get_template 读取所选 Skill，核对素材或简报后，通过 openmotion_create_project 和 openmotion_edit_project 制作可编辑工程。如果缺少素材，先询问再编辑。",
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "用 openmotion_get_skill 读取所选 Skill，核对素材或简报后，通过 openmotion_create_project 和 openmotion_edit_project 制作可编辑工程。如果缺少素材，先询问再编辑。",
     "Inspect tool inputs and choose a model to try in Studio.": "查看工具输入，并选择模型到工作室试用。",
     "How can my Agent find short-form videos?": "Agent 如何查找短视频作品？",
     "Call openmotion_list_templates and filter its index for shortForm=true. Open a matching work with openmotion_get_template. The Short-form video collection in Explore shows matching works with covers.": "调用 openmotion_list_templates，在索引中筛选 shortForm=true，再用 openmotion_get_template 打开作品。Explore 的短视频合集展示其中带封面的作品。",
@@ -117,6 +118,7 @@
     "Image design": "画像デザイン",
     "Cinematic shots": "シネマティックショット",
     "Music and voiceover": "音楽とナレーション",
+    "More Studio": "その他のスタジオ",
     "Studios": "スタジオ",
     "Setup required": "設定が必要",
     "Use prompt": "プロンプトを使う",
@@ -211,7 +213,7 @@
     "Explainer Studio": "解説動画スタジオ",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "「探す」で「クリエイター」を開き、カタログにクレジットされた制作者または投稿元のアカウントを選んで作品を開きます。テンプレートの指示をコピーして Agent に渡してください。",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "依頼文にあるテンプレート ID を使って openmotion_get_template を呼び出してください。編集可能なソースまたは再現ガイドを確認し、アレンジする際も元のクレジットを残してください。",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_template で選択したスキルを読み込んでください。元の映像または依頼内容を確認したら、openmotion_create_project と openmotion_edit_project で編集可能な作品を作成してください。必要な素材や情報が足りない場合は、編集を始める前に依頼者に確認してください。"
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_skill で選択したスキルを読み込んでください。元の映像または依頼内容を確認したら、openmotion_create_project と openmotion_edit_project で編集可能な作品を作成してください。必要な素材や情報が足りない場合は、編集を始める前に依頼者に確認してください。"
   },
   "ko": {
     "Start with an editable motion template or open your timeline.": "편집 가능한 모션 템플릿으로 시작하거나 타임라인을 여세요.",
@@ -224,6 +226,7 @@
     "Image design": "이미지 디자인",
     "Cinematic shots": "시네마틱 샷",
     "Music and voiceover": "음악과 내레이션",
+    "More Studio": "더 많은 스튜디오",
     "Studios": "스튜디오",
     "Setup required": "설정 필요",
     "Use prompt": "프롬프트 사용",
@@ -318,7 +321,7 @@
     "Explainer Studio": "설명 영상 스튜디오",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "둘러보기에서 크리에이터를 열고 카탈로그에 표기된 제작자나 원본 게시 계정을 선택한 다음 작품을 여세요. 템플릿 지시문을 복사해 Agent에 전달하세요.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "요청서에 있는 템플릿 ID로 openmotion_get_template를 호출하세요. 편집 가능한 소스나 재현 가이드를 확인하고, 작품을 수정할 때도 원작자 표기를 유지하세요.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_template로 선택한 스킬을 읽으세요. 원본 영상이나 요청 내용을 확인한 다음 openmotion_create_project와 openmotion_edit_project로 편집 가능한 결과물을 만드세요. 필요한 자료가 빠졌다면 편집을 시작하기 전에 요청하세요."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_skill로 선택한 스킬을 읽으세요. 원본 영상이나 요청 내용을 확인한 다음 openmotion_create_project와 openmotion_edit_project로 편집 가능한 결과물을 만드세요. 필요한 자료가 빠졌다면 편집을 시작하기 전에 요청하세요."
   },
   "de": {
     "Start with an editable motion template or open your timeline.": "Starte mit einer editierbaren Motion-Vorlage oder öffne deine Zeitleiste.",
@@ -331,6 +334,7 @@
     "Image design": "Bildgestaltung",
     "Cinematic shots": "Filmische Aufnahmen",
     "Music and voiceover": "Musik und Sprechertexte",
+    "More Studio": "Weitere Studios",
     "Studios": "Studios",
     "Setup required": "Einrichtung erforderlich",
     "Use prompt": "Prompt verwenden",
@@ -425,7 +429,7 @@
     "Explainer Studio": "Studio für Erklärvideos",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Öffne unter „Entdecken“ den Bereich „Kreative“. Wähle einen im Katalog genannten Urheber oder das Konto des ursprünglichen Beitrags und öffne ein Werk. Kopiere die Vorlagenanweisung für deinen Agenten.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Rufe openmotion_get_template mit der Vorlagen-ID aus meinem Briefing auf. Prüfe die bearbeitbaren Quelldateien oder die Anleitung zum Nachbauen und behalte die Urheberangabe bei, wenn du die Vorlage anpasst.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lies den ausgewählten Skill mit openmotion_get_template. Prüfe das Ausgangsmaterial oder das Briefing. Erstelle dann mit openmotion_create_project und openmotion_edit_project ein bearbeitbares Projekt. Frage vor dem Bearbeiten nach fehlendem Material oder fehlenden Angaben."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lies den ausgewählten Skill mit openmotion_get_skill. Prüfe das Ausgangsmaterial oder das Briefing. Erstelle dann mit openmotion_create_project und openmotion_edit_project ein bearbeitbares Projekt. Frage vor dem Bearbeiten nach fehlendem Material oder fehlenden Angaben."
   },
   "fr": {
     "Start with an editable motion template or open your timeline.": "Partez d’un modèle d’animation modifiable ou ouvrez votre timeline.",
@@ -438,6 +442,7 @@
     "Image design": "Création visuelle",
     "Cinematic shots": "Plans de cinéma",
     "Music and voiceover": "Musique et voix off",
+    "More Studio": "Plus de studios",
     "Studios": "Studios",
     "Setup required": "Configuration requise",
     "Use prompt": "Utiliser ce prompt",
@@ -532,7 +537,7 @@
     "Explainer Studio": "Studio de vidéos explicatives",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Dans Explorer, ouvrez Créateurs. Choisissez un nom crédité dans le catalogue ou le compte à l’origine de la publication, puis ouvrez une œuvre. Copiez la consigne du modèle pour la transmettre à votre agent.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Appelez openmotion_get_template avec l’identifiant du modèle indiqué dans mon brief. Consultez les sources modifiables ou le guide de recréation et conservez le crédit d’origine lors de l’adaptation.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lisez le Skill sélectionné avec openmotion_get_template. Vérifiez les images sources ou le brief, puis utilisez openmotion_create_project et openmotion_edit_project pour créer un projet modifiable. Si un élément manque, demandez-le avant de commencer le montage."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lisez le Skill sélectionné avec openmotion_get_skill. Vérifiez les images sources ou le brief, puis utilisez openmotion_create_project et openmotion_edit_project pour créer un projet modifiable. Si un élément manque, demandez-le avant de commencer le montage."
   },
   "ru": {
     "Start with an editable motion template or open your timeline.": "Начните с редактируемого шаблона анимации или откройте монтажную шкалу.",
@@ -545,6 +550,7 @@
     "Image design": "Дизайн изображений",
     "Cinematic shots": "Кинематографические кадры",
     "Music and voiceover": "Музыка и озвучка",
+    "More Studio": "Другие студии",
     "Studios": "Студии",
     "Setup required": "Требуется настройка",
     "Use prompt": "Использовать запрос",
@@ -639,7 +645,7 @@
     "Explainer Studio": "Студия объясняющих видео",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "В разделе «Обзор» откройте «Авторы». Выберите автора, указанного в каталоге, или аккаунт, где опубликован оригинал, и откройте работу. Скопируйте инструкцию к шаблону и передайте её агенту.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Вызови openmotion_get_template с идентификатором шаблона из моего задания. Изучи редактируемые исходники или руководство по воссозданию. При адаптации сохрани указание авторства.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Прочитай выбранный навык с помощью openmotion_get_template. Проверь исходное видео или задание, затем создай редактируемый проект с помощью openmotion_create_project и openmotion_edit_project. Если чего-то не хватает, запроси материалы или сведения до начала редактирования."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Прочитай выбранный навык с помощью openmotion_get_skill. Проверь исходное видео или задание, затем создай редактируемый проект с помощью openmotion_create_project и openmotion_edit_project. Если чего-то не хватает, запроси материалы или сведения до начала редактирования."
   },
   "es": {
     "Start with an editable motion template or open your timeline.": "Empieza con una plantilla de animación editable o abre tu línea de tiempo.",
@@ -652,6 +658,7 @@
     "Image design": "Diseño de imágenes",
     "Cinematic shots": "Planos cinematográficos",
     "Music and voiceover": "Música y voz en off",
+    "More Studio": "Más estudios",
     "Studios": "Estudios",
     "Setup required": "Requiere configuración",
     "Use prompt": "Usar este prompt",
@@ -746,7 +753,7 @@
     "Explainer Studio": "Estudio de vídeos explicativos",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "En Explorar, abre Creadores. Elige un autor acreditado en el catálogo o la cuenta que publicó el original y abre una obra. Copia las instrucciones de la plantilla para usarlas con tu agente.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Usa openmotion_get_template con el identificador de plantilla de mi encargo. Revisa los archivos fuente editables o la guía de recreación y conserva la atribución al adaptar la plantilla.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lee el Skill seleccionado con openmotion_get_template. Confirma el material original o el encargo y usa openmotion_create_project y openmotion_edit_project para crear un proyecto editable. Si falta algún material o dato, pídelo antes de editar."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lee el Skill seleccionado con openmotion_get_skill. Confirma el material original o el encargo y usa openmotion_create_project y openmotion_edit_project para crear un proyecto editable. Si falta algún material o dato, pídelo antes de editar."
   },
   "pt-BR": {
     "Start with an editable motion template or open your timeline.": "Comece com um modelo de animação editável ou abra sua linha do tempo.",
@@ -759,6 +766,7 @@
     "Image design": "Design de imagens",
     "Cinematic shots": "Planos cinematográficos",
     "Music and voiceover": "Música e narração",
+    "More Studio": "Mais estúdios",
     "Studios": "Estúdios",
     "Setup required": "Requer configuração",
     "Use prompt": "Usar este prompt",
@@ -853,7 +861,7 @@
     "Explainer Studio": "Estúdio de vídeos explicativos",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Em Explorar, abra Criadores. Selecione um autor creditado no catálogo ou a conta da publicação original e abra um trabalho. Copie as instruções do modelo para usar com seu agente.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Use openmotion_get_template com o ID do modelo indicado no meu briefing. Consulte os arquivos editáveis ou o guia de recriação e mantenha os créditos ao adaptar o modelo.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leia o Skill selecionado com openmotion_get_template. Confira o material original ou o briefing e use openmotion_create_project e openmotion_edit_project para criar um projeto editável. Se faltar algum material ou informação, peça o que falta antes de editar."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leia o Skill selecionado com openmotion_get_skill. Confira o material original ou o briefing e use openmotion_create_project e openmotion_edit_project para criar um projeto editável. Se faltar algum material ou informação, peça o que falta antes de editar."
   },
   "it": {
     "Start with an editable motion template or open your timeline.": "Inizia da un modello di animazione modificabile o apri la timeline.",
@@ -866,6 +874,7 @@
     "Image design": "Design delle immagini",
     "Cinematic shots": "Inquadrature cinematografiche",
     "Music and voiceover": "Musica e voce narrante",
+    "More Studio": "Altri studi",
     "Studios": "Studi",
     "Setup required": "Configurazione richiesta",
     "Use prompt": "Usa questo prompt",
@@ -960,7 +969,7 @@
     "Explainer Studio": "Studio per video esplicativi",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "In Esplora, apri Autori. Scegli un autore accreditato nel catalogo o l’account che ha pubblicato l’originale, poi apri un’opera. Copia le istruzioni del modello per usarle con il tuo agente.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Usa openmotion_get_template con l’ID del modello indicato nel mio brief. Esamina i sorgenti modificabili o la guida alla ricreazione e mantieni i crediti originali quando adatti il modello.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leggi lo Skill selezionato con openmotion_get_template. Verifica il girato originale o il brief, poi usa openmotion_create_project e openmotion_edit_project per creare un progetto modificabile. Richiedi eventuali materiali o informazioni mancanti prima di iniziare il montaggio."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leggi lo Skill selezionato con openmotion_get_skill. Verifica il girato originale o il brief, poi usa openmotion_create_project e openmotion_edit_project per creare un progetto modificabile. Richiedi eventuali materiali o informazioni mancanti prima di iniziare il montaggio."
   },
   "tr": {
     "Start with an editable motion template or open your timeline.": "Düzenlenebilir bir hareketli grafik şablonuyla başlayın veya zaman çizelgenizi açın.",
@@ -973,6 +982,7 @@
     "Image design": "Görsel tasarım",
     "Cinematic shots": "Sinematik çekimler",
     "Music and voiceover": "Müzik ve seslendirme",
+    "More Studio": "Diğer stüdyolar",
     "Studios": "Stüdyolar",
     "Setup required": "Kurulum gerekli",
     "Use prompt": "İstemi kullan",
@@ -1067,6 +1077,6 @@
     "Explainer Studio": "Açıklayıcı Video Stüdyosu",
     "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Keşfet’te İçerik üreticileri bölümünü açın. Katalogda adı geçen bir üreticiyi veya özgün paylaşımı yapan hesabı seçip bir çalışmayı açın. Şablon talimatını kopyalayıp Agent ile kullanın.",
     "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "İş tanımımda verilen şablon kimliğiyle openmotion_get_template aracını çağır. Düzenlenebilir kaynakları veya yeniden oluşturma kılavuzunu incele ve şablonu uyarlarken özgün üreticinin adını koru.",
-    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Seçilen beceriyi openmotion_get_template ile oku. Kaynak görüntüleri veya iş tanımını doğrula, ardından openmotion_create_project ve openmotion_edit_project ile düzenlenebilir bir proje oluştur. Eksik malzeme veya bilgi varsa düzenlemeye başlamadan önce iste."
+    "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Seçilen beceriyi openmotion_get_skill ile oku. Kaynak görüntüleri veya iş tanımını doğrula, ardından openmotion_create_project ve openmotion_edit_project ile düzenlenebilir bir proje oluştur. Eksik malzeme veya bilgi varsa düzenlemeye başlamadan önce iste."
   }
 }

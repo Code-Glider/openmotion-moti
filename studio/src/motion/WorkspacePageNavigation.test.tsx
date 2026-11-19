@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, useEffect } from 'react';
+import { gemini4Videos } from './gemini4Videos';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { StudioCreation } from './CreativeWorkspace';
@@ -290,8 +291,9 @@ it('opens settings without starting the retained project and resolves it only on
   expect(container.querySelector('#mcp-title')).not.toBeNull();
   expect(container.querySelector('[data-project]')).toBeNull();
   expect(fetcher.mock.calls.some(([url]) => url.includes('/preview/open'))).toBe(false);
-  await click('Back to home');
+  await click('OpenDesign · Back to Explore');
   expect(page().explore).toBe(true);
+  expect(container.querySelector('.om-app-brand')?.getAttribute('aria-label')).toBe('OpenDesign');
   expect(container.querySelector('.om-app-rail, [data-project]')).toBeNull();
   await click('Motion Studio'); await click('Open editor');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
@@ -348,7 +350,7 @@ it('keeps Assets and editor drafts mounted across page history and restores the 
   expect(page().assets).toBe(true);
   expect(container.querySelector('[aria-label="Asset draft"]')).toBe(assetDraft);
   expect(assetDraft.value).toBe('Keep asset prompt');
-  await click('Back to home');
+  await click('OpenDesign · Back to Explore');
   expect(page().assets).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   expect(draft.value).toBe('Keep editor draft');
@@ -436,7 +438,7 @@ it('filters Explore by media and opens a reusable editing preset or template det
   await act(async () => filter[0].click());
   await click('Next');
   await click('Next');
-  expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('shot-image');
+  expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('hub-gemini-4');
   await click('Preview template Product Promo');
   expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
   await traverse(-1);
@@ -444,6 +446,49 @@ it('filters Explore by media and opens a reusable editing preset or template det
   await act(async () => preset!.click());
   expect(page()).toMatchObject({ specialty: { id: 'shorts' }, skill: 'openmotion-shortlist-shorts' });
 });
+
+it('opens the Gemini 4 hub from the third Explore slide and returns with browser Back', async () => {
+  await mount();
+  await click('Explore');
+  await click('Next'); await click('Next');
+  expect(container.querySelector('.om-feature-slide:not([inert]) h2')?.textContent).toBe('Gemini 4 Neon');
+  await click('Try Gemini 4 Neon now');
+  expect(page()).toMatchObject({ explore: false, modelHub: 'gemini-4' });
+  expect(location.search).toContain('page=model-hub');
+  expect(location.search).toContain('hub=gemini-4');
+  expect(container.querySelector('.om-model-hub-hero h1')?.textContent).toBe('Gemini 4 Neon');
+  const wall = () => [...container.querySelectorAll<HTMLButtonElement>('.om-hub-video .om-gallery-cover')];
+  expect(wall()).toHaveLength(gemini4Videos.length);
+  await act(async () => wall()[0].click());
+  const detail = () => document.querySelector<HTMLDialogElement>('dialog.om-hub-video-detail')!;
+  const count = () => detail().textContent?.match(/(\d+) \/ \d+/)?.[1];
+  expect(count()).toBe('1');
+  expect(detail().querySelector<HTMLAnchorElement>('a[aria-label="Source"]')?.href).toMatch(/^https:\/\/x\.com\//);
+  const firstTitle = detail().querySelector('.om-media-detail-title')?.textContent;
+  await act(async () => detail().querySelector<HTMLButtonElement>('button[aria-label="Next template"]')!.click());
+  expect(count()).toBe('2');
+  expect(detail().querySelector('.om-media-detail-title')?.textContent).not.toBe(firstTitle);
+  expect(detail().querySelector('button[aria-label="Copy contribution brief"]')).toBeTruthy();
+  await act(async () => detail().querySelector<HTMLButtonElement>('button[aria-label="Close template preview"]')!.click());
+  expect(document.querySelector('dialog.om-hub-video-detail')).toBeNull();
+  expect(page().modelHub).toBe('gemini-4');
+  const tab = (label: string) => [...container.querySelectorAll<HTMLButtonElement>('.om-hub-videos nav button')].find(node => node.textContent === label)!;
+  expect(tab('Made in code')).toBeUndefined();
+  expect(tab('Gemini 4 Neon')).toBeUndefined();
+  await act(async () => tab('3D scene').click());
+  expect(wall().length).toBeGreaterThan(0);
+  expect(wall().length).toBeLessThan(gemini4Videos.length);
+  expect(wall().every(card => card.querySelector('.om-gallery-avatar'))).toBe(true);
+  await act(async () => tab('All').click());
+  expect(wall()).toHaveLength(gemini4Videos.length);
+  await click('Back to Explore');
+  expect(page()).toMatchObject({ explore: true, modelHub: null });
+  await act(async () => container.querySelector<HTMLElement>('.om-feature-slide:not([inert]) h2')!.click());
+  expect(page()).toMatchObject({ explore: false, modelHub: 'gemini-4' });
+  await traverse(-1);
+  expect(page().explore).toBe(true);
+});
+
 
 it('opens Motion Studio from the Explore spotlight and resumes the timeline on request', async () => {
   await mount();
@@ -520,17 +565,16 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     expect(hero.dataset.scene).toBe('black-friday');
     await click('Play');
     act(() => { vi.advanceTimersByTime(3500); });
-    expect(hero.dataset.scene).toBe('shot-image');
+    expect(hero.dataset.scene).toBe('hub-gemini-4');
     await act(async () => { vi.advanceTimersByTime(6000); });
-    expect(hero.dataset.scene).toBe('text-to-video');
-    expect(hero.querySelector('video[src]')?.getAttribute('src')).toMatch(/^blob:/);
+    expect(hero.dataset.scene).toBe('text-to-image');
     act(() => { observed.get(hero)!(false); cards.forEach(card => observed.get(card)!(false)); });
     expect(hero.querySelector('video[src]')).toBeNull();
     for (const card of cards) expect(card.querySelector('video[src]')).toBeNull();
     act(() => { vi.advanceTimersByTime(6000); });
-    expect(hero.dataset.scene).toBe('text-to-video');
-    await act(async () => hero.querySelector<HTMLButtonElement>('.om-media-segments [aria-label="Featured · Product portrait"]')!.click());
     expect(hero.dataset.scene).toBe('text-to-image');
+    await act(async () => hero.querySelector<HTMLButtonElement>('.om-media-segments [aria-label="Featured · Motion Studio"]')!.click());
+    expect(hero.dataset.scene).toBe('motion');
   } finally { vi.useRealTimers(); }
 });
 

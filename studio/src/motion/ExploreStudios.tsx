@@ -27,6 +27,7 @@ type ExploreProps = {
   onChooseStudio: (studio: CreativeStudio) => void;
   onNavigate: (target: StudioDestination, prompt?: string) => void;
   onModel: (id: string) => void;
+  onModelHub: (id: string) => void;
   onCreators: (trigger: HTMLElement) => void;
   onOpenBlackFriday: (trigger: HTMLButtonElement) => void;
   onBrandKit: () => void;
@@ -212,7 +213,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
   return <>
     {!medium && <div className="om-explore-features" data-split={Boolean(featuredTemplate || initialTemplateError || (templates.loading && !templates.pages.length))}>
       {community ? <CommunitySpotlight community={community} skill={skills[0]} onChooseStudio={onChooseStudio} /> :
-        <ExploreSpotlight active={active} onOpenBlackFriday={props.onOpenBlackFriday} onNavigate={onNavigate} onOpenMotion={() => onChooseStudio(motionStudio)} />}
+        <ExploreSpotlight active={active} onOpenBlackFriday={props.onOpenBlackFriday} onNavigate={onNavigate} onOpenMotion={() => onChooseStudio(motionStudio)} onModelHub={props.onModelHub} />}
       {featuredTemplate && <TemplateSpotlight item={featuredTemplate} onTry={tryVideoPrompt} />}
       {initialTemplateError && <div className="om-featured-template om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><button className="om-button" onClick={templates.retry}>{t('Retry')}</button></div>}
       {templates.loading && !templates.pages.length && <Skeleton className="om-featured-template-skeleton" />}
@@ -222,7 +223,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
         <div><h2 id="om-feed-heading">{t(community?.id === '3d-motion' ? '3D techniques' : 'Community & capabilities')}</h2>
           <p className="om-muted">{t(specialty?.briefHint ?? 'Open a template to see how it works, or pick a scene to start creating.')}</p>
         </div>
-        {!community && <div className="om-choice-tabs" role="group" aria-label={t('Media type')}>{(['all', 'image', 'video', 'audio'] as const).map(kind =>
+        {!community && <div className="om-community-tabs om-choice-tabs" role="group" aria-label={t('Media type')}>{(['all', 'image', 'video', 'audio'] as const).map(kind =>
           <button key={kind} className="om-nav-item" aria-pressed={(medium ?? 'all') === kind} onClick={() => onFilter({ medium: kind === 'all' ? null : kind })}>{t(kind === 'all' ? 'All' : mediaLabels[kind])}</button>)}</div>}
       </header>
       <div className="om-feed-group">
