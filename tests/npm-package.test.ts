@@ -95,7 +95,7 @@ test('shared Agent instructions keep source-default, optional npm and release co
     return text.split('## Candidate and publication controls\n')[1].split('\n## ')[0].trim();
   };
   const shared = await section('AGENTS.md');
-  assert(shared.includes('New repository installations use the source bootstrap in install.md'));
+  assert(shared.includes('New repository installations use the source bootstrap in docs/install.md'));
   assert(shared.includes('Published npm application installation is optional') && shared.includes('explicit user choice'));
   assert(shared.includes('Never silently substitute npm for source or mix installations'));
   assert(shared.includes('Test publishes under `candidate`') && shared.includes('non-blocking Mac/Windows cold installs'));

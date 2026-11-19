@@ -38,12 +38,25 @@ async function readOptional(filename) {
   return readFile(filename, 'utf8').catch(error => { if (error.code !== 'ENOENT') throw error; return ''; });
 }
 
-export async function dependenciesCurrent(root) {
+export async function dependenciesCurrent(root, { inspectInstalledLock = false } = {}) {
   const [recorded, lock, installed] = await Promise.all([
     readOptional(path.join(root, dependenciesReceipt)), readOptional(path.join(root, 'package-lock.json')),
     readOptional(path.join(root, 'node_modules/.package-lock.json')),
   ]);
-  return Boolean(lock && installed && recorded === digest(lock));
+  if (!lock || !installed) return false;
+  if (recorded === digest(lock)) return true;
+  if (!inspectInstalledLock) return false;
+  // A checkout installed outside our bootstrap can still reuse npm's locked tree.
+  // Optional packages omitted for this platform are not missing dependencies.
+  const wanted = JSON.parse(lock).packages, actual = JSON.parse(installed).packages;
+  if (!wanted || !actual || !Object.keys(wanted).some(name => name)) return false;
+  for (const [name, entry] of Object.entries(wanted)) {
+    if (!name || entry.optional) continue;
+    const present = actual[name];
+    if (!present || present.version !== entry.version || present.integrity !== entry.integrity
+      || !await lstat(path.join(root, name)).catch(error => { if (error.code !== 'ENOENT') throw error; return null; })) return false;
+  }
+  return true;
 }
 
 export async function recordDependencies(root) {
