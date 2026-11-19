@@ -311,3 +311,17 @@ it.each([
   expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ action: 'generate', model: selected.id,
     prompt: draft.prompt, references: references.map(item => item.reference), parameters: expected }));
 });
+
+it('resumes an old account task while preserving a newer prompt draft', async () => {
+  const account: Model = { ...model, id: 'account:image', provider: 'account', modelId: 'image' };
+  loadGateway.mockResolvedValue({ models: [account], status: { providers: [{ id: 'account', available: true }], routes: {} } });
+  const job = { id: 'old-job', model: account, prompt: 'old prompt', parameters: {}, modality: 'image' as const, state: 'failed' as const, phase: 'failed', remoteId: 'original-remote', assets: [], requestHash: 'snapshot', createdAt: 1, updatedAt: 2 };
+  const resume = vi.fn(async () => {}), setDraft = vi.fn();
+  const draft = { ...props.draft, model: account.id, prompt: 'new prompt for next generation', parameters: {} };
+  await act(async () => root.render(<AssetComposer {...props} draft={draft} setDraft={setDraft} jobs={[job]} taskIds={{ direct: job.id }} onResume={resume} />));
+  const button = [...container.querySelectorAll('button')].find(node => node.textContent === 'Continue download')!;
+  await act(async () => button.click());
+  expect(resume).toHaveBeenCalledExactlyOnceWith(job);
+  expect(container.querySelector<HTMLTextAreaElement>('textarea')?.value).toBe(draft.prompt);
+  expect(setDraft).not.toHaveBeenCalled(); expect(generate).not.toHaveBeenCalled();
+});

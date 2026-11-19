@@ -328,12 +328,14 @@ export class ModelGateway {
     if (typeof requestId !== 'string' || !/^[\w-]{1,100}$/.test(requestId)) throw new Error('A stable requestId is required');
     return this.store.lock(async () => {
       const job = await this.getJob(id);
-      if (job.model.provider !== 'opendesign' || !job.remoteId || !/^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)) throw new Error('Only an existing Cloud task can be resumed');
+      if (!(job.model.provider === 'opendesign' || job.model.provider === 'account' && job.modality === 'image') || !job.remoteId || !/^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)) throw new Error('Only an existing Cloud or account image task can be resumed');
       if (['queued', 'running', 'completed'].includes(job.state)) return job;
-      if (!resumableJob(job)) throw new Error(job.savePending ? 'Use retry_save for retained local outputs' : 'This Cloud task cannot be resumed');
+      if (!resumableJob(job)) throw new Error(job.savePending ? 'Use retry_save for retained local outputs' : 'This task cannot be resumed');
       if (job.projectId && !this.store.projectCatalog().projects.some(project => project.id === job.projectId)) throw new Error('Project not found');
-      if (job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the original task was not resumed');
-      if (!(await this.credential('opendesign')).key || !(await this.status()).providers.find(provider => provider.id === 'opendesign')?.available) throw new Error('Provider is no longer available');
+      if (job.model.provider === 'account') {
+        if (job.providerOrigin !== await this.account.identity()) throw new Error('Account changed; the original task was not resumed');
+      } else if (job.providerOrigin !== await this.cloudOrigin()) throw new Error('Provider API origin changed; the original task was not resumed');
+      if (job.model.provider === 'opendesign' && !(await this.credential('opendesign')).key || !(await this.status()).providers.find(provider => provider.id === job.model.provider)?.available) throw new Error('Provider is no longer available');
       if ((await this.listJobs()).filter(item => ['queued', 'running'].includes(item.state)).length >= 20) throw new Error('Generation queue is full (20 jobs)');
       job.state = 'queued'; job.phase = 'resuming'; job.updatedAt = Date.now(); delete job.error;
       await this.saveJob(job); return job;
@@ -417,8 +419,8 @@ export class ModelGateway {
         const jobs = await this.listJobs();
         for (const job of jobs.filter(j => j.state === 'running' && !alive(j.workerPid))) {
           job.savePending = !!job.savePending || await lstat(path.join(this.root, 'work', job.id, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
-          job.state = 'failed'; job.phase = job.savePending ? 'save_failed' : 'interrupted'; job.error = job.savePending ? 'Saving was interrupted. Local outputs are retained; retry_save saves them without another model request.' : 'Worker stopped; request was not automatically resubmitted. Check provider history before retrying.'; if (resumableJob(job)) job.error += ' Check the original Cloud task with action=resume without paying again.'; job.updatedAt = Date.now(); await this.saveResult(job);
-          if (!job.savePending) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
+          job.state = 'failed'; job.phase = job.savePending ? 'save_failed' : 'interrupted'; job.error = job.savePending ? 'Saving was interrupted. Local outputs are retained; retry_save saves them without another model request.' : 'Worker stopped; request was not automatically resubmitted. Check provider history before retrying.'; if (resumableJob(job) && job.model.provider === 'opendesign') job.error += ' Check the original Cloud task with action=resume without paying again.'; job.updatedAt = Date.now(); await this.saveResult(job);
+          if (!job.savePending && !(job.model.provider === 'account' && resumableJob(job))) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
         }
         const capacity = Math.max(0, 2 - jobs.filter(j => j.state === 'running').length);
         const next = jobs.filter(j => j.state === 'queued' && !this.active.has(j.id)).reverse().slice(0, capacity);
@@ -445,9 +447,11 @@ export class ModelGateway {
       if (checking) return; checking = true;
       void this.getJob(job.id).then(latest => { if (latest.state === 'cancelled') controller.abort(); }).catch(() => controller.abort()).finally(() => { checking = false; });
     }, 500);
-    const progress = async (phase: string, remoteId?: string) => {
+    const progress = async (phase: string, remoteId?: string, download?: GenerationJob['download']) => {
       await this.store.lock(async () => { const current = await this.getJob(job.id); if (current.state !== 'running') { controller.abort(); return; }
-        current.phase = phase; if (remoteId) current.remoteId = remoteId; current.updatedAt = Date.now(); await this.saveJob(current); });
+        current.phase = phase; if (remoteId) current.remoteId = remoteId; if (download) current.download = download;
+        if (phase === 'remote_failed') current.remoteTerminal = true;
+        current.updatedAt = Date.now(); await this.saveJob(current); });
     };
     try {
       retained ||= await lstat(path.join(dir, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
@@ -560,10 +564,15 @@ export class ModelGateway {
         current.state = 'failed'; current.phase = unavailable ? 'save_unavailable' : retained ? 'save_failed' : 'failed'; current.savePending = retained && !unavailable; current.updatedAt = Date.now();
         let message = controller.signal.aborted ? 'Generation stopped or timed out; no automatic retry was made' : error instanceof Error ? error.message : 'Generation failed';
         if (key) message = message.replaceAll(key, '[redacted]');
-        if (resumableJob(current)) message += ' Check the original Cloud task with action=resume without paying again.';
+        if (resumableJob(current) && current.model.provider === 'opendesign') message += ' Check the original Cloud task with action=resume without paying again.';
         current.error = message.slice(0, 500); await this.saveResult(current);
       });
-    } finally { clearTimeout(timeout); clearInterval(cancelPoll); if (!retained) await rm(dir, { recursive: true, force: true }); }
+    } finally {
+      clearTimeout(timeout); clearInterval(cancelPoll);
+      const current = await this.getJob(job.id);
+      const keepDownload = current.model.provider === 'account' && current.modality === 'image' && resumableJob(current);
+      if (!retained && !keepDownload) await rm(dir, { recursive: true, force: true });
+    }
   }
   async close() { this.closed = true; this.account.close(); for (const task of this.active.values()) task.controller.abort(); await Promise.allSettled([...this.active.values()].map(task => task.done)); }
 }

@@ -23,6 +23,7 @@ export function AssetGenerationCard({ job, onCancel, onView, onRetrySave, onResu
   const [retrying, setRetrying] = useState(false);
   const retrySave = async () => { if (!onRetrySave || retrying) return; setRetrying(true); try { await onRetrySave(job); } finally { setRetrying(false); } };
   const resumable = resumableJob(job);
+  const accountImage = job.model.provider === 'account' && job.modality === 'image';
   const resuming = useRef(false);
   const resume = async () => { if (!onResume || resuming.current) return; resuming.current = true; setRetrying(true); try { await onResume(job); } finally { resuming.current = false; setRetrying(false); } };
   const title = t(done ? 'Ready for your next creation' : job.savePending && job.state === 'failed' ? 'Saving needs attention' : job.state === 'failed' ? 'Generation needs attention' : job.state === 'cancelled' ? 'Generation stopped' : job.state === 'queued' ? 'Your idea is in the queue' : saving ? 'Bringing your asset home' : 'Your idea is taking shape');
@@ -41,13 +42,15 @@ export function AssetGenerationCard({ job, onCancel, onView, onRetrySave, onResu
       </div>
       <div className="om-creation-job-copy"><div className="om-creation-job-title"><Tooltip label={title} wrap><span className="om-creation-status" role="status">{t(saving && working ? 'Saving to assets' : working && job.phase === 'reconnecting' ? 'Reconnecting…' : job.state)}</span></Tooltip><span className="om-eyebrow">{job.model.label}</span></div><Tooltip label={job.prompt} wrap><p className="om-muted om-creation-job-prompt">{job.prompt}</p></Tooltip><span className="om-sr-only">{title}</span></div>
       {working ? <button className="om-nav-item" onClick={() => onCancel(job)}>{t('Cancel')}</button> : <>
-        {resumable && onResume && <button className="om-nav-item" disabled={retrying} onClick={() => void resume()}>{t(retrying ? 'Checking original task…' : 'Check original task')}</button>}
+        {resumable && onResume && <button className="om-nav-item" disabled={retrying} onClick={() => void resume()}>{t(accountImage ? retrying ? 'Continuing download…' : 'Continue download' : retrying ? 'Checking original task…' : 'Check original task')}</button>}
         {job.savePending && onRetrySave && <button className="om-nav-item" disabled={retrying} onClick={() => void retrySave()}>{t(retrying ? 'Retrying save…' : 'Retry saving')}</button>}
         {result && <button className="om-nav-item" onClick={() => onView(job)}>{t('View asset')}<RemixIcon name="arrow-right-up-line" size={14} /></button>}
       </>}
     </div>
     {(working || done) && <ol className="om-creation-steps" aria-label={t('Generation progress')}>{['Submitted', 'Creating', 'Saved to assets'].map((label, i) => <li key={label} data-complete={done || i === 0 && job.state === 'running' || i === 1 && saving} data-current={working && (i === 0 && job.state === 'queued' || i === 1 && job.state === 'running' && !saving || i === 2 && saving)}><span>{done || i === 0 && job.state === 'running' || i === 1 && saving ? <RemixIcon name="check-line" size={12} /> : i + 1}</span>{t(label)}</li>)}</ol>}
     {job.savePending && !working && <p className="om-muted">{t('Generated files are kept locally. Retry saving without generating again.')}</p>}
+    {accountImage && job.download && !done && <p className="om-muted" role="status">{t('Downloaded')}: {(job.download.receivedBytes / 1024 / 1024).toFixed(1)} / {(job.download.totalBytes / 1024 / 1024).toFixed(1)} MB</p>}
+    {accountImage && (resumable || working && job.remoteId) && <p className="om-muted">{t('Download the original task image. Draft changes apply only to your next generation.')}</p>}
     {error && <details className="om-creation-job-error"><summary>{t('Failure details')}</summary><p>{t(error)}</p></details>}
   </section>;
 }
