@@ -21,9 +21,10 @@ test('handbook scenarios compose public tools and keep their copyable instructio
   const names = new Set(phase1Tools.map(tool => tool.name));
   for (const scenario of mcpScenarios) {
     assert.ok(scenario.title && scenario.description);
+    if (scenario.id === 'asset-naming') assert.equal(scenario.prompt, assetNamingInstruction);
     for (const tool of scenario.tools) {
       assert.ok(names.has(tool), tool);
-      assert.ok((scenario.id === 'asset-naming' ? assetNamingInstruction : platformExportExample('en')).includes(tool), tool);
+      assert.ok((scenario.id === 'platform-export' ? platformExportExample('en') : scenario.prompt).includes(tool), tool);
     }
   }
 });

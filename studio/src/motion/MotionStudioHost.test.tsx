@@ -3,6 +3,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MotionEditorFrame, MotionStudioHost } from './MotionStudioHost';
+import { translate } from '../i18n/I18n';
 import englishReadme from '../../../README.md?raw';
 import chineseReadme from '../../../README.zh-CN.md?raw';
 import discordLogo from './community-discord.svg';
@@ -490,7 +491,7 @@ it('dismissing a write-blocking notice does not enable project creation', () => 
 });
 
 
-it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'])('keeps community and repository links beside the model selector with a localized label (%s)', locale => {
+it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'] as const)('keeps localized community and repository links in the application header (%s)', locale => {
   localStorage.setItem('motion.studio.locale', locale);
   render();
   const link = container.querySelector<HTMLAnchorElement>('.motion-community-link')!;
@@ -505,7 +506,7 @@ it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']
   expect(link.getAttribute('aria-label')).toContain('OpenMotion');
   expect(container.querySelector('.om-app-header')?.contains(link)).toBe(true);
   expect(container.querySelector('.om-app-header')?.contains(container.querySelector(`a[href="${GITHUB_REPOSITORY}"]`))).toBe(true);
-  expect(container.querySelector('.om-app-header .om-model-switcher')).not.toBeNull();
+  expect(container.querySelector(`.om-app-header button[aria-label="${translate(locale, 'Select model')}"]`)).toBeNull();
   expect(container.querySelector('.motion-studio-header')?.contains(link)).toBe(false);
   const exportButton = container.querySelector('[data-testid="header-export"]')!;
   expect(link.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

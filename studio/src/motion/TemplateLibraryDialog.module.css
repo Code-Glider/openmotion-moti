@@ -115,3 +115,7 @@
 .mediaFailure { composes: om-media-detail-failure from global; }
 .mediaProgress { composes: om-media-detail-progress from global; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.creatorGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: var(--motion-space-16); }
+.creatorPoster { display: block; position: relative; overflow: hidden; width: 100%; aspect-ratio: 16/9; background: var(--motion-inset); border-radius: var(--motion-radius-md); }
+.creatorPoster img { width: 100%; height: 100%; object-fit: cover; }

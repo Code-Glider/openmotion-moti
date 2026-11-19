@@ -291,6 +291,7 @@ button, input, select, textarea { font-family: inherit; }
   }
   .motion-timeline-toolbar > .motion-timeline-toolbar > div > div,
   .motion-timeline-media-actions { flex-shrink: 0; }
+  .motion-timeline-icon-controls > div > div { max-inline-size: 100%; flex-wrap: wrap; }
 }
 
 @container (max-width: 420px) {

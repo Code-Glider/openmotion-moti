@@ -1,6 +1,6 @@
 import { useMvpEditor } from "./StudioHost";
 import { useI18n } from '../i18n/I18n';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { mountConnection } from '../../../web/connect';
 import connectionPage from '../../../web/connect.html?raw';
 import { TemplateLibraryDialog } from './TemplateLibraryDialog';
@@ -10,7 +10,7 @@ import { reportTemplateEvent } from './editorTracking';
 import '../../../web/connect.css';
 import '../../../web/template-gallery.css';
 
-type Props = { open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string };
+type Props = { navigation?: ReactNode; open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string };
 
 /** The original integration page lives inside one modal; Studio stays mounted beneath it. */
 export function ConnectionDialog(props: Props) {

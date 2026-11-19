@@ -198,7 +198,7 @@ Browser acceptance includes actual open dropdowns, copy success/failure Toasts a
 
 The package-owned `studio/editor-workspace.css` defines continuous editor surfaces, panel dividers, layout-menu icon alignment and timeline control-column, row, grid and icon-control styling. Project navigation, dock panels, toolbars, preview transport and timeline boundaries use a single 1px line in the shared subtle-border role. Resize hit areas and active drag feedback retain their existing geometry. Studio supplies measured dock widths, row heights and tick spacing; both themes use the same semantic roles, and authored clip artwork remains independent.
 
-The dark theme uses neutral near-black workspace surfaces, a restrained raised-control layer and low-emphasis structural borders. Text and interactive states retain the shared contrast checks. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
+The dark theme uses a near-black shell, a cool graphite workspace and lighter slate floating panels. Mint identifies current navigation and the primary action over photography. Hover uses a cool neutral fill, while keyboard focus uses a pale outline. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
 
 ### Grouped discovery filters and alignment
 

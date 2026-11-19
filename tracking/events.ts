@@ -54,7 +54,7 @@ const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 
   manager_tab: ['projects', 'trash'], selection_count: 'integer' } as const;
 // MCP connection page: which Agent client tab is shown, how the user reached the page and how they set it up.
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
-const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
+const mcpEntry = ['app_header', 'app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
 const entryFrom = [...mcpEntry, ...providerSetupEntries] as const;
 const mcp = { mcp_client: mcpClient, setup_method: ['agent', 'manual'], capability_id: 'slug' } as const;
 // A Skill is identified by its catalogue id and group only; the brief text never leaves the browser.
