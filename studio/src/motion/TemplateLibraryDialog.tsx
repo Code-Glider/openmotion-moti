@@ -1,3 +1,7 @@
+import { CategoryStrip } from './CategoryStrip';
+import { TemplateIndustryMenu } from './TemplateIndustryMenu';
+import { collectionFacet, formatCategories, type TemplateCollection } from './templateCollections';
+import { loadCoveredTemplates } from './useCoveredTemplates';
 import { blackFridayReference, blackFridayTemplates } from '../../../shared/black-friday-collection';
 import { BlackFridayCollection } from './BlackFridayCollection';
 import { TemplateCreators } from './TemplateCreators';
@@ -12,25 +16,24 @@ import { BrandSeriesCard, BrandStoriesDialog } from './BrandStories';
 import { discoveryInsertions, groupBrandSeries, type BrandSeries } from './brandStoryData';
 import { seriesId, seriesContext, reportSeriesCard, openSeriesView, type SeriesView } from './brandStoryTracking';
 import storyStyles from './BrandStories.module.css';
-import { isEditableTemplate, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
+import { isEditableTemplate, matchesTemplateCategory, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
 import { templatePrompt, type IntegrationInfo } from '../../../shared/integration';
 import { useI18n } from '../i18n/I18n';
 import { motionApi } from './useWorkspace';
 import { MotionIcon } from './icons';
-import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { GalleryFilterPopover, GallerySortMenu, matchesGalleryFilters } from './GalleryFilters';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Popover } from '../components/ui/Popover';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
-import { purposeOrder } from './templateDiscoveryTaxonomy';
+import { orderedPurposes } from './templateDiscoveryTaxonomy';
 import { templateContributionUrl, templateSubmissionPrompt } from './templateContribution';
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
 import { RelatedTemplatePreviews } from './RelatedTemplatePreviews';
 import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, relatedTemplatesByTags, randomTemplate, type Facet } from './templateDiscovery';
-import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
+import { TemplateGalleryCard as TemplateCard, TopBrandsLabel, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
 import { useTemplateImpressions } from './useTemplateImpressions';
 import { matchesTemplateSearch, normalizedTemplateQuery } from './templateSearch';
@@ -76,7 +79,7 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { blackFriday?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { collection?: TemplateCollection | null; onCollectionChange?: (value: TemplateCollection | null) => void; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
@@ -99,18 +102,40 @@ export function TemplateLibraryDialog(props: Props) {
   const [catalog, setCatalog] = useState<GalleryTemplate[]>([]);
   const [warning, setWarning] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(false);
   const [attempt, retry] = useState(0), [query, setQuery] = useState(''), [sort, setSort] = useState<Sort>('recommended');
-  const [selected, setSelected] = useState<Filters>({});
+  const [facetsSelected, setFacetsSelected] = useState<Filters>({});
+  const preset = useMemo(() => collectionFacet(props.collection), [props.collection]);
+  const selected = useMemo<Filters>(() => preset ? { ...facetsSelected, [preset.key]: [preset.value] } : facetsSelected, [preset, facetsSelected]);
+  function setSelected(next: Filters) {
+    if (preset && next[preset.key]?.length === 1 && next[preset.key]?.[0] === preset.value) {
+      const { [preset.key]: _preset, ...otherFacets } = next;
+      setFacetsSelected(otherFacets);
+    } else {
+      setFacetsSelected(next);
+      if (preset) props.onCollectionChange?.(null);
+    }
+  }
   const [preview, setPreview] = useState<GalleryTemplate | null>(null), [prompt, setPrompt] = useState('');
   const [manualCopy, setManualCopy] = useState('');
   const [promptError, setPromptError] = useState(false), [promptAttempt, retryPrompt] = useState(0);
   const [priority, setPriority] = useState<string | null>(null), [filtersOpen, setFiltersOpen] = useState(false);
-  const [editableOnly, setEditableOnly] = useState(false);
+  const [editableFilter, setEditableFilter] = useState(false);
+  const editableOnly = props.collection === 'builtin' || editableFilter;
+  function setEditableOnly(next: boolean) {
+    setEditableFilter(next && props.collection !== 'builtin');
+    if (!next && props.collection === 'builtin') props.onCollectionChange?.(null);
+  }
+  const format = props.collection === 'ads' || props.collection === 'short-form' ? props.collection : null;
   const [draftFilters, setDraftFilters] = useState<Filters>({});
   const [draftEditable, setDraftEditable] = useState(false);
   const [filterTab, setFilterTab] = useState<Facet>('uses');
   const [facetQuery, setFacetQuery] = useState('');
-  const [brandsOnly, setBrandsOnly] = useState(false);
-  const blackFriday = Boolean(props.blackFriday);
+  const [brandFilter, setBrandFilter] = useState(false);
+  const brandsOnly = props.collection === 'top-100-brands' || brandFilter;
+  function setBrandsOnly(next: boolean) {
+    setBrandFilter(next && props.collection !== 'top-100-brands');
+    if (!next && props.collection === 'top-100-brands') props.onCollectionChange?.(null);
+  }
+  const blackFriday = props.collection === 'black-friday';
   const campaignStages = useMemo(() => blackFridayTemplates(catalog, locale), [catalog, locale]);
   const campaignItems = useMemo(() => campaignStages.flatMap(stage => stage.items), [campaignStages]);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
@@ -241,19 +266,18 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, props.returnFocus, props.inWorkspace]);
   useEffect(() => {
     if (!props.open) return;
-    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null); detail.current?.close();
+    setCatalog([]); setBrandStory(null); setFacetsSelected({}); setBrandFilter(false); setCompareWithout(''); setQuery(''); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null); detail.current?.close();
     shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear(); seriesLists.current.clear(); shownSeries.current.clear();
     const controller = new AbortController();
     let version: string | undefined, pending = false;
     async function load() {
       pending = true; setLoading(true); setError('');
       try {
-        const items: GalleryTemplate[] = []; let offset: number | null = 0;
-        while (offset !== null) {
-          const page: TemplatePage = await motionApi(`/template-catalog?category=all&covered=true&limit=60&offset=${offset}&locale=${encodeURIComponent(locale)}`, { signal: controller.signal });
-          items.push(...page.items); offset = page.next; version = page.catalogVersion; setWarning(page.warning ?? '');
+        const result = await loadCoveredTemplates(locale, controller.signal);
+        if (!controller.signal.aborted) {
+          version = result.catalogVersion;
+          setWarning(result.warning ?? ''); setCatalog(result.items); setCatalogVersion(version ?? ''); shown.current = true;
         }
-        if (!controller.signal.aborted) { setCatalog(items); setCatalogVersion(version ?? ''); shown.current = true; }
       } catch (err) { if (!controller.signal.aborted) setError((err as Error).message); }
       finally { pending = false; if (!controller.signal.aborted) setLoading(false); }
     }
@@ -273,14 +297,11 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, attempt, locale]);
   const available = useMemo(() => facets.map(([key, label]) => ({ key, label, values: [...new Set(catalog.flatMap(item => values(item, key)))] })).filter(facet => facet.values.length), [catalog]);
   const missingTemplate = Boolean(props.templateId && shown.current && !loading && !error && !catalog.some(item => item.id === props.templateId) && !blackFridayReference(props.templateId, locale));
-  const categories = [...(available.find(facet => facet.key === 'uses')?.values ?? [])].sort((a, b) => {
-    const rank = (value: string) => purposeOrder.includes(value) ? purposeOrder.indexOf(value) : purposeOrder.length;
-    return rank(a) - rank(b);
-  });
+  const categories = orderedPurposes(available.find(facet => facet.key === 'uses')?.values ?? []);
   const industries = available.find(facet => facet.key === 'industries')?.values ?? [];
   const sortOptions = [['recommended', 'Recommended order'], ['name', 'Name A–Z'], ['reverse', 'Name Z–A'], ['duration', 'Duration']] as const;
-  const hasFilters = Boolean(query || editableOnly || brandsOnly || compareWithout || Object.values(selected).some(items => items?.length));
-  const searchable = useMemo(() => catalog.filter(item => (props.creators || ((!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout))) && matchesTemplateSearch(item, query, t)), [catalog, query, brandsOnly, compareWithout, props.creators, t]);
+  const hasFilters = Boolean(format || query || editableOnly || brandsOnly || compareWithout || Object.values(selected).some(items => items?.length));
+  const searchable = useMemo(() => catalog.filter(item => (props.creators || ((!format || matchesTemplateCategory(item, format)) && (!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout))) && matchesTemplateSearch(item, query, t)), [catalog, query, format, brandsOnly, compareWithout, props.creators, t]);
   const draftCount = useMemo(() => filtersOpen ? searchable.filter(item => matchesFilters(item, draftFilters, draftEditable)).length : 0, [filtersOpen, searchable, draftFilters, draftEditable]);
   const hasDraftFilters = draftEditable || Object.values(draftFilters).some(items => items?.length);
   const visible = useMemo(() => {
@@ -288,9 +309,9 @@ export function TemplateLibraryDialog(props: Props) {
     return searchable.filter(item => matchesFilters(item, selected, editableOnly)).sort((a, b) => sort === 'recommended' ? (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) : sort === 'duration' ? (a.duration ?? Infinity) - (b.duration ?? Infinity) : a.title.localeCompare(b.title, locale) * (sort === 'reverse' ? -1 : 1));
   }, [searchable, selected, sort, locale, editableOnly, props.creators, props.creator]);
   useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly, compareWithout, blackFriday]);
-  const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
+  const filterCount = Number(Boolean(format)) + Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
   const hasAppliedFilters = filterCount > 0;
-  const searchContextKey = JSON.stringify([normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
+  const searchContextKey = JSON.stringify([format, normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
   const searchContext = useTemplateSearchContext(props.open, !loading && shown.current && !error && !searchComposing, searchContextKey, Boolean(query.trim() || filterCount));
   const currentSearchContext = useRef(searchContext); currentSearchContext.current = searchContext;
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
@@ -325,7 +346,7 @@ export function TemplateLibraryDialog(props: Props) {
   const showEmptyRecovery = !loading && !error && !visible.length;
   const suggestedRemoval = useMemo(() => {
     if (!showEmptyRecovery || !stableSearch || !hasAppliedFilters || !catalog.length) return;
-    const matches = catalog.filter(item => (!compareWithout || item.brand !== compareWithout) && matchesTemplateSearch(item, query, t));
+    const matches = catalog.filter(item => (!format || matchesTemplateCategory(item, format)) && (!compareWithout || item.brand !== compareWithout) && matchesTemplateSearch(item, query, t));
     const count = (filters: Filters, editable: boolean, brands: boolean) => matches.filter(item =>
       (!brands || Boolean(item.brand?.trim())) && matchesFilters(item, filters, editable)).length;
     const options = facets.flatMap(([key]) => (selected[key] ?? []).map(value => ({
@@ -337,7 +358,7 @@ export function TemplateLibraryDialog(props: Props) {
       ...(brandsOnly ? [{ key: 'top' as const, value: '', label: t('TOP 100 brands'), count: count(selected, editableOnly, false) }] : []),
     ];
     return [...options, ...special].filter(option => option.count > 0).sort((a, b) => b.count - a.count)[0];
-  }, [showEmptyRecovery, stableSearch, hasAppliedFilters, catalog, query, t, selected, editableOnly, brandsOnly, compareWithout]);
+  }, [showEmptyRecovery, stableSearch, hasAppliedFilters, format, catalog, query, t, selected, editableOnly, brandsOnly, compareWithout]);
   // A filter, category or sort result is reported after the changed list has rendered, with the count the user now sees.
   useEffect(() => {
     const action = pendingResult.current; pendingResult.current = undefined;
@@ -345,7 +366,7 @@ export function TemplateLibraryDialog(props: Props) {
   }, [selected, sort, query, editableOnly, brandsOnly]);
   // One result set per search, filter and sort combination: a card is reported again only when that combination changes.
   // Empty groups are dropped and groups and values sorted, so the same choices always make the same key.
-  const resultSet = JSON.stringify([blackFriday, query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
+  const resultSet = JSON.stringify([blackFriday, format, query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
   const seriesLists = useRef(new Map<string, string>()), shownSeries = useRef(new Set<string>());
   if (!seriesLists.current.has(resultSet)) seriesLists.current.set(resultSet, tracking.newTrackingId());
   const seriesListId = seriesLists.current.get(resultSet)!;
@@ -403,7 +424,7 @@ export function TemplateLibraryDialog(props: Props) {
   const related = useMemo(() => preview ? (campaignStage ? campaignStage.items.filter(item => item.id !== preview.id)
     : handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview, campaignStage]);
   const previewIndex = detailItems.findIndex(item => item.id === preview?.id);
-  const clear = () => { setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
+  const clear = () => { if (format) props.onCollectionChange?.(null); setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
   const reset = () => {
     setCompareWithout('');
     if (hasFilters) { tracking.reportDiscoveryClick('filter_clear', listContext()); pendingResult.current = 'filter_clear'; }
@@ -417,20 +438,23 @@ export function TemplateLibraryDialog(props: Props) {
   };
   const toggle = (key: Facet, value: string) => {
     picked('filter_option', key, value, !selected[key]?.includes(value));
-    setSelected(previous => ({ ...previous, [key]: previous[key]?.includes(value) ? previous[key]!.filter(item => item !== value) : [...(previous[key] ?? []), value] }));
+    setSelected(toggleValue(selected, key, value));
   };
   const chooseCategory = (key: 'uses' | 'industries', value: string | undefined) => {
     setCompareWithout('');
     const next = value === undefined || (key === 'uses' && selected.uses?.includes(value)) ? [] : [value];
     picked('category_select', key, value, next.length > 0);
-    if (key === 'uses') setBrandsOnly(false);
-    setSelected(previous => ({ ...previous, [key]: next }));
+    if (key === 'uses') {
+      setBrandsOnly(false);
+      if (format) props.onCollectionChange?.(null);
+    }
+    setSelected({ ...selected, [key]: next });
   };
   const chooseBrands = (next: boolean) => {
     setCompareWithout('');
     picked(next ? 'category_select' : 'filter_option', 'brand', 'top-100-brands', next);
     setBrandsOnly(next);
-    if (next) setSelected(previous => ({ ...previous, uses: [] }));
+    if (next) setSelected({ ...selected, uses: [] });
   };
   const toggleEditable = (next: boolean) => { picked('filter_option', 'editable', undefined, next); setEditableOnly(next); };
   const changeSort = (value: string) => {
@@ -621,19 +645,13 @@ export function TemplateLibraryDialog(props: Props) {
         </div>
       </header>
       {!props.creators && !blackFriday && <div className={styles.toolbar}>
-        <div className={`om-control-row ${styles.categories}`} role="group" aria-label={t('Video purpose')}>
+        <CategoryStrip label="Video purpose" selection={brandsOnly ? 'top-100-brands' : selected.uses?.join('|')}>
           <button className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
-          <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
+          <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><TopBrandsLabel /></button>
           {categories.map(value => <button className="om-button om-filter-pill" key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</button>)}
-        </div>
+        </CategoryStrip>
         <div className={styles.controls}>
-          {industries.length > 0 && <Menu modal={false} container={null} align="start" aria-label={t('By industry')} className={styles.discoveryMenu}
-            trigger={<button className={styles.dropdownButton}><span>{selected.industries?.length === 1 ? t(selected.industries[0]) : t('By industry')}</span>{(selected.industries?.length ?? 0) > 1 && <span className={styles.filterCount}>{selected.industries!.length}</span>}<MotionIcon name="chevron-down" size={16} /></button>}>
-            <MenuRadioGroup value={selected.industries?.length === 1 ? selected.industries[0] : selected.industries?.length ? '' : 'all'} onValueChange={value => chooseCategory('industries', value === 'all' ? undefined : value)}>
-              <MenuRadioItem value="all">{t('All industries')}</MenuRadioItem>
-              {industries.map(value => <MenuRadioItem key={value} value={value}>{t(value)}</MenuRadioItem>)}
-            </MenuRadioGroup>
-          </Menu>}
+          <TemplateIndustryMenu industries={industries} selected={selected.industries} onSelect={value => chooseCategory('industries', value)} />
           <GalleryFilterPopover groups={available.map(group => ({ ...group, values: group.key === 'uses' ? categories : group.values }))}
             open={filtersOpen} onOpenChange={openFilters} draft={draftFilters} onChange={setDraftFilters}
             tab={filterTab} onTabChange={value => setFilterTab(value as Facet)} query={facetQuery} onQueryChange={setFacetQuery}
@@ -644,7 +662,7 @@ export function TemplateLibraryDialog(props: Props) {
           <GallerySortMenu value={sort} options={sortOptions} onChange={changeSort} />
         </div>
       </div>}
-      {!props.creators && !blackFriday && hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}{hasAppliedFilters && <button onClick={reset}>{t('Clear filters')}</button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
+      {!props.creators && !blackFriday && hasFilters && <div className={styles.chips}>{format && <button onClick={() => props.onCollectionChange?.(null)} aria-label={t('Remove filter {value}', { value: t(formatCategories[format]) })}>{t(formatCategories[format])}<MotionIcon name="close" size={12} /></button>}{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}{hasAppliedFilters && <button onClick={reset}>{t('Clear filters')}</button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>
     {blackFriday && !props.creators ? <BlackFridayCollection stages={campaignStages} active={active} onPreview={openCard} onPriority={setPriority} onOpenSkill={props.onOpenSkill} />
     : props.creators ? <TemplateCreators catalog={catalog} creator={props.creator ?? null} query={query} works={visible} loading={loading}

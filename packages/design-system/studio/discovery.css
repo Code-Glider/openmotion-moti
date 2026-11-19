@@ -54,9 +54,24 @@
 .om-gallery-round-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 var(--motion-control); width: var(--motion-control); height: var(--motion-control); padding: 0; border: 0; border-radius: var(--motion-radius-full); color: var(--color-template-text); background: var(--color-template-controls-bg); cursor: pointer; }
 .om-gallery-round-button:hover:not(:disabled) { background: var(--color-template-hover); }
 .om-gallery-round-button:disabled { opacity: .45; cursor: default; }
+.om-horizontal-rail { position: relative; min-width: 0; }
+.om-rail-viewport { min-width: 0; scrollbar-width: none; overscroll-behavior-inline: contain; }
+.om-rail-viewport::-webkit-scrollbar { display: none; }
+[data-motion-studio] .om-rail-arrow.om-icon-button {
+  position: absolute; z-index: 1; top: var(--om-rail-arrow-center, 50%); transform: translateY(-50%);
+  width: var(--om-rail-arrow-size, var(--motion-control)); height: var(--om-rail-arrow-size, var(--motion-control));
+  border-radius: var(--motion-radius-full); box-shadow: var(--motion-shadow-sm);
+}
+.om-rail-arrow[data-edge="left"] { left: var(--motion-space-4); }
+.om-rail-arrow[data-edge="right"] { right: var(--motion-space-4); }
 .om-gallery-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--motion-space-12); padding: 8px 32px 20px; }
 .om-gallery-categories { display: flex; align-items: center; gap: 7px; flex: 1 1 620px; min-width: 0; overflow: auto; scrollbar-width: none; }
 .om-gallery-categories::-webkit-scrollbar { display: none; }
+.om-category-strip { flex: 1 1 auto; }
+.om-category-strip-viewport { overflow-x: auto; scroll-padding-inline: calc(var(--motion-control) + var(--motion-space-8)); }
+.om-category-strip-track { display: flex; align-items: center; width: max-content; gap: var(--motion-space-8); padding: var(--motion-space-2); }
+.om-category-strip-track > button { flex: none; white-space: nowrap; }
+
 /* Fade only the edges that still conceal scrollable choices. */
 .om-overflow-fade { --om-fade-start: 0px; --om-fade-end: 0px; mask-image: linear-gradient(to right, transparent, black var(--om-fade-start), black calc(100% - var(--om-fade-end)), transparent); }
 .om-overflow-fade[data-fade-start="true"] { --om-fade-start: var(--motion-space-24); }

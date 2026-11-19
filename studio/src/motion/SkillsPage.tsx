@@ -1,3 +1,5 @@
+import { CategoryStrip } from './CategoryStrip';
+import { SkillSubmissionLink } from './SkillSubmissionLink';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -21,8 +23,7 @@ import * as tracking from './pageTracking';
 import { useSkillLayoutMotion } from './useSkillLayoutMotion';
 import './skills.css';
 
-/** The contribution guide section with the paste-ready Agent brief for a new library Skill. */
-export const skillSubmissionUrl = 'https://github.com/nexu-io/openmotion/blob/main/CONTRIBUTING.md#submit-a-skill-with-your-agent';
+export { skillSubmissionUrl } from './SkillSubmissionLink';
 
 /** Cards lead with the task, like the template library; the upstream project name stays verbatim as the source. */
 const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => t(skill.title);
@@ -39,34 +40,18 @@ function githubRepositoryOf(source?: string): string | null {
 }
 
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
-export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate, briefs, previewsEnabled = true, hasProject = false, detailOnly = false }: { detailOnly?: boolean; studio?: TechniqueStudio; previewsEnabled?: boolean; briefs?: Map<string, SkillParameters>; onCreate?: (destination: StudioDestination, draft?: AssetDraft) => void; onExplore?: () => void; skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
+export function SkillsPage({ skillId, onSkillChange, routeCategory, onCategoryChange, studio, onExplore, onCreate, briefs, previewsEnabled = true, hasProject = false, detailOnly = false }: { routeCategory?: SkillCategory | null; onCategoryChange?: (value: SkillCategory | null) => void; detailOnly?: boolean; studio?: TechniqueStudio; previewsEnabled?: boolean; briefs?: Map<string, SkillParameters>; onCreate?: (destination: StudioDestination, draft?: AssetDraft) => void; onExplore?: () => void; skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const chrome = useOptionalWorkspaceChrome();
-  const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
+  const [query, setQuery] = useState(''), [localCategory, setLocalCategory] = useState<SkillCategory | null>(null);
+  const category = routeCategory === undefined ? localCategory : routeCategory;
+  const setCategory = routeCategory !== undefined && onCategoryChange ? onCategoryChange : setLocalCategory;
   const [picking, setPicking] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [instantDetail, setInstantDetail] = useState(false);
   const main = useRef<HTMLDivElement>(null);
   const captureLayout = useSkillLayoutMotion(main, instantDetail);
-  const categories = useRef<HTMLDivElement>(null);
   const detailClose = useRef<HTMLButtonElement>(null);
-  const [categoryEdges, setCategoryEdges] = useState({ start: false, end: false });
-  useEffect(() => {
-    const element = categories.current;
-    if (!element) return;
-    const measure = () => {
-      const start = Math.abs(element.scrollLeft) > 1;
-      const end = element.scrollWidth - element.clientWidth - Math.abs(element.scrollLeft) > 1;
-      setCategoryEdges(previous => previous.start === start && previous.end === end ? previous : { start, end });
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    for (const child of element.children) observer.observe(child);
-    element.addEventListener('scroll', measure, { passive: true });
-    document.fonts?.addEventListener('loadingdone', measure);
-    return () => { observer.disconnect(); element.removeEventListener('scroll', measure); document.fonts?.removeEventListener('loadingdone', measure); };
-  }, [locale, studio]);
   const studioDefaults = useMemo<SkillParameters>(() => studioSkillDefaults(studio?.id), [studio]);
   const [parameters, setParameters] = useState<SkillParameters>(studioDefaults), [manualCopy, setManualCopy] = useState<{ text: string; surface: 'instruction' | 'command' } | null>(null);
   // Same install guide as template instructions; the repository guide is the fallback until the service answers.
@@ -188,16 +173,16 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
         </section> : <section className="om-gallery-intro om-skills-intro">
           <div className="om-skills-heading-row">
             <h1>{t('Teach your Agent new moves.')}</h1>
-            <a className="om-gallery-submit" data-borderless href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillSubmitClicked()}>{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a>
+            <SkillSubmissionLink />
           </div>
           <p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
         </section>}
         <div className="om-gallery-sticky-header">
           <div className="om-gallery-toolbar om-skills-toolbar">
-            {studio ? <button className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</button> : <div ref={categories} className="om-gallery-categories om-overflow-fade" data-neutral data-fade-start={categoryEdges.start} data-fade-end={categoryEdges.end} role="group" aria-label={t('Skill category')}>
+            {studio ? <button className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</button> : <CategoryStrip label="Skill category" selection={category} neutral>
               <button aria-pressed={!category} onClick={() => pickCategory(null)}>{t('All')}</button>
               {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => pickCategory(value)}>{t(value)}</button>)}
-            </div>}
+            </CategoryStrip>}
             <label className="om-field om-search-field"><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd aria-hidden="true">⌘ K</kbd></label>
           </div>
         </div>

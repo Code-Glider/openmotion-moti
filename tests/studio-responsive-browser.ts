@@ -182,7 +182,7 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
     try {
       const page = await browser.newPage();
-      const items = Array.from({ length: 8 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [] }));
+      const items = Array.from({ length: 10 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [], uses: ['Product launch', 'Partnership announcement'] }));
       await page.setRequestInterception(true);
       page.on('request', request => {
         if (new URL(request.url()).pathname.endsWith('/template-catalog')) {
@@ -195,11 +195,14 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-feed-group [data-template-id]');
       await page.evaluate(() => document.fonts.ready);
-      for (const width of [1512, 1060, 760, 320]) {
+      for (const [width, expectedCards] of [[1512, 8], [1060, 6], [760, 4], [320, 2]]) {
         await page.setViewport({ width, height: 850 });
         const rowsFill = await page.$eval('.om-feed-group', feed => {
           const bounds = feed.getBoundingClientRect();
           const cards = Array.from(feed.children, card => card.getBoundingClientRect());
+          if (getComputedStyle(feed).overflowX === 'auto') {
+            return feed.scrollWidth > feed.clientWidth && cards.every(card => card.top === cards[0].top);
+          }
           return cards.every((card, index) => {
             const previous = cards[index - 1], next = cards[index + 1];
             const startsRow = !previous || previous.top !== card.top;
@@ -208,6 +211,24 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           });
         });
         assert.ok(rowsFill, 'Gallery rows follow reading order and fill the available width at ' + width);
+        const shelf = await page.$eval('.om-explore-shelf .om-explore-preview-grid', grid => {
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length);
+          return { count: cards.length, rows: new Set(cards.map(card => card.getBoundingClientRect().top)).size };
+        });
+        assert.deepEqual(shelf, { count: expectedCards, rows: 2 }, 'Template previews fit two rows at ' + width);
+        if (width === 320) {
+          const strip = '.om-explore-shelf[aria-label="Templates"] .om-category-strip';
+          await page.waitForSelector(strip + ' button[aria-label^="Next"]:enabled');
+          assert.equal(await page.$(strip + ' [data-edge="left"]'), null);
+          assert.equal(await page.$eval(strip + '-viewport', list => getComputedStyle(list).scrollbarWidth), 'none');
+          await page.click(strip + ' button[aria-label^="Next"]');
+          await page.waitForFunction(selector => document.querySelector(selector)!.scrollLeft > 0, {}, strip + '-viewport');
+          await page.waitForSelector(strip + ' button[aria-label^="Previous"]:enabled');
+          await page.$eval(strip + '-viewport', list => { list.scrollLeft = list.scrollWidth; });
+          await page.waitForSelector(strip + ' [data-edge="right"]', { hidden: true });
+          await page.click(strip + ' [data-edge="left"]');
+          await page.waitForSelector(strip + ' [data-edge="right"]');
+        }
         const hero = (await page.$('.om-feature-carousel'))!;
         const initialHeight = await hero.evaluate(element => element.getBoundingClientRect().height);
         for (const indicator of await hero.$$('.om-media-segments button')) {

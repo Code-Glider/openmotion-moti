@@ -1,3 +1,5 @@
+import { findTemplateCollection, type TemplateCollection } from './templateCollections';
+import { skillCategories, type SkillCategory } from './skillCategories';
 import { blackFridaySkillIds } from '../../../shared/black-friday-collection';
 import { workspacePageName } from '../../../shared/workspace-url';
 import { mcpClients, type McpClient } from './mcpClients';
@@ -8,7 +10,8 @@ import { sceneDestination, studioDestination, type StudioDestination } from './c
 export const settingsSections = ['account', 'subscription', 'providers', 'models', 'local', 'general', 'appearance', 'privacy', 'about', 'help', 'mcp', 'brand-kit'] as const;
 export type SettingsSection = typeof settingsSections[number];
 export type ExploreFilters = { community: ExploreCommunity['id'] | null; medium: StudioScene['modality'] | null };
-export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skill: string | null; templates: boolean; blackFriday: boolean; modelOverview: string | null; creators: boolean; creator: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
+export { findTemplateCollection, type TemplateCollection } from './templateCollections';
+export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; creators: boolean; creator: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
 
 export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
   const query = new URLSearchParams(search), page = workspacePageName(query, hash), section = query.get('section');
@@ -25,11 +28,11 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
   const skill = query.get('skill') || null;
   const templates = query.get('templates') === '1';
   const creators = templates && query.get('view') === 'creators';
-  const blackFriday = templates && !creators && query.get('collection') === 'black-friday';
-  const selectedSkill = blackFriday ? blackFridaySkillIds.find(id => id === skill) ?? null
+  const templateCollection = templates && !creators ? findTemplateCollection(query.get('collection')) : null;
+  const selectedSkill = templateCollection === 'black-friday' ? blackFridaySkillIds.find(id => id === skill) ?? null
     : page === 'skills' || collection?.techniques.some(id => id === skill) ? skill : null;
   return { motion: page === 'motion', api: page === 'api', tool: page === 'api' ? query.get('tool') : null, modelOverview: page === 'model' ? model : null, creators, creator: creators ? query.get('creator')?.trim() || null : null, specialty, community, medium, assetId: page === 'assets' ? query.get('asset') || null : null,
-    assetVersion: page === 'assets' && query.get('asset') ? query.get('version') || null : null, explore: page === 'explore', studio, settings, brandKit: settings === 'brand-kit' ? query.get('kit') || null : null, assets: page === 'assets', skills: page === 'skills', skill: selectedSkill, templates, blackFriday,
+    assetVersion: page === 'assets' && query.get('asset') ? query.get('version') || null : null, explore: page === 'explore', studio, settings, brandKit: settings === 'brand-kit' ? query.get('kit') || null : null, assets: page === 'assets', skills: page === 'skills', skillCategory: page === 'skills' ? skillCategories.find(value => value === query.get('skillCategory')) ?? null : null, skill: selectedSkill, templates, templateCollection,
     client: mcpClients.find(value => value.id === query.get('host'))?.id ?? 'codex',
     setup: query.get('setup') === 'manual' ? 'manual' : 'agent',
     provider: settings === 'providers' ? query.get('provider') || null : null,
@@ -39,7 +42,7 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
 export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): string {
   const url = new URL(href), current = readWorkspacePage(url.search, url.hash), page = { ...current, ...patch };
   const currentSearchPage = url.searchParams.get('page');
-  for (const key of ['page', 'section', 'templates', 'host', 'setup', 'provider', 'template', 'skill', 'kit', 'community', 'medium', 'collection']) url.searchParams.delete(key);
+  for (const key of ['page', 'section', 'templates', 'host', 'setup', 'provider', 'template', 'skill', 'skillCategory', 'kit', 'community', 'medium', 'collection']) url.searchParams.delete(key);
   if (current.api || page.api) url.searchParams.delete('tool');
   if (current.creators || page.creators) { url.searchParams.delete('view'); url.searchParams.delete('creator'); }
   if (current.assets || page.assets) { url.searchParams.delete('asset'); url.searchParams.delete('version'); }
@@ -81,6 +84,7 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
     if (page.studio.model) url.searchParams.set('model', page.studio.model);
   } else if (page.skills) {
     url.searchParams.set('page', 'skills');
+    if (page.skillCategory) url.searchParams.set('skillCategory', page.skillCategory);
     if (page.skill) url.searchParams.set('skill', page.skill);
   } else if (page.assets) {
     url.searchParams.set('page', 'assets');
@@ -111,9 +115,9 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
     if (page.creators) {
       url.searchParams.set('view', 'creators');
       if (page.creator) url.searchParams.set('creator', page.creator);
-    } else if (page.blackFriday) {
-      url.searchParams.set('collection', 'black-friday');
-      if (page.skill) url.searchParams.set('skill', page.skill);
+    } else if (page.templateCollection) {
+      url.searchParams.set('collection', page.templateCollection);
+      if (page.templateCollection === 'black-friday' && page.skill) url.searchParams.set('skill', page.skill);
     }
     if (page.template) url.searchParams.set('template', page.template);
   }

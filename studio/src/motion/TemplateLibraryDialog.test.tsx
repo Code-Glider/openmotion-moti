@@ -77,7 +77,7 @@ const confirmSearch = () => act(async () => searchInput().dispatchEvent(new Keyb
 const clearKeyword = () => act(async () => button(`Remove filter ${searchInput().value}`).click());
 it('opens the Black Friday collection without the category row and previews videos in campaign order', async () => {
   const onClose = vi.fn();
-  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog blackFriday open busy={false} error="" onClose={onClose} onOpen={vi.fn()} /></I18nProvider>));
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog collection="black-friday" open busy={false} error="" onClose={onClose} onOpen={vi.fn()} /></I18nProvider>));
   expect(host.querySelector('[aria-label="Video purpose"]')).toBeNull();
   expect(host.querySelector('[data-black-friday] h1')?.textContent).toBe('Black Friday.');
   expect(cards()).toHaveLength(10);
@@ -426,7 +426,7 @@ it('filters brand templates directly and preserves category, search and reset be
   ]);
   await mount();
   const categories = host.querySelector('[role=group][aria-label="Video purpose"]')!;
-  expect(categories.children[1]).toBe(button('TOP 100 brands'));
+  expect(categories.querySelectorAll('button')[1]).toBe(button('TOP 100 brands'));
   expect(cards()).toHaveLength(5);
 
   await act(async () => button('TOP 100 brands').click());
