@@ -4,6 +4,7 @@ import { PrimaryNavigationButton, PrimaryNavigationRail } from '../../../package
 import { RemixIcon } from '../icons/RemixIcons';
 import { Menu, MenuItem, MenuSeparator, MenuSubmenu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { Tooltip } from '../components/ui/Tooltip';
+import { IconButton } from '../components/ui/IconButton';
 import { languages, useI18n, type Locale } from '../i18n/I18n';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 import { useAccountSummary } from './AccountSettings';
@@ -29,7 +30,7 @@ export function ApplicationHeader({ settings, openAsset, onCommunity, openSettin
   const { t } = useI18n();
   const { openAssets, assetsOpen, openHome, openModelSettings, navigationCollapsed } = useWorkspaceChrome();
   return <header className="om-app-header">
-    {toggleResourceRail && <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><button type="button" className="om-nav-item om-app-sidebar-toggle" onClick={toggleResourceRail} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><RemixIcon name="side-bar-line" size={16} /></button></Tooltip>}
+    {toggleResourceRail && <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><IconButton type="button" onClick={toggleResourceRail} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')} icon={<RemixIcon name="side-bar-line" size={16} />} /></Tooltip>}
     <Tooltip label={t('Back to home')}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={t('Back to home')}><BrandLogo compact /></button></Tooltip>
     <CreativeNavigation {...navigation} openProviders={openModelSettings} />
     <div className="om-app-header-actions">
