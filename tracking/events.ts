@@ -55,7 +55,7 @@ const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 
   manager_tab: ['projects', 'trash'], selection_count: 'integer' } as const;
 // MCP connection page: which Agent client tab is shown, how the user reached the page and how they set it up.
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
-const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
+const mcpEntry = ['app_header', 'app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
 const entryFrom = [...mcpEntry, ...providerSetupEntries] as const;
 const referenceEntry = { reference_entry: ['library_home'] } as const;
 const referenceSource = { source_kind: ['link', 'local', 'description'] } as const;
@@ -210,7 +210,7 @@ export const omEvents = {
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.
   // A card counts once it is at least half visible for a second, once per result set.
   surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'template_related', 'template_guide', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
-    element: ['library', 'card', 'detail', 'instruction', 'search_recovery', 'reference', 'related', 'guide'], placement, position: 'integer', ...templateList, ...templateDetail, ...template, ...templateSeries,
+    element: ['library', 'card', 'detail', 'instruction', 'search_recovery', 'reference', 'related', 'guide'], placement, position: 'integer', source_template_id: 'slug', ...templateList, ...templateDetail, ...template, ...templateSeries,
     ...skill, ...brand, ...referenceEntry, brand_state: brandState, recovery_reason: ['no_results', 'unsuitable', 'catalog_empty'] },
     required: ['page_name', 'area', 'element'] },
   // One per settled query, never per keystroke. `search_keyword` is the only free-text field in this registry.
@@ -227,6 +227,10 @@ export const omEvents = {
   resource_download_result: { producers: ['studio'], fields: { page_name: pages, resource_kind: ['motion_guide', 'brand_kit_package'], download_attempt_id: 'uuid',
     delivery_status: ['browser_save_requested', 'fetch_failed', 'unknown'], error_code: 'code', ...templateList, detail_view_id: 'uuid', detail_mode: ['modal'], ...template, ...brand, ...templateSeries },
     required: ['resource_kind', 'download_attempt_id', 'delivery_status'] },
+  template_guide_interaction: { producers: ['studio'], fields: { page_name: ['studio'], template_id: 'code', view_id: 'uuid', project_id: 'uuid',
+    action: ['shown', 'edit', 'chapter', 'reference', 'reset', 'copy', 'open_editor', 'download', 'document', 'source'],
+    expanded: 'boolean', delivery_status: ['browser_save_requested', 'fetch_failed'],
+    field: ['title', 'accent'], outcome: ['success', 'failure', 'manual_fallback'] }, required: ['page_name', 'template_id', 'view_id', 'action'] },
   template_instruction_copy_result: { producers: ['studio'], fields: { host_product: hosts, copy_status: ['clipboard_written', 'manual_fallback_shown', 'failed'],
     page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateList, ...templateDetail, ...project, ...template, ...templateSeries }, required: ['host_product', 'copy_status'] },
   // One observed Studio handoff operation result, not an Agent receipt or a completed film.

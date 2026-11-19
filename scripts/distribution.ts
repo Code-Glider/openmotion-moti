@@ -705,7 +705,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/install-public-skill.ts', 'scripts/recover-workspace-lock.ts', 'scripts/cleanup-harness-bundles.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
     'scripts/install-onboarding.mjs', 'scripts/inline-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
     'scripts/diagnostics.mjs', 'scripts/diagnostic-redaction.mjs', 'scripts/zip.mjs',
-    'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',
+    'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts', 'scripts/build-template-guide.mjs',
     'scripts/repository-media.ts', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'scripts/build-template-cards.mjs',
     'shared/install-attribution.ts', 'shared/asset-name-ui.json', 'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
     'gateway/brand-capture/LICENSE', 'gateway/brand-capture/NOTICE.md',
@@ -751,7 +751,7 @@ export async function distributionFiles(profile: string, include: (file: string)
   files.push('template-library/openmotion-welcome/assets/soundtrack.m4a');
   for (const skill of packagedSkills) await walk('skills/' + skill, /\.(?:md|mjs|ts|py|json|ya?ml)$/);
   // Skill cover videos and GIFs are bundled by Vite into editor-assets and must ship with the page.
-  await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|gif|mp4|woff2?|ttf|txt)$/);
+  await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|gif|mp4|m4a|woff2?|ttf|txt)$/);
   await walk('studio/public', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
   // A lightweight application must not require optional showcase bytes that its
   // caller intentionally excludes. Full bundles still validate the whole list.

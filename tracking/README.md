@@ -1,5 +1,7 @@
 # OpenMotion tracking
 
+Catalog guide pages emit `template_guide_interaction` through the existing Studio transport and privacy preference. `template_id` always identifies the page being used, with a fresh `view_id`; actions are `shown`, `edit`, `chapter`, `reference`, `reset`, `copy`, `open_editor`, `download`, `document` and `source`. Document toggles include `expanded`; source links record intent. Download results distinguish `browser_save_requested` from `fetch_failed`, and never confirm disk persistence. Editor entry reports intent separately from its result. `shown` requires at least half of the preview visible for one continuous foreground second. Edits report only `title` or `accent`, never their values. Copy and editor actions report success, failure or manual fallback separately. The embedding parent pins the template identity and validates the closed event fields. This measures interaction and handoff, not user acceptance, export or reference-recreation completion. Local tests do not establish production collection.
+
 An explicit-event package shared by the standalone MCP runtime and Motion Studio.
 It has no runtime dependencies. The application consumes its TypeScript sources;
 `npm run build:tracking` emits JavaScript and declarations for a local `npm pack`

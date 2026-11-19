@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18n';
-import { TimelineCanvasMenu } from './TimelineCanvasMenu';
+import { PreviewCanvasMenu } from './PreviewCanvasMenu';
 
 const state = vi.hoisted(() => ({ composition: 'index.html', blocked: false, error: '', calls: [] as any[], wait: vi.fn(), toast: vi.fn() }));
 vi.mock('../contexts/StudioContext', () => ({ useStudioShellContext: () => ({ projectId: 'project', activeCompPath: state.composition, compositionDimensions: { width: 1920, height: 1080 }, writeBlockedReason: state.blocked ? 'Blocked' : null, renderQueue: { isRendering: false }, waitForPendingDomEditSaves: state.wait, showToast: state.toast }) }));
@@ -16,9 +16,9 @@ vi.mock('./gatewayClient', () => ({ gatewayRequest: vi.fn(async (_path, _method,
 }) }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root;
-const render = () => act(async () => root.render(<I18nProvider initialLocale="en"><TimelineCanvasMenu /></I18nProvider>));
+const render = () => act(async () => root.render(<I18nProvider initialLocale="en"><PreviewCanvasMenu /></I18nProvider>));
 const trigger = () => document.querySelector<HTMLButtonElement>('button[aria-label="Aspect ratio"]')!;
-const choosePortrait = () => act(async () => [...document.querySelectorAll<HTMLButtonElement>('[role=radio]')].find(el => el.textContent === '9:16')!.click());
+const choosePortrait = () => act(async () => [...document.querySelectorAll<HTMLElement>('[role=menuitemradio]')].find(el => el.textContent === '9:16')!.click());
 beforeEach(() => {
   state.composition = 'index.html'; state.blocked = false; state.error = ''; state.calls = [];
   state.wait.mockReset().mockResolvedValue(undefined); state.toast.mockReset();
