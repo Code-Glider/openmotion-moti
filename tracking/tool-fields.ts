@@ -7,7 +7,7 @@ const actionSets = {
   openmotion_open_preview: ['open', 'record_review', 'record_display', 'begin', 'complete_generation'],
   openmotion_export_request: ['request', 'record_review'],
   openmotion_project_archive: ['export', 'import'],
-  openmotion_manage_project: ['info', 'rename', 'duplicate', 'reveal', 'trash', 'restore', 'delete'],
+  openmotion_manage_project: ['comments', 'info', 'rename', 'duplicate', 'reveal', 'trash', 'restore', 'delete'],
 } as const;
 const targets = ['project', 'templates', 'providers'] as const;
 export const toolDimensions = { action: [...new Set(Object.values(actionSets).flat())], target: targets } as const;
@@ -25,6 +25,15 @@ export function toolInputFields(tool: string, input: unknown) {
 export const validationRules = ['missing', 'invalid_type', 'invalid_enum', 'invalid_format', 'out_of_range', 'unknown_field', 'invalid_combination'] as const;
 // Keep the ingress allowlist independent of the app and its schema implementation.
 const invalidFields = [
+  'operation', 'commentId', 'expectedCommentRevision', 'text', 'status', 'anchor', 'anchor.scope',
+  'anchor.compositionPath', 'anchor.time', 'anchor.element', 'anchor.element.handle', 'anchor.element.sourceFile',
+  'anchor.element.label', 'anchor.element.tagName', 'anchor.element.hfId', 'anchor.element.domId',
+  'anchor.element.selector', 'anchor.element.selectorIndex', 'anchor.element.text', 'anchor.element.box',
+  'anchor.element.box.x', 'anchor.element.box.y', 'anchor.element.box.width', 'anchor.element.box.height',
+  'anchor.annotation', 'anchor.annotation.version', 'anchor.annotation.coordinateSpace', 'anchor.annotation.width',
+  'anchor.annotation.height', 'anchor.annotation.marks', 'anchor.annotation.marks[]', 'anchor.annotation.marks[].kind',
+  'anchor.annotation.marks[].text', 'anchor.annotation.marks[].points', 'anchor.annotation.marks[].points[]',
+  'anchor.annotation.marks[].points[].x', 'anchor.annotation.marks[].points[].y',
   'action', 'all', 'arguments', 'assetId', 'assetNames', 'assetNames[]', 'assetNames[].name',
   'assetNames[].path', 'audio', 'brandKit', 'brandKit.catalogId', 'brandKit.expectedUpdatedAt', 'brandKit.file',
   'brandKit.file.data', 'brandKit.file.name', 'brandKit.kitId', 'brandKit.name', 'brandKit.operation',
@@ -61,6 +70,7 @@ const invalidFields = [
   'workId',
 ] as const;
 export const toolErrorCodes = [
+  'COMMENT_TARGET_NOT_FOUND', 'COMMENT_NOT_FOUND', 'COMMENT_CONFLICT', 'COMMENT_LIMIT',
   'INVALID_ARGUMENT', 'VERSION_CONFLICT', 'PROJECT_NOT_BOUND', 'PROJECT_NOT_FOUND', 'PROJECT_SESSION_MISMATCH',
   'REQUEST_ID_CONFLICT', 'REQUEST_STATE_UNKNOWN', 'MCP_TOOL_NOT_EXPOSED', 'EXPORT_BUSY', 'EXPORT_NOT_FOUND',
   'EXPORT_NOT_COMPLETED', 'TEMPLATE_NOT_FOUND', 'TEMPLATE_NOT_EDITABLE', 'SOURCE_BATCH_TOO_LARGE',

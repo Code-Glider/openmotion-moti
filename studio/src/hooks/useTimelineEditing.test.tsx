@@ -26,6 +26,10 @@ import {
   shiftPositionsInScript,
 } from "@hyperframes/core/gsap-writer-acorn";
 
+// Keep background analytics out of assertions about editing network requests.
+// The tracking transport has its own integration coverage.
+vi.mock("../motion/tracking", () => ({ trackMotion: vi.fn(async () => "queued") }));
+
 vi.mock("../components/editor/manualEditingAvailability", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../components/editor/manualEditingAvailability")>();

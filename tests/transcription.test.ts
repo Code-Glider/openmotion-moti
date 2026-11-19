@@ -14,7 +14,7 @@ import { Phase1Service } from '../phase1.ts';
 import { validateInput, phase1Tools } from '../shared/phase1-tools.ts';
 import type { Fetcher } from '../gateway/network.ts';
 
-const { transcriptCaptionSource, captionTracks, updateCaptionTrackSource, manualCaptionSource } = createCaptionSourceOperations(htmlParser);
+const { transcriptCaptionSource, captionTracks, updateCaptionTrackSource, manualCaptionSource, toggleCaptionSource } = createCaptionSourceOperations(htmlParser);
 
 const api = (store: any) => new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
 async function source(store: any, duration = 3, video = false) {
@@ -273,3 +273,40 @@ test('legacy managed text participates in caption controls without changing its 
   const removed = updateCaptionTrackSource(styled, id, {}, true).content;
   assert.equal(captionTracks(removed).length, 0); assert.match(removed, /Keep custom artwork/);
 });
+
+
+test('caption on/off reserves one empty native lane, fills it, and preserves text and locks', () => {
+  const base = '<div id="main" data-composition-id="main" data-duration="8" data-width="640" data-height="360"><video class="clip" data-start="0" data-duration="8" data-track-index="0"></video></div>';
+  const first = toggleCaptionSource(base, '11111111-1111-4111-8111-111111111111', true);
+  assert.equal(captionTracks(first.content).length, 1); assert.equal(captionTracks(first.content)[0].cueCount, 0);
+  assert.match(first.content, /data-timeline-role="caption-empty"/); assert.match(first.content, /data-track-index="1"/);
+  const off = toggleCaptionSource(first.content, 'unused', false);
+  assert.equal(captionTracks(off.content)[0].settings.visible, false);
+  const on = toggleCaptionSource(off.content, 'unused', true);
+  assert.equal(captionTracks(on.content).length, 1); assert.equal(captionTracks(on.content)[0].id, first.trackId);
+  const styled = updateCaptionTrackSource(on.content, first.trackId!, { preset: 'card', position: 'top' });
+  const filled = manualCaptionSource(styled.content + `<script>const note = '${first.trackId}';</script>`, '22222222-2222-4222-8222-222222222222', { segments: [{ id: 'one', text: 'Confirmed caption', start: 1, end: 3 }] });
+  assert.equal(captionTracks(filled.content).length, 1); assert.equal(captionTracks(filled.content)[0].track, 0);
+  assert.doesNotMatch(filled.content, /caption-empty/); assert.match(filled.content, /data-track-index="1"/);
+  assert.ok(filled.content.includes(`const note = '${first.trackId}'`));
+  assert.equal(captionTracks(filled.content)[0].settings.preset, 'card'); assert.equal(captionTracks(filled.content)[0].settings.position, 'top');
+  const title = manualCaptionSource(filled.content, '33333333-3333-4333-8333-333333333333', { textKind: 'text', segments: [{ id: 'title', text: 'Keep title', start: 0, end: 4 }] });
+  const hidden = toggleCaptionSource(title.content, 'unused', false);
+  assert.equal(captionTracks(hidden.content).find(track => track.kind === 'text')!.settings.visible, true);
+  assert.equal(captionTracks(hidden.content).find(track => track.kind === 'caption')!.settings.visible, false);
+  const locked = first.content.replace('data-timeline-role="caption-empty"', 'data-timeline-role="caption-empty" data-timeline-locked');
+  assert.throws(() => toggleCaptionSource(locked, 'unused', false), /Unlock/);
+});
+
+test('public caption toggle is replay-safe, revision guarded and reversible', () => fixture(async store => {
+  const service = api(store), projectId = store.projectId;
+  const call = (transcript: any) => service.call('openmotion_assets_use', { action: 'transcript', transcript });
+  const before = await service.call('openmotion_get_project', { projectId });
+  const input = { command: 'caption_toggle', projectId, compositionPath: 'index.html', visible: true, requestId: 'enable-captions', expectedRevision: before.revision, expectedVersionId: before.currentVersionId };
+  const enabled = await call(input); assert.equal(enabled.captionCount, 0); assert.equal((await call(input)).replayed, true);
+  assert.equal((await call({ command: 'caption_tracks', projectId, compositionPath: 'index.html' })).tracks.length, 1);
+  await assert.rejects(call({ ...input, visible: false, requestId: 'stale-toggle' }), /VERSION_CONFLICT/);
+  const current = await service.call('openmotion_get_project', { projectId });
+  await service.call('openmotion_restore_version', { projectId, requestId: 'restore-no-captions', versionId: before.currentVersionId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId });
+  assert.equal((await call({ command: 'caption_tracks', projectId, compositionPath: 'index.html' })).tracks.length, 0);
+}));

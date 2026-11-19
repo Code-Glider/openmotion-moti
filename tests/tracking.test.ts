@@ -192,6 +192,29 @@ test('nested tool inputs identify missing fields and invalid operation or comman
   }
 });
 
+test('review comment tracking keeps closed action and error fields without review content', () => {
+  const schema = phase1Tools.find(tool => tool.name === 'openmotion_manage_project')!.inputSchema;
+  assert.deepEqual(toolInputFields('openmotion_manage_project', { action: 'comments', text: 'PRIVATE_COMMENT' }), { action: 'comments' });
+  for (const [args, field, rule] of [
+    [{ operation: 'PRIVATE_OPERATION' }, 'operation', 'invalid_enum'],
+    [{ expectedCommentRevision: 0 }, 'expectedCommentRevision', 'out_of_range'],
+    [{ anchor: { scope: 'frame', compositionPath: 'index.html', time: -1 } }, 'anchor.time', 'out_of_range'],
+    [{ anchor: { scope: 'element', compositionPath: 'index.html', element: { handle: 'PRIVATE_HANDLE', sourceFile: 'index.html', label: 'PRIVATE_LABEL', tagName: 'h1', PRIVATE_KEY: true } } }, 'unknown_field', 'unknown_field'],
+    [{ anchor: { scope: 'frame', compositionPath: 'index.html', annotation: { version: 1, coordinateSpace: 'normalized', width: 640, height: 360, marks: [{ kind: 'pen', points: [{ x: 2, y: 0 }] }] } } }, 'anchor.annotation.marks[].points[].x', 'out_of_range'],
+  ] as const) {
+    assert.throws(() => validateInput(schema, { action: 'comments', projectId: 'project', ...args }), error => {
+      assert.deepEqual(toolFailureFields(error), { error_code: 'INVALID_ARGUMENT', invalid_field: field, validation_rule: rule });
+      assert(!JSON.stringify(toolFailureFields(error)).includes('PRIVATE'));
+      return true;
+    });
+  }
+  for (const code of ['COMMENT_TARGET_NOT_FOUND', 'COMMENT_NOT_FOUND', 'COMMENT_CONFLICT', 'COMMENT_LIMIT']) {
+    const normalized = toolFailureFields(new Error(`${code}: PRIVATE_COMMENT`));
+    assert.deepEqual(normalized, { error_code: code });
+    assert(validProperties(omEvents, 'mcp_tool_finished', { tool_name: legacyToolName('openmotion_manage_project'), accepted: true, call_id: crypto.randomUUID(), action: 'comments', outcome: 'failure', duration_ms: 1, ...normalized }));
+  }
+});
+
 test('bounded queue rejects private properties, preserves UUID/time on retries and serializes flushes', async () => {
   const batches: PendingEvent[][] = []; let attempts = 0;
   const tracker = core(async events => { batches.push(structuredClone([...events])); return ++attempts === 1 ? 'retry' : 'accepted'; }, 2);
@@ -613,6 +636,25 @@ test('provider setup handoff tracks MCP entries exclusively without counting Web
   }
 }));
 
+test('template handoff admits observed results and rejects content, made-up outcomes and invalid identities', () => {
+  const ids = { template_id: 'motion-example', operation_id: crypto.randomUUID(), handoff_attempt_id: crypto.randomUUID(), detail_view_id: crypto.randomUUID() };
+  const valid = { ...ids, page_name: 'studio', stage: 'open', outcome: 'success', project_id: crypto.randomUUID() };
+  assert.equal(validProperties(studioEvents, 'template_project_result', valid), true);
+  const click = { page_name: 'studio', area: 'template_detail', element: 'start_use', template_action: 'open_edit', operation_id: ids.operation_id };
+  assert.equal(validProperties(studioEvents, 'ui_click', click), true);
+  assert.equal(validProperties(studioEvents, 'ui_click', { ...click, operation_id: 'private-path' }), false);
+  for (const stage of ['create', 'reconcile', 'open']) for (const outcome of ['success', 'failure', 'unknown', 'not_found']) {
+    assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, stage, outcome }), true);
+  }
+  for (const extra of [{ prompt: 'private text' }, { color: '#123456' }, { url: 'https://private.invalid' }, { raw_error: 'private stack' }, { materials: 'private asset' }]) {
+    assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, ...extra }), false);
+  }
+  assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, outcome: 'film_created' }), false);
+  assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, operation_id: 'not-a-uuid' }), false);
+  assert.equal(validProperties(studioEvents, 'template_project_result', { ...valid, template_id: '/private/path' }), false);
+  assert.equal(validProperties(studioEvents, 'surface_view', { page_name: 'studio', area: 'template_card', element: 'card', placement: 'related', ...ids, source_template_id: 'motion-source', position: 1 }), false);
+  assert.equal(validProperties(studioEvents, 'surface_view', { page_name: 'studio', area: 'template_card', element: 'card', placement: 'related', template_id: ids.template_id, detail_view_id: ids.detail_view_id, source_template_id: 'motion-source', position: 1 }), true);
+});
 
 test('MCP export failures keep action and service validation details on the original call and replay', () => fixture(async store => {
   const { startServer } = await import('../server.ts');
