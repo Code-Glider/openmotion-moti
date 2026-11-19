@@ -210,6 +210,9 @@
 :root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has(.hf-dock-tab[data-panel-zone="right"]) {
   padding-inline-start: var(--motion-space-8);
 }
+:root[data-motion-ui] .hf-dock .dv-tabs-container:has(.hf-dock-tab[data-panel-zone="right"]) {
+  column-gap: var(--motion-space-8);
+}
 
 :root[data-motion-ui] .hf-dock .dv-groupview .dv-tabs-container > .dv-tab:has(.hf-dock-tab:is([data-panel-zone="left"], [data-panel-zone="right"])) {
   align-self: center;
@@ -229,4 +232,37 @@
   background: var(--motion-button-tab-selected);
   color: var(--motion-button-ink-strong);
   font-weight: var(--motion-weight-semibold);
+}
+
+/* Asset-side module navigation keeps Dockview's switching and scrolling behavior. */
+:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has([data-icon-navigation]) {
+  --dv-tabs-and-actions-container-height: calc(var(--motion-space-48) + var(--motion-space-4));
+  height: var(--dv-tabs-and-actions-container-height);
+}
+:root[data-motion-ui] .hf-dock .dv-tabs-and-actions-container:has([data-icon-navigation]) .dv-scrollable {
+  height: var(--motion-space-44);
+}
+/* Icon navigation paints its selected background on the tab itself. */
+:root[data-motion-ui] .hf-dock .dv-tabs-container:has([data-icon-navigation]) > .hf-dock-tab-fill {
+  display: none;
+}
+:root[data-motion-ui] .hf-dock .dv-groupview .dv-tabs-container > .dv-tab:has(.hf-dock-tab[data-icon-navigation]) {
+  min-width: calc(var(--motion-space-56) - var(--motion-space-4));
+  height: var(--motion-space-44);
+  padding-inline: var(--motion-space-6);
+  font-size: var(--motion-text-xs);
+}
+:root[data-motion-ui] .hf-dock-tab[data-icon-navigation] {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--motion-space-2);
+  text-align: center;
+}
+:root[data-motion-ui] .hf-dock-tab[data-icon-navigation] .hf-dock-tab-icon {
+  display: block;
+  animation: none;
+}
+:root[data-motion-ui] .hf-dock-tab[data-icon-navigation] .hf-dock-tab-label {
+  max-width: 100%;
+  line-height: var(--motion-space-16);
 }

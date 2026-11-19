@@ -55,7 +55,7 @@ export const TAB_ICONS: Record<PanelId, Icon> = {
 /**
  * A dock tab. dock.css shows the type icon and close glyph on the shown tab only, keyed on
  * dockview's own tab class, so they swap in the frame the tab changes rather than a render later.
- * MVP side panels and the preview use text-only titles.
+ * MVP asset-side tabs stack their icons above labels; the inspector and preview keep text-only titles.
  */
 export function DockTab({ api }: IDockviewPanelHeaderProps) {
   const { t } = useI18n();
@@ -68,12 +68,14 @@ export function DockTab({ api }: IDockviewPanelHeaderProps) {
     [api],
   );
   const title = useSyncExternalStore(subscribe, () => api.title ?? "");
-  const TypeIcon = isPanelId(api.id) && (!mvp || (PANEL_DEFINITIONS[api.id].zone === "center" && api.id !== "preview"))
+  const iconNavigation = mvp && isPanelId(api.id) && PANEL_DEFINITIONS[api.id].zone === "left";
+  const TypeIcon = isPanelId(api.id) && (!mvp || iconNavigation || (PANEL_DEFINITIONS[api.id].zone === "center" && api.id !== "preview"))
     ? TAB_ICONS[api.id]
     : null;
   return (
     <div
       className="hf-dock-tab"
+      data-icon-navigation={iconNavigation || undefined}
       data-preview-heading={mvp && api.id === "preview" || undefined}
       data-panel-zone={isPanelId(api.id) ? PANEL_DEFINITIONS[api.id].zone : undefined}
       // Capture runs before the dock activates the tab, so a press on the shown tab is not a switch.
@@ -82,7 +84,7 @@ export function DockTab({ api }: IDockviewPanelHeaderProps) {
         if (click) trackStudioClick(click[0], click[1], undefined, "pointer");
       }}
     >
-      {TypeIcon ? <TypeIcon className="hf-dock-tab-icon" size={14} aria-hidden /> : null}
+      {TypeIcon ? <TypeIcon className="hf-dock-tab-icon" size={iconNavigation ? 16 : 14} aria-hidden /> : null}
       <OverflowText text={title} className="hf-dock-tab-label" />
       {/* Same shape as dockview's own close control: a tab cannot hold a focusable button. */}
       {!mvp && (

@@ -44,15 +44,6 @@
   pointer-events: none;
 }
 
-/* All editor color fields use the boxed form recipe and the inspector's value width. */
-:root[data-motion-ui][data-motion-studio] [data-flat-color-trigger][data-form-control="boxed"] {
-  inline-size: min(100%, 120px);
-  padding-inline: var(--motion-space-8);
-}
-:root[data-motion-ui][data-motion-studio] [data-flat-color-trigger][data-color-field-layout="row"] {
-  max-inline-size: 65%;
-}
-
 /* Inspector-only surfaces and M-sized fields; preserve control behavior. */
 :root[data-motion-ui] [data-motion-inspector] {
   --inspector-control-fill: var(--studio-form-fill);
@@ -87,8 +78,11 @@
   line-height: 18px;
 }
 
+/* Color and font controls share one fixed value-column width. */
+:root[data-motion-ui][data-motion-studio] [data-flat-color-trigger][data-form-control="boxed"],
 :root[data-motion-ui][data-motion-studio] [data-motion-inspector] [data-flat-font-trigger] {
-  inline-size: min(65%, 120px);
+  inline-size: 130px;
+  flex: 0 0 130px;
   padding-inline: var(--motion-space-8);
 }
 

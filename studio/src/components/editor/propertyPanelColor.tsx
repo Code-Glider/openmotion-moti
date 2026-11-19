@@ -495,11 +495,11 @@ export function ColorField({
       </span>
       <span
         data-color-mixed-indicator={mixed && !open ? "true" : undefined}
-        className="min-w-0 flex-1 truncate pl-1 pr-1.5 text-left tabular-nums"
+        className="min-w-0 flex-1 truncate px-1 text-left tabular-nums"
       >
         {mixed && !open ? t("Mixed") : displayHex.replace(/^#/, "")}
       </span>
-      <span className="flex h-5 shrink-0 items-center gap-1 border-l border-panel-hairline pl-1.5 tabular-nums">
+      <span className="flex h-5 shrink-0 items-center gap-1 border-l border-panel-hairline pl-1 tabular-nums">
         <span className="min-w-5 text-right">{displayAlpha}</span>
         <span className={disabled ? undefined : "text-panel-text-4"}>%</span>
       </span>

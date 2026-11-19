@@ -475,7 +475,7 @@ export function GradientField({
           {parsed.stops.map((stop, index) => (
             <div
               key={`stop-editor-${index}`}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_68px_28px] gap-2"
+              className="flex min-w-0 flex-wrap items-end gap-2"
             >
               <ColorField
                 layout="stacked"
@@ -484,16 +484,18 @@ export function GradientField({
                 disabled={disabled}
                 onCommit={(next) => updateStop(index, { color: next })}
               />
-              <DetailField
-                label={t("Pos")}
-                value={`${Math.round(stop.position)}%`}
-                disabled={disabled}
-                onCommit={(next) =>
-                  updateStop(index, {
-                    position: Number.parseFloat(next.replace("%", "")) || 0,
-                  })
-                }
-              />
+              <div className="w-[68px]">
+                <DetailField
+                  label={t("Pos")}
+                  value={`${Math.round(stop.position)}%`}
+                  disabled={disabled}
+                  onCommit={(next) =>
+                    updateStop(index, {
+                      position: Number.parseFloat(next.replace("%", "")) || 0,
+                    })
+                  }
+                />
+              </div>
               <button
                 type="button"
                 disabled={disabled || parsed.stops.length <= 2}

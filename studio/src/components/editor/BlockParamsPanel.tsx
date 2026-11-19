@@ -1,3 +1,4 @@
+import { OverflowText } from "../ui/OverflowText";
 import { ColorField } from "./propertyPanelColor";
 import { FieldInput, NativeSelect } from "../ui/FormField";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -219,7 +220,7 @@ function ParamControl({
   }
   return (
     <div className="space-y-1">
-      <label className="text-[10px] font-medium text-neutral-400">{t(param.label)}</label>
+      <OverflowText text={t(param.label)} className="block min-w-0 truncate text-[10px] font-medium text-neutral-400" />
 
       {param.type === "number" && (
         <div className="flex items-center gap-2">

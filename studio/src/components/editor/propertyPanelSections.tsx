@@ -1,3 +1,4 @@
+import { OverflowText } from "../ui/OverflowText";
 import { FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
@@ -143,9 +144,7 @@ export function TextAreaField({
       <div data-flat-textarea-boxed={boxed ? "true" : undefined} className={boxed
         ? "rounded-md bg-panel-bg-inset px-3 py-2 focus-within:ring-1 focus-within:ring-panel-accent/30"
         : "border-l-2 border-panel-border-input py-0.5 pl-[10px]"}>
-        {!boxed && <div className="mb-[3px] text-[9px] font-semibold uppercase tracking-[0.12em] text-panel-text-5">
-          {t(label)}
-        </div>}
+        {!boxed && <OverflowText text={t(label)} className="mb-[3px] block min-w-0 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-panel-text-5" />}
         <FieldTextarea appearance="embedded"
           ref={textareaRef}
           value={draft}
@@ -164,7 +163,7 @@ export function TextAreaField({
 
   return (
     <label className="grid min-w-0 gap-1.5">
-      <span className={LABEL}>{t(label)}</span>
+      <OverflowText text={t(label)} className={`${LABEL} block min-w-0 truncate`} />
       <div className={FIELD} data-form-field="intrinsic">
         <FieldTextarea appearance="embedded"
           ref={textareaRef}

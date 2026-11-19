@@ -446,7 +446,6 @@ export function FlatSlider({
     <div className={`flex min-h-[28px] items-center gap-2.5 ${rowLayout}`}>
       <PropertyLabel
         label={t(label)}
-        singleLine={layout === "inline"}
         className={`text-panel-text-3 ${labelLayout}`}
       />
       <div
