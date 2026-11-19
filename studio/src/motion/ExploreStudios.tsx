@@ -92,7 +92,7 @@ function CommunitySpotlight({ community, skill, onChooseStudio }: {
 function TemplateSpotlight({ item, onTry }: { item: GalleryTemplate; onTry: (prompt: string) => void }) {
   const { t } = useI18n(), { openLibrary } = useWorkspaceChrome();
   return <article className="om-featured-template"><button className="om-featured-open" aria-label={t('Preview template {title}', { title: item.title })}
-    onClick={event => openLibrary(event.currentTarget, item.id)}>
+    onClick={event => openLibrary(event.currentTarget, item)}>
     <div className="om-featured-cover"><TemplatePoster key={item.id} template={item} eager /></div>
     <div className="om-featured-caption"><span className="om-feed-card-label">{t('Community template')}</span>
       <strong>{item.title}<RemixIcon name="arrow-right-up-line" size={22} /></strong>

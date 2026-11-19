@@ -1,4 +1,5 @@
 import { useProjectArchives, ProjectArchiveMenu, type ProjectArchiveActions } from './ProjectArchives';
+import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpClient } from './mcpClients';
 import { CreativeNavigation } from './CreativeNavigation';
 import { ExploreStudios } from './ExploreStudios';
@@ -36,7 +37,7 @@ import type { McpEntry } from './pageTracking';
 import { WorkspaceProjectsButton } from './WorkspaceProjectsButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
-import { WORKSPACE_LOCATION_CHANGED, writeWorkspaceHistory } from '../utils/workspaceHistory';
+import { WORKSPACE_LOCATION_CHANGED, workspaceHistoryIndex, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { BrandKitPage } from './BrandKitPage';
@@ -51,11 +52,13 @@ export { useWorkspaceChrome, useOptionalWorkspaceChrome, type EditorGuard } from
 export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, blocked = false, message = '', saveState = '', onLibraryClose, onNavigate }: {
   children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void; onNavigate?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [page, setPage] = useState(() => readWorkspacePage(location.search, location.hash));
-  const { settings, assets: assetsOpen, skills: skillsOpen, templates: connectionsOpen } = page;
+  const { settings, assets: assetsOpen, skills: skillsOpen, templates: libraryRequested } = page;
+  const detailOnly = Boolean(page.template) && !libraryRequested;
+  const connectionsOpen = libraryRequested || detailOnly;
   const hostChrome = window.parent !== window && new URLSearchParams(location.search).get('hostChrome') === '1';
-  const templatesPage = connectionsOpen && !page.creators && !hostChrome;
+  const templatesPage = libraryRequested && !page.creators && !hostChrome;
   // Resource pages cover the editor without unmounting it.
   const pageOpen = templatesPage || page.motion || page.api || Boolean(page.modelOverview) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
   const lastExplore = useRef({ community: page.community, medium: page.medium });
@@ -65,7 +68,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const skillBriefs = useRef(new Map<string, SkillParameters>());
   const studioDrafts = useRef(new Map<string, AssetDraft>());
   const [studioVisit, setStudioVisit] = useState(0);
-  const libraryOpen = useRef(connectionsOpen);
+  const libraryOpen = useRef(libraryRequested);
   const libraryClosed = useRef(onLibraryClose); libraryClosed.current = onLibraryClose;
   useEffect(() => {
     const sync = () => {
@@ -108,6 +111,12 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   // A later visit through history or a pasted link has no control behind it.
   useEffect(() => { if (settings !== 'mcp') connectionEntry.current = 'direct_link'; }, [settings]);
   const libraryTrigger = useRef<HTMLElement | null>(null);
+  const cardPreview = useRef<{ template: GalleryTemplate; locale: string } | null>(null);
+  const closeStandalonePreview = () => {
+    // A card pushes one preview entry. Copied links start a new history session at index zero.
+    if (onNavigate && (workspaceHistoryIndex() ?? 0) > 0) history.back();
+    else writeWorkspaceHistory(workspacePageHref(location.href, { template: null }), true);
+  };
   const collectionSkillTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (page.skill) return;
@@ -169,7 +178,13 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const visibleNotice = notice && dismissedNotice !== noticeKey;
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
   const value: WorkspaceChrome = { workspace, switchingDisabled, saveState: editorState?.saveState || saveState, registerEditor, beforeViewChange,
-    openLibrary: (trigger, templateId) => { if (templatesPage && !page.blackFriday && !templateId) return; libraryTrigger.current = trigger ?? null; workspace.clearError(); navigatePage({ templates: true, template: templateId ?? null, creators: false, creator: null, blackFriday: false, ...(page.blackFriday && { skill: null }) }); },
+    openLibrary: (trigger, template) => {
+      if (templatesPage && !page.blackFriday && !template) return;
+      libraryTrigger.current = trigger ?? null;
+      workspace.clearError();
+      cardPreview.current = template ? { template, locale } : null;
+      navigatePage({ templates: !template, template: template?.id ?? null, creators: false, creator: null, blackFriday: false, ...(page.blackFriday && { skill: null }) });
+    },
     openConnections: entry => { connectionEntry.current = entry; openSettings('mcp'); },
     openModelSettings: () => openSettings('providers'),
     openHome, openAssets, assetsOpen: assetsOpen && !settings && !templatesPage, openSkills, skillsOpen: skillsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
@@ -205,13 +220,25 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     navigatePage(target === 'explore' ? { explore: true, templates: false, ...(page.motion || page.modelOverview || page.specialty || page.studio || page.skills ? { community: page.community, medium: page.medium } : lastExplore.current) } : { settings: 'mcp', templates: false, ...(client && { client, setup: 'agent' }) });
   };
   const galleryNavigation = !hostChrome && <CreativeNavigation onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} onSkill={openSkill} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} openProviders={value.openModelSettings} />;
-  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday}
-    onBrowseTemplates={() => navigatePage({ blackFriday: false, skill: null, template: null })}
+  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday} detailOnly={detailOnly}
+    initialTemplate={detailOnly && cardPreview.current?.locale === locale ? cardPreview.current.template : undefined}
+    onBrowseTemplates={() => navigatePage({ templates: true, blackFriday: false, ...(page.blackFriday && { skill: null }), template: null })}
     onOpenSkill={(skill, trigger) => {
       if (!templatesPage) { openSkill(skill); return; }
       collectionSkillTrigger.current = trigger;
       navigatePage({ skill });
-    }} inWorkspace={templatesPage} navigation={templatesPage ? undefined : galleryNavigation} open projectId={projectId} returnFocus={libraryTrigger.current} section="templates" creators={page.creators} creator={page.creator} onCreatorChange={creator => navigatePage({ templates: true, creators: true, creator, template: null })} templateId={page.template} onTemplateChange={template => navigatePage({ template })} busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error} onClose={() => page.blackFriday ? openPage('explore') : navigatePage({ templates: false })} onPrepareTemplate={async (template, requestId) => {
+    }}
+    inWorkspace={templatesPage} navigation={libraryRequested && !templatesPage ? galleryNavigation : undefined}
+    open projectId={projectId} returnFocus={libraryTrigger.current} section="templates"
+    creators={page.creators} creator={page.creator} onCreatorChange={creator => navigatePage({ templates: true, creators: true, creator, template: null })}
+    templateId={page.template} onTemplateChange={template => {
+      if (!detailOnly) navigatePage({ template });
+      else if (template) writeWorkspaceHistory(workspacePageHref(location.href, { template }), true);
+      else closeStandalonePreview();
+    }}
+    busy={libraryBusy} openingDisabled={switchingDisabled} error={workspace.error}
+    onClose={detailOnly ? closeStandalonePreview : () => page.blackFriday ? openPage('explore') : navigatePage({ templates: false })}
+    onPrepareTemplate={async (template, requestId) => {
     try { await beforeViewChange(); }
     catch (error) { throw new TemplatePreparationBlockedError(error instanceof Error ? error.message : t('Working…')); }
     return prepareTemplateProject(template, projectId, requestId);
@@ -269,13 +296,13 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         ? <BrandKitPage inWorkspace={!hostChrome} onClose={openHome} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} hasProject={Boolean(projectId)} /> : settings === 'mcp'
         ? <McpConnectionPage entry={connectionEntry.current} projectId={projectId ?? undefined} hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
         : <SettingsCenter hasProject={Boolean(projectId)} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
-      {templatesPage && library}
+      {(templatesPage || detailOnly) && library}
       {templatesPage && page.blackFriday && page.skill && <SkillsPage detailOnly skillId={page.skill}
         onSkillChange={skill => navigatePage({ skill })} />}
       </div>
     </div>
     </Dialog.Root>
-    {!templatesPage && library}
+    {!templatesPage && !detailOnly && library}
   </WorkspaceChromeContext.Provider>;
 }
 

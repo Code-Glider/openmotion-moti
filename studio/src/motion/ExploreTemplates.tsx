@@ -64,7 +64,7 @@ export function ExploreTemplateCard({ item, active, onPriority, onTry }: {
 }) {
   const { openLibrary } = useWorkspaceChrome();
   return <TemplateGalleryCard template={item} active={active} onPriority={onPriority}
-    onSelect={(template, trigger) => openLibrary(trigger, template.id)}
+    onSelect={(template, trigger) => openLibrary(trigger, template)}
     footer={<div className="om-feed-template-copy">
       <strong>{item.title}</strong>
       {item.description && <p>{item.description}</p>}

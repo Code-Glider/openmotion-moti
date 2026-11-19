@@ -214,7 +214,7 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   await mount(); await openMcp(); await click('Claude Code');
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]');
   await click('Preview template Product Promo');
-  expect(page()).toMatchObject({ templates: true, template: 'product-promo', settings: 'mcp', client: 'claude' });
+  expect(page()).toMatchObject({ templates: false, template: 'product-promo', settings: 'mcp', client: 'claude' });
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await traverse(-1);
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
@@ -225,8 +225,55 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await mount(1);
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
-  await click('Close template preview'); await click('Close template library');
+  await click('Close template preview');
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
+});
+
+it.each(['motion', 'marketing'])('opens a card over %s while the full catalogue is pending and restores the trigger', async studio => {
+  history.replaceState(null, '', firstUrl.replace('#', `&page=${studio}#`));
+  const fallback = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation((input: string, options?: RequestInit) =>
+    input.includes('limit=60') ? new Promise<Response>(() => {}) : fallback(input, options));
+  await mount();
+  const shelf = container.querySelector('.om-studio-template-shelf')!;
+  const card = shelf.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!;
+  await act(async () => card.click());
+  const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  expect(detail.open).toBe(true);
+  expect(detail.querySelector('h2')?.textContent).toBe('Product Promo');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
+  expect(shelf.isConnected).toBe(true);
+  await act(async () => {
+    detail.dispatchEvent(new Event('cancel', { cancelable: true }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+  expect(page().template).toBeNull();
+  expect(document.activeElement).toBe(card);
+  expect(new URLSearchParams(location.search).get('page')).toBe(studio);
+  expect(location.hash).toContain('t=12');
+});
+
+it('keeps loading, retry and missing-link recovery inside a standalone preview', async () => {
+  history.replaceState(null, '', '/?page=motion&template=missing');
+  const fallback = fetcher.getMockImplementation()!;
+  let finish!: (response: Response) => void;
+  fetcher.mockImplementation((input: string, options?: RequestInit) =>
+    input.includes('limit=60') ? new Promise<Response>(resolve => { finish = resolve; }) : fallback(input, options));
+  await mount();
+  const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  expect(detail.open).toBe(true);
+  expect(detail.querySelector('[role=status]')?.textContent).toBe('Loading preview…');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
+  await act(async () => finish(Response.json({ error: 'Offline' }, { status: 503 })));
+  expect(detail.querySelector('[role=alert]')?.textContent).toContain('Offline');
+  await act(async () => [...detail.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+  await act(async () => finish(Response.json({ items: [], next: null })));
+  expect(detail.querySelector('[role=alert]')?.textContent).toBe('This template is no longer available.');
+  await click('Close template preview');
+  expect(location.search).toBe('?page=motion');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
 });
 
 it('keeps project rows in place while switching, updating selection and reloading', async () => {
@@ -438,7 +485,7 @@ it('filters Explore by media and opens a reusable editing preset or template det
   await click('Next');
   expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('shot-image');
   await click('Preview template Product Promo');
-  expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ explore: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   const preset = [...container.querySelectorAll<HTMLButtonElement>('.om-scene-tile')].find(button => button.textContent?.includes('Scored shortlist before shorts'));
   await act(async () => preset!.click());
@@ -454,7 +501,7 @@ it('opens Motion Studio from the Explore spotlight and resumes the timeline on r
   expect(page()).toMatchObject({ explore: false, motion: true });
   const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
   await act(async () => template.click());
-  expect(page()).toMatchObject({ motion: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   await click('Open editor');
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);

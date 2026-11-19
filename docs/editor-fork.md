@@ -104,7 +104,7 @@ The application shell reads its destination from the URL query. The native edito
 | Provider detail | `page=settings&section=providers&provider=openai` |
 | Template library | `templates=1` |
 | Creators and credited works | `templates=1&view=creators`, optionally with `creator=<credit-id>` and `template=<catalog-id>`. The underlying workspace survives closing the gallery. |
-| Template preview | `templates=1&template=<catalog-id>` |
+| Template preview | `template=<catalog-id>` opens a preview over the current page. Inside the template library the URL also keeps `templates=1`. |
 
 The [studio catalogue](../shared/studio-catalog.ts) supplies Explore, header links and scene tabs. To add a workspace using the media composer, register its ID and ordered scene IDs there. Each scene declares its entry surface (focused landing page or owning studio), media type and any reference-image or model-mode requirement. The same predicate filters discovery and generation. Both surfaces share an in-memory draft for each studio/scene pair. An unavailable pinned model keeps its identity and requires configuration or an explicit replacement. Provide a poster and prompt in the [scene showcase](../studio/src/motion/sceneShowcase.ts). The canvas presents stills, while reference, video and audio scenes offer controls beside a guide and results. A workspace can combine image and video scenes under one URL.
 

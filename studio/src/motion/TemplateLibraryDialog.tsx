@@ -76,7 +76,7 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { blackFriday?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { detailOnly?: boolean; initialTemplate?: GalleryTemplate; blackFriday?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
@@ -85,6 +85,7 @@ function DetailScroll({ enabled, container, children }: { enabled: boolean; cont
 
 export function TemplateLibraryDialog(props: Props) {
   const { t, locale } = useI18n();
+  const { detailOnly = false, initialTemplate } = props;
   const [storiesPreview] = useState(() => new URLSearchParams(location.search).get('brandStoriesPreview') === '1');
   const [discoverySeed] = useState(() => Math.floor(Math.random() * 4294967296));
   const [brandStory, setBrandStory] = useState<{ series: BrandSeries; view: SeriesView } | null>(null);
@@ -206,7 +207,11 @@ export function TemplateLibraryDialog(props: Props) {
   const lastRandom = useRef<string>(undefined);
   const info = useRef<IntegrationInfo | null>(null);
   const routeChange = useRef(props.onTemplateChange); routeChange.current = props.onTemplateChange;
-  const closeDetail = () => { if (preview) tracking.reportDetailAction(preview, 'close_detail', detailView.current); routeChange.current?.(null); detail.current?.close(); };
+  const closeDetail = () => {
+    if (preview) tracking.reportDetailAction(preview, 'close_detail', detailView.current);
+    routeChange.current?.(null);
+    if (!detailOnly) detail.current?.close();
+  };
   // Tracking state. Ids tie one detail view, one copy and one search to the events that follow from them.
   const detailView = useRef<DetailView | undefined>(undefined), searchId = useRef<string | undefined>(undefined), reportedQuery = useRef(''), shown = useRef(false);
   useEffect(() => { if (guideOpen && preview) tracking.reportGuideShown(preview, detailView.current); }, [guideOpen, preview?.id]);
@@ -228,20 +233,23 @@ export function TemplateLibraryDialog(props: Props) {
     if (!props.open) { libraryShown.current = false; setReferenceTrigger(null); return; }
     const openedDialog = dialog.current;
     const trigger = props.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    if (!props.inWorkspace) openedDialog?.showModal();
+    const openedDetail = detail.current;
+    if (detailOnly) openedDetail?.showModal();
+    else if (!props.inWorkspace) openedDialog?.showModal();
     if (openedDialog?.open && !libraryShown.current) { libraryShown.current = true; tracking.reportLibraryShown(currentSearchContext.current.read()); }
     if (openedDialog?.querySelector('[data-black-friday] h1') !== document.activeElement) libraryClose.current?.focus({ preventScroll: true });
     return () => {
-      detail.current?.close();
+      openedDetail?.close();
       if (!props.inWorkspace) openedDialog?.close();
       setPreview(null);
       setPriority(null); setFiltersOpen(false);
       if (trigger?.isConnected && (!props.inWorkspace || document.activeElement === document.body || openedDialog?.contains(document.activeElement))) trigger.focus({ preventScroll: true });
     };
-  }, [props.open, props.returnFocus, props.inWorkspace]);
+  }, [props.open, props.returnFocus, props.inWorkspace, detailOnly]);
   useEffect(() => {
     if (!props.open) return;
-    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null); detail.current?.close();
+    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null);
+    if (dialog.current) detail.current?.close();
     shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear(); seriesLists.current.clear(); shownSeries.current.clear();
     const controller = new AbortController();
     let version: string | undefined, pending = false;
@@ -291,7 +299,7 @@ export function TemplateLibraryDialog(props: Props) {
   const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
   const hasAppliedFilters = filterCount > 0;
   const searchContextKey = JSON.stringify([normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
-  const searchContext = useTemplateSearchContext(props.open, !loading && shown.current && !error && !searchComposing, searchContextKey, Boolean(query.trim() || filterCount));
+  const searchContext = useTemplateSearchContext(props.open && !detailOnly, !loading && shown.current && !error && !searchComposing, searchContextKey, Boolean(query.trim() || filterCount));
   const currentSearchContext = useRef(searchContext); currentSearchContext.current = searchContext;
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
   // The list state is read when a handler, timer or effect fires, not when it was scheduled.
@@ -477,9 +485,11 @@ export function TemplateLibraryDialog(props: Props) {
   useEffect(() => {
     if (!props.open || props.templateId === undefined) return;
     if (!props.templateId) { detail.current?.close(); return; }
-    const item = catalog.find(template => template.id === props.templateId) ?? blackFridayReference(props.templateId, locale);
+    const item = catalog.find(template => template.id === props.templateId)
+      ?? (initialTemplate?.id === props.templateId ? initialTemplate : null)
+      ?? blackFridayReference(props.templateId, locale);
     if (item && item.id !== preview?.id) show(item, blackFriday ? 'black_friday' : 'catalog', false);
-  }, [props.open, props.templateId, catalog, preview?.id, show, locale, blackFriday]);
+  }, [props.open, props.templateId, catalog, preview?.id, show, locale, blackFriday, initialTemplate]);
   const openCard = useCallback((item: GalleryTemplate) => {
     settleLatest.current();
     const placement = latest.current.blackFriday ? 'black_friday' : 'catalog';
@@ -588,7 +598,14 @@ export function TemplateLibraryDialog(props: Props) {
     } catch { showToast('Download failed. Please try again.', 'error', 'feedback'); tracking.reportDownloadResult(template, attemptId, 'fetch_failed', errorCode, view); }
     finally { setDownloading(false); }
   }
-  const filterBy = (key: Facet, value: string) => { if (blackFriday) props.onBrowseTemplates?.(); picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setCompareWithout(''); if (storiesPreview) setBrandStory(null); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
+  const filterBy = (key: Facet, value: string) => {
+    if (blackFriday || detailOnly) props.onBrowseTemplates?.();
+    picked('filter_option', key, value, true);
+    setSelected({ [key]: [value] }); setCompareWithout('');
+    if (storiesPreview) setBrandStory(null);
+    setQuery(''); setEditableOnly(false); setBrandsOnly(false);
+    if (!detailOnly) closeDetail();
+  };
   const chooseCreator = (creator: string | null) => {
     clear();
     setBrandStory(null);
@@ -596,14 +613,7 @@ export function TemplateLibraryDialog(props: Props) {
     if (dialog.current) dialog.current.scrollTop = 0;
   };
   const credit = preview && templateCredit(preview);
-  return <dialog ref={dialog} open={props.inWorkspace ? props.open : undefined} role={props.inWorkspace ? "region" : undefined} className={styles.library} data-workspace-gallery={props.inWorkspace || undefined} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
-    event.stopPropagation();
-    if (props.inWorkspace && event.key === 'Escape' && !event.defaultPrevented && !props.busy && !preview && !filtersOpen && event.target instanceof Element && event.target.closest('dialog') === dialog.current) {
-      event.preventDefault();
-      props.onClose();
-    }
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen && !(event.target instanceof HTMLElement && event.target.closest('[data-search-recovery]'))) { event.preventDefault(); search.current?.focus(); }
-  }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
+  const gallery = !detailOnly && <>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
         <div className="om-gallery-wordmark">{blackFriday
@@ -688,10 +698,18 @@ export function TemplateLibraryDialog(props: Props) {
       const name = brandStory.series.name;
       closeBrand(); setBrandsOnly(false); setQuery(''); setEditableOnly(false); setSelected({ uses: [purpose] }); setCompareWithout(name);
     }} />}
-    <dialog ref={detail} className={`${styles.detail} ${handoffPreview ? styles.reviewDetail : ''}`} aria-label={t('Template preview')} onCancel={event => { if (event.target !== detail.current) return; event.preventDefault(); if (handoffPreview && guideOpen) setGuideOpen(false); else closeDetail(); }} onClose={event => { if (event.target !== detail.current) return; setPreview(null); setPrompt(''); setGuideOpen(false); detailView.current = undefined; if (handoffPreview && !props.inWorkspace && openLatest.current) { dialog.current?.close(); dialog.current?.showModal(); } }} onKeyDown={event => {
+  </>;
+  const previewDialog = <>
+    <dialog ref={detail} className={`${styles.detail} ${handoffPreview ? styles.reviewDetail : ''}`} aria-label={t('Template preview')} onCancel={event => { if (event.target !== detail.current) return; event.preventDefault(); if (handoffPreview && guideOpen) setGuideOpen(false); else closeDetail(); }} onClose={event => { if (event.target !== detail.current || detail.current?.open) return; setPreview(null); setPrompt(''); setGuideOpen(false); detailView.current = undefined; if (!detailOnly && handoffPreview && !props.inWorkspace && openLatest.current) { dialog.current?.close(); dialog.current?.showModal(); } }} onKeyDown={event => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }
     }}>
+      {detailOnly && !preview && <div className={styles.empty}>
+        {error || missingTemplate ? <p role="alert">{t(error || 'This template is no longer available.')}</p>
+          : <p role="status">{t('Loading preview…')}</p>}
+        {error && <button className="om-button" onClick={() => retry(value => value + 1)}>{t('Retry')}</button>}
+        <button className="om-button" onClick={closeDetail}>{t('Close template preview')}</button>
+      </div>}
       {preview && <>{(!handoffPreview || !guideOpen) && <DetailScroll enabled={handoffPreview} container={reviewScroll}><div className={`${styles.detailGrid} ${handoffPreview ? styles.reviewGrid : ''}`}>
         <div className={styles.stage}>
           {preview.posterUrl && <img className={styles.ambient} src={preview.posterUrl} alt="" aria-hidden="true" />}
@@ -705,7 +723,7 @@ export function TemplateLibraryDialog(props: Props) {
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
-            {handoffPreview && <button className="om-button" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</button>}
+            {handoffPreview && !detailOnly && <button className="om-button" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</button>}
             <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
             <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${detailItems.length}` : t('Related templates')}</span>
             <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={detailItems.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
@@ -784,5 +802,17 @@ export function TemplateLibraryDialog(props: Props) {
     </dialog>
 
     {props.open && <StudioToastViewport toasts={toasts} dismissToast={dismissToast} />}
+  </>;
+  if (detailOnly) return <div className={styles.library} style={{ display: 'contents' }} data-motion-template-detail="">{previewDialog}</div>;
+  return <dialog ref={dialog} open={props.inWorkspace ? props.open : undefined} role={props.inWorkspace ? "region" : undefined} className={styles.library} data-workspace-gallery={props.inWorkspace || undefined} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
+    event.stopPropagation();
+    if (props.inWorkspace && event.key === 'Escape' && !event.defaultPrevented && !props.busy && !preview && !filtersOpen && event.target instanceof Element && event.target.closest('dialog') === dialog.current) {
+      event.preventDefault();
+      props.onClose();
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen && !(event.target instanceof HTMLElement && event.target.closest('[data-search-recovery]'))) { event.preventDefault(); search.current?.focus(); }
+  }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
+    {gallery}
+    {previewDialog}
   </dialog>;
 }

@@ -33,7 +33,7 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
     client: mcpClients.find(value => value.id === query.get('host'))?.id ?? 'codex',
     setup: query.get('setup') === 'manual' ? 'manual' : 'agent',
     provider: settings === 'providers' ? query.get('provider') || null : null,
-    template: templates ? query.get('template') || null : null };
+    template: query.get('template') || null };
 }
 
 export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): string {
@@ -115,7 +115,9 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
       url.searchParams.set('collection', 'black-friday');
       if (page.skill) url.searchParams.set('skill', page.skill);
     }
-    if (page.template) url.searchParams.set('template', page.template);
   }
+  // Closing a collection or switching destinations also dismisses its current detail.
+  const template = patch.templates === false ? patch.template : page.template;
+  if (template) url.searchParams.set('template', template);
   return url.pathname + url.search + url.hash;
 }
