@@ -287,26 +287,26 @@ it('ships static WebP posters for archived previews and fetches a GIF only while
   expect(container.querySelector('img')?.getAttribute('src')).toBe(skill.cover?.poster);
 });
 
-it('preloads archived video, plays and pauses it without loading again, then frees its URL', async () => {
+it('waits to fetch archived video until playback starts, then releases it when playback stops', async () => {
   const skill = motionSkills.find(skill => skill.id === 'motionmaxxing')!;
   const fetcher = vi.mocked(fetch).mockResolvedValue(new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
   const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-preview');
   const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
-  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause');
   act(() => root.render(<SkillMedia skill={skill} />));
   expect(fetcher).not.toHaveBeenCalled();
   expect(container.querySelectorAll('img')).toHaveLength(2);
-  await act(async () => root.render(<SkillMedia skill={skill} near />));
+  await act(async () => root.render(<SkillMedia skill={skill} />));
   expect(play).not.toHaveBeenCalled();
+  expect(fetcher).not.toHaveBeenCalled();
+  await act(async () => root.render(<SkillMedia skill={skill} playing />));
   expect((create.mock.calls[0][0] as Blob).type).toBe('video/mp4');
   const players = [...container.querySelectorAll('video')];
   expect(players.map(player => player.getAttribute('src'))).toEqual(['blob:skill-preview', 'blob:skill-preview']);
-  act(() => root.render(<SkillMedia skill={skill} near playing />));
   expect(play).toHaveBeenCalledTimes(2);
-  pause.mockClear();
-  act(() => root.render(<SkillMedia skill={skill} near />));
-  expect(pause).toHaveBeenCalledTimes(2);
+  act(() => root.render(<SkillMedia skill={skill} playing={false} />));
+  expect(container.querySelectorAll('video')).toHaveLength(0);
+  expect(container.querySelectorAll('img')).toHaveLength(2);
   expect(fetcher).toHaveBeenCalledTimes(1);
   act(() => players.forEach(player => player.dispatchEvent(new Event('error'))));
   expect(container.querySelectorAll('img')).toHaveLength(2);
@@ -322,27 +322,4 @@ it('keeps the poster when the archived video request fails', async () => {
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(detail.querySelector('video')).toBeNull();
   expect(detail.querySelectorAll('img')).toHaveLength(2);
-});
-
-it('releases a preloaded card when it leaves the preload band', async () => {
-  const observed = new Map<Element, (isIntersecting: boolean) => void>();
-  vi.stubGlobal('IntersectionObserver', class {
-    constructor(private callback: IntersectionObserverCallback, private options: IntersectionObserverInit) {}
-    observe(element: Element) {
-      if (this.options.rootMargin) {
-        observed.set(element, isIntersecting => this.callback([{ isIntersecting } as IntersectionObserverEntry], this as unknown as IntersectionObserver));
-      }
-    }
-    disconnect() {}
-  });
-  vi.mocked(fetch).mockResolvedValue(new Response('sample'));
-  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preloaded-preview');
-  const revoke = vi.spyOn(URL, 'revokeObjectURL');
-  act(() => root.render(<Host />));
-  const card = container.querySelector('[data-skill-id="motionmaxxing"]')!;
-  await act(async () => observed.get(card)!(true));
-  expect(card.querySelectorAll('video')).toHaveLength(2);
-  act(() => observed.get(card)!(false));
-  expect(card.querySelector('video')).toBeNull();
-  expect(revoke).toHaveBeenCalledWith('blob:preloaded-preview');
 });

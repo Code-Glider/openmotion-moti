@@ -156,23 +156,20 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
 /** Gallery card with viewport playback and manual playback on hover or focus. */
 function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
   const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false);
-  const [visible, setVisible] = useState(false), [near, setNear] = useState(false);
+  const [visible, setVisible] = useState(false);
   const card = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = card.current;
     if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
-    const ahead = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting),
-      { root: element.closest('.om-skills-main'), rootMargin: '100% 0px' });
     observer.observe(element);
-    ahead.observe(element);
-    return () => { observer.disconnect(); ahead.disconnect(); };
+    return () => observer.disconnect();
   }, []);
   return <article ref={card} className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}
     onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
     <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
-      <SkillMedia skill={skill} playing={visible || hovered || focused} near={near} />
+      <SkillMedia skill={skill} playing={visible || hovered || focused} />
       <span className="om-gallery-card-top"><span>{category}</span></span>
     </button>
     <button className="om-skill-card-meta" onClick={onSelect} tabIndex={-1} aria-hidden="true"><strong>{name}</strong><span>{useWhen}</span></button>
@@ -181,12 +178,12 @@ function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { ski
 const coverAspect = [1.78, 1.35, 1, 1.78];
 
 /** Upstream demo media when available; otherwise the package-token illustration. */
-export function SkillMedia({ skill, playing = false, near = false, large = false }: { skill: MotionSkill; playing?: boolean; near?: boolean; large?: boolean }) {
+export function SkillMedia({ skill, playing = false, large = false }: { skill: MotionSkill; playing?: boolean; large?: boolean }) {
   const { t } = useI18n();
   const [failed, setFailed] = useState(false);
   const cover = failed ? undefined : skill.cover;
   const play = large || playing;
-  const video = useSkillPreview(cover?.video, near || play);
+  const video = useSkillPreview(cover?.video, play);
   if (!cover || (!video && !cover.poster && !(play && cover.gif))) return <SkillCover motif={skill.motif} name={skill.name} large={large} />;
   // A side-by-side before/after demo becomes a split cover (like an upscale preview):
   // each half fills one side, a divider runs down the middle and the skill name sits on it.
