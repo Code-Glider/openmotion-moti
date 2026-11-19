@@ -326,10 +326,12 @@ function openFlatGroup(host: HTMLElement, title: string) {
 const openGroupText = (host: HTMLElement) =>
   host.querySelector('[data-flat-group-open="true"]')?.textContent ?? "";
 
-function expectStackedOpacity(host: HTMLElement) {
+function expectInlineOpacity(host: HTMLElement) {
   const track = host.querySelector('[role="slider"][aria-label="Opacity"]');
   const row = track?.parentElement;
-  expect(row?.firstElementChild?.querySelector(".basis-full")?.textContent).toBe("Opacity");
+  expect(row?.firstElementChild?.textContent).toBe("Opacity");
+  expect(row?.classList.contains("flex-wrap")).toBe(false);
+  expect(row?.querySelector(".basis-full")).toBeNull();
   expect(row?.querySelector('input[aria-label="Opacity value"][data-form-control="boxed"]')).not.toBeNull();
 }
 
@@ -341,11 +343,11 @@ describe("PropertyPanel — STUDIO_FLAT_INSPECTOR_ENABLED off", () => {
     act(() => root.unmount());
   });
 
-  it("uses the shared stacked opacity control in Transparency", async () => {
+  it("uses the shared inline opacity control in Transparency", async () => {
     const { host, root } = await renderPanel(false);
     const header = host.querySelector<HTMLButtonElement>('[data-panel-section="transparency"] button[aria-expanded="false"]')!;
     act(() => header.click());
-    expectStackedOpacity(host);
+    expectInlineOpacity(host);
     act(() => root.unmount());
   });
 });
@@ -1098,8 +1100,8 @@ it.each([
   ["shape", () => ({ ...baseElement(), textContent: "", textFields: [] })],
   ["image", imageElement],
   ["video", videoElement],
-] as const)("keeps the opacity label above the controls for %s selections", async (_kind, fixture) => {
+] as const)("keeps opacity on one row for %s selections", async (_kind, fixture) => {
   const { host, root } = await renderPanel(true, fixture(), {}, { mvp: true });
-  expectStackedOpacity(host);
+  expectInlineOpacity(host);
   act(() => root.unmount());
 });
