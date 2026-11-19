@@ -440,8 +440,9 @@
 .om-page-back-row { padding: var(--motion-space-12); }
 .om-creative-client-menu { width: min(420px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 72dvh); overflow: auto; }
 .om-creative-client-menu h2 { margin: 0; padding: var(--motion-space-4) var(--motion-space-8) var(--motion-space-12); color: var(--motion-strong); font-size: var(--motion-text-heading); font-weight: var(--motion-weight-semibold); }
-.om-mcp-client-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--motion-space-4); }
-[data-motion-studio] .om-mcp-client-grid .om-nav-item { flex-direction: column; justify-content: flex-start; align-items: center; gap: var(--motion-space-8); padding: var(--motion-space-8) var(--motion-space-4); white-space: normal; text-align: center; overflow-wrap: anywhere; }
+[data-motion-studio] :is(.om-mcp-client-grid, .om-mcp-client-tabs) .om-mcp-generic-icon { background: var(--motion-brand-surface); color: var(--motion-neutral-n7); border-color: color-mix(in srgb, var(--motion-border) 55%, transparent); }
+.om-mcp-client-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--motion-space-4) var(--motion-space-8); }
+[data-motion-studio] .om-mcp-client-grid .om-nav-item { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--motion-space-10); padding: var(--motion-space-6) var(--motion-space-8); white-space: normal; text-align: start; overflow-wrap: anywhere; }
 [data-motion-studio] .om-mcp-client-grid .om-avatar { width: var(--motion-space-40); height: var(--motion-space-40); }
 [data-motion-studio] :is(.om-media-menu-models, .om-mcp-client-grid) .om-provider-avatar:is([data-provider="codex"], [data-provider="openai-codex"]) img { width: 88%; height: 88%; }
 .om-creative-menu h2 { padding: var(--motion-space-4) var(--motion-space-10); }

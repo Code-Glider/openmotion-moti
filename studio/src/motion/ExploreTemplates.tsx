@@ -7,12 +7,16 @@ import { motionApi } from './useWorkspace';
 import { useWorkspaceChrome } from './WorkspaceChromeContext';
 
 // Each Explore collection owns its loaded pages. New pages append to the existing collection.
-export function useExploreTemplates(category: string | undefined, locale: string, search = '') {
-  const [pages, setPages] = useState<TemplatePage[]>([]);
+export function useExploreTemplates(category: string | undefined, locale: string, search = '', firstPages?: Map<string, TemplatePage>) {
+  const cacheKey = JSON.stringify([locale, category, search]);
+  const [pages, setPages] = useState<TemplatePage[]>(() => {
+    const cached = firstPages?.get(cacheKey);
+    return cached ? [cached] : [];
+  });
   const [offset, setOffset] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(Boolean(category));
+  const [loading, setLoading] = useState(Boolean(category) && pages.length === 0);
   useEffect(() => {
     if (!category) return;
     const controller = new AbortController();
@@ -23,7 +27,9 @@ export function useExploreTemplates(category: string | undefined, locale: string
     }).then(page => {
       if (!Array.isArray(page.items)) throw new Error('Invalid template page');
       if (controller.signal.aborted) return;
-      setPages(previous => {
+      if (offset === 0) firstPages?.set(cacheKey, page);
+      setPages(existing => {
+        const previous = offset === 0 ? [] : existing;
         const seen = new Set(previous.flatMap(group => group.items.map(item => item.id)));
         const items = page.items.filter(item => {
           if (seen.has(item.id)) return false;
@@ -35,7 +41,7 @@ export function useExploreTemplates(category: string | undefined, locale: string
     }).catch(() => { if (!controller.signal.aborted) setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [category, locale, offset, attempt, search]);
+  }, [category, locale, offset, attempt, search, firstPages, cacheKey]);
   const next = pages.at(-1)?.next;
   function loadMore() {
     if (loading || next == null || next <= offset) return;
@@ -62,12 +68,16 @@ export function TemplatePromptAction({ item, onTry }: { item: GalleryTemplate; o
 export function ExploreTemplateCard({ item, active, onPriority, onTry, onOpen }: {
   item: GalleryTemplate; active: boolean; onPriority: (id: string | null) => void; onTry: (prompt: string) => void; onOpen?: () => void;
 }) {
+  const { t } = useI18n();
   const { openLibrary } = useWorkspaceChrome();
-  return <TemplateGalleryCard template={item} active={active} onPriority={onPriority}
+  return <TemplateGalleryCard showCoverDuration={false} template={item} active={active} onPriority={onPriority}
     onSelect={(template, trigger) => { onOpen?.(); openLibrary(trigger, template.id); }}
     footer={<div className="om-feed-template-copy">
       <strong>{item.title}</strong>
-      {item.description && <p>{item.description}</p>}
+      <p className="om-feed-card-description">
+        {item.duration != null && <small className="om-feed-duration">{t('{value}s', { value: Number(item.duration.toFixed(1)) })}{item.description ? ' · ' : ''}</small>}
+        {item.description}
+      </p>
       <TemplatePromptAction item={item} onTry={onTry} />
     </div>} />;
 }

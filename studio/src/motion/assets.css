@@ -279,6 +279,7 @@
 .om-creative-workspace { flex-direction: column; }
 .om-studio-bar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8) var(--motion-space-24); padding: var(--motion-space-12) var(--motion-space-24); border-bottom: 1px solid var(--motion-border-subtle); }
 .om-creative-workspace .om-studio-bar { padding-inline-start: var(--motion-space-12); }
+.om-studio-heading-icon { display: inline-flex; flex: none; color: var(--creation-color); }
 .om-studio-bar h1 { display: inline-flex; align-items: center; gap: var(--motion-space-8); }
 .om-studio-library-link { margin-inline-start: auto; }
 @container asset-workspace (max-width: 680px) {
