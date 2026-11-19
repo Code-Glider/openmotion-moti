@@ -89,18 +89,29 @@ The application shell reads its destination from the URL query. The native edito
 | Destination | Query parameters |
 | --- | --- |
 | Current editor | No `page` or `templates` parameter |
+| Shorts, Marketing and Explainer Studios | `page=shorts`, `page=marketing` or `page=explainer`. Add a supported `scene` to open the generator. A registered `skill` restores its brief on return. |
+| Model overview | `page=model&model=<provider-qualified-id>` lists compatible scenes and links to its provider and generation setup. |
+| 3D Studio | `page=3d&skill=three-js` opens the technique brief. Add `scene=text-to-video` for a 3D-style clip. The Agent handoff builds the editable scene. |
+| Asset detail | `page=assets&asset=<assetId>&version=<versionId>` opens the selected local version |
+| Explore | `page=explore` opens featured scenes and template previews. Optional filters such as `community=3d-motion` or `medium=video` restore discovery context |
+| Scene landing page | `page=create&scene=image-edit` opens the focused generator. The optional `model` identifies the provider and model. |
+| Creative studio | `page=design`, `page=cinema`, or `page=sound` with a `scene` and optional provider-qualified `model`. For example, `page=cinema&scene=shot-image` opens an image composer inside Cinema. |
 | Asset workspace | `page=assets` opens the shared asset library independently of the retained project |
+| API | `page=api` lists models and registered tools. `tool=openmotion_media_use` opens its input schema. |
 | MCP onboarding | `page=mcp&host=codex`; `setup=manual` opens manual configuration |
 | Settings | `page=settings&section=general` |
 | Provider detail | `page=settings&section=providers&provider=openai` |
 | Template library | `templates=1` |
+| Creators and credited works | `templates=1&view=creators`, optionally with `creator=<credit-id>` and `template=<catalog-id>`. The underlying workspace survives closing the gallery. |
 | Template preview | `templates=1&template=<catalog-id>` |
+
+The [studio catalogue](../shared/studio-catalog.ts) supplies Explore, header links and scene tabs. To add a workspace using the media composer, register its ID and ordered scene IDs there. Each scene declares its entry surface (focused landing page or owning studio), media type and any reference-image or model-mode requirement. The same predicate filters discovery and generation. Both surfaces share an in-memory draft for each studio/scene pair. An unavailable pinned model keeps its identity and requires configuration or an explicit replacement. Provide a poster and prompt in the [scene showcase](../studio/src/motion/sceneShowcase.ts). The canvas presents stills, while reference, video and audio scenes offer controls beside a guide and results. A workspace can combine image and video scenes under one URL.
 
 Settings sections are `account`, `subscription`, `providers`, `models`, `local`, `general`, `appearance`, `privacy`, `help` and `about`. MCP uses the dedicated page; `section=mcp` is also readable. Client IDs are `codex`, `claude`, `cursor`, `deepseek`, `desktop`, `chatgpt` and `mcp`. Template parameters may accompany a settings/MCP page, allowing the library to close back to that destination. Existing project, session and project-free library links remain supported.
 
 `workspacePageRouting.ts` parses and builds shell destinations; `workspaceHistory.ts` writes same-origin history entries and notifies the shell. `useWorkspace.ts` handles browser history, waits for saves only when changing projects or leaving the template library, and ignores stale pending transitions. Owned history entries retain an index through editor hash updates so a refused transition can return with `history.go` without truncating Forward history. An older entry without an index uses URL replacement as its recovery fallback. Repeated navigation to the current URL does not add an entry.
 
-The upper-left Back/Forward controls share this browser stack in the editor, settings, MCP onboarding and template library. Template previews omit the global navigation/brand header, retain their close and previous/next-template controls, and remain reachable through browser Back/Forward. A visit identity and index in `history.state` bound product navigation; the last reachable index is retained in tab-scoped `sessionStorage` without storing URLs or project content. Refresh preserves availability, a copied link starts a new visit, and navigating after Back discards the abandoned Forward branch. Disabled controls cannot leave the product for an earlier browser page. Storage failures retain in-memory navigation until reload. Native browser navigation and product controls use the same save guards.
+The browser provides Back and Forward across the editor, settings, MCP onboarding and galleries. Template previews also provide close, previous-template and next-template actions. Each workspace entry carries a visit ID and index in `history.state` so the save guard can restore an entry from the same visit.
 
 Refresh and copied links restore the selected page, MCP client/setup tab, provider and template preview. Settings/MCP can load without opening the retained native project; the editor resolves it when needed. Unknown page, section or client values use the editor, General or Codex fallback. A missing catalog entry shows a recovery action. Links do not contain search/filter drafts, credentials or unsaved form values. Page navigation preserves the current editor instance; project navigation creates a new viewer after validation.
 

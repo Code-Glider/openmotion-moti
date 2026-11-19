@@ -2,10 +2,9 @@ import { SearchField } from '../components/ui/SearchField';
 import { brandCard } from "./brandKitClient";
 import { Dialog } from "@base-ui/react/dialog";
 import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
-import { WorkspaceHistoryNavigation } from "./WorkspaceHistoryNavigation";
 import { GalleryIntro } from "./GalleryIntro";
 import { templateContributionUrl } from "./templateContribution";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/I18n";
 import { RemixIcon } from "../icons/RemixIcons";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -41,12 +40,14 @@ type BrandCollection = "official" | "mine";
 
 export function BrandKitPage({
   selectedId,
+  navigation,
   onSelect,
   onClose = () => onSelect(null),
   previewsEnabled = true,
   hasProject = false,
 }: {
   selectedId: string | null;
+  navigation?: ReactNode;
   onSelect: (id: string | null) => void;
   onClose?: () => void;
   previewsEnabled?: boolean;
@@ -299,8 +300,8 @@ export function BrandKitPage({
         {selectedId !== "new" && <>
           <header className="om-gallery-sticky-header">
             <div className="om-gallery-header">
-              <WorkspaceHistoryNavigation />
               <div className="om-gallery-wordmark"><BrandLogo compact /><span className="om-gallery-page-label">{t('Brand Kit')}</span></div>
+              {navigation && <fieldset className="contents" disabled={busy}>{navigation}</fieldset>}
               <nav className="om-gallery-collection-tabs" aria-label={t('Brand Kit')}>
                 <button className="om-nav-item" aria-current={collection === 'official' ? 'page' : undefined} onClick={() => switchCollection('official')}>{t('Official collection')}</button>
                 <button className="om-nav-item" aria-current={collection === 'mine' ? 'page' : undefined} onClick={() => switchCollection('mine')}>{t('My brand kits')}</button>

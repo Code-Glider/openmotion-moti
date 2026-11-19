@@ -4,85 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>OpenMotion Component Library</title>
-  <script>
-    const themeMedia = matchMedia('(prefers-color-scheme: dark)');
-    function setLibraryTheme(mode) {
-      const useLight = mode === 'light' || (mode === 'system' && !themeMedia.matches);
-      if (useLight) document.documentElement.dataset.theme = 'paper';
-      else delete document.documentElement.dataset.theme;
-    }
-    setLibraryTheme('system');
-    themeMedia.addEventListener('change', () => {
-      if (document.getElementById('library-theme').value === 'system') setLibraryTheme('system');
-    });
-  </script>
+  <title>OpenMotion Studio UI examples</title>
 </head>
-<body class="component-library">
-  <header class="library-header">
-    <div class="library-header-inner">
-      <a href="#library-start" class="library-wordmark">OpenMotion <span>Component library</span></a>
-      <label class="library-theme" for="library-theme">Theme
-        <select id="library-theme" class="om-field">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </label>
-    </div>
-  </header>
-  <main class="library-content" id="library-start">
-    <section class="library-intro">
-      <h1>Studio components</h1>
-      <p>Try the shared React controls and patterns used across OpenMotion.</p>
-      <nav class="library-index" aria-label="Components">
-        <a href="#actions">Actions</a><a href="#search">Search</a><a href="#choices">Choices</a>
-        <a href="#filters">Filters</a><a href="#states">Feedback</a><a href="#dialogs">Dialogs</a>
-      </nav>
-    </section>
-    <div class="library-grid">
-      <section class="library-card" id="actions">
-        <h2>Actions</h2>
-        <p>Use Button for an action and a named IconButton for an icon-only control. Use a link for navigation.</p>
-        <div class="library-preview" id="preview-actions"></div>
-        <p class="library-source"><code>components/ui/Button</code> · <code>components/ui/IconButton</code></p>
-      </section>
-      <section class="library-card" id="search">
-        <h2>Search fields</h2>
-        <p>Start with SearchField in application toolbars. Editor panels can use the compact SearchInput.</p>
-        <div class="library-preview" id="preview-search"></div>
-        <p class="library-source"><code>components/ui/SearchField</code> · <code>components/ui/SearchInput</code></p>
-      </section>
-      <section class="library-card" id="choices">
-        <h2>Selection controls</h2>
-        <p>Use Select for a single value, Toggle for an immediate setting and Checkbox for inclusion.</p>
-        <div class="library-preview" id="preview-choice"></div>
-        <p class="library-source"><code>components/ui/Select</code> · <code>Toggle</code> · <code>Checkbox</code> · <code>Tabs</code></p>
-      </section>
-      <section class="library-card" id="filters">
-        <h2>Filtering and sorting</h2>
-        <p>Sorting applies immediately. Draft filters show a live count and apply only when confirmed.</p>
-        <div class="library-preview" id="preview-filter"></div>
-        <p class="library-source"><code>motion/GalleryFilters</code></p>
-      </section>
-      <section class="library-card" id="states">
-        <h2>Content and action feedback</h2>
-        <p>Keep space for incoming content. Use inline recovery for a failed section and a toast for an action result.</p>
-        <div class="library-preview" id="preview-state"></div>
-        <p class="library-source"><code>components/ui/Skeleton</code> · <code>PanelEmptyState</code> · <code>hooks/useToast</code></p>
-      </section>
-      <section class="library-card" id="dialogs">
-        <h2>Settings dialog</h2>
-        <p>Open the dialog, press Escape and check where the keyboard focus returns.</p>
-        <div class="library-preview" id="preview-dialog"></div>
-        <p class="library-source"><code>motion/settingsPrimitives</code></p>
-      </section>
-    </div>
-  </main>
-  <div id="preview-runtime"></div>
-  <script>
-    document.getElementById('library-theme').addEventListener('change', function () { setLibraryTheme(this.value); });
-  </script>
+<body>
+  <div id="ui-examples"></div>
   <script type="module" src="/src/componentLibrary.tsx"></script>
 </body>
 </html>

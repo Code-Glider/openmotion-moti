@@ -21,7 +21,7 @@ For published motion guidance source and locale metadata, use the [catalog contr
 
 ## Studio UI
 
-Use the [Studio UI component guide](docs/ui-components.md) to choose a shared control, open the live component library and migrate existing UI.
+Use the [Studio UI component guide](docs/ui-components.md) for shared control examples and migration guidance.
 
 ## PR workflow
 
@@ -123,6 +123,8 @@ For an agent contribution: read the entry and sources, make the requested change
 Use the PR Actions summary to review new duplicate fragments and unused code or dependencies. The report is advisory. When a confirmed issue needs a separate change, link its source PR from a GitHub issue labeled `maintainability`, describe the impact, and assign an owner. Review open follow-ups in the existing engineering review. Promote repeat findings to a required check only after the rule is explicit and historical PRs show that the check detects it reliably.
 
 Only deliberately public documentation belongs here. Do not commit credentials, internal links, private plans, workstation paths or user projects. Distribution uses the positive list in `scripts/distribution.ts`; newly shipped files require an explicit decision. Preserve all upstream attribution and license notices. Do not add telemetry or publish a package without a separate decision.
+
+Keep the base install focused on runtime files. Serve demo and preview video on demand when feasible, and explain any offline requirement in the PR. If a change adds assets, dependencies or build configuration, inspect the final npm tarball and fill in **Install package impact**. Vite URL imports, asset globs and `public/` copies can add files to the shipped Studio build without changing the distribution list.
 
 Contributions are licensed under the repository's [Apache-2.0 license](LICENSE); vendored components retain their own terms. This migration branch is for review only and must not be merged or published automatically.
 

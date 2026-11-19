@@ -8,6 +8,7 @@ import { TemplateLibraryDialog } from './TemplateLibraryDialog';
 import { MAX_TEMPLATE_PLAYERS } from './useTemplatePlayback';
 import { validProperties } from '../../../tracking/core.ts';
 import { studioEvents } from '../../../tracking/events.ts';
+import { TemplatePreparationBlockedError, pendingTemplateProjects } from './templateHandoff';
 
 const tracked = vi.hoisted(() => [] as { event: string; properties: Record<string, unknown> }[]);
 vi.mock('./tracking', () => ({ trackMotion: async (event: string, properties: Record<string, unknown>) => { tracked.push({ event, properties }); return 'queued'; } }));
@@ -30,9 +31,10 @@ class Observer {
 }
 let motionPreference: EventTarget & { matches: boolean };
 function fetchItems(data = items, templateSource?: 'repository' | 'cms') {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : url.endsWith('/projects') ? { projects: [], sessions: [] } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
 }
 beforeEach(() => {
+  sessionStorage.setItem('motion.template-handoff.preview', '0');
   window.happyDOM.settings.enableIframePageLoading = false;
   Observer.instances = []; tracked.length = 0;
   vi.stubGlobal('IntersectionObserver', Observer);
@@ -45,7 +47,7 @@ beforeEach(() => {
   fetchItems();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
-afterEach(() => { act(() => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); sessionStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const button = (label: string, scope: ParentNode = host) => [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === label || node.textContent === label)!;
 const cards = () => [...host.querySelectorAll('[data-template-id]')].map(el => el.getAttribute('data-template-id'));
 const current = () => host.querySelector('dialog[aria-label="Template preview"] h2')?.textContent;
@@ -222,7 +224,7 @@ it.each(['repository', 'cms'] as const)('updates the displayed and copied title 
     expect(host.querySelector('section[aria-label="模板复刻指令"] p')?.textContent).toBe(expected);
     await act(async () => button('复刻模板').click());
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expected);
-    if (id === 'one') await act(async () => button('下一个模板').click());
+    if (id === 'one') await act(async () => button('下一个').click());
   }
 });
 it('random discovery honors filters, avoids consecutive repeats and handles a singleton', async () => {
@@ -750,9 +752,321 @@ it('opens the template requested by the MCP page without selecting a different c
   expect(current()).toBe('First');
 });
 
-it('keeps TOP100 discovery actions and keeps ordinary template details identical to main in review mode', async () => {
+it.each(['en', 'zh-CN'] as const)('keeps reference and contribution copying distinct in local review (%s)', async locale => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  await mount(locale);
+  await act(async () => button(translate(locale, 'Preview template {title}', { title: 'Second' })).click());
+  const detail = host.querySelector('dialog[aria-label="' + translate(locale, 'Template preview') + '"]')!;
+  const copy = button(translate(locale, 'Recreate this template'), detail);
+  expect(detail.textContent).not.toContain('Local review');
+  expect(detail.textContent).not.toContain('本地评审');
+  expect(copy).toBeDefined();
+  const browse = detail.querySelector('nav[aria-label="' + translate(locale, 'Browse videos') + '"]')!;
+  expect([...browse.querySelectorAll('button')].map(item => item.textContent)).toEqual([translate(locale, 'Previous template'), translate(locale, 'Next template')]);
+  expect(button(translate(locale, 'Open and edit'), detail)).toBeUndefined();
+  await act(async () => copy.click());
+  const regular = vi.mocked(navigator.clipboard.writeText).mock.calls.at(-1)![0];
+  expect(regular).toContain('two');
+  expect(regular).not.toContain('contribution guide');
+  await act(async () => button(translate(locale, 'Copy contribution brief'), detail).click());
+  const contribution = vi.mocked(navigator.clipboard.writeText).mock.calls.at(-1)![0];
+  expect(contribution).toContain('two');
+  expect(contribution).toContain(locale === 'en' ? 'contribution' : '准备贡献');
+  const intents = events('ui_click', { element: 'start_use' });
+  const results = events('template_instruction_copy_result');
+  expect(intents.map(item => item.template_action)).toEqual(['recreate', 'recreate_submit']);
+  expect(intents.map(item => item.copy_attempt_id)).toEqual(results.map(item => item.copy_attempt_id));
+  expect(results.map(item => item.copy_status)).toEqual(['clipboard_written', 'clipboard_written']);
+  await act(async () => button(translate(locale, 'Next steps'), detail).click());
+  expect(detail.textContent).toContain(translate(locale, 'Add content and send'));
+  expect(detail.textContent).not.toContain('Visual rules');
+  expect(detail.textContent).not.toContain('Production rules');
+  const shelf = detail.querySelector('section[aria-label="' + translate(locale, 'Similar templates') + '"]');
+  expect(shelf).not.toBeNull();
+  expect(shelf!.parentElement?.parentElement).toBe(detail);
+});
+
+it('keeps a text download beside GitHub, contribution beside pinned copying, and help by the instruction heading', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  await mount(); await act(async () => preview('First'));
+  const detail = host.querySelector('dialog[aria-label="Template preview"]')!;
+  expect(document.activeElement).toBe(detail.querySelector('h2'));
+  expect(detail.querySelector('[role="tooltip"]')).toBeNull();
+  act(() => button('Close template preview', detail).focus());
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(detail.querySelector('[role="tooltip"]')?.textContent).toBe('Close template preview');
+  act(() => (detail.querySelector('h2') as HTMLElement).focus());
+  const github = [...detail.querySelectorAll('a')].find(node => node.textContent?.includes('View on GitHub'))!;
+  const materials = detail.querySelector('[aria-label="About this starting point"]')!;
+  expect(github.compareDocumentPosition(materials) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const resources = detail.querySelector('section[aria-label="Template resources"]')!;
+  const specs = detail.querySelector('[aria-label="Video specifications"]')!;
+  expect(specs.nextElementSibling?.textContent).toContain('Ada Designer');
+  expect(specs.nextElementSibling?.nextElementSibling).toBe(resources);
+  expect(resources.contains(github)).toBe(true);
+  expect(resources.querySelector('details')).toBeNull();
+  expect(resources.contains(button('Download motion.md', detail))).toBe(true);
+  expect(github.querySelectorAll('svg')).toHaveLength(1);
+  expect(resources.contains(button('Copy contribution brief', detail))).toBe(false);
+  expect(button('Download motion.md', detail).textContent).toBe('Download motion.md');
+  const actions = detail.querySelector('[aria-label="Template actions"]')!;
+  expect(actions.contains(button('Copy contribution brief', detail))).toBe(true);
+  expect(actions.contains(button('Recreate this template', detail))).toBe(true);
+  expect(button('Copy contribution brief', detail).textContent).toBe('');
+  expect([...detail.querySelectorAll('details summary')].map(item => item.textContent)).not.toContain('Create and contribute a template');
+  const production = detail.querySelector('[aria-label="Production references"]')!;
+  expect(production.contains(button('View motion.md guide', detail))).toBe(true);
+  expect(production.parentElement?.lastElementChild).toBe(production);
+  expect(production.contains(button('Download motion.md', detail))).toBe(false);
+  const creation = detail.querySelector('section[aria-label="Template recreation instruction"]')!;
+  expect(creation.querySelector('header h3')?.textContent).toBe('Template recreation instruction');
+  expect(creation.querySelector(':scope > p')?.textContent).toContain('one');
+  expect(creation.querySelector('header')?.contains(button('Next steps', detail))).toBe(true);
+  expect(detail.querySelector('section[aria-label="After copying"]')).toBeNull();
+  await act(async () => button('Next steps', detail).click());
+  const steps = detail.querySelector('section[aria-label="After copying"]')!;
+  expect(steps.querySelectorAll('li')).toHaveLength(3);
+  expect(steps.textContent).toContain('Your copy; screenshots or recordings if needed.');
+  expect(detail.querySelectorAll('dialog')).toHaveLength(0);
+  expect(detail.textContent).not.toContain('Your Agent will make a new video from this reference and your materials.');
+  expect(detail.querySelector('video[controls]')).not.toBeNull();
+  await act(async () => button('View motion.md guide', detail).click());
+  const guide = detail.querySelector('section[aria-label="Interactive walkthrough"]')!;
+  expect(guide).not.toBeNull();
+  expect(detail.querySelector('dialog')).toBeNull();
+  expect(detail.querySelector('video[controls]')).toBeNull();
+  expect(guide.querySelector('iframe')?.getAttribute('sandbox')).toBe('allow-scripts');
+  await act(async () => button('Back to template', guide).click());
+  expect(detail.querySelector('section[aria-label="Interactive walkthrough"]')).toBeNull();
+  expect(current()).toBe('First');
+});
+
+it('replaces related details in place and retains the original search on dismissal', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  await mount(); await search('First'); await act(async () => preview('First'));
+  const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  const shelf = detail.querySelector('section[aria-label="Similar templates"]')!;
+  const next = shelf.querySelector<HTMLButtonElement>('button[aria-label="Preview template Second"]')!;
+  expect(next).not.toBeNull();
+  await act(async () => next.click());
+  expect(host.querySelector('dialog[aria-label="Template preview"]')).toBe(detail);
+  expect(current()).toBe('Second');
+  expect(detail.querySelectorAll('dialog')).toHaveLength(0);
+  await act(async () => button('Recreate this template', detail).click());
+  expect(vi.mocked(navigator.clipboard.writeText).mock.calls.at(-1)![0]).toContain('two');
+  await act(async () => button('Close template preview', detail).click());
+  expect(host.querySelector<HTMLInputElement>('input[type=search]')?.value).toBe('First');
+  expect(cards()).toEqual(['one']);
+});
+
+it.each(['en', 'zh-CN'] as const)('retains motion metadata while removing only the requested fields and restores optional after-copy help (%s)', async locale => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  await mount(locale);
+  await act(async () => button(translate(locale, 'Preview template {title}', { title: 'First' })).click());
+  const detail = host.querySelector('dialog[aria-label="' + translate(locale, 'Template preview') + '"]')!;
+  const info = detail.querySelector('section[aria-label="' + translate(locale, 'Video information') + '"]')!;
+  expect(info).not.toBeNull();
+  const specs = detail.querySelector('[aria-label="' + translate(locale, 'Video specifications') + '"]')!;
+  expect(specs.textContent).toContain(translate(locale, 'Editable project'));
+  expect(info.textContent).not.toContain(translate(locale, 'Editable project'));
+  expect(specs.compareDocumentPosition(info) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(info.querySelectorAll('dt')).toHaveLength(2);
+  expect(info.textContent).toContain(translate(locale, 'Motion style'));
+  expect(info.textContent).toContain('UI');
+  expect(info.textContent).toContain(translate(locale, 'Video purpose'));
+  for (const removed of ['Good for', 'Industry', 'Reference brands']) expect(info.textContent).not.toContain(translate(locale, removed));
+  expect(info.textContent).not.toContain('Figma');
+  expect(info.querySelector('details')).toBeNull();
+  expect(detail.querySelector('section[aria-label="' + translate(locale, 'What to bring') + '"]')).toBeNull();
+  expect(button(translate(locale, 'View motion.md guide'), detail)).toBeDefined();
+  expect(detail.textContent).not.toContain(translate(locale, 'Copying does not send a message or create a project.'));
+  const creation = detail.querySelector('section[aria-label="' + translate(locale, 'Template recreation instruction') + '"]')!;
+  const actions = detail.querySelector('[aria-label="' + translate(locale, 'Template actions') + '"]')!;
+  expect(actions.contains(button(translate(locale, 'Recreate this template'), detail))).toBe(true);
+  expect(creation.contains(actions)).toBe(false);
+  expect(detail.querySelector('section[aria-label="' + translate(locale, 'After copying') + '"]')).toBeNull();
+  const previewText = creation.querySelector(':scope > p')!;
+  expect(previewText.textContent).toContain('one');
+  expect(button(translate(locale, 'Show instruction'), creation).getAttribute('aria-expanded')).toBe('false');
+  await act(async () => Observer.instances.filter(item => !item.disconnected).forEach(item => item.emit()));
+  expect(events('surface_view', { area: 'template_instruction' })).toHaveLength(1);
+  const helpTrigger = button(translate(locale, 'Next steps'), creation);
+  await act(async () => {
+    helpTrigger.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false, composed: true }));
+    helpTrigger.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, composed: true }));
+    helpTrigger.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, composed: true }));
+    await new Promise(resolve => setTimeout(resolve, 350));
+  });
+  const help = detail.querySelector('section[aria-label="' + translate(locale, 'After copying') + '"]')!;
+  const stepTwo = help.querySelector('ol > li:nth-child(2)')!;
+  expect(stepTwo.textContent).toContain(translate(locale, 'Your copy; screenshots or recordings if needed.'));
+  await act(async () => button(translate(locale, 'Show instruction'), creation).click());
+  expect(button(translate(locale, 'Show less'), creation).getAttribute('aria-expanded')).toBe('true');
+  expect(actions.contains(button(translate(locale, 'Recreate this template'), detail))).toBe(true);
+  const instruction = creation.querySelector(':scope > p')!;
+  expect(instruction).not.toBeNull();
+  await act(async () => Observer.instances.filter(item => !item.disconnected).forEach(item => item.emit()));
+  expect(events('surface_view', { area: 'template_instruction' })).toHaveLength(1);
+});
+
+it('shows the original description below the title, renders original production notes as bottom text and keeps material guidance', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  fetchItems([{ ...items[0], id: 'motion-be2a4af0-0183-4979-ab05-2a68413c0890', description: 'Original authored description' }]);
+  await mount(); await act(async () => preview('First'));
+  const detail = host.querySelector('dialog[aria-label="Template preview"]')!;
+  expect(detail.querySelector('section[aria-label="Why this video works"]')).toBeNull();
+  expect(detail.querySelector('section[aria-label="About this video"]')).toBeNull();
+  const description = [...detail.querySelectorAll('p')].find(item => item.textContent === 'Original authored description')!;
+  expect(description).toBeDefined();
+  expect(description.closest('details')).toBeNull();
+  expect(description.previousElementSibling?.tagName).toBe('H2');
+  expect(description.nextElementSibling?.getAttribute('aria-label')).toBe('Video specifications');
+  expect([...detail.querySelectorAll('summary')].some(item => item.textContent === 'Video notes')).toBe(false);
+  expect(detail.textContent?.match(/Original authored description/g)).toHaveLength(1);
+  const notes = detail.querySelector('section[aria-label="Production details"]')!;
+  expect(notes.textContent).toContain('Visual style');
+  expect(notes.textContent).toContain('Visual rules');
+  expect(notes.textContent).toContain('Production notes');
+  expect(notes.textContent).toContain('Production rules');
+  expect(notes.querySelectorAll('details')).toHaveLength(0);
+  expect([...notes.querySelectorAll('h4')].map(item => item.textContent)).toEqual(['Visual style', 'Production notes']);
+  expect([...notes.querySelectorAll('p')].map(item => item.textContent)).toEqual(['Visual rules', 'Production rules']);
+  expect(notes.contains(button('View motion.md guide', detail))).toBe(true);
+  expect(notes.parentElement?.lastElementChild).toBe(notes);
+  await act(async () => button('Next steps', detail).click());
+  const secondStep = detail.querySelector('section[aria-label="After copying"] ol > li:nth-child(2)')!;
+  expect(secondStep.textContent).toContain('Your headline.');
+  expect(secondStep.textContent).not.toContain('Your screenshots or recording');
+  expect(secondStep.textContent).toContain('Optional: logo, colors and audio.');
+});
+
+it('brings the manual instruction into view when the pinned copy action fails', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+  await mount(); await act(async () => preview('Second'));
+  vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('Denied'));
+  await act(async () => button('Recreate this template').click());
+  const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Content to copy"]')!;
+  expect(field.readOnly).toBe(true);
+  expect(field.value).toContain('two');
+  expect(document.activeElement).toBe(field);
+  expect(field.selectionStart).toBe(0);
+  expect(field.selectionEnd).toBe(field.value.length);
+  expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+  expect(events('template_instruction_copy_result').map(item => item.copy_status)).toEqual(['manual_fallback_shown']);
+});
+
+
+it('retries opening the exact prepared project without creating another one after a real callback failure', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const prepare = vi.fn(async (template, requestId: string) => ({ projectId: 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b', sessionId: requestId,
+    title: 'My new project', templateId: template.id, originalProjectId: 'original-A', requestId }));
+  const open = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} onOpenProject={open} /></I18nProvider>));
+  await act(async () => preview('First'));
+  await act(async () => button('Open and edit').click());
+  expect(prepare).toHaveBeenCalledTimes(1);
+  expect(open).toHaveBeenLastCalledWith('bd951eb6-bbbc-4942-9507-8f2856ec7d3b');
+  expect(host.textContent).toContain('Project created, preview not opened');
+  await act(async () => button('Retry opening this project').click());
+  expect(prepare).toHaveBeenCalledTimes(1);
+  expect(open.mock.calls).toEqual([['bd951eb6-bbbc-4942-9507-8f2856ec7d3b'], ['bd951eb6-bbbc-4942-9507-8f2856ec7d3b']]);
+  expect(host.textContent).toContain('This project is ready');
+  expect(events('ui_click', { template_action: 'open_edit' })).toHaveLength(1);
+  const results = events('template_project_result');
+  expect(results.map(item => [item.stage, item.outcome])).toEqual([['create', 'success'], ['open', 'failure'], ['open', 'success']]);
+  expect(new Set(results.map(item => item.operation_id)).size).toBe(1);
+  expect(events('ui_click', { template_action: 'open_edit' })[0].operation_id).toBe(results[0].operation_id);
+  expect(new Set(results.map(item => item.handoff_attempt_id)).size).toBe(3);
+  expect(results.every(item => item.project_id === 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b')).toBe(true);
+});
+
+it('keeps an uncertain real creation result separate from failure and prevents a second creation', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const prepare = vi.fn().mockRejectedValue(new Error('Connection interrupted'));
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} onOpenProject={async () => true} /></I18nProvider>));
+  await act(async () => preview('First'));
+  await act(async () => button('Open and edit').click());
+  expect(prepare).toHaveBeenCalledTimes(1);
+  expect(host.textContent).toContain('Creation result needs checking');
+  expect(host.textContent).not.toContain('Project not created');
+  expect(button('Open and edit').disabled).toBe(true);
+  await act(async () => button('Check creation result').click());
+  expect(prepare).toHaveBeenCalledTimes(1);
+  expect(host.textContent).toContain('Project not created');
+  expect(button('Open and edit').disabled).toBe(false);
+  expect(events('template_project_result').map(item => [item.stage, item.outcome])).toEqual([['create', 'unknown'], ['reconcile', 'not_found']]);
+  await act(async () => button('Retry creation').click());
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare.mock.calls[1][1]).toBe(prepare.mock.calls[0][1]);
+  expect(host.textContent).toContain('Creation result needs checking');
+});
+
+it('allows a preflight-blocked creation to retry without treating it as an ambiguous server result', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const prepare = vi.fn().mockRejectedValue(new TemplatePreparationBlockedError('Save your changes first.'));
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} /></I18nProvider>));
+  await act(async () => preview('First'));
+  await act(async () => button('Open and edit').click());
+  expect(host.textContent).toContain('Save your changes first.');
+  expect(host.textContent).toContain('Project not created');
+  expect(host.textContent).not.toContain('Creation result needs checking');
+  expect(pendingTemplateProjects()).toEqual([]);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/projects'))).toBe(false);
+  await act(async () => button('Retry creation').click());
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare.mock.calls[1][1]).toBe(prepare.mock.calls[0][1]);
+  expect(events('template_project_result').map(item => item.outcome)).toEqual(['failure', 'failure']);
+});
+
+it('reconciles a retained request after remount without minting a new creation identity', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const prepare = vi.fn().mockRejectedValue(new Error('Connection interrupted'));
+  const render = () => <I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="original-A"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} /></I18nProvider>;
+  await act(async () => root.render(render()));
+  await act(async () => preview('First'));
+  await act(async () => button('Open and edit').click());
+  const requestId = prepare.mock.calls[0][1];
+  expect(pendingTemplateProjects()).toMatchObject([{ requestId, templateId: 'one', originalProjectId: 'original-A' }]);
+  act(() => root.unmount()); root = createRoot(host);
+  await act(async () => root.render(render()));
+  await act(async () => preview('First'));
+  expect(button('Open and edit').disabled).toBe(true);
+  expect(host.textContent).toContain('Creation result needs checking');
+  expect(prepare).toHaveBeenCalledTimes(1);
+  await act(async () => button('Check creation result').click());
+  await act(async () => button('Retry creation').click());
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare.mock.calls[1][1]).toBe(requestId);
+});
+
+it('keeps a delayed handoff result tied to its initiating detail and does not switch a later selection', async () => {
+  sessionStorage.removeItem('motion.template-handoff.preview');
+  let finish!: (value: any) => void;
+  const prepare = vi.fn((_template, _requestId) => new Promise<any>(resolve => { finish = resolve; }));
+  const open = vi.fn().mockResolvedValue(true);
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog open busy={false} error="" projectId="project"
+    onClose={() => {}} onOpen={() => {}} onPrepareTemplate={prepare} onOpenProject={open} /></I18nProvider>));
+  await act(async () => preview('First'));
+  const sourceView = events('surface_view', { area: 'template_detail' }).at(-1)!.detail_view_id;
+  await act(async () => button('Open and edit').click());
+  const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  await act(async () => detail.querySelector<HTMLButtonElement>('section[aria-label="Similar templates"] button[aria-label="Preview template Second"]')!.click());
+  const requestId = prepare.mock.calls[0][1];
+  await act(async () => finish({ projectId: 'bd951eb6-bbbc-4942-9507-8f2856ec7d3b', sessionId: requestId, title: 'Independent project', templateId: 'one', originalProjectId: 'project', requestId }));
+  expect(current()).toBe('Second');
+  expect(open).not.toHaveBeenCalled();
+  expect(events('template_project_result')).toMatchObject([{ template_id: 'one', detail_view_id: sourceView, operation_id: requestId, stage: 'create', outcome: 'success' }]);
+});
+
+it('preserves the TOP100 detail and return path alongside the regular template handoff', async () => {
   const previous = location.href;
   history.replaceState({}, '', '/?brandStoriesPreview=1');
+  sessionStorage.removeItem('motion.template-handoff.preview');
   try {
     await mount();
     await act(async () => button('TOP 100 brands').click());
@@ -772,6 +1086,12 @@ it('keeps TOP100 discovery actions and keeps ordinary template details identical
     expect(detail.querySelector('video')).not.toBeNull();
     await act(async () => button('Close template preview', detail).click());
     expect(host.querySelector('dialog[aria-label="Figma brand story"][open]')).not.toBeNull();
+    await act(async () => button('Close brand story', brand).click());
+    await act(async () => button('Remove filter TOP 100 brands').click());
+    await act(async () => preview('Second'));
+    expect(button('Recreate this template', detail)).toBeDefined();
+    expect(detail.querySelector('section[aria-label="Template recreation instruction"]')).not.toBeNull();
+    expect(host.querySelector('dialog[aria-label="Figma brand story"][open]')).toBeNull();
   } finally { history.replaceState({}, '', previous); }
 });
 
@@ -835,7 +1155,8 @@ it('attributes the brand timeline, work changes and nested detail actions withou
     expect(events('surface_view', { area: 'template_series_detail' })).toHaveLength(1);
     expect(events('surface_view', { area: 'template_series_work' })).toHaveLength(2);
     await act(async () => button('Close brand story', brand).click());
-    expect(events('ui_click', { element: 'close_detail', series_view_id: opened.series_view_id })).toHaveLength(1);
+    expect(events('ui_click', { area: 'template_detail', element: 'close_detail', series_view_id: opened.series_view_id })).toEqual([expect.objectContaining({ detail_view_id: detail.detail_view_id })]);
+    expect(events('ui_click', { area: 'template_series_detail', element: 'close_detail', series_view_id: opened.series_view_id })).toHaveLength(1);
     for (const row of tracked) expect(validProperties(studioEvents, row.event, row.properties), JSON.stringify(row)).toBe(true);
   } finally { history.replaceState({}, '', previous); }
 });
