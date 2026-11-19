@@ -3,7 +3,6 @@ import type { RefObject } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { AssetsPage } from './AssetsPage';
-import { useWorkspaceChrome } from './WorkspaceChromeContext';
 import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
 import { scenesForStudio, studioDestination, studioDraftKey, supportsScene, type StudioDestination } from './creativeStudios';
@@ -17,11 +16,11 @@ export type StudioCreation = {
   chooseModel: (model: string) => void;
 };
 
-export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenAssets, hasProject, active, drafts }: {
+  onOpenAssets?: () => void;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
-  const { openAssets } = useWorkspaceChrome();
   const catalog = useMediaCatalog(active && Boolean(destination));
   if (!destination) return null;
   const { scene, studio } = destination;
@@ -43,7 +42,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />
       </button> : <nav className="om-asset-tabs" aria-label={t('Scenes')}>{scenesForStudio(studio).map(item => <button className="om-nav-item" key={item.id}
         aria-current={item.id === scene.id ? 'page' : undefined} onClick={() => { if (item.id !== scene.id) onNavigate({ studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null }); }}>{t(item.label)}</button>)}</nav>}
-      <button className="om-nav-item om-studio-library-link" onClick={openAssets} aria-label={t('Workspace assets')}><RemixIcon name="folder-open-line" size={16} /><span>{t('Workspace assets')}</span></button>
+      {onOpenAssets && <button className="om-nav-item om-studio-library-link" onClick={onOpenAssets} aria-label={t('Workspace assets')}><RemixIcon name="folder-open-line" size={16} /><span>{t('Workspace assets')}</span></button>}
     </header>
     <AssetsPage key={draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),
       remember: draft => drafts.current.set(draftKey, draft), chooseModel: model => onNavigate({ ...destination, model }) }} />

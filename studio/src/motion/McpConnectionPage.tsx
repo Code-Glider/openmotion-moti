@@ -29,7 +29,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
   const community = useCommunityLink();
   const { info, failed, retry } = useIntegrationInfo();
   const [manualScenario, setManualScenario] = useState<{ id: string; text: string } | null>(null);
-  const [localRoute, setLocalRoute] = useState(() => readWorkspacePage(location.search));
+  const [localRoute, setLocalRoute] = useState(() => readWorkspacePage(location.search, location.hash));
   const { client: clientId, setup: setupMode } = route ?? localRoute;
   const changeRoute = (patch: Partial<WorkspacePage>) => {
     if (onRouteChange) onRouteChange(patch);

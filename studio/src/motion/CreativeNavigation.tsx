@@ -1,11 +1,11 @@
 import type { CreativeStudio, TechniqueStudio } from '../../../shared/studio-catalog';
-import { useEffect, useRef, useState } from 'react';
-import { modalities, type Modality } from '../../../shared/gateway';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { Modality } from '../../../shared/gateway';
 import { Popover } from '../components/ui/Popover';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { workspacePageHref } from './workspacePageRouting';
-import { creativeStudios, mediaLabels, motionStudio, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
+import { creativeStudios, mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
 import { mcpClients, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
 import { editingPresets } from './skillCatalog';
@@ -13,7 +13,7 @@ import { MediaModelChoices } from './MediaModelChoices';
 
 export type CreativeNavigationProps = {
   onModel: (id: string) => void;
-  onChooseStudio: (studio: CreativeStudio) => void;
+  onChooseStudio: (studio: CreativeStudio, kind?: Modality) => void;
   specialty: TechniqueStudio | null;
   destination: StudioDestination | null;
   motionActive: boolean;
@@ -64,6 +64,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
   const { t } = useI18n();
   const [open, setOpen] = useState<Modality | 'mcp' | null>(null);
   const [popupHost, setPopupHost] = useState<HTMLElement>();
+  const navId = useId();
   const rail = useRef<HTMLElement>(null);
   const catalog = useMediaCatalog(open !== null && open !== 'mcp');
 
@@ -74,9 +75,9 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
     const update = () => {
       viewport.toggleAttribute('data-scroll-start', viewport.scrollLeft > 1);
       viewport.toggleAttribute('data-scroll-end', viewport.scrollWidth - viewport.clientWidth - viewport.scrollLeft > 1);
-      const trigger = viewport.querySelector('button[aria-expanded="true"]');
-      if (trigger) {
-        const anchor = trigger.getBoundingClientRect(), bounds = viewport.getBoundingClientRect();
+      const group = viewport.querySelector('.om-creative-split:has(> [aria-expanded="true"])');
+      if (group) {
+        const anchor = group.getBoundingClientRect(), bounds = viewport.getBoundingClientRect();
         if (anchor.right < bounds.left || anchor.left > bounds.right) setOpen(null);
       }
     };
@@ -109,34 +110,50 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
     setOpen(null);
     action();
   };
+  const menuDestinations = [
+    ...creativeStudios.filter(studio => studio.surface === 'media').map(studio => {
+      const kind = studio.primaryModality;
+      const label = t(mediaLabels[kind]);
+      return { id: kind, label, current: destination?.scene.modality === kind ? 'location' as const : undefined,
+        menuLabel: t('{media} scenes and models', { media: label }), onActivate: () => onChooseStudio(studio, kind) };
+    }),
+    { id: 'mcp' as const, label: 'MCP', current: currentPage === 'mcp' ? 'page' as const : undefined,
+      menuLabel: t('Agent client'), onActivate: () => onOpenPage('mcp') },
+  ];
   return <nav ref={rail} className="om-creative-navigation" aria-label={t('Creative studio')}>
     <div className="om-creative-strip">
       <button className="om-nav-item" aria-current={currentPage === 'explore' ? 'page' : undefined} onClick={() => choose(() => onOpenPage('explore'))}>{t('Explore')}</button>
-      <button className="om-nav-item" aria-current={motionActive ? 'page' : undefined} onClick={() => choose(() => onChooseStudio(motionStudio))}>
-        <RemixIcon name={motionStudio.icon} size={16} />{t(motionStudio.title)}
-      </button>
-      {modalities.map(kind => <Popover key={kind} container={popupHost} modal={false} openOnHover open={open === kind}
-        onOpenChange={value => setOpen(previous => value ? kind : previous === kind ? null : previous)}
-        aria-label={t(mediaLabels[kind])} align="start" className="om-selection-panel om-creative-menu"
-        trigger={<button className="om-nav-item" aria-current={destination?.scene.modality === kind ? 'location' : undefined}>{t(mediaLabels[kind])}<RemixIcon name="arrow-down-s-line" size={12} /></button>}>
-        {open === kind && <MediaChoices {...catalog} kind={kind} destination={destination}
-          onModel={id => choose(() => onModel(id))} onNavigate={next => choose(() => onNavigate(next))} onSkill={id => choose(() => onSkill(id))} openProviders={() => choose(openProviders)} />}
-      </Popover>)}
-      <Popover container={popupHost} modal={false} openOnHover open={open === 'mcp'}
-        onOpenChange={value => setOpen(previous => value ? 'mcp' : previous === 'mcp' ? null : previous)}
-        aria-label={t('Agent client')} align="start" className="om-selection-panel om-creative-client-menu"
-        trigger={<button className="om-nav-item" aria-current={currentPage === 'mcp' ? 'page' : undefined}>MCP<RemixIcon name="arrow-down-s-line" size={12} /></button>}>
-        <h2 className="om-eyebrow">{t('Agent client')}</h2>
-        {mcpClients.map(client => <button className="om-nav-item" key={client.id} onClick={() => choose(() => onOpenPage('mcp', client.id))}>
-          {t(client.name)}{client.host === 'chatgpt' && <small className="om-muted">{t('Remote connection unavailable')}</small>}
-        </button>)}
-      </Popover>
+      {menuDestinations.map(({ id, label, current, menuLabel, onActivate }) => (
+        <div key={id} className="om-nav-row om-creative-split" data-active={Boolean(current)}>
+          <Popover container={popupHost} modal={false} openOnHover open={open === id}
+            onOpenChange={value => setOpen(previous => value ? id : previous === id ? null : previous)}
+            aria-label={menuLabel} align="start" className={id === 'mcp' ? 'om-selection-panel om-creative-client-menu' : 'om-selection-panel om-creative-menu'}
+            primaryAction={<button className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => choose(onActivate)}>{label}</button>}
+            trigger={<button className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={open === id}><RemixIcon name="arrow-down-s-line" size={12} /></button>}>
+            {id === 'mcp' ? <>
+              <h2 className="om-eyebrow">{t('Agent client')}</h2>
+              {mcpClients.map(client => <button className="om-nav-item" key={client.id} onClick={() => choose(() => onOpenPage('mcp', client.id))}>
+                {t(client.name)}{client.host === 'chatgpt' && <small className="om-muted">{t('Remote connection unavailable')}</small>}
+              </button>)}
+            </> : open === id && <MediaChoices {...catalog} kind={id} destination={destination}
+              onModel={model => choose(() => onModel(model))} onNavigate={next => choose(() => onNavigate(next))}
+              onSkill={skill => choose(() => onSkill(skill))} openProviders={() => choose(openProviders)} />}
+          </Popover>
+        </div>
+      ))}
       <a className="om-nav-item" href={workspacePageHref(location.href, { api: true, tool: null, templates: false })} aria-current={currentPage === 'api' ? 'page' : undefined}
         onClick={event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); choose(() => onOpenPage('api')); }}>API</a>
       <span className="om-divider om-creative-divider" aria-hidden="true" />
-      {creativeStudios.filter(studio => studio.surface !== 'editor').map(studio => <button key={studio.id} className="om-nav-item"
-        aria-current={((studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id) ? 'page' : undefined}
-        onClick={() => choose(() => onChooseStudio(studio))}>{t(studio.title)}</button>)}
+      {creativeStudios.map(studio => {
+        const isCurrent = studio.surface === 'editor' ? motionActive
+          : (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
+        const badge = 'navBadge' in studio ? studio.navBadge : undefined;
+        const badgeId = badge ? navId + '-' + studio.id : undefined;
+        return <button key={studio.id} className="om-nav-item" aria-current={isCurrent ? 'page' : undefined}
+          aria-label={t(studio.title)} aria-describedby={badgeId} onClick={() => choose(() => onChooseStudio(studio))}>
+          {t(studio.title)}{badge && <span className="om-badge" data-nav-badge={badge} id={badgeId} lang="en">{badge}</span>}
+        </button>;
+      })}
     </div>
   </nav>;
 }
