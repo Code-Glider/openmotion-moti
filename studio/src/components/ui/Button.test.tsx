@@ -10,7 +10,7 @@ import path from "node:path";
 import React, { act } from "react";
 import { compile } from "tailwindcss";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { Button, type ButtonSize, type ButtonVariant } from "./Button";
+import { Button, type ButtonSize, type ButtonVariant } from "@openmotion/ui/button";
 import { IconButton } from "./IconButton";
 import { Tab, Tabs, TabsList } from "./Tabs";
 import { cleanupMounted, mountHost } from "./mountHost.testHelpers";

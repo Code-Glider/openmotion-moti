@@ -9,7 +9,7 @@ import {
   type UseVariablesPersistParams,
 } from "../../hooks/useVariablesPersist";
 import { resolveMasterCompositionPath } from "../../utils/studioUrlState";
-import { Button } from "../ui";
+import { Button } from "@openmotion/ui/button";
 import {
   BLUR_LEVELS,
   changedEdits,

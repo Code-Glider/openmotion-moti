@@ -12,7 +12,8 @@
       "source": "packages/design-system/components/button.tsx",
       "export": "Button",
       "example": "<Button type=\"button\" variant=\"primary\" onClick={save}>Save changes</Button>",
-      "consumer": "studio/src/motion/CaptionsPanel.tsx"
+      "consumer": "studio/src/motion/CaptionsPanel.tsx",
+      "import": "@openmotion/ui/button"
     },
     {
       "name": "slider",
@@ -21,7 +22,8 @@
       "source": "packages/design-system/components/slider.tsx",
       "export": "Slider",
       "example": "<Slider label=\"Guidance scale\" min={1} max={10} step={1} value={value} onCommit={setValue} />",
-      "consumer": "studio/src/motion/GenerationParameters.tsx"
+      "consumer": "studio/src/motion/GenerationParameters.tsx",
+      "import": "@openmotion/ui/slider"
     }
   ]
 }

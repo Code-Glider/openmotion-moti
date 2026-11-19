@@ -1,8 +1,8 @@
 import { useLayoutEffect, useState, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrandLogo } from '../../react/BrandLogo';
-import { Button } from '../button';
-import { Slider } from '../slider';
+import { Button } from '@openmotion/ui/button';
+import { Slider } from '@openmotion/ui/slider';
 import registry from '../registry.json';
 import registryUrl from '../registry.json?url&no-inline';
 import './site.css';

@@ -10,14 +10,14 @@ Use the URL Vite prints. The site renders the same source used by Studio, includ
 
 ## Use from an Agent
 
-Read [registry.json](registry.json) to discover each control's source path, named export, example and product consumer. The site also serves the same file at `/registry.json`. Use relative imports from the listed source files. For example, from a file in `studio/src/motion`:
+Read [registry.json](registry.json) to discover each control's source path, import alias, named export, example and product consumer. The site also serves the same file at `/registry.json`. Use the listed alias in Studio and in the component site:
 
 ```tsx
-import { Button } from '../../../packages/design-system/components/button';
-import { Slider } from '../../../packages/design-system/components/slider';
+import { Button } from '@openmotion/ui/button';
+import { Slider } from '@openmotion/ui/slider';
 ```
 
-Studio already loads the two shared styles in the registry. Keep the app's Tailwind source scan pointed at the shared controls. The registry describes source in this checkout and has no install step. Agents can use it with their normal repo tools.
+Studio already loads the two shared styles in the registry. Keep the app's Tailwind source scan pointed at the shared controls. The alias resolves to source in this checkout through TypeScript and Vite. Agents can use it with their normal repo tools.
 
 - `Button` supports native button props, `primary`, `secondary`, `ghost` and `danger` variants, three sizes, an optional icon and a loading state. Set the native `type` deliberately. Existing ordinary actions can keep the shared `om-button` recipe.
 - `Slider` takes a named, bounded numeric value. Use `onPreview` for temporary feedback and `onCommit` to store a change. Keep provider defaults and validation in the feature.
@@ -31,4 +31,4 @@ Studio already loads the two shared styles in the registry. Keep the app's Tailw
 
 ### First migration
 
-[GenerationParameters](../../../studio/src/motion/GenerationParameters.tsx) now imports the shared Slider directly. The provider still owns the label, range, step, default and committed value. The previous Studio import forwards to the same component, so existing callers and tests share one implementation.
+[GenerationParameters](../../../studio/src/motion/GenerationParameters.tsx) now imports the shared Slider directly. The provider still owns the label, range, step, default and committed value. Existing React Button and Slider callers use the aliases directly. Component implementations depend on their own directory and shared UI dependencies. The preview can also load design system assets. `npm run design:check` checks these import boundaries.

@@ -7,6 +7,7 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: './',
   plugins: [react(), tailwindcss()],
+  resolve: { alias: { '@openmotion/ui': fileURLToPath(new URL('.', import.meta.url)) } },
   build: {
     rollupOptions: {
       output: {

@@ -1,5 +1,5 @@
-export { Button, buttonBase, buttonSizes, buttonVariants } from "./components/ui/Button";
-export type { ButtonSize, ButtonVariant, PreviewState } from "./components/ui/Button";
+export { Button, buttonBase, buttonSizes, buttonVariants } from "@openmotion/ui/button";
+export type { ButtonSize, ButtonVariant, PreviewState } from "@openmotion/ui/button";
 export { HyperframesLogo } from "./components/ui/HyperframesLogo";
 export { IconButton } from "./components/ui/IconButton";
 export { Tab, TabPanel, Tabs, TabsList } from "./components/ui/Tabs";
@@ -25,7 +25,7 @@ export { NumberField } from "./components/ui/NumberField";
 export type { NumberFieldProps } from "./components/ui/NumberField";
 export { Select } from "./components/ui/Select";
 export type { SelectOption, SelectProps } from "./components/ui/Select";
-export { Slider } from "./components/ui/Slider";
-export type { SliderProps } from "./components/ui/Slider";
+export { Slider } from "@openmotion/ui/slider";
+export type { SliderProps } from "@openmotion/ui/slider";
 export { Toggle } from "./components/ui/Toggle";
 export type { ToggleProps } from "./components/ui/Toggle";

@@ -1,5 +1,5 @@
 import { CAPTION_STYLES, type CaptionSettings } from '../../../shared/caption-style';
-import { Button } from '../components/ui/Button';
+import { Button } from '@openmotion/ui/button';
 import { Select } from '../components/ui/Select';
 import { useI18n } from '../i18n/I18n';
 

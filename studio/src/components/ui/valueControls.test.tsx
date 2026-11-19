@@ -15,7 +15,7 @@ vi.mock("../../utils/studioTelemetry", () => ({
 import { Input } from "./Input";
 import { NumberField } from "./NumberField";
 import { Select } from "./Select";
-import { Slider } from "./Slider";
+import { Slider } from "@openmotion/ui/slider";
 import { Toggle } from "./Toggle";
 import { isTypingTarget } from "../../utils/typingTarget";
 import { shouldIgnorePlaybackShortcutTarget } from "../../player/lib/playbackShortcuts";

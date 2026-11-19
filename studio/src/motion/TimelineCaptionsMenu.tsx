@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '../components/ui/Button';
+import { Button } from '@openmotion/ui/button';
 import { IconButton } from '../components/ui/IconButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Popover } from '../components/ui/Popover';

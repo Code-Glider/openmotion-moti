@@ -5,7 +5,7 @@ import { transcriptWorkflowPrompt } from '../../../shared/transcript-workflow';
 import { defaultPlatformExportTarget, platformExportTargets, type PlatformExportTarget } from '../../../shared/platform-export';
 import { useI18n } from '../i18n/I18n';
 import { useStudioShellContext } from '../contexts/StudioContext';
-import { Button } from '../components/ui/Button';
+import { Button } from '@openmotion/ui/button';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useIntegrationInfo } from './useIntegrationInfo';
 import { SettingsError, SettingsLoading } from './settingsPrimitives';
