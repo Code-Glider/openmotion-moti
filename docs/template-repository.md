@@ -61,7 +61,7 @@ Add media under `<id>/source/assets/` and reference it by a relative path from t
 "localMedia": { "preview": "assets/reference.mp4", "poster": "assets/poster.webp" }
 ```
 
-When the final content is reviewed, merge the PR through the normal GitHub flow. **Publish merged template media** runs from trusted base-branch code after the close event, uploads changed media, verifies public downloads, and adds one cleanup commit to `main` guarded by the merge SHA. The original author and merged PR remain intact. The workflow never executes contributor code or requires fork write access. There is no upload on every draft push, no replacement PR and no patch for the contributor to apply.
+When the final content is reviewed, merge the PR through the normal GitHub flow. **Publish merged template media** runs from trusted base-branch code after the close event, uploads changed media, verifies public downloads, and adds one cleanup commit to `main` guarded by the current main SHA. A dependent catalog job publishes that exact successful source SHA; concurrent main changes cause replanning. The original author and merged PR remain intact. The workflow never executes contributor code or requires fork write access. There is no upload on every draft push, no replacement PR and no patch for the contributor to apply.
 
 Raw large files can fail CI before preparation. After cleanup, the workflow waits for the new commit's CI and required review before Squash merge. If the contributor pushes another commit, the run stops; no new content is merged implicitly. If the contributor later revises media, prepare that revision again. See [the maintainer entry, one-time setup and failure behavior](repository-storage.md#prepare-final-pr-media-before-merging).
 
@@ -93,7 +93,7 @@ Merging template changes into `main` runs `publish-template-catalog.yml`. It fet
 
 The publisher preserves `template.json` and `source/manifest.json` bytes and generates a separate `hosted-files.json` for logical-path-to-object lookup. It does not rewrite contributed files or existing CMS media URLs. Newly added source files are registered by `npm run templates:manifest -- <id>`; the same file manifest supports local and hosted reads. Editable project files in `template.json.entry.files` retain their path, size and hash fields; a download URL is optional for repository/hosted entries, which read the registered source file. CMS entries still require their CMS download URL.
 
-The release workflow also updates the fixed URL `https://releases.open-design.ai/open-motion/templates/releases/catalog.json`, using the verified candidate's source commit. Successful test and stable publications share this moving entry; snapshot-only recovery and superseded releases preserve it. It does not move the main pointer or pin NPM runtime discovery to a software version. See [release workflow](release-workflows.md#versions-and-records).
+The release workflow also updates the fixed URL `https://releases.open-design.ai/open-motion/templates/releases/catalog.json`, using the verified candidate's source commit. Only successful stable publications advance this moving entry; test publications, snapshot-only recovery and superseded releases preserve it. It does not move the main pointer or pin NPM runtime discovery to a software version. See [release workflow](release-workflows.md#versions-and-records).
 
 ## Reproducible import
 

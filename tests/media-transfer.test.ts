@@ -69,6 +69,23 @@ test('cleanup accepts LFS as an input and records legacy paths for verified opti
   assert(Buffer.from(plan.changes.find(change => change.path === '.gitignore')!.content!, 'base64').toString().includes('/' + name));
 });
 
+test('rewriting catalog guides refreshes their published file identities and drops stale URLs', async () => {
+  const f = fixture();
+  const record = JSON.parse(f.contents.get(prefix + 'template.json')!.toString());
+  const manifest = JSON.parse(f.contents.get(prefix + 'source/manifest.json')!.toString());
+  record.entry.files = manifest.files.map((file: any) => ({ ...file, url: 'https://r.open-design.ai/files/' + file.sha256 }));
+  f.contents.set(prefix + 'template.json', Buffer.from(JSON.stringify(record)));
+  const plan = await prepareMediaCleanup(f.inputs(), f.read);
+  const updated = JSON.parse(Buffer.from(plan.changes.find(change => change.path === prefix + 'template.json')!.content!, 'base64').toString());
+  const updatedManifest = JSON.parse(Buffer.from(plan.changes.find(change => change.path === prefix + 'source/manifest.json')!.content!, 'base64').toString());
+  for (const file of updated.entry.files) {
+    const identity = updatedManifest.files.find((entry: any) => entry.path === file.path);
+    assert.equal(file.sha256, identity.sha256);
+    assert.equal(file.bytes, identity.bytes);
+    if (file.path === 'motion.md' || file.path === 'preview.html') assert.equal(file.url, undefined);
+  }
+});
+
 test('post-merge cleanup can backfill raw Skill media already present on main', async () => {
   const f = fixture(), name = 'library/skills/demo/assets/example.mp4';
   f.contents.set(name, f.bytes);

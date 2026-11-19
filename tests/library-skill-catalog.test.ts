@@ -35,6 +35,11 @@ test('repository MCP index and details include all Skills without polluting gall
   const detail = await catalog.detail(id);
   assert.equal(detail.instructions, await readFile(path.join(detail.localSource as string, 'SKILL.md'), 'utf8'));
   assert(detail.files.includes('SKILL.md'));
+  for (const file of detail.files) {
+    if (existsSync(path.join(detail.localSource as string, file))) continue;
+    const object = detail.objects?.find((object: { path: string }) => object.path === file);
+    assert(object?.url, 'Missing local supporting files must expose their immutable download URL: ' + file);
+  }
   assert.match(JSON.stringify(detail.workflowGuide), /natural_language/);
   assert(!JSON.stringify(detail.workflowGuide).includes('apply_template'));
   const page = await catalog.page();
@@ -56,6 +61,13 @@ test('uncarded Skills use frontmatter and hosted publication preserves instructi
   const remoteVideo = { path: 'library/skills/uncarded/assets/demo.mp4', bytes: 4, sha256: 'b'.repeat(64), url: 'https://releases.open-design.ai/open-motion/media/sha256/' + 'b'.repeat(64) + '.mp4' };
   await writeFile(path.join(root, 'repository-media.json'), JSON.stringify({ schemaVersion: 1, files: [remoteVideo] }));
   const skills = await loadLibrarySkills(root, false);
+  const local = (await loadLibrarySkills(root))[0];
+  assert.equal(local.localSource, path.join(root, 'library/skills/uncarded'));
+  assert.deepEqual(local.objects, [{ ...remoteVideo, path: 'assets/demo.mp4' }]);
+  await mkdir(path.join(local.localSource!, 'assets'), { recursive: true });
+  await writeFile(path.join(local.localSource!, 'assets/demo.mp4'), 'restored media');
+  assert.equal((await loadLibrarySkills(root))[0].objects, undefined, 'Restored files use the local filesystem');
+  await rm(path.join(local.localSource!, 'assets/demo.mp4'));
   assert.equal(skills[0].title, 'Uncarded');
   assert.equal(skills[0].description, 'Use this for stories');
   assert.equal(skills[0].localSource, undefined);

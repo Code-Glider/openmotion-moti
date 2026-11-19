@@ -50,12 +50,19 @@ export async function loadLibrarySkills(appRoot = root, local = true): Promise<L
     };
     await walk('');
     const prefix = 'library/skills/' + entry.name + '/';
-    for (const file of transferred.values()) if (file.path.startsWith(prefix)) files.push(file.path.slice(prefix.length));
+    const objects: SkillObject[] = [];
+    for (const file of transferred.values()) {
+      if (!file.path.startsWith(prefix)) continue;
+      const relative = file.path.slice(prefix.length);
+      if (files.includes(relative)) continue;
+      files.push(relative);
+      objects.push({ path: relative, bytes: file.bytes, sha256: file.sha256, url: file.url });
+    }
     const card = metadata.get(entry.name) ?? {};
     result.push({ id: entry.name, kind: 'skill', title: card.title || frontmatter(instructions, 'name') || entry.name,
       description: card.useWhen || frontmatter(instructions, 'description'), tags: card.category ? [card.category] : [],
       ...(card.repository ? { repository: card.repository } : {}), ...(card.license ? { license: card.license } : {}),
-      instructions, files: [...new Set(files)].sort(), ...(local ? { localSource: base } : {}) });
+      instructions, files: files.sort(), ...(local ? { localSource: base, ...(objects.length ? { objects } : {}) } : {}) });
   }
   return result;
 }

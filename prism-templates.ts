@@ -241,10 +241,10 @@ export class TemplateCatalog {
     const snapshot = await this.refresh();
     const skill = (await this.skills(snapshot)).find(item => item.id === id);
     if (skill) {
-      // Hosted/npm installs have no library files; publish them as hash-verified objects like template sources.
-      const objects = skill.localSource ? undefined : skill.objects?.map(file => ({ ...file, url: file.url ?? `${snapshot.hosted!.objectBaseUrl}/${file.sha256}` }));
+      // Repository installs can also have missing, transferred attachments.
+      const objects = skill.objects?.map(file => ({ ...file, url: file.url ?? `${snapshot.hosted!.objectBaseUrl}/${file.sha256}` }));
       return { ...skill, ...(objects ? { objects } : {}), motionDocument: { path: skill.localSource ? path.join(skill.localSource, 'SKILL.md') : 'SKILL.md', content: skill.instructions }, source: this.source,
-        workflowGuide: { workflow: 'skill', nextStep: objects ? skillUsage + ' Supporting files are not installed locally: download the ones SKILL.md references from objects[].url into your working directory at objects[].path, and check bytes and sha256 before running scripts or reading references.' : skillUsage } };
+        workflowGuide: { workflow: 'skill', nextStep: objects?.length ? skillUsage + ' Some supporting files are remote: download only the ones SKILL.md references from objects[].url at objects[].path, under localSource when present or your working directory otherwise. Check bytes and sha256 before running scripts or reading references.' : skillUsage } };
     }
     const template: EditableTemplate | undefined = this.templates(snapshot).find(item => item.id === id);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');

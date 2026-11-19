@@ -157,9 +157,10 @@ async function uploadBatch(uploads, upload) {
 }
 
 export function releaseCatalogPromotion(version, publication) {
+  assert(versionPattern.test(version), 'Invalid release version');
   assert.equal(publication.version, version, 'Template publication must match the verified release');
   assert(['verified', 'version-verified', 'superseded'].includes(publication.phase), 'Require completed release archival');
-  return publication.phase === 'verified';
+  return publication.phase === 'verified' && !version.includes('-');
 }
 
 export async function publishTemplateCatalog(root, { mode = 'main', version, commit = process.env.GITHUB_SHA, endpoint, bucket, origin = publicOrigin, promote = true, run = runFile, fetcher = fetch } = {}) {
@@ -180,7 +181,7 @@ export async function publishTemplateCatalog(root, { mode = 'main', version, com
       await putObject(run, storage, upload, { immutable: true }); uploaded++;
     });
     const catalogBytes = jsonBytes(publication.catalog);
-    const updatePointer = mode === 'main' || promote;
+    const updatePointer = mode === 'main' || (promote && !version.includes('-'));
     const pointerKey = updatePointer ? `${catalogRoot}/${mode === 'main' ? 'main' : 'releases'}/catalog.json` : `${snapshotKey}/catalog.json`;
     if (updatePointer) {
       const pointerPath = path.join(publication.staging, mode + '-pointer.json');
@@ -208,7 +209,8 @@ export async function finalizeTemplateSnapshot(candidate, receipt, { endpoint, b
   assert(response.ok, `Prepared template catalog returned HTTP ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
   assert.equal(digest(bytes), receipt.catalogSHA256, 'Prepared template catalog bytes differ');
-  if (!promote) return receipt;
+  assert(versionPattern.test(candidate.version), 'Invalid release version');
+  if (!promote || candidate.version.includes('-')) return receipt;
   const pointerKey = `${catalogRoot}/releases/catalog.json`;
   const directory = await mkdtemp(path.join(os.tmpdir(), 'openmotion-catalog-pointer-'));
   try {
