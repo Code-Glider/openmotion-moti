@@ -123,13 +123,16 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         const scenes = bar.querySelector('nav')!.getBoundingClientRect();
         return back.bottom <= scenes.top;
       }), 'The mobile Studio header keeps its return action above the scenes');
-      const imageNav = '.om-creative-split:has(> [aria-label="Image · Scenes"])';
+      const imageNav = '.om-creative-strip > [data-nav-slot]:not([data-stowed]) .om-creative-split:has(> [aria-label="Image · Scenes"])';
+      await page.waitForSelector('.om-creative-navigation[data-compact-actions]');
       for (const scheme of ['dark', 'light'] as const) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
+        await page.waitForSelector(imageNav + ' > .om-nav-row-link', { visible: true });
         await page.click(imageNav + ' > .om-nav-row-link');
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'design');
         await page.waitForSelector('.om-creative-menu', { hidden: true });
         await page.waitForSelector('.om-generation-pickers [aria-label="Generation model"]', { visible: true });
+        await page.mouse.move(5, 675);
         await page.focus(imageNav + ' > .om-nav-row-link');
         await page.keyboard.press('Tab');
         assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image · Scenes');
@@ -141,11 +144,8 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         await page.goBack();
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'cinema');
       }
-      const folder = await page.waitForSelector('.om-app-header-actions [aria-label="Workspace assets"]', { visible: true });
-      const before = await folder!.boundingBox();
-      await page.$eval('.om-app-header .om-creative-navigation', nav => { nav.scrollLeft = nav.scrollWidth; });
-      assert.ok(await page.$eval('.om-creative-navigation', nav => nav.scrollLeft > 0));
-      assert.deepEqual(await folder!.boundingBox(), before, 'The assets shortcut stays fixed when navigation scrolls');
+      await page.click('.om-creative-strip > div:last-child > button');
+      const folder = await page.waitForSelector('.om-nav-more-panel [aria-label="Workspace assets"]', { visible: true });
       await folder!.click();
       await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'assets');
       await page.goBack();
