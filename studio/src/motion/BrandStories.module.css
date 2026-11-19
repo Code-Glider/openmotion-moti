@@ -165,6 +165,10 @@
   .collectionIntro { grid-column:1/-1; }
   .relatedShelf { padding:var(--motion-space-20); }
 }
+@media(max-width:699px) and (orientation:landscape) {
+  .storyDialog[open] { padding-bottom:0; }
+  .actionDock { position:static; margin-top:var(--motion-space-12); box-shadow:none; }
+}
 @media(prefers-reduced-motion:no-preference) {
   .stackItem { transition:transform var(--motion-duration-normal) var(--motion-ease-out); }
   .storyDialog .reelFrame:global(.om-button) { transition:transform var(--motion-duration-normal) var(--motion-ease-out),border-color var(--motion-duration-fast) var(--motion-ease-out),background var(--motion-duration-fast) var(--motion-ease-out); }
