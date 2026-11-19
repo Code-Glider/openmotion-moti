@@ -4,13 +4,13 @@ import { studioUsageEvents } from './studio-events.ts';
 import { providerSetupEntries, type ProviderSetupEntry } from '../shared/workspace-url.ts';
 export { providerSetupEntries, type ProviderSetupEntry };
 
-export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_create_project', 'motion_open_preview',
+export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_list_skills', 'motion_get_skill', 'motion_create_project', 'motion_open_preview',
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
 export const mcpToolNames = [...toolNames, 'motion_show_video', 'motion_show_template_recommendations'] as const;
 const tool = { tool_name: mcpToolNames, ...toolDimensions, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
-export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
+export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template', 'openmotion_list_skills', 'openmotion_get_skill',
   'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
   'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
   'openmotion_export_cancel', 'openmotion_project_archive', 'openmotion_manage_project',
@@ -33,7 +33,7 @@ const template = { template_id: 'slug' } as const;
 const hosts = ['codex', 'claude', 'deepseek', 'chatgpt', 'mcp'] as const;
 const sortOrder = ['recommended', 'name', 'reverse', 'duration'] as const;
 // Where a card or detail came from: the gallery, the related strip, random discovery or previous/next in the detail.
-const placement = ['popular', 'catalog', 'related', 'random', 'navigation'] as const;
+const placement = ['popular', 'catalog', 'related', 'random', 'navigation', 'black_friday'] as const;
 // Curated template brand series, distinct from the Brand Kit catalogue. No brand names, copy or URLs.
 const templateSeries = { search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer', series_id: 'slug', series_list_id: 'uuid', series_view_id: 'uuid',
   series_placement: ['top100', 'discovery'], series_surface: ['timeline', 'template_detail'],
@@ -146,7 +146,7 @@ export const omEvents = {
       'project_manager', 'version_history'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'select_work', 'select_chapter', 'browse_timeline', 'expand_learning', 'compare_brands',
-      'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
+      'open_detail', 'start_use', 'expand_instruction', 'open_collection', 'category_select', 'filter_open', 'filter_clear',
       'search_focus', 'clear_search', 'reference', 'describe', 'reference_source_select', 'choose_local_video', 'copy_brief', 'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source',
       'view_guide', 'back_to_template', 'handoff_help', 'copy_color', 'back_to_project', 'retry_template_project', 'check_template_project', 'open_prepared_project',

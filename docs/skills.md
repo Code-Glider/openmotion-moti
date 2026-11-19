@@ -34,7 +34,7 @@ The [native engine boundary](../skills/openmotion-production/references/native.m
 
 Director and its existing quality references now cover concrete visual events, joint material/motion design, recognizable action windows, representative prototypes and reuse of accepted implementations. Shared intake/runtime guidance covers scoped material acquisition; edit and verification own timing-evidence invalidation and evidence classification. No Skill, Resource section, public Tool or media service is added.
 
-The current five-route contract with sixteen registered Tool names (one compatibility alias), editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
+The current five-route contract with eighteen registered Tool names (one compatibility alias), editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
 
 ## Reference reconstruction guidance
 
@@ -109,7 +109,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
-一期公开接口已收敛为 [16 个 openmotion_ 注册名](mcp-phase1-tools.md)（15 项领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考；源码中原有的 reference-video 兼容入口已在确认无源码安装、提示词或宿主配置按名称调用后删除。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+一期公开接口已收敛为 [18 个 openmotion_ 注册名](mcp-phase1-tools.md)（17 项领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考；源码中原有的 reference-video 兼容入口已在确认无源码安装、提示词或宿主配置按名称调用后删除。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
 
 ## Shared production reading scope
 
@@ -207,6 +207,16 @@ MT05 原先同批补读/执行的问题未重现，但读取完整性未全面�
 
 ## Discover library Skills through MCP
 
-Library Skills are discoverable through `openmotion_list_templates`: `total` still counts templates and `skillTotal` counts the appended rows; `catalogVersion` stays the template catalog identity. Search the JSONL rows with `kind: "skill"` by title, description or scenario tags, then call `openmotion_get_template(templateId)` using the directory ID. Skill details return the complete `SKILL.md` in `instructions` and `motionDocument.content`, plus a relative file inventory (including references, scripts and assets). Repository mode includes an absolute `localSource` directory. Hosted/npm mode reads embedded instructions and inventory from the published main catalog without claiming local files exist; `objects` lists every supporting file with its path, bytes and SHA-256 and a URL in the same content-addressed object store as template sources, so the Agent can download and verify what SKILL.md references. CMS mode retains its existing template-only behavior and does not expose library Skills.
+Library Skills have their own tools. `openmotion_list_skills` takes no arguments and returns `indexPath` (local JSONL, one row per Skill with `skillId`, title, description, tags and optional repository/license/localSource), `total` and `skillVersion`; it covers every Skill in `library/skills`, installed in the host or not. Search the file, then call `openmotion_get_skill(skillId)`: it returns the complete `SKILL.md` in `instructions` and `motionDocument.content`, plus a relative file inventory (including references, scripts and assets). Repository mode includes an absolute `localSource` directory. Hosted/npm mode reads embedded instructions and inventory from the published main catalog without claiming local files exist; `objects` lists every supporting file with its path, bytes and SHA-256 and a URL in the same content-addressed object store as template sources, so the Agent downloads and verifies only what SKILL.md references. CMS mode returns no Skills. Skills installed in the host Agent keep working through the host without these tools.
 
-Follow `SKILL.md` and use existing tools such as `openmotion_create_project(projectType="natural_language")` when needed. Skills are not editable template projects: template creation and `openmotion_apply_template` reject Skill IDs. Studio template galleries, website/plugin template lists and onboarding recommendations remain template-only. No MCP tool is added.
+Follow `SKILL.md` and use existing tools such as `openmotion_create_project(projectType="natural_language")` when needed. Skills are not editable template projects: template indexes do not list them, and `openmotion_get_template`, template creation and `openmotion_apply_template` reject Skill IDs with a pointer to `openmotion_get_skill`. Studio template galleries, website/plugin template lists and onboarding recommendations remain template-only.
+
+### When Agents call the Skill tools
+
+The MCP `initialize` instructions and the `openmotion_list_skills` description carry the same timing rule (`skillDiscoveryGuide` in `shared/workflow-entry.js`):
+
+- **Call it** when the user asks which Skill, technique or recipe fits a video (for example de-AI copy, long-to-short clips, a growth teardown, a product launch or a holiday sale), asks to see or recommend Skills, or describes a recurring video format before an approach is chosen. This last case is deliberately more proactive than template browsing, which only recommends when asked.
+- **Recommend, then wait**: search the index by scenario and usually offer two or three Skills (one if only one fits; never pad), each with title, `skillId` and a one-line reason; the user chooses unless they asked the Agent to proceed. Then read the choice with `openmotion_get_skill` and follow its SKILL.md.
+- **Installed Skills first**: Skills already installed in the host stay the first choice and need no listing.
+- **No side effects**: listing, recommending or reading a Skill does not authorize project creation, downloads or export.
+

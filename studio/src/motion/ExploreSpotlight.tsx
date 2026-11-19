@@ -11,6 +11,7 @@ const slideDuration = 6000;
 const motionCover = motionSkills.find(skill => skill.id === 'openmotion-bubble-field')?.cover;
 const motionPoster = motionCover?.poster ?? '';
 const motionClip = motionCover?.video;
+const blackFridayPoster = motionSkills.find(skill => skill.id === 'openmotion-sale-carousel')?.cover?.poster ?? '';
 interface FeaturedSlide {
   id: string; title: string; subtitle: string; hint: string; icon: string; poster: string; clip?: string; credit?: string;
   scene?: { target: StudioDestination; prompt: string };
@@ -18,6 +19,9 @@ interface FeaturedSlide {
 const slides: FeaturedSlide[] = [{
   id: motionStudio.id, title: motionStudio.title, subtitle: 'Motion design', icon: motionStudio.icon,
   hint: 'Animate type and shapes, then edit their timing on the timeline.', poster: motionPoster, clip: motionClip,
+}, {
+  id: 'black-friday', title: 'Black Friday collection', subtitle: 'Template library', icon: 'film-line',
+  hint: 'Browse Black Friday video references and Skills for your sale.', poster: blackFridayPoster,
 }, ...featuredSceneIds.map(id => {
   const scene = studioScenes.find(entry => entry.id === id)!;
   const example = sceneExamples[id][0], target = sceneDestination(scene);
@@ -39,8 +43,8 @@ function FeaturedClip({ src, poster, playing }: { src: string; poster: string; p
   return videoSource && !failed ? <video ref={player} src={videoSource} poster={poster} muted loop playsInline preload="none" aria-hidden="true" onError={() => setFailed(true)} /> : null;
 }
 
-export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
-  active: boolean; onNavigate: (target: StudioDestination, prompt: string) => void; onOpenMotion: () => void;
+export function ExploreSpotlight({ active, onNavigate, onOpenMotion, onOpenBlackFriday }: {
+  active: boolean; onNavigate: (target: StudioDestination, prompt: string) => void; onOpenMotion: () => void; onOpenBlackFriday: (trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useI18n();
   const root = useRef<HTMLElement>(null);
@@ -89,6 +93,7 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
     {slides.map((slide, i) => {
       const current = i === index;
       const scene = slide.scene;
+      const blackFriday = slide.id === 'black-friday';
       return <div key={slide.id} className="om-feature-slide" data-scene={slide.id} aria-hidden={!current} inert={!current}>
         <div className="om-feature-art" aria-hidden="true"><div className="om-feature-camera">
           <img src={slide.poster} alt="" />
@@ -98,9 +103,11 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
         <div className="om-discovery-hero-copy" onFocus={() => setReadingSlide(true)} onBlur={() => setReadingSlide(false)}>
           <span><RemixIcon name={slide.icon} size={16} />{t(slide.subtitle)}</span>
           <h2>{t(slide.title)}</h2><p>{t(slide.hint)}</p>
-          <button className="om-button" data-primary="media" onClick={scene ? () => onNavigate(scene.target, t(scene.prompt)) : onOpenMotion}>
+          {blackFriday ? <button className="om-button" data-primary="media" onClick={event => onOpenBlackFriday(event.currentTarget)}>
+            {t('View collection')}<RemixIcon name="arrow-right-line" size={16} />
+          </button> : <button className="om-button" data-primary="media" onClick={scene ? () => onNavigate(scene.target, t(scene.prompt)) : onOpenMotion}>
             {scene ? t(scene.target.scene.label) : t('Open in {studio}', { studio: t(motionStudio.title) })}<RemixIcon name="arrow-right-line" size={16} />
-          </button>
+          </button>}
         </div>
       </div>;
     })}
