@@ -59,17 +59,17 @@ OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也�
 复制下面的指令，发给你的本地 Agent，即可从源码安装 OpenMotion：
 
 ```text
-阅读 https://github.com/nexu-io/openmotion/blob/main/install.md，按照指南在当前 Agent 中安装并连接 OpenMotion。
+阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前 Agent 中安装并连接 OpenMotion。
 ```
 
-安装完成后，Agent 会打开本地模板库并推荐一个模板，确认选择后再创建工程。[源码安装指南](../install.md)
+安装完成后，Agent 会打开本地模板库并推荐一个模板，确认选择后再创建工程。[源码安装指南](install.md)
 
 ### 安装已发布的 npm 应用（可选）
 
 上方源码安装仍是仓库安装的默认方式。如需明确选择包含预构建 Studio 及已配置在线模板库的已发布应用，请复制下面的指令，发给你的本地 Agent：
 
 ```text
-阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前的 Agent 中安装并连接已发布的 npm 应用。
+阅读 https://releases.open-design.ai/motion，按照指南在当前的 Agent 中安装并连接已发布的 npm 应用。
 ```
 
 [已发布应用的安装与版本通道选择](install.md)。已发布的版本可能落后于当前检出的源码。

@@ -2,7 +2,7 @@ import { RemixIcon } from "../../icons/RemixIcons";
 import { clickMethod, trackStudioClick } from "../../motion/editorTracking";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
-import { useRef, useEffect, memo } from "react";
+import { useRef, useEffect, memo, type ReactNode } from "react";
 import gsap from "gsap";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
 import { formatFrameTime, formatTime } from "../lib/time";
@@ -129,6 +129,7 @@ interface PlayerControlsProps {
   onToggleFullscreen?: () => void;
   /** Replaces the shortcuts panel's list, e.g. DEFAULT_SHORTCUT_SECTIONS with entries dropped or relabelled. */
   shortcutSections?: readonly ShortcutSection[];
+  reviewControls?: ReactNode;
 }
 
 const compositionFps = () => useLinkedClipPreferences.getState().compositionFps;
@@ -140,6 +141,7 @@ export const PlayerControls = memo(function PlayerControls({
   isFullscreen = false,
   onToggleFullscreen,
   shortcutSections,
+  reviewControls,
 }: PlayerControlsProps) {
   const mvp = useMvpEditor();
   const { t } = useI18n();
@@ -200,9 +202,9 @@ export const PlayerControls = memo(function PlayerControls({
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {mvp ? <span className="min-w-0 justify-self-start whitespace-nowrap font-mono text-[11px] tabular-nums text-neutral-400">
+        {mvp ? <div className="flex min-w-0 items-center gap-2">{reviewControls}<span className="min-w-0 justify-self-start whitespace-nowrap font-mono text-[11px] tabular-nums text-neutral-400">
           <span ref={timeDisplayRef}>{formatTime(0)}</span><span className="mx-0.5">/</span><span>{formatTime(duration)}</span>
-        </span> : <Tooltip
+        </span></div> : <Tooltip
           label={timeDisplayMode === "time" ? t("Switch to frame display") : t("Switch to time display")}
         >
           <button
@@ -258,7 +260,7 @@ export const PlayerControls = memo(function PlayerControls({
             setLoopEnabled={setLoopEnabled}
           />
           </span>
-          {!mvp && onToggleFullscreen && (
+          {onToggleFullscreen && (
             <FullscreenButton isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
           )}
           {!mvp && <ShortcutsButton disabled={disabled} onSeek={onSeek} sections={shortcutSections} />}

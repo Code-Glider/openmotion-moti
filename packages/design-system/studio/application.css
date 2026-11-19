@@ -97,7 +97,7 @@
 [data-motion-studio] .om-history-navigation .om-nav-item:disabled { color: var(--motion-control-disabled); background: transparent; opacity: 1; }
 [data-motion-studio] .om-app-sidebar-toggle { color: var(--motion-chrome-icon); }
 [data-motion-studio] .om-app-sidebar-toggle:enabled:hover { color: var(--motion-text); background: var(--motion-chrome-hover); }
-[data-motion-studio] .om-account-trigger .om-avatar { color: inherit; background: transparent; border-color: transparent; }
+[data-motion-studio] .om-account-trigger .om-avatar { color: inherit; background: transparent; border-color: transparent; white-space: nowrap; overflow: hidden; line-height: 1; }
 [data-motion-studio] .om-settings-sections .om-nav-item > svg { color: var(--motion-chrome-icon); }
 [data-motion-studio] .om-settings-sections .om-nav-item:is(:hover, [aria-current="page"]) > svg { color: inherit; }
 [data-motion-studio] .om-app-header :is(.om-button, .om-nav-item, .motion-icon-button, .om-app-header-links > a) { min-height: var(--motion-control-sm); font-size: var(--motion-text-sm); }
