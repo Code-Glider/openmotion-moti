@@ -24,13 +24,14 @@ html[data-openmotion-guide="dark"] :is(.identity, .palette, .overview, .type-bas
 `;
 
 /** Keep the remote document and its resource base intact inside the existing opaque-origin sandbox. */
-export function prepareMotionGuide(source: string, url: string, appearance: GuideAppearance, forwardEscape = false): string {
+export function prepareMotionGuide(source: string, url: string, appearance: GuideAppearance, locale?: string, forwardEscape = false): string {
   const doc = new DOMParser().parseFromString(source, 'text/html');
   const base = doc.querySelector<HTMLBaseElement>('base[href]') ?? doc.createElement('base');
   base.href = new URL(base.getAttribute('href') ?? url, url).href;
   if (!base.parentNode) doc.head.prepend(base);
   const root = doc.documentElement;
   root.dataset.openmotionGuide = appearance.theme;
+  if (locale) root.dataset.guideLocale = locale;
   root.style.setProperty('--om-guide-scheme', appearance.theme);
   for (const key of ['background', 'text', 'muted', 'surface', 'border'] as const) {
     root.style.setProperty(`--om-guide-${key}`, appearance[key]);

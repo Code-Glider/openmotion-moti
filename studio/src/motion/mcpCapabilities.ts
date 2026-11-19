@@ -2,6 +2,7 @@ import { creativeStudios } from '../../../shared/studio-catalog.ts';
 import { reviewCommentsPrompt } from '../../../shared/review-comments.ts';
 import { assetNamingInstruction } from '../../../shared/asset-names.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
+import { templateGuideContinuationInstruction } from '../../../shared/template-guide.ts';
 import type { IntegrationInfo } from '../../../shared/integration.ts';
 
 /** Maintained product descriptions; coverage is checked against the public MCP contract. */
@@ -27,6 +28,11 @@ const exploreTemplateWorkflow = 'Open a template in Explore to inspect its proje
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
 export const mcpScenarios = [{
+  id: 'template-guide', icon: 'layout-grid-line', title: 'Continue a guide example',
+  description: 'Open a template’s motion guide and try its declared text and accent controls, then copy the requirements or enter the editor. Keep the exact template and draft. This creates the authored example, not the reference film; only confirmed unapplied failures permit a new creation request.',
+  tools: ['openmotion_get_template', 'openmotion_create_project', 'openmotion_open_preview'],
+  prompt: templateGuideContinuationInstruction,
+}, {
   id: 'review-comments', icon: 'chat-1-line', title: 'Review a video with comments',
   description: 'Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.',
   tools: ['openmotion_manage_project', 'openmotion_get_project', 'openmotion_edit_project', 'openmotion_open_preview'],

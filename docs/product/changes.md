@@ -2,8 +2,14 @@
 
 ## 2026-11-19: Load Skill card animation on demand
 
-- Bundle static WebP posters for Skills. Load preview videos one screen ahead for viewport autoplay, and keep the poster available when the network is unavailable. Hover, keyboard focus and opening the Skill can start playback.
+- Bundle static WebP posters for Skills. Load preview videos when viewport autoplay, hover, keyboard focus or opening the Skill triggers playback. Keep the poster available when the network is unavailable.
 - Use the media preparation workflow for new previews and report the default npm package size in PR and release candidate builds.
+
+## 2026-11-18: Continue authored template-guide examples
+
+- Unify existing catalog guide pages while preserving each entry's own example, reference and breakdown. Declared text/accent trials can continue into an independent native project with the complete linked guide-source bundle.
+- Document this explicit guide-example scope in the Studio MCP handbook, shared connection instructions and template workflow. It does not reconstruct the reference film or change ordinary reference routing.
+- Preserve complete creation arguments across retries and language changes; only confirmed, cleaned-up creation failures permit a new request. Copying and editor-only handoff do not automatically export or send a task.
 
 ## 2026-11-18: Add the Design Styles library Skill
 

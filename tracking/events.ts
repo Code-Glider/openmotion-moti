@@ -221,6 +221,10 @@ export const omEvents = {
   resource_download_result: { producers: ['studio'], fields: { page_name: pages, resource_kind: ['motion_guide', 'brand_kit_package'], download_attempt_id: 'uuid',
     delivery_status: ['browser_save_requested', 'fetch_failed', 'unknown'], error_code: 'code', detail_view_id: 'uuid', detail_mode: ['modal'], ...template, ...brand, ...templateSeries },
     required: ['resource_kind', 'download_attempt_id', 'delivery_status'] },
+  template_guide_interaction: { producers: ['studio'], fields: { page_name: ['studio'], template_id: 'code', view_id: 'uuid', project_id: 'uuid',
+    action: ['shown', 'edit', 'chapter', 'reference', 'reset', 'copy', 'open_editor', 'download', 'document', 'source'],
+    expanded: 'boolean', delivery_status: ['browser_save_requested', 'fetch_failed'],
+    field: ['title', 'accent'], outcome: ['success', 'failure', 'manual_fallback'] }, required: ['page_name', 'template_id', 'view_id', 'action'] },
   template_instruction_copy_result: { producers: ['studio'], fields: { host_product: hosts, copy_status: ['clipboard_written', 'manual_fallback_shown', 'failed'],
     page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateDetail, ...project, ...template, ...templateSeries }, required: ['host_product', 'copy_status'] },
   // One observed Studio handoff operation result, not an Agent receipt or a completed film.

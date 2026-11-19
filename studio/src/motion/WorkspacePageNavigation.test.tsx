@@ -454,7 +454,7 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     container.querySelector<HTMLElement>(section + ' [data-playback-id]')!);
   vi.useFakeTimers();
   try {
-    act(() => { observed.get(hero)!(true); cards.forEach(card => observed.get(card)!(true)); });
+    await act(async () => { observed.get(hero)!(true); cards.forEach(card => observed.get(card)!(true)); });
     expect(hero.dataset.scene).toBe('motion');
     expect(hero.querySelector('video[src]')).toBeTruthy();
     for (const card of cards) expect(card.querySelector('video[src]')).toBeTruthy();
