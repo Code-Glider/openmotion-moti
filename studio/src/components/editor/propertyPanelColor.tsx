@@ -120,7 +120,7 @@ function ColorSlider({
       aria-valuenow={value}
       aria-valuetext={displayValue}
       aria-disabled={disabled}
-      className={`motion-color-picker-slider relative h-5 touch-none rounded-sm ${
+      className={`relative h-5 touch-none rounded-sm ${
         disabled ? "cursor-not-allowed opacity-50" : "cursor-ew-resize"
       }`}
       onPointerDown={(event) => {

@@ -36,6 +36,8 @@ import { resolveValueTier } from "./propertyPanelValueTier";
 import { ColorField } from "./propertyPanelColor";
 import { GradientField, ImageFillField } from "./propertyPanelFill";
 
+const DEFAULT_TEXT_COLOR = "rgb(0, 0, 0)";
+
 /* ------------------------------------------------------------------ */
 /*  Flat Fill sub-block (design_handoff_studio_inspector, #11a)        */
 /* ------------------------------------------------------------------ */
@@ -142,7 +144,7 @@ function FlatFillFields({
       {!hasTextControls && (
         <ColorField
           label={t("Text color")}
-          value={styles.color ?? "rgb(0, 0, 0)"}
+          value={styles.color ?? DEFAULT_TEXT_COLOR}
           disabled={styleEditingDisabled}
           onCommit={(next) => onSetStyle("color", next)}
         />
@@ -508,7 +510,7 @@ export function FlatStyleSection({
       disabled={styleEditingDisabled} onPreview={next => onPreviewStyle?.("background-color", next)}
       onCommit={next => onSetStyle({ "background-color": next, "background-image": "none" })} />
     {element.textContent?.trim() && (
-      <ColorField label={t("Text color")} value={styles.color ?? "rgb(0, 0, 0)"}
+      <ColorField label={t("Text color")} value={styles.color ?? DEFAULT_TEXT_COLOR}
         disabled={styleEditingDisabled} onPreview={next => onPreviewStyle?.("color", next)}
         onCommit={next => onSetStyle("color", next)} />
     )}

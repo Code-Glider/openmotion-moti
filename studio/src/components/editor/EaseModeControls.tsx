@@ -53,7 +53,7 @@ export const EasePresetGrid = function EasePresetGrid({
             aria-checked={isActive}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(preset.ease)}
-            className={`motion-menu-grid-option flex flex-col items-center gap-0.5 rounded-md p-1 transition-colors ${
+            className={`flex flex-col items-center gap-0.5 rounded-md p-1 transition-colors ${
               isActive ? "bg-panel-accent/10 ring-1 ring-panel-accent/30" : "hover:bg-neutral-800"
             }`}
             title={t(preset.label)}

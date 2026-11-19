@@ -271,7 +271,12 @@ export function extractClassCandidates(source: string): ClassCandidate[] {
       for (const text of stringsIn(source, mask, start, end)) collect(byRaw, text);
       if (index >= CLASS_POSITIONS) continue;
       const used = mask.slice(start, end).replace(SUBSCRIPT, "");
-      for (const [name] of used.matchAll(REFERENCE)) referenced.add(name);
+      for (const match of used.matchAll(REFERENCE)) {
+        const name = match[0];
+        // A prop used to choose a class branch is not itself a class list.
+        if (/^\s*(?:[=!]==?|[<>]=?)/.test(used.slice(match.index + name.length))) continue;
+        referenced.add(name);
+      }
     }
   }
   for (const name of referenced) {
