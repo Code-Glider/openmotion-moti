@@ -140,6 +140,9 @@ jobs:
       - name: Check capture failure classification and bounded recovery
         if: steps.scope.outputs.full == 'true'
         run: node --test tests/capture-retry.test.ts
+      - name: Check canvas, installer attribution and short-form discovery
+        if: steps.scope.outputs.full == 'true'
+        run: node --test tests/composition-canvas.test.ts tests/install-attribution-worker.test.ts tests/short-form-discovery.test.ts
 
   platform-reliability:
     name: Workspace reliability (${{ matrix.os }})
