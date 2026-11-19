@@ -7,7 +7,7 @@ import { projectMediaPath } from './timelineMediaSelection';
 import { useFileManagerContext } from '../contexts/FileManagerContext';
 import { usePlayerStore } from '../player/store/playerStore';
 import { useI18n } from '../i18n/I18n';
-import { Button } from '../components/ui/Button';
+import { Button } from 'open-design-ui/button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Select } from '../components/ui/Select';
 import { Menu, MenuItem } from '../components/ui/Menu';

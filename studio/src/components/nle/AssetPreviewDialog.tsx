@@ -4,7 +4,8 @@ import { useI18n } from "../../i18n/I18n";
 import { useToast } from "../../hooks/useToast";
 import { StudioToastViewport } from "../StudioToastViewport";
 import { RemixIcon } from "../../icons/RemixIcons";
-import { Button, IconButton, Tooltip } from "../ui";
+import { Button } from "open-design-ui/button";
+import { IconButton, Tooltip } from "../ui";
 import { MediaPreviewPlayer } from "./MediaPreviewPlayer";
 
 /** Independent media playback: never writes the composition's playhead or settings. */

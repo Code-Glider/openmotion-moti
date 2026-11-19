@@ -47,6 +47,8 @@ During an ongoing PR follow-up task, use the current client's available monitori
 
 Source-checkout contributor Skills live under `.agents/skills/`. When adding or maintaining a built-in BYOK media provider, read `.agents/skills/add-byok-provider/SKILL.md` in this checkout. It covers provider research, implementation, references and verification. These repository-local Skills are excluded from application/plugin distribution and host installation; root `skills/` continues to hold product workflows. Installed product copies may not contain `.agents/skills/`. Other Agents following `CLAUDE.md` use this same source-checkout guidance.
 
+When applying or migrating an existing shared control in Studio, follow the [Open Design UI contributor Skill](.agents/skills/open-design-ui/SKILL.md).
+
 ## Shared design system — required for every Agent
 
 All Agents must use [packages/design-system](packages/design-system/README.md) for interface styling. Read that package's integration and change rules before creating or changing CSS, component appearance, themes, icons, fonts, loading states or brand assets. [docs/design-system.md](docs/design-system.md) describes the product integration; [brand guidance](packages/design-system/brand/BRANDKIT.md) governs public brand material.
@@ -70,6 +72,10 @@ Consolidate references to other products, upstream origins, comparisons and sour
 Keep technical identifiers needed for setup, supported agent/model names and explicitly requested example brand names accurate; these factual labels are not invitations to add product comparisons or inspiration commentary. Before finishing a README edit, check that product-reference commentary appears only in the final acknowledgements.
 
 ## UI design system and interaction feedback
+
+Check the [component library registry and contribution guide](packages/design-system/components/README.md) before adding a shared Studio control. Use the listed source import and update the live example when its recommended usage or behavior changes.
+
+Use the shared Button, IconButton or Slider for new Studio actions and range controls. The design check blocks native `<button>` and `<input type="range">` above the per-file legacy baseline. Lower the baseline when migrating a legacy control.
 
 Follow [the shared design system](docs/design-system.md#interaction-and-feedback-contract) for all new or changed product UI. Reuse its components and semantic tokens in both light and dark themes; do not introduce page-specific palettes or native-looking replacement controls.
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '../components/ui/Button';
+import { Button } from 'open-design-ui/button';
 import { Popover } from '../components/ui/Popover';
 import { IconButton } from '../components/ui/IconButton';
 import { Tooltip } from '../components/ui/Tooltip';

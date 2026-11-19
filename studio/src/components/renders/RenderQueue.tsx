@@ -8,7 +8,7 @@ import { RenderDurationNote } from "./RenderDurationNote";
 import { RenderQueueItem } from "./RenderQueueItem";
 import { FfmpegRequiredNotice } from "./FfmpegRequiredNotice";
 import type { FfmpegStatus } from "./useFfmpegStatus";
-import { Button } from "../ui/Button";
+import { Button } from "open-design-ui/button";
 import { IconButton } from "../ui/IconButton";
 import { Select, type SelectOption } from "../ui/Select";
 import { Tooltip } from "../ui/Tooltip";
