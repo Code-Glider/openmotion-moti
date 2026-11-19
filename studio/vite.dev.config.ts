@@ -24,7 +24,7 @@ export default mergeConfig(studioConfig, defineConfig({
           proxy: {
             '^/(?:api|motion-api|design-api)/': backendProxy,
             '^/__hyperframes_config$': backendProxy,
-            '^/connect/guide$': backendProxy,
+            '^/connect/': backendProxy,
             '/guide-assets/': backendProxy,
             '/web/catalog/': backendProxy,
           },

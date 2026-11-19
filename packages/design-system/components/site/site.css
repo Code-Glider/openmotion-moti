@@ -256,7 +256,7 @@ body {
   cursor: pointer;
 }
 
-.preview-tabs button[data-active] { border-color: var(--motion-strong); color: var(--motion-strong); font-weight: var(--motion-weight-semibold); }
+.preview-tabs button[aria-selected="true"] { border-color: var(--motion-strong); color: var(--motion-strong); font-weight: var(--motion-weight-semibold); }
 .preview-switch .preview-surface { min-height: 16rem; }
 .preview-surface[hidden] { display: none; }
 .preview-switch .code-block { border: 0; border-radius: 0; }
