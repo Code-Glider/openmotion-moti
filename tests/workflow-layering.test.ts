@@ -261,3 +261,43 @@ test('each moved rule stays in its owner and entries link to it', async () => {
   assert.match((await getWorkflow('start', 'production')).content, /生成或替换的素材原位接替原素材/);
   assert.match((await getWorkflow('start', 'template')).content, /A generated or replacement asset takes the planned/);
 });
+
+test('narration and editable captions strategy stays in sound.md and routes link without duplicating it', async () => {
+  const sound = await getWorkflow('sound');
+  assert.match(sound.content, /## 配音与可编辑字幕协同/);
+  assert.match(sound.content, /大字排版[\s\S]*不额外叠加/);
+  assert.match(sound.content, /opendesign[\s\S]*account/);
+  assert.match(sound.content, /job\.result[\s\S]*version\.result/);
+  assert.match(sound.content, /alignment[\s\S]*sentences/);
+  assert.match(sound.content, /silencedetect/);
+  assert.match(sound.content, /caption_add[\s\S]*requestId/);
+  assert.match(sound.content, /caption_update[\s\S]*transcriptId/);
+  assert.match(sound.content, /playbackRate[\s\S]*sourceStart/);
+  assert.match(sound.content, /data-timeline-locked/);
+  assert.match(sound.content, /captionSettings:\s*\{\s*pacing:\s*"word"\s*\}/);
+  assert.match(sound.content, /caption_tracks/);
+  assert.ok(sound.references.some(reference => reference.workflow === 'production' && reference.section === 'transcripts'));
+
+  for (const [workflow, section] of [
+    ['production', 'materials'],
+    ['production', 'context'],
+    ['director', 'start'],
+    ['director', 'actions'],
+    ['recreate', 'start'],
+    ['template', 'start'],
+  ] as const) {
+    const doc = await getWorkflow(section, workflow);
+    const expectsAnchor = !(workflow === 'production' && section === 'context');
+    assert.ok(doc.content.includes(expectsAnchor ? 'sound.md#配音与可编辑字幕协同' : 'sound.md'), `${workflow}/${section} must link to shared sound/caption sync`);
+    assert.ok(doc.references.some(reference => reference.workflow === 'production' && reference.section === 'sound'), `${workflow}/${section}`);
+  }
+
+  const verification = await getWorkflow('verification');
+  assert.match(verification.content, /caption_tracks/);
+  const recreateVerification = await getWorkflow('verification', 'recreate');
+  assert.match(recreateVerification.content, /caption_tracks/);
+  const planning = await getWorkflow('planning', 'media');
+  const inspection = await getWorkflow('inspection', 'media');
+  assert.match(planning.content, /opendesign[\s\S]*job\.result[\s\S]*account/);
+  assert.match(inspection.content, /opendesign[\s\S]*job\.result[\s\S]*versionId[\s\S]*version\.result/);
+});
