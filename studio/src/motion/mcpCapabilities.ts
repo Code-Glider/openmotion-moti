@@ -1,4 +1,5 @@
 import { creativeStudios } from '../../../shared/studio-catalog.ts';
+import { reviewCommentsPrompt } from '../../../shared/review-comments.ts';
 import { assetNamingInstruction } from '../../../shared/asset-names.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
 import type { IntegrationInfo } from '../../../shared/integration.ts';
@@ -26,6 +27,11 @@ const exploreTemplateWorkflow = 'Open a template in Explore to inspect its proje
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
 export const mcpScenarios = [{
+  id: 'review-comments', icon: 'chat-1-line', title: 'Review a video with comments',
+  description: 'Choose Comment here or Draw a comment in the playback controls, then click or draw on the frame. A small floating card opens for your feedback without resizing the video. Save notes, then copy pending comments from Review list to an Agent connected to this workspace. Time, element context and marks travel with the feedback. The Agent checks current revisions, edits and verifies before resolving comments. If a target changed, review its saved context. Copying does not start an Agent; comments stay local.',
+  tools: ['openmotion_manage_project', 'openmotion_get_project', 'openmotion_edit_project', 'openmotion_open_preview'],
+  prompt: reviewCommentsPrompt(),
+}, {
   id: 'asset-naming', icon: 'folder-open-line', title: 'Name project assets',
   description: 'Start with a saved project. Preserve readable names; name missing or new assets in the project’s naming language. Names change without moving files. If a save conflicts, reread the project before retrying.',
   tools: ['openmotion_get_project', 'openmotion_edit_project'],
@@ -67,6 +73,12 @@ export const mcpScenarios = [{
 }] as const;
 
 export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'adapt', locale, workspace });
+
+export const mcpReviewGuide = [
+  ['Read original data', 'Copied notes include IDs, text, time, element context, source revisions and complete drawing vectors. The Agent reads current records and full HTML/CSS/JS through MCP; drawings are not screenshots.'],
+  ['Process comments', 'Edit and verify the video, then mark addressed comments complete. Agents can also update comment text, reopen or delete specific comments when requested. Copying alone performs no action.'],
+  ['Recover safely', 'Connect to the same workspace. Re-read changed comments and source files before retrying. If an element disappeared or verification is unavailable, keep the comment open and explain the blocker.'],
+] as const;
 
 export const mcpBenefits = [
   { icon: 'movie-line', title: 'The workspace behind your Agent', description: 'Your Agent creates and edits through MCP. OpenMotion keeps the project, source files and assets together so each result can become the next starting point.' },

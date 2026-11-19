@@ -13,6 +13,10 @@ import { useNLEContext } from "./NLEContext";
 import { AssetPreviewOverlay } from "./AssetPreviewOverlay";
 import { PreviewGuides } from "../editor/PreviewGuides";
 import { PreviewOverlayProvider } from "../editor/PreviewOverlayProvider";
+import { ReviewComposerOverlay } from '../../motion/ReviewComposerOverlay';
+import { ReviewAnnotationOverlay } from '../../motion/ReviewAnnotationOverlay';
+import { ReviewPlayerControls } from '../../motion/ReviewPlayerControls';
+
 import { useFullscreenPlayback } from './useFullscreenPlayback';
 import { togglePreviewFullscreen } from '../../player/lib/previewFullscreen';
 import { useToast } from '../../hooks/useToast';
@@ -161,6 +165,7 @@ export function PreviewPane({
         {!empty && !isFullscreen && <PreviewOverlayProvider>
           <PreviewGuides />
           {previewOverlay}
+          {mvp && <><ReviewAnnotationOverlay /><ReviewComposerOverlay /></>}
         </PreviewOverlayProvider>}
         {empty && <PreviewEmptyState />}
         {!empty && !isFullscreen && <TimelineHoverPreview />}
@@ -172,6 +177,7 @@ export function PreviewPane({
           <CompositionBreadcrumb stack={compositionStack} onNavigate={handleNavigateComposition} />
         )}
         <PlayerControls
+          reviewControls={mvp && !isFullscreen ? <ReviewPlayerControls projectId={projectId} disabled={timelineDisabled || compositionLoading} /> : undefined}
           onTogglePlay={togglePlay}
           onSeek={seek}
           disabled={timelineDisabled}

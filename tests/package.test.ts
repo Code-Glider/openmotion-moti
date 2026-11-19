@@ -59,6 +59,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('gateway/brand-cover.ts'));
     assert(files.has('shared/hyperframes-capture-fix.mjs'), 'The capture recovery preload must ship with every runtime');
     assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
+    for (const file of ['review-comments.ts', 'shared/review-comments.ts']) assert(files.has(file), 'Missing review comment runtime: ' + file);
     assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');
     for (const script of ['register_motion.py', 'measure_motion.py']) {
       assert(files.has('skills/openmotion-recreate/scripts/' + script), 'Missing recreation helper: ' + script);
@@ -125,6 +126,13 @@ test('asset naming contracts and runtime dependencies survive lightweight distri
   for (const profile of ['phase1', 'legacy']) {
     const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|ts|json|ya?ml)$/.test(file)));
     for (const file of ['project-asset-names.ts', 'shared/asset-names.ts', 'shared/asset-name-ui.json', 'skills/openmotion-production/references/materials.md']) assert.ok(files.has(file), file);
+  }
+});
+
+test('review comments service and contract survive lightweight distribution', async () => {
+  for (const profile of ['phase1', 'legacy']) {
+    const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|js|ts|json|ya?ml)$/.test(file)));
+    for (const file of ['review-comments.ts', 'shared/review-comments.ts', 'shared/project-management.ts']) assert.ok(files.has(file), file);
   }
 });
 
