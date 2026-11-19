@@ -28,7 +28,7 @@
   transition: border-color var(--motion-duration-fast);
 }
 :where([data-motion-ui]) .ui-input:hover:not(:disabled) { border-color: var(--motion-border-strong); }
-:where([data-motion-ui]) .ui-input:focus { border-color: var(--motion-focus); outline: none; }
+:where([data-motion-ui]) .ui-input:focus { border-color: var(--motion-focus); }
 :where([data-motion-ui]) .ui-input::placeholder { color: var(--motion-placeholder); }
 :where([data-motion-ui]) textarea.ui-input { resize: vertical; min-height: 76px; }
 :where([data-motion-ui]) select.ui-input { cursor: pointer; }
