@@ -76,7 +76,7 @@ export function ModelCollection({ story, gateway, onNavigate, onModel }: {
   const featured = models.find(model => supportsStoryCase(model, story.cases[0].destination))
     ?? models.find(model => story.cases.some(c => supportsStoryCase(model, c.destination)));
   const heading = 'explore-' + story.id;
-  return <section className="om-model-collection" aria-labelledby={heading}>
+  return <section aria-labelledby={heading}>
     <header className="om-discovery-heading"><div>
       <div className="om-story-model-title"><ProviderAvatar name={story.title} provider={{ id: story.brand, custom: false }} /><h2 id={heading} tabIndex={-1}>{story.title}</h2></div>
       <p className="om-muted">{t(story.description)}</p>
