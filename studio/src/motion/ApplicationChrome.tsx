@@ -47,10 +47,10 @@ export function ApplicationHeader({ settings, openAsset, onCommunity, openSettin
 }
 export function ApplicationRail({ openSettings, projects, resource }: { openSettings: (section: SettingsSection) => void; projects?: ReactNode; resource?: "templates" | "brand-kit" | "skills" }) {
   const { t } = useI18n();
-  const { openLibrary, openSkills, skillsOpen, navigationCollapsed } = useWorkspaceChrome();
-  const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false) => (
+  const { openLibrary, openSkills, skillsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
+  const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false, disabled = false) => (
     <Tooltip label={t(label)} side="right">
-      <PrimaryNavigationButton aria-label={t(label)} aria-pressed={active} onClick={action}>
+      <PrimaryNavigationButton aria-label={t(label)} aria-pressed={active} onClick={action} disabled={disabled}>
         <RemixIcon name={icon} size={18} weight={active ? 'fill' : undefined} />
       </PrimaryNavigationButton>
     </Tooltip>
@@ -65,7 +65,7 @@ export function ApplicationRail({ openSettings, projects, resource }: { openSett
     <PrimaryNavigationRail id="om-application-navigation" className="om-app-rail om-collapsible" data-collapsed={navigationCollapsed}
       aria-label={t('Application navigation')} aria-hidden={navigationCollapsed} inert={navigationCollapsed} footer={footer}>
       {projects}
-      {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), resource === 'templates')}
+      {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), resource === 'templates', !resource && switchingDisabled)}
       {item('Brand Kit', 'palette-line', () => openSettings('brand-kit'), resource === 'brand-kit')}
       {item('Skills', 'puzzle-line', openSkills, resource ? resource === 'skills' : skillsOpen)}
     </PrimaryNavigationRail>
