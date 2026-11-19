@@ -141,11 +141,14 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         await page.goBack();
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'cinema');
       }
-      const folder = await page.waitForSelector('.om-app-header-actions [aria-label="Workspace assets"]', { visible: true });
-      const before = await folder!.boundingBox();
-      await page.$eval('.om-app-header .om-creative-navigation', nav => { nav.scrollLeft = nav.scrollWidth; });
-      assert.ok(await page.$eval('.om-creative-navigation', nav => nav.scrollLeft > 0));
-      assert.deepEqual(await folder!.boundingBox(), before, 'The assets shortcut stays fixed when navigation scrolls');
+      const more = await page.waitForSelector('::-p-aria(More Studio[role="button"])', { visible: true });
+      await more!.focus();
+      await page.keyboard.press('Enter');
+      const folder = await page.waitForSelector('.om-nav-more-panel [aria-label="Workspace assets"]', { visible: true });
+      assert.ok(await folder!.evaluate(el => {
+        const bounds = el.getBoundingClientRect();
+        return bounds.left >= 0 && bounds.right <= innerWidth;
+      }), 'The assets shortcut fits inside the narrow navigation menu');
       await folder!.click();
       await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'assets');
       await page.goBack();
