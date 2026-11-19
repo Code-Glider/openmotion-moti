@@ -331,11 +331,14 @@ it('keeps measured styles accessible while rendering and replaces progress with 
   await click('Colors');
   expect(detail().querySelector('[role="tabpanel"]')?.textContent).toContain('#12604a');
   records = [{ ...kit }];
+  const requestsBeforePoll = requests.mock.calls.length;
   await act(async () => vi.advanceTimersByTimeAsync(1800));
   expect(button('Copy for Agent').disabled).toBe(false);
   expect(detail().querySelector('[role="progressbar"]')).toBeNull();
   expect(detail().querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Colors');
-  expect(requests).toHaveBeenLastCalledWith('/motion-api/brand-kits', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }));
+  expect(requests.mock.calls.slice(requestsBeforePoll)).toContainEqual([
+    '/motion-api/brand-kits', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
+  ]);
 });
 
 it('bounds a stalled status request, preserves the detail and recovers with a fresh read', async () => {

@@ -64,14 +64,14 @@ export function Tooltip({
             : children.props["aria-describedby"],
         })}
       </BaseTooltip.Trigger>
-      {/* Native modal dialogs make body portals inert and paint above them. */}
-      <BaseTooltip.Portal container={withinDialog ? boxRef.current?.closest("dialog") ?? undefined : undefined}>
+      {/* Dialogs and fullscreen paint above ordinary body portals. */}
+      <BaseTooltip.Portal container={(withinDialog ? boxRef.current?.closest("dialog") : null) ?? (document.fullscreenElement?.contains(boxRef.current) ? document.fullscreenElement as HTMLElement : undefined)}>
         <BaseTooltip.Positioner
           anchor={() => boxRef.current?.firstElementChild ?? null}
           side={side}
           sideOffset={SIDE_OFFSET}
           collisionPadding={VIEWPORT_MARGIN}
-          className={POPUP_LAYER}
+          className={cn(POPUP_LAYER, "pointer-events-none")}
         >
           <BaseTooltip.Popup
             id={tooltipId}

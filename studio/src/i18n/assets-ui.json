@@ -323,7 +323,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "添加首帧后，固定比例选项不可用。移除首帧可恢复文生视频的比例选择。",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "图生视频的画面比例跟随首帧。请删除 parameters.ratio，或将其设为 \"adaptive\"。",
     "Locate {name} at {start}–{end} on the timeline": "在时间轴定位 {name} 的 {start}–{end}",
-    "{count} uses": "{count} 处"
+    "{count} uses": "{count} 处",
+    "Continue download": "继续下载",
+    "Continuing download…": "正在继续下载…",
+    "Downloaded": "已下载",
+    "Download the original task image. Draft changes apply only to your next generation.": "取回原任务的图片。草稿修改仅用于下一次生成。",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "原图片下载未完成。可继续下载此任务，无需重新生成。"
   },
   "ja": {
     "Follows first frame": "最初のフレームに合わせる",
@@ -331,7 +336,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "最初のフレームがある場合、固定の縦横比は選べません。削除するとテキスト動画の縦横比設定に戻ります。",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "最初のフレームを使う動画の縦横比は入力画像に合わせます。parameters.ratio を削除するか、\"adaptive\" に設定してください。",
     "Locate {name} at {start}–{end} on the timeline": "タイムラインで {name} の {start}–{end} を表示",
-    "{count} uses": "{count} か所"
+    "{count} uses": "{count} か所",
+    "Continue download": "ダウンロードを再開",
+    "Continuing download…": "再開中…",
+    "Downloaded": "ダウンロード済み",
+    "Download the original task image. Draft changes apply only to your next generation.": "元のタスクの画像を取得します。下書きの変更は次の生成に適用されます。",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "元の画像を取得できませんでした。再生成せずにダウンロードを再開できます。"
   },
   "ko": {
     "Follows first frame": "첫 프레임에 맞춤",
@@ -339,7 +349,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "첫 프레임이 첨부되면 고정 비율을 선택할 수 없습니다. 제거하면 텍스트 동영상의 비율 선택이 복원됩니다.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "첫 프레임을 사용하는 동영상은 입력 이미지의 비율을 따릅니다. parameters.ratio를 삭제하거나 \"adaptive\"로 설정하세요.",
     "Locate {name} at {start}–{end} on the timeline": "타임라인에서 {name}의 {start}–{end} 구간 찾기",
-    "{count} uses": "{count}곳"
+    "{count} uses": "{count}곳",
+    "Continue download": "다운로드 계속",
+    "Continuing download…": "다운로드 재개 중…",
+    "Downloaded": "다운로드됨",
+    "Download the original task image. Draft changes apply only to your next generation.": "원래 작업의 이미지를 가져옵니다. 초안 변경은 다음 생성에 적용됩니다.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "원본 이미지를 다운로드하지 못했습니다. 다시 생성하지 않고 다운로드를 계속하세요."
   },
   "de": {
     "Follows first frame": "Wie das erste Bild",
@@ -347,7 +362,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Mit einem ersten Bild sind feste Seitenverhältnisse nicht verfügbar. Entfernen Sie es, um die Auswahl für Text-zu-Video wiederherzustellen.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "Videos mit einem ersten Bild übernehmen dessen Seitenverhältnis. Entfernen Sie parameters.ratio oder setzen Sie es auf \"adaptive\".",
     "Locate {name} at {start}–{end} on the timeline": "{name} bei {start}–{end} in der Zeitleiste anzeigen",
-    "{count} uses": "{count} Verwendungen"
+    "{count} uses": "{count} Verwendungen",
+    "Continue download": "Download fortsetzen",
+    "Continuing download…": "Download wird fortgesetzt…",
+    "Downloaded": "Heruntergeladen",
+    "Download the original task image. Draft changes apply only to your next generation.": "Lädt das Bild des ursprünglichen Auftrags. Entwurfsänderungen gelten für die nächste Generierung.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "Das ursprüngliche Bild konnte nicht heruntergeladen werden. Setze den Download ohne erneute Generierung fort."
   },
   "fr": {
     "Follows first frame": "Selon la première image",
@@ -355,7 +375,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Les formats fixes sont indisponibles lorsqu’une première image est jointe. Retirez-la pour retrouver votre choix texte-vers-vidéo.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "La vidéo reprend le format de la première image. Supprimez parameters.ratio ou définissez-le sur \"adaptive\".",
     "Locate {name} at {start}–{end} on the timeline": "Afficher {name} de {start} à {end} sur la timeline",
-    "{count} uses": "{count} utilisations"
+    "{count} uses": "{count} utilisations",
+    "Continue download": "Reprendre le téléchargement",
+    "Continuing download…": "Reprise du téléchargement…",
+    "Downloaded": "Téléchargé",
+    "Download the original task image. Draft changes apply only to your next generation.": "Récupère l’image de la tâche initiale. Les modifications du brouillon s’appliquent à la prochaine génération.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "Impossible de télécharger l’image initiale. Reprenez le téléchargement sans la générer à nouveau."
   },
   "ru": {
     "Follows first frame": "По первому кадру",
@@ -363,7 +388,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "При добавленном первом кадре фиксированные пропорции недоступны. Удалите его, чтобы восстановить выбор пропорций для видео из текста.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "Видео с первым кадром использует пропорции входного изображения. Удалите parameters.ratio или задайте \"adaptive\".",
     "Locate {name} at {start}–{end} on the timeline": "Найти {name} в интервале {start}–{end} на шкале времени",
-    "{count} uses": "Использований: {count}"
+    "{count} uses": "Использований: {count}",
+    "Continue download": "Продолжить загрузку",
+    "Continuing download…": "Продолжение загрузки…",
+    "Downloaded": "Загружено",
+    "Download the original task image. Draft changes apply only to your next generation.": "Загрузить изображение исходной задачи. Изменения черновика применятся к следующей генерации.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "Не удалось загрузить исходное изображение. Продолжите загрузку без повторной генерации."
   },
   "es": {
     "Follows first frame": "Según el primer fotograma",
@@ -371,7 +401,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Las proporciones fijas no están disponibles con un primer fotograma adjunto. Elimínelo para recuperar la proporción de texto a vídeo.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "El vídeo utiliza la proporción de la imagen inicial. Elimine parameters.ratio o establézcalo en \"adaptive\".",
     "Locate {name} at {start}–{end} on the timeline": "Localizar {name} de {start} a {end} en la línea de tiempo",
-    "{count} uses": "{count} usos"
+    "{count} uses": "{count} usos",
+    "Continue download": "Continuar descarga",
+    "Continuing download…": "Continuando descarga…",
+    "Downloaded": "Descargado",
+    "Download the original task image. Draft changes apply only to your next generation.": "Recupera la imagen de la tarea original. Los cambios del borrador se aplican a la próxima generación.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "No se pudo descargar la imagen original. Continúa la descarga sin volver a generarla."
   },
   "pt-BR": {
     "Follows first frame": "Conforme o primeiro quadro",
@@ -379,7 +414,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "As proporções fixas ficam indisponíveis com um primeiro quadro anexado. Remova-o para restaurar a proporção de texto para vídeo.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "O vídeo usa a proporção da imagem inicial. Remova parameters.ratio ou defina-o como \"adaptive\".",
     "Locate {name} at {start}–{end} on the timeline": "Localizar {name} de {start} a {end} na linha do tempo",
-    "{count} uses": "{count} usos"
+    "{count} uses": "{count} usos",
+    "Continue download": "Continuar download",
+    "Continuing download…": "Continuando download…",
+    "Downloaded": "Baixado",
+    "Download the original task image. Draft changes apply only to your next generation.": "Recupera a imagem da tarefa original. As alterações do rascunho valem para a próxima geração.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "Não foi possível baixar a imagem original. Continue o download sem gerar novamente."
   },
   "it": {
     "Follows first frame": "Come il primo fotogramma",
@@ -387,7 +427,12 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Le proporzioni fisse non sono disponibili con un primo fotogramma allegato. Rimuovilo per ripristinare la scelta per il video da testo.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "Il video usa le proporzioni dell’immagine iniziale. Rimuovi parameters.ratio o impostalo su \"adaptive\".",
     "Locate {name} at {start}–{end} on the timeline": "Individua {name} da {start} a {end} sulla timeline",
-    "{count} uses": "{count} utilizzi"
+    "{count} uses": "{count} utilizzi",
+    "Continue download": "Riprendi download",
+    "Continuing download…": "Ripresa del download…",
+    "Downloaded": "Scaricato",
+    "Download the original task image. Draft changes apply only to your next generation.": "Recupera l’immagine dell’attività originale. Le modifiche alla bozza valgono per la prossima generazione.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "Impossibile scaricare l’immagine originale. Riprendi il download senza generarla di nuovo."
   },
   "tr": {
     "Follows first frame": "İlk kareye göre",
@@ -395,6 +440,11 @@
     "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "İlk kare eklendiğinde sabit oranlar kullanılamaz. Metinden video oranını geri yüklemek için ilk kareyi kaldırın.",
     "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "İlk kareli video, giriş görüntüsünün oranını kullanır. parameters.ratio değerini kaldırın veya \"adaptive\" olarak ayarlayın.",
     "Locate {name} at {start}–{end} on the timeline": "Zaman çizelgesinde {name} için {start}–{end} aralığını bul",
-    "{count} uses": "{count} kullanım"
+    "{count} uses": "{count} kullanım",
+    "Continue download": "İndirmeye devam et",
+    "Continuing download…": "İndirme sürdürülüyor…",
+    "Downloaded": "İndirilen",
+    "Download the original task image. Draft changes apply only to your next generation.": "Asıl görevin görselini alır. Taslak değişiklikleri sonraki üretime uygulanır.",
+    "The original image could not be downloaded. Continue downloading this task without generating again.": "Asıl görsel indirilemedi. Yeniden üretmeden indirmeye devam edin."
   }
 }

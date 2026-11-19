@@ -7,6 +7,7 @@ import { transport } from './http.ts';
 import { execute, pluginRoot } from '../hyperframes.ts';
 import { verificationBinaries } from '../scripts/verify-export.ts';
 import { AssetLibrary, assetHash } from '../gateway/asset-library.ts';
+import { probeLibraryMedia } from '../gateway/asset-probe.ts';
 import { ModelGateway, gatewayFor } from '../gateway/service.ts';
 import { assetOperation } from '../gateway/asset-operations.ts';
 import { AssetConversations, type AssetAgentRpc } from '../gateway/asset-chat.ts';
@@ -66,6 +67,29 @@ test('immutable upload versions, content-based receipts, filters and reversible 
   await assert.rejects(library.importFile(path.join(store.directory, 'fake.png'), { requestId: 'fake', name: 'fake' }), /not readable/);
 }, false));
 
+test('an AVIF still is probed as an image, not as the MP4 its container resembles', () => fixture(async store => {
+  // 64 x 64 red still, major brand "avif".
+  const still = Buffer.from('AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAAD5bWV0YQAAAAAAAAAvaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAFBpY3R1cmVIYW5kbGVyAAAAAA5waXRtAAAAAAABAAAAHmlsb2MAAAAARAAAAQABAAAAAQAAASEAAAAlAAAAKGlpbmYAAAAAAAEAAAAaaW5mZQIAAAAAAQAAYXYwMUNvbG9yAAAAAGppcHJwAAAAS2lwY28AAAAUaXNwZQAAAAAAAABAAAAAQAAAABBwaXhpAAAAAAMICAgAAAAMYXYxQ4EADAAAAAATY29scm5jbHgAAgACAAIAAAAAF2lwbWEAAAAAAAAAAQABBAECgwQAAAAtbWRhdAoLAgAABVV//Gr5gEAyFhAA1wIZZMMCAAAIAYtJxybx8/EU+8A=', 'base64');
+  const file = path.join(store.directory, 'still.avif');
+  await writeFile(file, still);
+  assert.deepEqual(await probeLibraryMedia(file), { modality: 'image', mimeType: 'image/avif', extension: 'avif', bytes: still.length, width: 64, height: 64 });
+  const asset = await new AssetLibrary(store).importFile(file, { requestId: 'avif', name: 'Still' });
+  assert.equal(asset.modality, 'image');
+}));
+
+test('a video stored sideways is probed at the size it plays at', () => fixture(async store => {
+  const ffmpeg = async (...args: string[]) => { const result = await execute(verificationBinaries().ffmpeg, ['-v', 'error', ...args], store.directory, 20_000); assert.equal(result.code, 0, result.stderr); };
+  const flat = path.join(store.directory, 'flat.mp4'), turned = path.join(store.directory, 'turned.mp4'), flipped = path.join(store.directory, 'flipped.mp4');
+  await ffmpeg('-f', 'lavfi', '-i', 'testsrc2=size=64x48:rate=10:duration=1', '-an', '-y', flat);
+  // What a phone held upright records: landscape frames plus a display matrix.
+  await ffmpeg('-display_rotation', '90', '-i', flat, '-c', 'copy', '-y', turned);
+  await ffmpeg('-display_rotation', '180', '-i', flat, '-c', 'copy', '-y', flipped);
+  const size = async (file: string) => { const media = await probeLibraryMedia(file); return [media.width, media.height]; };
+  assert.deepEqual(await size(flat), [64, 48]);
+  assert.deepEqual(await size(turned), [48, 64]);
+  assert.deepEqual(await size(flipped), [64, 48]);
+}));
+
 test('workspace generation keeps job identity and pinned references without requiring a project', () => fixture(async store => {
   const original = await image(store.directory), bytes = await readFile(original); let calls = 0;
   const gateway = new ModelGateway(store, { detect: agents, codex: async () => { calls++; return bytes; } });
@@ -89,7 +113,11 @@ test('workspace generation keeps job identity and pinned references without requ
 
 test('asset HTTP uploads are replayable and media supports byte ranges; project imports pin independent copies', () => fixture(async store => {
   const source = await image(store.directory), bytes = await readFile(source), fetch = transport(store);
-  const upload = () => fetch('/motion-api/assets/upload?requestId=browser-upload', { method: 'POST', body: new Blob([bytes]), headers: { 'X-File-Name': encodeURIComponent('My image.png') } });
+  const upload = (request = 'browser-upload') => fetch('/motion-api/assets/upload?requestId=' + request, { method: 'POST', body: new Blob([bytes]), headers: { 'X-File-Name': encodeURIComponent('My image.png') } });
+  const refused = await upload('video-picker&modality=video');
+  assert.equal(refused.ok, false);
+  assert.match(await refused.text(), /Unsupported media type/);
+  assert.equal((await new AssetLibrary(store).list()).total, 0);
   const response = await upload(); assert.equal(response.status, 200, await response.clone().text());
   const { asset } = await response.json(); assert.equal((await (await upload()).json()).asset.id, asset.id);
   const url = `/motion-api/assets/${asset.id}/versions/${asset.currentVersionId}/file`;

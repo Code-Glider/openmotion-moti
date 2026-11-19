@@ -8,6 +8,9 @@ import { I18nProvider, type Locale } from '../i18n/I18n';
 import { McpConnectionPage } from './McpConnectionPage';
 import { containerIntegration, type IntegrationInfo } from '../../../shared/integration';
 
+// Reporting is covered separately. Its lazy initialization/retries must not
+// add transport requests to this page's discovery and read-only assertions.
+vi.mock('./tracking', () => ({ trackMotion: vi.fn(async () => 'disabled') }));
 vi.mock('./useWorkspace', () => ({ motionApi: async (path: string, options: RequestInit) => {
   const response = await fetch('/motion-api' + path, options);
   if (!response.ok) throw new Error('Unavailable');
@@ -21,12 +24,50 @@ let root: Root | undefined;
 afterEach(() => { act(() => root?.unmount()); root = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const button = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => (node.getAttribute('aria-label') || node.textContent?.trim()) === name)!;
 const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === name)!;
-async function mount(locale: Locale = 'en') {
+async function mount(locale: Locale = 'en', projectId?: string) {
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   const openLibrary = vi.fn(), openProviders = vi.fn();
-  await act(async () => root!.render(<I18nProvider initialLocale={locale}><McpConnectionPage openLibrary={openLibrary} openProviders={openProviders} /></I18nProvider>));
+  await act(async () => root!.render(<I18nProvider initialLocale={locale}><McpConnectionPage projectId={projectId} openLibrary={openLibrary} openProviders={openProviders} /></I18nProvider>));
   return { openLibrary, openProviders };
 }
+
+it.each(['en', 'zh-CN'] as const)('copies a workspace-bound review read plan and exposes raw-data/action guidance in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale, 'review-project');
+  const card = document.querySelector('[data-mcp-scenario="review-comments"]')!;
+  const details = card.querySelector('details')!;
+  await act(async () => details.querySelector('summary')!.click());
+  expect(details.open).toBe(true);
+  expect(details.textContent).toContain('HTML/CSS/JS');
+  expect(details.textContent).toContain(locale === 'en' ? 'not screenshots' : '不是画面截图');
+  const trigger = card.querySelector('button')!;
+  await act(async () => trigger.click());
+  const instruction = copy.mock.calls[0][0];
+  for (const value of ['Project ID: review-project', info.dataDirectory, info.previewUrl, 'file.nextOffset', 'expectedCommentRevision=latestComment.revision', 'operation="delete"']) expect(instruction).toContain(value);
+  const requests = JSON.parse(instruction.split('Read requests (JSON):\n')[1].split('\n\n')[0]);
+  expect(requests[2]).toEqual({ name: 'openmotion_manage_project', arguments: { action: 'comments', operation: 'list', projectId: 'review-project' } });
+  expect(instruction).toContain('ask which IDs');
+  copy.mockRejectedValue(new Error('Clipboard unavailable'));
+  await act(async () => trigger.click());
+  expect(card.querySelector('textarea')?.value).toBe(instruction);
+});
+
+it('does not copy a review handoff without workspace discovery and recovers from discovery failure', async () => {
+  let failed = true;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.includes('template-catalog') ? Response.json({ items: [] }) : failed ? new Response('', { status: 503 }) : Response.json(info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount();
+  const card = document.querySelector('[data-mcp-scenario="review-comments"]')!;
+  const trigger = card.querySelector<HTMLButtonElement>('.om-text-link')!;
+  expect(trigger.disabled).toBe(true);
+  expect(copy).not.toHaveBeenCalled();
+  failed = false;
+  await act(async () => card.querySelector<HTMLButtonElement>('button')!.click());
+  expect(trigger.disabled).toBe(false);
+  await act(async () => trigger.click());
+  expect(copy.mock.calls[0][0]).toContain('Identify the project with me');
+});
 
 it('loads Docker discovery through the real hook and enables container setup, copying and downloads', async () => {
   const docker = containerIntegration(info as IntegrationInfo, 'openmotion');
@@ -79,6 +120,7 @@ it.each(['zh-CN', 'en', 'ja'] as const)('links the FAQ and footer to the README 
 });
 
 it('switches client-specific setup, copies exact template instructions and performs no mutations', async () => {
+  await (await import('./reporting')).loadReportingTransport();
   const fetcher = vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [template] } : info));
   vi.stubGlobal('fetch', fetcher);
   const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();

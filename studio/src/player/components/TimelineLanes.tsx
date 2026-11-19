@@ -346,7 +346,7 @@ export function TimelineLanes({
                 contentOrigin={contentOrigin}
                 keyframeClip={keyframeClip}
                 trackElements={els}
-                clipCount={els.length}
+                clipCount={els.filter(el => el.timelineRole !== 'caption-empty').length}
                 isExpanded={rowExpanded}
                 animations={keyframeClipKey ? (gsapAnimations.get(keyframeClipKey) ?? []) : []}
                 currentTime={currentTime}
@@ -389,6 +389,7 @@ export function TimelineLanes({
                   onContextMenuLane(e, trackNum, time);
                 }}
               >
+                {els.some(el => el.timelineRole === 'caption-empty') && <div className="px-3 py-4 text-step-11 text-text-3" data-testid="empty-caption-track">{t('Caption track is empty')}</div>}
                 {/* Faint beat lines in every track's background (behind the clips);
                     the active move-snap target is highlighted. */}
                 <BeatBackgroundLines
@@ -411,7 +412,7 @@ export function TimelineLanes({
                 <TimelineTimeLayer pixelsPerSecond={pps}>
                   {
                     // fallow-ignore-next-line complexity
-                    renderElements.map((el) => {
+                    renderElements.filter(el => el.timelineRole !== 'caption-empty').map((el) => {
                       const clipStyle = getTrackStyle(el.tag);
                       const elementKey = getTimelineElementIdentity(el);
                       // Only the track's active keyframe clip shows expanded lanes;

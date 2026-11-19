@@ -1,3 +1,5 @@
+import { ReviewCommentsPanel } from '../motion/ReviewCommentsPanel';
+import { ReviewCommentsListSlot } from '../motion/ReviewPlayerControls';
 import { useI18n } from "../i18n/I18n";
 import { memo, useCallback } from "react";
 import type { StudioRightPanelsProps } from "./StudioRightPanels.types";
@@ -285,6 +287,8 @@ export const StudioRightPanels = memo(function StudioRightPanels({
 
   return (
     <>
+      <ReviewCommentsPanel />
+      <Dock.Panel id="comments"><ReviewCommentsListSlot /></Dock.Panel>
       <Dock.Panel id="design">
         <div className="motion-inspector-surface h-full min-h-0">{designBody}</div>
       </Dock.Panel>

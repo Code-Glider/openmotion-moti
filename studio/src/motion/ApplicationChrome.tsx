@@ -1,37 +1,71 @@
+import type { ExploreCommunity } from '../../../shared/studio-catalog';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
+import { brand } from '../../../packages/design-system/index.js';
 import { PrimaryNavigationButton, PrimaryNavigationRail } from '../../../packages/design-system/react/PrimaryNavigationRail';
 import { RemixIcon } from '../icons/RemixIcons';
 import { Menu, MenuItem, MenuSeparator, MenuSubmenu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { Tooltip } from '../components/ui/Tooltip';
+import { IconButton } from '../components/ui/IconButton';
 import { languages, useI18n, type Locale } from '../i18n/I18n';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 import { useAccountSummary } from './AccountSettings';
-import { ModelSwitcher } from './ModelSwitcher';
 import { CommunityLink } from './CommunityLink';
 import { GitHubLink } from './GitHubLink';
 import { repositorySupportLinks } from './githubRepository';
 import type { SettingsSection } from './SettingsCenter';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MouseEvent } from 'react';
-import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
 
-export function ApplicationHeader({ settings }: { settings: SettingsSection | null }) {
+import { CreativeNavigation, type CreativeNavigationProps } from './CreativeNavigation';
+import { WorkspaceSearch } from './WorkspaceSearch';
+
+const avatarSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommunity, openSettings, toggleResourceRail, ...navigation }: Omit<CreativeNavigationProps, 'openProviders'> & {
+  atExploreHome: boolean;
+  settings: SettingsSection | null;
+  toggleResourceRail?: () => void;
+  openSettings: (section: SettingsSection) => void;
+  openAsset: (assetId: string, version: string) => void;
+  onCommunity: (community: ExploreCommunity) => void;
+}) {
   const { t } = useI18n();
-  const { openHome, openModelSettings, navigationCollapsed, toggleNavigation } = useWorkspaceChrome();
-  return <header className="om-app-header">
-    <div className="om-app-leading">
-      <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><button className="om-nav-item om-app-sidebar-toggle" onClick={toggleNavigation} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><RemixIcon name="side-bar-line" size={16} /></button></Tooltip>
-      <WorkspaceHistoryNavigation />
-      <Tooltip label={t('Back to home')}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={t('Back to home')}><BrandLogo compact /></button></Tooltip>
+  const { openAssets, assetsOpen, openHome, openModelSettings, navigationCollapsed } = useWorkspaceChrome();
+  const homeHint = atExploreHome ? undefined : t('Back to Explore');
+  const header = useRef<HTMLElement>(null);
+  const [compactActions, setCompactActions] = useState(false);
+  useLayoutEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setCompactActions(entry.contentRect.width <= 560));
+    observer.observe(header.current!);
+    return () => observer.disconnect();
+  }, []);
+
+  function workspaceActions(closeMenu?: () => void) {
+    const assets = <button type="button" className={closeMenu ? 'om-nav-item' : 'om-nav-item om-header-icon'} aria-label={t('Workspace assets')}
+      aria-current={assetsOpen ? 'page' : undefined} onClick={() => { closeMenu?.(); openAssets(); }}>
+      <RemixIcon name={assetsOpen ? 'folder-open-fill' : 'folder-line'} size={17} />{closeMenu && t('Workspace assets')}
+    </button>;
+    return <>
+      <WorkspaceSearch onChoose={closeMenu} onSkill={navigation.onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={() => openSettings('account')} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
+      {closeMenu ? assets : <Tooltip label={t('Workspace assets')}>{assets}</Tooltip>}
+    </>;
+  }
+
+  return <header ref={header} className="om-app-header">
+    {toggleResourceRail && <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><IconButton type="button" onClick={toggleResourceRail} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')} icon={<RemixIcon name="side-bar-line" size={16} />} /></Tooltip>}
+    <Tooltip label={homeHint}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></button></Tooltip>
+    <CreativeNavigation {...navigation} openProviders={openModelSettings} overflowActions={compactActions ? workspaceActions : undefined} />
+    <div className="om-app-header-actions">
+      {!compactActions && workspaceActions()}
+      <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
+      {settings && settings !== 'brand-kit' && <button className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}
+      <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
-    <div className="om-app-navigation">{settings ? <button className="om-nav-item" onClick={openHome} aria-label={t('Back to home')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Back to home')}</span></button> : null}</div>
-    <div className="om-app-header-actions"><div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>{!settings && <ModelSwitcher openSettings={openModelSettings} />}{settings && <button className="motion-icon-button" aria-label={t(settings === 'brand-kit' ? 'Close Brand Kit' : 'Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}</div>
   </header>;
 }
-export function ApplicationRail({ settings, openSettings, home }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void; home: ReactNode }) {
-  const { t, locale, setLocale } = useI18n(), { account } = useAccountSummary();
-  const { openLibrary, openConnections, openAssets, assetsOpen, openSkills, skillsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
-  const userName = account?.user?.name || account?.user?.email || t('Account');
+export function ApplicationRail({ openSettings, projects, resource }: { openSettings: (section: SettingsSection) => void; projects?: ReactNode; resource?: "templates" | "brand-kit" | "skills" }) {
+  const { t } = useI18n();
+  const { openLibrary, openSkills, skillsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
   const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false, disabled = false) => (
     <Tooltip label={t(label)} side="right">
       <PrimaryNavigationButton aria-label={t(label)} aria-pressed={active} onClick={action} disabled={disabled}>
@@ -40,10 +74,28 @@ export function ApplicationRail({ settings, openSettings, home }: { settings: Se
     </Tooltip>
   );
   const footer = <>
-    {item('Help', 'question-line', () => openSettings('help'), settings === 'help')}
-    {item('Settings', 'settings-3-line', () => openSettings('general'), Boolean(settings && !['mcp', 'brand-kit', 'providers', 'help', 'account', 'subscription'].includes(settings)))}
-    {item('Model providers', 'brain-line', () => openSettings('providers'), settings === 'providers')}
-    <Menu tooltip={t('Account menu')} modal={false} side="top" align="start" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<PrimaryNavigationButton className="om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar">{account?.state === 'signed-in' ? userName.slice(0, 2).toUpperCase() : <RemixIcon name="user-3-line" size={18} />}</span></PrimaryNavigationButton>}>
+    {item('Help', 'question-line', () => openSettings('help'))}
+    {item('Settings', 'settings-3-line', () => openSettings('general'))}
+    {item('Model providers', 'brain-line', () => openSettings('providers'))}
+  </>;
+
+  return (
+    <PrimaryNavigationRail id="om-application-navigation" className="om-app-rail om-collapsible" data-collapsed={navigationCollapsed}
+      aria-label={t('Application navigation')} aria-hidden={navigationCollapsed} inert={navigationCollapsed} footer={footer}>
+      {projects}
+      {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), resource === 'templates', !resource && switchingDisabled)}
+      {item('Brand Kit', 'palette-line', () => openSettings('brand-kit'), resource === 'brand-kit')}
+      {item('Skills', 'puzzle-line', openSkills, resource ? resource === 'skills' : skillsOpen)}
+    </PrimaryNavigationRail>
+  );
+}
+
+export function ApplicationAccountMenu({ settings, openSettings }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void }) {
+  const { t, locale, setLocale } = useI18n();
+  const { account } = useAccountSummary();
+  const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
+  const avatarInitial = avatarSegmenter.segment(userName)[Symbol.iterator]().next().value?.segment;
+  return <Menu tooltip={t('Account menu')} modal={false} side="bottom" align="end" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<button type="button" className="om-nav-item om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <RemixIcon className="om-default-avatar-icon" name="user-3-line" size={14} />}</span></button>}>
       <MenuItem onClick={() => openSettings('account')}><span className="om-menu-label"><RemixIcon name="user-3-line" size={16} /><strong>{userName}</strong></span></MenuItem><MenuSeparator />
       <MenuItem onClick={() => openSettings('subscription')}><span className="om-menu-label"><RemixIcon name="bank-card-line" size={16} />{t('Subscription & usage')}</span></MenuItem>
       <MenuSeparator />
@@ -55,18 +107,5 @@ export function ApplicationRail({ settings, openSettings, home }: { settings: Se
       <MenuSeparator />
       {repositorySupportLinks.map(link => <MenuItem key={link.href} render={<a href={link.href} target="_blank" rel="noopener noreferrer" />}><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}<RemixIcon className="om-menu-external" name="external-link-line" size={14} /></span></MenuItem>)}
       <MenuItem onClick={() => openSettings('help')}><span className="om-menu-label"><RemixIcon name="question-line" size={16} />{t('Help')}</span></MenuItem>
-    </Menu>
-  </>;
-
-  return (
-    <PrimaryNavigationRail id="om-application-navigation" className="om-app-rail om-collapsible" data-collapsed={navigationCollapsed}
-      aria-label={t('Application navigation')} aria-hidden={navigationCollapsed} inert={navigationCollapsed} footer={footer}>
-      {home}
-      {item('Workspace assets', 'book-open-line', openAssets, assetsOpen)}
-      {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), false, switchingDisabled)}
-      {item('Brand Kit', 'palette-line', () => openSettings('brand-kit'), settings === 'brand-kit')}
-      {item('Skills', 'puzzle-line', openSkills, skillsOpen)}
-      {item('MCP · Connect Agent', 'plug-line', () => openConnections('app_rail'), settings === 'mcp')}
-    </PrimaryNavigationRail>
-  );
+    </Menu>;
 }
