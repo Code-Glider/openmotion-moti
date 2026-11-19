@@ -447,6 +447,14 @@ Brand Kit identities remain separate. Collection still honors installation opt-o
 and DNT; the local review proxy disables it. See the [series contract](../../tracking/README.md#brand-story-discovery-and-reuse)
 for trigger, deduplication, privacy and observable-result boundaries.
 
+The Black Friday collection is entered from the template library and has its own
+stage navigation and return action. It reuses the published reference identities,
+template previews and Skill detail routes. A pinned reference snapshot supplies
+those exact IDs if the configured catalog has not published them yet. The same
+IDs resolve through the Agent's existing template-detail operation for
+recreation, with no project download or automatic creation. Video and Skill
+actions retain their existing events with Black Friday placement.
+
 ### Local diagnostic export
 
 Test and stable distributions share `scripts/diagnostics.mjs`, its browser-safe redaction helper and the existing dependency-free ZIP writer. Studio Privacy settings and the crash screen download the same local diagnostic archive through a same-origin POST route; `openmotion diagnostics` and the standalone script can collect without a running editor/MCP or native executables. Collection does not launch probes, replay operations, change projects or upload data.

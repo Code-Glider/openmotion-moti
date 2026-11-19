@@ -44,11 +44,11 @@ export function reportLibraryShown(context: Pick<ListContext, 'libraryViewId'> =
   send('surface_view', { ...studio, area: 'template_library', element: 'library', ...contextIds(context) });
 }
 /** The denominator for a card's click-through rate. The caller decides when a card was really seen and reports it once per result set. */
-export function reportCardShown(template: Template, position: number, context: ListContext) {
-  send('surface_view', { ...studio, area: 'template_card', element: 'card', ...templateId(template), ...resource(template), placement: 'catalog', position, ...list(context) });
+export function reportCardShown(template: Template, position: number, context: ListContext, placement: Extract<Placement, 'catalog' | 'black_friday'> = 'catalog') {
+  send('surface_view', { ...studio, area: 'template_card', element: 'card', ...templateId(template), ...resource(template), placement, position, ...list(context) });
 }
 /** A gallery card or a related-template thumbnail was opened. */
-export function reportCardOpened(template: Template, placement: Extract<Placement, 'catalog' | 'related'>, position: number, context: ListContext, source?: Template, view?: DetailView) {
+export function reportCardOpened(template: Template, placement: Extract<Placement, 'catalog' | 'related' | 'black_friday'>, position: number, context: ListContext, source?: Template, view?: DetailView) {
   send('ui_click', { ...studio, area: 'template_card', element: 'open_detail', ...templateId(template), ...resource(template), placement, position, ...list(context),
     ...(source ? slugField('source_template_id', source.id) : {}), ...(source ? detail(view) : {}) });
 }

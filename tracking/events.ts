@@ -33,7 +33,7 @@ const template = { template_id: 'slug' } as const;
 const hosts = ['codex', 'claude', 'deepseek', 'chatgpt', 'mcp'] as const;
 const sortOrder = ['recommended', 'name', 'reverse', 'duration'] as const;
 // Where a card or detail came from: the gallery, the related strip, random discovery or previous/next in the detail.
-const placement = ['popular', 'catalog', 'related', 'random', 'navigation'] as const;
+const placement = ['popular', 'catalog', 'related', 'random', 'navigation', 'black_friday'] as const;
 // Curated template brand series, distinct from the Brand Kit catalogue. No brand names, copy or URLs.
 const templateSeries = { search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer', series_id: 'slug', series_list_id: 'uuid', series_view_id: 'uuid',
   series_placement: ['top100', 'discovery'], series_surface: ['timeline', 'template_detail'],
