@@ -124,7 +124,7 @@ it('opens the reference-link form from each category without changing browsing o
   expect(actions.querySelector('a')?.classList.contains('om-gallery-submit')).toBe(true);
   expect(button('Surprise me', actions).classList.contains('om-gallery-surprise')).toBe(true);
   expect(actions.nextElementSibling?.contains(trigger)).toBe(true);
-  expect(trigger.hasAttribute('data-primary')).toBe(true);
+  expect(trigger.hasAttribute('data-primary')).toBe(false);
   expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
   const initialCards = cards();
   expect(events('surface_view', { element: 'reference' })).toHaveLength(0);
