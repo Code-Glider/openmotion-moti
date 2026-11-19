@@ -47,6 +47,20 @@
 .om-application .motion-sidebar { flex-basis: var(--om-project-navigation-width); width: var(--om-project-navigation-width); height: 100%; padding: var(--motion-space-12); }
 .om-application .motion-sidebar-brand { justify-content: space-between; margin-bottom: var(--motion-space-16); }
 .om-application .motion-workspace-content[hidden] { display: none; }
+.om-workspace-layer:not([hidden]) { display: contents; }
+.om-application .om-gallery-surface[data-workspace-gallery] {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+.om-application [data-workspace-gallery] .om-gallery-page-label {
+  border: 0;
+  padding-inline: 0;
+}
 .om-application .motion-session-dot { display: none; }
 .om-application .motion-sidebar-footer { border-top: 1px solid var(--motion-border-subtle); }
 .om-settings-center { --om-settings-nav-width: clamp(216px, 18vw, 248px); display: flex; flex: 1; min-width: 0; min-height: 0; }

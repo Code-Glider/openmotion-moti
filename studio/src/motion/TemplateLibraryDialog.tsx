@@ -74,7 +74,7 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
@@ -223,15 +223,17 @@ export function TemplateLibraryDialog(props: Props) {
     if (!props.open) { libraryShown.current = false; setReferenceTrigger(null); return; }
     const openedDialog = dialog.current;
     const trigger = props.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    openedDialog?.showModal();
+    if (!props.inWorkspace) openedDialog?.showModal();
     if (openedDialog?.open && !libraryShown.current) { libraryShown.current = true; tracking.reportLibraryShown(currentSearchContext.current.read()); }
     libraryClose.current?.focus({ preventScroll: true });
     return () => {
-      detail.current?.close(); openedDialog?.close(); setPreview(null);
+      detail.current?.close();
+      if (!props.inWorkspace) openedDialog?.close();
+      setPreview(null);
       setPriority(null); setFiltersOpen(false);
-      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      if (trigger?.isConnected && (!props.inWorkspace || document.activeElement === document.body || openedDialog?.contains(document.activeElement))) trigger.focus({ preventScroll: true });
     };
-  }, [props.open, props.returnFocus]);
+  }, [props.open, props.returnFocus, props.inWorkspace]);
   useEffect(() => {
     if (!props.open) return;
     setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null); detail.current?.close();
@@ -459,10 +461,10 @@ export function TemplateLibraryDialog(props: Props) {
     if (reviewScroll.current) reviewScroll.current.scrollTop = 0;
     if (detail.current) detail.current.scrollTop = 0;
     if (!detail.current?.open) {
-      if (handoffPreview && dialog.current?.open) { dialog.current.close(); dialog.current.show(); }
+      if (handoffPreview && !props.inWorkspace && dialog.current?.open) { dialog.current.close(); dialog.current.show(); }
       detail.current?.showModal();
     }
-  }, [handoffPreview]);
+  }, [handoffPreview, props.inWorkspace]);
   useEffect(() => {
     if (!props.open || props.templateId === undefined) return;
     if (!props.templateId) { detail.current?.close(); return; }
@@ -584,13 +586,17 @@ export function TemplateLibraryDialog(props: Props) {
     if (dialog.current) dialog.current.scrollTop = 0;
   };
   const credit = preview && templateCredit(preview);
-  return <dialog ref={dialog} className={styles.library} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
+  return <dialog ref={dialog} open={props.inWorkspace ? props.open : undefined} role={props.inWorkspace ? "region" : undefined} className={styles.library} data-workspace-gallery={props.inWorkspace || undefined} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
     event.stopPropagation();
+    if (props.inWorkspace && event.key === 'Escape' && !event.defaultPrevented && !props.busy && !preview && !filtersOpen && event.target instanceof Element && event.target.closest('dialog') === dialog.current) {
+      event.preventDefault();
+      props.onClose();
+    }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen && !(event.target instanceof HTMLElement && event.target.closest('[data-search-recovery]'))) { event.preventDefault(); search.current?.focus(); }
   }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
-        <div className="om-gallery-wordmark"><BrandLogo compact /><span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>
+        <div className="om-gallery-wordmark">{!props.inWorkspace && <BrandLogo compact />}<span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>
         {props.navigation && <fieldset className="contents" disabled={props.busy}>{props.navigation}</fieldset>}
         <div className="om-control-row om-gallery-header-actions">
           <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)}
@@ -669,7 +675,7 @@ export function TemplateLibraryDialog(props: Props) {
       const name = brandStory.series.name;
       closeBrand(); setBrandsOnly(false); setQuery(''); setEditableOnly(false); setSelected({ uses: [purpose] }); setCompareWithout(name);
     }} />}
-    <dialog ref={detail} className={`${styles.detail} ${handoffPreview ? styles.reviewDetail : ''}`} aria-label={t('Template preview')} onCancel={event => { if (event.target !== detail.current) return; event.preventDefault(); if (handoffPreview && guideOpen) setGuideOpen(false); else closeDetail(); }} onClose={event => { if (event.target !== detail.current) return; setPreview(null); setPrompt(''); setGuideOpen(false); detailView.current = undefined; if (handoffPreview && openLatest.current) { dialog.current?.close(); dialog.current?.showModal(); } }} onKeyDown={event => {
+    <dialog ref={detail} className={`${styles.detail} ${handoffPreview ? styles.reviewDetail : ''}`} aria-label={t('Template preview')} onCancel={event => { if (event.target !== detail.current) return; event.preventDefault(); if (handoffPreview && guideOpen) setGuideOpen(false); else closeDetail(); }} onClose={event => { if (event.target !== detail.current) return; setPreview(null); setPrompt(''); setGuideOpen(false); detailView.current = undefined; if (handoffPreview && !props.inWorkspace && openLatest.current) { dialog.current?.close(); dialog.current?.showModal(); } }} onKeyDown={event => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }
     }}>

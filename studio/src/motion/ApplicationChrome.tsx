@@ -36,13 +36,13 @@ export function ApplicationHeader({ settings, openAsset, onCommunity, onAccount,
     <div className="om-app-header-actions">
       <WorkspaceSearch onSkill={navigation.onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={onAccount} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
-      {settings && <button className="motion-icon-button" aria-label={t(settings === 'brand-kit' ? 'Close Brand Kit' : 'Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}
+      {settings && settings !== 'brand-kit' && <button className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}
     </div>
   </header>;
 }
-export function ApplicationRail({ settings, openSettings, home }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void; home: ReactNode }) {
+export function ApplicationRail({ settings, templatesActive = false, openSettings, home }: { templatesActive?: boolean; settings: SettingsSection | null; openSettings: (section: SettingsSection) => void; home: ReactNode }) {
   const { t, locale, setLocale } = useI18n(), { account } = useAccountSummary();
-  const { openLibrary, openConnections, openAssets, assetsOpen, openSkills, skillsOpen, switchingDisabled, navigationCollapsed } = useWorkspaceChrome();
+  const { openLibrary, openConnections, openAssets, assetsOpen, openSkills, skillsOpen, navigationCollapsed } = useWorkspaceChrome();
   const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
   const avatarInitial = avatarSegmenter.segment(userName)[Symbol.iterator]().next().value?.segment;
   const item = (label: string, icon: string, action: (event: MouseEvent<HTMLButtonElement>) => void, active = false, disabled = false) => (
@@ -75,10 +75,10 @@ export function ApplicationRail({ settings, openSettings, home }: { settings: Se
     <PrimaryNavigationRail id="om-application-navigation" className="om-app-rail om-collapsible" data-collapsed={navigationCollapsed}
       aria-label={t('Application navigation')} aria-hidden={navigationCollapsed} inert={navigationCollapsed} footer={footer}>
       {home}
-      {item('Workspace assets', 'book-open-line', openAssets, assetsOpen)}
-      {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), false, switchingDisabled)}
+      {item('Workspace assets', 'book-open-line', openAssets, assetsOpen && !templatesActive)}
+      {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), templatesActive)}
       {item('Brand Kit', 'palette-line', () => openSettings('brand-kit'), settings === 'brand-kit')}
-      {item('Skills', 'puzzle-line', openSkills, skillsOpen)}
+      {item('Skills', 'puzzle-line', openSkills, skillsOpen && !templatesActive)}
       {item('MCP · Connect Agent', 'plug-line', () => openConnections('app_rail'), settings === 'mcp')}
     </PrimaryNavigationRail>
   );
