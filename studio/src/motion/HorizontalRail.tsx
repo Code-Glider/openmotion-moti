@@ -1,4 +1,5 @@
 import { Children, useLayoutEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Button } from 'open-design-ui/button';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 
@@ -54,10 +55,10 @@ export function HorizontalRail({ label, className = '', viewportClassName, selec
     const list = viewport.current!;
     list.scrollBy({ left: direction * list.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
-  const arrow = (edge: 'left' | 'right') => <button type="button" className="om-button om-icon-button om-rail-arrow" data-edge={edge}
+  const arrow = (edge: 'left' | 'right') => <Button type="button" variant="secondary" className="om-button om-icon-button om-rail-arrow p-0" data-edge={edge}
     aria-controls={id} aria-label={t(edge === 'left' ? 'Previous' : 'Next') + ' · ' + t(label)} onClick={() => scroll(edge === 'left' ? -1 : 1)}>
     <RemixIcon name="arrow-right-s-line" mirrored={edge === 'left'} size={22} />
-  </button>;
+  </Button>;
   return <div className={'om-horizontal-rail ' + className}>
     <div id={id} ref={viewport} className={'om-rail-viewport om-overflow-fade ' + viewportClassName} data-fade-start={edges.left || undefined} data-fade-end={edges.right || undefined} tabIndex={-1} role="group" aria-label={t(label)}>{children}</div>
     {edges.left && arrow('left')}

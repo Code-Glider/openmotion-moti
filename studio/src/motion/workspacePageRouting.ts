@@ -11,7 +11,7 @@ export const settingsSections = ['account', 'subscription', 'providers', 'models
 export type SettingsSection = typeof settingsSections[number];
 export type ExploreFilters = { community: ExploreCommunity['id'] | null; medium: StudioScene['modality'] | null };
 export { findTemplateCollection, type TemplateCollection } from './templateCollections';
-export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
+export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; mcpExample?: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
 
 export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
   const query = new URLSearchParams(search), page = workspacePageName(query, hash), section = query.get('section');
@@ -33,6 +33,7 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
     : page === 'skills' || collection?.techniques.some(id => id === skill) ? skill : null;
   return { motion: page === 'motion', api: page === 'api', tool: page === 'api' ? query.get('tool') : null, modelOverview: page === 'model' ? model : null, modelHub: page === 'model-hub' ? query.get('hub') || null : null, creators, creator: creators ? query.get('creator')?.trim() || null : null, specialty, community, medium, assetId: page === 'assets' ? query.get('asset') || null : null,
     assetVersion: page === 'assets' && query.get('asset') ? query.get('version') || null : null, explore: page === 'explore', studio, settings, brandKit: settings === 'brand-kit' ? query.get('kit') || null : null, assets: page === 'assets', skills: page === 'skills', skillCategory: page === 'skills' ? skillCategories.find(value => value === query.get('skillCategory')) ?? null : null, skill: selectedSkill, templates, templateCollection,
+    mcpExample: settings === 'mcp' ? query.get('example') : null,
     client: mcpClients.find(value => value.id === query.get('host'))?.id ?? 'codex',
     setup: query.get('setup') === 'manual' ? 'manual' : 'agent',
     provider: settings === 'providers' ? query.get('provider') || null : null,
@@ -43,6 +44,7 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
   const url = new URL(href), current = readWorkspacePage(url.search, url.hash), page = { ...current, ...patch };
   const currentSearchPage = url.searchParams.get('page');
   for (const key of ['page', 'section', 'templates', 'host', 'setup', 'provider', 'template', 'skill', 'skillCategory', 'kit', 'community', 'medium', 'collection', 'hub']) url.searchParams.delete(key);
+  if (current.settings === 'mcp' || page.settings === 'mcp') url.searchParams.delete('example');
   if (current.api || page.api) url.searchParams.delete('tool');
   if (current.creators || page.creators) { url.searchParams.delete('view'); url.searchParams.delete('creator'); }
   if (current.assets || page.assets) { url.searchParams.delete('asset'); url.searchParams.delete('version'); }
@@ -102,6 +104,7 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
   } else if (page.settings === 'mcp') {
     url.searchParams.set('page', 'mcp');
     url.searchParams.set('host', page.client);
+    if (page.mcpExample) url.searchParams.set('example', page.mcpExample);
     if (page.setup === 'manual') url.searchParams.set('setup', 'manual');
   } else if (page.settings) {
     url.searchParams.set('page', 'settings');

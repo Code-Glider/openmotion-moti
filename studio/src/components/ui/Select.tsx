@@ -11,7 +11,7 @@ import { FieldTrigger } from "./FormField";
 import { MenuPanel } from "./MenuPanel";
 import { SelectArrow } from "./SelectArrow";
 import { floatingMotion, POPUP_LAYER } from "./Menu";
-import type { PreviewState } from "./Button";
+import type { PreviewState } from "open-design-ui/button";
 import type { ReactNode } from "react";
 
 export interface SelectOption {

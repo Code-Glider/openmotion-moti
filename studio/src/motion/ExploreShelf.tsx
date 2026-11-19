@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Button } from 'open-design-ui/button';
 import { CategoryStrip } from './CategoryStrip';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -13,14 +14,14 @@ export function ExploreShelf<T extends string>({ title, categoriesLabel, categor
     <header className="om-discovery-heading">
       <h2>{t(title)}</h2>
       <div className="om-control-row">
-        <button className="om-button" onClick={event => onOpen(event.currentTarget)}>{t(action)}<RemixIcon name="arrow-right-line" size={16} /></button>
+        <Button type="button" variant="secondary" className="om-button" onClick={event => onOpen(event.currentTarget)}>{t(action)}<RemixIcon name="arrow-right-line" size={16} /></Button>
         {extraAction}
       </div>
     </header>
     <div className="om-shelf-toolbar">
       <CategoryStrip label={categoriesLabel} selection={selected}>
-        {categories.map(([value, name]) => <button key={value} className="om-button om-filter-pill" aria-label={t(name)} aria-pressed={selected === value}
-          onClick={() => onCategory(value)}>{renderCategory?.(value) ?? t(name)}</button>)}
+        {categories.map(([value, name]) => <Button key={value} type="button" variant="secondary" className="om-button om-filter-pill" aria-label={t(name)} aria-pressed={selected === value}
+          onClick={() => onCategory(value)}>{renderCategory?.(value) ?? t(name)}</Button>)}
       </CategoryStrip>
       {filters}
     </div>

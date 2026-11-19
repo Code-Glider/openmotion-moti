@@ -31,8 +31,9 @@ export const needsImage = (scene: StudioScene) => 'requiresImage' in scene && sc
 
 export function supportsScene(model: Model, scene: StudioScene) {
   if (model.modality !== scene.modality) return false;
-  if (needsImage(scene) && modelReferenceLimit(model) <= 0) return false;
-  return !('modelMode' in scene) || model.mode === scene.modelMode;
+  if ('modelMode' in scene && model.mode !== scene.modelMode) return false;
+  // Reference-only endpoints need an input that a prompt-only scene cannot supply.
+  return needsImage(scene) ? modelReferenceLimit(model) > 0 : !/^(image|video)-to-/.test(model.mode);
 }
 
 export function modelDestination(model: Model, current?: StudioDestination | null): StudioDestination {

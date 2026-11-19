@@ -45,7 +45,7 @@ export function TemplateSourceLink({ template, className }: { template: GalleryT
   </a>;
 }
 
-export function TemplatePoster({ template, eager = false, coverUrl, onCoverAspect }: { template: GalleryTemplate; eager?: boolean; coverUrl?: string; onCoverAspect?: (aspect: number | undefined) => void }) {
+export function TemplatePoster({ template, eager = false, coverUrl, onCoverAspect }: { template: Pick<GalleryTemplate, 'posterUrl' | 'title'>; eager?: boolean; coverUrl?: string; onCoverAspect?: (aspect: number | undefined) => void }) {
   const [loaded, setLoaded] = useState(false), [failed, setFailed] = useState(false);
   const [loadedCover, setLoadedCover] = useState<string>(), [failedCover, setFailedCover] = useState<string>();
   return <div className="om-gallery-poster" data-loaded={loaded}>

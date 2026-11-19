@@ -1,4 +1,5 @@
-import { Button, Tooltip } from '../components/ui';
+import { Button } from 'open-design-ui/button';
+import { Tooltip } from '../components/ui';
 import { useDockLayoutStore } from '../components/dock/dockLayoutStore';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
