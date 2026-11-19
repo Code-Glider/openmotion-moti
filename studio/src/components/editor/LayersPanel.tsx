@@ -436,7 +436,7 @@ export const LayersPanel = memo(function LayersPanel({ host }: { host?: LayersPa
             onClick={() => setActiveGroupElement(null)}
             className="mx-1 flex w-[calc(100%-0.5rem)] items-center gap-1.5 rounded-md px-2 py-1 text-left text-[11px] text-panel-text-3 hover:bg-panel-hover/40 hover:text-panel-text-1"
           >
-            <span aria-hidden="true">←</span>
+            <RemixIcon name="arrow-left-line" size={14} />
             <span className="truncate">
               {activeGroupElement.getAttribute("data-hf-group") || t("Group")}
             </span>

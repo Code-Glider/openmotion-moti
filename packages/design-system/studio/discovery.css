@@ -95,6 +95,8 @@
 .om-gallery-surprise:disabled { opacity: .45; cursor: default; }
 .om-gallery-intro .om-gallery-submit { display: inline-flex; align-items: center; justify-content: center; gap: var(--motion-space-6); padding: 10px 12px; min-height: 38px; border: 1px solid var(--color-template-line); border-radius: var(--motion-radius-lg); font-size: var(--motion-text-md); background: var(--motion-brand); color: var(--motion-on-brand); font-weight: var(--motion-weight-semibold); text-decoration: none; }
 .om-gallery-intro .om-gallery-submit:hover { filter: brightness(.96); text-decoration: none; }
+:root[data-theme="paper"] .om-gallery-intro .om-gallery-submit { background: var(--motion-action); color: var(--motion-on-action); border-color: var(--motion-action); }
+:root[data-theme="paper"] .om-gallery-intro .om-gallery-submit:hover { background: var(--motion-action-hover); border-color: var(--motion-action-hover); filter: none; }
 .om-gallery-intro .om-gallery-submit[data-borderless] { border-color: transparent; }
 .om-gallery-intro > small { display: block; color: var(--color-template-muted); font-size: var(--motion-text-xs); margin-top: 17px; }
 .om-gallery-chips { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8); padding: 0 32px 16px; font-size: var(--motion-text-xs); }
@@ -115,9 +117,13 @@
 @media (max-width: 420px) { .om-gallery-masonry { column-gap: 9px; } .om-gallery-intro h1 { font-size: 21px; } .om-gallery-intro .om-gallery-surprise { font-size: var(--motion-text-xs); gap: var(--motion-space-6); padding: 9px; } .om-gallery-surprise > svg:last-child { display: none; } }
 /* Change category ink and surface together; a background-only theme fade loses contrast. */
 
-/* Neutral selection is opt-in so existing catalogue palettes stay independent. */
+/* Light-theme catalogues share Skills' neutral selection; dark catalogues retain their accent. */
+:root[data-theme="paper"] .om-gallery-surface .om-gallery-categories button[aria-pressed=true],
 .om-gallery-surface .om-gallery-categories[data-neutral] button[aria-pressed=true] { background: var(--motion-action); color: var(--motion-on-action); }
+:root[data-theme="paper"] .om-gallery-surface .om-gallery-categories button[aria-pressed=true]:hover,
 .om-gallery-surface .om-gallery-categories[data-neutral] button[aria-pressed=true]:hover { background: var(--motion-action-hover); }
+/* Editorial labels must inherit the selected pill's contrasting ink. */
+:root[data-theme="paper"] .om-gallery-categories button[aria-pressed=true] :is(.ui-collection-label, .ui-collection-label__title) { background: none; color: inherit; }
 
 /* A translucent charcoal surface keeps the artwork visible behind the controls. */
 [data-motion-studio] .om-button[data-primary="media"]:enabled,

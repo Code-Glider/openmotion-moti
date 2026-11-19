@@ -227,7 +227,7 @@ it('filters the full catalogue, autoplays only visible cards and hands off the e
   await act(async () => PreviewObserver.latest.emit(1));
   expect(document.querySelector('video[src]')?.getAttribute('src')).toBe('/second.mp4');
   await act(async () => button('Preview template Brand film').click());
-  expect(openLibrary).toHaveBeenCalledWith(expect.any(HTMLButtonElement), 'brand-film');
+  expect(openLibrary).toHaveBeenCalledWith(expect.any(HTMLButtonElement), expect.objectContaining({ id: 'brand-film' }));
   await act(async () => PreviewObserver.latest.emit(0));
   expect(document.querySelectorAll('video[src]')).toHaveLength(0);
   expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();

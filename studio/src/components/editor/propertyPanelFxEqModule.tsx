@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 /**
  * The Tone module: a multi-band EQ as one control surface over several nodes.
@@ -167,7 +168,7 @@ export function FxEqModule({
           disabled={disabled}
           onClick={onRemove}
         >
-          ×
+          <RemixIcon name="close-line" size={12} />
         </button>
       </div>
 

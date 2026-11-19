@@ -1,3 +1,4 @@
+import { NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import type { GsapPercentageKeyframe } from "@hyperframes/core/gsap-parser";
 import { EASE_LABELS } from "./gsapAnimationConstants";
@@ -70,7 +71,7 @@ export function KeyframeEaseList({
         <p className="text-[9px] font-semibold uppercase tracking-wider text-neutral-500">
           {t("Per-keyframe easing")}</p>
         {onApplyAll && (
-          <select
+          <NativeSelect density="compact"
             aria-label={t("Apply one ease to all segments")}
             title={t("Apply one ease to every segment (clears per-segment overrides)")}
             value=""
@@ -87,7 +88,7 @@ export function KeyframeEaseList({
                 {EASE_LABELS[name] ?? name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         )}
       </div>
       {keyframes.map((kf, i) => {

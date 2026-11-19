@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, useEffect } from 'react';
+import { gemini4Videos } from './gemini4Videos';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { StudioCreation } from './CreativeWorkspace';
@@ -214,7 +215,7 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   await mount(); await openMcp(); await click('Claude Code');
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]');
   await click('Preview template Product Promo');
-  expect(page()).toMatchObject({ templates: true, template: 'product-promo', settings: 'mcp', client: 'claude' });
+  expect(page()).toMatchObject({ templates: false, template: 'product-promo', settings: 'mcp', client: 'claude' });
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await traverse(-1);
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
@@ -225,8 +226,55 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await mount(1);
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
-  await click('Close template preview'); await click('Close template library');
+  await click('Close template preview');
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
+});
+
+it.each(['motion', 'marketing'])('opens a card over %s while the full catalogue is pending and restores the trigger', async studio => {
+  history.replaceState(null, '', firstUrl.replace('#', `&page=${studio}#`));
+  const fallback = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation((input: string, options?: RequestInit) =>
+    input.includes('limit=60') ? new Promise<Response>(() => {}) : fallback(input, options));
+  await mount();
+  const shelf = container.querySelector('.om-studio-template-shelf')!;
+  const card = shelf.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!;
+  await act(async () => card.click());
+  const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  expect(detail.open).toBe(true);
+  expect(detail.querySelector('h2')?.textContent).toBe('Product Promo');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
+  expect(shelf.isConnected).toBe(true);
+  await act(async () => {
+    detail.dispatchEvent(new Event('cancel', { cancelable: true }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+  expect(page().template).toBeNull();
+  expect(document.activeElement).toBe(card);
+  expect(new URLSearchParams(location.search).get('page')).toBe(studio);
+  expect(location.hash).toContain('t=12');
+});
+
+it('keeps loading, retry and missing-link recovery inside a standalone preview', async () => {
+  history.replaceState(null, '', '/?page=motion&template=missing');
+  const fallback = fetcher.getMockImplementation()!;
+  let finish!: (response: Response) => void;
+  fetcher.mockImplementation((input: string, options?: RequestInit) =>
+    input.includes('limit=60') ? new Promise<Response>(resolve => { finish = resolve; }) : fallback(input, options));
+  await mount();
+  const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  expect(detail.open).toBe(true);
+  expect(detail.querySelector('[role=status]')?.textContent).toBe('Loading preview…');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
+  await act(async () => finish(Response.json({ error: 'Offline' }, { status: 503 })));
+  expect(detail.querySelector('[role=alert]')?.textContent).toContain('Offline');
+  await act(async () => [...detail.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+  await act(async () => finish(Response.json({ items: [], next: null })));
+  expect(detail.querySelector('[role=alert]')?.textContent).toBe('This template is no longer available.');
+  await click('Close template preview');
+  expect(location.search).toBe('?page=motion');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
 });
 
 it('keeps project rows in place while switching, updating selection and reloading', async () => {
@@ -428,6 +476,35 @@ it('opens a Cinema still from Explore and restores its studio when changing hist
   expect(container.querySelector('.om-code-block')?.textContent).toContain('modality');
 });
 
+it('reports Explore once per arrival and its spotlight, index links and top navigation as catalogue ids', async () => {
+  const { trackMotion } = await import('./tracking') as unknown as { trackMotion: ReturnType<typeof vi.fn> };
+  // Load the (mocked) transport first so every report below is delivered before it is read.
+  await (await import('./reporting')).loadReportingTransport();
+  trackMotion.mockClear();
+  const rows = () => trackMotion.mock.calls.map(([event, properties]) => ({ event: event as string, properties: properties as Record<string, unknown> }));
+  const clicks = () => rows().filter(row => row.event === 'ui_click').map(row => row.properties);
+  const exploreViews = () => rows().filter(row => row.event === 'page_view' && row.properties.page_name === 'explore');
+  const inside = (selector: string, label: string) => [...container.querySelectorAll<HTMLButtonElement>(selector + ' button')]
+    .find(node => node.getAttribute('aria-label') === label || node.textContent?.trim() === label)!;
+  await mount(); await click('Explore');
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'studio', area: 'creative_nav', element: 'nav_explore', nav_target: 'explore' });
+  expect(exploreViews()).toHaveLength(1);
+  expect(exploreViews()[0].properties).toMatchObject({ medium: 'all', has_project: true });
+  await click('Next');
+  expect(clicks().at(-1)).toMatchObject({ area: 'explore_spotlight', element: 'slide_select', slide_id: 'black-friday' });
+  expect(exploreViews()).toHaveLength(1);
+  await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });
+  await act(async () => inside('.om-studio-bar', 'Image to video').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'creative_studio', area: 'studio_bar', element: 'scene_tab', studio_id: 'cinema', scene_id: 'image-to-video' });
+  const nav = container.querySelector('.om-creative-navigation')!;
+  await act(async () => [...nav.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === 'Design Studio')!.click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'creative_studio', area: 'creative_nav', element: 'nav_studio', studio_id: 'design', in_overflow: false });
+  const { validProperties } = await import('../../../tracking/core.ts');
+  const { studioEvents } = await import('../../../tracking/events.ts');
+  for (const row of rows()) expect(validProperties(studioEvents, row.event as keyof typeof studioEvents, row.properties), JSON.stringify(row)).toBe(true);
+});
+
 it('shows mixed media in one Explore feed and opens templates and editing presets', async () => {
   await mount(); await click('Explore');
   const explore = container.querySelector('.om-explore')!;
@@ -440,14 +517,57 @@ it('shows mixed media in one Explore feed and opens templates and editing preset
   expect(scenes.map(card => card.dataset.scene)).toEqual(expect.arrayContaining(['image-edit', 'image-to-video', 'music', 'speech']));
   await click('Next');
   await click('Next');
-  expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('shot-image');
+  expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('hub-gemini-4');
   await click('Preview template Product Promo');
-  expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ explore: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   const preset = [...container.querySelectorAll<HTMLButtonElement>('.om-scene-tile')].find(button => button.textContent?.includes('Scored shortlist before shorts'));
   await act(async () => preset!.click());
   expect(page()).toMatchObject({ specialty: { id: 'shorts' }, skill: 'openmotion-shortlist-shorts' });
 });
+
+it('opens the Gemini 4 hub from the third Explore slide and returns with browser Back', async () => {
+  await mount();
+  await click('Explore');
+  await click('Next'); await click('Next');
+  expect(container.querySelector('.om-feature-slide:not([inert]) h2')?.textContent).toBe('Gemini 4 Neon');
+  await click('Try Gemini 4 Neon now');
+  expect(page()).toMatchObject({ explore: false, modelHub: 'gemini-4' });
+  expect(location.search).toContain('page=model-hub');
+  expect(location.search).toContain('hub=gemini-4');
+  expect(container.querySelector('.om-model-hub-hero h1')?.textContent).toBe('Gemini 4 Neon');
+  const wall = () => [...container.querySelectorAll<HTMLButtonElement>('.om-hub-video .om-gallery-cover')];
+  expect(wall()).toHaveLength(gemini4Videos.length);
+  await act(async () => wall()[0].click());
+  const detail = () => document.querySelector<HTMLDialogElement>('dialog.om-hub-video-detail')!;
+  const count = () => detail().textContent?.match(/(\d+) \/ \d+/)?.[1];
+  expect(count()).toBe('1');
+  expect(detail().querySelector<HTMLAnchorElement>('a[aria-label="Source"]')?.href).toMatch(/^https:\/\/x\.com\//);
+  const firstTitle = detail().querySelector('.om-media-detail-title')?.textContent;
+  await act(async () => detail().querySelector<HTMLButtonElement>('button[aria-label="Next template"]')!.click());
+  expect(count()).toBe('2');
+  expect(detail().querySelector('.om-media-detail-title')?.textContent).not.toBe(firstTitle);
+  expect(detail().querySelector('button[aria-label="Copy contribution brief"]')).toBeTruthy();
+  await act(async () => detail().querySelector<HTMLButtonElement>('button[aria-label="Close template preview"]')!.click());
+  expect(document.querySelector('dialog.om-hub-video-detail')).toBeNull();
+  expect(page().modelHub).toBe('gemini-4');
+  const tab = (label: string) => [...container.querySelectorAll<HTMLButtonElement>('.om-hub-videos nav button')].find(node => node.textContent === label)!;
+  expect(tab('Made in code')).toBeUndefined();
+  expect(tab('Gemini 4 Neon')).toBeUndefined();
+  await act(async () => tab('3D scene').click());
+  expect(wall().length).toBeGreaterThan(0);
+  expect(wall().length).toBeLessThan(gemini4Videos.length);
+  expect(wall().every(card => card.querySelector('.om-gallery-avatar'))).toBe(true);
+  await act(async () => tab('All').click());
+  expect(wall()).toHaveLength(gemini4Videos.length);
+  await click('Back to Explore');
+  expect(page()).toMatchObject({ explore: true, modelHub: null });
+  await act(async () => container.querySelector<HTMLElement>('.om-feature-slide:not([inert]) h2')!.click());
+  expect(page()).toMatchObject({ explore: false, modelHub: 'gemini-4' });
+  await traverse(-1);
+  expect(page().explore).toBe(true);
+});
+
 
 it('opens Motion Studio from the Explore spotlight and resumes the timeline on request', async () => {
   await mount();
@@ -458,7 +578,7 @@ it('opens Motion Studio from the Explore spotlight and resumes the timeline on r
   expect(page()).toMatchObject({ explore: false, motion: true });
   const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
   await act(async () => template.click());
-  expect(page()).toMatchObject({ motion: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   await click('Open editor');
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
@@ -534,17 +654,16 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     expect(hero.dataset.scene).toBe('black-friday');
     await click('Play');
     act(() => { vi.advanceTimersByTime(3500); });
-    expect(hero.dataset.scene).toBe('shot-image');
+    expect(hero.dataset.scene).toBe('hub-gemini-4');
     await act(async () => { vi.advanceTimersByTime(6000); });
-    expect(hero.dataset.scene).toBe('text-to-video');
-    expect(hero.querySelector('video[src]')?.getAttribute('src')).toMatch(/^blob:/);
+    expect(hero.dataset.scene).toBe('text-to-image');
     act(() => { observed.get(hero)!(false); cards.forEach(card => observed.get(card)!(false)); });
     expect(hero.querySelector('video[src]')).toBeNull();
     for (const card of cards) expect(card.querySelector('video[src]')).toBeNull();
     act(() => { vi.advanceTimersByTime(6000); });
-    expect(hero.dataset.scene).toBe('text-to-video');
-    await act(async () => hero.querySelector<HTMLButtonElement>('.om-media-segments [aria-label="Featured · Product portrait"]')!.click());
     expect(hero.dataset.scene).toBe('text-to-image');
+    await act(async () => hero.querySelector<HTMLButtonElement>('.om-media-segments [aria-label="Featured · Motion Studio"]')!.click());
+    expect(hero.dataset.scene).toBe('motion');
   } finally { vi.useRealTimers(); }
 });
 
@@ -558,17 +677,81 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   await click('View collection');
   expect(page()).toMatchObject({ explore: true, templates: true, blackFriday: true });
   expect(container.querySelector('[aria-label="Video purpose"]')).toBeNull();
-  const skill = container.querySelector<HTMLButtonElement>('[data-black-friday] .om-skill-gallery-card')!;
-  await act(async () => skill.click());
-  expect(page().skill).toBe('openmotion-sale-countdown');
-  expect(container.querySelector('.om-collection-skill aside .om-skill-form')).toBeTruthy();
-  expect(container.querySelector('.om-collection-skill aside .om-skill-prompt')).toBeTruthy();
-  const close = button('Close skill');
-  expect(document.activeElement).toBe(close);
-  await act(async () => close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
-  expect(page()).toMatchObject({ explore: true, templates: true, blackFriday: true, skill: null });
-  expect(document.activeElement).toBe(skill);
-  expect(container.querySelector('[data-black-friday] .om-skill-gallery-card')).toBe(skill);
+  const collection = container.querySelector<HTMLElement>('[data-black-friday]')!;
+  const getCarousel = () => collection.querySelector('section[aria-label="Black Friday Skills"]');
+  const carousel = getCarousel()!;
+  expect(collection.querySelector('header')?.nextElementSibling?.firstElementChild).toBe(carousel);
+  const filters = carousel.nextElementSibling!.querySelector('nav[aria-label="Black Friday collection"]')!;
+  expect(filters).toBeTruthy();
+  expect([...filters.querySelectorAll('button')].map(node => node.textContent)).toEqual([
+    'All', 'Before the sale', 'Sale launch', 'Cyber Monday and last call',
+  ]);
+  const allFilter = [...filters.querySelectorAll('button')].find(node => node.textContent === 'All')!;
+  const featured = () => getCarousel()?.querySelector<HTMLButtonElement>('[data-carousel-position="current"]')!;
+  expect(featured().getAttribute('aria-label')).toBe('Sale countdown');
+  expect(featured().querySelector('.om-gallery-card-shade')).toBeTruthy();
+  expect(document.getElementById(featured().getAttribute('aria-describedby')!)?.closest('button')).toBe(featured());
+  const carouselHeader = carousel.querySelector('h2')!.parentElement!;
+  expect(carouselHeader.querySelector('[aria-current="true"]')?.getAttribute('aria-label')).toBe('Sale countdown');
+  expect(featured().parentElement?.children).toHaveLength(3);
+  await act(async () => carousel.querySelector<HTMLButtonElement>('[data-carousel-position="next"]')!.click());
+  const promo = featured();
+  expect(promo.getAttribute('aria-label')).toBe('Holiday sale promo');
+  expect(carousel.querySelector('[aria-current="true"]')?.getAttribute('aria-label')).toBe('Holiday sale promo');
+  await act(async () => promo.querySelector<HTMLElement>('.om-gallery-card-arrow')!.click());
+  expect(page().skill).toBe('openmotion-sale-promo');
+  await click('Close skill');
+  expect(document.activeElement).toBe(promo);
+  const gallery = () => collection.querySelector('.om-gallery-masonry');
+  expect(gallery()?.children).toHaveLength(10);
+  expect(gallery()?.querySelectorAll('[data-template-id]')).toHaveLength(10);
+  expect(collection.querySelector('.om-skill-gallery-card')).toBeNull();
+  const search = collection.querySelector<HTMLInputElement>('input[type="search"]')!;
+  expect(search.placeholder).toBe('Search templates…');
+  const setKeyword = (keyword: string) => act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, keyword);
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const collectionUrl = location.href;
+  const collectionScroll = collection.closest('dialog')!;
+  collectionScroll.scrollTop = 240;
+  await click('Before the sale');
+  expect(collectionScroll.scrollTop).toBe(240);
+  expect(collection.querySelectorAll('[data-template-id]')).toHaveLength(2);
+  await setKeyword('Kuro');
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(1);
+  expect(collection.querySelector('[data-search-recovery]')).toBeNull();
+  expect(getCarousel()).toBe(carousel);
+  expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
+  expect(featured()).toBe(promo);
+  expect(allFilter.getAttribute('aria-pressed')).toBe('true');
+  await setKeyword('Black Friday');
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(10);
+  expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
+  await click('Sale launch');
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(6);
+  expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
+  await setKeyword('Sale countdown');
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(0);
+  expect(getCarousel()).toBe(carousel);
+  expect(featured()).toBe(promo);
+  await setKeyword('地方');
+  expect(location.href).toBe(collectionUrl);
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(0);
+  expect(getCarousel()).toBe(carousel);
+  expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
+  expect(collection.querySelector('[data-search-recovery] h2')?.textContent).toBe('No templates match the current conditions.');
+  expect(button('Edit search')).toBeUndefined();
+  await click('Make a video from a reference');
+  expect(collection.querySelector('[data-search-recovery] input[type="url"]')).toBe(document.activeElement);
+  await setKeyword('');
+  expect(location.href).toBe(collectionUrl);
+  expect(search.value).toBe('');
+  expect(collection.querySelector('[data-search-recovery]')).toBeNull();
+  expect(button('Before the sale').getAttribute('aria-pressed')).toBe('true');
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(2);
+  expect(collection.querySelector('.om-skill-gallery-card')).toBeNull();
+  expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
   await click('Back to Explore');
   expect(page()).toMatchObject({ explore: true, templates: false, blackFriday: false });
   expect(hero.dataset.scene).toBe('black-friday');

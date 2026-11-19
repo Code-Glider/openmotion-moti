@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
 /**
@@ -248,7 +249,7 @@ export function FxNodeOpenBody({
           aria-expanded={details}
           onClick={onToggleDetails}
         >
-          <span aria-hidden="true">{details ? "▾" : "▸"}</span>
+          <RemixIcon name={details ? "arrow-down-s-fill" : "arrow-right-s-fill"} size={12} />
           {t("Details:")}{" "}{t(registryDef.label)}
         </button>
       ) : (

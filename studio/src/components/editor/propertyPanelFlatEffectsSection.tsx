@@ -23,6 +23,7 @@ import {
   type EffectControl,
   type EffectSpec,
 } from "./propertyPanelFlatEffectSpecs";
+import { ColorField } from "./propertyPanelColor";
 import { FlatEffectControl } from "./propertyPanelFlatEffectControl";
 import { presetPreviewHandlers } from "./propertyPanelPresetPreview";
 
@@ -205,20 +206,21 @@ export function FlatEffectsSection({
                 <RotateCcw size={11} />
               </button>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="space-y-1.5">
               {palette.map((color, index) => (
-                <span key={`${index}-${color}`} className="group/swatch relative">
-                  <input
-                    type="color"
-                    aria-label={t("Palette color {value0}", { value0: index + 1 })}
-                    value={color}
-                    onChange={(event) => {
-                      const nextPalette = [...palette];
-                      nextPalette[index] = event.target.value;
-                      onCommitColorGrading({ ...grading, palette: nextPalette });
-                    }}
-                    className="h-6 w-6 cursor-pointer rounded-xs border border-panel-border-input bg-transparent p-0"
-                  />
+                <div key={index} className="flex items-center gap-1.5">
+                  <div className="min-w-0 flex-1">
+                    <ColorField
+                      label={t("Palette color {value0}", { value0: index + 1 })}
+                      value={color}
+                      opaque
+                      onCommit={(next) => {
+                        const nextPalette = [...palette];
+                        nextPalette[index] = next;
+                        onCommitColorGrading({ ...grading, palette: nextPalette });
+                      }}
+                    />
+                  </div>
                   {palette.length > 2 && (
                     <button
                       type="button"
@@ -229,12 +231,12 @@ export function FlatEffectsSection({
                           palette: palette.filter((_, colorIndex) => colorIndex !== index),
                         })
                       }
-                      className="absolute -right-1 -top-1 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-panel-bg text-panel-text-2 shadow-sm group-hover/swatch:flex"
+                      className="flex size-7 shrink-0 items-center justify-center rounded-md text-panel-text-2"
                     >
-                      <X size={8} />
+                      <X size={12} />
                     </button>
                   )}
-                </span>
+                </div>
               ))}
               {palette.length < 6 && (
                 <button

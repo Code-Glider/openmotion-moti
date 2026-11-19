@@ -31,7 +31,7 @@ Collapsible navigation uses explicit `data-collapsed` state for geometry and vis
 
 Product UI uses opaque, solid theme surfaces aligned with the shared controls. Menus and Popovers use `--motion-raised` through the common floating material recipe; do not introduce frosted glass, translucent content backgrounds or background blur. Modal scrims can dim the page with a uniform tint without blur. This rule does not alter authored video, imported artwork or their visual effects.
 
-Functional editor icons use Remix Icon 4.9.1, matching the [reference icon catalog](https://open-design-system-leon.leon-wcl.chatgpt.site/#/icons). Original vector paths are bundled in `packages/design-system/icons.svg`, with the upstream license and notice beside it. `packages/design-system/react/RemixIcons.tsx` provides the shared React interface and legacy-name mappings, with `studio/src/icons/RemixIcons.tsx` as a forwarding entry; `MotionIcon` uses the same vectors. React consumers inline the package-owned glyphs into their SVGs, with an explicit 24×24 viewBox and currentColor, so native-dialog controls remain visible when a sprite request would fail or the runtime disconnects. Static HTML can continue using the shared sprite URL. Brand avatars use the paired asset-logo background/ink tokens, providing a stable light backing for transparent source logos in either theme. Controls default to line icons; play/pause and explicit filled states retain distinct glyphs. Brand artwork and timeline drawing geometry remain separate. MVP side-panel tabs and the preview title use text without icons. A tab strip with only one panel shows a plain heading without a selected underline. Selected tabs use the strong neutral text token, semibold weight and a 2px neutral underline. Enabled toolbar toggles use the same strong text on an inset neutral background; inactive and disabled controls retain separate contrast levels.
+Functional editor icons use Remix Icon 4.9.1, matching the [reference icon catalog](https://open-design-system-leon.leon-wcl.chatgpt.site/#/icons). Original vector paths are bundled in `packages/design-system/icons.svg`, with the upstream license and notice beside it. `packages/design-system/react/RemixIcons.tsx` provides the shared React interface and legacy-name mappings, with `studio/src/icons/RemixIcons.tsx` as a forwarding entry; `MotionIcon` uses the same vectors. React consumers inline the package-owned glyphs into their SVGs, with an explicit 24×24 viewBox and currentColor, so native-dialog controls remain visible when a sprite request would fail or the runtime disconnects. Static HTML can continue using the shared sprite URL. Brand avatars use the paired asset-logo background/ink tokens, providing a stable light backing for transparent source logos in either theme. Controls default to line icons; play/pause and explicit filled states retain distinct glyphs. Brand artwork and timeline drawing geometry remain separate. MVP asset-side tabs place module icons above their labels; inspector tabs and the preview title use text without icons. A tab strip with only one panel shows a plain heading without a selected underline. Selected editor side-panel tabs use a rounded neutral surface and semibold text. Other selected tabs use the strong neutral text token, semibold weight and a 2px neutral underline. Enabled toolbar toggles use the same strong text on an inset neutral background; inactive and disabled controls retain separate contrast levels.
 
 The application header and template library share `packages/design-system/react/BrandLogo.tsx`, using the maintained `brand/openmotion-logo.svg` lockup: the unmodified upstream OpenDesign symbol with the OpenMotion name. The shared mask recipe follows the selected application theme through currentColor. Narrow editor headers show the same symbol without the wordmark. Original upstream assets and attribution remain in the package.
 
@@ -46,11 +46,14 @@ Provider settings and model choices use locally bundled brand icons from `provid
 | Floating menus | `#ffffff` | `#292b2c` |
 | Body text | `#494949` | `#e6e8e4` |
 | Secondary text | `#5c5c5c` | `#c0c4bd` |
-| Accent text | `#526909` | `#d3f953` |
-| Keyboard focus | `#5a7308` | `#d8fd68` |
-| Primary action | `#506800` | `#cafa28` |
+| Accent text | `#526909` | `#75ff77` |
+| Selected indicators | `#5a7308` | `#75ff77` |
+| Keyboard focus | N7 `#848484` | `#a0a69f` |
+| Primary action | N11 `#121212` | N2 `#f7f7f7` |
+| Primary action hover | N10 `#353535` | N4 `#dbdbdb` |
+| Primary action text | N0 `#ffffff` | N11 `#121212` |
 
-The interface uses lime for primary actions, focus and progress. Dark mode pairs a bright action surface with dark lettering. Light mode pairs a deeper olive surface with white lettering. Media controls use translucent charcoal and light lettering over artwork.
+Primary actions use the shared neutral palette across application buttons, editor controls and dialogs. Light mode pairs an N11 surface with N0 lettering and an N10 hover surface; dark mode pairs an N2 surface with N11 lettering and an N4 hover surface. Dark-theme accents and selected indicators use B4 green (`#75ff77`), with green hover and soft surfaces for navigation, badges, selections and timeline controls. The brand role is theme-specific so progress and media controls use the same green in dark mode; light-theme colors retain their existing values. Media controls use translucent charcoal and light lettering over artwork.
 
 The application header and left control rail share the `shell` background. The central workspace uses the `workspace` surface with a 4px outer inset and 10px corners; internal panel dividers remain local separators. Chrome icons use the muted `chrome-icon` role; `chrome-hover` and `chrome-active` provide distinct inset navigation states without raised shadows. Navigation width and opacity transition over 200ms while the editor and sidebar content stay mounted. Collapsed navigation is immediately inert and hidden from assistive technology; reduced motion disables transitions. The editor route shows the left control rail. Its Projects button toggles the project list. The OpenMotion wordmark returns to Explore and the account menu opens from the right edge of the header. When collapsed on desktop, a delayed hover reveals an opaque, anchored project-navigation preview using the same workspace surface, width, full workspace height and internal layout as the pinned sidebar. Its portal stays inside the application theme scope and follows the workspace bounds as the host resizes. The preview does not resize the editor or take focus; pointer travel into it is protected, and search focus keeps it open until dismissal. Mobile retains the click-operated drawer.
 
@@ -152,8 +155,10 @@ shared token source defines `gallery-surface`, `gallery-control`, `gallery-borde
 and `gallery-stage-wash` in both themes. Studio's template aliases consume these
 values alongside existing text, focus, selection, overlay and shadow tokens.
 Video-overlay text retains its media-specific contrast independently of the theme.
-The highlighted Submit video action uses `brand` and `on-brand`; secondary actions
-use the same neutral control and menu surfaces as the editor.
+Submission actions use the neutral primary-action roles in light mode and `brand`
+with `on-brand` in dark mode. The reference-video entry uses the shared outlined
+secondary button; other secondary actions use the same neutral control and menu
+surfaces as the editor.
 
 Sorting and industry pickers reuse Studio's Base UI `Menu` and radio items, with
 an inline portal inside the native dialog, keyboard navigation and consistent
@@ -167,7 +172,10 @@ and `om-field` recipes. The `om-search-field` variant keeps its icon, input and
 shortcut centered with one outer focus treatment; `om-filter-pill` retains the
 rounded category shape and semantic selected state. Search, categories, dropdowns
 and icon actions share the 32px control height, with 6px control corners, 16px
-icons and 8px gaps. The library owns responsive geometry: a 320px desktop search,
+icons and 8px gaps. In light mode, Template Library, Brand Kit and Skills category
+filters share N11 selected surfaces with N0 text and N10 hover surfaces; selected
+editorial labels inherit the same contrasting text. Dark-mode category colors
+retain their existing theme roles. The library owns responsive geometry: a 320px desktop search,
 a reserved GitHub badge width, equal industry/sort widths and a full-width search
 row on narrow screens. Long dropdown labels truncate without moving the chevron.
 
@@ -199,7 +207,7 @@ Browser acceptance includes actual open dropdowns, copy success/failure Toasts a
 
 The package-owned `studio/editor-workspace.css` defines continuous editor surfaces, panel dividers, layout-menu icon alignment and timeline control-column, row, grid and icon-control styling. Project navigation, dock panels, toolbars, preview transport and timeline boundaries use a single 1px line in the shared subtle-border role. Resize hit areas and active drag feedback retain their existing geometry. Studio supplies measured dock widths, row heights and tick spacing; both themes use the same semantic roles, and authored clip artwork remains independent.
 
-The dark theme layers a near-black shell, charcoal workspace and lighter graphite menus. Current navigation pairs lime lettering with an olive tint. Ordinary controls use a neutral hover surface. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
+The dark theme layers a near-black shell, charcoal workspace and lighter graphite menus. Current navigation pairs B4 green lettering with a deep green tint. Ordinary controls use a neutral hover surface. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
 
 ### Grouped discovery filters and alignment
 
