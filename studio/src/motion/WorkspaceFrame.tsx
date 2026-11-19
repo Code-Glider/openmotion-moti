@@ -132,7 +132,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [openSettings]);
   useEffect(() => {
     const query = window.matchMedia('(max-width: 999px)');
-    const update = () => setNarrow(query.matches);
+    const update = () => {
+      // Close the desktop list in the same render that enables the modal drawer.
+      if (query.matches) setSidebarOpen(false);
+      setNarrow(query.matches);
+    };
     query.addEventListener('change', update); return () => query.removeEventListener('change', update);
   }, []);
   useEffect(() => {
