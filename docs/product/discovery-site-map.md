@@ -4,12 +4,15 @@ Explore, modality menus and Studio shortcuts use one [catalogue](../../shared/st
 
 | Start | Choose | Address and next action |
 | --- | --- | --- |
-| Workspace root or OpenMotion wordmark | Explore | Opens Discover. Direct project links resume the editor. |
+| Workspace root or OpenMotion wordmark | Explore | Opens the full Explore feed. Direct project links resume the editor. |
 | Explore spotlight or primary navigation | Motion Studio | `?page=motion` opens the editable template collection. Choose Open editor to resume the current project on its timeline. |
-| Explore → Discover, below the community feed | Motion, Design, Cinema, Sound, Shorts, Marketing, Explainer and 3D collections | The button beside each heading opens its Studio. A media example opens its scene with an editable prompt. A technique opens its Skill brief. The media filter narrows the displayed examples. |
-| Explore | Motion design, Product films or Short-form video | `?page=explore&community=motion-design`, `product-films` or `short-form`. View a work, start a scene with its example, or open the corresponding Skill. |
-| Explore | Explainers or 3D motion | `?page=explore&community=explainers` or `3d-motion`. Choose a technique and edit its brief in its Studio. |
-| Explore → Creators | Catalogue credit or original post publisher | `?page=explore&templates=1&view=creators`. Selecting a credit adds `creator`. Selecting a work adds `template` and opens its preview. Opening a template detail elsewhere can also lead to that credit. |
+| Explore → Explore highlights | Model case studies, Black Friday collection, Claude workflows or Shorts Studio | Scroll through the cards or use the arrow buttons. Model cards jump to the corresponding gallery. The collection and Studio cards open their respective destinations. |
+| Explore → Seedance 2.5 or GPT Image 2.6 | Choose a case | The example opens its Studio with an editable prompt and a compatible provider-qualified model from the local catalogue. If the model is missing, the card offers a draft with a model of the user's choice. The provider-specific overview also shows compatible cases. |
+| Explore → Claude Fable 5.2 | Connect Claude Code or open a workflow | `?page=mcp&host=claude` opens setup. An optional `example` focuses the corresponding copyable handbook brief. The client supplies Fable and the workspace's media providers supply image and video generation. |
+| Explore, alongside model features and below the community feed | Motion, Design, Cinema, Sound, Shorts, Marketing, Explainer and 3D collections | The button beside each heading opens its Studio. A media example opens its scene with an editable prompt. A technique opens its Skill brief. All eight collections appear in reading order. |
+| Workspace search → Communities | Motion design, Product films or Short-form video | `?page=explore&community=motion-design`, `product-films` or `short-form`. View a work, start a scene with its example, or open the corresponding Skill. |
+| Workspace search → Communities | Explainers or 3D motion | `?page=explore&community=explainers` or `3d-motion`. Choose a technique and edit its brief in its Studio. |
+| Explore → Community showcase → Creators | Catalogue credit or original post publisher | `?page=explore&templates=1&view=creators`. Selecting a credit adds `creator`. Selecting a work adds `template` and opens its preview. Opening a template detail elsewhere can also lead to that credit. |
 | Image, Video or Audio label | Open its generator | Enter Design, Cinema or Sound Studio respectively. Use the Studio’s provider and model pickers to generate. Hover anywhere on the control or activate its arrow for scene and model shortcuts. |
 | Image menu | Create an image, edit a reference, compose a shot still | `?page=create&scene=text-to-image` or `image-edit`; shot stills open `?page=cinema&scene=shot-image`. |
 | Video menu | Generate from text or animate a first frame | `?page=create&scene=text-to-video` or `?page=cinema&scene=image-to-video`. From the still inspector, the first frame can be a specific saved asset version. |

@@ -2,11 +2,13 @@
 .om-explore-host[hidden] { display: none; }
 .om-explore { flex: 1; min-width: 0; overflow: auto; container: discovery / inline-size; }
 .om-discovery-page { width: min(100%, 1600px); margin-inline: auto; padding: var(--motion-space-24) clamp(var(--motion-space-16), 3vw, var(--motion-space-48)) var(--motion-space-56); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-32); }
+.om-community-picks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--motion-space-16); }
+.om-community-picks > .om-gallery-card { min-width: 0; margin: 0; }
+.om-community-picks .om-gallery-card-media, .om-community-picks[role="status"] > * { aspect-ratio: 16/9; }
+.om-community-picks .om-gallery-cover { height: 100%; }
 .om-explore-feed, .om-studio-collection { min-width: 0; }
-.om-explore-masthead, .om-discovery-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
-.om-explore-masthead h1 { font: var(--motion-weight-bold) clamp(var(--motion-text-display), 3.8vw, var(--motion-text-display-lg))/1.05 var(--motion-font-display); letter-spacing: -.045em; }
-.om-community-tabs { display: flex; gap: var(--motion-space-4); max-width: 100%; overflow-x: auto; }
-.om-community-tabs button { white-space: nowrap; flex: none; }
+.om-discovery-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
+.om-explore-title { font: var(--motion-weight-bold) clamp(var(--motion-text-display), 3.8vw, var(--motion-text-display-lg))/1.05 var(--motion-font-display); letter-spacing: -.045em; }
 .om-explore-features { display: grid; gap: var(--motion-space-16); }
 .om-explore-features[data-split="true"] { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 .om-discovery-hero, .om-featured-template, .om-featured-template-skeleton { position: relative; min-width: 0; min-height: clamp(275px, 25vw, 365px); overflow: hidden; border-radius: var(--motion-radius-xl); }
@@ -60,7 +62,6 @@
 .om-discovery-heading { margin-bottom: var(--motion-space-16); }
 .om-discovery-heading h2, .om-capability-index h2 { font: var(--motion-weight-semibold) clamp(var(--motion-text-heading), 2.5vw, var(--motion-text-display-sm))/1.15 var(--motion-font-display); letter-spacing: -.035em; }
 .om-discovery-heading p { margin-top: var(--motion-space-6); font-size: var(--motion-text-body); }
-.om-discovery-heading .om-choice-tabs .om-nav-item { flex: none; white-space: nowrap; }
 .om-feed-group {
   --feed-columns: 3;
   display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--motion-space-24) var(--motion-space-16);
@@ -116,14 +117,17 @@
   .om-feed-group > :nth-child(3n):nth-last-child(2) + :last-child { flex-basis: calc(50% - var(--motion-space-16)); }
 }
 @container discovery (max-width: 850px) { .om-feed-group { --feed-columns: 2; } .om-capability-columns { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@container discovery (max-width: 850px) {
+  .om-community-picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @container discovery (max-width: 600px) {
   .om-discovery-page { gap: var(--motion-space-20); padding: var(--motion-space-16); }
-  .om-studio-collection-cards {
+  .om-studio-collection-cards, .om-community-picks {
     grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: min(80%, 18rem);
     overflow-x: auto; scroll-snap-type: x proximity;
     padding: var(--motion-space-4); margin-inline: calc(-1 * var(--motion-space-4));
   }
-  .om-studio-collection-cards > button { scroll-snap-align: start; }
+  .om-studio-collection-cards > button, .om-community-picks > * { scroll-snap-align: start; }
   .om-studio-collection-cards:has(> :only-child) { grid-auto-columns: 100%; }
   .om-explore-features[data-split="true"] { grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-8); }
   .om-discovery-hero, .om-featured-template-skeleton { min-height: 245px; }
@@ -161,3 +165,33 @@
 .om-studio-techniques-title { margin-block: var(--motion-space-24) var(--motion-space-16); }
 @container (max-width: 900px) { .om-studio-template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 420px) { .om-studio-template-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.om-stories-rail, .om-story-gallery { display: grid; gap: var(--motion-space-16); align-items: start; }
+.om-stories-rail {
+  grid-auto-flow: column; grid-auto-columns: clamp(min(78%, 16rem), 27%, 26rem);
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: var(--motion-space-4);
+  padding: var(--motion-space-4); margin-inline: calc(-1 * var(--motion-space-4));
+}
+.om-stories-rail > article { scroll-snap-align: start; }
+.om-story-item { min-width: 0; }
+.om-story-credit { display: block; padding-inline: var(--motion-space-4); margin-top: var(--motion-space-4); color: var(--motion-muted); font-size: var(--motion-text-xs); }
+.om-story-credit .om-text-link { font-size: inherit; }
+.om-story-card { align-content: start; }
+.om-story-card .om-scene-tile-art { aspect-ratio: 16 / 9; }
+.om-story-card .om-gallery-poster, .om-story-card .om-gallery-poster img { object-position: inherit; }
+.om-story-gallery { grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr)); }
+.om-story-gallery .om-scene-tile-art { height: clamp(150px, 16cqw, 245px); aspect-ratio: auto; }
+.om-story-model-title, .om-claude-intro { display: flex; gap: var(--motion-space-12); }
+.om-story-model-title { align-items: center; }
+.om-story-action-skeleton { width: 8rem; height: var(--motion-control); }
+.om-claude-stories { display: grid; grid-template-columns: minmax(0, .9fr) repeat(2, minmax(0, 1fr)); gap: var(--motion-space-24); }
+.om-claude-intro { flex-direction: column; align-items: flex-start; justify-content: center; }
+.om-claude-intro .om-discovery-heading { margin-bottom: 0; }
+@container discovery (max-width: 700px) {
+  .om-story-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .om-story-gallery > :first-child { grid-column: 1 / -1; }
+  .om-story-gallery .om-scene-tile-art { height: auto; aspect-ratio: 16 / 10; }
+  .om-story-gallery > :first-child .om-scene-tile-art { aspect-ratio: 2 / 1; }
+  .om-claude-stories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .om-claude-intro { grid-column: 1 / -1; }
+}
