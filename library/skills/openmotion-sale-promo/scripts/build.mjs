@@ -5,7 +5,7 @@
 //   node scripts/build.mjs offer.json out/ [--aspect 9:16|4:5|1:1|16:9] [--duration 10|15] [--no-credit]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SIZES, esc, width, money, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit, tape, badge, echo } from './film.mjs';
+import { SIZES, esc, width, money, minorDigits, price, theme, checkImage, project, readData, credit, parseDate, validISO, fit, tape, badge, echo } from './film.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -131,7 +131,8 @@ ${tape('tape', tapeText, t, W, H, { y: portrait ? 0.9 : 0.88, size: px(wide ? 56
 ${noCredit ? '' : credit(t, px(26)).replace('opacity:.72', 'opacity:0').replace(/bottom:\d+px/, `bottom:${Math.round(H * (portrait ? 0.15 : 0.17))}px`)}`;
 
 const f = v => v.toFixed(2);
-const nowFmt = `new Intl.NumberFormat(${JSON.stringify(loc)},{style:'currency',currency:${JSON.stringify(cur)},minimumFractionDigits:${Math.abs(p.now - Math.round(p.now)) < 0.005 ? 0 : 2},maximumFractionDigits:2})`;
+const digits = minorDigits(cur), unit = 10 ** digits;
+const nowFmt = `new Intl.NumberFormat(${JSON.stringify(loc)},{style:'currency',currency:${JSON.stringify(cur)},minimumFractionDigits:${Math.abs(p.now - Math.round(p.now)) < 0.5 / unit ? 0 : digits},maximumFractionDigits:${digits}})`;
 const script = `
 // world: continuous camera, grain, tape and badge
 tl.fromTo('#phi',{scale:1.22},{scale:1.02,duration:${f(B.end)},ease:'none'},0);
@@ -161,7 +162,7 @@ tl.to('#cimg',{opacity:0,duration:.3},${f(B.cta - 0.15)});` : ''}
 tl.fromTo('#pcol',{opacity:0,y:${px(40)}},{opacity:1,y:0,duration:.4,ease:'power3.out'},${f(B.price + 0.2)});
 tl.fromTo('#strike',{scaleX:0},{scaleX:1,duration:.3,ease:'power2.out'},${f(B.price + 0.6)});
 const fmt=${nowFmt};const nowEl=document.querySelector('#root #now');const o={v:${p.was}};
-tl.fromTo(o,{v:${p.was}},{v:${p.now},duration:.7,ease:'power3.out',onUpdate:()=>{nowEl.textContent=fmt.format(Math.round(o.v*100)/100)}},${f(B.price + 0.95)});
+tl.fromTo(o,{v:${p.was}},{v:${p.now},duration:.7,ease:'power3.out',onUpdate:()=>{nowEl.textContent=fmt.format(Math.round(o.v*${unit})/${unit})}},${f(B.price + 0.95)});
 tl.fromTo('#tag',{opacity:0,scale:0,rotation:-40},{opacity:1,scale:1,rotation:-10,duration:.45,ease:'back.out(2)'},${f(B.price + 1.6)});
 tl.to(['#pcol','#tag'],{opacity:0,duration:.3},${f(B.code - 0.3)});
 // code and deadline beside the card, held still
