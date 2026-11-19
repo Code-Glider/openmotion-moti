@@ -102,6 +102,7 @@ export function DockStripActions({
   const menuPanels = isPanelId(first) ? panelsInZone(PANEL_DEFINITIONS[first].zone) : [];
   return (
     <div className="hf-dock-strip-actions">
+      {previewGroup && <DockHeaderSlot id="preview" />}
       <Menu
         align="end"
         aria-label={t("Panel menu")}
