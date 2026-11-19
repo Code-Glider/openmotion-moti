@@ -85,6 +85,21 @@ test('sale prices are computed in whole cents', async t => {
   assert.match(check.stdout, /\$2\.01 → \$1\.01 \(50% off, save \$1\)/);
 });
 
+test('sale prices use each currency\'s own minor unit', async t => {
+  const root = await isolated(t), base = JSON.parse(await readFile('tests/fixtures/holiday-sale/offer.json', 'utf8'));
+  const cases = [
+    ['KWD', d => { d.product.was = 1.005; d.product.now = 0.5; delete d.product.discount; }, /KWD\s?1\.005 → KWD\s?0\.5\d* \(50% off, save KWD\s?0\.505\)/],
+    ['JPY', d => { d.product.was = 9800; d.product.discount = { percent: 30 }; }, /¥9,800 → ¥6,860 \(30% off, save ¥2,940\)/],
+  ];
+  for (const [currency, edit, expected] of cases) {
+    const data = structuredClone(base); data.currency = currency; edit(data);
+    const file = path.join(root, `offer-${currency}.json`); await writeFile(file, JSON.stringify(data));
+    const check = spawnSync(process.execPath, [path.resolve('library/skills/openmotion-sale-promo/scripts/build.mjs'), '--check', file], { encoding: 'utf8' });
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, expected);
+  }
+});
+
 test('holiday-sale --check rejects offers that would show a wrong or impossible number', async t => {
   const root = await isolated(t);
   const cases = [

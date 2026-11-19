@@ -156,6 +156,6 @@ ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f
 tl.set({}, {}, ${f(B.end)});`;
 
 const out = path.resolve(outDir);
-const { total } = await project({ here, out, inputDir, W, H, dur: B.end, title: `${data.brand.name} · ${data.occasion} countdown`, css, body, script, images });
-await writeFile(path.join(out, 'countdown.json'), JSON.stringify({ ...data, aspect, computed: { value, unit, from: start } }, null, 2));
+const { total, src: copiedAs } = await project({ here, out, inputDir, W, H, dur: B.end, title: `${data.brand.name} · ${data.occasion} countdown`, css, body, script, images });
+await writeFile(path.join(out, 'countdown.json'), JSON.stringify({ ...data, ...(data.images ? { images: images.map(im => copiedAs(im) || im) } : {}), aspect, computed: { value, unit, from: start } }, null, 2));
 console.log(`✓ ${data.brand.name}: ${data.occasion} ${L[mode]} ${value} ${L[unit]}, ${aspect}, ${total.toFixed(1)} s → ${out}`);

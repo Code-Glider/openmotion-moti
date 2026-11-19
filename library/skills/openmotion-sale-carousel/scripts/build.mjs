@@ -37,7 +37,7 @@ const prices = items.map((it, i) => {
   else if (width(it.name) > 26) errors.push(`products[${i}].name "${it.name}" is longer than 26 characters`);
   if (!it.image) errors.push(`products[${i}].image is required: every card shows the real product`);
   checkImage(it.image, inputDir, `products[${i}].image`, errors);
-  return price(it, `products[${i}]`, errors);
+  return price(it, `products[${i}]`, errors, data.currency || 'USD');
 });
 try { new Intl.NumberFormat(data.locale || 'en-US', { style: 'currency', currency: data.currency || 'USD' }); } catch { errors.push(`currency "${data.currency}" or locale "${data.locale}" is not valid`); }
 if (data.code && !/^[A-Z0-9-]{3,16}$/.test(data.code)) errors.push(`code "${data.code}" must be 3-16 capital letters, digits or hyphens`);
@@ -146,6 +146,6 @@ ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f
 tl.set({}, {}, ${f(dur)});`;
 
 const out = path.resolve(outDir);
-const { total } = await project({ here, out, inputDir, W, H, dur, title: `${data.brand.name} · ${data.title}`, css, body, script, images: items.map(it => it.image) });
-await writeFile(path.join(out, 'carousel.json'), JSON.stringify({ ...data, aspect, computed: items.map((it, i) => ({ name: it.name, was: prices[i].was, now: prices[i].now, percentOff: prices[i].percent })) }, null, 2));
+const { total, src: copiedAs } = await project({ here, out, inputDir, W, H, dur, title: `${data.brand.name} · ${data.title}`, css, body, script, images: items.map(it => it.image) });
+await writeFile(path.join(out, 'carousel.json'), JSON.stringify({ ...data, products: items.map(it => ({ ...it, image: copiedAs(it.image) || it.image })), aspect, computed: items.map((it, i) => ({ name: it.name, was: prices[i].was, now: prices[i].now, percentOff: prices[i].percent })) }, null, 2));
 console.log(`✓ ${data.brand.name}: ${n} products, ${aspect}, ${total.toFixed(1)} s → ${out}`);

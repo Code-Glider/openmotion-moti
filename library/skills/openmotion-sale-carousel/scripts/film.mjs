@@ -22,22 +22,29 @@ export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;'
 // Display width in "Latin character" units; CJK counts double.
 export const width = s => [...String(s ?? '')].reduce((n, ch) => n + (/[　-鿿＀-￯]/.test(ch) ? 2 : 1), 0);
 
+// Decimal places of the currency's minor unit: 2 for USD, 0 for JPY, 3 for KWD.
+export function minorDigits(currency = 'USD') {
+  try { return new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits; }
+  catch { return 2; }
+}
 export function money(value, currency = 'USD', locale = 'en-US') {
-  const whole = Math.abs(value - Math.round(value)) < 0.005;
-  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(value);
+  const digits = minorDigits(currency);
+  const whole = Math.abs(value - Math.round(value)) < 0.5 / 10 ** digits;
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: whole ? 0 : digits, maximumFractionDigits: digits }).format(value);
 }
 export const round2 = v => Math.round(v * 100) / 100;
 
 // Resolve an offer's price fields into exact numbers. Exactly one of discount.percent,
 // discount.amount or now may be given; everything shown on screen is derived from was.
-export function price(item, where, errors) {
+export function price(item, where, errors, currency = 'USD') {
   const was = item.was;
   if (typeof was !== 'number' || !(was > 0)) { errors.push(`${where}.was must be a positive number`); return null; }
   const d = item.discount || {};
   const given = ['percent', 'amount'].filter(k => d[k] != null).length + (item.now != null ? 1 : 0);
   if (given !== 1) { errors.push(`${where} needs exactly one of discount.percent, discount.amount or now`); return null; }
-  // Work in whole cents so rounding is exact; a percentage rounds half-cents up.
-  const cents = v => Math.round(v * 100);
+  // Work in whole minor units (cents, fils, yen) so rounding is exact; a percentage rounds half-units up.
+  const unit = 10 ** minorDigits(currency);
+  const cents = v => Math.round(v * unit);
   const wasC = cents(was);
   let nowC;
   if (d.percent != null) {
@@ -59,8 +66,8 @@ export function price(item, where, errors) {
   const percent = Math.min(99, Math.max(1, Math.round((1 - nowC / wasC) * 100)));
   const saveC = wasC - nowC;
   // Headline framing: a percentage for higher prices, a flat amount for low prices, unless the data chose.
-  const framing = d.amount != null ? 'amount' : d.percent != null ? 'percent' : (saveC < 1000 || percent < 10 ? 'amount' : 'percent');
-  return { was: wasC / 100, now: nowC / 100, percent, save: saveC / 100, framing };
+  const framing = d.amount != null ? 'amount' : d.percent != null ? 'percent' : (saveC < 10 * unit || percent < 10 ? 'amount' : 'percent');
+  return { was: wasC / unit, now: nowC / unit, percent, save: saveC / unit, framing };
 }
 
 export const ISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-](\d{2}):(\d{2}))$/;

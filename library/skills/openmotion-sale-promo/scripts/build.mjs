@@ -33,7 +33,7 @@ else if (width(data.occasion) > 18) errors.push(`occasion "${data.occasion}" is 
 if (!data.product?.name) errors.push('product.name is required');
 else if (width(data.product.name) > 30) errors.push(`product.name "${data.product.name}" is longer than 30 characters`);
 checkImage(data.product?.image, inputDir, 'product.image', errors);
-const p = data.product ? price(data.product, 'product', errors) : null;
+const p = data.product ? price(data.product, 'product', errors, data.currency || 'USD') : null;
 try { new Intl.NumberFormat(data.locale || 'en-US', { style: 'currency', currency: data.currency || 'USD' }); } catch { errors.push(`currency "${data.currency}" or locale "${data.locale}" is not valid`); }
 if (!data.code) errors.push('code is required: the promo code shown on screen');
 else if (!/^[A-Z0-9-]{3,16}$/.test(data.code)) errors.push(`code "${data.code}" must be 3-16 capital letters, digits or hyphens`);
@@ -179,7 +179,7 @@ ${noCredit ? '' : `tl.fromTo('#credit',{opacity:0},{opacity:.75,duration:.4},${f
 tl.set({}, {}, ${f(B.end)});`;
 
 const out = path.resolve(outDir);
-const { total } = await project({ here, out, inputDir, W, H, dur, title: `${data.brand.name} · ${data.occasion} promo`, css, body, script, images: [img] });
+const { total, src: copiedAs } = await project({ here, out, inputDir, W, H, dur, title: `${data.brand.name} · ${data.occasion} promo`, css, body, script, images: [img] });
 const { writeFile } = await import('node:fs/promises');
-await writeFile(path.join(out, 'offer.json'), JSON.stringify({ ...data, aspect, duration: dur, computed: { was: p.was, now: p.now, percentOff: p.percent, save: p.save } }, null, 2));
+await writeFile(path.join(out, 'offer.json'), JSON.stringify({ ...data, product: { ...data.product, image: copiedAs(img) || data.product.image }, aspect, duration: dur, computed: { was: p.was, now: p.now, percentOff: p.percent, save: p.save } }, null, 2));
 console.log(`✓ ${data.brand.name}: ${$(p.was)} → ${$(p.now)}, ${aspect}, ${total.toFixed(1)} s → ${out}`);
