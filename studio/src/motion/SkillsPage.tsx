@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -175,6 +176,7 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
     } : undefined}>
     <StudioToastViewport {...toast} />
     {!detailOnly && <div ref={main} className="om-skills-main">
+      {studio && onExplore && <WorkspaceBack fallback={onExplore} />}
       <main className="om-gallery-results">
         {studio ? <section className="om-specialty-intro">
           <div><h1 className="om-title">{t(studio.title)}</h1><p className="om-muted">{t(studio.briefHint)}</p>
@@ -194,7 +196,7 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
         </section>}
         <div className="om-gallery-sticky-header">
           <div className="om-gallery-toolbar om-skills-toolbar">
-            {studio ? <button className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</button> : <div ref={categories} className="om-gallery-categories om-overflow-fade" data-neutral data-fade-start={categoryEdges.start} data-fade-end={categoryEdges.end} role="group" aria-label={t('Skill category')}>
+            {!studio && <div ref={categories} className="om-gallery-categories om-overflow-fade" data-neutral data-fade-start={categoryEdges.start} data-fade-end={categoryEdges.end} role="group" aria-label={t('Skill category')}>
               <button aria-pressed={!category} onClick={() => pickCategory(null)}>{t('All')}</button>
               {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => pickCategory(value)}>{t(value)}</button>)}
             </div>}

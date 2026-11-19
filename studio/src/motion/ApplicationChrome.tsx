@@ -21,7 +21,8 @@ import { WorkspaceSearch } from './WorkspaceSearch';
 
 const avatarSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
-export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommunity, openSettings, toggleResourceRail, ...navigation }: Omit<CreativeNavigationProps, 'openProviders'> & {
+export function ApplicationHeader({ settings, atExploreHome, onSkill, openAsset, onCommunity, openSettings, toggleResourceRail, ...navigation }: CreativeNavigationProps & {
+  onSkill: (id: string) => void;
   atExploreHome: boolean;
   settings: SettingsSection | null;
   toggleResourceRail?: () => void;
@@ -30,7 +31,7 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
   onCommunity: (community: ExploreCommunity) => void;
 }) {
   const { t } = useI18n();
-  const { openAssets, assetsOpen, openHome, openModelSettings, navigationCollapsed } = useWorkspaceChrome();
+  const { openAssets, assetsOpen, openHome, navigationCollapsed } = useWorkspaceChrome();
   const homeHint = atExploreHome ? undefined : t('Back to Explore');
   const header = useRef<HTMLElement>(null);
   const [compactActions, setCompactActions] = useState(false);
@@ -46,7 +47,7 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
       <RemixIcon name={assetsOpen ? 'folder-open-fill' : 'folder-line'} size={17} />{closeMenu && t('Workspace assets')}
     </button>;
     return <>
-      <WorkspaceSearch onChoose={closeMenu} onSkill={navigation.onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={() => openSettings('account')} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
+      <WorkspaceSearch onChoose={closeMenu} onSkill={onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={() => openSettings('account')} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
       {closeMenu ? assets : <Tooltip label={t('Workspace assets')}>{assets}</Tooltip>}
     </>;
   }
@@ -54,7 +55,7 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
   return <header ref={header} className="om-app-header">
     {toggleResourceRail && <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><IconButton type="button" onClick={toggleResourceRail} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')} icon={<RemixIcon name="side-bar-line" size={16} />} /></Tooltip>}
     <Tooltip label={homeHint}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></button></Tooltip>
-    <CreativeNavigation {...navigation} openProviders={openModelSettings} overflowActions={compactActions ? workspaceActions : undefined} />
+    <CreativeNavigation {...navigation} overflowActions={compactActions ? workspaceActions : undefined} />
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>

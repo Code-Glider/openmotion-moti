@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import { reviewCommentsPrompt } from '../../../shared/review-comments';
 import { canvasPresets } from '../../../shared/composition-canvas';
 import { PlatformIcon } from '../../../packages/design-system/react/PlatformIcon';
@@ -19,12 +20,12 @@ import { useCommunityLink } from './CommunityLink';
 import { findTechniqueStudio } from '../../../shared/studio-catalog';
 import { studioSkillDefaults, skillShotPrompt, localizedSkillPrompt, motionSkills } from './skillCatalog';
 import { mcpCapabilities, mcpScenarios, searchRecoveryExample, platformExportExample, mcpBenefits, mcpReviewGuide, mcpFaq, mcpWorkflowComparison, mcpClientComparison } from './mcpCapabilities';
-import { mcpClients as clients } from './mcpClients';
+import { mcpClients as clients, supportsLocalConnection } from './mcpClients';
 import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import * as tracking from './pageTracking';
 import './McpConnectionPage.css';
 
-export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId }: { openLibrary: (trigger?: HTMLElement, templateId?: string) => void; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string }) {
+export function McpConnectionPage({ onBack, openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId }: { onBack?: () => void; openLibrary: (trigger?: HTMLElement, templateId?: string) => void; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string }) {
   const { t, locale } = useI18n(), toast = useToast();
   const community = useCommunityLink();
   const { info, failed, retry } = useIntegrationInfo();
@@ -52,7 +53,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
   const scrollTo = (id: string) => { click('mcp_footer', 'scroll_to_section', { section_id: id }); page.current?.querySelector<HTMLElement>(`#${id}`)?.scrollIntoView({ block: 'start' }); };
-  const supported = client.host !== 'chatgpt';
+  const supported = supportsLocalConnection(client);
   const language = locale === 'zh-CN' ? 'zh-CN' : 'en';
   const prompt = setupPrompt(info, client.host, language).replace('MCP / CLI', client.name);
   const manual = info ? manualConnection(info, client.host, language) : '';
@@ -84,7 +85,18 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
     try { await navigator.clipboard.writeText(instruction); toast.showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'clipboard_written', clientKey, { capability: item.id, includesSetup: item.id !== 'platform-export' && item.id !== 'review-comments' }); }
     catch { setManualScenario({ id: item.id, text: instruction }); toast.showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'failed', clientKey, { capability: item.id, includesSetup: item.id !== 'platform-export' && item.id !== 'review-comments' }); }
   };
-  return <main ref={page} className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
+  return <Tabs value={client.id} onValueChange={value => {
+    const selected = clients.find(item => item.id === value);
+    if (!selected) return;
+    setClientId(selected.id);
+    click('mcp_client', 'client_tab', { mcp_client: selected.id });
+  }} render={<main ref={page} className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()} />}>
+    <div className="om-page-back-row om-mcp-client-row">
+      {onBack && <WorkspaceBack fallback={onBack} inline />}
+      <TabsList className="om-mcp-client-tabs" aria-label={t('Agent client')}>
+        {clients.filter(supportsLocalConnection).map(item => <Tab value={item.id} key={item.id}><ClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}
+      </TabsList>
+    </div>
     <div className="om-mcp-content">
       <section className="om-mcp-hero om-mcp-section">
         <div className="om-mcp-art" aria-hidden="true">
@@ -95,8 +107,6 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
         <p className="om-mcp-eyebrow">OPENMOTION × MCP</p>
         <h1 id="mcp-title" ref={heading} tabIndex={-1}>{t('Create in {agent}', { agent: t(client.name) })}<br /><span>{t('Make it move with OpenMotion.')}</span></h1>
         <p className="om-mcp-lead">{t('Create through MCP in your Agent. Keep projects, assets and versions in OpenMotion, ready to edit and reuse.')}</p>
-        <Tabs value={client.id} onValueChange={value => { setClientId(String(value)); click('mcp_client', 'client_tab', { mcp_client: (clients.find(item => item.id === String(value))?.id ?? 'codex') as tracking.McpClient }); }}>
-          <TabsList className="om-mcp-client-tabs" aria-label={t('Agent client')}>{clients.map(item => <Tab value={item.id} key={item.id}><ClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}</TabsList>
           {clients.map(item => <TabPanel value={item.id} key={item.id}>
             <div className="om-mcp-setup-tray">
               {!supported ? <div className="om-card om-mcp-unavailable"><RemixIcon name="information-line" size={28} /><h2>{t('Remote connection unavailable')}</h2><p>{t('ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.')}</p><pre className="om-code-block">{manual}</pre><button className="om-button" onClick={() => { click('mcp_setup', 'use_local_agent'); setClientId('codex'); }}>{t('Use a local Agent')}</button></div> : <div className="om-mcp-setup-grid">
@@ -114,7 +124,6 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
               </div>}
             </div>
           </TabPanel>)}
-        </Tabs>
       </section>
 
       <McpTemplateShowcase scroller={page} enabled={previewsEnabled} canCopy={Boolean(info && supported)} openLibrary={openLibrary('mcp_templates')} onCategory={value => click('mcp_templates', 'category_select', { option: value })} onCopy={template => { if (info) void copy(`${prompt}\n\n${templatePrompt(info, client.host, template, locale)}`, { kind: 'template', template: template.id, includesSetup: true }); }} />
@@ -142,7 +151,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
       </footer>
 
     </div><StudioToastViewport {...toast} />
-  </main>;
+  </Tabs>;
 }
 
 function ComparisonTable({ label, columns, rows, featured = false }: { label: string; columns: readonly string[]; rows: readonly (readonly string[])[]; featured?: boolean }) {

@@ -100,8 +100,9 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion, onOpenBlack
     };
   }, [index, playing]);
 
-  const step = (delta: number) => setIndex(current => (current + delta + slides.length) % slides.length);
+
   return <section ref={root} className="om-discovery-hero om-feature-carousel" data-scene={slides[index].id} aria-label={t('Featured')}
+    onFocus={() => setReadingSlide(true)} onBlur={event => setReadingSlide(event.currentTarget.contains(event.relatedTarget))}
     style={{ '--slide-duration': slideDuration + 'ms', '--slide-play-state': playing ? 'running' : 'paused' } as CSSProperties}>
     {slides.map((slide, i) => {
       const current = i === index;
@@ -115,7 +116,7 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion, onOpenBlack
           {current && active && visible && slide.clip && <FeaturedClip src={slide.clip} poster={slide.poster} playing={playing} />}
         </div></div>
         {slide.credit && <small className="om-scene-credit">{slide.credit}</small>}
-        <div className="om-discovery-hero-copy" onFocus={() => setReadingSlide(true)} onBlur={() => setReadingSlide(false)}>
+        <div className="om-discovery-hero-copy">
           <span><RemixIcon name={slide.icon} size={16} />{t(slide.subtitle)}</span>
           <h2>{t(slide.title)}</h2><p>{t(slide.hint)}</p>
           {slide.hub ? <button className="om-button" data-primary="media" onClick={() => { track('slide_action', { slide: slide.id, position: i }); onModelHub(slide.hub!); }}>
@@ -131,15 +132,10 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion, onOpenBlack
         </div>
       </div>;
     })}
-    <div className="om-feature-controls om-media-pagination">
-      <button type="button" aria-label={t(paused ? 'Play' : 'Pause')} onClick={() => { track('slide_toggle', { selected: paused, slide: slides[index].id }); setPaused(!paused); }}><RemixIcon name={paused ? 'play-fill' : 'pause-fill'} size={16} /></button>
-      <div className="om-media-segments">
-        {slides.map((slide, i) => <button type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => { track('slide_select', { slide: slide.id, position: i }); setIndex(i); }}>
-          <span className="om-media-track">{i === index && <span className="om-media-progress" style={{ animationPlayState: playing ? 'running' : 'paused' }} />}</span>
-        </button>)}
-      </div>
-      <button type="button" aria-label={t('Previous')} onClick={() => { track('slide_select', { slide: slides[(index - 1 + slides.length) % slides.length].id }); step(-1); }}><RemixIcon name="arrow-right-s-line" mirrored size={16} /></button>
-      <button type="button" aria-label={t('Next')} onClick={() => { track('slide_select', { slide: slides[(index + 1) % slides.length].id }); step(1); }}><RemixIcon name="arrow-right-s-line" size={16} /></button>
+    <div className="om-feature-controls om-media-pagination om-media-segments" role="group" aria-label={t('Featured')}>
+      {slides.map((slide, i) => <button type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => { track('slide_select', { slide: slide.id, position: i }); setIndex(i); }}>
+        <span className="om-media-track" />
+      </button>)}
     </div>
   </section>;
 }

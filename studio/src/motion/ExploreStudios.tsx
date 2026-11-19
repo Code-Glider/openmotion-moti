@@ -276,7 +276,7 @@ export function ExploreStudios(props: ExploreProps) {
   const root = useRef<HTMLElement>(null);
   const community = exploreCommunities.find(item => item.id === props.filters.community);
   return <main ref={root} className="om-explore">
-    <div className="om-discovery-page">
+    <div className="om-discovery-page om-explore-sections">
       <header className="om-explore-masthead"><h1>{t('Explore')}</h1>
         <nav className="om-community-tabs om-choice-tabs" aria-label={t('Communities')}>
           <button className="om-nav-item" aria-pressed={!community} onClick={() => { track('explore_tabs', 'community_tab', { community: 'discover' }); props.onFilter({ community: null, medium: null }); }}>{t('Discover')}</button>

@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import type { RefObject } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -37,7 +38,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
   return <div className="om-assets-host om-creative-workspace">
     <header className="om-studio-bar">
-      {studio.surface === 'techniques' ? <button className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination)); onCollection(studio); }} aria-label={t('Back to {studio}', { studio: t(studio.title) })}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Skills')}</span></button> : <button className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', destinationTarget(destination)); onExplore(); }} aria-label={t('Back to Explore')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Explore')}</span></button>}
+      <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', studio.surface === 'techniques' ? 'open_skills' : 'back_to_explore', destinationTarget(destination))} fallback={studio.surface === 'techniques' ? () => onCollection(studio) : onExplore} />
       <h1 className="om-subtitle"><span className="om-creation-icon" data-tone={scene.modality}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
       {destination.landing ? <button className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onNavigate(studioDestination(studio, scene.id, destination.model)); }}>
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />

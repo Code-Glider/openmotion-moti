@@ -224,7 +224,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (target === 'mcp') connectionEntry.current = 'app_header';
     navigatePage(target === 'explore' ? { explore: true, templates: false, ...(page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills ? { community: page.community, medium: page.medium } : lastExplore.current) } : { settings: 'mcp', templates: false, ...(client && { client, setup: 'agent' }) });
   };
-  const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} onSkill={openSkill} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} openProviders={value.openModelSettings} />;
+  const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" specialty={page.specialty} onChooseStudio={chooseStudio} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} />;
   const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday} collectionSkillOpen={page.blackFriday && Boolean(page.skill)}
     onBrowseTemplates={() => navigatePage({ blackFriday: false, skill: null, template: null })}
     onOpenSkill={(skill, trigger) => {
@@ -244,7 +244,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     <Dialog.Root open={sidebarOpen && narrow && editorActive} onOpenChange={setSidebarOpen}>
     <div ref={applicationRef} className="om-application" data-embedded={presentation.embedded} data-host-chrome={hostChrome} data-navigation-collapsed={navigationCollapsed}>
       <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
-        onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings} toggleResourceRail={resource && !hostChrome ? () => setResourceRailCollapsed(collapsed => !collapsed) : undefined}
+        specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings} toggleResourceRail={resource && !hostChrome ? () => setResourceRailCollapsed(collapsed => !collapsed) : undefined}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
         onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} onNavigate={openStudio} />
       {(editorRoute || resource) && <ApplicationRail resource={resource} openSettings={openSettings} projects={editorRoute ? <WorkspaceProjectsButton
@@ -291,7 +291,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       {(skillsOpen || page.specialty) && !settings && !templatesPage && <div className="om-skills-host"><SkillsPage previewsEnabled={!connectionsOpen} briefs={skillBriefs.current} onCreate={openStudio} key={page.specialty?.id ?? 'skills'} studio={page.specialty ?? undefined} onExplore={() => openPage('explore')} skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} hasProject={Boolean(projectId)} /></div>}
       {settings && !templatesPage && <SettingsSurfaceBoundary key={settings}>{settings === 'brand-kit'
         ? <BrandKitPage inWorkspace={!hostChrome} onClose={openHome} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} hasProject={Boolean(projectId)} /> : settings === 'mcp'
-        ? <McpConnectionPage entry={connectionEntry.current} projectId={projectId ?? undefined} hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
+        ? <McpConnectionPage onBack={() => openPage('explore')} entry={connectionEntry.current} projectId={projectId ?? undefined} hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
         : <SettingsCenter hasProject={Boolean(projectId)} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
       {templatesPage && library}
       {templatesPage && page.blackFriday && page.skill && <SkillsPage detailOnly skillId={page.skill}
