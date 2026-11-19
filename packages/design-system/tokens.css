@@ -134,8 +134,8 @@
   --motion-accent-soft: #f1f6e2;
   --motion-brand-soft: #e8f0d5;
   --motion-highlight: #d9f48b;
-  --motion-action: #506800;
-  --motion-action-hover: #3d5100;
+  --motion-action: #121212;
+  --motion-action-hover: #353535;
   --motion-on-action: #ffffff;
   --motion-success: #007a3d;
   --motion-status-on: #008a45;
@@ -214,9 +214,9 @@
   --motion-accent-soft: #2c331d;
   --motion-brand-soft: #343d20;
   --motion-highlight: #424f24;
-  --motion-action: #cafa28;
-  --motion-action-hover: #dcff64;
-  --motion-on-action: #182005;
+  --motion-action: #f7f7f7;
+  --motion-action-hover: #dbdbdb;
+  --motion-on-action: #121212;
   --motion-success: #69d99b;
   --motion-status-on: #3bbf7d;
   --motion-danger: #ff9898;
@@ -295,9 +295,9 @@
     --motion-accent-soft: #2c331d;
     --motion-brand-soft: #343d20;
     --motion-highlight: #424f24;
-    --motion-action: #cafa28;
-    --motion-action-hover: #dcff64;
-    --motion-on-action: #182005;
+    --motion-action: #f7f7f7;
+    --motion-action-hover: #dbdbdb;
+    --motion-on-action: #121212;
     --motion-success: #69d99b;
     --motion-status-on: #3bbf7d;
     --motion-danger: #ff9898;
