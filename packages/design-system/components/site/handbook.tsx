@@ -39,7 +39,8 @@ export function ContributionGuide() {
         <h2>Work on a component</h2>
         <ol className="doc-list">
           <li>Find the closest control in <DocLink href="/components">Components</DocLink>. Use its variants and semantic tokens as your starting point.</li>
-          <li>Edit its source in <code>packages/design-system/components/</code>. For a new control, add a catalogue entry with a live example and a real Studio use case.</li>
+          <li>Edit its source in <code>packages/design-system/components/</code>. For a new control, add a catalogue entry, a live example and one real Studio use case in the same PR.</li>
+          <li>Register the control as opt-in and record what to verify before requiring it. If it should stay optional, record the reason.</li>
           <li>Show the states users will encounter, including focus, disabled and loading when relevant. Check both themes from the preview toolbar.</li>
         </ol>
       </section>
@@ -47,6 +48,7 @@ export function ContributionGuide() {
         <h2>Migrate a control</h2>
         <p>Open the target component and choose <strong>Copy migration prompt</strong>. Add the page or control you want to replace before pasting it into your Agent.</p>
         <p>Compare the original and migrated control in Studio. Check visual states, focus, keyboard input and how the value is saved. Reduce the legacy count for each native control you remove.</p>
+        <p>After verifying the common use cases, review whether reuse should become mandatory. Update the registry, lint rule and legacy baseline together when it does.</p>
       </section>
       <section id="verify" className="doc-section">
         <h2>Verify and share</h2>

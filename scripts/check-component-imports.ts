@@ -15,6 +15,13 @@ const legacyEntries = new Set([studio + 'components/ui/Button', studio + 'compon
 const nativeControls = { button: '<button>', slider: '<input type="range">' } as const;
 type NativeControl = keyof typeof nativeControls;
 type NativeControlCounts = Partial<Record<NativeControl, number>>;
+type RegistryComponent = {
+  name: string;
+  import: string;
+  export: string;
+  consumer: string;
+  adoption?: { mode?: string; review?: string };
+};
 
 export function componentImportViolation(file: string, specifier: string) {
   const relative = specifier.startsWith('.');
@@ -75,12 +82,51 @@ export function nativeControlViolations(file: string, source: string, baseline: 
   });
 }
 
+function rendersRegisteredComponent(item: RegistryComponent, source: string) {
+  const parsed = ts.createSourceFile(item.consumer, source, ts.ScriptTarget.Latest);
+  const names = new Set<string>();
+  for (const statement of parsed.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== item.import || statement.importClause?.isTypeOnly) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const binding of bindings.elements) {
+      if (!binding.isTypeOnly && (binding.propertyName ?? binding.name).text === item.export) names.add(binding.name.text);
+    }
+  }
+  if (!names.size) return false;
+  return ts.forEachChild(parsed, function visit(node): true | undefined {
+    if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      ts.isIdentifier(node.tagName) && names.has(node.tagName.text)) return true;
+    return ts.forEachChild(node, visit);
+  });
+}
+
+function checkRegistryAdoption(items: RegistryComponent[], consumers: Map<string, string>) {
+  for (const item of items) {
+    const mode = Object.hasOwn(nativeControls, item.name) ? 'enforced' : 'opt-in';
+    assert.equal(item.adoption?.mode, mode,
+      `registry.json: ${item.name} must declare adoption.mode "${mode}" to match its native control rule.`);
+    if (mode === 'opt-in') {
+      assert.ok(typeof item.adoption?.review === 'string' && item.adoption.review.trim(),
+        `registry.json: ${item.name} needs an adoption.review note describing when to revisit enforcement or why it stays opt-in.`);
+    }
+    const source = consumers.get(item.consumer);
+    assert.ok(source && rendersRegisteredComponent(item, source),
+      `registry.json: ${item.name} needs a Studio consumer that renders ${item.export} from ${item.import}. Check ${item.consumer}.`);
+  }
+}
+
 export async function checkComponentUsage() {
   const violations: string[] = [];
   const nativeViolations: string[] = [];
   const baseline: Record<string, NativeControlCounts> = JSON.parse(
     await readFile(new URL('studio-native-controls.json', import.meta.url), 'utf8'),
   );
+  const { items }: { items: RegistryComponent[] } = JSON.parse(
+    await readFile(new URL(components + 'registry.json', root), 'utf8'),
+  );
+  const registryConsumers = new Map(items.map(item => [item.consumer, '']));
   const remainingBaseline = new Set(Object.keys(baseline));
   for (const directory of [components, studio]) {
     const files = (await readdir(new URL(directory, root), { recursive: true }))
@@ -96,10 +142,12 @@ export async function checkComponentUsage() {
         const relative = file.slice(studio.length);
         remainingBaseline.delete(relative);
         nativeViolations.push(...nativeControlViolations(file, source, baseline[relative] ?? {}));
+        if (registryConsumers.has(file)) registryConsumers.set(file, source);
       }
     }));
   }
   assert.deepEqual(violations.sort(), [], 'Component import boundaries');
   for (const file of remainingBaseline) nativeViolations.push(`${studio}${file}: remove the entry from studio-native-controls.json.`);
   assert.deepEqual(nativeViolations.sort(), [], 'Studio native control boundaries');
+  checkRegistryAdoption(items, registryConsumers);
 }

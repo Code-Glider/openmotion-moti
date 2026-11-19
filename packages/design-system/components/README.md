@@ -39,9 +39,15 @@ In Studio application code, use these shared controls for new actions and ranges
 ## Contribute a control
 
 1. In the design or brief, show the actual use, states, keyboard behavior and token choices. Use the [shared design system](../README.md) for color, typography, spacing and motion.
-2. Add or update the source, its registry item and interactive examples in [site/examples.tsx](site/examples.tsx). Prefer an existing component or recipe if it covers the same contract.
-3. When migrating, start with a product consumer. Preserve its events, labels, focus and layout. Link the call site in the registry and share the preview in the PR.
-4. Run `npm run design:check`, `npm run typecheck:studio`, `npm run components:build` and relevant Studio tests. Check the live sample and the migrated consumer in light and dark themes with keyboard interaction.
+2. Add the shared source, the registry entry and an interactive example in [site/examples.tsx](site/examples.tsx). Connect one real Studio use case in the same PR. Set `consumer` to the production JSX file that renders the registered export through its alias. Preserve that call site's events, labels, focus and layout.
+3. Start with `"adoption": { "mode": "opt-in", "review": "..." }`. In `review`, name a representative remaining use case or the behavior that must be verified before enforcing reuse. If the control should stay optional, write the reason. Include the verified Studio use case and this decision in the PR.
+4. Run `npm run design:check`, `npm run typecheck:studio`, `npm run components:build` and relevant Studio tests. Check the example and the real consumer with a keyboard and in both themes.
+
+### Enforce reuse
+
+When the review condition is met, document the common Studio uses and any specialized controls that need separate behavior. When reuse should be mandatory, add the native control rule in [the checker](../../../scripts/check-component-imports.ts) and record existing uses in [the baseline](../../../scripts/studio-native-controls.json). Update the registry to `"adoption": { "mode": "enforced" }` in the same PR. Show that the shared control works in the chosen use cases and verify that lint rejects a new native instance. The baseline lets existing uses migrate incrementally.
+
+`npm run design:check` verifies that each registry entry points to a Studio file that renders its registered export. It checks that the declared adoption mode matches the implemented rule and that opt-in entries record a review condition or reason.
 
 ### First migration
 

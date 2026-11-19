@@ -75,6 +75,8 @@ Keep technical identifiers needed for setup, supported agent/model names and exp
 
 Check the [component library registry and contribution guide](packages/design-system/components/README.md) before adding a shared Studio control. Use the listed source import and update the live example when its recommended usage or behavior changes.
 
+Record an exercised Studio consumer and an explicit adoption decision for each registered control. Follow the [contribution steps](packages/design-system/components/README.md#contribute-a-control) when deciding whether to enforce reuse.
+
 Use the shared Button, IconButton or Slider for new Studio actions and range controls. The design check blocks native `<button>` and `<input type="range">` above the per-file legacy baseline. Lower the baseline when migrating a legacy control.
 
 Follow [the shared design system](docs/design-system.md#interaction-and-feedback-contract) for all new or changed product UI. Reuse its components and semantic tokens in both light and dark themes; do not introduce page-specific palettes or native-looking replacement controls.
