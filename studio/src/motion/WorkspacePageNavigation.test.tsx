@@ -842,6 +842,18 @@ it('lists each primary destination once in order, with only scene and model choi
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
 });
 
+it('localizes every top navigation Studio label in Chinese while keeping English badges', async () => {
+  await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><MotionApp /></I18nProvider>));
+  const nav = container.querySelector('.om-app-header nav.om-creative-navigation')!;
+  const destinations = [...nav.querySelectorAll('button:not([aria-expanded]),a')].map(node => node.getAttribute('aria-label') ?? node.textContent?.trim());
+  expect(destinations).toEqual(['探索', '图片', '视频', '音频', 'MCP', 'API', '设计工作室', '动效工作室', '影视工作室', '音频工作室', '短视频工作室', '营销工作室', '讲解视频工作室', '3D 工作室']);
+  const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node => {
+    const badge = document.getElementById(node.getAttribute('aria-describedby')!);
+    return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
+  });
+  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['动效工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en']]);
+});
+
 it.each([
   ['Image', 'design', 'text-to-image'],
   ['Video', 'cinema', 'text-to-video'],

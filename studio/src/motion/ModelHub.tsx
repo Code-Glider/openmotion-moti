@@ -68,7 +68,7 @@ export function ModelHub({ id, onExplore, onProvider, onModel, onUse, onSettings
         <div className="om-model-hub-actions">
           {signedIn
             ? <>
-              <button className="om-button" data-primary="media" onClick={() => { track('hub_hero', 'open_in_studio'); onUse(); }}>{t('Open in {studio}', { studio: 'Motion Studio' })}<RemixIcon name="arrow-right-line" size={16} /></button>
+              <button className="om-button" data-primary="media" onClick={() => { track('hub_hero', 'open_in_studio'); onUse(); }}>{t('Open in {studio}', { studio: t('Motion Studio') })}<RemixIcon name="arrow-right-line" size={16} /></button>
               <button className="om-button om-model-hub-connected" onClick={() => { track('hub_hero', 'manage_connection'); onProvider('account'); }} title={t('Manage connection')}><RemixIcon name="checkbox-circle-fill" size={16} />{t('Connected to {provider}', { provider: 'OpenDesign' })}</button>
             </>
             : <>
