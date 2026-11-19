@@ -1,5 +1,8 @@
 // Shared helpers for the OpenMotion holiday-sale Skills: sizes, themes, money, assets and the
 // HyperFrames project writer. Each Skill ships its own copy so it installs on its own.
+// Canonical copy: library/skills/openmotion-sale-promo/scripts/film.mjs. Edit it there, then copy it
+// unchanged to openmotion-sale-countdown and openmotion-sale-carousel; tests/library-install.test.mjs
+// fails when the three copies differ.
 import { mkdir, writeFile, copyFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';

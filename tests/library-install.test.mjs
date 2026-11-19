@@ -85,6 +85,12 @@ test('sale prices are computed in whole cents', async t => {
   assert.match(check.stdout, /\$2\.01 → \$1\.01 \(50% off, save \$1\)/);
 });
 
+test('the three holiday-sale Skills ship identical film.mjs helpers', async () => {
+  const copies = await Promise.all(['promo', 'countdown', 'carousel'].map(name => readFile(`library/skills/openmotion-sale-${name}/scripts/film.mjs`, 'utf8')));
+  assert.equal(copies[1], copies[0], 'openmotion-sale-countdown/scripts/film.mjs differs from the canonical openmotion-sale-promo copy');
+  assert.equal(copies[2], copies[0], 'openmotion-sale-carousel/scripts/film.mjs differs from the canonical openmotion-sale-promo copy');
+});
+
 test('sale prices use each currency\'s own minor unit', async t => {
   const root = await isolated(t), base = JSON.parse(await readFile('tests/fixtures/holiday-sale/offer.json', 'utf8'));
   const cases = [
