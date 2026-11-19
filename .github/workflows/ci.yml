@@ -299,6 +299,12 @@ jobs:
       - name: Transcript workflow browser regression
         if: steps.scope.outputs.full == 'true'
         run: node tests/transcript-browser.mjs "$RUNNER_TEMP/transcript-workflow"
+      - name: Video review comments and annotation regression
+        if: steps.scope.outputs.full == 'true'
+        timeout-minutes: 5
+        run: |
+          node --test tests/review-comments.test.ts
+          node --test tests/review-comments-browser.ts
       - name: Platform export Studio and MCP end-to-end regression
         if: steps.scope.outputs.full == 'true'
         timeout-minutes: 10
@@ -444,6 +450,8 @@ jobs:
           version=$(node scripts/test-package.mjs version "$GITHUB_RUN_NUMBER" "${GITHUB_RUN_ATTEMPT:-1}")
           if [ "$PACKAGE_FORMAT" = npm ]; then
             node scripts/package-npm.mjs "dist/$version" "$version" --template-env="$TEMPLATE_ENVIRONMENT"
+            bytes=$(wc -c < "dist/$version/openmotion-app-$version.tgz" | tr -d '[:space:]')
+            printf '## npm install package\n\nCompressed size: %s bytes\n' "$bytes" >> "$GITHUB_STEP_SUMMARY"
           else
             for target in mac-arm64 win-x64; do
               node scripts/test-package.mjs prepare "$target"

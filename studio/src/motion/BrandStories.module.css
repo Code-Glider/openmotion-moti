@@ -149,7 +149,7 @@
   .storyDialog .reelFrame:global(.om-button) { height:70px; grid-template-columns:64px minmax(0,1fr); }
   .selectedStory { order:1; display:flex; flex-direction:column; gap:var(--motion-space-20); }
   .videoColumn { container-type:normal; width:100%; background:transparent; }
-  .videoStage { width:min(100%,calc((100dvh - 360px) * var(--story-media-ratio))); }
+  .videoStage { width:min(100%,calc(max(128px,100dvh - 360px) * var(--story-media-ratio))); }
   .selectedCopy { display:block; border-left:0; padding-left:0; }
   .workHeader { padding-top:0; }
   .inspectorBody { overflow:visible; padding-right:0; }

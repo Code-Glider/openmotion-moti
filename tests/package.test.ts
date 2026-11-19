@@ -29,7 +29,7 @@ test('plugin onboarding entry and its shared contract resolve inside every distr
   const reference = skill.match(/\]\(([^)]+#installation-success-reply)\)/)?.[1];
   assert(reference, 'Onboarding must reach the canonical installation-success contract');
   const contract = path.posix.normalize(path.posix.join(path.posix.dirname(entry), reference.split('#')[0]));
-  assert.equal(contract, 'docs/install-onboarding.md');
+  assert.equal(contract, 'docs/install.md');
   for (const profile of ['phase1', 'legacy']) {
     const files = new Set(await distributionFiles(profile));
     assert(files.has(entry), 'The declared onboarding entry must ship');
@@ -59,6 +59,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('gateway/brand-cover.ts'));
     assert(files.has('shared/hyperframes-capture-fix.mjs'), 'The capture recovery preload must ship with every runtime');
     assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
+    for (const file of ['review-comments.ts', 'shared/review-comments.ts']) assert(files.has(file), 'Missing review comment runtime: ' + file);
     assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');
     for (const script of ['register_motion.py', 'measure_motion.py']) {
       assert(files.has('skills/openmotion-recreate/scripts/' + script), 'Missing recreation helper: ' + script);
@@ -130,6 +131,13 @@ test('asset naming contracts and runtime dependencies survive lightweight distri
   }
 });
 
+test('review comments service and contract survive lightweight distribution', async () => {
+  for (const profile of ['phase1', 'legacy']) {
+    const files = new Set(await distributionFiles(profile, file => /\.(?:md|mjs|js|ts|json|ya?ml)$/.test(file)));
+    for (const file of ['review-comments.ts', 'shared/review-comments.ts', 'shared/project-management.ts']) assert.ok(files.has(file), file);
+  }
+});
+
 test('packaged server imports without local dependencies and captions use the separate native runtime', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const extracted = await mkdtemp(path.join(tmpdir(), 'motion-caption-package-'));
@@ -143,9 +151,16 @@ test('packaged server imports without local dependencies and captions use the se
     const script = `
       await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'server.ts')).href)});
       const { loadCaptionSourceOperations } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/transcript-captions.ts')).href)});
-      const { manualCaptionSource, captionTracks } = await loadCaptionSourceOperations(${JSON.stringify(root)});
+      const { manualCaptionSource, captionTracks, toggleCaptionSource, parseHTML } = await loadCaptionSourceOperations(${JSON.stringify(root)});
       const result = manualCaptionSource('<div data-composition-id="main" data-duration="3"></div>', '11111111-1111-4111-8111-111111111111', { segments: [{ id: 'cue', text: 'Packaged caption', start: 0, end: 2 }] });
       if (captionTracks(result.content)[0]?.cueCount !== 1) throw new Error('Packaged caption operation failed');
+      const { compositionCanvasSource } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/composition-canvas.ts')).href)});
+      const { loadCanvasSourceOperations } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/composition-canvas-source.ts')).href)});
+      const canvasParsers = await loadCanvasSourceOperations(${JSON.stringify(root)});
+      const framed = compositionCanvasSource('<div data-composition-id="main" data-duration="3" data-width="640" data-height="360"></div>', canvasParsers, { ratio: '9:16', fit: 'cover' });
+      if (framed.canvas.width !== 1080 || framed.canvas.height !== 1920) throw new Error('Packaged canvas operation failed');
+      const enabled = toggleCaptionSource(framed.content, '22222222-2222-4222-8222-222222222222', true);
+      if (captionTracks(enabled.content)[0]?.cueCount !== 0) throw new Error('Packaged empty caption lane failed');
     `;
     const result = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', script], { cwd: extracted, encoding: 'utf8', timeout: 30000 });
     assert.equal(result.status, 0, result.stderr || result.error?.message);

@@ -231,7 +231,8 @@
     "DSH workspace plugin": "DSH 工作台插件",
     "The final video loads automatically. If loading fails, choose Reload to read the same completed export without rendering again.": "成片会自动加载。如果加载失败，点击“重新加载”即可重新读取同一份已完成的成片，不会重新渲染。",
     "How do I find where project audio is used?": "如何查找项目音频用在哪里？",
-    "In My assets, audio rows show usage status and clickable application intervals. Click a range to select the clip and seek to its start; nested audio opens its owning composition first. Used audio omits duplicate file duration, and narrow panels keep usage on its own line. Detailed previews retain audition and visualization.": "在「我的素材」中，音频显示使用状态和可点击的应用区间。点击区间会选中片段并定位到起点；嵌套音频会先打开所属合成。已使用音频不重复显示文件时长，窄面板将使用信息单独显示一行。详细预览保留试听与可视化。"
+    "In My assets, audio rows show usage status and clickable application intervals. Click a range to select the clip and seek to its start; nested audio opens its owning composition first. Used audio omits duplicate file duration, and narrow panels keep usage on its own line. Detailed previews retain audition and visualization.": "在「我的素材」中，音频显示使用状态和可点击的应用区间。点击区间会选中片段并定位到起点；嵌套音频会先打开所属合成。已使用音频不重复显示文件时长，窄面板将使用信息单独显示一行。详细预览保留试听与可视化。",
+    "Show me OpenMotion templates for a product launch. Explain which are editable projects and which are references before creating anything. For an editable template, create an independent project; if opening fails, retry that exact project rather than making another copy. For a reference, read its guidance and ask for my content before authoring. Copying from the library does not send a message or create a film.": "帮我找适合产品发布的 OpenMotion 模板。先说明哪些是可编辑工程、哪些是参考作品，再决定创作。 可编辑模板创建独立工程，打开失败时重试同一个工程。参考作品先读说明并核对我的内容，再开始制作。模板库中的复制操作不会发送消息或生成视频。"
   },
   "ja": {
     "Create and reuse assets": "アセットを作成して再利用",

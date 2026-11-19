@@ -137,6 +137,8 @@ Use the PR Actions summary to review new duplicate fragments and unused code or 
 
 Only deliberately public documentation belongs here. Do not commit credentials, internal links, private plans, workstation paths or user projects. Distribution uses the positive list in `scripts/distribution.ts`; newly shipped files require an explicit decision. Preserve all upstream attribution and license notices. Do not add telemetry or publish a package without a separate decision.
 
+Keep the base install focused on runtime files. Serve demo and preview video on demand when feasible, and explain any offline requirement in the PR. If a change adds assets, dependencies or build configuration, inspect the final npm tarball and fill in **Install package impact**. Vite URL imports, asset globs and `public/` copies can add files to the shipped Studio build without changing the distribution list.
+
 Contributions are licensed under the repository's [Apache-2.0 license](LICENSE); vendored components retain their own terms. This migration branch is for review only and must not be merged or published automatically.
 
 ## Repository media and size

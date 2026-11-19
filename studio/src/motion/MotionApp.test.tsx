@@ -14,18 +14,36 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => vi.unstubAllGlobals());
 it.each([false, true])('prepares only existing projects while browsing, and creates only the selected template (existing=%s)', async existing => {
   history.replaceState(null, '', '/?templates=1&embed=1');
+  sessionStorage.clear();
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
   const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
   const artifact = { id, kind: 'motion-project', projectId: id, title: 'Existing project' };
+  const preparedId = '22222222-2222-2222-2222-222222222222';
+  const preparedSessionId = '33333333-3333-3333-3333-333333333333';
   const catalog = { activeId: existing ? id : 'project', projects: existing ? [{ id, title: 'Existing project' }] : [], sessions: existing ? [{ id, artifacts: [artifact] }] : [] };
-  const fetcher = vi.fn(async (url: string, init?: RequestInit) => Response.json(
-    url.includes('/template-catalog') ? { items: [{ id: 'product-promo', title: 'Product Promo', kind: 'builtin', tags: [], author: 'OpenMotion', hasHtmlProject: true }], total: 1, next: null, catalogVersion: 'test' }
-    : url.endsWith('/projects') ? catalog
-    : url.endsWith('/sessions') && init?.method === 'POST' ? { sessionId: id, session: { artifacts: [] } }
-    : url.split('?')[0].endsWith('/artifacts') ? { sessionId: id, projectId: id }
-    : url.includes('/sessions/') ? { id, artifacts: [artifact] }
-    : { projectId: existing ? id : 'project', revision: 'r' },
-  ));
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    const parsed = new URL(url, location.origin);
+    const scopedProject = parsed.searchParams.get('projectId') ?? catalog.activeId;
+    const revision = scopedProject === preparedId ? 'new-revision' : 'original-revision';
+    if (parsed.pathname.endsWith('/artifacts') && init?.method === 'POST') {
+      catalog.activeId = preparedId;
+      catalog.projects.push({ id: preparedId, title: 'Product Promo' });
+      catalog.sessions.push({ id: preparedSessionId, artifacts: [{ id: preparedId, kind: 'motion-project', projectId: preparedId, title: 'Product Promo' }] });
+      return Response.json({ sessionId: preparedSessionId, projectId: preparedId, projectTitle: 'Product Promo' });
+    }
+    if (parsed.pathname.endsWith(`/projects/${preparedId}/open`)) {
+      const guard = JSON.parse(String(init?.body));
+      if (guard.expectedProjectId !== scopedProject || guard.expectedRevision !== revision) return Response.json({ error: 'stale guard' }, { status: 409 });
+      return Response.json({ projectId: preparedId, revision: 'new-revision' });
+    }
+    return Response.json(
+      url.includes('/template-catalog') ? { items: [{ id: 'product-promo', title: 'Product Promo', kind: 'builtin', tags: [], author: 'OpenMotion', hasHtmlProject: true }], total: 1, next: null, catalogVersion: 'test' }
+      : parsed.pathname.endsWith('/projects') ? catalog
+      : parsed.pathname.endsWith('/sessions') && init?.method === 'POST' ? { sessionId: preparedSessionId, session: { artifacts: [] } }
+      : parsed.pathname.includes('/sessions/') ? catalog.sessions.find(session => session.id === parsed.pathname.split('/').at(-1))
+      : { projectId: scopedProject, revision },
+    );
+  });
   vi.stubGlobal('fetch', fetcher);
   const container = document.createElement('div'); document.body.append(container);
   const root = createRoot(container);
@@ -40,14 +58,19 @@ it.each([false, true])('prepares only existing projects while browsing, and crea
     expect(posts()).toHaveLength(0);
     const open = [...container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('Open and edit'))!;
     await act(async () => open.click());
-    expect(posts().map(([url]) => url.split('?')[0])).toEqual(['/design-api/sessions', `/design-api/sessions/${id}/artifacts`]);
+    expect(posts().map(([url]) => url.split('?')[0])).toEqual([
+      '/design-api/sessions', `/design-api/sessions/${preparedSessionId}/artifacts`, `/motion-api/projects/${preparedId}/open`,
+    ]);
     expect(JSON.parse(String(posts()[0][1]!.body)).templateId).toBe('product-promo');
+    expect(JSON.parse(String(posts()[1][1]!.body))).toEqual({ templateId: 'product-promo', expectedRevision: 'original-revision', expectedProjectId: existing ? id : 'project' });
+    expect(posts()[2][0]).toBe(`/motion-api/projects/${preparedId}/open${existing ? `?projectId=${id}` : ''}`);
+    expect(JSON.parse(String(posts()[2][1]!.body))).toEqual({ expectedRevision: existing ? 'original-revision' : 'new-revision', expectedProjectId: existing ? id : preparedId });
     expect(assign).not.toHaveBeenCalled();
-    expect(location.search).toContain(`project=${id}`);
+    expect(location.search).toContain(`project=${preparedId}`);
     expect(location.search).not.toContain('templates=1');
     expect(container.querySelector('dialog[aria-label="Template library"]')).toBeNull();
   } finally {
-    act(() => root.unmount()); container.remove(); assign.mockRestore(); history.replaceState(null, '', '/');
+    act(() => root.unmount()); container.remove(); assign.mockRestore(); history.replaceState(null, '', '/'); sessionStorage.clear();
   }
 });
 it('resolves a bookmark without switching another page globally', async () => {

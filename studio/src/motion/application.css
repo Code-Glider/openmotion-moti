@@ -12,16 +12,20 @@
   .om-app-brand .motion-brand-lockup { width: 104px; height: auto; }
 }
 .om-app-navigation { display: flex; align-items: center; flex: 1; gap: var(--motion-space-8); min-width: 0; font-size: var(--motion-text-sm); }
-.motion-studio-header.motion-studio-header-compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--motion-space-8); height: var(--motion-space-40); min-height: var(--motion-space-40); padding: 0 var(--motion-space-12); }
+.motion-studio-header.motion-studio-header-compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(max-content, 1fr); gap: var(--motion-space-8); height: var(--motion-space-40); min-height: var(--motion-space-40); padding: 0 var(--motion-space-12); }
 .motion-studio-header.motion-studio-header-compact > div { width: auto; min-width: 0; }
 .motion-studio-header.motion-studio-header-compact > .motion-header-leading { gap: var(--motion-space-12); }
-.motion-studio-header.motion-studio-header-compact > .motion-header-trailing { justify-self: end; gap: var(--motion-space-12); margin-left: 0; }
+.motion-studio-header.motion-studio-header-compact > .motion-header-trailing { justify-self: end; flex-wrap: nowrap; gap: var(--motion-space-12); margin-left: 0; }
 .motion-header-project { display: flex; justify-content: center; }
-.motion-header-project-actions { display: grid; grid-template-columns: repeat(2, 1fr); width: max-content; align-items: center; gap: var(--motion-space-4); flex-shrink: 0; }
-.motion-header-project-actions :is(.motion-project-agent-trigger, .motion-header-export) { width: auto; min-width: 0; justify-self: stretch; justify-content: center; }
+/* Actions stay on one row regardless of how many host controls are present. */
+.motion-header-project-actions { display: flex; flex-wrap: nowrap; width: max-content; align-items: center; gap: var(--motion-space-4); flex-shrink: 0; }
+.motion-header-project-actions button { flex-shrink: 0; }
+.motion-header-project-actions :is(.motion-project-agent-trigger, .motion-header-export) { width: auto; min-width: 0; justify-content: center; }
 .motion-project-handoff-actions .motion-project-handoff-button { flex: 1 1 0; justify-content: center; min-width: 0; font-weight: var(--motion-weight-semibold); }
-@container (max-width: 420px) {
-  .motion-studio-header.motion-studio-header-compact { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; }
+@container (max-width: 700px) {
+  .motion-studio-header.motion-studio-header-compact { grid-template-columns: auto minmax(0, 1fr) auto; padding-inline: var(--motion-space-8); }
+  .motion-studio-header.motion-studio-header-compact > .motion-header-trailing { gap: var(--motion-space-4); }
+  .motion-autosave-status > span { display: none; }
 }
 .motion-header-project .om-app-project-title { position: relative; display: inline-grid; flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .motion-project-name-measure { visibility: hidden; overflow: hidden; white-space: pre; min-width: var(--motion-space-64); }
@@ -30,11 +34,6 @@
 .motion-autosave-status { display: flex; align-items: center; gap: var(--motion-space-6); min-width: 0; }
 .motion-autosave-status > svg { flex: none; }
 .motion-autosave-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@container (max-width: 420px) {
-  .motion-studio-header.motion-studio-header-compact { padding-inline: var(--motion-space-8); }
-  .motion-studio-header.motion-studio-header-compact > .motion-header-trailing { gap: var(--motion-space-4); }
-  .motion-autosave-status > span { display: none; }
-}
 .om-app-header-actions { display: flex; align-items: center; gap: var(--motion-space-8); flex-shrink: 0; margin-left: auto; }
 .om-app-header-links { display: flex; align-items: center; gap: var(--motion-space-8); }
 .om-app-rail { grid-column: 1; grid-row: 2; }

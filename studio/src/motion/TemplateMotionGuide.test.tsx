@@ -60,6 +60,36 @@ it('falls back to the untouched remote iframe when CORS or the fetch fails', asy
   expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
 });
 
+it('loads the expanded walkthrough eagerly without a blob-navigation dependency', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(source, { headers: { 'content-type': 'text/html' } })));
+  await act(async () => root.render(<TemplateMotionGuide expanded url={url} title="Walkthrough" />));
+  const frame = host.querySelector('iframe')!;
+  expect(frame.getAttribute('srcdoc')).toContain('runtime.js');
+  expect(frame.getAttribute('srcdoc')).toContain(`<base href="${url}">`);
+  expect(frame.getAttribute('loading')).toBe('eager');
+  expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+});
+
+it('returns from the expanded guide only for Escape from its focused sandboxed frame', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(source, { headers: { 'content-type': 'text/html' } })));
+  const onEscape = vi.fn();
+  await act(async () => root.render(<TemplateMotionGuide expanded url={url} title="Walkthrough" onEscape={onEscape} />));
+  const frame = host.querySelector('iframe')!;
+  const guideWindow = frame.contentWindow!;
+  const escape = (sender: Window, origin: string) => window.dispatchEvent(new MessageEvent('message', {
+    source: sender, origin, data: 'openmotion:guide-escape',
+  }));
+  expect(frame.srcdoc).toContain("parent.postMessage('openmotion:guide-escape', '*')");
+  escape(guideWindow, 'null');
+  frame.focus();
+  escape(window, 'null');
+  escape(guideWindow, 'http://localhost:3000');
+  expect(onEscape).not.toHaveBeenCalled();
+  escape(guideWindow, 'null');
+  expect(onEscape).toHaveBeenCalledTimes(1);
+});
+
 it('aborts a stale guide and cannot overwrite a newer selection', async () => {
   let resolveFirst!: (value: Response) => void;
   const fetcher = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { resolveFirst = resolve; })).mockResolvedValue(new Response(source.replace('Guide', 'Second'), { headers: { 'content-type': 'text/html' } }));

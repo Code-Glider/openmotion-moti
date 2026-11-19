@@ -368,6 +368,7 @@ export class WorkspaceStore {
       // while the catalog still has the project, and replays after the catalog commit.
       await atomic(receiptPath, JSON.stringify({ fingerprint, result, pending: true }));
       await rm(directory, { recursive: true, force: true });
+      await rm(path.join(this.directory, 'review-comments', id + '.json'), { force: true });
       catalog.projects = catalog.projects.filter(item => item.id !== id);
       const removedSessions: string[] = [];
       catalog.sessions = catalog.sessions!.flatMap(session => {
