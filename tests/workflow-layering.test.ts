@@ -271,8 +271,8 @@ test('narration and editable captions strategy stays in sound.md and routes link
   assert.match(sound.content, /alignment[\s\S]*sentences/);
   assert.match(sound.content, /silencedetect/);
   assert.match(sound.content, /caption_add[\s\S]*requestId/);
-  assert.match(sound.content, /caption_update[\s\S]*transcriptId/);
-  assert.match(sound.content, /playbackRate[\s\S]*sourceStart/);
+  assert.match(sound.content, /caption_update[\s\S]*transcriptId[\s\S]*captionSettings/);
+  assert.match(sound.content, /playbackRate[\s\S]*sourceStart[\s\S]*expectedTranscriptRevision/);
   assert.match(sound.content, /data-timeline-locked/);
   assert.match(sound.content, /captionSettings:\s*\{\s*pacing:\s*"word"\s*\}/);
   assert.match(sound.content, /caption_tracks/);
