@@ -183,7 +183,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "ポッドキャストの司会者を縦位置で捉える。マイクに身を寄せて最初の一言を話す。",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Shorts、Marketing、Explainer、3D Studioでクリップを生成できます。Marketingでは商品画像も作成できます。アイデアやSkillの企画を入力し、設定済みモデルを選択します。",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "次の企画に沿ったクリップを1本生成してください。openmotion_media_useで対応する設定済みモデルを探し、必要ならプロバイダーの設定を手伝ってください。モデルと先頭画像のバージョンを確認し、openmotion_assets_useで一度だけ送信して元のジョブを追跡してください。",
-    "Animate type and shapes, then edit their timing on the timeline.": "文字や図形を動かし、タイムラインでタイミングを調整できます。"
+    "Animate type and shapes, then edit their timing on the timeline.": "文字や図形を動かし、タイムラインでタイミングを調整できます。",
+    "Shorts Studio": "ショート動画スタジオ",
+    "Marketing Studio": "マーケティングスタジオ",
+    "Explainer Studio": "解説動画スタジオ",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "「探す」で「クリエイター」を開き、カタログにクレジットされた制作者または投稿元のアカウントを選んで作品を開きます。テンプレートの指示をコピーして Agent に渡してください。",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "依頼文にあるテンプレート ID を使って openmotion_get_template を呼び出してください。編集可能なソースまたは再現ガイドを確認し、アレンジする際も元のクレジットを残してください。",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_template で選択したスキルを読み込んでください。元の映像または依頼内容を確認したら、openmotion_create_project と openmotion_edit_project で編集可能な作品を作成してください。必要な素材や情報が足りない場合は、編集を始める前に依頼者に確認してください。"
   },
   "ko": {
     "Studios": "스튜디오",
@@ -273,7 +279,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "팟캐스트 진행자가 마이크 쪽으로 몸을 기울여 첫마디를 건네는 모습을 세로로 촬영하세요.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Shorts, Marketing, Explainer, 3D Studio에서 클립을 생성하세요. Marketing은 제품 이미지도 지원합니다. 아이디어나 Skill 기획에서 시작해 설정된 모델을 선택하세요.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "아래 기획으로 클립 하나를 생성해 주세요. openmotion_media_use로 설정된 호환 모델을 찾고 필요하면 공급자 설정을 도와주세요. 모델과 첫 프레임 이미지 버전을 확인한 뒤 openmotion_assets_use로 한 번만 제출하고 원래 작업을 추적하세요.",
-    "Animate type and shapes, then edit their timing on the timeline.": "텍스트와 도형에 움직임을 더하고 타임라인에서 타이밍을 조정하세요."
+    "Animate type and shapes, then edit their timing on the timeline.": "텍스트와 도형에 움직임을 더하고 타임라인에서 타이밍을 조정하세요.",
+    "Shorts Studio": "숏폼 동영상 스튜디오",
+    "Marketing Studio": "마케팅 스튜디오",
+    "Explainer Studio": "설명 영상 스튜디오",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "둘러보기에서 크리에이터를 열고 카탈로그에 표기된 제작자나 원본 게시 계정을 선택한 다음 작품을 여세요. 템플릿 지시문을 복사해 Agent에 전달하세요.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "요청서에 있는 템플릿 ID로 openmotion_get_template를 호출하세요. 편집 가능한 소스나 재현 가이드를 확인하고, 작품을 수정할 때도 원작자 표기를 유지하세요.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_template로 선택한 스킬을 읽으세요. 원본 영상이나 요청 내용을 확인한 다음 openmotion_create_project와 openmotion_edit_project로 편집 가능한 결과물을 만드세요. 필요한 자료가 빠졌다면 편집을 시작하기 전에 요청하세요."
   },
   "de": {
     "Studios": "Studios",
@@ -363,7 +375,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Zeige eine Podcast-Moderatorin im Hochformat, die sich für ihren ersten Satz zum Mikrofon beugt.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Erstelle Clips in Shorts, Marketing, Explainer oder 3D Studio. Marketing bietet auch Produktbilder. Beginne mit einer Idee oder einem Skill-Briefing und wähle ein eingerichtetes Modell.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Erstelle einen Clip für das folgende Briefing. Finde mit openmotion_media_use ein eingerichtetes kompatibles Modell. Hilf bei Bedarf bei der Anbietereinrichtung. Bestätige Modell und gegebenenfalls die Version des Startbilds, sende den Auftrag einmal mit openmotion_assets_use und verfolge diesen Auftrag.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Animiere Text und Formen und stimme ihr Timing auf der Zeitleiste ab."
+    "Animate type and shapes, then edit their timing on the timeline.": "Animiere Text und Formen und stimme ihr Timing auf der Zeitleiste ab.",
+    "Shorts Studio": "Studio für Kurzvideos",
+    "Marketing Studio": "Marketingstudio",
+    "Explainer Studio": "Studio für Erklärvideos",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Öffne unter „Entdecken“ den Bereich „Kreative“. Wähle einen im Katalog genannten Urheber oder das Konto des ursprünglichen Beitrags und öffne ein Werk. Kopiere die Vorlagenanweisung für deinen Agenten.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Rufe openmotion_get_template mit der Vorlagen-ID aus meinem Briefing auf. Prüfe die bearbeitbaren Quelldateien oder die Anleitung zum Nachbauen und behalte die Urheberangabe bei, wenn du die Vorlage anpasst.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lies den ausgewählten Skill mit openmotion_get_template. Prüfe das Ausgangsmaterial oder das Briefing. Erstelle dann mit openmotion_create_project und openmotion_edit_project ein bearbeitbares Projekt. Frage vor dem Bearbeiten nach fehlendem Material oder fehlenden Angaben."
   },
   "fr": {
     "Studios": "Studios",
@@ -453,7 +471,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Cadrez en format vertical une animatrice de podcast qui se penche vers le micro pour prononcer ses premiers mots.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Générez un clip dans Shorts, Marketing, Explainer ou 3D Studio. Marketing propose aussi des images produit. Partez de votre idée ou d’un brief de Skill et choisissez un modèle configuré.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Génère un clip pour le brief ci-dessous. Trouve un modèle compatible configuré avec openmotion_media_use. Si nécessaire, aide-moi à configurer un fournisseur. Confirme le modèle et la version de l’éventuelle première image, puis soumets une seule fois avec openmotion_assets_use et suis cette tâche.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Animez du texte et des formes, puis ajustez leur rythme sur la timeline."
+    "Animate type and shapes, then edit their timing on the timeline.": "Animez du texte et des formes, puis ajustez leur rythme sur la timeline.",
+    "Shorts Studio": "Studio de vidéos courtes",
+    "Marketing Studio": "Studio marketing",
+    "Explainer Studio": "Studio de vidéos explicatives",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Dans Explorer, ouvrez Créateurs. Choisissez un nom crédité dans le catalogue ou le compte à l’origine de la publication, puis ouvrez une œuvre. Copiez la consigne du modèle pour la transmettre à votre agent.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Appelez openmotion_get_template avec l’identifiant du modèle indiqué dans mon brief. Consultez les sources modifiables ou le guide de recréation et conservez le crédit d’origine lors de l’adaptation.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lisez le Skill sélectionné avec openmotion_get_template. Vérifiez les images sources ou le brief, puis utilisez openmotion_create_project et openmotion_edit_project pour créer un projet modifiable. Si un élément manque, demandez-le avant de commencer le montage."
   },
   "ru": {
     "Studios": "Студии",
@@ -543,7 +567,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Сними ведущую подкаста вертикально, когда она наклоняется к микрофону и произносит первую фразу.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Создайте клип в Shorts, Marketing, Explainer или 3D Studio. В Marketing также доступны изображения товаров. Начните с идеи или задания Skill и выберите настроенную модель.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Создай один клип по заданию ниже. Найди настроенную совместимую модель через openmotion_media_use. При необходимости помоги настроить провайдера. Подтверди модель и версию изображения первого кадра, затем один раз отправь запрос через openmotion_assets_use и отслеживай исходную задачу.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Анимируйте текст и фигуры и настройте их движение на таймлайне."
+    "Animate type and shapes, then edit their timing on the timeline.": "Анимируйте текст и фигуры и настройте их движение на таймлайне.",
+    "Shorts Studio": "Студия коротких видео",
+    "Marketing Studio": "Студия маркетинга",
+    "Explainer Studio": "Студия объясняющих видео",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "В разделе «Обзор» откройте «Авторы». Выберите автора, указанного в каталоге, или аккаунт, где опубликован оригинал, и откройте работу. Скопируйте инструкцию к шаблону и передайте её агенту.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Вызови openmotion_get_template с идентификатором шаблона из моего задания. Изучи редактируемые исходники или руководство по воссозданию. При адаптации сохрани указание авторства.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Прочитай выбранный навык с помощью openmotion_get_template. Проверь исходное видео или задание, затем создай редактируемый проект с помощью openmotion_create_project и openmotion_edit_project. Если чего-то не хватает, запроси материалы или сведения до начала редактирования."
   },
   "es": {
     "Studios": "Estudios",
@@ -633,7 +663,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Encuadra en vertical a una presentadora de pódcast que se acerca al micrófono para decir su primera frase.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Genera un clip en Shorts, Marketing, Explainer o 3D Studio. Marketing también ofrece imágenes de producto. Empieza con tu idea o con un encargo de Skill y elige un modelo configurado.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Genera un clip para el encargo siguiente. Usa openmotion_media_use para encontrar un modelo compatible configurado. Si hace falta, ayúdame a configurar un proveedor. Confirma el modelo y la versión de la imagen inicial si la hay, envía la solicitud una vez con openmotion_assets_use y sigue la tarea original.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Anima texto y formas y ajusta sus tiempos en la línea de tiempo."
+    "Animate type and shapes, then edit their timing on the timeline.": "Anima texto y formas y ajusta sus tiempos en la línea de tiempo.",
+    "Shorts Studio": "Estudio de vídeos cortos",
+    "Marketing Studio": "Estudio de marketing",
+    "Explainer Studio": "Estudio de vídeos explicativos",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "En Explorar, abre Creadores. Elige un autor acreditado en el catálogo o la cuenta que publicó el original y abre una obra. Copia las instrucciones de la plantilla para usarlas con tu agente.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Usa openmotion_get_template con el identificador de plantilla de mi encargo. Revisa los archivos fuente editables o la guía de recreación y conserva la atribución al adaptar la plantilla.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lee el Skill seleccionado con openmotion_get_template. Confirma el material original o el encargo y usa openmotion_create_project y openmotion_edit_project para crear un proyecto editable. Si falta algún material o dato, pídelo antes de editar."
   },
   "pt-BR": {
     "Studios": "Estúdios",
@@ -723,7 +759,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Enquadre na vertical uma apresentadora de podcast que se inclina em direção ao microfone para dizer sua primeira frase.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Gere um clipe no Shorts, Marketing, Explainer ou 3D Studio. O Marketing também oferece imagens de produtos. Comece com sua ideia ou um briefing de Skill e escolha um modelo configurado.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Gere um clipe para o briefing abaixo. Encontre um modelo compatível configurado com openmotion_media_use. Se necessário, ajude a configurar um provedor. Confirme o modelo e a versão da imagem inicial, se houver, envie uma vez com openmotion_assets_use e acompanhe a tarefa original.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Anime textos e formas e ajuste o ritmo na linha do tempo."
+    "Animate type and shapes, then edit their timing on the timeline.": "Anime textos e formas e ajuste o ritmo na linha do tempo.",
+    "Shorts Studio": "Estúdio de vídeos curtos",
+    "Marketing Studio": "Estúdio de marketing",
+    "Explainer Studio": "Estúdio de vídeos explicativos",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Em Explorar, abra Criadores. Selecione um autor creditado no catálogo ou a conta da publicação original e abra um trabalho. Copie as instruções do modelo para usar com seu agente.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Use openmotion_get_template com o ID do modelo indicado no meu briefing. Consulte os arquivos editáveis ou o guia de recriação e mantenha os créditos ao adaptar o modelo.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leia o Skill selecionado com openmotion_get_template. Confira o material original ou o briefing e use openmotion_create_project e openmotion_edit_project para criar um projeto editável. Se faltar algum material ou informação, peça o que falta antes de editar."
   },
   "it": {
     "Studios": "Studi",
@@ -813,7 +855,13 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Inquadra in verticale una conduttrice di podcast mentre si avvicina al microfono per dire la prima frase.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Genera un clip in Shorts, Marketing, Explainer o 3D Studio. Marketing offre anche immagini prodotto. Parti da un’idea o da un brief Skill e scegli un modello configurato.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Genera un clip per il brief qui sotto. Trova un modello compatibile già configurato con openmotion_media_use. Se necessario, aiutami a configurare un fornitore. Conferma il modello e l’eventuale versione del primo fotogramma, poi invia una volta con openmotion_assets_use e segui il processo originale.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Anima testi e forme, poi regola i tempi sulla timeline."
+    "Animate type and shapes, then edit their timing on the timeline.": "Anima testi e forme, poi regola i tempi sulla timeline.",
+    "Shorts Studio": "Studio per video brevi",
+    "Marketing Studio": "Studio di marketing",
+    "Explainer Studio": "Studio per video esplicativi",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "In Esplora, apri Autori. Scegli un autore accreditato nel catalogo o l’account che ha pubblicato l’originale, poi apri un’opera. Copia le istruzioni del modello per usarle con il tuo agente.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "Usa openmotion_get_template con l’ID del modello indicato nel mio brief. Esamina i sorgenti modificabili o la guida alla ricreazione e mantieni i crediti originali quando adatti il modello.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leggi lo Skill selezionato con openmotion_get_template. Verifica il girato originale o il brief, poi usa openmotion_create_project e openmotion_edit_project per creare un progetto modificabile. Richiedi eventuali materiali o informazioni mancanti prima di iniziare il montaggio."
   },
   "tr": {
     "Studios": "Stüdyolar",
@@ -903,6 +951,12 @@
     "Frame a podcast host vertically as she leans into the microphone to deliver her opening line.": "Mikrofona doğru eğilip açılış cümlesini söyleyen bir podcast sunucusunu dikey kadraja al.",
     "Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.": "Shorts, Marketing, Explainer veya 3D Studio içinde klip oluşturun. Marketing ürün görselleri de sunar. Fikrinizle veya bir Skill özetiyle başlayıp yapılandırılmış bir model seçin.",
     "Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.": "Aşağıdaki özet için bir klip oluştur. openmotion_media_use ile yapılandırılmış uyumlu bir model bul. Gerekirse sağlayıcıyı yapılandırmama yardım et. Modeli ve varsa ilk kare görselinin sürümünü doğrula, ardından openmotion_assets_use ile bir kez gönder ve ilk işi takip et.",
-    "Animate type and shapes, then edit their timing on the timeline.": "Metin ve şekilleri canlandırın, ardından zaman çizelgesinde hareketlerin zamanlamasını ayarlayın."
+    "Animate type and shapes, then edit their timing on the timeline.": "Metin ve şekilleri canlandırın, ardından zaman çizelgesinde hareketlerin zamanlamasını ayarlayın.",
+    "Shorts Studio": "Kısa Video Stüdyosu",
+    "Marketing Studio": "Pazarlama Stüdyosu",
+    "Explainer Studio": "Açıklayıcı Video Stüdyosu",
+    "Open Creators in Explore, choose a catalogue credit or source account, then open a work. Copy its template instruction to use it with your Agent.": "Keşfet’te İçerik üreticileri bölümünü açın. Katalogda adı geçen bir üreticiyi veya özgün paylaşımı yapan hesabı seçip bir çalışmayı açın. Şablon talimatını kopyalayıp Agent ile kullanın.",
+    "Use openmotion_get_template with the template ID in my brief. Inspect its editable source or recreation guide and keep its credit when adapting it.": "İş tanımımda verilen şablon kimliğiyle openmotion_get_template aracını çağır. Düzenlenebilir kaynakları veya yeniden oluşturma kılavuzunu incele ve şablonu uyarlarken özgün üreticinin adını koru.",
+    "Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Seçilen beceriyi openmotion_get_template ile oku. Kaynak görüntüleri veya iş tanımını doğrula, ardından openmotion_create_project ve openmotion_edit_project ile düzenlenebilir bir proje oluştur. Eksik malzeme veya bilgi varsa düzenlemeye başlamadan önce iste."
   }
 }
