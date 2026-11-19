@@ -167,7 +167,7 @@
 }
 @media(max-width:699px) and (orientation:landscape) {
   .storyDialog[open] { padding-bottom:0; }
-  .actionDock { position:static; margin-top:var(--motion-space-12); box-shadow:none; }
+  .actionDock { position:static; margin-top:var(--motion-space-12); padding-inline:0; box-shadow:none; }
 }
 @media(prefers-reduced-motion:no-preference) {
   .stackItem { transition:transform var(--motion-duration-normal) var(--motion-ease-out); }
