@@ -22,6 +22,8 @@ import { useMediaCatalog } from './useMediaCatalog';
 import { destinationTarget, reportCreativeClick, type CreativeTarget } from './exploreTracking';
 import { skillCategoryId } from './pageTracking';
 import { send } from './reporting';
+import { ExploreDesignSection } from '../design/scenes/ExploreDesignSection';
+import type { DesignTabId } from '../design/scenes/DesignSceneTabs';
 import './sceneDiscovery.css';
 
 type ExploreArea = Parameters<typeof reportCreativeClick>[1];
@@ -42,6 +44,8 @@ type ExploreProps = {
   onOpenBlackFriday: (trigger: HTMLButtonElement) => void;
   onBrandKit: () => void;
   onMcp: (client?: 'claude', example?: string) => void;
+  onSelectDesignScene?: (scene: DesignTabId) => void;
+  onOpenDesignProject?: (projectId: string) => void;
   active: boolean;
   filters: ExploreFilters;
 };
@@ -119,9 +123,9 @@ function TemplateSpotlight({ item, onTry }: { item: GalleryTemplate; onTry: (pro
   </button><TemplatePromptAction item={item} onTry={prompt => { track('explore_featured', 'try_prompt', { template: item.id }); onTry(prompt); }} /></article>;
 }
 
-function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate, ...playback }: FeedPlayback & {
+function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate, onSelectDesignScene, onOpenDesignProject, ...playback }: FeedPlayback & {
   studio: CreativeStudio; medium: ExploreFilters['medium'];
-} & Pick<ExploreProps, 'onChooseStudio' | 'onSkill' | 'onNavigate'>) {
+} & Pick<ExploreProps, 'onChooseStudio' | 'onSkill' | 'onNavigate' | 'onSelectDesignScene' | 'onOpenDesignProject'>) {
   const { t } = useI18n();
   const community = exploreCommunities.find(item => item.studios[0] === studio.id);
   const description = studio.surface === 'editor' ? 'Animate type and shapes, then edit their timing on the timeline.' : community?.description;
@@ -150,6 +154,9 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
       <button className="om-button" onClick={() => { track('explore_collection', 'open_studio', { studio: studio.id, collection: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}<RemixIcon name="arrow-right-line" size={16} /></button>
     </header>
     <div className="om-studio-collection-cards">{cards}</div>
+    {studio.id === 'design' && onSelectDesignScene && onOpenDesignProject && (
+      <ExploreDesignSection onSelectDesignScene={onSelectDesignScene} onOpenProject={onOpenDesignProject} />
+    )}
   </section>;
 }
 
@@ -244,6 +251,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
     firstGroup.push(firstTemplates[i], sceneCards[i], skillCards[i]);
   }
   const studioSection = (studio: CreativeStudio) => <StudioCollection key={studio.id} studio={studio} medium={medium}
+    onSelectDesignScene={props.onSelectDesignScene} onOpenDesignProject={props.onOpenDesignProject}
     onNavigate={onNavigate} onChooseStudio={onChooseStudio} onSkill={onSkill} playing={playing} onPriority={setPriority} />;
   const initialLoading = templates.loading && !templates.pages.length;
   const showCommunityPicks = home && (initialLoading || communityPicks.length > 0);

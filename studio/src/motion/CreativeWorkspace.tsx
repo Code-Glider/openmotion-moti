@@ -1,4 +1,4 @@
-import type { TechniqueStudio } from '../../../shared/studio-catalog';
+import type { CreativeStudio, TechniqueStudio } from '../../../shared/studio-catalog';
 import type { RefObject } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -7,6 +7,7 @@ import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
 import { destinationTarget, reportCreativeClick } from './exploreTracking';
 import { scenesForStudio, studioDestination, studioDraftKey, supportsScene, type StudioDestination } from './creativeStudios';
+import { DesignSceneTabs, type DesignTabId } from '../design/scenes/DesignSceneTabs';
 
 export type StudioCreation = {
   destination: StudioDestination;
@@ -17,8 +18,10 @@ export type StudioCreation = {
   chooseModel: (model: string) => void;
 };
 
-export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenAssets, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenAssets, onSelectDesignScene, onChooseStudio, hasProject, active, drafts }: {
   onOpenAssets?: () => void;
+  onSelectDesignScene?: (scene: DesignTabId) => void;
+  onChooseStudio?: (studio: CreativeStudio) => void;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
@@ -47,7 +50,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
         const next = { studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null };
         reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
         onNavigate(next);
-      }}>{t(item.label)}</button>)}</nav>}
+      }}>{t(item.label)}</button>)}{studio.id === 'design' && onSelectDesignScene && onChooseStudio && <DesignSceneTabs activeTab={null} onSelectDesignScene={onSelectDesignScene} onChooseStudio={onChooseStudio} />}</nav>}
       {onOpenAssets && <button className="om-nav-item om-studio-library-link" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_assets', destinationTarget(destination)); onOpenAssets(); }} aria-label={t('Workspace assets')}><RemixIcon name="folder-open-line" size={16} /><span>{t('Workspace assets')}</span></button>}
     </header>
     <AssetsPage key={draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),

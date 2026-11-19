@@ -18,6 +18,7 @@ export type CreativeNavigationProps = {
   specialty: TechniqueStudio | null;
   destination: StudioDestination | null;
   motionActive: boolean;
+  designActive?: boolean;
   onNavigate: (destination: StudioDestination | null) => void;
   openProviders: () => void;
   onSkill: (id: string) => void;
@@ -67,7 +68,7 @@ function MediaChoices({ kind, onModel, destination, onNavigate, onModelNavigate,
   </div>;
 }
 
-export function CreativeNavigation({ specialty, onModel, onChooseStudio, destination, motionActive, onNavigate, openProviders, onSkill, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
+export function CreativeNavigation({ specialty, onModel, onChooseStudio, destination, motionActive, designActive, onNavigate, openProviders, onSkill, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = useState<Modality | 'mcp' | null>(null);
   const [popupHost, setPopupHost] = useState<HTMLElement>();
@@ -180,7 +181,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
     );
     const studio = creativeStudios[index - studioStart];
     const isCurrent = studio.surface === 'editor' ? motionActive
-      : (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
+      : (studio.id === 'design' && Boolean(designActive)) || (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
     const badge = 'navBadge' in studio ? studio.navBadge : undefined;
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
     return <button className="om-nav-item" aria-current={isCurrent ? 'page' : undefined}

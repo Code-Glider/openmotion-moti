@@ -5,7 +5,9 @@ import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpClient } from './mcpClients';
 import { CreativeNavigation } from './CreativeNavigation';
 import { ExploreStudios } from './ExploreStudios';
-import { creativeStudios, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
+import { creativeStudios, findMediaStudio, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
+import { DesignProjectEditor } from '../design/DesignProjectEditor';
+import { DesignScenePage } from '../design/scenes/DesignScenePage';
 import type { Modality } from '../../../shared/gateway';
 import { motionStudio, scenesForStudio, studioDestination, studioDraftKey, type StudioDestination } from './creativeStudios';
 import { DeveloperPage } from './DeveloperPage';
@@ -64,7 +66,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const hostChrome = window.parent !== window && new URLSearchParams(location.search).get('hostChrome') === '1';
   const templatesPage = libraryRequested && !page.creators && !hostChrome;
   // Resource pages cover the editor without unmounting it.
-  const pageOpen = templatesPage || page.motion || page.api || Boolean(page.modelOverview) || Boolean(page.modelHub) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
+  const pageOpen = templatesPage || page.motion || Boolean(page.designScene) || page.api || Boolean(page.modelOverview) || Boolean(page.modelHub) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
   const lastExplore = useRef({ community: page.community, medium: page.medium });
   if (page.explore) lastExplore.current = { community: page.community, medium: page.medium };
   const [exploreVisited, setExploreVisited] = useState(page.explore);
@@ -233,7 +235,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [routeView]);
   // Where the top navigation is shown, so its clicks segment by the page the user was on.
   const navTrackingPage: CreativePage = templatesPage ? 'studio' : currentPage ?? (settings === 'brand-kit' ? 'brand_kit' : settings ? 'settings'
-    : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio');
+    : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion || page.designScene ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio');
   const returnToExplore = () => {
     const filters = page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills
       ? { community: page.community, medium: page.medium } : lastExplore.current;
@@ -279,7 +281,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
         onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings} toggleResourceRail={resource && !hostChrome ? () => setResourceRailCollapsed(collapsed => !collapsed) : undefined}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
-        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} onNavigate={openStudio} />
+        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} designActive={!templatesPage && Boolean(page.designScene)} onNavigate={openStudio} />
       {(editorRoute || resource) && <ApplicationRail resource={resource} openSettings={openSettings} projects={editorRoute ? <WorkspaceProjectsButton
         applicationRef={applicationRef}
         expanded={sidebarOpen && editorActive}
@@ -308,7 +310,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
           workspace.clearError();
           reportBlackFridayEntry();
           navigatePage({ explore: true, templates: true, blackFriday: true, creators: false, template: null, skill: null });
-        }} onCreators={trigger => { libraryTrigger.current = trigger; navigatePage({ templates: true, creators: true, creator: null, template: null }); }} onBrandKit={() => openSettings('brand-kit')} onMcp={(client, example) => openPage('mcp', client, example)} filters={lastExplore.current} onChooseStudio={chooseStudio} active={page.explore && !connectionsOpen} onNavigate={openStudio} onSkill={openSkill} />
+        }} onCreators={trigger => { libraryTrigger.current = trigger; navigatePage({ templates: true, creators: true, creator: null, template: null }); }} onBrandKit={() => openSettings('brand-kit')} onMcp={(client, example) => openPage('mcp', client, example)} onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false, ...lastExplore.current })} onOpenDesignProject={id => navigatePage({ designScene: 'projects', designProject: id, templates: false, ...lastExplore.current })} filters={lastExplore.current} onChooseStudio={chooseStudio} active={page.explore && !connectionsOpen} onNavigate={openStudio} onSkill={openSkill} />
       </div>}
       {page.motion && !templatesPage && <div className="om-explore-host"><MotionStudioPage active={!connectionsOpen}
         onExplore={returnToExplore} onOpenEditor={() => openStudio(null)} /></div>}
@@ -319,7 +321,26 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         onUse={() => chooseStudio(motionStudio)} /></div>}
       {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} onExplore={returnToExplore}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudio} /></div>}
-      <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenAssets={hostChrome ? openAssets : undefined} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })} onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} onNavigate={studio => navigatePage({ studio, templates: false })} /></div>
+      <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenAssets={hostChrome ? openAssets : undefined} onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false, ...lastExplore.current })} onChooseStudio={chooseStudio} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })} onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} onNavigate={studio => navigatePage({ studio, templates: false })} /></div>
+      {page.designScene && !templatesPage && (
+        <div className="om-assets-host" style={{ padding: 0 }}>
+          {page.designProject
+            ? <DesignProjectEditor
+                projectId={page.designProject}
+                onBack={() => navigatePage({ designScene: page.designScene, designProject: null, templates: false })}
+                onOpenMcp={() => openPage('mcp')}
+              />
+            : <DesignScenePage
+                scene={page.designScene}
+                onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false })}
+                onSelectImageScene={sceneId => openStudio(studioDestination(findMediaStudio('design')!, sceneId))}
+                onChooseStudio={chooseStudio}
+                onOpenProject={id => navigatePage({ designScene: page.designScene ?? 'projects', designProject: id, templates: false })}
+                onExplore={returnToExplore}
+                onOpenMcp={() => openPage('mcp')}
+              />}
+        </div>
+      )}
       {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings) || templatesPage} inert={!assetsOpen || Boolean(settings) || templatesPage}><AssetsPage hasProject={Boolean(projectId)} active={assetsOpen && !settings && !templatesPage} routeId={page.assetId} routeVersion={page.assetVersion} onAssetRoute={selectAssetRoute} /></div>}
       {(skillsOpen || page.specialty) && !settings && !templatesPage && <div className="om-skills-host"><SkillsPage previewsEnabled={!connectionsOpen} briefs={skillBriefs.current} onCreate={openStudio} key={page.specialty?.id ?? 'skills'} studio={page.specialty ?? undefined} onExplore={returnToExplore} skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} hasProject={Boolean(projectId)} /></div>}
       {settings && !templatesPage && <SettingsSurfaceBoundary key={settings}>{settings === 'brand-kit'
