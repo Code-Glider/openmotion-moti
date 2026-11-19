@@ -11,6 +11,7 @@ import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import type { HubVideo } from './gemini4Videos';
+import { HubVideoPreview, previewDocument } from './HubVideoPreview';
 import { reportHubClick } from './exploreTracking';
 import { designSystemAsset } from '../../../packages/design-system/index.js';
 import { platformIcons } from '../../../packages/design-system/platform-icons.js';
@@ -24,10 +25,6 @@ const xMark = <span className="om-hub-x-mark" aria-hidden="true" style={{ ['--ma
 
 /** Same clamp as template cards so the waterfall keeps their rhythm. */
 const aspect = (video: HubVideo) => { const [w, h] = video.ratio.split('/').map(Number); return Math.max(0.8, Math.min(1.9, w / h)); };
-const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-/** The X media CDN rejects requests that carry another site's referrer, so previews play in a document that sends none. */
-/** Card previews stay transparent until frames arrive, so the card poster shows instead of a black flash. */
-const previewDocument = (video: HubVideo, src = video.video, controls = false) => `<meta name="referrer" content="no-referrer"><style>html,body{margin:0;height:100%;overflow:hidden;background:${controls ? 'black' : 'transparent'}}video{width:100%;height:100%;object-fit:${controls ? 'contain' : 'cover'};display:block}</style><video src="${escape(src)}"${controls ? ` poster="${escape(video.poster)}"` : ''} muted autoplay loop playsinline${controls ? ' controls' : ''}></video>`;
 type Filter = 'all' | string;
 
 /** Same breakpoints as the template gallery's masonry columns. */
@@ -124,7 +121,7 @@ export function HubVideoWall({ hubId, signedIn, videos, title, query = '' }: { h
         </button>
         {/* Previews sit beside the button, never inside it; the button stays the single click target. */}
         {!still && inView.has(video.id) && video.platform !== 'x' && <video className="om-gallery-animation" src={video.video} muted loop playsInline autoPlay aria-hidden="true" />}
-        {!still && inView.has(video.id) && video.platform === 'x' && <iframe className="om-gallery-animation" srcDoc={previewDocument(video)} sandbox="allow-scripts" allow="autoplay" tabIndex={-1} aria-hidden="true" title="" />}
+        {!still && inView.has(video.id) && video.platform === 'x' && <HubVideoPreview key={video.video} video={video} />}
       </div>
     </article>)}</div>)}</div>
     {open && <HubVideoDetail videos={shown} id={open} onChange={setOpen} onClose={() => setOpen(null)} returnFocus={returnFocus} title={title}
