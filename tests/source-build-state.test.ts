@@ -90,3 +90,18 @@ if(args[0]==='run'){fs.mkdirSync('studio/build',{recursive:true});fs.writeFileSy
   install();
   assert.deepEqual((await calls()).slice(3), [['ci', '--include=dev'], ['run', 'build:studio']]);
 });
+
+test('DSH can reuse an existing npm tree only when required locked identities and directories match', async t => {
+  const root = await fixture(t);
+  const entry = { version: '1.0.0', integrity: 'sha512-fixture' };
+  await mkdir(path.join(root, 'node_modules/fixture'), { recursive: true });
+  await writeFile(path.join(root, 'package-lock.json'), JSON.stringify({ packages: { '': {}, 'node_modules/fixture': entry, 'node_modules/platform-only': { ...entry, optional: true } } }));
+  await writeFile(path.join(root, 'node_modules/.package-lock.json'), JSON.stringify({ packages: { 'node_modules/fixture': entry } }));
+  assert.equal(await dependenciesCurrent(root), false);
+  assert.equal(await dependenciesCurrent(root, { inspectInstalledLock: true }), true);
+  await writeFile(path.join(root, 'node_modules/.package-lock.json'), JSON.stringify({ packages: { 'node_modules/fixture': { ...entry, version: '0.9.0' } } }));
+  assert.equal(await dependenciesCurrent(root, { inspectInstalledLock: true }), false);
+  await writeFile(path.join(root, 'node_modules/.package-lock.json'), JSON.stringify({ packages: { 'node_modules/fixture': entry } }));
+  await rm(path.join(root, 'node_modules/fixture'), { recursive: true });
+  assert.equal(await dependenciesCurrent(root, { inspectInstalledLock: true }), false);
+});

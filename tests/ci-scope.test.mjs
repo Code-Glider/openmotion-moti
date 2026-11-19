@@ -98,16 +98,17 @@ const ciPath = new URL('../.github/workflows/ci.yml', import.meta.url);
 const jobBody = (ci, job) => ci.split(`  ${job}:\n`)[1].split(/\n  [\w-]+:\n/)[0];
 const stepBody = (job, name) => job.split(`      - name: ${name}\n`)[1].split('      - name:')[0];
 
-test('parallel CI preserves common gates and builds distribution inputs in the same job', async () => {
+test('parallel CI preserves common gates while separating distribution regressions', async () => {
   const ci = await readFile(ciPath, 'utf8');
   const distribution = jobBody(ci, 'distribution');
+  const distributionBrowser = jobBody(ci, 'distribution-browser');
   for (const name of ['Scan tracked source without publication credentials', 'Validate manual package selection']) {
     assert(!stepBody(distribution, name).includes('        if:'), `${name} must run for presentation docs too`);
+    assert(!distributionBrowser.includes(`- name: ${name}`), `${name} should run once in the package lane`);
   }
   for (const name of ['Download full-bundle media explicitly', 'Install rendering test tools',
     'Install locked Motion dependencies', 'Build Studio and validate tracking',
-    'Validate standalone installation and packaging', 'Repository template runtime regression',
-    'Built-in template playback and export regression', 'Build phase-one ZIP and exercise all public tools',
+    'Validate standalone installation and packaging', 'Build phase-one ZIP and exercise all public tools',
     'Validate two-round inline rendering',
     'Build immutable standalone artifacts', 'Generate candidate installation guide', 'Retain candidate installation guide for review']) {
     assert(stepBody(distribution, name).includes("steps.scope.outputs.full == 'true'"), name);
@@ -138,6 +139,16 @@ test('parallel CI preserves common gates and builds distribution inputs in the s
   assert(stepBody(distribution, 'Validate standalone installation and packaging').includes('tests/inline-video.test.ts'));
   assert(stepBody(distribution, 'Validate two-round inline rendering').includes('tests/inline-video-runtime.test.ts'));
   assert(!distribution.includes('npm run design:test'));
+  for (const name of ['Related template preview browser regression', 'Transcript workflow browser regression',
+    'Platform export Studio and MCP end-to-end regression', 'Brand Kit capture, package and showcase regression',
+    'Repository template runtime regression', 'Workspace, wrapper and session regression',
+    'Built-in template playback and export regression']) {
+    assert(stepBody(distributionBrowser, name).includes("steps.scope.outputs.full == 'true'"), name);
+    assert(!distribution.includes(`- name: ${name}`), `${name} must not remain serialized behind packaging`);
+  }
+  const browserBuild = stepBody(distributionBrowser, 'Build browser regression inputs');
+  assert(browserBuild.includes('npm run build:studio') && browserBuild.includes('npm run build:tracking'));
+  assert(!distributionBrowser.includes('    needs:'), 'Browser regression starts independently of packaging');
   assert(stepBody(distribution, 'Build Studio and validate tracking').includes('node --test tests/design-system.test.ts'));
   assert(studio.includes('shard: [1, 2]'));
   assert(studio.includes('fail-fast: false'));
@@ -152,7 +163,7 @@ test('parallel CI preserves common gates and builds distribution inputs in the s
 
 test('the existing standalone gate rejects failed, cancelled, skipped and missing lanes', async () => {
   const gate = jobBody(await readFile(ciPath, 'utf8'), 'standalone');
-  const jobs = ['template-library', 'maintainability', 'checks', 'platform-reliability', 'studio', 'distribution'];
+  const jobs = ['template-library', 'maintainability', 'checks', 'platform-reliability', 'studio', 'distribution-browser', 'distribution'];
   assert(gate.includes('if: ${{ always() }}'));
   assert(gate.includes(`needs: [${jobs.join(', ')}]`));
   assert(gate.includes('VALIDATION_RESULTS: ${{ toJSON(needs) }}'));

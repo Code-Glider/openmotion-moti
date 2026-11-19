@@ -90,11 +90,13 @@
   --timeline-clip-bg: var(--motion-inset);
   --timeline-clip-label-active: var(--motion-accent);
   --timeline-clip-label-shadow: none;
-  --timeline-clip-audio-bg: oklch(0.45 0.12 300);
-  --timeline-clip-audio-border: oklch(0.37 0.12 300);
-  --timeline-clip-audio-bg-hover: oklch(0.49 0.12 300);
-  --timeline-clip-audio-bg-dragging: oklch(0.42 0.12 300 / 0.96);
-  --timeline-clip-audio-muted-bg: rgb(72, 74, 78);
+  --timeline-clip-audio-bg: var(--motion-brand-soft);
+  --timeline-clip-audio-ink: var(--motion-accent);
+  --timeline-clip-audio-border: color-mix(in srgb, var(--timeline-clip-audio-ink) 70%, var(--timeline-clip-audio-bg));
+  --timeline-clip-audio-bg-hover: color-mix(in srgb, var(--timeline-clip-audio-bg) 90%, var(--timeline-clip-audio-ink));
+  --timeline-clip-audio-bg-dragging: color-mix(in srgb, var(--timeline-clip-audio-bg) 82%, var(--timeline-clip-audio-ink));
+  --timeline-clip-audio-muted-bg: light-dark(var(--motion-neutral-n3), var(--motion-neutral-n10));
+  --timeline-video-wave-bg: oklch(0.45 0.12 300);
   --timeline-clip-selection: light-dark(#9f7aea, #a78bfa);
   --timeline-clip-selection-highlight: rgb(255 255 255 / 0.55);
   --timeline-clip-radius: var(--motion-radius-sm);

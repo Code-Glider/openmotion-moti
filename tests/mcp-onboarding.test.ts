@@ -1,7 +1,8 @@
+import { reviewCommentsPrompt } from '../shared/review-comments.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
+import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpReviewGuide, mcpFaq, mcpClientComparison } from '../studio/src/motion/mcpCapabilities.ts';
 import { assetNamingInstruction } from '../shared/asset-names.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
@@ -15,6 +16,18 @@ test('MCP onboarding covers every public domain tool and scenarios only compose 
 test('every capability and benefit has a real shared icon', () => {
   const sprite = readFileSync(new URL('../packages/design-system/icons.svg', import.meta.url), 'utf8');
   for (const { icon } of [...mcpCapabilities, ...mcpScenarios, ...mcpBenefits]) assert.ok(sprite.includes(`id="ri-${icon}"`), icon);
+});
+
+test('review comments and their handbook scenario are localized across all interface languages', () => {
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/review-ui.json', import.meta.url), 'utf8'));
+  assert.equal(Object.keys(translations).length, 10);
+  const keys = Object.keys(translations['zh-CN']).sort();
+  const scenario = mcpScenarios.find(item => item.id === 'review-comments')!;
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    assert.deepEqual(Object.keys(values).sort(), keys, language);
+    for (const key of [scenario.title, scenario.description, 'Review data and Agent actions', ...mcpReviewGuide.flat(), ...keys]) assert.ok(values[key]?.trim(), `${language}: ${key}`);
+    assert.equal(values.Open, undefined, 'Review status must not override the general Open action');
+  }
 });
 
 test('handbook scenarios compose public tools and keep their copyable instructions aligned', () => {
@@ -40,6 +53,7 @@ test('connection guidance exposes the maintained media workflow without asking f
   const info: IntegrationInfo = { name: 'OpenMotion', version: '1.0.0', dataDirectory: '/fixture/data', previewUrl: 'http://127.0.0.1:4567', tools: phase1Tools,
     transport: { type: 'stdio', command: 'node', args: ['/fixture/mcp.ts'], cwd: '/fixture', env: { MOTION_DATA_DIR: '/fixture/data' } } };
   const guide = agentGuide(info, 'codex');
+  assert.ok(guide.includes(reviewCommentsPrompt({ dataDirectory: info.dataDirectory, previewUrl: info.previewUrl })));
   for (const operation of ['openmotion_media_use', 'inspect', 'reference', 'models', 'schema', 'generate', 'status', 'cancel', 'requestId', 'jobId']) assert.ok(guide.includes(operation), operation);
   assert.doesNotMatch(guide, /不公开生成/);
   assert.match(guide, /Keep credentials in Settings/);
@@ -93,5 +107,42 @@ test('final-video selection and recovery are localized throughout the handbook',
       assert.ok(values[key]?.trim(), `${language}: missing final-video guidance`);
       assert.notEqual(values[key], key, `${language}: English fallback`);
     }
+  }
+});
+
+
+test('canvas and caption controls expose atomic operations and an actionable handbook example', () => {
+  const capability = mcpCapabilities.find(item => item.id === 'canvas-captions')!;
+  assert.match(capability.prompt, /openmotion_edit_project.*canvas=/);
+  assert.match(capability.prompt, /caption_toggle/);
+  assert.match(capability.prompt, /stable requestId/);
+  assert.match(capability.description, /Locked tracks.*Conflicts.*without automatic subject detection/);
+  const schema = phase1Tools.find(tool => tool.name === 'openmotion_edit_project')!.inputSchema;
+  assert.ok(schema.properties.canvas); assert.ok(!schema.required.includes('files'));
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/canvas-ui.json', import.meta.url), 'utf8'));
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing canvas guidance`);
+  }
+});
+
+test('fullscreen guidance distinguishes browser presentation from an Agent project operation', () => {
+  const capability = mcpCapabilities.find(item => item.id === 'fullscreen')!;
+  assert.deepEqual(capability.tools, ['openmotion_open_preview']);
+  assert.match(capability.description, /Embedded hosts may block/); assert.match(capability.prompt, /do not render or edit/);
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/fullscreen-ui.json', import.meta.url), 'utf8'));
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing fullscreen guidance`);
+  }
+});
+
+
+test('timeline hover inspection remains a localized, non-mutating preview scenario', () => {
+  const capability = mcpCapabilities.find(item => item.id === 'timeline-hover')!;
+  assert.deepEqual(capability.tools, ['openmotion_open_preview']);
+  assert.match(capability.description, /Pause playback.*Click the ruler.*if loading fails/);
+  assert.match(capability.prompt, /Preserve the source and selection; do not export or generate media/);
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/timeline-hover-ui.json', import.meta.url), 'utf8'));
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing hover guidance`);
   }
 });

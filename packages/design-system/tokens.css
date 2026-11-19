@@ -66,6 +66,7 @@
   --motion-ease-standard: cubic-bezier(0.33, 0, 0.67, 1);
   --motion-glass-backdrop: blur(28px) saturate(1.8);
   --motion-scrim-backdrop: blur(50px);
+  --motion-media-preview-backdrop: blur(4px);
   --motion-control-disabled: color-mix(in srgb, var(--motion-strong) 30%, var(--motion-panel));
   --motion-text-step-9: 9px;
   --motion-text-step-10: 10px;
@@ -106,6 +107,9 @@
   --motion-neutral-n9: #494949;
   --motion-neutral-n10: #353535;
   --motion-neutral-n11: #121212;
+  --motion-editor-divider-light: rgba(0, 0, 0, 0.08);
+  --motion-editor-divider-dark: rgba(255, 255, 255, 0.12);
+  --motion-radius-editor-control: 8px;
 }
 :where([data-motion-ui]) {
   color-scheme: light;

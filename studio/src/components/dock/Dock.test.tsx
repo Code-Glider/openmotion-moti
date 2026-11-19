@@ -121,10 +121,11 @@ describe("Dock on React 19", () => {
     for (const id of DEFAULT_VISIBLE) {
       expect(host.querySelector(`[data-testid="content-${id}"]`)).not.toBeNull();
     }
-    for (const id of DEFAULT_OPEN.filter((id) => !DEFAULT_VISIBLE.includes(id) && id !== "transcript" && id !== "captions")) {
+    for (const id of DEFAULT_OPEN.filter((id) => !DEFAULT_VISIBLE.includes(id) && id !== "transcript" && id !== "captions" && id !== "comments")) {
       expect(host.querySelector(`[data-testid="content-${id}"]`)).toBeNull();
     }
     expect(host.querySelector('[data-testid="content-transcript"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="content-comments"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="content-slideshow"]')).toBeNull();
     expect(useDockLayoutStore.getState().openPanels).toEqual(new Set(DEFAULT_OPEN));
   });

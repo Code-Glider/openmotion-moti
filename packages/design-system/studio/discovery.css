@@ -91,4 +91,4 @@
   .om-gallery-header-actions kbd { display: none; }
 }
 @media (max-width: 420px) { .om-gallery-masonry { column-gap: 9px; } .om-gallery-intro h1 { font-size: 21px; } .om-gallery-intro .om-gallery-surprise { font-size: var(--motion-text-xs); gap: var(--motion-space-6); padding: 9px; } .om-gallery-surprise > svg:last-child { display: none; } }
-@media (prefers-reduced-motion: no-preference) { .om-gallery-surface .om-gallery-categories button { transition: background var(--motion-duration-fast); } }
+/* Change category ink and surface together; a background-only theme fade loses contrast. */

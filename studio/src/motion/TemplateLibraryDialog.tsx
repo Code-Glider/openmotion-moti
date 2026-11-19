@@ -4,7 +4,7 @@ import { GitHubLink } from './GitHubLink';
 import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
 import { GithubLogo } from '@phosphor-icons/react';
 import { templateRepositoryUrl } from './githubRepository';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { BrandSeriesCard, BrandStoriesDialog } from './BrandStories';
 import { discoveryInsertions, groupBrandSeries, type BrandSeries } from './brandStoryData';
 import { seriesId, seriesContext, reportSeriesCard, openSeriesView, type SeriesView } from './brandStoryTracking';
@@ -18,6 +18,7 @@ import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { GalleryFilterPopover, GallerySortMenu, matchesGalleryFilters } from './GalleryFilters';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Tooltip } from '../components/ui/Tooltip';
+import { Popover } from '../components/ui/Popover';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
 import { purposeOrder } from './templateDiscoveryTaxonomy';
@@ -25,7 +26,7 @@ import { templateContributionUrl, templateSubmissionPrompt } from './templateCon
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
 import { RelatedTemplatePreviews } from './RelatedTemplatePreviews';
-import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, randomTemplate, type Facet } from './templateDiscovery';
+import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, relatedTemplatesByTags, randomTemplate, type Facet } from './templateDiscovery';
 import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
 import { useTemplateImpressions } from './useTemplateImpressions';
@@ -34,6 +35,9 @@ import { TemplateReferenceDialog, TemplateSearchRecovery } from './TemplateSearc
 import { useTemplateSearchContext } from './useTemplateSearchContext';
 import * as tracking from './templateLibraryTracking';
 import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './templateLibraryTracking';
+import { TemplateHandoffSteps, TemplateOpenRecovery, type TemplateOpenProgress } from './TemplateHandoffInfo';
+import { TemplateDetailReview, TemplateProductionNotes, TemplateGuideReview, TemplateReviewSpecs } from './TemplateDetailReview';
+import { templateHandoffEnabled, templateHandoffPrompt, preparedTemplateProjects, pendingTemplateProjects, rememberTemplateRequest, forgetTemplateRequest, TemplatePreparationBlockedError, findPreparedTemplate, type PreparedTemplateProject } from './templateHandoff';
 
 type Filters = Partial<Record<Facet, string[]>>;
 const toggleValue = (filters: Filters, key: Facet, value: string): Filters => ({ ...filters, [key]: filters[key]?.includes(value) ? filters[key]!.filter(item => item !== value) : [...(filters[key] ?? []), value] });
@@ -69,9 +73,13 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void };
+type Props = { returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
+function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
+  return enabled ? <div ref={container} className={styles.reviewScroll}>{children}</div> : <>{children}</>;
+}
+
 export function TemplateLibraryDialog(props: Props) {
   const { t, locale } = useI18n();
   const [storiesPreview] = useState(() => new URLSearchParams(location.search).get('brandStoriesPreview') === '1');
@@ -100,12 +108,102 @@ export function TemplateLibraryDialog(props: Props) {
   const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
+  const handoffPreview = templateHandoffEnabled() && !brandStory;
+  const reviewBody = useRef<HTMLDivElement>(null), reviewFooter = useRef<HTMLDivElement>(null), reviewScroll = useRef<HTMLDivElement>(null);
+  const detailTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (handoffPreview && preview && !guideOpen) detailTitle.current?.focus({ preventScroll: true });
+  }, [handoffPreview, preview?.id, guideOpen]);
+  useEffect(() => {
+    if (!handoffPreview || !manualCopy || guideOpen) return;
+    const field = instructionText.current?.querySelector('textarea');
+    field?.focus({ preventScroll: true });
+    field?.scrollIntoView({ block: 'center' });
+  }, [handoffPreview, manualCopy, guideOpen]);
+  useEffect(() => {
+    const element = reviewFooter.current;
+    if (!handoffPreview || !element || !detail.current) return;
+    const measure = () => detail.current?.style.setProperty('--review-action-height', `${element.getBoundingClientRect().height}px`);
+    measure();
+    const observer = new ResizeObserver(measure); observer.observe(element);
+    return () => observer.disconnect();
+  }, [handoffPreview, preview?.id, guideOpen]);
+  const [projectProgress, setProjectProgress] = useState<Record<string, TemplateOpenProgress>>(() => Object.fromEntries([
+    ...pendingTemplateProjects().filter(item => item.originalProjectId === props.projectId).map(item => [item.templateId, { requestId: item.requestId, state: 'unknown' as const }]),
+    ...preparedTemplateProjects().filter(item => item.originalProjectId === props.projectId || item.projectId === props.projectId).map(result => [result.templateId, { requestId: result.requestId, state: 'ready' as const, result }]),
+  ]));
+  const progressRef = useRef(projectProgress); progressRef.current = projectProgress;
+  const previewLatest = useRef(preview); previewLatest.current = preview;
+  const openLatest = useRef(props.open); openLatest.current = props.open;
+  const writeProgress = (id: string, progress: TemplateOpenProgress) => {
+    progressRef.current = { ...progressRef.current, [id]: progress };
+    setProjectProgress(progressRef.current);
+  };
+  async function revealProject(template: GalleryTemplate, result: PreparedTemplateProject, view = detailView.current) {
+    const attemptId = tracking.newTrackingId();
+    const progress = { requestId: result.requestId, result };
+    writeProgress(template.id, { ...progress, state: 'opening' });
+    const opened = await props.onOpenProject?.(result.projectId).catch(() => false);
+    tracking.reportProjectResult(template, result.requestId, attemptId, 'open', opened ? 'success' : 'failure', view, result.projectId);
+    writeProgress(template.id, opened ? { ...progress, state: 'ready' }
+      : { ...progress, state: 'open_failed', error: t('The project is retained. Retry opening it without creating another copy.') });
+  }
+  async function prepareProject(template: GalleryTemplate) {
+    if (!isEditableTemplate(template) || !props.onPrepareTemplate || props.openingDisabled || props.busy) return;
+    const previous = progressRef.current[template.id];
+    if (previous?.state === 'creating' || previous?.state === 'opening' || previous?.state === 'unknown') return;
+    const requestId = previous?.requestId ?? crypto.randomUUID();
+    tracking.reportUseClicked(template, 'open_edit', detailView.current, undefined, requestId);
+    if (previous?.result) { void revealProject(template, previous.result); return; }
+    const attemptId = tracking.newTrackingId(), view = detailView.current;
+    rememberTemplateRequest({ templateId: template.id, originalProjectId: props.projectId, requestId });
+    writeProgress(template.id, { requestId, state: 'creating' });
+    try {
+      const result = await props.onPrepareTemplate(template, requestId);
+      tracking.reportProjectResult(template, requestId, attemptId, 'create', 'success', view, result.projectId);
+      forgetTemplateRequest(requestId);
+      writeProgress(template.id, { requestId, state: 'ready', result });
+      if (openLatest.current && detail.current?.open && previewLatest.current?.id === template.id) void revealProject(template, result, view);
+    } catch (error) {
+      if (error instanceof TemplatePreparationBlockedError) {
+        forgetTemplateRequest(requestId);
+        tracking.reportProjectResult(template, requestId, attemptId, 'create', 'failure', view);
+        writeProgress(template.id, { requestId, state: 'failed', error: error.message });
+        return;
+      }
+      const result = await findPreparedTemplate(template, props.projectId, requestId).catch(() => null);
+      if (result) forgetTemplateRequest(requestId);
+      tracking.reportProjectResult(template, requestId, attemptId, 'create', result ? 'success' : 'unknown', view, result?.projectId);
+      writeProgress(template.id, result ? { requestId, state: 'ready', result } : { requestId, state: 'unknown', error: t('The connection did not return a complete result. Check this request before creating again.') });
+    }
+  }
+  async function checkProject(template: GalleryTemplate) {
+    const progress = progressRef.current[template.id]; if (!progress) return;
+    const view = detailView.current, attemptId = tracking.newTrackingId();
+    tracking.reportDetailAction(template, 'check_template_project', view);
+    let result: PreparedTemplateProject | null;
+    try { result = await findPreparedTemplate(template, props.projectId, progress.requestId); }
+    catch {
+      tracking.reportProjectResult(template, progress.requestId, attemptId, 'reconcile', 'unknown', view);
+      showToast(t('The connection did not return a complete result. Check this request before creating again.'), 'error');
+      return;
+    }
+    tracking.reportProjectResult(template, progress.requestId, attemptId, 'reconcile', result ? 'success' : 'not_found', view, result?.projectId);
+    if (result) {
+      forgetTemplateRequest(progress.requestId);
+      writeProgress(template.id, { requestId: progress.requestId, state: 'ready', result });
+    } else {
+      writeProgress(template.id, { requestId: progress.requestId, state: 'failed' });
+      showToast(t('Project not created'), 'info');
+    }
+  }
   const lastRandom = useRef<string>(undefined);
   const info = useRef<IntegrationInfo | null>(null);
   const routeChange = useRef(props.onTemplateChange); routeChange.current = props.onTemplateChange;
-  const closeDetail = () => { routeChange.current?.(null); detail.current?.close(); };
+  const closeDetail = () => { if (preview) tracking.reportDetailAction(preview, 'close_detail', detailView.current); routeChange.current?.(null); detail.current?.close(); };
   // Tracking state. Ids tie one detail view, one copy and one search to the events that follow from them.
   const detailView = useRef<DetailView | undefined>(undefined), searchId = useRef<string | undefined>(undefined), reportedQuery = useRef(''), shown = useRef(false);
+  useEffect(() => { if (guideOpen && preview) tracking.reportGuideShown(preview, detailView.current); }, [guideOpen, preview?.id]);
   const pendingResult = useRef<FilterAction | undefined>(undefined), composing = useRef(false), shownCards = useRef(new Set<string>()), instructionShown = useRef<string | undefined>(undefined);
   const [settle, setSettle] = useState(0);
   const [settledKeyword, setSettledKeyword] = useState(''), [searchComposing, setSearchComposing] = useState(false);
@@ -291,7 +389,7 @@ export function TemplateLibraryDialog(props: Props) {
   };
   const closeBrand = () => { setBrandStory(null); brandTrigger.current?.focus({ preventScroll: true }); };
   const active = useTemplatePlayback(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, true, priority);
-  const related = useMemo(() => preview ? relatedTemplates(preview, catalog) : [], [preview, catalog]);
+  const related = useMemo(() => preview ? (handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview]);
   const previewIndex = visible.findIndex(item => item.id === preview?.id);
   const clear = () => { setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
   const reset = () => {
@@ -356,8 +454,14 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportDetailShown(item, view, placement === 'related' || index < 0 ? undefined : index + 1);
     setPreview(item); setPrompt(''); setPromptError(false); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false);
     if (detailInfo.current) detailInfo.current.scrollTop = 0;
-    if (!detail.current?.open) detail.current?.showModal();
-  }, [listContext]);
+    if (reviewBody.current) reviewBody.current.scrollTop = 0;
+    if (reviewScroll.current) reviewScroll.current.scrollTop = 0;
+    if (detail.current) detail.current.scrollTop = 0;
+    if (!detail.current?.open) {
+      if (handoffPreview && dialog.current?.open) { dialog.current.close(); dialog.current.show(); }
+      detail.current?.showModal();
+    }
+  }, [handoffPreview]);
   useEffect(() => {
     if (!props.open || props.templateId === undefined) return;
     if (!props.templateId) { detail.current?.close(); return; }
@@ -369,7 +473,10 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardOpened(item, 'catalog', latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
     show(item, 'catalog');
   }, [show, listContext]);
-  const openRelated = (item: GalleryTemplate, position: number) => { tracking.reportCardOpened(item, 'related', position, listContext()); show(item, 'related', true, detailView.current?.series); };
+  const openRelated = (item: GalleryTemplate, position: number) => {
+    tracking.reportCardOpened(item, 'related', position, listContext(), preview ?? undefined, detailView.current);
+    show(item, 'related', true, detailView.current?.series);
+  };
   const navigate = (step: number) => {
     if (visible.length < 2) return;
     tracking.reportDetailStep(preview, step, detailView.current);
@@ -383,7 +490,7 @@ export function TemplateLibraryDialog(props: Props) {
   // The instruction counts as shown once its text is on screen, once per detail view.
   useEffect(() => {
     const view = detailView.current;
-    const target = instructionText.current?.querySelector('p, textarea');
+    const target = instructionText.current?.querySelector(':scope > p, :scope > textarea');
     if (!props.open || !preview || !prompt || !view || !target || instructionShown.current === view.id
       || typeof IntersectionObserver === 'undefined') return;
     const threshold = 0.01; // A positive threshold notifies again after zero-area edge contact.
@@ -398,7 +505,7 @@ export function TemplateLibraryDialog(props: Props) {
     observer.observe(target);
     document.addEventListener('visibilitychange', report);
     return () => { observer.disconnect(); document.removeEventListener('visibilitychange', report); };
-  }, [props.open, preview, prompt, manualCopy]);
+  }, [props.open, preview, prompt, manualCopy, promptExpanded, guideOpen]);
   useEffect(() => {
     if (!preview) return;
     setPromptError(false);
@@ -406,7 +513,7 @@ export function TemplateLibraryDialog(props: Props) {
     async function loadPrompt() {
       try {
         const connection = info.current ?? await motionApi<IntegrationInfo>('/integration'); info.current = connection;
-        if (!cancelled) setPrompt(templatePrompt(connection, 'codex', preview!, locale));
+        if (!cancelled) setPrompt(handoffPreview ? templateHandoffPrompt(preview!, locale) : templatePrompt(connection, 'codex', preview!, locale));
       } catch { if (!cancelled) setPromptError(true); }
     }
     void loadPrompt();
@@ -414,14 +521,15 @@ export function TemplateLibraryDialog(props: Props) {
   }, [preview, locale, promptAttempt]);
   async function copy(submit = false) {
     if (!prompt) return;
-    const text = submit ? templateSubmissionPrompt(prompt) : prompt;
+    const text = submit ? templateSubmissionPrompt(prompt, handoffPreview ? locale : 'en') : prompt;
     const template = preview, view = detailView.current, attemptId = tracking.newTrackingId();
     if (template) tracking.reportUseClicked(template, submit ? 'recreate_submit' : 'recreate', view, attemptId);
     try {
-      await navigator.clipboard.writeText(text); setManualCopy(''); showToast('Copied. Paste into your Agent.', 'info');
+      await navigator.clipboard.writeText(text);
+      if (previewLatest.current?.id === template?.id && detailView.current?.id === view?.id) { setManualCopy(''); showToast(handoffPreview ? t(submit ? 'Contribution instruction copied. Paste into your Agent to prepare a reusable template and contribution PR.' : 'Copied. Paste into your Agent, add your materials and requirements, then send.') : 'Copied. Paste into your Agent.', 'info'); }
       if (template) tracking.reportCopyResult(template, 'clipboard_written', attemptId, submit, view);
     } catch {
-      setManualCopy(text); setPromptExpanded(true); showToast('Copy failed. Select and copy the instruction below.', 'error', 'feedback');
+      if (previewLatest.current?.id === template?.id && detailView.current?.id === view?.id) { setManualCopy(text); setPromptExpanded(true); showToast(handoffPreview ? t('Copy failed. Select the instruction in this section to copy manually, or try again.') : 'Copy failed. Select and copy the instruction below.', 'error', 'feedback'); }
       if (template) tracking.reportCopyResult(template, 'manual_fallback_shown', attemptId, submit, view);
     }
   }
@@ -552,58 +660,99 @@ export function TemplateLibraryDialog(props: Props) {
       const name = brandStory.series.name;
       closeBrand(); setBrandsOnly(false); setQuery(''); setEditableOnly(false); setSelected({ uses: [purpose] }); setCompareWithout(name);
     }} />}
-    <dialog ref={detail} className={styles.detail} aria-label={t('Template preview')} onCancel={event => { event.preventDefault(); closeDetail(); }} onClose={() => { setPreview(null); setPrompt(''); detailView.current = undefined; }} onKeyDown={event => {
+    <dialog ref={detail} className={`${styles.detail} ${handoffPreview ? styles.reviewDetail : ''}`} aria-label={t('Template preview')} onCancel={event => { if (event.target !== detail.current) return; event.preventDefault(); if (handoffPreview && guideOpen) setGuideOpen(false); else closeDetail(); }} onClose={event => { if (event.target !== detail.current) return; setPreview(null); setPrompt(''); setGuideOpen(false); detailView.current = undefined; if (handoffPreview && openLatest.current) { dialog.current?.close(); dialog.current?.showModal(); } }} onKeyDown={event => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(event.key === 'ArrowLeft' ? -1 : 1); }
     }}>
-      {preview && <div className={styles.detailGrid}>
+      {preview && <>{(!handoffPreview || !guideOpen) && <DetailScroll enabled={handoffPreview} container={reviewScroll}><div className={`${styles.detailGrid} ${handoffPreview ? styles.reviewGrid : ''}`}>
         <div className={styles.stage}>
           {preview.posterUrl && <img className={styles.ambient} src={preview.posterUrl} alt="" aria-hidden="true" />}
           <div className={styles.stageGlass} />
           <DetailMedia key={preview.id} template={preview} />
+          {handoffPreview && <nav className={styles.stageNavigation} aria-label={t('Browse videos')}>
+            <button className="om-button" disabled={visible.length < 2} onClick={() => navigate(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</button>
+            <span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
+            <button className="om-button" disabled={visible.length < 2} onClick={() => navigate(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></button>
+          </nav>}
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
-            <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
+            {handoffPreview && <button className="om-button" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</button>}
+            <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
             <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
             <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
             <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
           </div>
-          <div className={styles.detailBody}>
-            <h2 className="om-media-detail-title">{preview.title}</h2>
-            {preview.description && <p className={styles.description}>{preview.description}</p>}
+          <div ref={reviewBody} className={styles.detailBody}>
+            <h2 ref={detailTitle} tabIndex={handoffPreview ? -1 : undefined} className="om-media-detail-title">{preview.title}</h2>
+            {handoffPreview && preview.description && <p className={styles.description}>{preview.description}</p>}
+            {handoffPreview && <TemplateReviewSpecs template={preview} />}
             <div className={styles.creator}>
               <Identity template={preview} />
               <div><strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>
               {preview.sourceUrl && <Tooltip withinDialog wrap label={t('Source')}><a className={styles.sourceLink} href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>}
             </div>
-            <section ref={instructionText} className={styles.instruction} aria-label={t('Template instruction')}><header><h3>{t('Template instruction')}</h3></header>{manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>}<button disabled={!prompt} className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
-            <div className={styles.actions}>
+            {handoffPreview && <section className={styles.reviewResources} aria-label={t('Template resources')}>
+              <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}</a>
+              <div className={styles.reviewResourceActions}>
+                {preview.motionDocumentUrl && <Tooltip withinDialog wrap label="motion.md" description={t('Download the shot and motion notes.')}>
+                  <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={17} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>
+                </Tooltip>}
+              </div>
+            </section>}
+            {!handoffPreview && preview.description && <p className={styles.description}>{preview.description}</p>}
+            {handoffPreview && <>
+              <TemplateDetailReview template={preview} onCopyColor={color => { tracking.reportDetailAction(preview, 'copy_color', detailView.current); void navigator.clipboard.writeText(color).then(() => showToast(t('Copied {color}', { color }), 'info')).catch(() => showToast(t('Could not copy color. Try again.'), 'error')); }} onFilter={filterBy} />
+            </>}
+            <section ref={instructionText} className={`${styles.instruction} ${handoffPreview ? styles.reviewCreation : ''}`} aria-label={t(handoffPreview ? 'Template recreation instruction' : 'Template instruction')}><header><h3>{t(handoffPreview ? 'Template recreation instruction' : 'Template instruction')}</h3>
+              {handoffPreview && <Popover key={preview.id} container={detail} align="end" openOnHover aria-label={t('After copying')} className={styles.handoffPopover} initialFocus={false} onOpenChange={open => { if (open) tracking.reportDetailAction(preview, 'handoff_help', detailView.current); }}
+                trigger={<button className={`om-text-link ${styles.handoffHelp}`} data-quiet>{t('Next steps')}<MotionIcon name="info" size={14} /></button>}>
+                <div onKeyDown={event => event.stopPropagation()}><TemplateHandoffSteps template={preview} /></div>
+              </Popover>}
+            </header>{(manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>)}<button disabled={!prompt} className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
+            {!handoffPreview && <div className={styles.actions}>
               {isEditableTemplate(preview) && <button className="om-button" data-primary disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}
               <div className={styles.recreateActions}>
                 <button className="om-button" data-primary disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button>
                 <Tooltip withinDialog wrap label={t('Recreate and submit')}><button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></Tooltip>
               </div>
-            </div>
-            <div className={styles.resourceLinks}>
-              <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}</a>
+            </div>}
+            {!handoffPreview && <div className={styles.resourceLinks}>
+              {!handoffPreview && <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}</a>}
               {preview.motionDocumentUrl && <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={15} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>}
-            </div>
-            <dl className={styles.metadata}>
+            </div>}
+            <dl className={styles.metadata} hidden={handoffPreview}>
               {preview.duration != null && <div><dt>{t('Duration')}</dt><dd>{t('{value}s', { value: Number(preview.duration.toFixed(1)) })}</dd></div>}
               {(preview.width || preview.ratio) && <div><dt>{t('Aspect ratio')}</dt><dd>{templateRatio(preview)}</dd></div>}
               {facets.filter(([key]) => !['duration', 'ratio'].includes(key)).map(([key, label]) => values(preview, key).length > 0 && <div key={key}><dt>{t(label)}</dt><dd>{values(preview, key).map(value => <MetadataTag key={value} label={key === 'brand' ? value : t(value)} onClick={() => filterBy(key, value)} />)}</dd></div>)}
             </dl>
             {preview.projectFileUrl && <div className={styles.projectActions}><a href={preview.projectFileUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDownloadClicked(preview, 'download_project', undefined, detailView.current)}>{t('Download OpenMotion project')}<MotionIcon name="arrow-up-right" size={14} /></a></div>}
-            {(preview.styleDescription || preview.reviewFocus || preview.motionGuideUrl) && <section className={styles.guide} aria-label={t('Motion guide')}>
+            {!handoffPreview && (preview.styleDescription || preview.reviewFocus || preview.motionGuideUrl) && <section className={styles.guide} aria-label={t('Motion guide')}>
               {preview.styleDescription && <details><summary>{t('Visual style')}</summary><p>{preview.styleDescription}</p></details>}
               {preview.reviewFocus && <details><summary>{t('Production notes')}</summary><p>{preview.reviewFocus}</p></details>}
-              {preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
+              {!handoffPreview && preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
             </section>}
-            {related.length > 0 && <RelatedTemplatePreviews key={preview.id} templates={related} panel={detailInfo} onSelect={openRelated} />}
+            {!handoffPreview && related.length > 0 && <RelatedTemplatePreviews key={preview.id} templates={related} panel={detailInfo} onSelect={openRelated} />}
+            {handoffPreview && <TemplateProductionNotes template={preview} onGuide={() => { tracking.reportDetailAction(preview, 'view_guide', detailView.current); setGuideOpen(true); }} />}
           </div>
+          {handoffPreview && <div ref={reviewFooter} className={styles.reviewFooter} role="group" aria-label={t('Template actions')}>
+              <div className={styles.handoffActions}>
+                {isEditableTemplate(preview) && <><p>{t('A separate project keeps your current work intact. Replace the sample content after opening.')}</p><button className="om-button" data-primary disabled={props.busy || props.openingDisabled || ['creating', 'opening', 'unknown'].includes(projectProgress[preview.id]?.state)} onClick={() => void prepareProject(preview)}>{t(projectProgress[preview.id]?.state === 'creating' ? 'Creating project…' : projectProgress[preview.id]?.state === 'opening' ? 'Opening project…' : projectProgress[preview.id]?.result ? 'Continue editing this project' : 'Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button></>}
+                <div className={styles.recreateActions}>
+                  <button className="om-button" data-primary={!isEditableTemplate(preview) || undefined} disabled={!prompt} onClick={() => void copy()}>{t('Recreate this template')}<MotionIcon name="sparkles" size={16} /></button>
+                  <Tooltip withinDialog wrap label={t('Contribute a template')} description={t('Copy contribution instructions for source, a preview and credits.')}>
+                    <button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} aria-label={t('Copy contribution brief')} onClick={() => void copy(true)}><MotionIcon name="git-branch" size={17} /></button>
+                  </Tooltip>
+                </div>
+              </div>
+              <TemplateOpenRecovery progress={projectProgress[preview.id]} onRetry={() => { tracking.reportDetailAction(preview, 'retry_template_project', detailView.current); void prepareProject(preview); }} onCheck={() => void checkProject(preview)} onOpen={() => { tracking.reportDetailAction(preview, 'open_prepared_project', detailView.current); const result = projectProgress[preview.id]?.result; if (result) void revealProject(preview, result); }} />
+          </div>}
         </div>
-      </div>}
+      </div>
+      {handoffPreview && related.length > 0 && <RelatedTemplatePreviews wide key={preview.id} currentTemplate={preview} detailView={detailView.current} templates={related} panel={detailInfo} onSelect={openRelated} />}
+      </DetailScroll>}
+      {handoffPreview && <TemplateGuideReview template={preview} open={guideOpen} onFullPage={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)} onClose={() => { tracking.reportDetailAction(preview, 'back_to_template', detailView.current); setGuideOpen(false); }} />}
+      </>}
     </dialog>
 
     {props.open && <StudioToastViewport toasts={toasts} dismissToast={dismissToast} />}

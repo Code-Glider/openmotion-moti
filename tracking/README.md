@@ -176,9 +176,11 @@ This measures OS-device identities, not people or immutable physical hardware. S
 machines count once, a person on two machines counts twice, cloned OS identifiers can
 collide, and an OS reinstall can change Windows/Linux identifiers. Device context contains
 no account identity, MAC address, raw platform identifier or probabilistic fingerprint. The package can
-initialize an identity with a validated source label; existing identities retain
-their first source. Landing-page attribution and installer `--source` plumbing are
-a separate change. Unknown source remains null.
+initialize an identity with a validated source label. The npm installer accepts
+`--utm-source NAME`: an explicit install updates the saved source, while an
+upgrade without the flag preserves the existing source. The installation ID
+remains unchanged across both operations, and an omitted source remains null for
+a new installation.
 
 Common fields include schema/product/app version, environment, entrypoint/runtime,
 platform/architecture, OS/version, runtime locale, device IANA timezone and UTC offset
@@ -316,8 +318,15 @@ backend/data directory. Deterministic coverage lives in
 ## Implemented signals and limits
 
 - All registered phase-one stdio tools: accepted start and observed finish, including
-  early-return catalog tools, input rejection, partial import and idempotent replay.
-- All nineteen page WebMCP tools: `webmcp_tool_started` and
+  early-return catalog tools, the two negotiated presentation tools, input rejection,
+  partial import and idempotent replay.
+- Installer acquisition boundaries: `installation_started` is emitted when setup
+  begins and `installation_result` only after registration, onboarding persistence
+  and Skill installation complete. Both events carry the selected `host_product`;
+  the result carries `outcome=success`. A rolled-back setup does not emit a success
+  result. The installer accepts `--utm-source`; explicit installs update the saved
+  source, untagged upgrades preserve it, and the installation ID stays stable.
+- All twenty-one page WebMCP tools: `webmcp_tool_started` and
   `webmcp_tool_finished`, correlated by a fresh `call_id` per invocation, with
   the public `tool_name`, `transport=webmcp`, observed `outcome` and bounded
   `duration_ms`. These are browser-call measurements, separate from stdio MCP
@@ -328,15 +337,14 @@ backend/data directory. Deterministic coverage lives in
   reply into a cancelled operation. Arguments, results, handles, paths and raw errors are
   excluded. Host Agent fields retain their existing page-handoff meaning; the
   transport marker does not identify the calling browser agent.
-- Asset call action: `mcp_tool_started/finished` and
-  `webmcp_tool_started/finished` include an optional closed `action` category for
-  asset tools: `list`, `get`, `import`, `update`, `generate`, `jobs`, `status`,
-  `cancel`, `import_to_project`, `read`. The shared extractor ignores other tools,
-  missing/malformed actions and unknown values; no raw arguments or media are sent.
-  The action is captured once at invocation start and retained on finish, including
-  failure and input rejection. Stdio keeps `tool_name=motion_assets` for both public
-  asset names; WebMCP keeps their public names. Historical events without action
-  remain valid and cannot be backfilled. Registration has no action.
+- Tool dimensions: `mcp_tool_started/finished` and `webmcp_tool_started/finished`
+  carry allowlisted actions for assets, media discovery, preview, export request,
+  archive and project management. Preview also has `target`. Missing actions mean
+  `open` for preview and `request` for export; invalid values are omitted.
+  A failed call can carry `error_code` and schema-declared `invalid_field` and
+  `validation_rule`, with array indices collapsed and unknown keys bucketed.
+  Both stdio asset names still use `tool_name=motion_assets`; WebMCP uses the
+  original public name. Older events may omit these dimensions.
   To measure `read`, filter `product=openmotion`, exclude `env=test`, select the
   appropriate `*_tool_finished` event and `action=read`: count distinct `call_id`
   for observed calls, divide successful calls (`outcome=success`) by all observed
@@ -347,6 +355,15 @@ backend/data directory. Deterministic coverage lives in
   Browser and stdio are separate transports; do not sum starts and finishes or add
   domain-result events to call counts. This measures observed call outcomes, not
   paid generation completion, human media acceptance or guaranteed billing usage.
+- For MCP exports, use `export_request_result` to measure submission and join its
+  `job_id` to `export_result` for the one terminal worker record. A failed terminal
+  job has a bounded `failure_stage` and `error_code`, including interrupted or
+  expired jobs. Polling success means the read worked. Studio UI exports use their
+  existing separate pipeline.
+- `asset_import_result` includes requested, added, reused and failed item counts when
+  a batch result is available. `asset_import_item_failure` reports one count per
+  allowlisted failure category per committed request. Sum its `failed_count` to
+  break down item failures, keeping it separate from call-level outcomes.
 - WebMCP registration: `webmcp_registration_result` records one result per
   attempted tool registration (`success`, `failure` or `cancelled`), including
   validation/duplicate refusals and teardown cancellation. Use this event for
@@ -471,6 +488,11 @@ backend/data directory. Deterministic coverage lives in
   not emit a search. File names, paths, asset and version IDs, reference links,
   descriptions and contact details are excluded from these events. Copying a
   request does not confirm Agent execution. Template request intake is not exposed.
+    The enhanced handoff detail reuses the same click/copy-result events rather than
+  skipping them because its layout flag is active. Clipboard failure reports
+  `manual_fallback_shown`, and editable-project preparation reports `open_edit`.
+  The isolated local review entry disables collection without removing those
+  instrumentation calls. Project/source continuation remains a separate gap.
 
 The adapter preserves fixed actions, counts, booleans and safe catalog/control
 identifiers. It drops messages/stacks, file paths, selectors, composition/block
@@ -528,3 +550,40 @@ A local save retry can update the terminal result for the same job. Use the late
 Generation uses the existing telemetry preference and installation identity.
 
 Studio recovery keeps request acknowledgement separate from execution outcome. An uncertain export receipt reports `studio_export_request_result.outcome=unknown`; a later identity-matched lookup can report one terminal result with the same browser `export_id`. Progress loss, cancelling and an inactive unknown record never produce a failed or cancelled terminal event. `studio_asset_import_result` retains its entry-point categories and reports confirmed failure, unknown and pending counts separately; unknown/pending items are not counted as failed. The manual `reload_editor` recovery action records only an unknown handoff outcome, not confirmed recovery.
+
+## Template detail handoff coverage
+
+The approved detail is enabled from the normal template-library entry. The legacy
+`templateHandoffPreview=0` compatibility switch can restore the previous detail
+for a session; no query parameter is needed for the new flow.
+
+| Question | Event and trigger | Join and deduplication |
+| --- | --- | --- |
+| Did someone inspect related options? | `surface_view` for `template_related/related` after its first eligible card impression; `template_card/card` for each related card | At least 50% visible for one uninterrupted second in a visible tab; once per source detail and card. Related cards and clicks include `source_template_id`, target `template_id`, source `detail_view_id` and displayed `position`. |
+| Was guidance or help used? | `ui_click`: `view_guide`, `back_to_template`, `view_full_page`, `handoff_help`, `copy_color`, `back_to_project`, `close_detail`; `surface_view` `template_guide/guide` when the same-dialog guide opens | The current template and detail-view UUID; a help opening counts once per opening, not per pointer move. Color clicks never carry a color value. |
+| Did editable handoff resolve and open? | `ui_click/start_use` for `open_edit`, followed by `template_project_result` on observed `create`, `reconcile` or `open` completion | The click and results share the stable `operation_id` for the guarded request; fresh `handoff_attempt_id` per operation attempt; captured initiating detail; confirmed project UUID only. |
+
+Create-stage success means the preparation call resolved to an exact project,
+including recovery of the same request; it is not a count of newly created projects.
+An interrupted response is `unknown`; an authoritative empty lookup is
+`not_found`; a failed lookup remains `unknown`. Opening is successful only when
+the project-opening callback confirms it. Retrying an existing project never emits
+another create result. `retry_template_project`, `check_template_project` and
+`open_prepared_project` distinguish explicit recovery intents.
+An opening callback is not evidence that a particular content version became
+visible or that the user approved it; those downstream outcomes remain separate.
+Editor save-guard rejection occurs before creation and reports a confirmed failure,
+not an uncertain server result. An authoritative empty reconciliation enables
+retry with the same request ID. Pending request identities are retained in bounded
+session storage so reopening the library checks that request before creating;
+completed requests are removed from the pending list. Unavailable storage cannot
+guarantee retention after a reload.
+
+Existing copy semantics remain: `clipboard_written` is the only successful copy,
+and manual fallback is not success. No event claims that an external Agent received
+the copied instruction, created a film, or exported it. Exact copy-to-Agent-to-work
+provenance is not added by this change; do not infer adoption or output rates from
+copying. No titles, material names, instructions, color values, URLs or raw errors
+are admitted. Existing consent, browser admission and product=openmotion filtering
+remain in force. UI tests use fake senders; live readback requires env=test and an
+isolated test-run UUID.

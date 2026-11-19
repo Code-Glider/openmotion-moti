@@ -1,3 +1,4 @@
+import { assetImportErrorCodes, exportFailureCodes, exportFailureStages, toolDimensions, toolFailureDimensions } from './tool-fields.ts';
 import type { Entry, Registry } from './core.ts';
 import { studioUsageEvents } from './studio-events.ts';
 import { providerSetupEntries, type ProviderSetupEntry } from '../shared/workspace-url.ts';
@@ -7,13 +8,8 @@ export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_temp
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
-export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit', 'transcript'] as const;
-export function assetToolAction(tool: string, input: unknown): typeof assetActions[number] | undefined {
-  if (!['openmotion_assets_use', 'openmotion_assets', 'motion_assets_use', 'motion_assets'].includes(tool)) return;
-  const action = input && typeof input === 'object' && 'action' in input ? input.action : undefined;
-  return assetActions.find(value => value === action);
-}
-const tool = { tool_name: toolNames, action: assetActions, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
+export const mcpToolNames = [...toolNames, 'motion_show_video', 'motion_show_template_recommendations'] as const;
+const tool = { tool_name: mcpToolNames, ...toolDimensions, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
 export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'openmotion_media_use', 'openmotion_list_templates', 'openmotion_get_template',
   'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
   'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
@@ -30,7 +26,7 @@ const countBucket = ['0', '1_5', '6_20', '21_50', 'gt_50', 'unknown'] as const;
 const projectScale = { clip_count_bucket: countBucket, asset_count_bucket: countBucket,
   composition_count_bucket: ['1', '2_5', '6_20', 'gt_20', 'unknown'] } as const;
 const videoDuration = { video_duration_bucket: ['lt_15s', '15_60s', '1_3min', '3_10min', 'gt_10min', 'unknown'] } as const;
-const business = { outcome, project_id: 'uuid', operation_id: 'uuid', replayed: 'boolean', error_code: 'code' } as const;
+const business = { outcome, project_id: 'uuid', operation_id: 'uuid', replayed: 'boolean', ...toolFailureDimensions } as const;
 // A template is identified by its catalogue id only; titles, authors and URLs are never fields.
 const template = { template_id: 'slug' } as const;
 // Template library browsing. Names follow the shared OpenMotion tracking sheet so website and editor funnels line up.
@@ -79,28 +75,32 @@ const check = { check_id: 'uuid', check_type: ['technical_export', 'preview_obse
   project_id: 'code', version_id: 'code', subject_id: 'code', checklist_version: 'code', checker_type: ['automated', 'agent', 'user', 'host'] } as const;
 
 export const omEvents = {
+  installation_started: { producers: ['installer'], fields: { host_product: ['codex', 'claude', 'deepseek', 'workbuddy', 'other'] }, required: ['host_product'] },
+  installation_result: { producers: ['installer'], fields: { outcome: ['success'], host_product: ['codex', 'claude', 'deepseek', 'workbuddy', 'other'] }, required: ['outcome', 'host_product'] },
   ...studioUsageEvents,
-  webmcp_tool_started: { producers: ['studio'], fields: { ...webMcp, action: assetActions, call_id: 'uuid' },
+  webmcp_tool_started: { producers: ['studio'], fields: { ...webMcp, ...toolDimensions, call_id: 'uuid' },
     required: ['tool_name', 'transport', 'call_id'] },
-  webmcp_tool_finished: { producers: ['studio'], fields: { ...webMcp, action: assetActions, call_id: 'uuid', outcome, duration_ms: 'integer' },
+  webmcp_tool_finished: { producers: ['studio'], fields: { ...webMcp, ...toolDimensions, call_id: 'uuid', outcome, duration_ms: 'integer', ...toolFailureDimensions },
     required: ['tool_name', 'transport', 'call_id', 'outcome', 'duration_ms'] },
   webmcp_registration_result: { producers: ['studio'], fields: { ...webMcp, outcome: ['success', 'failure', 'cancelled'], duration_ms: 'integer' },
     required: ['tool_name', 'transport', 'outcome', 'duration_ms'] },
   mcp_tool_started: { producers: ['mcp'], fields: tool, required: ['tool_name', 'call_id', 'accepted'] },
-  mcp_tool_finished: { producers: ['mcp'], fields: { ...tool, outcome, duration_ms: 'integer', error_code: 'code', replayed: 'boolean' },
+  mcp_tool_finished: { producers: ['mcp'], fields: { ...tool, outcome, duration_ms: 'integer', ...toolFailureDimensions, replayed: 'boolean' },
     required: ['tool_name', 'call_id', 'accepted', 'outcome', 'duration_ms'] },
-  project_create_result: { producers: ['mcp'], fields: { ...business, creation_route: ['natural_language', 'template', 'existing_project'], effect_status: ['applied', 'not_applied', 'unknown'] }, required: ['outcome'] },
+  project_create_result: { producers: ['mcp'], fields: { ...business, creation_route: ['natural_language', 'template', 'reference_video', 'existing_project'], effect_status: ['applied', 'not_applied', 'unknown'] }, required: ['outcome'] },
   project_open_result: { producers: ['mcp'], fields: { ...business, opened_by_host_status: ['unknown', 'opened', 'not_opened'] }, required: ['outcome'] },
   project_edit_result: { producers: ['mcp'], fields: { ...business, changed_file_count: 'integer' }, required: ['outcome'] },
   version_restore_result: { producers: ['mcp'], fields: business, required: ['outcome'] },
   asset_import_result: { producers: ['mcp'], fields: { ...business, requested_count: 'integer', added_count: 'integer', reused_count: 'integer', failed_count: 'integer' }, required: ['outcome'] },
+  asset_import_item_failure: { producers: ['mcp'], fields: { project_id: 'uuid', operation_id: 'uuid', failed_count: 'integer',
+    error_code: [...toolFailureDimensions.error_code, ...assetImportErrorCodes] }, required: ['failed_count', 'error_code'] },
   export_request_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', queue_state: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
   export_cancel_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', state_after: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
   media_generation_requested: { producers: ['worker'], fields: generation, required: ['modality'] },
   media_generation_submitted: { producers: ['worker'], fields: { ...generation, job_id: 'uuid' }, required: ['modality', 'job_id'] },
   media_generation_result: { producers: ['worker'], fields: { ...generation, job_id: 'uuid',
     job_state: ['completed', 'failed', 'cancelled'], asset_count: 'integer' }, required: ['modality', 'job_id', 'job_state', 'asset_count'] },
-  export_result: { producers: ['worker'], fields: { job_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer', technical_check: ['passed', 'failed', 'unknown'] }, required: ['job_id', 'job_state', 'duration_ms', 'technical_check'] },
+  export_result: { producers: ['worker'], fields: { job_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer', technical_check: ['passed', 'failed', 'unknown'], failure_stage: exportFailureStages, error_code: exportFailureCodes }, required: ['job_id', 'job_state', 'duration_ms', 'technical_check'] },
   // One per finished OpenDesign sign-in attempt. `replaced` is an interrupted attempt the service refused; the same
   // sign-in continues with a new attempt. Times are milliseconds since the click. Stage values come from the connector
   // protocol; only confirmed account IDs are allowed, never links, authorization codes or credentials.
@@ -149,6 +149,7 @@ export const omEvents = {
       'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'search_focus', 'clear_search', 'reference', 'describe', 'reference_source_select', 'choose_local_video', 'copy_brief', 'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source',
+      'view_guide', 'back_to_template', 'handoff_help', 'copy_color', 'back_to_project', 'retry_template_project', 'check_template_project', 'open_prepared_project',
       'submit_skill', 'copy_instruction', 'open_command', 'copy_command', 'close_detail',
       'collection_tab', 'new_brand_kit', 'download_package',
       'export', 'template_library', 'open_project_drawer', 'new_project', 'switch_project', 'project_search', 'theme_toggle',
@@ -176,7 +177,7 @@ export const omEvents = {
     interaction_method: ['pointer', 'keyboard'], ...project, ...template, ...templateSeries,
     chapter_index: 'integer', browse_method: ['arrow', 'drag'], direction: ['previous', 'next'],
     placement, position: 'integer', template_action: ['recreate', 'recreate_submit', 'open_edit'], target_agent: hosts,
-    copy_attempt_id: 'uuid', download_attempt_id: 'uuid',
+    copy_attempt_id: 'uuid', download_attempt_id: 'uuid', source_template_id: 'slug', operation_id: 'uuid',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
     ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom, ...referenceEntry, ...referenceSource,
@@ -208,8 +209,8 @@ export const omEvents = {
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.
   // A card counts once it is at least half visible for a second, once per result set.
-  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
-    element: ['library', 'card', 'detail', 'instruction', 'search_recovery', 'reference'], placement, position: 'integer', ...templateList, ...templateDetail, ...template, ...templateSeries,
+  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'template_related', 'template_guide', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
+    element: ['library', 'card', 'detail', 'instruction', 'search_recovery', 'reference', 'related', 'guide'], placement, position: 'integer', ...templateList, ...templateDetail, ...template, ...templateSeries,
     ...skill, ...brand, ...referenceEntry, brand_state: brandState, recovery_reason: ['no_results', 'unsuitable', 'catalog_empty'] },
     required: ['page_name', 'area', 'element'] },
   // One per settled query, never per keystroke. `search_keyword` is the only free-text field in this registry.
@@ -228,6 +229,10 @@ export const omEvents = {
     required: ['resource_kind', 'download_attempt_id', 'delivery_status'] },
   template_instruction_copy_result: { producers: ['studio'], fields: { host_product: hosts, copy_status: ['clipboard_written', 'manual_fallback_shown', 'failed'],
     page_name: ['home', 'studio'], copy_attempt_id: 'uuid', ...templateList, ...templateDetail, ...project, ...template, ...templateSeries }, required: ['host_product', 'copy_status'] },
+  // One observed Studio handoff operation result, not an Agent receipt or a completed film.
+  template_project_result: { producers: ['studio'], fields: { page_name: ['studio'], ...template, ...project, ...templateDetail,
+    operation_id: 'uuid', handoff_attempt_id: 'uuid', stage: ['create', 'reconcile', 'open'], outcome: ['success', 'failure', 'unknown', 'not_found'] },
+    required: ['template_id', 'operation_id', 'handoff_attempt_id', 'stage', 'outcome'] },
   // Skills page. One search result per settled query; the brief itself is reduced to its choices and two yes/no flags.
   skill_search_result: { producers: ['studio'], fields: { page_name: ['skills'], area: ['skill_discovery'], search_id: 'uuid', search_keyword: 'text',
     query_length: 'integer', result_count: 'integer', outcome: ['success'], skill_category: skill.skill_category },
