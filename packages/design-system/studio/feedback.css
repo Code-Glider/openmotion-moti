@@ -32,6 +32,7 @@
 }
 .hf-toast-viewport:empty { display: none; }
 .hf-toast-viewport > * { flex-shrink: 0; max-width: 100%; pointer-events: auto; }
+.hf-toast-viewport > :is([role="status"], [role="alert"]):not(:has(button)) { pointer-events: none; }
 
 .hf-toast-action {
   pointer-events: auto;

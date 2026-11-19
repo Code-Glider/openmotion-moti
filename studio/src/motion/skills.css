@@ -20,6 +20,7 @@
 .om-skills-library .om-gallery-card-caption small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; opacity: .85; }
 .om-skills-library .om-gallery-cover { border-radius: var(--motion-radius-lg); overflow: hidden; background: var(--motion-inset); }
 .om-skills-library .om-gallery-cover .om-skill-cover { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.om-skill-cover[data-playing="false"] * { animation-play-state: paused; }
 .om-skills-library .om-gallery-cover .om-skill-cover svg { width: 100%; height: 100%; }
 .om-skill-media { position: absolute; inset: 0; display: block; overflow: hidden; background: var(--motion-inset); }
 .om-skill-media[data-large="true"] { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: var(--motion-radius-lg); }
@@ -92,7 +93,7 @@ a.om-skill-source { color: var(--motion-strong); }
 .om-skill-prompt pre { max-height: 120px; overflow: auto; margin: 0; padding: var(--motion-space-12); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--motion-font-mono); font-size: var(--motion-text-sm); line-height: 1.6; color: var(--motion-text); background: var(--motion-inset); border-radius: var(--motion-radius-md); user-select: text; }
 .om-skill-detail { padding-block: 0; }
 /* The copy and connect actions stay pinned to the panel bottom while the brief scrolls. */
-.om-skill-footer { position: sticky; bottom: 0; z-index: 1; display: grid; gap: var(--motion-space-8); margin-inline: calc(var(--motion-space-20) * -1); padding: var(--motion-space-12) var(--motion-space-20) var(--motion-space-16); background: var(--color-template-surface); border-top: 1px solid var(--color-template-line); }
+.om-skill-footer { position: sticky; bottom: 0; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-8); margin-top: auto; margin-inline: calc(var(--motion-space-20) * -1); padding: var(--motion-space-12) var(--motion-space-20) var(--motion-space-16); background: var(--color-template-surface); border-top: 1px solid var(--color-template-line); }
 .om-skill-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--motion-space-8); }
 [data-motion-studio] .om-skill-actions .om-button { justify-content: center; }
 
@@ -144,3 +145,16 @@ a.om-skill-source { color: var(--motion-strong); }
 
 /* Release the list width as the detail exits so both sides settle together. */
 .om-skill-detail[data-ending-style] { position: absolute; inset-block: 0; inset-inline-end: 0; }
+
+.om-specialty-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--motion-space-24); margin-bottom: var(--motion-space-24); background: var(--motion-inset); border-radius: var(--motion-radius-lg); overflow: hidden; }
+.om-specialty-intro > div { display: grid; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; justify-items: start; gap: var(--motion-space-16); padding: var(--motion-space-24); }
+.om-specialty-actions { display: flex; flex-wrap: wrap; gap: var(--motion-space-8); }
+.om-specialty-intro h1 { font-size: var(--motion-text-display); }
+.om-specialty-feature { position: relative; align-self: stretch; min-width: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.om-specialty-feature .om-button { position: absolute; inset-inline-start: var(--motion-space-12); bottom: var(--motion-space-12); max-width: calc(100% - var(--motion-space-24)); }
+.om-specialty-intro img { display: block; width: 100%; height: 100%; object-fit: cover; aspect-ratio: 2; }
+@media (max-width: 700px) {
+  .om-specialty-intro { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .om-specialty-feature { grid-row: 1; }
+  .om-specialty-intro img { aspect-ratio: 3; }
+}

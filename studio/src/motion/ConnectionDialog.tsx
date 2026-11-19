@@ -1,6 +1,6 @@
 import { useMvpEditor } from "./StudioHost";
 import { useI18n } from '../i18n/I18n';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { mountConnection } from '../../../web/connect';
 import connectionPage from '../../../web/connect.html?raw';
 import { TemplateLibraryDialog } from './TemplateLibraryDialog';
@@ -12,7 +12,7 @@ import '../../../web/template-gallery.css';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import type { PreparedTemplateProject } from './templateHandoff';
 
-type Props = { open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { navigation?: ReactNode; open: boolean; section?: 'setup' | 'templates'; busy: boolean; openingDisabled?: boolean; error: string; returnFocus?: HTMLElement | null; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** The original integration page lives inside one modal; Studio stays mounted beneath it. */
 export function ConnectionDialog(props: Props) {

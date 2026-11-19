@@ -1,3 +1,5 @@
+import { findLandingScene, findMediaStudio, findTechniqueStudio } from './studio-catalog.ts';
+
 export const providerSetupEntries = [
   'agent_providers', 'agent_media_signed_out', 'agent_media_upgrade_free', 'agent_media_upgrade_go',
   'agent_media_balance_low', 'agent_media_key_rejected', 'agent_media_handbook',
@@ -5,10 +7,12 @@ export const providerSetupEntries = [
 export type ProviderSetupEntry = typeof providerSetupEntries[number];
 
 export type WorkspacePresentation = { embedded: boolean; sidebar: boolean; conversation: boolean };
-/** Settings, MCP, Assets, Skills and Brand Kit can open even when the retained project cannot start. */
+/** Independent workspace pages remain usable even when the retained project cannot start. */
 export function isWorkspaceSettingsPage(search: string) {
-  const page = new URLSearchParams(search).get('page');
-  return page === 'settings' || page === 'mcp' || page === 'assets' || page === 'skills' || page === 'brand-kit';
+  const query = new URLSearchParams(search), page = query.get('page');
+  if (page === 'model') return Boolean(query.get('model'));
+  if (page === 'create') return Boolean(findLandingScene(query.get('scene')));
+  return page === 'api' || page === 'settings' || page === 'mcp' || page === 'assets' || page === 'skills' || page === 'brand-kit' || page === 'explore' || Boolean(findMediaStudio(page) || findTechniqueStudio(page));
 }
 export function workspacePresentation(search: string): WorkspacePresentation {
   const query = new URLSearchParams(search), embedded = query.get('embed') === '1';

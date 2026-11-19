@@ -3,8 +3,9 @@ import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
-import { motionSkills, skillPrompt, skillShortcut } from './skillCatalog';
+import { motionSkills, skillPrompt, skillShortcut, studioSkillDefaults } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
+import { findTechniqueStudio } from '../../../shared/studio-catalog';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
 
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ locale: 'en', t: (text: string, values?: { count: number }) => text.replace('{count}', String(values?.count)) }) }));
@@ -299,4 +300,38 @@ it('merges same-repository cover credits while retaining external sources and at
     act(() => root.render(<SkillsPage skillId={id} onSkillChange={() => {}} />));
     expect(container.querySelector('.om-skill-credit')!.textContent).toContain(motionSkills.find(skill => skill.id === id)!.cover!.source!.replace(/^https?:\/\//, ''));
   }
+});
+
+it('carries the exact reference version into both 3D Agent handoffs', () => {
+  const skill = motionSkills.find(entry => entry.id === 'three-js')!;
+  const brief = { subject: 'Orbit a vase', aspect: '16:9', duration: 10, style: '', reference: { assetId: 'asset-a', versionId: 'version-b', label: 'Vase · V2' } } as const;
+  for (const build of [skillPrompt, skillShortcut]) {
+    const instruction = build(skill, brief, 'en', 'https://example.com/install');
+    expect(instruction).toContain('Orbit a vase');
+    const call = instruction.split('\n').at(-1)!;
+    expect(call).toBe('openmotion_assets_use {"action":"read","assetId":"asset-a","versionId":"version-b"}');
+  }
+});
+
+it.each(['image', 'video', 'audio'] as const)('carries the brief and respects a pinned %s reference when starting a shot', modality => {
+  const studio = findTechniqueStudio('shorts')!;
+  const skill = studio.techniques[0], create = vi.fn();
+  const reference = { assetId: 'source', versionId: 'pinned', label: 'Source · V2', modality };
+  const brief = { ...studioSkillDefaults(studio.id), subject: 'A ceramic vase', style: 'Warm sidelight', reference };
+  act(() => root.render(<SkillsPage studio={studio} briefs={new Map([[skill, brief]])} skillId={skill} onSkillChange={vi.fn()} onCreate={create} />));
+  expect(button('Copy for Agent')).toBeTruthy();
+  const action = button('Create a shot from this brief');
+  if (modality !== 'image') {
+    expect(action).toBeUndefined();
+    expect(container.textContent).toContain('Use the Agent brief to work with this recording');
+    return;
+  }
+  act(() => action.click());
+  const [destination, draft] = create.mock.calls[0];
+  expect(destination.scene.id).toBe('image-to-video');
+  expect(draft.references).toEqual([{ reference: { assetId: 'source', versionId: 'pinned' }, name: 'Source · V2' }]);
+  expect(draft.shotPreferences).toEqual({ aspect: '9:16', duration: brief.duration });
+  expect(draft.prompt).toContain('A ceramic vase');
+  expect(draft.prompt).toContain('Warm sidelight');
+  expect(draft.prompt).not.toContain('openmotion_assets_use');
 });

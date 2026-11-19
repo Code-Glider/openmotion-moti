@@ -1,5 +1,5 @@
 /* Shared catalogue filtering: template and brand discovery consume one recipe. */
-[data-motion-studio] .om-gallery-filter { --filter-gutter: var(--motion-space-16); width: 640px; max-width: calc(100vw - var(--motion-space-24)); max-height: var(--available-height); padding: 0; overflow: hidden; background: var(--motion-bg); color: var(--motion-text); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-xl); }
+[data-motion-studio] .om-gallery-filter { --filter-gutter: var(--motion-space-16); width: 640px; max-width: calc(100vw - var(--motion-space-24)); max-height: var(--available-height); padding: 0; overflow: hidden; background: var(--motion-raised); color: var(--motion-text); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-xl); }
 [data-motion-studio] .om-gallery-filter-trigger { position: relative; }
 [data-motion-studio] .om-gallery-sort { height: var(--motion-control); padding-block: 0; background: var(--motion-panel); font-weight: var(--motion-weight-regular); }
 [data-motion-studio] .om-gallery-sort > svg { flex: none; color: var(--motion-muted); }
@@ -108,3 +108,39 @@
 /* Neutral selection is opt-in so existing catalogue palettes stay independent. */
 .om-gallery-surface .om-gallery-categories[data-neutral] button[aria-pressed=true] { background: var(--motion-action); color: var(--motion-on-action); }
 .om-gallery-surface .om-gallery-categories[data-neutral] button[aria-pressed=true]:hover { background: var(--motion-action-hover); }
+
+/* A translucent charcoal surface keeps the artwork visible behind the controls. */
+[data-motion-studio] .om-button[data-primary="media"]:enabled,
+.om-media-pagination {
+  color: var(--motion-overlay-ink);
+  background: color-mix(in srgb, var(--motion-video-overlay) 90%, var(--motion-overlay-ink));
+  border: 1px solid color-mix(in srgb, var(--motion-overlay-ink) 30%, transparent);
+}
+[data-motion-studio] .om-button[data-primary="media"]:enabled:hover {
+  color: var(--motion-overlay-ink);
+  background: color-mix(in srgb, var(--motion-video-overlay) 82%, var(--motion-overlay-ink));
+  border-color: color-mix(in srgb, currentColor 50%, transparent);
+}
+[data-motion-studio] .om-button[data-primary="media"]:enabled:active { background: var(--motion-video-overlay); }
+[data-motion-studio] .om-button[data-primary="media"]:focus-visible { outline-color: var(--motion-overlay-ink); }
+.om-media-pagination {
+  display: inline-flex; align-items: center; gap: var(--motion-space-2); padding: var(--motion-space-2);
+  border-radius: var(--motion-radius-pill);
+}
+.om-media-pagination button {
+  display: inline-grid; place-items: center; width: var(--motion-control-sm); height: var(--motion-control-sm);
+  border: 0; padding: 0; border-radius: var(--motion-radius-full); background: transparent; color: inherit; cursor: pointer;
+}
+.om-media-pagination > button { flex: none; }
+.om-media-pagination button:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.om-media-pagination button:active { background: var(--motion-video-overlay); }
+.om-media-pagination button:focus-visible { outline: var(--motion-space-2) solid currentColor; outline-offset: 0; }
+.om-media-segments { display: flex; align-items: center; min-width: 0; }
+.om-media-segments button { min-width: 0; width: var(--motion-space-40); padding-inline: var(--motion-space-2); }
+.om-media-track { display: block; width: 100%; height: var(--motion-space-4); overflow: hidden; border-radius: var(--motion-radius-full); background: color-mix(in srgb, currentColor 35%, transparent); }
+.om-media-segments [aria-current] .om-media-track { background: color-mix(in srgb, currentColor 65%, transparent); }
+.om-media-progress { display: block; height: 100%; background: currentColor; transform-origin: left; animation: om-media-elapsed var(--slide-duration) linear both; }
+@keyframes om-media-elapsed { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .om-media-progress { animation: none; }
+}
