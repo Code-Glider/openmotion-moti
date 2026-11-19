@@ -124,6 +124,12 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         return back.bottom <= scenes.top;
       }), 'The mobile Studio header keeps its return action above the scenes');
       const imageNav = '.om-creative-split:has(> [aria-label="Image scenes and models"])';
+      await page.waitForFunction(selector => {
+        const link = document.querySelector<HTMLElement>(selector);
+        if (!link) return false;
+        const bounds = link.getBoundingClientRect();
+        return bounds.left >= 0 && bounds.right <= innerWidth;
+      }, {}, imageNav + ' > .om-nav-row-link');
       for (const scheme of ['dark', 'light'] as const) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
         await page.click(imageNav + ' > .om-nav-row-link');
@@ -141,7 +147,7 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         await page.goBack();
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'cinema');
       }
-      const more = await page.waitForSelector('::-p-aria(More Studio[role="button"])', { visible: true });
+      const more = await page.waitForSelector('::-p-aria([name="More Studio"][role="button"])', { visible: true });
       await more!.focus();
       await page.keyboard.press('Enter');
       const folder = await page.waitForSelector('.om-nav-more-panel [aria-label="Workspace assets"]', { visible: true });
