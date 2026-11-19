@@ -433,8 +433,9 @@ it('shows mixed media in one Explore feed and opens templates and editing preset
   const explore = container.querySelector('.om-explore')!;
   expect(explore.querySelector('nav[aria-label="Communities"], [aria-label="Media type"]')).toBeNull();
   const sections = [...explore.querySelector('.om-discovery-page')!.children];
-  expect(sections.slice(1, 6).map(section => section.getAttribute('aria-labelledby') ?? section.className))
-    .toEqual(['explore-claude', 'explore-community', 'explore-seedance', 'om-explore-features', 'explore-gpt-image']);
+  expect(sections[1].classList.contains('om-explore-features')).toBe(true);
+  expect(sections[1].querySelector('.om-featured-caption strong')?.textContent).toBe('Product Promo');
+  expect(sections[2].getAttribute('aria-labelledby')).toBe('explore-highlights');
   const scenes = [...explore.querySelectorAll<HTMLElement>('.om-feed-group [data-scene]')];
   expect(scenes.map(card => card.dataset.scene)).toEqual(expect.arrayContaining(['image-edit', 'image-to-video', 'music', 'speech']));
   await click('Next');
@@ -603,15 +604,20 @@ it('recovers template discovery and appends only new cards without replacing ear
     return Response.json({ offset, items: (offset ? ['second', 'third', 'third'] : ['first', 'second']).map(template), next: offset ? null : 2 });
   });
   await mount(); await click('Explore');
-  const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
-  expect(picks.textContent).toContain('Templates could not be loaded.');
+  const spotlight = container.querySelector('.om-explore-features')!;
+  expect(spotlight.textContent).toContain('Templates could not be loaded.');
   expect(container.querySelector('.om-feed-group [data-scene="music"]')).not.toBeNull();
   await click('Retry');
-  const card = container.querySelector('[data-template-id="second"]');
+  expect(spotlight.querySelector('.om-featured-caption strong')?.textContent).toBe('first');
+  const sections = [...container.querySelector('.om-discovery-page')!.children].slice(1, 8);
+  expect(sections.map(section => section.getAttribute('aria-labelledby') ?? section.getAttribute('data-studio') ?? section.className))
+    .toEqual(['om-explore-features', 'explore-highlights', 'explore-claude', 'explore-community', 'explore-seedance', 'design', 'explore-gpt-image']);
+  const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
+  const card = picks.querySelector('[data-template-id="second"]');
   expect(card).not.toBeNull();
   await click('More community templates');
   expect(container.querySelector('[data-template-id="second"]')).toBe(card);
-  expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['first', 'second']);
+  expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second']);
   expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['third']);
   expect(button('More community templates')).toBeUndefined();
 });

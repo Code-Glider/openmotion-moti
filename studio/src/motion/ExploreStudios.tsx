@@ -196,8 +196,8 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
   const templates = useExploreTemplates(community?.source === 'techniques' ? undefined : community?.category ?? 'all', locale);
   const groups = templates.pages.map(page => page.items);
   const firstPage = groups[0] ?? [];
-  const communityPicks = home ? firstPage.slice(0, 4) : [];
-  const featuredTemplate = medium ? undefined : firstPage[communityPicks.length];
+  const featuredTemplate = medium ? undefined : firstPage[0];
+  const communityPicks = home ? firstPage.slice(1, 5) : [];
   const initialTemplateError = templates.error && !templates.pages.length;
   const catalogKey = [medium, ...groups.map(group => group.map(item => item.id).join(','))].join('|');
   const playing = useTemplatePlayback(root, catalogKey, active && showMotion, true, priority);
@@ -219,31 +219,30 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
   const studioSection = (studio: CreativeStudio) => <StudioCollection key={studio.id} studio={studio} medium={medium}
     onNavigate={onNavigate} onChooseStudio={onChooseStudio} onSkill={onSkill} playing={playing} onPriority={setPriority} />;
   const initialLoading = templates.loading && !templates.pages.length;
+  const showCommunityPicks = home && (initialLoading || communityPicks.length > 0);
   const templateError = <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><button className="om-button" onClick={templates.retry}>{t('Retry')}</button></div>;
   return <>
-    {home && <>
-      <ClaudeStories onClaude={example => props.onMcp('claude', example)} />
-      <section aria-labelledby="explore-community">
-        <header className="om-discovery-heading"><h2 id="explore-community">{t('Community showcase')}</h2>
-          <button className="om-nav-item" onClick={event => props.onCreators(event.currentTarget)}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></button>
-        </header>
-        {initialLoading && <div className="om-community-picks" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <Skeleton key={n} />)}</div>}
-        {initialTemplateError && templateError}
-        {communityPicks.length > 0 && <div className="om-community-picks">{communityPicks.map(templateCard)}</div>}
-        {!initialLoading && !initialTemplateError && !communityPicks.length && <p className="om-muted">{t('No templates available. Open the library or try again later.')}</p>}
-      </section>
-    </>}
-    {showModelStories && medium !== 'image' && <ModelCollection story={seedanceStory} gateway={gateway} onNavigate={onNavigate} onModel={props.onModel} />}
-    {!medium && <div className="om-explore-features" data-split={Boolean(featuredTemplate || (!home && (initialTemplateError || initialLoading)))}>
+    {!medium && <div className="om-explore-features" data-split={Boolean(featuredTemplate || initialTemplateError || initialLoading)}>
       {community ? <CommunitySpotlight community={community} skill={skills[0]} onChooseStudio={onChooseStudio} /> :
         <ExploreSpotlight active={active} onOpenBlackFriday={props.onOpenBlackFriday} onNavigate={onNavigate} onOpenMotion={() => onChooseStudio(motionStudio)} />}
       {featuredTemplate && <TemplateSpotlight item={featuredTemplate} onTry={tryVideoPrompt} />}
-      {!home && initialTemplateError && templateError}
-      {!home && initialLoading && <Skeleton className="om-featured-template-skeleton" />}
+      {initialTemplateError && templateError}
+      {initialLoading && <Skeleton className="om-featured-template-skeleton" />}
     </div>}
-    {showModelStories && medium !== 'video' && <ModelCollection story={gptImageStory} gateway={gateway} onNavigate={onNavigate} onModel={props.onModel} />}
-    {home && <ExploreHighlights onChooseStudio={onChooseStudio} onOpenBlackFriday={props.onOpenBlackFriday} />}
+    {home && <>
+      <ExploreHighlights onChooseStudio={onChooseStudio} onOpenBlackFriday={props.onOpenBlackFriday} />
+      <ClaudeStories onClaude={example => props.onMcp('claude', example)} />
+    </>}
+    {showCommunityPicks && <section aria-labelledby="explore-community">
+      <header className="om-discovery-heading"><h2 id="explore-community">{t('Community showcase')}</h2>
+        <button className="om-nav-item" onClick={event => props.onCreators(event.currentTarget)}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></button>
+      </header>
+      {initialLoading && <div className="om-community-picks" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <Skeleton key={n} />)}</div>}
+      {communityPicks.length > 0 && <div className="om-community-picks">{communityPicks.map(templateCard)}</div>}
+    </section>}
+    {showModelStories && medium !== 'image' && <ModelCollection story={seedanceStory} gateway={gateway} onNavigate={onNavigate} onModel={props.onModel} />}
     {home && studioSection(findMediaStudio('design')!)}
+    {showModelStories && medium !== 'video' && <ModelCollection story={gptImageStory} gateway={gateway} onNavigate={onNavigate} onModel={props.onModel} />}
     <section className="om-explore-feed" aria-labelledby="om-feed-heading">
       <header className="om-discovery-heading">
         <div><h2 id="om-feed-heading">{t(community?.id === '3d-motion' ? '3D techniques' : 'Community & capabilities')}</h2>
@@ -259,9 +258,9 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
         {templates.loading && (medium || templates.pages.length > 0) && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <Skeleton key={n} />)}</div>}
         {templates.error && !initialTemplateError && templateError}
         {!templates.error && !templates.loading && (templates.hasMore ? <button className="om-button" onClick={templates.loadMore}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></button> :
-          !home && !firstPage.length && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>)}
+          !firstPage.length && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>)}
         <button className="om-nav-item" onClick={event => openLibrary(event.currentTarget)}>{t('View all templates')}<RemixIcon name="arrow-right-line" size={16} /></button>
-        {!home && <button className="om-nav-item" onClick={event => props.onCreators(event.currentTarget)}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></button>}
+        {!showCommunityPicks && <button className="om-nav-item" onClick={event => props.onCreators(event.currentTarget)}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></button>}
       </div>}
     </section>
     {!community && discoveryStudios.filter(studio => !home || studio.id !== 'design').map(studioSection)}
