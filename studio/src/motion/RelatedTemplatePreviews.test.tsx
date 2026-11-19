@@ -54,6 +54,9 @@ it('dismisses preview media with Escape, scrolling and page visibility changes',
   await act(async () => card('First').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
   expect(player()).toBeNull(); expect(dialog.open).toBe(true);
   await focus('Second'); expect(player()).not.toBeNull();
+  const popup = dialog.querySelector('div[aria-label="Second"]')!;
+  await act(async () => popup.dispatchEvent(new Event('scroll')));
+  expect(player()).not.toBeNull();
   await act(async () => host.dispatchEvent(new Event('scroll')));
   expect(player()).toBeNull();
   await focus('First'); const previous = player()!;
