@@ -3,8 +3,8 @@ import type { Model } from '../../../shared/gateway';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { TemplatePoster } from './TemplateGalleryCard';
-import { supportsStoryCase, type ModelStory } from './exploreModelStories';
-import type { StudioDestination } from './creativeStudios';
+import type { ModelStory } from './exploreModelStories';
+import { supportsScene, type StudioDestination } from './creativeStudios';
 
 export function StoryCard({ title, label, description, poster, position, credit, creditUrl, onClick, disabled }: {
   title: string; label: string; description?: string; poster: string; position?: string; credit?: string; creditUrl?: string;
@@ -29,7 +29,7 @@ export function ModelStoryGallery({ story, models, loading, exact, onNavigate }:
 }) {
   const { t } = useI18n();
   return <div className="om-story-gallery" aria-busy={Boolean(loading)}>{story.cases.map(({ destination, example }) => {
-    const model = models.find(item => supportsStoryCase(item, destination));
+    const model = models.find(item => supportsScene(item, destination.scene));
     if (exact && !model) return null;
     const action = !loading && !model ? 'Choose a model' : destination.scene.label;
     return <StoryCard key={example.title} {...example} label={t(destination.studio.title) + ' · ' + t(action)}

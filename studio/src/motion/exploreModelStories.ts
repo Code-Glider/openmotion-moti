@@ -1,6 +1,6 @@
 import type { Model } from '../../../shared/gateway';
 import { findMediaStudio, findTechniqueStudio } from '../../../shared/studio-catalog';
-import { needsImage, studioDestination, supportsScene, type StudioDestination } from './creativeStudios';
+import { studioDestination, type StudioDestination } from './creativeStudios';
 import { sceneExamples, type SceneExample } from './sceneShowcase';
 import type { loadGateway } from './gatewayClient';
 import sunset from './scene-art/komona-sunset.webp';
@@ -59,10 +59,4 @@ export function storyModels(story: ModelStory, catalog: Awaited<ReturnType<typeo
   const available = new Set(catalog.status.providers.filter(p => p.available && p.mediaEntitlement !== 'not-included').map(p => p.id));
   return catalog.models.filter(model => matchesStory(story, model))
     .sort((a, b) => Number(available.has(b.provider)) - Number(available.has(a.provider)));
-}
-
-export function supportsStoryCase(model: Model, { scene }: StudioDestination) {
-  if (!supportsScene(model, scene)) return false;
-  // Some providers list separate text-only and reference-only endpoints for one family.
-  return needsImage(scene) || !/^(image|video)-to-/.test(model.mode);
 }

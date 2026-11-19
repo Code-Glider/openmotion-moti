@@ -5,7 +5,7 @@ import { ModelAvatar } from './settingsPrimitives';
 import { useMediaCatalog } from './useMediaCatalog';
 import { mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
 import { ModelStoryGallery } from './ModelStoryGallery';
-import { matchesStory, modelStories, supportsStoryCase } from './exploreModelStories';
+import { matchesStory, modelStories } from './exploreModelStories';
 import { sceneExamples } from './sceneShowcase';
 
 export function ModelOverview({ id, onExplore, onProvider, onScene }: {
@@ -14,7 +14,7 @@ export function ModelOverview({ id, onExplore, onProvider, onScene }: {
   const { t } = useI18n();
   const { catalog, failed, retry } = useMediaCatalog(true);
   const model = catalog?.models.find(item => item.id === id);
-  const story = model && modelStories.find(item => matchesStory(item, model) && item.cases.some(c => supportsStoryCase(model, c.destination)));
+  const story = model && modelStories.find(item => matchesStory(item, model) && item.cases.some(c => supportsScene(model, c.destination.scene)));
   const provider = model && catalog?.status.providers.find(item => item.id === model.provider);
   return <main className="om-explore"><div className="om-discovery-page">
     <div><button className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</button></div>

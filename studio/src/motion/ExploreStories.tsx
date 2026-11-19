@@ -7,9 +7,9 @@ import { ModelStoryGallery, StoryCard } from './ModelStoryGallery';
 import { ProviderAvatar } from './settingsPrimitives';
 import { useWorkspaceChrome } from './WorkspaceChromeContext';
 import type { useMediaCatalog } from './useMediaCatalog';
-import { floatingCity, seedanceStory, gptImageStory, storyModels, supportsStoryCase, type ModelStory } from './exploreModelStories';
+import { floatingCity, seedanceStory, gptImageStory, storyModels, type ModelStory } from './exploreModelStories';
 import { animeOpeningScenario, mcpCapabilities } from './mcpCapabilities';
-import type { StudioDestination } from './creativeStudios';
+import { supportsScene, type StudioDestination } from './creativeStudios';
 import sale from './skill-covers/sale-countdown.webp';
 import shorts from './skill-covers/multi-clips-to-reels.webp';
 import paintedFilm from './skill-covers/footage-to-handpainted.webp';
@@ -73,8 +73,8 @@ export function ModelCollection({ story, gateway, onNavigate, onModel }: {
   const { t } = useI18n(), { openModelSettings } = useWorkspaceChrome();
   const models = storyModels(story, gateway.catalog);
   const loading = !gateway.catalog && !gateway.failed;
-  const featured = models.find(model => supportsStoryCase(model, story.cases[0].destination))
-    ?? models.find(model => story.cases.some(c => supportsStoryCase(model, c.destination)));
+  const featured = models.find(model => supportsScene(model, story.cases[0].destination.scene))
+    ?? models.find(model => story.cases.some(c => supportsScene(model, c.destination.scene)));
   const heading = 'explore-' + story.id;
   return <section aria-labelledby={heading}>
     <header className="om-discovery-heading"><div>

@@ -771,6 +771,30 @@ it('opens model cases with a compatible provider and the same prompt from both d
   expect(fetcher.mock.calls.some(([url, init]) => String(url).endsWith('/generations') && init?.method === 'POST')).toBe(false);
 });
 
+it.each([
+  ['image', 'gpt-image-2.6', 'image-to-image', 'Image editing'],
+  ['video', 'seedance-2.5', 'image-to-video', 'Image to video'],
+])('offers the same reference-only %s scene in the model overview and its cases', async (modality, family, mode, label) => {
+  const model = { id: 'cloud:' + family, provider: 'cloud', modelId: family, label: family, modality, mode, supportsImageReference: true, maxInputImages: 1, source: 'live' };
+  const baseFetch = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+    const path = new URL(input, location.origin).pathname;
+    if (path === '/motion-api/models') return Response.json({ models: [model], nextOffset: null });
+    if (path === '/motion-api/models/capabilities') return Response.json({ providers: [{ id: 'cloud', available: true }], routes: {} });
+    return baseFetch(input, init);
+  });
+  history.replaceState(null, '', firstUrl.replace('#', '&page=model&model=' + encodeURIComponent(model.id) + '#'));
+  await mount();
+  const overview = container.querySelector('.om-explore-host:not([hidden])')!;
+  expect([...overview.querySelectorAll('.om-studio-collection-cards strong')].map(node => node.textContent)).toEqual([label]);
+  const cases = overview.querySelectorAll<HTMLButtonElement>('.om-story-card');
+  expect(cases).toHaveLength(1);
+  expect(cases[0].textContent).toContain(label);
+  await act(async () => cases[0].click());
+  expect(page().studio?.model).toBe(model.id);
+  expect(page().studio?.scene.label).toBe(label);
+});
+
 it('keeps unlisted model briefs usable and links an Explore workflow to the Claude handbook example', async () => {
   await mount(); await click('Explore');
   const fallback = container.querySelector<HTMLButtonElement>('[aria-labelledby="explore-seedance"] .om-story-card')!;
