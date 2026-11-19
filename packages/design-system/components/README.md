@@ -65,3 +65,5 @@ The repository-local Skills are split by intent:
 | [`odui-check`](../../../.agents/skills/odui-check/SKILL.md) | Audit tokens, boundaries, adoption status and browser evidence before review. |
 
 Use the Skill that matches the work. A catalogue preview does not replace verification of the real Studio consumer.
+
+In an Agent prompt, name the Skill directly. For example, use `$odui-dev` to open the local catalogue, `$odui-build` to add a new control, `$odui-apply` to replace an existing Studio control, or `$odui-check` before review. These Skills are repository-local and are available after the Agent reads `AGENTS.md`.
