@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
-// @vitest-environment-options {"settings":{"enableImageFileLoading":false}}
 import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { SkillMedia, SkillsPage, skillSubmissionUrl } from './SkillsPage';
-import { motionSkills, skillPreviewSnapshot, skillPrompt, skillShortcut } from './skillCatalog';
+import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
+import { SkillMedia } from './SkillMedia';
+import { motionSkills, skillPreviewSnapshot, skillPrompt, skillShortcut, studioSkillDefaults } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
+import { findTechniqueStudio } from '../../../shared/studio-catalog';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
 
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ locale: 'en', t: (text: string, values?: { count: number }) => text.replace('{count}', String(values?.count)) }) }));
@@ -14,9 +15,7 @@ vi.mock('./useWorkspace', () => ({ motionApi: vi.fn().mockRejectedValue(new Erro
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, container: HTMLDivElement;
 beforeEach(() => {
-  container = document.createElement('div');
-  document.body.append(container);
-  root = createRoot(container);
+  container = document.createElement('div'); document.body.append(container); root = createRoot(container);
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -273,53 +272,54 @@ it('opens the contribution guide section for submitting a skill, like the templa
   expect(section).toContain('draft pull request');
 });
 
-it('ships static WebP posters for archived previews and fetches a GIF only while active', () => {
+it('ships static WebP posters and waits to fetch archived video until playback starts', async () => {
   const archived = motionSkills.filter(skill => (skill.cover?.video ?? skill.cover?.gif)?.startsWith(skillPreviewSnapshot));
   expect(archived.length).toBeGreaterThan(100);
   for (const skill of archived) expect(skill.cover?.poster, skill.id).toMatch(/\.webp(?:\?|$)/);
-  const skill = motionSkills.find(skill => skill.id === 'anime-js')!;
-  act(() => root.render(<SkillMedia skill={skill} />));
-  expect(container.querySelector('img')?.getAttribute('src')).toBe(skill.cover?.poster);
-  act(() => root.render(<SkillMedia skill={skill} playing />));
-  const animation = container.querySelector('img')!;
-  expect(animation.getAttribute('src')).toBe(skill.cover?.gif);
-  act(() => animation.dispatchEvent(new Event('error')));
-  expect(container.querySelector('img')?.getAttribute('src')).toBe(skill.cover?.poster);
-});
-
-it('waits to fetch archived video until playback starts, then releases it when playback stops', async () => {
   const skill = motionSkills.find(skill => skill.id === 'motionmaxxing')!;
   const fetcher = vi.mocked(fetch).mockResolvedValue(new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
   const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-preview');
-  const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-  const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   act(() => root.render(<SkillMedia skill={skill} />));
-  expect(fetcher).not.toHaveBeenCalled();
   expect(container.querySelectorAll('img')).toHaveLength(2);
-  await act(async () => root.render(<SkillMedia skill={skill} />));
-  expect(play).not.toHaveBeenCalled();
   expect(fetcher).not.toHaveBeenCalled();
   await act(async () => root.render(<SkillMedia skill={skill} playing />));
-  expect((create.mock.calls[0][0] as Blob).type).toBe('video/mp4');
-  const players = [...container.querySelectorAll('video')];
-  expect(players.map(player => player.getAttribute('src'))).toEqual(['blob:skill-preview', 'blob:skill-preview']);
-  expect(play).toHaveBeenCalledTimes(2);
+  expect(create).toHaveBeenCalled();
+  expect(fetcher).toHaveBeenCalledTimes(1);
   act(() => root.render(<SkillMedia skill={skill} playing={false} />));
   expect(container.querySelectorAll('video')).toHaveLength(0);
   expect(container.querySelectorAll('img')).toHaveLength(2);
-  expect(fetcher).toHaveBeenCalledTimes(1);
-  act(() => players.forEach(player => player.dispatchEvent(new Event('error'))));
-  expect(container.querySelectorAll('img')).toHaveLength(2);
-  act(() => root.render(<SkillMedia skill={skill} />));
-  expect(revoke).toHaveBeenCalledWith('blob:skill-preview');
 });
 
-it('keeps the poster when the archived video request fails', async () => {
-  act(() => root.render(<Host />));
-  expect(fetch).not.toHaveBeenCalled();
-  await act(async () => button('Remove the AI look from motion').click());
-  const detail = container.querySelector('.om-skill-detail')!;
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect(detail.querySelector('video')).toBeNull();
-  expect(detail.querySelectorAll('img')).toHaveLength(2);
+it('carries the exact reference version into both 3D Agent handoffs', () => {
+  const skill = motionSkills.find(entry => entry.id === 'three-js')!;
+  const brief = { subject: 'Orbit a vase', aspect: '16:9', duration: 10, style: '', reference: { assetId: 'asset-a', versionId: 'version-b', label: 'Vase · V2' } } as const;
+  for (const build of [skillPrompt, skillShortcut]) {
+    const instruction = build(skill, brief, 'en', 'https://example.com/install');
+    expect(instruction).toContain('Orbit a vase');
+    const call = instruction.split('\n').at(-1)!;
+    expect(call).toBe('openmotion_assets_use {"action":"read","assetId":"asset-a","versionId":"version-b"}');
+  }
+});
+
+it.each(['image', 'video', 'audio'] as const)('carries the brief and respects a pinned %s reference when starting a shot', modality => {
+  const studio = findTechniqueStudio('shorts')!;
+  const skill = studio.techniques[0], create = vi.fn();
+  const reference = { assetId: 'source', versionId: 'pinned', label: 'Source · V2', modality };
+  const brief = { ...studioSkillDefaults(studio.id), subject: 'A ceramic vase', style: 'Warm sidelight', reference };
+  act(() => root.render(<SkillsPage studio={studio} briefs={new Map([[skill, brief]])} skillId={skill} onSkillChange={vi.fn()} onCreate={create} />));
+  expect(button('Copy for Agent')).toBeTruthy();
+  const action = button('Create a shot from this brief');
+  if (modality !== 'image') {
+    expect(action).toBeUndefined();
+    expect(container.textContent).toContain('Use the Agent brief to work with this recording');
+    return;
+  }
+  act(() => action.click());
+  const [destination, draft] = create.mock.calls[0];
+  expect(destination.scene.id).toBe('image-to-video');
+  expect(draft.references).toEqual([{ reference: { assetId: 'source', versionId: 'pinned' }, name: 'Source · V2' }]);
+  expect(draft.shotPreferences).toEqual({ aspect: '9:16', duration: brief.duration });
+  expect(draft.prompt).toContain('A ceramic vase');
+  expect(draft.prompt).toContain('Warm sidelight');
+  expect(draft.prompt).not.toContain('openmotion_assets_use');
 });

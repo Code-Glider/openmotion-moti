@@ -1,3 +1,5 @@
+import type { Modality } from '../../../shared/gateway';
+import type { AssetReference } from '../../../shared/asset-library';
 /**
  * Skills shown on the Skills page, grouped by the video the user wants to make.
  * Scenario skills (promos, explainers, covers…) come first; open-source motion
@@ -320,9 +322,13 @@ export const motionSkills: MotionSkill[] = [
     technique: 'Follow the OpenMotion Multicam Edit Skill: sync every angle to one reference recording, then cut to the active speaker a few frames after they start. The wide covers crosstalk and laughter, and reaction shots stay under one second.', example: 'Cut our two-camera podcast episode into a first draft' },
 ];
 
+export const editingPresets = ['openmotion-storyboard-to-motion', 'openmotion-shortlist-shorts', 'openmotion-edit-to-script', 'openmotion-multi-clips-to-reels']
+  .flatMap(id => motionSkills.filter(skill => skill.id === id));
+
 export const aspectRatios = ['16:9', '9:16', '1:1'] as const;
 export const durations = [5, 10, 15, 30] as const;
-export type SkillParameters = { subject: string; duration: typeof durations[number]; aspect: typeof aspectRatios[number]; style: string };
+type BriefReference = AssetReference & { label: string; modality?: Modality };
+export type SkillParameters = { subject: string; duration: typeof durations[number]; aspect: typeof aspectRatios[number]; style: string; reference?: BriefReference };
 
 /** Skills that live in OpenMotion's library/skills folder rather than among the plugin's core skills. */
 const isLibrarySkill = (skill: MotionSkill) => skill.id.startsWith('openmotion-');
@@ -334,6 +340,32 @@ const promptText = (locale: string) => (key: PromptKey, values: Record<string, s
   const table = (skillPrompts as Record<string, Partial<Record<PromptKey, string>>>)[locale] ?? skillPrompts.en;
   return (table[key] ?? skillPrompts.en[key]).replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''));
 };
+
+export const defaultSkillParameters: SkillParameters = { subject: '', duration: 10, aspect: '16:9', style: '' };
+
+export function studioSkillDefaults(studioId?: string): SkillParameters {
+  return studioId === 'shorts' ? { ...defaultSkillParameters, aspect: '9:16' } : defaultSkillParameters;
+}
+
+/** A visual brief for the media model. Agent setup and editing steps belong to the project workflow. */
+export function skillShotPrompt(skill: MotionSkill, parameters: SkillParameters, t: (key: string) => string) {
+  return [
+    t('Create one video shot for this brief.'),
+    t(skill.title),
+    parameters.subject.trim() || t(skill.example),
+    [t('Aspect ratio'), parameters.aspect, t('Duration'), parameters.duration + 's'].join(' · '),
+    parameters.style.trim(),
+  ].filter(Boolean).join('\n');
+}
+
+export function localizedSkillPrompt(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string, t: (key: string) => string) {
+  return skillPrompt({ ...skill, output: t(skill.output), example: t(skill.example), technique: t(skill.technique) }, parameters, locale, installUrl);
+}
+
+function referenceInstruction(reference?: BriefReference) {
+  if (!reference) return '';
+  return '\n\nopenmotion_assets_use ' + JSON.stringify({ action: 'read', assetId: reference.assetId, versionId: reference.versionId });
+}
 
 /** installUrl comes from the running installation (setupGuideUrl), matching template instructions. */
 export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
@@ -348,7 +380,7 @@ export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, loc
     say('brief'), say('deliverable', values), say('content', values), say('format', values), ...(style ? [say('style', values)] : []), say('technique', values),
     '',
     say('steps'), say('step1'), say('step2'), ...(skill.media ? [say('media')] : []), ...(isLibrarySkill(skill) ? [say('libraryStep3', values), say(skill.generator ? 'generatorStep4' : 'libraryStep4')] : [say('step3'), say('step4')]), say('step5'),
-  ].join('\n');
+  ].join('\n') + referenceInstruction(parameters.reference);
 }
 
 /** A short command for any Agent chat, like a share code: names the skill, the brief and how to install OpenMotion. */
@@ -356,5 +388,5 @@ export function skillShortcut(skill: MotionSkill, parameters: SkillParameters, l
   const say = promptText(locale), style = parameters.style.trim();
   return say('shortcut', { title: skill.title, duration: parameters.duration, aspect: parameters.aspect, subject: parameters.subject.trim() || skill.example,
     style: style ? say('shortcutStyle', { style }) : '', repository: skill.repository ?? 'OpenMotion', installUrl })
-    + (isLibrarySkill(skill) ? say('shortcutLibrary', { id: skill.id }) : '') + (skill.generator ? say('shortcutGenerator') : '');
+    + (isLibrarySkill(skill) ? say('shortcutLibrary', { id: skill.id }) : '') + (skill.generator ? say('shortcutGenerator') : '') + referenceInstruction(parameters.reference);
 }

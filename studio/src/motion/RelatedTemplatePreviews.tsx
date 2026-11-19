@@ -70,15 +70,18 @@ function LegacyRelatedTemplatePreviews({ templates, panel, onSelect, wide = fals
     if (!open) return;
     const dismiss = () => setOpen(false);
     const hidden = () => { if (document.hidden) dismiss(); };
+    const anchorScrolled = (event: Event) => {
+      if (event.target instanceof Node && event.target.contains(trigger)) dismiss();
+    };
     document.addEventListener('visibilitychange', hidden);
-    document.addEventListener('scroll', dismiss, true);
+    document.addEventListener('scroll', anchorScrolled, true);
     window.addEventListener('blur', dismiss);
     return () => {
       document.removeEventListener('visibilitychange', hidden);
-      document.removeEventListener('scroll', dismiss, true);
+      document.removeEventListener('scroll', anchorScrolled, true);
       window.removeEventListener('blur', dismiss);
     };
-  }, [open]);
+  }, [open, trigger]);
   const anchor = useMemo(() => trigger ? {
     contextElement: trigger,
     getBoundingClientRect: () => {
