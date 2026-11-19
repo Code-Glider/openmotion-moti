@@ -1,3 +1,4 @@
+import { reviewComments } from './review-comments.ts';
 import { ToolInputError } from './shared/tool-input-error.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -17,6 +18,7 @@ export function projectRevealCommand(directory: string, platform: string) {
 /** One implementation for Studio and MCP; caller paths never reach the launcher. */
 export async function manageProject(store: WorkspaceStore, input: ProjectManagementInput, runtimeRoot?: string,
   launch = async (command: string, args: string[]) => { await execute(command, args, { timeout: 10_000, windowsHide: true }); }) {
+  if (input.action === 'comments') return reviewComments(store, input);
   if (input.action === 'trash' || input.action === 'restore' || input.action === 'delete') {
     if (!input.requestId || !/^[\w-]{1,100}$/.test(input.requestId)) throw new ToolInputError('Stable requestId required', 'requestId', input.requestId ? 'invalid_format' : 'missing');
     return input.action === 'trash' ? store.trashProject(input.projectId, input.requestId)

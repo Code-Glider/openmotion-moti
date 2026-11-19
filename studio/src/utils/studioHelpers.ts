@@ -21,6 +21,7 @@ export interface AppToast {
 }
 
 export type RightPanelTab =
+  | "comments"
   | "layers"
   | "design"
   | "renders"
