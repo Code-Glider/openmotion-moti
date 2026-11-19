@@ -199,7 +199,7 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, tra
     void navigator.clipboard.writeText(color).then(() => showToast(t('Copied {color}', { color }), 'info')).catch(() => showToast(t('Could not copy color. Try again.'), 'error'));
   };
   return <div className={styles.library} style={{ display: 'contents' }}>
-    <dialog ref={dialog} className={`${styles.detail} ${styles.reviewDetail} om-hub-video-detail`} aria-label={t('Video preview')}
+    <dialog ref={dialog} data-hub-video-detail className={`${styles.detail} ${styles.reviewDetail}`} aria-label={t('Video preview')}
       onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); onClose(); }}
       onKeyDown={event => {
         if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, video')) return;
