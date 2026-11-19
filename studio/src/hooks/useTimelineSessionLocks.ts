@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import type { TimelineElement } from '../player/store/timelineElement';
 import type { TimelineEditCallbacks } from '../player/components/timelineCallbacks';
 import { findTimelineElementInIframe } from './timelineEditingHelpers';
+import { usePlayerStore } from '../player/store/playerStore';
+import { buildProjectApiPath } from '../utils/projectRouting';
+import { encodePreviewPath } from '../player/components/thumbnailUtils';
 
 type Input = {
   projectId: string | null;
@@ -20,6 +23,16 @@ export function useTimelineSessionLocks({ projectId, activeCompPath, elements, i
   const initialized = useRef(new Set<string>());
   useEffect(() => {
     if (!ready || !projectId || !iframe || !elements.length) return;
+    // Composition navigation clears the store in a child effect. This render may
+    // still hold the old elements, even after that effect has run.
+    if (usePlayerStore.getState().elements !== elements) return;
+    const path = activeCompPath || 'index.html';
+    const previewPath = buildProjectApiPath(projectId, path === 'index.html'
+      ? '/preview' : `/preview/comp/${encodePreviewPath(path)}`);
+    try {
+      // Read the loaded document, not iframe.src (which changes before load).
+      if (new URL(iframe.contentDocument?.URL || '').pathname !== previewPath) return;
+    } catch { return; }
     const key = JSON.stringify([projectId, activeCompPath || 'index.html']);
     if (initialized.current.has(key)) return;
     const resolved = elements.map(element => ({ element,
