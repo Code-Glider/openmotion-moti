@@ -49,7 +49,11 @@ describe('WebMCP registration and invocation tracking', () => {
         duration_ms: ['invalid_arguments', 'cancelled'].includes(mode) ? 0 : 42 });
       expect(request).toHaveBeenCalledTimes(['invalid_arguments', 'cancelled'].includes(mode) ? 0 : 1);
       expect(validProperties(studioEvents, 'webmcp_tool_finished', finish)).toBe(true);
-      expect(JSON.stringify(track.mock.calls)).not.toMatch(/PRIVATE|assetId|versionId|mimeType/);
+      if (mode === 'invalid_arguments') expect(finish).toMatchObject({
+        error_code: 'INVALID_ARGUMENT', invalid_field: 'versionId', validation_rule: 'missing',
+      });
+      expect(JSON.stringify(track.mock.calls)).not.toMatch(/PRIVATE|mimeType/);
+      expect(finish).not.toHaveProperty('versionId');
     });
 
   it('keeps action from the start and omits unknown actions and actions on other tools', async () => {
@@ -105,6 +109,21 @@ describe('WebMCP registration and invocation tracking', () => {
     }
     expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE');
     expect(track.mock.calls.every(([event]) => event.startsWith('webmcp_'))).toBe(true);
+  });
+
+  it('reports export actions and closed error dimensions without forwarding arbitrary error fields', async () => {
+    const tool = withWebMcpTracking({
+      ...descriptor(async () => ({ isError: true, error: {
+        code: 'INVALID_ARGUMENT', invalid_field: 'versionId', validation_rule: 'missing', message: 'PRIVATE',
+      } })),
+      name: 'openmotion_export_request',
+    });
+    await tool.execute({});
+    await vi.dynamicImportSettled();
+    expect(reported('webmcp_tool_finished')).toEqual([expect.objectContaining({
+      action: 'request', outcome: 'failure', error_code: 'INVALID_ARGUMENT', invalid_field: 'versionId', validation_rule: 'missing',
+    })]);
+    expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE');
   });
 
   it.each([

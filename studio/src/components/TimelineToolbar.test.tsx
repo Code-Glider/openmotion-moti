@@ -787,3 +787,16 @@ describe("MVP split actions", () => {
     } finally { act(() => root.unmount()); }
   });
 });
+
+it('rounds a pinned fractional zoom for the readout and tooltip without changing geometry', async () => {
+  usePlayerStore.setState({ zoomMode: 'manual', manualZoomPercent: 68.015625, timelineFitPps: 100, timelinePps: 68.015625 });
+  const { host, root } = renderToolbar();
+  expect(host.querySelector('[aria-label="Timeline zoom level"]')?.textContent).toBe('68%');
+  expect(usePlayerStore.getState().manualZoomPercent).toBe(68.015625);
+  expect(usePlayerStore.getState().timelinePps).toBe(68.015625);
+  const slider = host.querySelector<HTMLInputElement>('input[aria-label="Timeline zoom"]')!;
+  act(() => slider.focus());
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('68%');
+  act(() => root.unmount());
+});

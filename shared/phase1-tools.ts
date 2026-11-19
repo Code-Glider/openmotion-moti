@@ -1,3 +1,4 @@
+import { ToolInputError } from './tool-input-error.ts';
 import { inlineVideoUri } from './inline-video.ts';
 import { publicToolName, legacyToolName } from './public-names.mjs';
 import { templateDiscoveryGuide } from './workflow-entry.js';
@@ -5,6 +6,7 @@ import { projectArchiveTool } from './project-archive.ts';
 import { projectManagementTool } from './project-management.ts';
 import { assetLibraryTool, workspaceAssetUseTool } from './asset-tools.ts';
 import { providerSetupEntries } from './workspace-url.ts';
+import { canvasPresets } from './composition-canvas.ts';
 const providerEntry = { enum: [...providerSetupEntries], description: 'Optional entry reason when target=providers (for example agent_media_signed_out, agent_media_upgrade_free, agent_media_upgrade_go, agent_media_balance_low, agent_media_key_rejected, agent_media_handbook); defaults to agent_providers.' } as const;
 const id = { type: 'string', minLength: 1, maxLength: 100 };
 const projectId = { type: 'string', pattern: '^(project|[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12})$' };
@@ -33,8 +35,8 @@ export const phase1Tools = [
       parameters: { type: 'object', additionalProperties: true }, refresh: { type: 'boolean' }, query: { type: 'string', maxLength: 200 },
       offset: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 100 } }, ['action']),
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
-  { name: 'openmotion_list_templates', title: 'OpenMotion · List Templates', description: 'Index templates from the loaded local repository; NPM installations without repository catalog files read the latest OpenMotion hosted `main` catalog, while explicit CMS mode uses the configured publication. Returns source, indexPath (local JSONL, one summary per template), total and catalogVersion, not search results. Read or grep/jq the file to select a template, then call openmotion_get_template. Repository summaries include localSource paths and hosted entries do not expose local paths. No query or pagination arguments. ' + templateDiscoveryGuide, inputSchema: object({}), annotations: { ...read, openWorldHint: true } },
-  { name: 'openmotion_get_template', title: 'OpenMotion · Get Template', description: 'Read one exact template ID and its TEMPLATE.md guidance. Repository entries include localSource absolute paths and local motionDocument content; hosted catalog entries return motionDocument without localSource paths. Built-in examples resolve locally without a catalog request. Guidance-only examples remain distinct from editable Studio projects. Follow the returned workflowGuide: template means openmotion_create_project with projectType=template copies the editable project; recreate means openmotion-recreate rebuilds from the guidance package and its linked reference video. Known IDs do not require listing first.', inputSchema: object({ templateId: id }, ['templateId']), annotations: { ...read, openWorldHint: true } },
+  { name: 'openmotion_list_templates', title: 'OpenMotion · List Templates', description: 'Index templates and kind=skill video skills for finding techniques by scenario from the loaded local repository; NPM installations without repository catalog files read the latest OpenMotion hosted `main` catalog, while explicit CMS mode uses the configured publication. Returns source, indexPath (local JSONL, one summary per template or kind=skill row), total (templates), skillTotal and catalogVersion, not search results. Read or grep/jq the file to select a template, then call openmotion_get_template. Repository summaries include localSource paths and hosted entries do not expose local paths. No query or pagination arguments. ' + templateDiscoveryGuide, inputSchema: object({}), annotations: { ...read, openWorldHint: true } },
+  { name: 'openmotion_get_template', title: 'OpenMotion · Get Template', description: 'Read one exact template or kind=skill ID. Skills return complete SKILL.md instructions and a file list; follow the instructions and create a natural_language project when needed, never apply or copy a skill as a template. Templates return TEMPLATE.md guidance. Repository entries include localSource absolute paths and local motionDocument content; hosted catalog entries return motionDocument without localSource paths. Built-in examples resolve locally without a catalog request. Guidance-only examples remain distinct from editable Studio projects. Follow the returned workflowGuide: template means openmotion_create_project with projectType=template copies the editable project; recreate means openmotion-recreate rebuilds from the guidance package and its linked reference video. Known IDs do not require listing first.', inputSchema: object({ templateId: id }, ['templateId']), annotations: { ...read, openWorldHint: true } },
   { name: 'openmotion_create_project', title: 'OpenMotion · Create Project', description: 'Create an independent editable native OpenMotion project from a prompt, an editable template ID or reference-video ID. The host Agent authors the film; creation does not generate a finished video. Persist requirements, namingLanguage and source, return project/session IDs and the initial content version. A requestId is required for safe retries.',
     inputSchema: object({ requestId: id, projectType: { enum: ['natural_language', 'template', 'reference_video'] }, title: { type: 'string', minLength: 1, maxLength: 100 }, requirements: text, namingLanguage: { type: 'string', minLength: 2, maxLength: 50, description: 'BCP 47 language for newly assigned asset names. Choose explicit user preference, otherwise initial brief language, otherwise interface language. Saved once; existing meaningful names remain unchanged.' },
       sessionId: projectId, templateId: id, referenceVideoId: id, referenceUrl: { type: 'string', maxLength: 2000 } }, ['requestId', 'projectType', 'title', 'requirements']), annotations: write },
@@ -44,11 +46,11 @@ export const phase1Tools = [
     inputSchema: object({ projectId, requestId: id, items: { type: 'array', minItems: 1, maxItems: 100, items: object({ itemId: id, sourcePath: { type: 'string', minLength: 1, maxLength: 4096 }, licensePath: { type: 'string', minLength: 1, maxLength: 4096, description: 'Optional absolute path to the font license text; it must sit in the same directory as the font file, otherwise the item fails with FONT_LICENSE_NOT_BESIDE_FONT. Copied with a font only.' }, name: { type: 'string', maxLength: 200, description: 'Readable display name. Preserve meaningful source names; name generated or unnamed assets by content and optional purpose in the project namingLanguage. Never use UUIDs or the full generation prompt.' } }, ['itemId', 'sourcePath']) } }, ['projectId', 'requestId', 'items']), annotations: write },
   { name: 'openmotion_get_project', title: 'OpenMotion · Get Project', description: 'Without projectId list projects in the current workspace, newest creation first, exactly five per page (except the last); use nextCursor. Set trashed=true to list projects in Trash instead. With projectId read that project, current revision/version, requirements, native file inventory, asset references and associated export state. file supports bounded UTF-8 reads; exportJobId reads a historical task. With workId read one fixed work round; includeVideo=true returns its verified media privately to the component. This does not switch Studio or create projects.',
     inputSchema: object({ projectId, sessionId: projectId, trashed: { type: 'boolean' }, cursor: { type: 'string', maxLength: 2000 }, file: object({ path: { type: 'string', minLength: 1, maxLength: 240 }, offset: { type: 'integer', minimum: 0 }, length: { type: 'integer', minimum: 1, maximum: 2097152 } }, ['path']), expectedRevision: revision, exportJobId: id, workId, includeVideo: { type: 'boolean' } }, []), annotations: read },
-  { name: 'openmotion_edit_project', title: 'OpenMotion · Edit Project', description: 'Save the host Agent\'s native text-file batch, optional assetNames display metadata and namingLanguage into the explicitly named project. Check both expectedRevision and expectedVersionId, commit all files or none, protect GUI writes, record one complete content version and let Studio refresh. Production saves with workId defer editor presentation until the final video is ready. Every save returns a version-bound previewHandoff: preserve the current chat by default, queue when inactive and confirm the latest content on return. An accepted queued preview may be reported as saved and waiting for return. Only an explicit show-now request permits presentation=now for this turn; background skips presentation. The service does not generate code. Read project/version again after conflicts.',
-    inputSchema: object({ projectId, requestId: id, workId, expectedRevision: revision, expectedVersionId: id, presentation, requirements: text, summary: { type: 'string', maxLength: 300 },
+  { name: 'openmotion_edit_project', title: 'OpenMotion · Edit Project', description: 'Optional canvas changes a native composition to a preset ratio with contain (letterbox) or cover (center crop), without stretching. Existing authored content stays grouped at its original design size; subsequent ratio changes reuse it. Supply files and/or canvas with expectedRevision and expectedVersionId. Save the host Agent\'s native text-file batch, optional assetNames display metadata and namingLanguage into the explicitly named project. Check both expectedRevision and expectedVersionId, commit all files or none, protect GUI writes, record one complete content version and let Studio refresh. Production saves with workId defer editor presentation until the final video is ready. Every save returns a version-bound previewHandoff: preserve the current chat by default, queue when inactive and confirm the latest content on return. An accepted queued preview may be reported as saved and waiting for return. Only an explicit show-now request permits presentation=now for this turn; background skips presentation. The service does not generate code. Read project/version again after conflicts.',
+    inputSchema: object({ canvas: object({ compositionPath: { type: 'string', minLength: 1, maxLength: 240 }, ratio: { enum: canvasPresets.map(item => item.ratio) }, fit: { enum: ['contain', 'cover'] } }, ['compositionPath', 'ratio', 'fit']), projectId, requestId: id, workId, expectedRevision: revision, expectedVersionId: id, presentation, requirements: text, summary: { type: 'string', maxLength: 300 },
       namingLanguage: { type: 'string', minLength: 2, maxLength: 50, description: 'Set a missing project naming language; change an existing value only on explicit user request. Does not translate existing names.' },
       assetNames: { type: 'array', maxItems: 100, items: object({ path: { type: 'string', minLength: 1, maxLength: 240 }, name: { type: 'string', minLength: 1, maxLength: 200 } }, ['path', 'name']), description: 'Metadata-only display names for existing media or fonts. Paths, IDs and composition references stay unchanged. Explicit renames or missing-name repairs only.' },
-      files: { type: 'array', maxItems: 100, items: object({ path: { type: 'string', minLength: 1, maxLength: 240 }, content: { type: 'string' } }, ['path', 'content']) } }, ['projectId', 'requestId', 'expectedRevision', 'expectedVersionId', 'files']), annotations: write },
+      files: { type: 'array', maxItems: 100, items: object({ path: { type: 'string', minLength: 1, maxLength: 240 }, content: { type: 'string' } }, ['path', 'content']) } }, ['projectId', 'requestId', 'expectedRevision', 'expectedVersionId']), annotations: write },
   { name: 'openmotion_export_request', title: 'OpenMotion · Export Request', description: 'Queue a background MP4 of the explicit project version and immutable source/media snapshot. Optional compositionPath exports an existing scene instead of index.html. Automatically lint and fully technically verify the result. Return jobId; read progress/results with openmotion_get_project exportJobId. Export does not open the editor or complete an outstanding editable-preview handoff; follow openmotion_open_preview separately for creation/edit delivery. Repeated requestId returns the original task. action=record_review only records actual playback/visual/audio evidence for an existing job; it never starts another render.',
     inputSchema: object({ action: { enum: ['request', 'record_review'] }, projectId, requestId: id, workId, expectedRevision: revision, versionId: id, jobId: id,
       compositionPath: { type: 'string', minLength: 1, maxLength: 240, description: 'Optional existing HTML composition to export; defaults to index.html. Uses the same immutable project snapshot and native render engine.' }, audio: { enum: ['required', 'silent', 'optional'] }, review }, ['projectId', 'requestId']), annotations: write },
@@ -76,32 +78,58 @@ export function supportsPhase1Tool(health: { mcp?: { protocol?: unknown; tools?:
   return phase1TransportTool(health, tool) !== undefined;
 }
 
-export function validateInput(schema: any, value: any, field = 'arguments'): void {
-  if (schema.oneOf && schema.oneOf.filter((variant: any) => {
-    try { validateInput(variant, value, field); return true; } catch { return false; }
-  }).length !== 1) throw new Error('INVALID_ARGUMENT: ' + field + ' must match one action and its required fields');
-  if (schema.enum && !schema.enum.includes(value)) throw new Error('INVALID_ARGUMENT: ' + field);
-  if (schema.type === 'object') {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_ARGUMENT: ' + field + ' must be an object');
-    for (const key of schema.required ?? []) if (!Object.hasOwn(value, key)) throw new Error('INVALID_ARGUMENT: ' + field + '.' + key + ' is required');
-    for (const [key, child] of Object.entries(value)) {
-      if (!Object.hasOwn(schema.properties ?? {}, key)) {
-        if (schema.additionalProperties === true) continue;
-        if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-          validateInput(schema.additionalProperties, child, field + '.' + key);
-          continue;
-        }
-        throw new Error('INVALID_ARGUMENT: unknown ' + field + '.' + key);
+export function validateInput(schema: any, value: any, field = 'arguments', knownField = 'arguments'): void {
+  const childField = (key: string) => knownField === 'arguments' ? key : knownField === 'unknown_field' ? knownField : knownField + '.' + key;
+  if (schema.oneOf) {
+    const variants: any[] = schema.oneOf;
+    const failures = variants.map(variant => {
+      try { validateInput(variant, value, field, knownField); return undefined; }
+      catch (error) { if (error instanceof ToolInputError) return error; throw error; }
+    });
+    const valid = failures.filter(error => !error).length;
+    if (valid !== 1) {
+      const message = field + ' must match one action and its required fields';
+      if (variants.every(variant => variant.type === 'object') && (!value || typeof value !== 'object' || Array.isArray(value))) {
+        throw new ToolInputError(message, knownField, 'invalid_type');
       }
-      validateInput(schema.properties[key], child, field + '.' + key);
+      const discriminator = ['action', 'command', 'operation'].find(key =>
+        variants.every(variant => variant.properties?.[key]?.enum?.length === 1));
+      if (!discriminator) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const command = value?.[discriminator];
+      if (command === undefined) throw new ToolInputError(message, childField(discriminator), 'missing');
+      if (valid > 1) throw new ToolInputError(message, knownField, 'invalid_combination');
+      const selected = variants.findIndex(variant => variant.properties[discriminator].enum[0] === command);
+      const failure = failures[selected];
+      throw new ToolInputError(message, failure?.invalid_field ?? childField(discriminator), failure?.validation_rule ?? 'invalid_enum');
+    }
+  }
+  if (schema.enum && !schema.enum.includes(value)) throw new ToolInputError(field, knownField, 'invalid_enum');
+  if (schema.type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ToolInputError(field + ' must be an object', knownField, 'invalid_type');
+    for (const key of schema.required ?? []) {
+      if (!Object.hasOwn(value, key)) throw new ToolInputError(field + '.' + key + ' is required', childField(key), 'missing');
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (Object.hasOwn(schema.properties ?? {}, key)) validateInput(schema.properties[key], child, field + '.' + key, childField(key));
+      else if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+        validateInput(schema.additionalProperties, child, field + '.' + key, 'unknown_field');
+      } else if (schema.additionalProperties !== true) {
+        throw new ToolInputError('unknown ' + field + '.' + key, 'unknown_field', 'unknown_field');
+      }
     }
   } else if (schema.type === 'array') {
-    if (!Array.isArray(value) || value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity)) throw new Error('INVALID_ARGUMENT: ' + field);
-    value.forEach((item, i) => validateInput(schema.items, item, field + '[' + i + ']'));
+    if (!Array.isArray(value)) throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+    value.forEach((item, i) => validateInput(schema.items, item, field + '[' + i + ']', knownField === 'unknown_field' ? knownField : knownField + '[]'));
   } else if (schema.type === 'string') {
-    if (typeof value !== 'string' || value.length < (schema.minLength ?? 0) || value.length > (schema.maxLength ?? Infinity) || schema.pattern && !new RegExp(schema.pattern).test(value)) throw new Error('INVALID_ARGUMENT: ' + field);
-  } else if (schema.type === 'boolean' && typeof value !== 'boolean') throw new Error('INVALID_ARGUMENT: ' + field);
-  else if (['number', 'integer'].includes(schema.type) && (typeof value !== 'number' || !Number.isFinite(value) || schema.type === 'integer' && !Number.isSafeInteger(value) || value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity))) throw new Error('INVALID_ARGUMENT: ' + field);
+    if (typeof value !== 'string') throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value.length < (schema.minLength ?? 0) || value.length > (schema.maxLength ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) throw new ToolInputError(field, knownField, 'invalid_format');
+  } else if (schema.type === 'boolean' && typeof value !== 'boolean') throw new ToolInputError(field, knownField, 'invalid_type');
+  else if (['number', 'integer'].includes(schema.type)) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || schema.type === 'integer' && !Number.isSafeInteger(value)) throw new ToolInputError(field, knownField, 'invalid_type');
+    if (value < (schema.minimum ?? -Infinity) || value > (schema.maximum ?? Infinity)) throw new ToolInputError(field, knownField, 'out_of_range');
+  }
 }
 
 /** Presentation is separate from business operations so authoring never mounts an App. */

@@ -11,6 +11,7 @@ import { TimelineLanes } from "./TimelineLanes";
 import { TimelineGestureOverlay } from "./TimelineGestureOverlay";
 import { useTimelineContext } from "./TimelineProvider";
 import { TimelinePendingAssetDrops } from "./TimelinePendingAssetDrops";
+import { TimelineHoverIndicator } from "./TimelineHoverIndicator";
 import { TimelineGestureFeedback } from "./TimelineGestureFeedback";
 
 export const TimelineCanvas = memo(function TimelineCanvas() {
@@ -54,6 +55,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
         <div className="sticky left-0 h-full motion-timeline-gutter-fill" style={{ width: props.contentOrigin }} />
       </div>}
       <TimelineRulerPart />
+      <TimelineHoverIndicator />
       <TimelinePendingAssetDrops
         contentOrigin={props.contentOrigin}
         pixelsPerSecond={props.pps}

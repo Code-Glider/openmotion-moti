@@ -235,6 +235,15 @@ import multicamEditPoster from './skill-covers/multicam-edit.jpg?url';
 // END style-skill covers
 import motionmaxxingVideo from './skill-covers/motionmaxxing.mp4?url';
 import motionmaxxingPoster from './skill-covers/motionmaxxing.jpg?url';
+// Upstream demos: anatomy-reveal's demo film, hairline's README GIF and anatomy's README stills. motion-design-skill uses an OpenMotion sample.
+import anatomyRevealVideo from './skill-covers/anatomy-reveal.mp4?url';
+import anatomyRevealPoster from './skill-covers/anatomy-reveal.jpg?url';
+import anatomyVideo from './skill-covers/anatomy.mp4?url';
+import anatomyPoster from './skill-covers/anatomy.jpg?url';
+import hairlineVideo from './skill-covers/hairline.mp4?url';
+import hairlinePoster from './skill-covers/hairline.jpg?url';
+import motionDesignSkillVideo from './skill-covers/motion-design-skill.mp4?url';
+import motionDesignSkillPoster from './skill-covers/motion-design-skill.jpg?url';
 export type SkillMotif = 'agent' | 'scene' | 'layout' | 'curve' | 'stagger' | 'math' | 'vector' | 'playback' | 'depth' | 'frames' | 'canvas' | 'particles'
   | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit' | 'promo'
   | 'photo' | 'polish' | 'listing' | 'narration' | 'brand' | 'thumbnail';
@@ -262,6 +271,8 @@ export type MotionSkill = {
   cover?: { video?: string; gif?: string; poster?: string; aspect?: number; compare?: boolean; source: string };
   /** The workflow needs generated images, video or audio from configured providers. */
   media?: boolean;
+  /** The skill ships a generator script that must make the film; the Agent must not hand-author it. */
+  generator?: boolean;
   /** What the Agent should borrow from the upstream project. */
   technique: string;
   /** Example brief shown as the subject placeholder. */
@@ -273,7 +284,7 @@ export const skillCategories: SkillCategory[] = ['Talking-head & editing', 'Expl
 export const motionSkills: MotionSkill[] = [
   { id: 'motionmaxxing', title: 'Remove the AI look from motion', useWhen: 'When a motion video looks templated or AI-made and you want it to feel designer-made', name: 'motionmaxxing', output: 'A motion film that reads as designer-made: no slide layouts, color wipes, fake glow or invented numbers', tagline: 'Make AI motion look designer-made.', category: 'Motion techniques', motif: 'polish', repository: 'https://github.com/Tejashmakwana/motionmaxxing', license: 'Apache-2.0', cover: { video: motionmaxxingVideo, poster: motionmaxxingPoster, aspect: 1.78, compare: true, source: 'https://github.com/Tejashmakwana/motionmaxxing#readme' },
     technique: 'Run its anti-slop review: before building, check the plan against its “never ship” list (slide-style title-left/card-right layouts, color-block wipes between sections, near-black backgrounds with radial glow, badges and counters, invented numbers, web-footer endings). After rendering, sample frames and fix the three biggest failures, at most two passes. Report what you checked; never certify the film yourself.', example: 'Rework my product launch video so it no longer looks AI-made' },
-  { id: 'openmotion-growth-teardown', title: 'Growth reverse-engineering', useWhen: 'When you want to show how a company grew: its growth moves, revenue curve and the plays worth copying', name: 'Growth Teardown', output: 'A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages', tagline: 'How any company grew, on one timeline.', category: 'Explainers', motif: 'curve', license: 'Apache-2.0', cover: { video: growthTeardownVideo, poster: growthTeardownPoster, aspect: 1.78, source: 'OpenMotion sample' },
+  { id: 'openmotion-growth-teardown', title: 'Growth reverse-engineering', useWhen: 'When you want to show how a company grew: its growth moves, revenue curve and the plays worth copying', name: 'Growth Teardown', output: 'A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages', tagline: 'How any company grew, on one timeline.', category: 'Explainers', motif: 'curve', license: 'Apache-2.0', cover: { video: growthTeardownVideo, poster: growthTeardownPoster, aspect: 1.78, source: 'OpenMotion sample' }, generator: true,
     technique: 'Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.', example: 'How Lovable grew in its first two years' },
   { id: 'openmotion-design-styles', title: 'Design style library', useWhen: 'When your video needs a real design style, such as Bauhaus, Swiss, Neo-Brutalism or ink wash, instead of a generic look', name: 'Design Styles', output: 'A 10–20 second film in the chosen style: its palette, typefaces and rules applied to your content, with each rule labelled on screen', tagline: '21 design styles and 2 layouts, each with rules a video can follow.', category: 'Brand & covers', motif: 'layout', repository: 'https://github.com/guanmo-ai/design-style', license: 'See repository', cover: { video: designStylesVideo, poster: designStylesPoster, aspect: 1.78, source: 'https://github.com/guanmo-ai/design-style/tree/main/promo' },
     technique: 'Follow the OpenMotion design-styles Skill: pick a style card, write plan.json with a motion move and a style rule per scene, run style.mjs check, fetch subset fonts, then build the scenes from that style\'s own way of moving. Use only the card palette plus brand colours.', example: 'Make our launch video in Swiss style' },
@@ -291,6 +302,14 @@ export const motionSkills: MotionSkill[] = [
     technique: 'Follow its thumbnail method: a truthful information-gap concept, one dominant subject, at most three words of large text and strong contrast. Make the cover and a 3-second animated version for the video intro.', example: 'Cover for my video “I rebuilt my app in 7 days”' },
   { id: 'video-shotcraft', title: 'Product promo', useWhen: 'When launching a product or feature and you have real page screenshots', name: 'video-shotcraft', output: 'A product promo cut from your real page screenshots, with beat-synced shots and sound effects', tagline: 'Product promos from shot recipes.', category: 'Product promos', motif: 'promo', repository: 'https://github.com/Vincentwei1021/video-shotcraft', license: 'Apache-2.0', cover: { video: 'https://vincentwei1021.github.io/video-shotcraft/media/assemble-then-type-flyin.mp4#t=2', aspect: 1.78, source: 'https://vincentwei1021.github.io/video-shotcraft/' },
     technique: 'Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.', example: 'A promo for my product built from real page screenshots' },
+  { id: 'anatomy-reveal', title: 'Product teardown reveal', useWhen: 'When showing a physical product and what is inside it', name: 'Anatomy Reveal', output: 'A product reveal film: the object tumbles in, macro shots of its details, one feature working, then an exploded view that snaps back together', tagline: 'Exploded-view product films.', category: 'Product promos', motif: 'orbit', repository: 'https://github.com/annnguyentt/anatomy-reveal-skill', license: 'MIT', cover: { video: anatomyRevealVideo, poster: anatomyRevealPoster, aspect: 1.78, source: 'https://github.com/annnguyentt/anatomy-reveal-skill/blob/main/demo/espresso-machine.mp4' },
+    technique: 'Follow its reveal-film structure: rebuild the product from real dimensions as many small solid parts on a paper background, tumble it in, cut to macro shots of its details, show one feature working, explode it into parts and snap it back. Never trace a photo.', example: 'An exploded-view reveal of a Moka pot' },
+  { id: 'anatomy', title: 'Machine explainer', useWhen: 'When explaining how a system or idea works without boxes and arrows', name: 'Anatomy', output: 'An isometric machine whose moving parts act out the idea, e.g. a message queue as a marble run, with every number driven by the same model', tagline: 'Ideas drawn as working machines.', category: 'Explainers', motif: 'depth', repository: 'https://github.com/wheresryan22/anatomy', license: 'MIT', cover: { video: anatomyVideo, poster: anatomyPoster, aspect: 1.78, source: 'https://github.com/wheresryan22/anatomy#readme' },
+    technique: 'Follow its rule that the object is the explanation: invent a recognisable machine built from many small solid parts whose motion is the concept, with no boxes, arrows or floating labels. Animate the parts on the timeline and take the machine apart to show the inside.', example: 'Explain how a message queue works as a marble run' },
+  { id: 'hairline', title: 'Line-figure explainer', useWhen: 'When a concept needs a clean, minimal figure that reacts part by part', name: 'hairline', output: 'An isometric line figure, e.g. a sales funnel or a rate limiter, where the part under the pointer lifts and its neighbours follow', tagline: 'Isometric line figures that respond.', category: 'Explainers', motif: 'vector', repository: 'https://github.com/lucasmarkes/hairline', license: 'MIT', cover: { video: hairlineVideo, poster: hairlinePoster, aspect: 1.78, source: 'https://github.com/lucasmarkes/hairline/blob/main/assets/hero.gif' },
+    technique: 'Follow its hairline-create method: offer two or three object metaphors, build the idea as an isometric line figure of solid parts, and move a pointer across it so the part under the pointer lifts and its neighbours rise less. Each beat of the video highlights one part.', example: 'A sales funnel whose stages lift one by one' },
+  { id: 'motion-design-skill', title: 'Motion timing and easing', useWhen: 'When an animation feels stiff or random and needs deliberate timing and choreography', name: 'Motion Design Skill', output: 'Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose', tagline: 'Motion design principles for agents.', category: 'Motion techniques', motif: 'polish', repository: 'https://github.com/LottieFiles/motion-design-skill', license: 'MIT', cover: { video: motionDesignSkillVideo, poster: motionDesignSkillPoster, aspect: 1.78, source: 'OpenMotion sample' },
+    technique: 'Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.', example: 'Choreograph a dashboard entrance: hero chart first, then stats, then sidebar' },
   { id: 'motion-canvas', title: 'Diagram explainer', useWhen: 'When you need to explain how something works with a diagram', name: 'Motion Canvas', output: 'An explainer that walks through a diagram step by step with synced captions', tagline: 'Animated explainers.', category: 'Explainers', motif: 'scene', repository: 'https://github.com/motion-canvas/motion-canvas', license: 'MIT', cover: { video: motionCanvasVideo, poster: motionCanvasPoster, aspect: 1.78, source: 'OpenMotion sample' },
     technique: 'Use its explainer style: sequential scenes, code-driven tweens, highlighted diagrams and synchronized captions.', example: 'Explain how an API request travels through a system' },
   { id: 'remotion-skills', title: 'Multi-scene short', useWhen: 'When a short video has several distinct scenes, like a launch', name: 'Remotion Skills', output: 'A multi-scene video with clean scene timing, e.g. a 3-scene launch with logo reveal', tagline: 'Agent guidance for video.', category: 'Motion techniques', motif: 'agent', repository: 'https://github.com/remotion-dev/skills', license: 'See repository', cover: { video: 'https://www.remotion.dev/img/homepage-assets-master.mp4', aspect: 1.78, source: 'https://www.remotion.dev/' },
@@ -524,6 +543,9 @@ export const aspectRatios = ['16:9', '9:16', '1:1'] as const;
 export const durations = [5, 10, 15, 30] as const;
 export type SkillParameters = { subject: string; duration: typeof durations[number]; aspect: typeof aspectRatios[number]; style: string };
 
+/** Skills that live in OpenMotion's library/skills folder rather than among the plugin's core skills. */
+const isLibrarySkill = (skill: MotionSkill) => skill.id.startsWith('openmotion-');
+
 /** The Agent instruction is the product: copy it into Codex, Claude Code or any MCP client. */
 /** Localized instruction templates; locales without an entry fall back to English, like template prompts. */
 type PromptKey = keyof typeof skillPrompts.en;
@@ -535,7 +557,7 @@ const promptText = (locale: string) => (key: PromptKey, values: Record<string, s
 /** installUrl comes from the running installation (setupGuideUrl), matching template instructions. */
 export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
   const say = promptText(locale), style = parameters.style.trim();
-  const values = { installUrl, name: skill.name, repository: skill.repository ?? '', license: skill.license, output: skill.output,
+  const values = { installUrl, id: skill.id, name: skill.name, repository: skill.repository ?? '', license: skill.license, output: skill.output,
     subject: parameters.subject.trim() || skill.example, duration: parameters.duration, aspect: parameters.aspect, style, technique: skill.technique };
   return [
     say('intro', values),
@@ -544,7 +566,7 @@ export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, loc
     '',
     say('brief'), say('deliverable', values), say('content', values), say('format', values), ...(style ? [say('style', values)] : []), say('technique', values),
     '',
-    say('steps'), say('step1'), say('step2'), ...(skill.media ? [say('media')] : []), say('step3'), say('step4'), say('step5'),
+    say('steps'), say('step1'), say('step2'), ...(skill.media ? [say('media')] : []), ...(isLibrarySkill(skill) ? [say('libraryStep3', values), say(skill.generator ? 'generatorStep4' : 'libraryStep4')] : [say('step3'), say('step4')]), say('step5'),
   ].join('\n');
 }
 
@@ -552,5 +574,6 @@ export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, loc
 export function skillShortcut(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
   const say = promptText(locale), style = parameters.style.trim();
   return say('shortcut', { title: skill.title, duration: parameters.duration, aspect: parameters.aspect, subject: parameters.subject.trim() || skill.example,
-    style: style ? say('shortcutStyle', { style }) : '', repository: skill.repository ?? 'OpenMotion', installUrl });
+    style: style ? say('shortcutStyle', { style }) : '', repository: skill.repository ?? 'OpenMotion', installUrl })
+    + (isLibrarySkill(skill) ? say('shortcutLibrary', { id: skill.id }) : '') + (skill.generator ? say('shortcutGenerator') : '');
 }

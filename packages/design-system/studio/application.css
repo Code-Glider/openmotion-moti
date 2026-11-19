@@ -11,9 +11,10 @@
 [data-motion-studio] .om-select-description { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--motion-text-xs); font-weight: var(--motion-weight-regular); color: var(--motion-dim); }
 [data-motion-studio] .om-application { color: var(--motion-text); background: var(--motion-shell); }
 [data-motion-studio] .om-app-header, [data-motion-studio] .om-app-rail { background: var(--motion-shell); }
-[data-motion-studio] .om-application > .motion-workspace { background: var(--motion-workspace); border-radius: var(--motion-radius-step-10); box-shadow: var(--motion-shadow-xs); }
+[data-motion-studio] .om-application > .motion-workspace { background: var(--motion-workspace); border-radius: var(--motion-radius-step-10); box-shadow: var(--motion-shadow-md); }
 [data-motion-studio] .motion-sidebar { border-right: 1px solid var(--motion-border-subtle); }
-[data-motion-studio] .om-application :is(.motion-workspace-content, .motion-sidebar, .om-settings-center, .om-settings-navigation) { background: var(--motion-workspace); }
+[data-motion-studio] .om-application :is(.motion-workspace-content, .motion-sidebar) { background: var(--motion-workspace); }
+[data-motion-studio] .om-application :is(.om-assets-host, .om-settings-center, .om-settings-navigation) { background: var(--motion-gallery-surface); }
 [data-motion-studio] .om-inline-input { min-width: 0; height: var(--motion-control-sm); padding: var(--motion-space-4) var(--motion-space-8); border: 1px solid transparent; border-radius: var(--motion-radius-md); background: transparent; color: var(--motion-strong); font: inherit; text-overflow: ellipsis; transition: background-color var(--motion-duration-fast), border-color var(--motion-duration-fast); }
 [data-motion-studio] .om-inline-input:enabled:hover { background: var(--motion-hover); }
 [data-motion-studio] .om-inline-input:focus { background: var(--motion-bg); border-color: var(--motion-selected); outline: none; }
@@ -94,13 +95,9 @@
 [data-motion-studio] .om-history-navigation .om-nav-item { justify-content: center; width: var(--motion-control-sm); height: var(--motion-control-sm); min-height: var(--motion-control-sm); padding: 0; color: var(--motion-chrome-icon); }
 [data-motion-studio] .om-history-navigation .om-nav-item:enabled:hover { color: var(--motion-text); background: var(--motion-chrome-hover); }
 [data-motion-studio] .om-history-navigation .om-nav-item:disabled { color: var(--motion-control-disabled); background: transparent; opacity: 1; }
-[data-motion-studio] .om-rail-button { justify-content: center; width: var(--motion-control); height: var(--motion-control); min-height: var(--motion-control); aspect-ratio: 1; flex-shrink: 0; padding: 0; }
-[data-motion-studio] :is(.om-rail-button, .om-app-sidebar-toggle) { color: var(--motion-chrome-icon); }
-[data-motion-studio] :is(.om-rail-button, .om-app-sidebar-toggle):enabled:hover { color: var(--motion-text); background: var(--motion-chrome-hover); }
-[data-motion-studio] .om-rail-button:is([aria-pressed="true"], [aria-current="page"], [aria-expanded="true"]) { color: var(--motion-strong); background: var(--motion-chrome-active); }
-[data-motion-studio] .om-rail-button:is([aria-pressed="true"], [aria-current="page"], [aria-expanded="true"]):enabled:hover { background: var(--motion-chrome-active); }
-[data-motion-studio] .om-rail-button:disabled { color: var(--motion-control-disabled); background: transparent; }
-[data-motion-studio] .om-account-trigger .om-avatar { color: inherit; background: transparent; border-color: transparent; }
+[data-motion-studio] .om-app-sidebar-toggle { color: var(--motion-chrome-icon); }
+[data-motion-studio] .om-app-sidebar-toggle:enabled:hover { color: var(--motion-text); background: var(--motion-chrome-hover); }
+[data-motion-studio] .om-account-trigger .om-avatar { color: inherit; background: transparent; border-color: transparent; white-space: nowrap; overflow: hidden; line-height: 1; }
 [data-motion-studio] .om-settings-sections .om-nav-item > svg { color: var(--motion-chrome-icon); }
 [data-motion-studio] .om-settings-sections .om-nav-item:is(:hover, [aria-current="page"]) > svg { color: inherit; }
 [data-motion-studio] .om-app-header :is(.om-button, .om-nav-item, .motion-icon-button, .om-app-header-links > a) { min-height: var(--motion-control-sm); font-size: var(--motion-text-sm); }

@@ -3,7 +3,7 @@ import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
-import { motionSkills, skillPrompt } from './skillCatalog';
+import { motionSkills, skillPrompt, skillShortcut } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
 
@@ -24,7 +24,7 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(123);
+  expect(motionSkills).toHaveLength(127);
   expect(motionSkills[0].id).toBe('motionmaxxing');
   expect(motionSkills[1].id).toBe('openmotion-growth-teardown');
   expect(motionSkills[2].id).toBe('openmotion-design-styles');
@@ -97,6 +97,40 @@ it('routes generated media through OpenMotion only for media skills', () => {
   const photo = skillPrompt(motionSkills.find(skill => skill.id === 'higgsfield-product-photoshoot')!, { subject: '', duration: 10, aspect: '1:1', style: '' }, 'en', 'https://example.test/install.md');
   expect(photo).toContain('openmotion_media_use');
   expect(photo).toContain('https://github.com/higgsfield-ai/skills/tree/main/higgsfield-product-photoshoot');
+});
+
+it('reads library skills through MCP and runs a generator skill through its own scripts', () => {
+  const brief = (id: string, locale = 'en', duration = 10, aspect: '16:9' | '9:16' | '1:1' = '1:1') =>
+    skillPrompt(motionSkills.find(skill => skill.id === id)!, { subject: 'x', duration, aspect, style: '' }, locale, 'https://example.test/install.md');
+  for (const locale of ['en', 'zh-CN', 'ja', 'ko', 'ru', 'de', 'fr', 'es', 'pt-BR', 'it', 'tr']) {
+    const growth = brief('openmotion-growth-teardown', locale);
+    expect(growth).toContain('openmotion_get_template');
+    expect(growth).toContain('openmotion-growth-teardown');
+    expect(growth).not.toContain('install-library-skill');
+    expect(growth).toContain('1:1');
+    const recipe = brief('openmotion-whiteboard-doodle', locale);
+    expect(recipe).toContain('openmotion_get_template');
+    expect(recipe).toContain('openmotion-whiteboard-doodle');
+    expect(recipe).toContain('HTML/CSS/JS');
+  }
+  expect(brief('openmotion-growth-teardown')).toContain("Make the film with the skill's own generator");
+  expect(brief('openmotion-growth-teardown')).toContain('cannot make the chosen duration or aspect ratio');
+  expect(brief('openmotion-whiteboard-doodle')).not.toContain("own generator");
+  const borrowed = brief('anime-js');
+  expect(borrowed).toContain('Author a native HTML/CSS/JS composition');
+  expect(borrowed).not.toContain('openmotion_get_template');
+});
+
+it('routes the shortcut command through MCP for library skills and the generator for generator skills', () => {
+  const short = (id: string, locale: string) => skillShortcut(motionSkills.find(skill => skill.id === id)!, { subject: 'x', duration: 10, aspect: '9:16', style: '' }, locale, 'https://example.test/install.md');
+  for (const locale of ['en', 'zh-CN', 'ja', 'ko', 'ru', 'de', 'fr', 'es', 'pt-BR', 'it', 'tr']) {
+    expect(short('openmotion-growth-teardown', locale)).toContain('openmotion_get_template');
+    expect(short('openmotion-growth-teardown', locale)).toContain('openmotion-growth-teardown');
+    expect(short('openmotion-whiteboard-doodle', locale)).toContain('openmotion-whiteboard-doodle');
+    expect(short('anime-js', locale)).not.toContain('openmotion_get_template');
+  }
+  expect(short('openmotion-growth-teardown', 'en')).toContain('own generator');
+  expect(short('openmotion-whiteboard-doodle', 'en')).not.toContain('own generator');
 });
 
 it('starts a fresh brief when the selected skill changes from outside, such as history navigation', () => {
