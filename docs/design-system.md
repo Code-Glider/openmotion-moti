@@ -46,13 +46,14 @@ Provider settings and model choices use locally bundled brand icons from `provid
 | Floating menus | `#ffffff` | `#292b2c` |
 | Body text | `#494949` | `#e6e8e4` |
 | Secondary text | `#5c5c5c` | `#c0c4bd` |
-| Accent text | `#526909` | `#d3f953` |
-| Keyboard focus | `#5a7308` | `#d8fd68` |
+| Accent text | `#526909` | `#75ff77` |
+| Selected indicators | `#5a7308` | `#75ff77` |
+| Keyboard focus | N7 `#848484` | `#a0a69f` |
 | Primary action | N11 `#121212` | N2 `#f7f7f7` |
 | Primary action hover | N10 `#353535` | N4 `#dbdbdb` |
 | Primary action text | N0 `#ffffff` | N11 `#121212` |
 
-Primary actions use the shared neutral palette across application buttons, editor controls and dialogs. Light mode pairs an N11 surface with N0 lettering and an N10 hover surface; dark mode pairs an N2 surface with N11 lettering and an N4 hover surface. Accent roles retain their separate theme colors. Media controls use translucent charcoal and light lettering over artwork.
+Primary actions use the shared neutral palette across application buttons, editor controls and dialogs. Light mode pairs an N11 surface with N0 lettering and an N10 hover surface; dark mode pairs an N2 surface with N11 lettering and an N4 hover surface. Dark-theme accents and selected indicators use B4 green (`#75ff77`), with green hover and soft surfaces for navigation, badges, selections and timeline controls. The brand role is theme-specific so progress and media controls use the same green in dark mode; light-theme colors retain their existing values. Media controls use translucent charcoal and light lettering over artwork.
 
 The application header and left control rail share the `shell` background. The central workspace uses the `workspace` surface with a 4px outer inset and 10px corners; internal panel dividers remain local separators. Chrome icons use the muted `chrome-icon` role; `chrome-hover` and `chrome-active` provide distinct inset navigation states without raised shadows. Navigation width and opacity transition over 200ms while the editor and sidebar content stay mounted. Collapsed navigation is immediately inert and hidden from assistive technology; reduced motion disables transitions. The editor route shows the left control rail. Its Projects button toggles the project list. The OpenMotion wordmark returns to Explore and the account menu opens from the right edge of the header. When collapsed on desktop, a delayed hover reveals an opaque, anchored project-navigation preview using the same workspace surface, width, full workspace height and internal layout as the pinned sidebar. Its portal stays inside the application theme scope and follows the workspace bounds as the host resizes. The preview does not resize the editor or take focus; pointer travel into it is protected, and search focus keeps it open until dismissal. Mobile retains the click-operated drawer.
 

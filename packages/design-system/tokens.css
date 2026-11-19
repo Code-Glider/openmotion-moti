@@ -51,7 +51,6 @@
   --motion-duration-slow: 300ms;
   --motion-duration-loading: 1043ms;
   --motion-ease-out: cubic-bezier(0, 0, 0, 1);
-  --motion-brand: #cefa29;
   --motion-space-14: 14px;
   --motion-space-56: 56px;
   --motion-space-5: 5px;
@@ -113,6 +112,7 @@
 }
 :where([data-motion-ui]) {
   color-scheme: light;
+  --motion-brand: #cefa29;
   --motion-bg: #ffffff;
   --motion-inset: #ededed;
   --motion-panel: #fafafa;
@@ -193,6 +193,7 @@
 }
 :where([data-motion-ui][data-theme="dark"], [data-motion-ui][data-motion-studio]:not([data-theme="paper"])) {
   color-scheme: dark;
+  --motion-brand: #75ff77;
   --motion-bg: #191a1b;
   --motion-inset: #111213;
   --motion-panel: #202123;
@@ -209,11 +210,11 @@
   --motion-placeholder: #a0a69f;
   --motion-focus: var(--motion-placeholder);
   --motion-strong: #f7f8f5;
-  --motion-accent: #d3f953;
-  --motion-accent-hover: #e3ff8a;
-  --motion-accent-soft: #2c331d;
-  --motion-brand-soft: #343d20;
-  --motion-highlight: #424f24;
+  --motion-accent: #75ff77;
+  --motion-accent-hover: #91ff92;
+  --motion-accent-soft: #223124;
+  --motion-brand-soft: #283f2a;
+  --motion-highlight: #315633;
   --motion-action: #f7f7f7;
   --motion-action-hover: #dbdbdb;
   --motion-on-action: #121212;
@@ -238,7 +239,7 @@
   --motion-overlay-ink: #f5f5f5;
   --motion-video-overlay: #101010bf;
   --motion-video-ink: #171717;
-  --motion-selected: #d8fd68;
+  --motion-selected: #75ff77;
   --motion-glass: rgba(39, 40, 42, 0.96);
   --motion-scrim: rgba(6, 7, 8, 0.72);
   --motion-scrim-solid: #0c0d0e;
@@ -263,7 +264,7 @@
   --motion-brand-surface: #ffffff;
   --motion-chrome-icon: #b7bcb5;
   --motion-chrome-hover: #2b2d2e;
-  --motion-chrome-active: #30371f;
+  --motion-chrome-active: #263a28;
   --motion-border-subtle: #343638;
   --motion-nav-hover: #2f3132;
   --motion-creative-image: #84edb2;
@@ -274,6 +275,7 @@
 @media (prefers-color-scheme: dark) {
   :where([data-motion-ui]:not([data-theme]):not([data-motion-studio])) {
     color-scheme: dark;
+    --motion-brand: #75ff77;
     --motion-bg: #191a1b;
     --motion-inset: #111213;
     --motion-panel: #202123;
@@ -290,11 +292,11 @@
     --motion-placeholder: #a0a69f;
     --motion-focus: var(--motion-placeholder);
     --motion-strong: #f7f8f5;
-    --motion-accent: #d3f953;
-    --motion-accent-hover: #e3ff8a;
-    --motion-accent-soft: #2c331d;
-    --motion-brand-soft: #343d20;
-    --motion-highlight: #424f24;
+    --motion-accent: #75ff77;
+    --motion-accent-hover: #91ff92;
+    --motion-accent-soft: #223124;
+    --motion-brand-soft: #283f2a;
+    --motion-highlight: #315633;
     --motion-action: #f7f7f7;
     --motion-action-hover: #dbdbdb;
     --motion-on-action: #121212;
@@ -319,7 +321,7 @@
     --motion-overlay-ink: #f5f5f5;
     --motion-video-overlay: #101010bf;
     --motion-video-ink: #171717;
-    --motion-selected: #d8fd68;
+    --motion-selected: #75ff77;
     --motion-glass: rgba(39, 40, 42, 0.96);
     --motion-scrim: rgba(6, 7, 8, 0.72);
     --motion-scrim-solid: #0c0d0e;
@@ -344,7 +346,7 @@
     --motion-brand-surface: #ffffff;
     --motion-chrome-icon: #b7bcb5;
     --motion-chrome-hover: #2b2d2e;
-    --motion-chrome-active: #30371f;
+    --motion-chrome-active: #263a28;
     --motion-border-subtle: #343638;
     --motion-nav-hover: #2f3132;
     --motion-creative-image: #84edb2;
