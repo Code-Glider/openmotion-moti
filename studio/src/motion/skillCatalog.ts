@@ -271,6 +271,8 @@ export type MotionSkill = {
   cover?: { video?: string; gif?: string; poster?: string; aspect?: number; compare?: boolean; source: string };
   /** The workflow needs generated images, video or audio from configured providers. */
   media?: boolean;
+  /** The skill ships a generator script that must make the film; the Agent must not hand-author it. */
+  generator?: boolean;
   /** What the Agent should borrow from the upstream project. */
   technique: string;
   /** Example brief shown as the subject placeholder. */
@@ -282,7 +284,7 @@ export const skillCategories: SkillCategory[] = ['Talking-head & editing', 'Expl
 export const motionSkills: MotionSkill[] = [
   { id: 'motionmaxxing', title: 'Remove the AI look from motion', useWhen: 'When a motion video looks templated or AI-made and you want it to feel designer-made', name: 'motionmaxxing', output: 'A motion film that reads as designer-made: no slide layouts, color wipes, fake glow or invented numbers', tagline: 'Make AI motion look designer-made.', category: 'Motion techniques', motif: 'polish', repository: 'https://github.com/Tejashmakwana/motionmaxxing', license: 'Apache-2.0', cover: { video: motionmaxxingVideo, poster: motionmaxxingPoster, aspect: 1.78, compare: true, source: 'https://github.com/Tejashmakwana/motionmaxxing#readme' },
     technique: 'Run its anti-slop review: before building, check the plan against its “never ship” list (slide-style title-left/card-right layouts, color-block wipes between sections, near-black backgrounds with radial glow, badges and counters, invented numbers, web-footer endings). After rendering, sample frames and fix the three biggest failures, at most two passes. Report what you checked; never certify the film yourself.', example: 'Rework my product launch video so it no longer looks AI-made' },
-  { id: 'openmotion-growth-teardown', title: 'Growth reverse-engineering', useWhen: 'When you want to show how a company grew: its growth moves, revenue curve and the plays worth copying', name: 'Growth Teardown', output: 'A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages', tagline: 'How any company grew, on one timeline.', category: 'Explainers', motif: 'curve', license: 'Apache-2.0', cover: { video: growthTeardownVideo, poster: growthTeardownPoster, aspect: 1.78, source: 'OpenMotion sample' },
+  { id: 'openmotion-growth-teardown', title: 'Growth reverse-engineering', useWhen: 'When you want to show how a company grew: its growth moves, revenue curve and the plays worth copying', name: 'Growth Teardown', output: 'A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages', tagline: 'How any company grew, on one timeline.', category: 'Explainers', motif: 'curve', license: 'Apache-2.0', cover: { video: growthTeardownVideo, poster: growthTeardownPoster, aspect: 1.78, source: 'OpenMotion sample' }, generator: true,
     technique: 'Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.', example: 'How Lovable grew in its first two years' },
   { id: 'openmotion-design-styles', title: 'Design style library', useWhen: 'When your video needs a real design style, such as Bauhaus, Swiss, Neo-Brutalism or ink wash, instead of a generic look', name: 'Design Styles', output: 'A 10–20 second film in the chosen style: its palette, typefaces and rules applied to your content, with each rule labelled on screen', tagline: '21 design styles and 2 layouts, each with rules a video can follow.', category: 'Brand & covers', motif: 'layout', repository: 'https://github.com/guanmo-ai/design-style', license: 'See repository', cover: { video: designStylesVideo, poster: designStylesPoster, aspect: 1.78, source: 'https://github.com/guanmo-ai/design-style/tree/main/promo' },
     technique: 'Follow the OpenMotion design-styles Skill: pick a style card, write plan.json with a motion move and a style rule per scene, run style.mjs check, fetch subset fonts, then build the scenes from that style\'s own way of moving. Use only the card palette plus brand colours.', example: 'Make our launch video in Swiss style' },
@@ -541,6 +543,9 @@ export const aspectRatios = ['16:9', '9:16', '1:1'] as const;
 export const durations = [5, 10, 15, 30] as const;
 export type SkillParameters = { subject: string; duration: typeof durations[number]; aspect: typeof aspectRatios[number]; style: string };
 
+/** Skills that live in OpenMotion's library/skills folder rather than among the plugin's core skills. */
+const isLibrarySkill = (skill: MotionSkill) => skill.id.startsWith('openmotion-');
+
 /** The Agent instruction is the product: copy it into Codex, Claude Code or any MCP client. */
 /** Localized instruction templates; locales without an entry fall back to English, like template prompts. */
 type PromptKey = keyof typeof skillPrompts.en;
@@ -552,7 +557,7 @@ const promptText = (locale: string) => (key: PromptKey, values: Record<string, s
 /** installUrl comes from the running installation (setupGuideUrl), matching template instructions. */
 export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
   const say = promptText(locale), style = parameters.style.trim();
-  const values = { installUrl, name: skill.name, repository: skill.repository ?? '', license: skill.license, output: skill.output,
+  const values = { installUrl, id: skill.id, name: skill.name, repository: skill.repository ?? '', license: skill.license, output: skill.output,
     subject: parameters.subject.trim() || skill.example, duration: parameters.duration, aspect: parameters.aspect, style, technique: skill.technique };
   return [
     say('intro', values),
@@ -561,7 +566,7 @@ export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, loc
     '',
     say('brief'), say('deliverable', values), say('content', values), say('format', values), ...(style ? [say('style', values)] : []), say('technique', values),
     '',
-    say('steps'), say('step1'), say('step2'), ...(skill.media ? [say('media')] : []), say('step3'), say('step4'), say('step5'),
+    say('steps'), say('step1'), say('step2'), ...(skill.media ? [say('media')] : []), ...(isLibrarySkill(skill) ? [say('libraryStep3', values), say(skill.generator ? 'generatorStep4' : 'libraryStep4')] : [say('step3'), say('step4')]), say('step5'),
   ].join('\n');
 }
 
@@ -569,5 +574,6 @@ export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, loc
 export function skillShortcut(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
   const say = promptText(locale), style = parameters.style.trim();
   return say('shortcut', { title: skill.title, duration: parameters.duration, aspect: parameters.aspect, subject: parameters.subject.trim() || skill.example,
-    style: style ? say('shortcutStyle', { style }) : '', repository: skill.repository ?? 'OpenMotion', installUrl });
+    style: style ? say('shortcutStyle', { style }) : '', repository: skill.repository ?? 'OpenMotion', installUrl })
+    + (isLibrarySkill(skill) ? say('shortcutLibrary', { id: skill.id }) : '') + (skill.generator ? say('shortcutGenerator') : '');
 }
