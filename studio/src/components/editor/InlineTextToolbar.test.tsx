@@ -181,6 +181,33 @@ describe("InlineTextToolbar", () => {
     expect(document.getSelection()!.toString()).toBe("hello world");
   });
 
+  it.each(["outside", "trigger"])("commits a pending channel edit before %s dismissal", (dismissal) => {
+    const { element, host } = renderSelected('<span style="color: #f00">hello world</span>');
+    const trigger = toolbarIn(host)!.querySelector<HTMLButtonElement>("[data-flat-color-trigger]")!;
+    act(() => trigger.click());
+    const red = document.querySelector<HTMLInputElement>('.motion-color-picker[data-open] input[aria-label="Red"]')!;
+    act(() => {
+      red.focus();
+      document.getSelection()!.removeAllRanges();
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(red, "42");
+      red.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    act(() => {
+      if (dismissal === "trigger") trigger.click();
+      else {
+        const options = { bubbles: true, cancelable: true, composed: true, pointerType: "mouse" };
+        document.body.dispatchEvent(new PointerEvent("pointerdown", options));
+        document.body.dispatchEvent(new PointerEvent("pointerup", options));
+        document.body.dispatchEvent(new MouseEvent("click", { ...options, detail: 1 }));
+      }
+    });
+
+    expect(element.querySelector("span")?.style.color).toBe("rgb(42, 0, 0)");
+    expect(document.getSelection()!.toString()).toBe("hello world");
+  });
+
   it("styles the selected characters when a control is used", () => {
     const { element, host } = renderSelected();
 

@@ -215,6 +215,7 @@ export function ColorField({
 }) {
   const { t } = useI18n();
   const track = useTrackDesignInput();
+  const pickerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState("rgba");
   const [lastHue, setLastHue] = useState(0);
@@ -336,7 +337,7 @@ export function ColorField({
       finalFocus={onPickerOpenChange ? false : undefined}
       aria-label={t("{label} color picker", { label })}
       className="motion-color-picker motion-positioned-menu"
-      renderPanel={<MenuPanel data-menu-layout="custom" />}
+      renderPanel={<MenuPanel ref={pickerRef} data-menu-layout="custom" />}
       onOpenChange={(nextOpen, details) => {
         if (nextOpen) {
           setHexDraft(toHexColor(draftColorRef.current).toUpperCase());
@@ -344,6 +345,9 @@ export function ColorField({
           cancelColorGesture();
           setCssDraft(null);
         } else {
+          // Channel inputs commit on blur. Flush them while an inline text
+          // selection is still retained by the picker owner.
+          pickerRef.current?.querySelector<HTMLElement>(":focus")?.blur();
           settleColorGesture();
         }
         setOpen(nextOpen);
