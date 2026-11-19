@@ -56,6 +56,10 @@ export async function resumableDownload(directory: string, resolve: () => Promis
       try {
         await report();
         response = await transport(asset.url, { signal, headers: { 'Accept-Encoding': 'identity', ...(bytes ? { Range: `bytes=${bytes}-`, 'If-Range': etag! } : {}) } });
+        if (response.status === 416 && bytes) {
+          bytes = 0; hash = createHash('sha256'); etag = undefined; await file.truncate(0);
+          throw new Error(downloadInterrupted);
+        }
         if (response.status !== 200 && response.status !== 206) throw new Error(downloadInterrupted);
         const nextEtag = response.headers.get('etag') ?? undefined;
         let expected = asset.size;

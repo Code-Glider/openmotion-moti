@@ -416,7 +416,7 @@ test('account image download resumes verified bytes and refreshes URLs without p
 test('account image auto retry verifies Range and never appends changed or corrupted files', () => fixture(async store => {
   const { resumableDownload } = await import('../gateway/resumable-download.ts');
   const bytes = Buffer.alloc(80, 17), other = Buffer.alloc(80, 52), signal = new AbortController().signal;
-  for (const mode of ['range', 'changed-etag', 'ignored-range', 'corrupt-file', 'wrong-range', 'no-etag', 'different-asset']) {
+  for (const mode of ['range', 'changed-etag', 'ignored-range', 'corrupt-file', 'wrong-range', 'range-not-satisfiable', 'no-etag', 'different-asset']) {
     const directory = path.join(store.directory, mode); await mkdir(directory);
     let call = 0;
     const asset = async () => ({ assetId: 'original', mime: 'image/png', size: bytes.length, url: 'https://media.example/original' });
@@ -437,6 +437,7 @@ test('account image auto retry verifies Range and never appends changed or corru
         assert.equal(range, null, mode); return new Response(expected, { headers: { etag: '"new"' } });
       }
       assert.equal(range, 'bytes=32-', mode);
+      if (mode === 'range-not-satisfiable') return new Response(null, { status: 416 });
       if (mode === 'ignored-range') return new Response(other, { headers: { etag: '"new"' } });
       return new Response(expected.subarray(32), { status: 206, headers: { etag: mode === 'changed-etag' ? '"new"' : '"old"',
         'content-range': `bytes ${mode === 'wrong-range' ? 31 : 32}-79/80` } });
