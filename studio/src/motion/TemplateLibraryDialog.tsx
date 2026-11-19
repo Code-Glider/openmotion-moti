@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { blackFridayReference, blackFridayTemplates } from '../../../shared/black-friday-collection';
 import { BlackFridayCollection, type BlackFridayFilter } from './BlackFridayCollection';
 import { TemplateCreators } from './TemplateCreators';
@@ -756,8 +757,8 @@ export function TemplateLibraryDialog(props: Props) {
       {detailOnly && !preview && <div className={styles.empty}>
         {error || missingTemplate ? <p role="alert">{t(error || 'This template is no longer available.')}</p>
           : <p role="status">{t('Loading preview…')}</p>}
-        {error && <button className="om-button" onClick={() => retry(value => value + 1)}>{t('Retry')}</button>}
-        <button className="om-button" onClick={closeDetail}>{t('Close template preview')}</button>
+        {error && <Button type="button" variant="secondary" className="om-button" onClick={() => retry(value => value + 1)}>{t('Retry')}</Button>}
+        <Button type="button" variant="secondary" className="om-button" onClick={closeDetail}>{t('Close template preview')}</Button>
       </div>}
       {preview && <>{(!handoffPreview || !guideOpen) && <DetailScroll enabled={handoffPreview} container={reviewScroll}><div className={`${styles.detailGrid} ${handoffPreview ? styles.reviewGrid : ''}`}>
         <div className={styles.stage}>

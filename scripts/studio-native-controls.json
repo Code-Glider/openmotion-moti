@@ -137,7 +137,7 @@
   "motion/DeveloperPage.tsx": {"button":4},
   "motion/DiagnosticExport.tsx": {"button":1},
   "motion/ExploreSpotlight.tsx": {"button":7},
-  "motion/ExploreStudios.tsx": {"button":24},
+  "motion/ExploreStudios.tsx": {"button":20},
   "motion/ExploreTemplates.tsx": {"button":1},
   "motion/GalleryFilters.tsx": {"button":9},
   "motion/GalleryIntro.tsx": {"button":2},

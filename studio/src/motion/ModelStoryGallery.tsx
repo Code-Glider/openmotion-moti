@@ -1,4 +1,5 @@
 import type { MouseEventHandler } from 'react';
+import { Button } from 'open-design-ui/button';
 import type { Model } from '../../../shared/gateway';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -11,14 +12,14 @@ export function StoryCard({ title, label, description, poster, position, credit,
   onClick: MouseEventHandler<HTMLButtonElement>; disabled?: boolean;
 }) {
   const { t } = useI18n();
-  return <article className="om-story-item"><button type="button" className="om-scene-tile om-story-card" onClick={onClick} disabled={disabled}>
+  return <article className="om-story-item"><Button type="button" variant="ghost" className="om-scene-tile om-story-card h-auto whitespace-normal font-normal items-stretch justify-normal enabled:hover:bg-transparent enabled:active:scale-100" onClick={onClick} disabled={disabled}>
     <span className="om-scene-tile-art" style={{ objectPosition: position }}>
       <TemplatePoster template={{ title: t(title), posterUrl: poster }} />
     </span>
     <span className="om-feed-card-label">{label}</span>
     <strong>{t(title)}<RemixIcon name="arrow-right-up-line" size={16} /></strong>
     {description && <span className="om-feed-card-description">{t(description)}</span>}
-  </button>
+  </Button>
     {credit && <small className="om-story-credit">{creditUrl ? <a className="om-text-link" href={creditUrl} target="_blank" rel="noreferrer">{credit}</a> : credit}</small>}
   </article>;
 }
