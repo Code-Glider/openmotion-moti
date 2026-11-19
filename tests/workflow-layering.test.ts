@@ -271,11 +271,11 @@ test('narration and editable captions strategy stays in sound.md and routes link
   assert.match(sound.content, /alignment[\s\S]*sentences/);
   assert.match(sound.content, /silencedetect/);
   assert.match(sound.content, /caption_add[\s\S]*requestId/);
-  assert.match(sound.content, /caption_update[\s\S]*transcriptId[\s\S]*captionSettings/);
-  assert.match(sound.content, /playbackRate[\s\S]*sourceStart[\s\S]*expectedTranscriptRevision/);
+  assert.match(sound.content, /caption_update[\s\S]*transcriptId[\s\S]*captionSettings[\s\S]*remove:\s*true/);
+  assert.match(sound.content, /document\.id[\s\S]*document\.revision[\s\S]*expectedTranscriptRevision/);
   assert.match(sound.content, /data-timeline-locked/);
   assert.match(sound.content, /captionSettings:\s*\{\s*pacing:\s*"word"\s*\}/);
-  assert.match(sound.content, /caption_tracks/);
+  assert.match(sound.content, /caption_tracks[\s\S]*kind:\s*"caption"[\s\S]*cueCount > 0/);
   assert.ok(sound.references.some(reference => reference.workflow === 'production' && reference.section === 'transcripts'));
 
   for (const [workflow, section] of [
