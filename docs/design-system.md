@@ -207,7 +207,7 @@ Browser acceptance includes actual open dropdowns, copy success/failure Toasts a
 
 The package-owned `studio/editor-workspace.css` defines continuous editor surfaces, panel dividers, layout-menu icon alignment and timeline control-column, row, grid and icon-control styling. Project navigation, dock panels, toolbars, preview transport and timeline boundaries use a single 1px line in the shared subtle-border role. Resize hit areas and active drag feedback retain their existing geometry. Studio supplies measured dock widths, row heights and tick spacing; both themes use the same semantic roles, and authored clip artwork remains independent.
 
-The dark theme layers a near-black shell, charcoal workspace and lighter graphite menus. Current navigation pairs lime lettering with an olive tint. Ordinary controls use a neutral hover surface. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
+The dark theme layers a near-black shell, charcoal workspace and lighter graphite menus. Current navigation pairs B4 green lettering with a deep green tint. Ordinary controls use a neutral hover surface. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
 
 ### Grouped discovery filters and alignment
 
