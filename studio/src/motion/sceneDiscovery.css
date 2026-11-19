@@ -4,9 +4,12 @@
 .om-discovery-page { width: min(100%, 1600px); margin-inline: auto; padding: var(--motion-space-24) clamp(var(--motion-space-16), 3vw, var(--motion-space-48)) var(--motion-space-56); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-32); }
 .om-explore-feed, .om-studio-collection { min-width: 0; }
 .om-explore-masthead, .om-discovery-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
-.om-explore-masthead h1 { font: var(--motion-weight-bold) clamp(var(--motion-text-display), 3.8vw, var(--motion-text-display-lg))/1.05 var(--motion-font-display); letter-spacing: -.045em; }
+.om-explore-masthead h1 { font: var(--motion-weight-bold) var(--motion-text-display)/1.05 var(--motion-font-display); letter-spacing: -.045em; }
 .om-community-tabs { display: flex; gap: var(--motion-space-4); max-width: 100%; overflow-x: auto; }
 .om-community-tabs button { white-space: nowrap; flex: none; }
+@container discovery (width > 600px) {
+  .om-explore-masthead + .om-explore-features { margin-block-start: calc(-1 * var(--motion-space-8)); }
+}
 .om-explore-features { display: grid; gap: var(--motion-space-16); }
 .om-explore-features[data-split="true"] { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 .om-discovery-hero, .om-featured-template, .om-featured-template-skeleton { position: relative; min-width: 0; min-height: clamp(275px, 25vw, 365px); overflow: hidden; border-radius: var(--motion-radius-xl); }
