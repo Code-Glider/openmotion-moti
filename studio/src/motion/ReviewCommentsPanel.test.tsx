@@ -16,10 +16,11 @@ const state = vi.hoisted(() => ({ projectId: 'project', composition: 'index.html
   selection: { current: null as DomEditSelection | null }, comments: [] as ReviewComment[],
   save: vi.fn<() => Promise<void>>(), toast: vi.fn(), request: vi.fn(), createError: '', updateError: '',
   iframe: { current: null as HTMLIFrameElement | null },
+  setComposition: vi.fn(),
   listMounted: true, visible: true,
 }));
 vi.mock('../contexts/StudioContext', () => ({ useStudioShellContext: () => ({
-  projectId: state.projectId, activeCompPath: state.composition, setActiveCompPath: vi.fn(),
+  projectId: state.projectId, activeCompPath: state.composition, setActiveCompPath: state.setComposition,
   waitForPendingDomEditSaves: state.save, showToast: state.toast, previewIframeRef: state.iframe,
 }) }));
 vi.mock('../contexts/DomEditContext', () => ({ useDomEditContext: () => ({
@@ -53,6 +54,7 @@ beforeEach(async () => {
   state.listMounted = true; state.visible = true;
   state.selection.current = null; state.comments = []; state.createError = state.updateError = '';
   state.save.mockReset().mockResolvedValue(); state.toast.mockReset();
+  state.setComposition.mockReset();
   state.request.mockReset().mockImplementation(async (input: ReviewCommentsInput) => {
     if (input.operation === 'create') {
       if (state.createError) throw new Error(state.createError);
@@ -62,7 +64,7 @@ beforeEach(async () => {
     if (input.operation === 'update' && state.updateError) throw new Error(state.updateError);
     return structuredClone({ projectId: input.projectId, sourceRevision: state.revision, comments: state.comments });
   });
-  usePlayerStore.setState({ currentTime: 1, isPlaying: false });
+  usePlayerStore.setState({ currentTime: 1, isPlaying: false, requestedSeekTime: null, playbackRequest: null });
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   await render();
 });
@@ -140,6 +142,26 @@ it('copies all pending comments without entering selection mode', async () => {
   expect(copy.mock.calls[0][0]).toContain('Second change');
   expect(copy.mock.calls[0][0]).not.toContain('First change');
   expect(document.querySelector('input[type="checkbox"]')).toBeNull();
+});
+
+it.each(['index.html', 'compositions/scene.html'])('keeps playback and composition unchanged when opening a whole-video comment from %s', async composition => {
+  await act(async () => useReviewPresentationStore.getState().request('project', 'project'));
+  await type('Keep the overall pacing calm'); await click('Save comment');
+  state.composition = composition; await render();
+  await act(async () => usePlayerStore.setState({ currentTime: 4, isPlaying: true, requestedSeekTime: null, playbackRequest: null }));
+  await click('Whole video');
+  expect(state.setComposition).not.toHaveBeenCalled();
+  expect(usePlayerStore.getState()).toMatchObject({ currentTime: 4, isPlaying: true, requestedSeekTime: null, playbackRequest: null });
+  expect(document.body.textContent).toContain('Keep the overall pacing calm');
+});
+
+it.each([0, 2])('still pauses and seeks to a frame comment at %s seconds', async time => {
+  await act(async () => usePlayerStore.setState({ currentTime: time }));
+  await click('Comment here'); await type('Review this exact frame'); await click('Save comment');
+  await act(async () => usePlayerStore.setState({ currentTime: 4, isPlaying: true, requestedSeekTime: null, playbackRequest: null }));
+  await click(`00:0${time}.000`);
+  expect(usePlayerStore.getState()).toMatchObject({ requestedSeekTime: time, playbackRequest: { playing: false } });
+  expect(state.setComposition).not.toHaveBeenCalled();
 });
 
 it('waits for pending edits then freezes the current frame and live element context', async () => {

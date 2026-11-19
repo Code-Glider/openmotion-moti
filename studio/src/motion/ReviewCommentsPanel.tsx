@@ -186,6 +186,11 @@ function ProjectReviewComments() {
       const latest = current.comments.find(record => record.id === comment.id);
       if (!latest) throw new Error('COMMENT_NOT_FOUND: This comment was deleted elsewhere.');
       comment = latest;
+      if (comment.anchor.time === undefined) {
+        setLocating(null);
+        useReviewMarkupStore.getState().show(null);
+        return;
+      }
       usePlayerStore.getState().requestPlayback(false);
       if (comment.anchor.annotation && comment.sourceRevision !== current.sourceRevision) throw new Error('This annotated frame is from an earlier project revision. Review its saved context.');
       if (comment.anchor.element) {
@@ -211,13 +216,15 @@ function ProjectReviewComments() {
     let cancelled = false, running = false;
     const deadline = Date.now() + 5000;
     const anchor = locating.anchor;
-    usePlayerStore.getState().requestSeek(anchor.time ?? 0);
+    const targetTime = anchor.time;
+    if (targetTime === undefined) return;
+    usePlayerStore.getState().requestSeek(targetTime);
     const attempt = async () => {
       if (cancelled || running) return;
       running = true;
       try {
         const player = usePlayerStore.getState();
-        if (Math.abs(player.currentTime - (anchor.time ?? 0)) > 0.08) return;
+        if (Math.abs(player.currentTime - targetTime) > 0.08) return;
         if (!anchor.element) { setLocating(null); return; }
         const doc = previewIframeRef.current?.contentDocument;
         const element = doc && resolveElementHandle(doc, anchor.element.handle);
