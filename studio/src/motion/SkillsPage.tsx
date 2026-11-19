@@ -268,7 +268,7 @@ function RetainedDetailContent({ children }: { children: ReactElement | null }) 
 }
 
 function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; selected: boolean; onSelect: () => void }) {
-  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false), [near, setNear] = useState(false);
+  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false);
   const card = useRef<HTMLButtonElement>(null);
   // Autoplay while at least half the card is on screen (paused off screen, so only the visible few load).
   // Reduced-motion users keep hover-to-play.
@@ -276,10 +276,8 @@ function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: Motion
     const element = card.current;
     if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
-    // Start buffering a screen ahead so playback is smooth when the card arrives.
-    const ahead = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: '100% 0px' });
-    observer.observe(element); ahead.observe(element);
-    return () => { observer.disconnect(); ahead.disconnect(); };
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
   const active = hovered || visible;
   const setActive = setHovered;
@@ -287,7 +285,7 @@ function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: Motion
     onClick={onSelect} aria-pressed={selected} aria-labelledby={`skill-title-${skill.id}`} aria-describedby={`skill-purpose-${skill.id}`}
     onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
     <span className="om-gallery-cover om-skill-card-demo">
-      <SkillMedia skill={skill} playing={active} near={near || hovered} />
+      <SkillMedia skill={skill} playing={active} />
     </span>
     <span className="om-skill-card-meta">
       <span className="om-skill-card-heading"><strong id={`skill-title-${skill.id}`}>{name}</strong></span>

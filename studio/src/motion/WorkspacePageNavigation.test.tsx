@@ -507,9 +507,9 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     container.querySelector<HTMLElement>(section + ' [data-playback-id]')!);
   vi.useFakeTimers();
   try {
-    act(() => { observed.get(hero)!(true); cards.forEach(card => observed.get(card)!(true)); });
+    await act(async () => { observed.get(hero)!(true); cards.forEach(card => observed.get(card)!(true)); });
     expect(hero.dataset.scene).toBe('motion');
-    expect(hero.querySelector('video[src]')).toBeTruthy();
+    expect(hero.querySelector('video[src]')?.getAttribute('src')).toMatch(/^blob:/);
     for (const card of cards) expect(card.querySelector('video[src]')).toBeTruthy();
     act(() => { vi.advanceTimersByTime(6000); });
     expect(hero.dataset.scene).toBe('black-friday');
@@ -521,9 +521,9 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     await click('Play');
     act(() => { vi.advanceTimersByTime(3500); });
     expect(hero.dataset.scene).toBe('shot-image');
-    act(() => { vi.advanceTimersByTime(6000); });
+    await act(async () => { vi.advanceTimersByTime(6000); });
     expect(hero.dataset.scene).toBe('text-to-video');
-    expect(hero.querySelector('video[src]')).toBeTruthy();
+    expect(hero.querySelector('video[src]')?.getAttribute('src')).toMatch(/^blob:/);
     act(() => { observed.get(hero)!(false); cards.forEach(card => observed.get(card)!(false)); });
     expect(hero.querySelector('video[src]')).toBeNull();
     for (const card of cards) expect(card.querySelector('video[src]')).toBeNull();
