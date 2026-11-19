@@ -38,16 +38,16 @@
 .sourceLinks { margin-top: var(--motion-space-4); font-size: var(--motion-text-sm); }
 .sourceLinks a { display: inline-flex; align-items: center; gap: var(--motion-space-4); }
 .skillCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--motion-space-12); max-width: 920px; }
-.skillCards button { min-width: 0; }
-.skillCards :global(.om-skill-card-demo) { max-height: 144px; }
+.skillCards button { display: flex; flex-direction: column; align-items: stretch; min-width: 0; padding: 0; text-align: start; overflow: hidden; }
+.skillCards :global(.om-skill-card-demo) { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; max-height: 144px; overflow: hidden; }
 .skillPurpose { white-space: normal; display: block; font-size: var(--motion-text-sm); color: var(--motion-muted); line-height: var(--motion-leading-body); }
 @media (max-width: 720px) {
   .collection { padding-inline: var(--motion-space-16); }
   .stage, .skillCards { grid-template-columns: minmax(0, 1fr); }
   .cards { columns: 2; width: min(100%, 340px); }
-  .banner { grid-template-columns: minmax(0, 1fr) minmax(0, .7fr); height: 154px; }
+  .banner { grid-template-columns: minmax(0, 1fr) minmax(0, .7fr); height: auto; min-height: 154px; }
   .bannerText { padding: var(--motion-space-16); }
-  .bannerArtwork { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
-  .bannerArtwork img:first-child { grid-row: 1; }
+  .bannerArtwork { position: relative; display: block; }
+  .bannerArtwork img:first-child { position: absolute; inset: 0; }
   .bannerArtwork img:not(:first-child) { display: none; }
 }
