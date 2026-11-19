@@ -2,6 +2,8 @@ import { HorizontalRail } from './HorizontalRail';
 import { collectionFacet, industryCollection } from './templateCollections';
 import { TemplateIndustryMenu } from './TemplateIndustryMenu';
 import { SkillSubmissionLink } from './SkillSubmissionLink';
+import { templateContributionUrl } from './templateContribution';
+import { MotionIcon } from './icons';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import { exploreCommunities, findMediaStudio, findTechniqueStudio, type CreativeStudio, type ExploreCommunity } from '../../../shared/studio-catalog';
 import type { GalleryTemplate } from '../../../shared/catalog';
@@ -295,7 +297,8 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
         filters={<TemplateIndustryMenu industries={shelf.industries} selected={facet?.key === 'industries' ? [facet.value] : undefined}
           onSelect={value => setTemplateFilter(value ? industryCollection(value) : 'all')} />}
         renderCategory={id => id === 'top-100-brands' ? <TopBrandsLabel /> : undefined}
-        onCategory={setTemplateFilter} action={shelf.collection ? 'View collection' : 'View all templates'} onOpen={trigger => openLibrary(trigger, undefined, shelf.collection ?? undefined)}>
+        onCategory={setTemplateFilter} action={shelf.collection ? 'View collection' : 'View all templates'} onOpen={trigger => openLibrary(trigger, undefined, shelf.collection ?? undefined)}
+        extraAction={<a className="om-button" data-primary data-borderless href={templateContributionUrl} target="_blank" rel="noopener noreferrer">{t('Submit video')}<MotionIcon name="arrow-up-right" size={15} /></a>}>
         {shelf.error ? <div className="om-discovery-empty" role="alert"><span>{t('Templates could not be loaded.')}</span><button className="om-button" onClick={shelf.retry}>{t('Retry')}</button></div>
           : !shelf.loading && !shelfItems.length ? <p className="om-muted">{t('No templates available. Open the library or try again later.')}</p>
           : <div className="om-studio-template-grid om-explore-preview-grid" aria-busy={shelf.loading} aria-label={shelf.loading ? t('Loading templates…') : undefined}>

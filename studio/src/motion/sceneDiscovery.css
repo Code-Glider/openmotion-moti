@@ -167,11 +167,14 @@
 
 .om-explore-shelf { display: grid; gap: var(--motion-space-16); min-width: 0; }
 .om-explore-shelf > .om-discovery-heading { margin: 0; }
+.om-discovery-heading > .om-control-row { gap: var(--motion-space-8); }
+.om-discovery-heading > .om-control-row > :is(button, a) { white-space: nowrap; }
 .om-explore-nav, .om-feed-topics { width: fit-content; max-width: 100%; min-width: 0; }
 .om-shelf-toolbar { display: flex; align-items: center; gap: var(--motion-space-12); min-width: 0; }
+.om-shelf-toolbar > :not(.om-category-strip) { flex: none; }
 @container discovery (max-width: 600px) {
-  .om-shelf-toolbar { flex-wrap: wrap; }
-  .om-shelf-toolbar > .om-category-strip { flex-basis: 100%; }
+  .om-shelf-toolbar { flex-wrap: wrap; gap: var(--motion-space-8); }
+  .om-shelf-toolbar > .om-category-strip { flex: 1 1 100%; }
 }
 .om-feed-topics { margin-bottom: var(--motion-space-16); }
 .om-explore-preview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--motion-space-20) var(--motion-space-16); align-items: start; }

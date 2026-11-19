@@ -124,12 +124,14 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         return back.bottom <= scenes.top;
       }), 'The mobile Studio header keeps its return action above the scenes');
       const imageNav = '.om-creative-split:has(> [aria-label="Image scenes and models"])';
+      await page.waitForSelector('.om-creative-navigation[data-compact-actions="true"]');
       for (const scheme of ['dark', 'light'] as const) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
         await page.click(imageNav + ' > .om-nav-row-link');
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'design');
         await page.waitForSelector('.om-creative-menu', { hidden: true });
         await page.waitForSelector('.om-generation-pickers [aria-label="Generation model"]', { visible: true });
+        await page.mouse.move(5, 650);
         await page.focus(imageNav + ' > .om-nav-row-link');
         await page.keyboard.press('Tab');
         assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image scenes and models');
@@ -185,7 +187,7 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
     try {
       const page = await browser.newPage();
-      const items = Array.from({ length: 10 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [], uses: ['Product launch', 'Partnership announcement'] }));
+      const items = Array.from({ length: 10 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [], uses: ['Product launch', 'Partnership announcement'], industries: ['AI & technology', 'Design tools'] }));
       await page.setRequestInterception(true);
       page.on('request', request => {
         if (new URL(request.url()).pathname.endsWith('/template-catalog')) {
@@ -219,6 +221,20 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           return { count: cards.length, rows: new Set(cards.map(card => card.getBoundingClientRect().top)).size };
         });
         assert.deepEqual(shelf, { count: expectedCards, rows: 2 }, 'Template previews fit two rows at ' + width);
+        const toolbarGeometry = await page.$eval('.om-explore-shelf[aria-label="Templates"]', section => {
+          const submit = section.querySelector<HTMLAnchorElement>('header a[href*="CONTRIBUTING.md"]');
+          const dropdown = section.querySelector<HTMLButtonElement>('.om-shelf-toolbar .om-gallery-dropdown');
+          const strip = section.querySelector<HTMLElement>('.om-shelf-toolbar .om-category-strip');
+          const dr = dropdown?.getBoundingClientRect();
+          const sr = strip?.getBoundingClientRect();
+          return {
+            hasSubmit: Boolean(submit),
+            dropdownSingleLine: Boolean(dr && dr.height <= 40 && dr.right <= innerWidth + 1 && dropdown!.scrollWidth <= dropdown!.clientWidth + 1),
+            noHorizontalOverflow: document.querySelector('.om-explore')!.scrollWidth <= document.querySelector('.om-explore')!.clientWidth + 1,
+            stripFits: Boolean(sr && sr.left >= 0 && sr.right <= innerWidth + 1),
+          };
+        });
+        assert.deepEqual(toolbarGeometry, { hasSubmit: true, dropdownSingleLine: true, noHorizontalOverflow: true, stripFits: true }, 'Template shelf controls fit on one line at ' + width);
         if (width === 320) {
           const strip = '.om-explore-shelf[aria-label="Templates"] .om-category-strip';
           await page.waitForSelector(strip + ' button[aria-label^="Next"]:enabled');

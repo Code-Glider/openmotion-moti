@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { skillCategories } from './skillCategories';
 import { skillSubmissionUrl } from './SkillSubmissionLink';
+import { templateContributionUrl } from './templateContribution';
 import { act, useEffect } from 'react';
 import { gemini4Videos } from './gemini4Videos';
 import { createRoot, type Root } from 'react-dom/client';
@@ -610,6 +611,7 @@ it('browses both Explore shelves, opens exact details and restores the selected 
     await act(async () => trigger.click());
   };
   const templates = shelf('Templates'), skills = shelf('Skills');
+  expect(templates.querySelector('header a')?.getAttribute('href')).toBe(templateContributionUrl);
   expect(skills.querySelector('header a')?.getAttribute('href')).toBe(skillSubmissionUrl);
   expect([...skills.querySelectorAll('[aria-label="Skill category"] button')].map(button => button.textContent)).toEqual(['All', ...skillCategories]);
   await choose(templates, 'Product promos');

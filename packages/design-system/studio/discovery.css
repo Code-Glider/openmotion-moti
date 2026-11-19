@@ -1,8 +1,11 @@
 /* Shared catalogue filtering: template and brand discovery consume one recipe. */
 [data-motion-studio] .om-gallery-filter { --filter-gutter: var(--motion-space-16); width: 640px; max-width: calc(100vw - var(--motion-space-24)); max-height: var(--available-height); padding: 0; overflow: hidden; background: var(--motion-raised); color: var(--motion-text); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-xl); }
 [data-motion-studio] .om-gallery-filter-trigger { position: relative; }
-[data-motion-studio] .om-gallery-sort { height: var(--motion-control); padding-block: 0; background: var(--motion-panel); font-weight: var(--motion-weight-regular); }
-[data-motion-studio] .om-gallery-sort > svg { flex: none; color: var(--motion-muted); }
+[data-motion-studio] .om-gallery-sort { flex: none; height: var(--motion-control); padding-block: 0; background: var(--motion-panel); font-weight: var(--motion-weight-regular); white-space: nowrap; }
+[data-motion-studio] .om-gallery-dropdown { flex: none; display: inline-flex; align-items: center; justify-content: space-between; gap: var(--motion-space-8); height: var(--motion-control); min-height: var(--motion-control); max-width: 100%; padding: 0 var(--motion-space-12); border-radius: var(--motion-radius-md); background: var(--motion-panel); font-weight: var(--motion-weight-regular); white-space: nowrap; }
+[data-motion-studio] .om-gallery-dropdown > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+[data-motion-studio] .om-gallery-sort > svg,
+[data-motion-studio] .om-gallery-dropdown > svg { flex: none; color: var(--motion-muted); }
 [data-motion-studio] .om-gallery-filter-trigger .om-status-dot { position: absolute; top: var(--motion-space-4); right: var(--motion-space-4); }
 [data-motion-studio] .om-gallery-filter-header { display: flex; align-items: center; gap: var(--motion-space-12); padding: var(--motion-space-12) var(--filter-gutter); border-bottom: 1px solid var(--motion-border); font-size: var(--motion-text-body); }
 [data-motion-studio] .om-gallery-filter-header > .om-button { margin-left: auto; }
@@ -67,7 +70,7 @@
 .om-gallery-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--motion-space-12); padding: 8px 32px 20px; }
 .om-gallery-categories { display: flex; align-items: center; gap: 7px; flex: 1 1 620px; min-width: 0; overflow: auto; scrollbar-width: none; }
 .om-gallery-categories::-webkit-scrollbar { display: none; }
-.om-category-strip { flex: 1 1 auto; }
+.om-category-strip { flex: 1 1 0; min-width: 0; }
 .om-category-strip-viewport { overflow-x: auto; scroll-padding-inline: calc(var(--motion-control) + var(--motion-space-8)); }
 .om-category-strip-track { display: flex; align-items: center; width: max-content; gap: var(--motion-space-8); padding: var(--motion-space-2); }
 .om-category-strip-track > button { flex: none; white-space: nowrap; }
