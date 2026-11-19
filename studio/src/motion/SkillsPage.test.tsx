@@ -278,14 +278,19 @@ it('ships static WebP posters and waits to fetch archived video until playback s
   expect(archived.length).toBeGreaterThan(100);
   for (const skill of archived) expect(skill.cover?.poster, skill.id).toMatch(/\.webp(?:\?|$)/);
   const skill = motionSkills.find(skill => skill.id === 'motionmaxxing')!;
-  const fetcher = vi.mocked(fetch).mockResolvedValue(new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  const videoUrl = skill.cover!.video!;
+  const fetcher = vi.mocked(fetch).mockImplementation(async input => String(input) === videoUrl
+    ? new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } })
+    : new Response(null, { status: 404 }));
+  const videoRequests = () => fetcher.mock.calls.map(([input]) => String(input))
+    .filter(url => url.startsWith(skillPreviewSnapshot) && url.endsWith('.mp4'));
   const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-preview');
   act(() => root.render(<SkillMedia skill={skill} />));
   expect(container.querySelectorAll('img')).toHaveLength(2);
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(videoRequests()).toEqual([]);
   await act(async () => root.render(<SkillMedia skill={skill} playing />));
   expect(create).toHaveBeenCalled();
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(videoRequests()).toEqual([videoUrl]);
   act(() => root.render(<SkillMedia skill={skill} playing={false} />));
   expect(container.querySelectorAll('video')).toHaveLength(0);
   expect(container.querySelectorAll('img')).toHaveLength(2);
