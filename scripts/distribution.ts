@@ -751,7 +751,7 @@ export async function distributionFiles(profile: string, include: (file: string)
   files.push('template-library/openmotion-welcome/assets/soundtrack.m4a');
   for (const skill of packagedSkills) await walk('skills/' + skill, /\.(?:md|mjs|ts|py|json|ya?ml)$/);
   // Skill cover videos and GIFs are bundled by Vite into editor-assets and must ship with the page.
-  await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|gif|mp4|woff2?|ttf|txt)$/);
+  await walk('studio/build', /\.(?:html|js|css|json|svg|png|jpg|webp|gif|mp4|m4a|woff2?|ttf|txt)$/);
   await walk('studio/public', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
   // A lightweight application must not require optional showcase bytes that its
   // caller intentionally excludes. Full bundles still validate the whole list.

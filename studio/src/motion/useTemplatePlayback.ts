@@ -28,13 +28,14 @@ export function useTemplatePlayback(root: RefObject<HTMLElement | null>, catalog
     refresh.current = update;
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) {
-        const id = (entry.target as HTMLElement).dataset.templateId!;
+        const { playbackId, templateId } = (entry.target as HTMLElement).dataset;
+        const id = playbackId ?? templateId!;
         if (entry.isIntersecting && entry.intersectionRatio >= 0.2) visible.set(id, entry.intersectionRatio);
         else visible.delete(id);
       }
       update();
     }, { root: container, threshold: [0, 0.2, 0.5, 1] });
-    container.querySelectorAll('[data-template-id][data-has-video="true"]').forEach(element => observer.observe(element));
+    container.querySelectorAll('[data-template-id][data-has-video="true"], [data-playback-id]').forEach(element => observer.observe(element));
     document.addEventListener('visibilitychange', update);
     media.addEventListener('change', update); compact.addEventListener('change', update);
     connection?.addEventListener('change', update);

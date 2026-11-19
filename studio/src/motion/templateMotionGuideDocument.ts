@@ -32,7 +32,6 @@ export function prepareMotionGuide(source: string, url: string, appearance: Guid
   const root = doc.documentElement;
   root.dataset.openmotionGuide = appearance.theme;
   if (locale) root.dataset.guideLocale = locale;
-  if (locale) root.dataset.guideLocale = locale;
   root.style.setProperty('--om-guide-scheme', appearance.theme);
   for (const key of ['background', 'text', 'muted', 'surface', 'border'] as const) {
     root.style.setProperty(`--om-guide-${key}`, appearance[key]);

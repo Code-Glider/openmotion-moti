@@ -1,3 +1,4 @@
+import type { ExploreCommunity } from '../../../shared/studio-catalog';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
 import { PrimaryNavigationButton, PrimaryNavigationRail } from '../../../packages/design-system/react/PrimaryNavigationRail';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -6,28 +7,37 @@ import { Tooltip } from '../components/ui/Tooltip';
 import { languages, useI18n, type Locale } from '../i18n/I18n';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 import { useAccountSummary } from './AccountSettings';
-import { ModelSwitcher } from './ModelSwitcher';
 import { CommunityLink } from './CommunityLink';
 import { GitHubLink } from './GitHubLink';
 import { repositorySupportLinks } from './githubRepository';
 import type { SettingsSection } from './SettingsCenter';
 import type { ReactNode } from 'react';
 import type { MouseEvent } from 'react';
-import { WorkspaceHistoryNavigation } from './WorkspaceHistoryNavigation';
+
+import { CreativeNavigation, type CreativeNavigationProps } from './CreativeNavigation';
+import { WorkspaceSearch } from './WorkspaceSearch';
 
 const avatarSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
-export function ApplicationHeader({ settings }: { settings: SettingsSection | null }) {
+export function ApplicationHeader({ settings, openAsset, onCommunity, onAccount, ...navigation }: Omit<CreativeNavigationProps, 'openProviders'> & {
+  settings: SettingsSection | null;
+  onAccount: () => void;
+  openAsset: (assetId: string, version: string) => void;
+  onCommunity: (community: ExploreCommunity) => void;
+}) {
   const { t } = useI18n();
-  const { openHome, openModelSettings, navigationCollapsed, toggleNavigation } = useWorkspaceChrome();
+  const { openAssets, openHome, openModelSettings, navigationCollapsed, toggleNavigation } = useWorkspaceChrome();
   return <header className="om-app-header">
     <div className="om-app-leading">
       <Tooltip label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><button className="om-nav-item om-app-sidebar-toggle" onClick={toggleNavigation} aria-expanded={!navigationCollapsed} aria-controls="om-application-navigation" aria-label={t(navigationCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}><RemixIcon name="side-bar-line" size={16} /></button></Tooltip>
-      <WorkspaceHistoryNavigation />
       <Tooltip label={t('Back to home')}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={t('Back to home')}><BrandLogo compact /></button></Tooltip>
     </div>
-    <div className="om-app-navigation">{settings ? <button className="om-nav-item" onClick={openHome} aria-label={t('Back to home')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Back to home')}</span></button> : null}</div>
-    <div className="om-app-header-actions"><div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>{!settings && <ModelSwitcher openSettings={openModelSettings} />}{settings && <button className="motion-icon-button" aria-label={t(settings === 'brand-kit' ? 'Close Brand Kit' : 'Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}</div>
+    <CreativeNavigation {...navigation} openProviders={openModelSettings} />
+    <div className="om-app-header-actions">
+      <WorkspaceSearch onSkill={navigation.onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={onAccount} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
+      <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
+      {settings && <button className="motion-icon-button" aria-label={t(settings === 'brand-kit' ? 'Close Brand Kit' : 'Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}
+    </div>
   </header>;
 }
 export function ApplicationRail({ settings, openSettings, home }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void; home: ReactNode }) {
