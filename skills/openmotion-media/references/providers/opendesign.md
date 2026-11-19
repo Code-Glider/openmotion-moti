@@ -20,7 +20,7 @@ Cloud catalogue kinds `audio_speech` and `audio_music` both appear as `modality:
 
 ## Choosing a video model
 
-When the user has not named a video model and discovery lists both `wan-2.7` and `doubao-seedance-2-5-260628`, use `wan-2.7` for every clip whose duration, resolution and ratio it lists; in OpenMotion trials it finished short clips faster and failed less often. Use Seedance for a clip that needs a longer duration or an option only Seedance lists (at review: Wan 2–15 s, Seedance 4–30 s, with 480p and 21:9 only on Seedance). Read the current values from the catalogue. When a confirmed remote failure leaves a clip to regenerate within the approved retries, submit it to the other model.
+When the user has not named a video model and discovery lists both `wan-2.7` and `doubao-seedance-2-5-260628`, use `wan-2.7` for every clip whose duration, resolution and ratio it lists; in OpenMotion trials it finished short clips faster and failed less often. Use Seedance for a clip that needs a longer duration or an option only Seedance lists (at review: Wan 2–15 s, Seedance 4–30 s, with 480p and 21:9 only on Seedance). Read the current values from the catalogue. When a confirmed remote failure leaves a clip to regenerate within the approved retries, switch to the other model only when its current catalogue supports the clip's full duration, resolution and ratio and the user's approval covers that model; otherwise retry on the same model or report the limitation, without changing the requested clip.
 
 ## Request templates
 
