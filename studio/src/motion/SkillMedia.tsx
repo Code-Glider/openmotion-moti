@@ -33,6 +33,7 @@ function useSkillPreview(url: string | undefined, active: boolean) {
     if (!active || !url || !snapshot) return;
     const controller = new AbortController();
     let playable: string | undefined;
+    // GitHub Raw serves archived MP4s as octet-stream.
     void fetch(url, { signal: controller.signal, credentials: 'omit', redirect: 'error' }).then(async response => {
       if (!response.ok) return;
       const blob = await response.blob();
@@ -51,9 +52,7 @@ function useSkillPreview(url: string | undefined, active: boolean) {
   return source?.original === url ? source?.playable : undefined;
 }
 
-/** Poster first; the demo video (or GIF) plays only while the card is active.
- * The video element owns its poster, so playback starts in place with no image-to-video swap,
- * and it starts buffering as soon as the card nears the viewport. */
+/** Keep the poster visible while an active card's demo loads. */
 function CoverMedia({ cover, video, play, large, onFail }: { cover: NonNullable<MotionSkill['cover']>; video?: string; play: boolean; large: boolean; onFail: () => void }) {
   const player = useRef<HTMLVideoElement>(null);
   // A video the browser cannot load or decode falls back to its poster before the motif illustration.

@@ -290,6 +290,18 @@ it('ships static WebP posters and waits to fetch archived video until playback s
   expect(container.querySelectorAll('img')).toHaveLength(2);
 });
 
+it('merges same-repository cover credits while retaining external sources and attribution', () => {
+  for (const id of ['openmotion-design-styles', 'motionmaxxing']) {
+    act(() => root.render(<SkillsPage skillId={id} onSkillChange={() => {}} />));
+    expect(container.querySelector('a.om-skill-source')!.getAttribute('href')).toBe(motionSkills.find(skill => skill.id === id)!.repository);
+    expect(container.querySelector('.om-skill-credit')).toBeNull();
+  }
+  for (const id of ['lume', 'three-js', 'openmotion-growth-teardown']) {
+    act(() => root.render(<SkillsPage skillId={id} onSkillChange={() => {}} />));
+    expect(container.querySelector('.om-skill-credit')!.textContent).toContain(motionSkills.find(skill => skill.id === id)!.cover!.source!.replace(/^https?:\/\//, ''));
+  }
+});
+
 it('carries the exact reference version into both 3D Agent handoffs', () => {
   const skill = motionSkills.find(entry => entry.id === 'three-js')!;
   const brief = { subject: 'Orbit a vase', aspect: '16:9', duration: 10, style: '', reference: { assetId: 'asset-a', versionId: 'version-b', label: 'Vase · V2' } } as const;
