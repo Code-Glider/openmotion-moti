@@ -155,8 +155,10 @@ shared token source defines `gallery-surface`, `gallery-control`, `gallery-borde
 and `gallery-stage-wash` in both themes. Studio's template aliases consume these
 values alongside existing text, focus, selection, overlay and shadow tokens.
 Video-overlay text retains its media-specific contrast independently of the theme.
-The highlighted Submit video action uses `brand` and `on-brand`; secondary actions
-use the same neutral control and menu surfaces as the editor.
+Submission actions use the neutral primary-action roles in light mode and `brand`
+with `on-brand` in dark mode. The reference-video entry uses the shared outlined
+secondary button; other secondary actions use the same neutral control and menu
+surfaces as the editor.
 
 Sorting and industry pickers reuse Studio's Base UI `Menu` and radio items, with
 an inline portal inside the native dialog, keyboard navigation and consistent
@@ -170,7 +172,10 @@ and `om-field` recipes. The `om-search-field` variant keeps its icon, input and
 shortcut centered with one outer focus treatment; `om-filter-pill` retains the
 rounded category shape and semantic selected state. Search, categories, dropdowns
 and icon actions share the 32px control height, with 6px control corners, 16px
-icons and 8px gaps. The library owns responsive geometry: a 320px desktop search,
+icons and 8px gaps. In light mode, Template Library, Brand Kit and Skills category
+filters share N11 selected surfaces with N0 text and N10 hover surfaces; selected
+editorial labels inherit the same contrasting text. Dark-mode category colors
+retain their existing theme roles. The library owns responsive geometry: a 320px desktop search,
 a reserved GitHub badge width, equal industry/sort widths and a full-width search
 row on narrow screens. Long dropdown labels truncate without moving the chevron.
 
