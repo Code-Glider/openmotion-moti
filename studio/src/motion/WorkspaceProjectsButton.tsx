@@ -7,9 +7,8 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
 
 /** A transient project preview never changes the pinned navigation width. */
-export function WorkspaceHomeButton({ active, expanded, previewEnabled, onToggle, children, applicationRef }: {
+export function WorkspaceProjectsButton({ expanded, previewEnabled, onToggle, children, applicationRef }: {
   applicationRef: RefObject<HTMLDivElement | null>;
-  active: boolean;
   expanded: boolean;
   previewEnabled: boolean;
   onToggle: () => void;
@@ -33,11 +32,11 @@ export function WorkspaceHomeButton({ active, expanded, previewEnabled, onToggle
     }
     setPreviewOpen(previewEnabled && next);
   }}>
-    <Tooltip label={previewEnabled ? undefined : t('Home')} wrap side="right"><Popover.Trigger ref={trigger} openOnHover={previewEnabled} delay={180} closeDelay={160}
-      render={<PrimaryNavigationButton />} aria-label={t('Home')} aria-pressed={active}
+    <Tooltip label={previewEnabled ? undefined : t('Projects')} wrap side="right"><Popover.Trigger ref={trigger} openOnHover={previewEnabled} delay={180} closeDelay={160}
+      render={<PrimaryNavigationButton />} aria-label={t('Projects')} aria-pressed={expanded}
       aria-expanded={expanded || open} {...(expanded ? { 'aria-controls': 'om-project-navigation' } : {})}
       onClick={() => { setPreviewOpen(false); onToggle(); }}>
-      <RemixIcon name="home-4-line" weight={active ? 'fill' : undefined} size={18} />
+      <RemixIcon name="folder-line" weight={expanded ? 'fill' : undefined} size={18} />
     </Popover.Trigger></Tooltip>
     <Popover.Portal container={applicationRef} style={{ display: 'contents' }}>
       <Popover.Positioner anchor={workspaceAnchor} positionMethod="fixed" side="left" align="start"

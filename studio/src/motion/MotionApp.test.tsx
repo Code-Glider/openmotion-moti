@@ -81,10 +81,10 @@ it('resolves a bookmark without switching another page globally', async () => {
   expect(fetcher.mock.calls[1][1]).toEqual({ method: 'POST', signal: expect.any(AbortSignal) });
 });
 
-it('records the root editor as Studio after its active project resolves', async () => {
+it('records an explicit editor visit as Studio after its active project resolves', async () => {
   const artifact = { id: 'project', kind: 'motion-project', projectId: 'project', title: 'Existing project' };
   const catalog = { activeId: 'project', projects: [{ id: 'project', title: 'Existing project' }], sessions: [{ id: 'project', artifacts: [artifact] }] };
-  history.replaceState(null, '', '/');
+  history.replaceState(null, '', '/?page=editor');
   vi.mocked(trackMotion).mockClear();
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
     url.endsWith('/projects') ? catalog : url.includes('/sessions/') ? { id: 'project', artifacts: [artifact] } : { projectId: 'project', revision: 'r' },
@@ -135,7 +135,7 @@ it.each(['deleted project', 'empty session'])('keeps the project drawer reachabl
   const root = createRoot(container);
   try {
     await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><MotionApp /></I18nProvider>));
-    const toggle = container.querySelector<HTMLButtonElement>(`.om-app-rail button[aria-label="${translate('zh-CN', 'Home')}"]`);
+    const toggle = container.querySelector<HTMLButtonElement>(`.om-app-rail button[aria-label="${translate('zh-CN', 'Projects')}"]`);
     expect(toggle).not.toBeNull();
     await act(async () => toggle!.click());
     expect(document.querySelector('.motion-session')?.textContent).toContain('Existing project');

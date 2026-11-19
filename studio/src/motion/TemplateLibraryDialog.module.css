@@ -12,11 +12,98 @@
 .library button, .library select, .library input, .library textarea { font: inherit; color: inherit; }
 .library button { cursor: pointer; background: none; border: 0; }
 .library button:disabled { opacity: .45; cursor: default; }
-.library :is(button, select, input, textarea, summary, a):focus-visible { outline: 2px solid var(--color-template-focus); outline-offset: 3px; }
 .library a { color: inherit; text-decoration: none; }
 .library a:hover { text-decoration: underline; }
 .library::backdrop { background: var(--library-bg); }
 .stickyHeader { composes: om-gallery-sticky-header from global; }
+.recoveryTeaser { display: flex; justify-content: center; padding: var(--motion-space-32); }
+.searchRecovery { width: min(100% - var(--motion-space-64), 640px); margin: var(--motion-space-48) auto var(--motion-space-48); }
+.referenceDialog {
+  inset: 0;
+  width: min(calc(100% - var(--motion-space-32)), 640px);
+  max-height: calc(100% - var(--motion-space-32));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--motion-radius-step-18);
+  background: transparent;
+  color: inherit;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.referenceDialog::backdrop { background: var(--motion-overlay); }
+.library .referenceEntry { margin-top: var(--motion-space-12); }
+.referenceEntryLabel { color: var(--motion-muted); font-size: var(--motion-text-xs); }
+.library .referenceEntry > button { white-space: normal; }
+.referenceEntry > button span { text-wrap: balance; }
+.referenceEntry > button svg { flex: none; }
+.recoveryStatus { composes: om-empty from global; }
+.library[data-motion-template-library] .recoveryStatus { padding: 0; }
+.recoveryMark { display: inline-flex; color: var(--motion-muted); }
+.recoveryStatusCopy h2 { margin: 0; color: var(--motion-strong); }
+.recoveryStatusCopy p, .recoveryIntro p { margin: var(--motion-space-4) 0 0; }
+.recoverySearchAction { max-width: 100%; }
+.library .recoverySearchAction > button { white-space: normal; }
+.recoveryBody { margin-top: var(--motion-space-24); }
+.recoveryIntro {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--motion-space-12);
+  max-width: 480px;
+  margin-inline: auto;
+  padding: var(--motion-space-16);
+  border: 1px solid var(--library-line);
+  border-radius: var(--motion-radius-lg);
+  background: var(--motion-panel);
+}
+.recoveryIntro .recoveryPrimary { grid-column: 1 / -1; margin: 0; }
+.recoveryPrimary > button svg { flex: none; }
+.searchRecovery[data-form="open"] { margin-top: var(--motion-space-24); }
+.searchRecovery[data-form="open"] .recoveryStatus {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  justify-items: start;
+  align-items: center;
+  text-align: start;
+}
+.searchRecovery[data-form="open"] .recoveryStatusCopy h2 { font-size: var(--motion-text-step-18); }
+.searchRecovery[data-form="open"] .recoveryBody { margin-top: var(--motion-space-16); }
+.recoveryForm {
+  display: grid;
+  gap: var(--motion-space-16);
+  padding: var(--motion-space-24);
+  border: 1px solid var(--library-line);
+  border-radius: var(--motion-radius-step-18);
+  background: var(--color-template-surface);
+  box-shadow: var(--motion-shadow-sm);
+}
+.recoveryHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--motion-space-16); }
+.recoveryHeading p { margin: 0; }
+.recoveryHeading > button { flex: none; }
+.library .recoveryDismiss { background: var(--color-template-controls-bg); }
+.library .recoveryDismiss:hover { background: var(--color-template-hover); }
+.recoveryFooter { display: grid; gap: var(--motion-space-8); padding-top: var(--motion-space-12); border-top: 1px solid var(--library-line); }
+.recoveryPrimary { composes: om-media-detail-actions from global; }
+.recoveryFooter > .recoveryPrimary { margin: 0; }
+.recoveryPrimary > button { white-space: normal; }
+.library .recoveryFooter .repositoryLink { white-space: normal; text-align: start; }
+.recoveryActions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8); }
+.library[data-motion-template-library] .recoveryField { padding: var(--motion-space-10) var(--motion-space-12); border-radius: var(--motion-radius-lg); background: var(--color-template-prompt-bg); }
+.recoveryField textarea { resize: vertical; min-height: var(--motion-space-64); line-height: var(--motion-leading-body); }
+.referenceFile { min-width: 0; }
+.library .referenceFile > button { width: 100%; justify-content: flex-start; white-space: normal; text-align: start; }
+.referenceFile > button svg { flex: none; }
+.referenceFilename { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.referenceFileAction { color: var(--motion-muted); font-size: var(--motion-text-sm); }
+
+@media (max-width: 699px) {
+  .searchRecovery { width: min(100% - var(--motion-space-32), 640px); margin: var(--motion-space-24) auto var(--motion-space-32); }
+  .recoveryBody { margin-top: var(--motion-space-16); }
+  .recoveryForm { padding: var(--motion-space-16); }
+  .searchRecovery[data-form="open"] .recoveryStatus { grid-template-columns: auto minmax(0, 1fr); }
+  .searchRecovery[data-form="open"] .recoverySearchAction { grid-column: 2; }
+  .recoveryActions > button { white-space: normal; height: auto; min-height: var(--motion-control); }
+}
 .header { composes: om-gallery-header from global; }
 .library :global(.om-gallery-header-actions) input:focus-visible { outline: none; }
 .library .iconButton { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 var(--motion-control); width: var(--motion-control); height: var(--motion-control); padding: 0; border-radius: 50%; }

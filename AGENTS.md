@@ -71,7 +71,7 @@ Keep technical identifiers needed for setup, supported agent/model names and exp
 
 ## UI design system and interaction feedback
 
-Use the [Studio UI component guide](docs/ui-components.md) to choose between shared CSS and an existing React control.
+Start with the [Studio component library](docs/ui-components.md) when choosing a shared UI control. Keep its relevant example aligned when changing a shared control’s usage or behavior.
 
 Follow [the shared design system](docs/design-system.md#interaction-and-feedback-contract) for all new or changed product UI. Reuse its components and semantic tokens in both light and dark themes; do not introduce page-specific palettes or native-looking replacement controls.
 

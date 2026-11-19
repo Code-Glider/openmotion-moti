@@ -25,7 +25,7 @@ export function ModelOverview({ id, onExplore, onProvider, onScene }: {
           <p>{provider?.label || model.provider} · {t(mediaLabels[model.modality])} · {model.modelId}</p>
           {model.description && <p className="om-muted">{model.description}</p>}
         </div><button className="om-button" onClick={() => onProvider(model.provider)}>{t(provider?.available ? 'Model providers' : 'Setup required')}</button></header>
-        <section><h2 className="om-subtitle">{t('Scenes')}</h2><div className="om-technique-cards">{studioScenes.filter(scene => supportsScene(model, scene)).map(scene => {
+        <section><h2 className="om-subtitle">{t('Scenes')}</h2><div className="om-studio-collection-cards">{studioScenes.filter(scene => supportsScene(model, scene)).map(scene => {
           const example = sceneExamples[scene.id][0];
           return <button key={scene.id} className="om-scene-tile" onClick={() => onScene(sceneDestination(scene, null, model.id))}>
             <span className="om-scene-tile-art"><img alt="" src={example.poster} />{example.credit && <small className="om-scene-credit">{example.credit}</small>}</span>

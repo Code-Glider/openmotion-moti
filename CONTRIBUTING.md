@@ -21,7 +21,7 @@ For published motion guidance source and locale metadata, use the [catalog contr
 
 ## Studio UI
 
-Use the [Studio UI component guide](docs/ui-components.md) for shared control examples and migration guidance.
+Use the [Studio component library](docs/ui-components.md) to preview controls, find production examples and check how to contribute changes.
 
 ## PR workflow
 

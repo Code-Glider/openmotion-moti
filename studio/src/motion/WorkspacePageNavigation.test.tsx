@@ -35,6 +35,15 @@ let root: Root, container: HTMLDivElement, fetcher: ReturnType<typeof vi.fn>;
 const page = () => readWorkspacePage(location.search);
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === label || node.textContent?.trim() === label)!;
 const click = async (label: string) => { expect(button(label), label).toBeTruthy(); await act(async () => button(label).click()); };
+async function accountAction(label: string) {
+  await click('Account menu');
+  const item = [...document.querySelectorAll<HTMLElement>('.om-account-menu [role="menuitem"]')].find(node => node.querySelector('.om-menu-label')?.textContent === label);
+  expect(item, label).toBeTruthy();
+  await act(async () => item!.click());
+}
+async function openMcp() {
+  await click('MCP');
+}
 const traverse = async (delta: number) => { await act(async () => { history.go(delta); await new Promise(resolve => setTimeout(resolve, 0)); }); };
 async function mount(key = 0) { await act(async () => root.render(<I18nProvider initialLocale="en"><MotionApp key={key} /></I18nProvider>)); }
 beforeEach(() => {
@@ -94,9 +103,9 @@ it('keeps the Brand Kit collection in browser history and copied URLs', async ()
 it('navigates settings, MCP tabs and history without remounting or flushing the editor', async () => {
   await mount(); const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   draft.value = 'Keep this edit'; const wait = vi.fn(async () => {}); editor.wait = wait;
-  await click('Settings'); expect(page().settings).toBe('general');
+  await accountAction('Settings'); expect(page().settings).toBe('general');
   await click('Appearance'); expect(page().settings).toBe('appearance');
-  await click('MCP · Connect Agent'); expect(page().settings).toBe('mcp');
+  await openMcp(); expect(page().settings).toBe('mcp');
   await click('Claude Code'); await click('Manual setup');
   expect(page()).toMatchObject({ client: 'claude', setup: 'manual' });
   await traverse(-1); expect(page().setup).toBe('agent');
@@ -110,16 +119,16 @@ it('navigates settings, MCP tabs and history without remounting or flushing the 
   expect(location.search).toContain('embed=1'); expect(location.hash).toContain('t=12');
 });
 
-it('keeps one history entry per page and returns to the resolved home after a reload', async () => {
-  history.replaceState(null, '', '/');
+it('keeps one history entry per page and returns to the resolved editor after a reload', async () => {
+  history.replaceState(null, '', '/?page=editor');
   const initialLength = history.length;
   await mount();
   const home = location.href;
   expect(new URL(home).searchParams.get('project')).toBe(first);
   expect(history.length).toBe(initialLength);
 
-  await click('MCP · Connect Agent');
-  await click('Settings');
+  await openMcp();
+  await accountAction('Settings');
   await click('Appearance');
   expect(history.length).toBe(initialLength + 3);
   const entry = workspaceHistoryIndex();
@@ -160,19 +169,19 @@ it('uses browser history across settings, reloads and new navigation branches', 
   await mount();
   const header = container.querySelector('.om-app-header')!;
   expect(header.querySelector('button[aria-label="Back"], button[aria-label="Forward"]')).toBeNull();
-  await click('MCP · Connect Agent'); await click('Settings');
+  await openMcp(); await accountAction('Settings');
   await traverse(-1); expect(page().settings).toBe('mcp');
   await mount(1);
   await traverse(1); expect(page().settings).toBe('general');
   await traverse(-1); await traverse(-1);
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
   await traverse(1); expect(page().settings).toBe('mcp');
-  await click('Help'); await traverse(1); expect(page().settings).toBe('help');
+  await accountAction('Help'); await traverse(1); expect(page().settings).toBe('help');
 });
 
 it('uses browser history between the template gallery, its preview and the originating page', async () => {
   const detail = 'dialog[aria-label="Template preview"]';
-  await mount(); await click('MCP · Connect Agent'); await click('Explore templates');
+  await mount(); await openMcp(); await click('Explore templates');
   const header = container.querySelector('dialog[aria-label="Template library"] header')!;
   expect(header.querySelector('button[aria-label="Back"], button[aria-label="Forward"]')).toBeNull();
   await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
@@ -187,7 +196,7 @@ it('uses browser history between the template gallery, its preview and the origi
 });
 
 it('restores template details from a copied link and closes back to the originating MCP page', async () => {
-  await mount(); await click('MCP · Connect Agent'); await click('Claude Code'); await click('Explore templates');
+  await mount(); await openMcp(); await click('Claude Code'); await click('Explore templates');
   expect(page()).toMatchObject({ templates: true, settings: 'mcp' });
   await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
   expect(page().template).toBe('product-promo');
@@ -202,7 +211,7 @@ it('restores template details from a copied link and closes back to the originat
 });
 
 it('keeps an MCP showcase selection in the URL through history and reloads', async () => {
-  await mount(); await click('MCP · Connect Agent'); await click('Claude Code');
+  await mount(); await openMcp(); await click('Claude Code');
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]');
   await click('Preview template Product Promo');
   expect(page()).toMatchObject({ templates: true, template: 'product-promo', settings: 'mcp', client: 'claude' });
@@ -261,7 +270,7 @@ it('keeps project rows in place while switching, updating selection and reloadin
 });
 
 it('restores a rejected project history entry without losing the later Forward destination', async () => {
-  await mount(); await click('MCP · Connect Agent'); await click('Back to home');
+  await mount(); await openMcp(); await click('Motion Studio'); await click('Open editor');
   await click('Second project');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
   editor.fail = true;
@@ -271,17 +280,20 @@ it('restores a rejected project history entry without losing the later Forward d
   expect(document.querySelector('[data-feedback-layer] [role=alert]')).not.toBeNull();
   editor.fail = false;
   await traverse(-1); expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
-  await traverse(-1); expect(page().settings).toBe('mcp');
+  await traverse(-1); expect(page().motion).toBe(true);
   await traverse(2); expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
 });
 
-it('opens settings without starting the retained project and resolves it only on returning home', async () => {
+it('opens settings without starting the retained project and resolves it only on entering the editor', async () => {
   history.replaceState(null, '', firstUrl.replace('#', '&page=mcp#'));
   await mount();
   expect(container.querySelector('#mcp-title')).not.toBeNull();
   expect(container.querySelector('[data-project]')).toBeNull();
   expect(fetcher.mock.calls.some(([url]) => url.includes('/preview/open'))).toBe(false);
   await click('Back to home');
+  expect(page().explore).toBe(true);
+  expect(container.querySelector('.om-app-rail, [data-project]')).toBeNull();
+  await click('Motion Studio'); await click('Open editor');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
   expect(fetcher.mock.calls.some(([url]) => url.includes('/preview/open'))).toBe(true);
 });
@@ -312,23 +324,24 @@ it('keeps Assets and editor drafts mounted across page history and restores the 
   await mount();
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   draft.value = 'Keep editor draft';
-  await click('Workspace assets');
+  const folder = container.querySelector<HTMLButtonElement>('.om-app-header-actions [aria-label="Workspace assets"]')!;
+  expect(folder).toBeTruthy();
+  expect(container.querySelector('.om-app-rail :is([aria-label="Workspace assets"], [aria-label="MCP · Connect Agent"])')).toBeNull();
+  await act(async () => folder.click());
+  expect(folder.getAttribute('aria-current')).toBe('page');
   expect(page().assets).toBe(true);
   const assetDraft = container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')!;
   assetDraft.value = 'Keep asset prompt';
-  await click('Brand Kit');
+  await click('Explore'); await click('Brand Kit');
   expect(page()).toMatchObject({ assets: false, settings: 'brand-kit' });
   expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
   await click('New Brand Kit');
   expect(page().brandKit).toBe('new');
-  await click('Template library');
-  await click('Close template library');
-  expect(page()).toMatchObject({ settings: 'brand-kit', brandKit: 'new', templates: false });
-  await click('Workspace assets');
+  await click('All brand kits'); await click('Close Brand Kit'); await click('Workspace assets');
   expect(page()).toMatchObject({ assets: true, settings: null, brandKit: null });
   expect(container.querySelector('[aria-label="Asset draft"]')).toBe(assetDraft);
   expect(assetDraft.value).toBe('Keep asset prompt');
-  await click('Settings');
+  await accountAction('Settings');
   expect(page().assets).toBe(false);
   expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
   await traverse(-1);
@@ -358,7 +371,11 @@ it('switches studios and restores a scene through history while retaining the ed
   await traverse(-1);
   expect(page().studio?.scene.id).toBe('image-edit');
   await click('Motion Studio');
-  expect(page().studio).toBeNull();
+  expect(page().motion).toBe(true);
+  expect(container.querySelector('main[aria-label="Motion Studio"]')).toBeTruthy();
+  expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(true);
+  await click('Open editor');
+  expect(page().motion).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   expect(location.hash).toContain('t=12');
 });
@@ -373,7 +390,7 @@ it('opens a model from the audio menu in the correct workspace without changing 
     return fallback(input, init);
   });
   await mount();
-  await click('Audio');
+  await click('Audio scenes and models');
   const model = document.querySelector<HTMLButtonElement>('.om-creative-model-list button');
   expect(model?.textContent).toContain('Narrator');
   await act(async () => model!.click());
@@ -399,7 +416,7 @@ it('opens a Cinema still from Explore and restores its studio when changing hist
   expect(page().studio?.scene.id).toBe('shot-image');
   await traverse(-1);
   expect(page().explore).toBe(true);
-  await click('MCP');
+  await click('Agent client');
   const client = [...document.querySelectorAll<HTMLButtonElement>('.om-creative-client-menu button')].find(button => button.textContent === 'Claude Code')!;
   await act(async () => client.click());
   expect(page()).toMatchObject({ explore: false, settings: 'mcp', client: 'claude' });
@@ -427,16 +444,51 @@ it('filters Explore by media and opens a reusable editing preset or template det
   expect(page()).toMatchObject({ specialty: { id: 'shorts' }, skill: 'openmotion-shortlist-shorts' });
 });
 
-it('opens the current editor from the first Explore slide and returns with browser Back', async () => {
+it('opens Motion Studio from the Explore spotlight and resumes the timeline on request', async () => {
   await mount();
   const draft = container.querySelector('[aria-label="Editor draft"]');
   await click('Explore');
   expect(container.querySelector('.om-feature-slide:not([inert]) h2')?.textContent).toBe('Motion Studio');
   await click('Open in Motion Studio');
-  expect(page()).toMatchObject({ explore: false, studio: null });
+  expect(page()).toMatchObject({ explore: false, motion: true });
+  const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
+  await act(async () => template.click());
+  expect(page()).toMatchObject({ motion: true, templates: true, template: 'product-promo' });
+  await traverse(-1);
+  await click('Open editor');
+  expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   await traverse(-1);
+  expect(page().motion).toBe(true);
+  await traverse(-1);
   expect(page().explore).toBe(true);
+});
+
+it('shows every Studio in Discover and opens the selected example or technique', async () => {
+  await mount(); await click('Explore');
+  const collections = () => [...container.querySelectorAll<HTMLElement>('.om-studio-collection')].map(section => section.dataset.studio);
+  expect(collections()).toEqual(['motion', 'design', 'cinema', 'sound', 'shorts', 'marketing', 'explainer', '3d']);
+  const select = async (selector: string) => {
+    const item = container.querySelector<HTMLButtonElement>(selector);
+    expect(item, selector).toBeTruthy();
+    await act(async () => item!.click());
+  };
+  await select('.om-studio-collection [data-playback-id="motion/openmotion-liquid-glass-logo"]');
+  expect(page()).toMatchObject({ skills: true, skill: 'openmotion-liquid-glass-logo' });
+  await traverse(-1);
+  await select('.om-studio-collection[data-studio="design"] [data-scene="image-edit"]');
+  expect(page().studio).toMatchObject({ studio: { id: 'design' }, scene: { id: 'image-edit' } });
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value).toContain('Keep the product and its lettering');
+  await traverse(-1);
+  await select('.om-studio-collection[data-studio="marketing"] .om-scene-tile');
+  expect(page()).toMatchObject({ specialty: { id: 'marketing' }, skill: 'openmotion-flat-lay-product' });
+  await traverse(-1);
+  await select('.om-explore-feed .om-choice-tabs button:last-child');
+  expect(collections()).toEqual(['sound']);
+  await select('.om-studio-collection[data-studio="sound"] [data-scene="speech"]');
+  expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech' } });
+  await traverse(-1);
+  expect(collections()).toEqual(['sound']);
 });
 
 it('rotates the visible Explore spotlight and plays visible Skill previews without hovering', async () => {
@@ -450,7 +502,7 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
   });
   await mount(); await click('Explore');
   const hero = container.querySelector<HTMLElement>('.om-feature-carousel')!;
-  const cards = ['.om-feed-group', '.om-technique-cards'].map(section =>
+  const cards = ['.om-feed-group', '.om-studio-collection-cards'].map(section =>
     container.querySelector<HTMLElement>(section + ' [data-playback-id]')!);
   vi.useFakeTimers();
   try {
@@ -524,7 +576,7 @@ it('returns from a 3D technique to the same community feed and keeps its scroll 
   await act(async () => feed.querySelector<HTMLButtonElement>('.om-scene-tile')!.click());
   expect(page()).toMatchObject({ specialty: { id: '3d' }, skill: 'three-js', community: '3d-motion' });
   expect(container.querySelector('.om-specialty-intro button')?.textContent).toBe('Create a 3D-style clip');
-  expect([...container.querySelectorAll('.om-skills-grid [data-skill-id]')].map(node => node.getAttribute('data-skill-id'))).toEqual(['babylon-js', 'lume', 'blender']);
+  expect([...container.querySelectorAll('.om-skills-grid [data-skill-id]')].map(node => node.getAttribute('data-skill-id'))).toEqual(page().specialty!.techniques.slice(1));
   expect(button('3D showcase')).toBeTruthy();
   expect(container.querySelector('.om-skill-detail')).not.toBeNull();
   await click('Create a shot from this brief');
@@ -541,14 +593,42 @@ it('returns from a 3D technique to the same community feed and keeps its scroll 
 it('lists each primary destination once in order, with only scene and model choices under Image', async () => {
   await mount();
   const nav = container.querySelector('.om-app-header nav.om-creative-navigation')!;
-  const destinations = [...nav.querySelectorAll('button,a')].map(node => node.textContent?.trim());
-  expect(destinations).toEqual(['Explore', 'Motion Studio', 'Image', 'Video', 'Audio', 'MCP', 'API', 'Design Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
-  await click('Image');
+  const destinations = [...nav.querySelectorAll('button:not([aria-expanded]),a')].map(node => node.getAttribute('aria-label') ?? node.textContent?.trim());
+  expect(destinations).toEqual(['Explore', 'Image', 'Video', 'Audio', 'MCP', 'API', 'Design Studio', 'Motion Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
+  const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node =>
+    [node.getAttribute('aria-label'), document.getElementById(node.getAttribute('aria-describedby')!)?.textContent]);
+  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot']]);
+  await click('Image scenes and models');
   const menu = document.querySelector('.om-creative-menu')!;
   expect([...menu.querySelectorAll('h2')].map(el => el.textContent)).toEqual(['Scenes', 'Models']);
   const still = [...menu.querySelectorAll('button')].find(node => node.textContent?.startsWith('Shot still'))!;
   await act(async () => still.click());
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
+});
+
+it.each([
+  ['Image', 'design', 'text-to-image'],
+  ['Video', 'cinema', 'text-to-video'],
+  ['Audio', 'sound', 'music'],
+])('opens the %s generator directly and restores the originating page through browser history', async (label, studio, scene) => {
+  await mount(); await click('Explore');
+  await click(label);
+  expect(page().studio).toMatchObject({ studio: { id: studio }, scene: { id: scene } });
+  expect(page().studio?.landing).toBeUndefined();
+  expect(document.querySelector('.om-creative-menu')).toBeNull();
+  expect(button(label).getAttribute('aria-current')).toBe('location');
+  expect(button(label + ' scenes and models').getAttribute('aria-expanded')).toBe('false');
+  await traverse(-1);
+  expect(page().explore).toBe(true);
+});
+
+it('retains the active model and scene on same-modality entry and switches a Cinema still to video', async () => {
+  history.replaceState(null, '', firstUrl.replace('#', '&page=create&scene=speech&model=voice%3Anarrator#'));
+  await mount(); await click('Audio');
+  expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech' }, model: 'voice:narrator' });
+  await click('Cinema Studio'); await click('Shot still');
+  await click('Video');
+  expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'text-to-video' }, model: null });
 });
 
 it('pairs an explicit scene with a compatible model, continues in its studio and returns to the same Explore collection', async () => {
@@ -562,7 +642,7 @@ it('pairs an explicit scene with a compatible model, continues in its studio and
     return read(input, init);
   });
   await mount(); await click('Explore'); await click('Product films');
-  await click('Image'); await click('Models for Image editing');
+  await click('Image scenes and models'); await click('Models for Image editing');
   const matches = document.querySelectorAll<HTMLButtonElement>('.om-creative-model-list .om-creative-option');
   expect(matches).toHaveLength(1);
   await act(async () => matches[0].click());

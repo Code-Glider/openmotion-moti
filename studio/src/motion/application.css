@@ -1,8 +1,6 @@
 /* Application geometry; all presentation primitives come from the design system. */
 .om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: var(--motion-space-56) minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
 .om-app-header { container-type: inline-size; grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
-.om-app-leading { display: flex; align-items: center; gap: var(--motion-space-8); flex-shrink: 0; }
-[data-motion-studio] .om-app-sidebar-toggle { justify-content: center; width: 28px; min-height: 28px; padding: 0; }
 .om-application[data-navigation-collapsed="true"] { grid-template-columns: 0px minmax(0, 1fr); }
 .om-application > .motion-workspace { grid-column: 2; width: auto; height: auto; margin: 0 var(--motion-space-4) var(--motion-space-4) 0; }
 .om-application[data-navigation-collapsed="true"] > .motion-workspace { margin-left: var(--motion-space-4); }
@@ -29,7 +27,6 @@
 .motion-header-project .om-app-project-title { position: relative; display: inline-grid; grid-template-columns: minmax(0, 1fr); flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .motion-project-name-measure { visibility: hidden; overflow: hidden; white-space: pre; min-width: min(100%, var(--motion-space-64)); }
 .om-app-project-title .motion-project-name-input { position: absolute; inset: 0; width: 100%; min-width: 0; text-align: center; text-overflow: ellipsis; }
-.om-app-project-title .motion-project-name-input:focus-visible { border-color: var(--motion-selected); outline: 3px solid var(--motion-selected); outline-offset: 1px; }
 .motion-autosave-status { display: flex; align-items: center; gap: var(--motion-space-6); min-width: 0; }
 .motion-autosave-status > svg { flex: none; }
 .motion-autosave-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -52,7 +49,6 @@
 .om-application .motion-sidebar-footer { border-top: 1px solid var(--motion-border-subtle); }
 .om-settings-center { --om-settings-nav-width: clamp(216px, 18vw, 248px); display: flex; flex: 1; min-width: 0; min-height: 0; }
 .om-settings-navigation-slot { flex: 0 0 var(--om-settings-nav-width); min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
-.om-settings-navigation-slot[data-collapsed="true"] { flex-basis: 0; }
 .om-settings-navigation-clip { min-width: 0; min-height: 0; overflow: hidden; }
 .om-settings-navigation { width: var(--om-settings-nav-width); height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-12) var(--motion-space-8); border-right: 1px solid var(--motion-border-subtle); }
 .om-settings-navigation > h1 { padding: var(--motion-space-4) var(--motion-space-10); }
@@ -147,7 +143,6 @@
 @media (max-width: 900px) {
   .om-settings-center { flex-direction: column; }
   .om-settings-navigation-slot { flex: 0 0 auto; }
-  .om-settings-navigation-slot[data-collapsed="true"] { flex-basis: auto; grid-template-rows: minmax(0, 0fr); }
   .om-settings-navigation { width: auto; height: auto; padding: var(--motion-space-6); border-right: 0; border-bottom: 1px solid var(--motion-border-subtle); }
   .om-settings-navigation > h1, .om-settings-navigation > .om-field, .om-settings-sections .om-eyebrow { display: none; }
   .om-settings-sections { display: none; }
@@ -157,7 +152,6 @@
 }
 @media (max-width: 680px) {
   .om-app-header { gap: var(--motion-space-8); padding-inline: var(--motion-space-8); }
-  .om-app-leading { gap: var(--motion-space-8); }
   .om-app-header-actions { margin-left: 0; }
   .om-app-header-links a span { display: none; }
   .om-provider-list { flex: 1; }
@@ -251,6 +245,10 @@
 .om-creative-navigation[data-scroll-end] { --nav-end-fade: var(--motion-space-16); }
 .om-creative-strip { display: flex; align-items: center; gap: var(--motion-space-4); width: max-content; padding-block: var(--motion-space-2); }
 .om-creative-strip > * { flex: none; white-space: nowrap; }
+.om-creative-split { display: flex; align-items: center; }
+[data-motion-studio] .om-creative-split > .om-nav-row-link { padding-inline-end: var(--motion-space-4); }
+[data-motion-studio] .om-creative-split > .om-nav-row-action { width: var(--motion-control-sm); padding: 0; justify-content: center; }
+[data-motion-studio] .om-creative-split:has(.om-nav-row-link:focus-visible) { outline-offset: -2px; }
 [data-motion-studio] .om-creative-strip .om-creative-divider { width: 1px; height: var(--motion-space-16); margin: 0 var(--motion-space-6); }
 .om-creative-menu { width: min(640px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 72dvh); overflow-y: auto; overscroll-behavior: contain; }
 .om-creative-menu-columns { display: grid; grid-template-columns: 1fr 1.1fr; gap: var(--motion-space-16); }
@@ -271,7 +269,7 @@
 .om-creative-option small { font-size: var(--motion-text-xs); }
 @container (max-width: 560px) {
   .om-app-header-links { display: none; }
-  .om-app-leading, .om-app-header-actions { gap: var(--motion-space-2); }
+  .om-app-header-actions { gap: var(--motion-space-2); }
 }
 @media (max-width: 560px) {
   .om-creative-menu-columns { grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-12); }
