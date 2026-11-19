@@ -14,7 +14,7 @@ export function BlackFridayCollection({ stages, active, onPreview, onPriority, o
   active: Set<string>;
   onPreview: (template: GalleryTemplate, trigger: HTMLButtonElement) => void;
   onPriority: (id: string | null) => void;
-  onOpenSkill?: (id: string) => void;
+  onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useI18n();
   const prefix = useId();
@@ -66,7 +66,7 @@ export function BlackFridayCollection({ stages, active, onPreview, onPriority, o
       <h2 id={prefix + 'skills'} tabIndex={-1}>{t('Black Friday Skills')}</h2>
       <div className={styles.skillCards}>
         {skills.map((skill, index) => <button key={skill.id} type="button" className="om-card om-skill-gallery-card" data-interactive=""
-          onClick={() => { reportSkillCardOpened(skill, index + 1, undefined, 'black_friday'); onOpenSkill(skill.id); }}>
+          onClick={event => { reportSkillCardOpened(skill, index + 1, undefined, 'black_friday'); onOpenSkill(skill.id, event.currentTarget); }}>
           <span className="om-gallery-cover om-skill-card-demo"><SkillMedia skill={skill} /></span>
           <span className="om-skill-card-meta">
             <span className="om-skill-card-heading"><strong>{t(skill.title)}</strong></span>

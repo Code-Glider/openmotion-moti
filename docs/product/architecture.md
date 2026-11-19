@@ -447,13 +447,16 @@ Brand Kit identities remain separate. Collection still honors installation opt-o
 and DNT; the local review proxy disables it. See the [series contract](../../tracking/README.md#brand-story-discovery-and-reuse)
 for trigger, deduplication, privacy and observable-result boundaries.
 
-The Black Friday collection is entered from the template library and has its own
-stage navigation and return action. It reuses the published reference identities,
-template previews and Skill detail routes. A pinned reference snapshot supplies
+The Black Friday collection opens from the second banner on Explore. It has its
+own stage navigation and reuses the published reference identities, template
+previews and the standard Skill detail panel. Closing a Skill returns focus to
+its collection card. A pinned reference snapshot supplies
 those exact IDs if the configured catalog has not published them yet. The same
 IDs resolve through the Agent's existing template-detail operation for
 recreation, with no project download or automatic creation. Video and Skill
-actions retain their existing events with Black Friday placement.
+actions retain their existing events with Black Friday placement. The Explore
+banner reports `ui_click` with `element: open_collection`, `placement: black_friday`
+and `position: 2`.
 
 ### Local diagnostic export
 

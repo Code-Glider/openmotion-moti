@@ -189,7 +189,8 @@
     "Show the product and make the offer easy to understand.": "展示商品，把优惠讲清楚。",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "做一条网一促销，或提醒用户活动何时结束。",
     "Black Friday Skills": "黑五 Skill",
-    "Back to templates": "返回模板库"
+    "View collection": "查看专题",
+    "Browse Black Friday video references and Skills for your sale.": "浏览黑五视频参考和促销 Skill。"
   },
   "ja": {
     "Made to move.": "動き出すアイデア",
@@ -304,7 +305,8 @@
     "Show the product and make the offer easy to understand.": "商品を見せ、特典をわかりやすく伝えましょう。",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "サイバーマンデーを告知するか、終了時刻を知らせましょう。",
     "Black Friday Skills": "ブラックフライデーのスキル",
-    "Back to templates": "テンプレートに戻る"
+    "View collection": "特集を見る",
+    "Browse Black Friday video references and Skills for your sale.": "セールに使えるブラックフライデーの参考動画とスキルを探しましょう。"
   },
   "ko": {
     "Made to move.": "움직이는 아이디어",
@@ -419,7 +421,8 @@
     "Show the product and make the offer easy to understand.": "상품을 보여주고 할인 혜택을 쉽게 전달하세요.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "사이버 먼데이 광고를 만들거나 세일 종료 시간을 알려주세요.",
     "Black Friday Skills": "블랙 프라이데이 스킬",
-    "Back to templates": "템플릿으로 돌아가기"
+    "View collection": "컬렉션 보기",
+    "Browse Black Friday video references and Skills for your sale.": "세일에 활용할 블랙 프라이데이 참고 영상과 스킬을 둘러보세요."
   },
   "de": {
     "Made to move.": "Für Bewegung gemacht",
@@ -534,7 +537,8 @@
     "Show the product and make the offer easy to understand.": "Zeige das Produkt und erkläre das Angebot verständlich.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Erstelle einen Cyber-Monday-Spot oder erinnere an das Ende des Sales.",
     "Black Friday Skills": "Black-Friday-Skills",
-    "Back to templates": "Zurück zu den Vorlagen"
+    "View collection": "Kollektion ansehen",
+    "Browse Black Friday video references and Skills for your sale.": "Entdecke Videobeispiele und Skills für deine Black-Friday-Aktion."
   },
   "fr": {
     "Made to move.": "Place au mouvement",
@@ -649,7 +653,8 @@
     "Show the product and make the offer easy to understand.": "Montrez le produit et présentez clairement l’offre.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Créez un spot pour le Cyber Monday ou rappelez la fin des promotions.",
     "Black Friday Skills": "Compétences Black Friday",
-    "Back to templates": "Retour aux modèles"
+    "View collection": "Voir la collection",
+    "Browse Black Friday video references and Skills for your sale.": "Découvrez des vidéos de référence et des Skills pour votre promotion du Black Friday."
   },
   "ru": {
     "Made to move.": "Создано для движения",
@@ -764,7 +769,8 @@
     "Show the product and make the offer easy to understand.": "Покажите товар и ясно объясните условия акции.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Сделайте ролик к Киберпонедельнику или напомните об окончании распродажи.",
     "Black Friday Skills": "Навыки для Чёрной пятницы",
-    "Back to templates": "Назад к шаблонам"
+    "View collection": "Смотреть подборку",
+    "Browse Black Friday video references and Skills for your sale.": "Посмотрите примеры видео и навыки для распродажи в Чёрную пятницу."
   },
   "es": {
     "Made to move.": "Ideas en movimiento",
@@ -879,7 +885,8 @@
     "Show the product and make the offer easy to understand.": "Muestra el producto y explica la oferta con claridad.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Crea un anuncio para el Cyber Monday o recuerda cuándo terminan las rebajas.",
     "Black Friday Skills": "Habilidades de Black Friday",
-    "Back to templates": "Volver a las plantillas"
+    "View collection": "Ver colección",
+    "Browse Black Friday video references and Skills for your sale.": "Explora vídeos de referencia y Skills para tu promoción de Black Friday."
   },
   "pt-BR": {
     "Made to move.": "Feito para se mover",
@@ -994,7 +1001,8 @@
     "Show the product and make the offer easy to understand.": "Mostre o produto e explique a oferta com clareza.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Crie um vídeo para a Cyber Monday ou lembre quando a promoção termina.",
     "Black Friday Skills": "Habilidades de Black Friday",
-    "Back to templates": "Voltar aos modelos"
+    "View collection": "Ver coleção",
+    "Browse Black Friday video references and Skills for your sale.": "Explore vídeos de referência e Skills para sua promoção da Black Friday."
   },
   "it": {
     "Made to move.": "Idee in movimento",
@@ -1109,7 +1117,8 @@
     "Show the product and make the offer easy to understand.": "Mostra il prodotto e spiega chiaramente l’offerta.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Crea uno spot per il Cyber Monday o ricorda quando terminano i saldi.",
     "Black Friday Skills": "Skill per il Black Friday",
-    "Back to templates": "Torna ai modelli"
+    "View collection": "Vedi la raccolta",
+    "Browse Black Friday video references and Skills for your sale.": "Esplora video di riferimento e Skill per la tua promozione del Black Friday."
   },
   "tr": {
     "Made to move.": "Hareket için tasarlandı",
@@ -1224,6 +1233,7 @@
     "Show the product and make the offer easy to understand.": "Ürünü gösterin ve teklifi anlaşılır biçimde anlatın.",
     "Make a Cyber Monday spot or remind shoppers when the sale ends.": "Cyber Monday videosu hazırlayın veya indirimin ne zaman biteceğini hatırlatın.",
     "Black Friday Skills": "Black Friday becerileri",
-    "Back to templates": "Şablonlara dön"
+    "View collection": "Koleksiyonu gör",
+    "Browse Black Friday video references and Skills for your sale.": "Black Friday kampanyanız için örnek videolara ve becerilere göz atın."
   }
 }

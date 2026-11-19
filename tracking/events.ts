@@ -146,7 +146,7 @@ export const omEvents = {
       'project_manager', 'version_history'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'select_work', 'select_chapter', 'browse_timeline', 'expand_learning', 'compare_brands',
-      'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
+      'open_detail', 'start_use', 'expand_instruction', 'open_collection', 'category_select', 'filter_open', 'filter_clear',
       'search_focus', 'clear_search', 'reference', 'describe', 'reference_source_select', 'choose_local_video', 'copy_brief', 'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
       'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source',
       'view_guide', 'back_to_template', 'handoff_help', 'copy_color', 'back_to_project', 'retry_template_project', 'check_template_project', 'open_prepared_project',

@@ -76,7 +76,7 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { onOpenSkill?: (id: string) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { blackFriday?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
@@ -110,14 +110,9 @@ export function TemplateLibraryDialog(props: Props) {
   const [filterTab, setFilterTab] = useState<Facet>('uses');
   const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
-  const [blackFriday, setBlackFriday] = useState(false);
-  const blackFridayEntry = useRef<HTMLButtonElement>(null);
+  const blackFriday = Boolean(props.blackFriday);
   const campaignStages = useMemo(() => blackFridayTemplates(catalog, locale), [catalog, locale]);
   const campaignItems = useMemo(() => campaignStages.flatMap(stage => stage.items), [campaignStages]);
-  const leaveBlackFriday = () => {
-    setBlackFriday(false);
-    requestAnimationFrame(() => blackFridayEntry.current?.focus({ preventScroll: true }));
-  };
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
   const handoffPreview = templateHandoffEnabled() && !brandStory;
   const reviewBody = useRef<HTMLDivElement>(null), reviewFooter = useRef<HTMLDivElement>(null), reviewScroll = useRef<HTMLDivElement>(null);
@@ -235,7 +230,7 @@ export function TemplateLibraryDialog(props: Props) {
     const trigger = props.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     if (!props.inWorkspace) openedDialog?.showModal();
     if (openedDialog?.open && !libraryShown.current) { libraryShown.current = true; tracking.reportLibraryShown(currentSearchContext.current.read()); }
-    libraryClose.current?.focus({ preventScroll: true });
+    if (openedDialog?.querySelector('[data-black-friday] h1') !== document.activeElement) libraryClose.current?.focus({ preventScroll: true });
     return () => {
       detail.current?.close();
       if (!props.inWorkspace) openedDialog?.close();
@@ -593,7 +588,7 @@ export function TemplateLibraryDialog(props: Props) {
     } catch { showToast('Download failed. Please try again.', 'error', 'feedback'); tracking.reportDownloadResult(template, attemptId, 'fetch_failed', errorCode, view); }
     finally { setDownloading(false); }
   }
-  const filterBy = (key: Facet, value: string) => { setBlackFriday(false); picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setCompareWithout(''); if (storiesPreview) setBrandStory(null); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
+  const filterBy = (key: Facet, value: string) => { if (blackFriday) props.onBrowseTemplates?.(); picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setCompareWithout(''); if (storiesPreview) setBrandStory(null); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
   const chooseCreator = (creator: string | null) => {
     clear();
     setBrandStory(null);
@@ -605,19 +600,18 @@ export function TemplateLibraryDialog(props: Props) {
     event.stopPropagation();
     if (props.inWorkspace && event.key === 'Escape' && !event.defaultPrevented && !props.busy && !preview && !filtersOpen && event.target instanceof Element && event.target.closest('dialog') === dialog.current) {
       event.preventDefault();
-      if (blackFriday) leaveBlackFriday();
-      else props.onClose();
+      props.onClose();
     }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen && !(event.target instanceof HTMLElement && event.target.closest('[data-search-recovery]'))) { event.preventDefault(); search.current?.focus(); }
-  }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) { if (blackFriday) leaveBlackFriday(); else props.onClose(); } }}>
+  }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
         <div className="om-gallery-wordmark">{blackFriday
-          ? <button type="button" className="om-button" onClick={leaveBlackFriday}><MotionIcon name="arrow-left" size={16} />{t('Back to templates')}</button>
+          ? <button type="button" className="om-button" onClick={props.onClose}><MotionIcon name="arrow-left" size={16} />{t('Back to Explore')}</button>
           : !props.inWorkspace && <BrandLogo compact />}<span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>
         {props.navigation && <fieldset className="contents" disabled={props.busy}>{props.navigation}</fieldset>}
         <div className="om-control-row om-gallery-header-actions">
-          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => { setBlackFriday(false); setQuery(event.target.value); }}
+          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => { if (blackFriday) props.onBrowseTemplates?.(); setQuery(event.target.value); }}
             onFocus={() => { currentSearchContext.current.activity(); tracking.reportRecoveryAction('search_focus', listContext()); }}
             onCompositionStart={() => { composing.current = true; setSearchComposing(true); }}
             onCompositionEnd={() => { composing.current = false; setSearchComposing(false); setSettle(value => value + 1); }}
@@ -630,10 +624,6 @@ export function TemplateLibraryDialog(props: Props) {
         <div className={`om-control-row ${styles.categories}`} role="group" aria-label={t('Video purpose')}>
           <button className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
           <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
-          <button ref={blackFridayEntry} className="om-button om-filter-pill" aria-label={t('Black Friday collection')} onClick={() => {
-            tracking.reportDiscoveryClick('category_select', listContext(), { option: 'black-friday', selected: true });
-            setQuery(''); setFiltersOpen(false); setBlackFriday(true);
-          }}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">BLACK FRIDAY</span><span>{t('Black Friday collection')}</span></span></button>
           {categories.map(value => <button className="om-button om-filter-pill" key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</button>)}
         </div>
         <div className={styles.controls}>

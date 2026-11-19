@@ -107,6 +107,10 @@ export function reportSearchResult(searchId: string, query: string, resultCount:
   send('template_search_result', { ...studio, area: 'template_discovery', search_id: searchId, search_keyword: keyword, query_length: query.trim().length,
     result_count: resultCount, outcome: 'success', sort: context.sort, applied_filter_count: context.filterCount, ...contextIds(context) });
 }
+export function reportBlackFridayEntry() {
+  send('ui_click', { ...studio, area: 'template_discovery', element: 'open_collection', placement: 'black_friday', position: 2 });
+}
+
 export function reportDiscoveryClick(element: Extract<Click['element'], 'category_select' | 'filter_open' | 'filter_clear' | 'filter_option' | 'sort_option' | 'submit_video'>,
   context: ListContext, extra: Pick<Click, 'filter_group' | 'selected' | 'previous_sort' | 'changed'> & { option?: string } = {}) {
   const { option, ...fields } = extra;
