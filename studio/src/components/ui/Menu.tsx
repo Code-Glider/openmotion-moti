@@ -11,6 +11,7 @@ import { cn } from "./cn";
 import { Tooltip } from "./Tooltip";
 import { floatingMotion, POPUP_LAYER, popupSurface } from "./floatingSurface";
 export { floatingMotion, POPUP_LAYER, popupSurface } from "./floatingSurface";
+import { MenuPanel } from "./MenuPanel";
 import { Check, RemixIcon } from "../../icons/RemixIcons";
 
 /**
@@ -79,6 +80,7 @@ interface MenuProps
   trigger: ReactElement;
   /** Standard hover/focus hint for the menu trigger. */
   tooltip?: string;
+  presentation?: "standard" | "panel";
   /** The items: `MenuItem`, `MenuRadioGroup`, `MenuSeparator`. */
   children: ReactNode;
 }
@@ -90,6 +92,7 @@ interface MenuProps
 export function Menu({
   trigger,
   tooltip,
+  presentation = "standard",
   children,
   side = "bottom",
   align = "start",
@@ -116,9 +119,10 @@ export function Menu({
           className={POPUP_LAYER}
         >
           <BaseMenu.Popup
+            render={presentation === "panel" ? <MenuPanel /> : undefined}
             aria-label={ariaLabel}
             data-preview-state={previewState}
-            className={cn(menuPopup, className)}
+            className={cn(presentation === "panel" ? cn("motion-positioned-menu", floatingMotion("duration-open")) : menuPopup, className)}
           >
             {children}
           </BaseMenu.Popup>
@@ -212,15 +216,17 @@ export function MenuShortcut({ className, ...props }: StyledProps<"span">) {
 interface MenuItemProps extends StyledProps<typeof BaseMenu.Item> {
   /** Rendered as a dim mono hint on the trailing edge. Decorative. */
   shortcut?: string;
+  icon?: ReactNode;
   /** `danger` for a destructive action (Delete, Remove). */
   tone?: MenuItemTone;
   "data-preview-state"?: "hover";
 }
 
 /** One action. `disabled` items are skipped by the arrow keys, not just dimmed. */
-export function MenuItem({ shortcut, tone, className, children, ...props }: MenuItemProps) {
+export function MenuItem({ shortcut, icon, tone, className, children, ...props }: MenuItemProps) {
   return (
-    <BaseMenu.Item className={cn(itemBase, tone === "danger" && itemDanger, className)} {...props}>
+    <BaseMenu.Item className={cn(itemBase, tone === "danger" && itemDanger, className)} data-menu-tone={tone} {...props}>
+      {icon && <span className="motion-menu-icon" aria-hidden="true">{icon}</span>}
       <span className="truncate">{children}</span>
       {shortcut ? <MenuShortcut>{shortcut}</MenuShortcut> : null}
     </BaseMenu.Item>

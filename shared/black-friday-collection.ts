@@ -6,9 +6,9 @@ export const blackFridayStages = [
   { id: 'close', title: 'Cyber Monday and last call', description: 'Make a Cyber Monday spot or remind shoppers when the sale ends.' },
 ] as const;
 
-type Stage = typeof blackFridayStages[number]['id'];
+export type BlackFridayStageId = typeof blackFridayStages[number]['id'];
 type Reference = Omit<GalleryTemplate, 'title' | 'description' | 'styles' | 'kind' | 'collection' | 'subtitle' | 'tags'> & {
-  stage: Stage; en: Pick<GalleryTemplate, 'title' | 'description' | 'styles'>; zh: Pick<GalleryTemplate, 'title' | 'description' | 'styles'>;
+  stage: BlackFridayStageId; en: Pick<GalleryTemplate, 'title' | 'description' | 'styles'>; zh: Pick<GalleryTemplate, 'title' | 'description' | 'styles'>;
 };
 
 // Published Prism catalog snapshot 9786bcd5-a15a-4203-b3e8-d6e084b6ffec.
@@ -73,12 +73,3 @@ export function blackFridayTemplates(catalog: readonly GalleryTemplate[], locale
 }
 
 export const blackFridaySkillIds = ['openmotion-sale-countdown', 'openmotion-sale-promo', 'openmotion-sale-carousel'] as const;
-
-// Publisher and creator links for the additional references from the review prototype.
-export const blackFridaySourceLinks: readonly { stage: Stage; title: string; author: string; url: string }[] = [
-  { stage: 'tease', title: 'Friends + Family', author: 'ILIA', url: 'https://jamesconkle.com/media/JCD_ILIA_FriendsFamily.mp4' },
-  { stage: 'tease', title: 'Black Friday Campaign', author: 'Dose & Co', url: 'https://www.laura-fetch.com/dose-co' },
-  { stage: 'launch', title: 'Black Friday', author: 'ILIA', url: 'https://jamesconkle.com/media/JCD_ILIA_BlackFriday.mp4' },
-  { stage: 'close', title: 'Black Friday Reminder', author: 'Varya Fomicheva', url: 'https://www.svgator.com/blog/black-friday-animation-examples-kickstart-your-campaign/' },
-  { stage: 'close', title: 'Cyber Monday', author: 'Ucraft', url: 'https://dribbble.com/shots/25444467-UCRAFT-CYBER-MONDAY' },
-];

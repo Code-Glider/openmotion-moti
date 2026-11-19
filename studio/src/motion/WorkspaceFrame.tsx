@@ -1,3 +1,5 @@
+import { FieldInput } from "../components/ui/FormField";
+import { DisclosureRow } from "../../../packages/design-system/react/DisclosureRow";
 import { useProjectArchives, ProjectArchiveMenu, type ProjectArchiveActions } from './ProjectArchives';
 import type { McpClient } from './mcpClients';
 import { CreativeNavigation } from './CreativeNavigation';
@@ -223,7 +225,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     navigatePage(target === 'explore' ? { explore: true, templates: false, ...(page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills ? { community: page.community, medium: page.medium } : lastExplore.current) } : { settings: 'mcp', templates: false, ...(client && { client, setup: 'agent' }) });
   };
   const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} onSkill={openSkill} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} openProviders={value.openModelSettings} />;
-  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday}
+  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday} collectionSkillOpen={page.blackFriday && Boolean(page.skill)}
     onBrowseTemplates={() => navigatePage({ blackFriday: false, skill: null, template: null })}
     onOpenSkill={(skill, trigger) => {
       if (!templatesPage) { openSkill(skill); return; }
@@ -327,13 +329,15 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
         </button>
       </Tooltip>
     </div>
-    <label className="motion-session-search"><MotionIcon name="search" /><input type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
+    <label data-form-field="regular" className="motion-session-search"><MotionIcon name="search" /><FieldInput appearance="embedded" type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
     <nav className="motion-session-list" aria-label={t('Project list')} aria-busy={loadingProjects}>
       {loadingProjects && ['75%', '55%', '65%'].map(width => <div key={width} className="motion-session pointer-events-none" data-testid="project-list-skeleton" aria-hidden="true">
         <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
       </div>)}
       {workspace.status && !filtered.length && <p className="motion-session-empty">{t(query ? 'No matching projects' : 'Create a project with your Agent to start editing.')}</p>}
-      {filtered.map(project => <div key={project.id} className="om-project-sidebar-row om-nav-row" data-active={currentId === project.id}><Tooltip label={project.title} wrap><button aria-label={project.title} className="motion-session om-nav-row-link" aria-current={currentId === project.id ? 'page' : undefined}
+      {filtered.map(project => <DisclosureRow key={project.id} className="om-project-sidebar-row" active={currentId === project.id}
+        action={<ProjectArchiveMenu projectId={project.id} title={project.title} archives={archives} />}>
+        <Tooltip label={project.title} wrap><button aria-label={project.title} className="motion-session om-disclosure-row-label" aria-current={currentId === project.id ? 'page' : undefined}
         disabled={switchingDisabled} onClick={event => {
           if (project.id === currentId) return;
           void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'open_project', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
@@ -341,7 +345,8 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
           onNavigate?.();
         }}>
         <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>
-      </button></Tooltip><ProjectArchiveMenu projectId={project.id} title={project.title} archives={archives} /></div>)}
+      </button></Tooltip>
+      </DisclosureRow>)}
     </nav>
     <div className="motion-sidebar-footer">
       <button className="om-nav-item" type="button" onClick={archives.showManager}><RemixIcon name="folder-open-line" size={18} />{t('All projects')}</button>

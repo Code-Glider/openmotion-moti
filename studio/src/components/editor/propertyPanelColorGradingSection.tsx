@@ -1,3 +1,4 @@
+import { NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { isHfColorGradingActive } from "@hyperframes/core/color-grading";
@@ -213,7 +214,7 @@ export function ColorGradingSection({
       />
       {onApplyScope && (
         <div className="mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
-          <select
+          <NativeSelect
             value={applyScope}
             onChange={(event) => {
               track("select", "Apply scope");
@@ -225,7 +226,7 @@ export function ColorGradingSection({
           >
             <option value="source-file">{t("Current file media")}</option>
             <option value="project">{t("All project media")}</option>
-          </select>
+          </NativeSelect>
           <button
             type="button"
             disabled={applyBusy}

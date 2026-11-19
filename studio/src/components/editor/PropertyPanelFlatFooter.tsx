@@ -63,13 +63,7 @@ export function PropertyPanelFlatFooter({
           }}
           className={recording ? "text-danger-ink animate-pulse" : "text-danger-ink"}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-            {recording ? (
-              <rect x="2" y="2" width="10" height="10" rx="1.5" />
-            ) : (
-              <circle cx="7" cy="7" r="6" />
-            )}
-          </svg>
+          <RemixIcon name={recording ? "stop-fill" : "checkbox-blank-circle-fill"} size={14} />
         </button>
       )}
     </div>

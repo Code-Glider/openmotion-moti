@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
 /**
@@ -166,9 +167,7 @@ export function FxPresetRun({
           }
           onClick={onToggleCollapse}
         >
-          <span className="hf-fx-preset-run-caret pr-1 font-mono opacity-60" aria-hidden="true">
-            {collapsed ? "▸" : "▾"}
-          </span>
+          <RemixIcon name={collapsed ? "arrow-right-s-fill" : "arrow-down-s-fill"} size={12} className="hf-fx-preset-run-caret opacity-60" />
           {t(preset.label)}
           {/* Collapsed, the count is what says the preset is still a chain
               rather than one opaque effect. */}

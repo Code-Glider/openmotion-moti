@@ -1,3 +1,5 @@
+import { OverflowText } from "../ui/OverflowText";
+import { FieldInput } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, RotateCcw, Settings } from "../../icons/SystemIcons";
@@ -149,7 +151,7 @@ export function ColorGradingSliderControl({
   return (
     <div className="grid min-w-0 gap-0.5 rounded-md bg-panel-input/30 px-1.5 py-1">
       <div className="flex min-w-0 items-center gap-1">
-        <span className={`${LABEL} min-w-0 flex-1 truncate`}>{t(label)}</span>
+        <OverflowText text={t(label)} className={`${LABEL} min-w-0 flex-1 truncate`} />
         {settings && (
           <button
             type="button"
@@ -231,7 +233,7 @@ export function ColorGradingSliderControl({
 
       <div className="flex min-w-0 items-center justify-end gap-1">
         <div className="flex shrink-0 items-center rounded-md bg-panel-input px-1.5 py-px">
-          <input
+          <FieldInput appearance="inline" density="intrinsic"
             type="number"
             value={inputValue}
             min={min / scale}

@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
 import { keyHint, useStudioKeys } from "../../player/components/studioShortcuts";
@@ -10,13 +11,7 @@ interface GestureRecordIconProps {
 
 function GestureRecordIcon({ recording }: GestureRecordIconProps) {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-      {recording ? (
-        <rect x="1" y="1" width="8" height="8" rx="1" fill="currentColor" />
-      ) : (
-        <circle cx="5" cy="5" r="4.5" fill="currentColor" />
-      )}
-    </svg>
+    <RemixIcon name={recording ? "stop-fill" : "checkbox-blank-circle-fill"} size={10} />
   );
 }
 
