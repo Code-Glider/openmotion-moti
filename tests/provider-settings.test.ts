@@ -848,11 +848,15 @@ test('account image recovery through MCP keeps the original task and snapshot wi
   const failed = await finish(store, queued.job.id);
   assert.equal(failed.state, 'failed'); assert.equal(failed.download?.receivedBytes, 32); assert.equal(downloads, 3);
   assert.doesNotMatch(JSON.stringify(failed), /private signed|media.example/);
+  // Disk exhaustion can leave a truncated output before the manifest is committed.
+  const unfinishedOutput = path.join(gateway.root, 'work', failed.id, `${failed.id}-1.png`);
+  await writeFile(unfinishedOutput, png.subarray(0, 16));
   // A crashed worker must leave the verified partial file available after restart recovery.
   await writeFile(path.join(gateway.root, 'jobs', failed.id + '.json'), JSON.stringify({ ...failed, state: 'running', workerPid: 2147483647 }));
   await gateway.tick();
   assert.equal((await gateway.getJob(failed.id)).phase, 'interrupted');
   assert.equal((await stat(path.join(gateway.root, 'work', failed.id, 'image.partial'))).size, 32);
+  assert.equal((await stat(unfinishedOutput)).size, 16);
   interrupted = false;
   const resumed = await api.call('openmotion_assets_use', { action: 'resume', jobId: failed.id, requestId: 'resume-original' });
   assert.equal(resumed.job.id, failed.id);
@@ -864,4 +868,70 @@ test('account image recovery through MCP keeps the original task and snapshot wi
   await assert.rejects(access(path.join(gateway.root, 'work', failed.id, 'image.partial')));
   assert.equal((await gateway.resume(failed.id, 'again-completed')).state, 'completed');
   assert.equal(downloads, 4);
+}));
+
+async function interruptedAccountImage(t: any, store: any) {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  let downloads = 0;
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1, ...imageTransport(store.directory),
+    download: async (_url, init) => {
+      downloads++;
+      const offset = Number(new Headers(init.headers).get('range')?.match(/\d+/)?.[0] ?? 0);
+      let pulled = false;
+      return new Response(new ReadableStream({ pull(controller) {
+        if (pulled) controller.error(new Error('fixture disconnect'));
+        else { pulled = true; if (!offset) controller.enqueue(png.subarray(0, 32)); }
+      } }), { status: offset ? 206 : 200, headers: { etag: '"original"', ...(offset ? { 'content-range': `bytes ${offset}-${png.length - 1}/${png.length}` } : {}) } });
+    } });
+  t.after(() => gateway.close()); await signIn(account); await account.models(true);
+  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
+  const queued = await api.call('openmotion_assets_use', { action: 'generate', model: 'account:fixture-image', modality: 'image', prompt: 'original prompt', requestId: 'interrupted-image' });
+  const failed = await finish(store, queued.job.id);
+  assert.equal(failed.state, 'failed'); assert.equal(failed.download?.receivedBytes, 32);
+  return { gateway, account, api, failed, downloads: () => downloads, directory: path.join(gateway.root, 'work', failed.id) };
+}
+
+test('account image recovery replaces an output left before manifest commit using the complete verified download', t => fixture(async store => {
+  const { gateway, account, api, failed, downloads, directory } = await interruptedAccountImage(t, store);
+  // Reproduce a crash after the image and final-name output reached disk, before outputs.json.
+  const checkpoint = { assetId: 'fixture-asset', size: png.length, mime: 'image/png', bytes: png.length,
+    sha256: createHash('sha256').update(png).digest('hex'), etag: '"original"' };
+  await writeFile(path.join(directory, 'image.partial'), png);
+  await writeFile(path.join(directory, 'image-download.json'), JSON.stringify(checkpoint));
+  await writeFile(path.join(directory, `${failed.id}-1.png`), png);
+  await writeFile(path.join(gateway.root, 'jobs', failed.id + '.json'), JSON.stringify({ ...failed, state: 'running', workerPid: 2147483647 }));
+  await gateway.tick();
+  assert.equal((await gateway.getJob(failed.id)).phase, 'interrupted');
+  assert.deepEqual(JSON.parse(await readFile(path.join(directory, 'image-download.json'), 'utf8')), checkpoint);
+  await assert.rejects(access(path.join(directory, 'outputs.json')));
+  const before = downloads();
+  await api.call('openmotion_assets_use', { action: 'resume', jobId: failed.id, requestId: 'resume-complete-download' });
+  const completed = await finish(store, failed.id);
+  assert.equal(completed.state, 'completed', completed.error); assert.equal(completed.remoteId, failed.remoteId);
+  assert.equal(downloads(), before, 'the verified complete download needs no new transfer');
+  assert.equal(JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')).length, 1);
+  const result = await new AssetLibrary(store).resolve(completed.libraryAssets![0]);
+  assert.deepEqual(await readFile(result.filename), png);
+  await assert.rejects(access(directory));
+}));
+
+test('cancelling a queued account image recovery removes partial files despite a prior started attempt', t => fixture(async store => {
+  const { gateway, account, api, failed, downloads, directory } = await interruptedAccountImage(t, store);
+  assert(failed.startedAt); assert.equal(failed.workerPid, process.pid);
+  await access(path.join(directory, 'image.partial')); await access(path.join(directory, 'image-download.json'));
+  await api.call('openmotion_assets_use', { action: 'resume', jobId: failed.id, requestId: 'resume-then-cancel' });
+  assert.equal((await gateway.getJob(failed.id)).state, 'queued');
+  const before = downloads();
+  await api.call('openmotion_assets_use', { action: 'cancel', jobId: failed.id });
+  await assert.rejects(access(directory));
+  await api.call('openmotion_assets_use', { action: 'cancel', jobId: failed.id });
+  await gateway.tick();
+  const restarted = new ModelGateway(store); t.after(() => restarted.close());
+  assert.equal((await restarted.cancel(failed.id)).state, 'cancelled'); await restarted.tick();
+  assert.equal(restarted.active.size, 0); assert.equal(gateway.active.size, 0);
+  assert.equal(downloads(), before);
+  assert.equal(JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')).length, 1);
+  await assert.rejects(access(directory));
 }));

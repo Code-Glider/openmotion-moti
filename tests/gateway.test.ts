@@ -182,7 +182,9 @@ test('cancelled tasks do not import output, malformed media fails, interrupted t
   const job = await gateway.submit({ modality: 'image', prompt: 'cancel' });
   await gateway.tick();
   while (!calls) await new Promise(resolve => setTimeout(resolve, 5));
-  await gateway.cancel(job.id); release(png);
+  await gateway.cancel(job.id);
+  assert((await stat(path.join(gateway.root, 'work', job.id))).isDirectory(), 'the live worker owns cancellation cleanup');
+  release(png);
   await Promise.all([...gateway.active.values()].map(task => task.done));
   assert.equal((await gateway.getJob(job.id)).state, 'cancelled');
   assert.deepEqual((await gateway.getJob(job.id)).assets, []);

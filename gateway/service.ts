@@ -344,11 +344,14 @@ export class ModelGateway {
   async cancel(id: unknown) {
     const job = await this.store.lock(async () => {
       const job = await this.getJob(id);
+      // A queued recovery has no worker for this attempt; its PID may belong to a prior attempt.
+      if (job.state === 'queued') delete job.workerPid;
       if (job.state === 'queued' || job.state === 'running') { job.state = 'cancelled'; job.phase = 'cancelled'; job.updatedAt = Date.now(); await this.saveResult(job); }
       return job;
     });
-    this.active.get(job.id)?.controller.abort();
-    if (job.state === 'cancelled' && !job.startedAt) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
+    const worker = this.active.get(job.id);
+    worker?.controller.abort();
+    if (job.state === 'cancelled' && !job.savePending && !worker && !alive(job.workerPid)) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
     return job;
   }
   private async savedOutputs(job: GenerationJob): Promise<SavedOutput[]> {
@@ -496,6 +499,9 @@ export class ModelGateway {
         if (!buffers.length) throw new Error('Provider returned no media');
         for (const [i, bytes] of buffers.entries()) {
           const media = mediaType(bytes, job.modality), filename = `${job.id}-${i + 1}.${media.extension}`;
+          // This path has no committed output manifest. Replace a prior worker's unfinished result,
+          // while keeping the separately verified image download and checkpoint available for recovery.
+          await rm(path.join(dir, filename), { force: true });
           await writeFile(path.join(dir, filename), bytes, { flag: 'wx', mode: 0o600 });
           files.push({ path: `assets/generated/${filename}`, mimeType: media.mimeType, bytes: bytes.length, sha256: hash(bytes) });
         }
