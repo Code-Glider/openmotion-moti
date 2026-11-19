@@ -7,6 +7,7 @@ import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
 import { RotateCcw } from "../../icons/SystemIcons";
 import { CommitField } from "./propertyPanelPrimitives";
 import { FlatSliderReadout } from "./propertyPanelFlatSliderReadout";
+import { FlatSliderStops, snapSliderStop, type SliderStop } from "./propertyPanelFlatSliderStops";
 import {
   VALUE_TIER_LABEL_CLASS,
   VALUE_TIER_VALUE_CLASS,
@@ -58,6 +59,7 @@ export function FlatRow({
       <span className="flex min-w-0 shrink-0 items-center gap-1.5">
         <span
           data-flat-row-value="true"
+          data-flat-row-boxed={boxed ? "true" : undefined}
           className={`min-w-0 font-mono text-[11px] ${VALUE_TIER_VALUE_CLASS[tier]} ${boxed
             ? "w-24 rounded-md bg-panel-bg-inset px-2 py-1 focus-within:ring-1 focus-within:ring-panel-accent/30"
             : `border-b pb-px ${tier === "explicitCustom"
@@ -142,6 +144,7 @@ export function FlatSegmentedRow({
             <Tooltip label={typeof option.node === "string" ? undefined : t(option.label)} wrap><button
               type="button"
               data-flat-segment="true"
+              data-flat-segment-filled={filled ? "true" : undefined}
               aria-label={t(option.label)}
               aria-pressed={option.active}
               disabled={disabled}
@@ -273,8 +276,11 @@ export function FlatSlider({
   step = 1,
   tier,
   displayValue,
+  readout,
+  layout,
   disabled,
   centerTick,
+  stops,
   onReset,
   onCommit,
   onCommitText,
@@ -286,8 +292,11 @@ export function FlatSlider({
   step?: number;
   tier: "default" | "explicitCustom";
   displayValue: string;
+  readout?: "input";
+  layout?: "inline" | "stacked";
   disabled?: boolean;
   centerTick?: boolean;
+  stops?: readonly SliderStop[];
   onReset?: () => void;
   onCommit: (nextValue: number) => void;
   /** Typed readout: return false to refuse the text, keep the field open, and mark it invalid. */
@@ -371,8 +380,11 @@ export function FlatSlider({
   const clampedPct = Math.max(0, Math.min(100, ((draft - min) / Math.max(max - min, 1e-6)) * 100));
 
   const stepFromClientX = (clientX: number, rect: DOMRect) => {
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(rect.width, 1)));
+    const width = Math.max(rect.width, 1);
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / width));
     const raw = min + ratio * (max - min);
+    const snapped = stops && snapSliderStop(raw, min, max, width, stops);
+    if (snapped !== undefined) return snapped;
     const stepped = Math.round(raw / step) * step;
     return Math.max(min, Math.min(max, stepped));
   };
@@ -419,14 +431,29 @@ export function FlatSlider({
     commitDraft(dragStartValueRef.current);
   };
 
+  const rowLayout = {
+    inline: "",
+    stacked: "flex-wrap gap-y-1",
+    responsive: "@max-[224px]/inspector:flex-wrap @max-[224px]/inspector:gap-y-1",
+  }[layout ?? "responsive"];
+  const labelLayout = {
+    inline: "max-w-[86px]",
+    stacked: "basis-full",
+    responsive: "max-w-[86px] @max-[224px]/inspector:basis-full @max-[224px]/inspector:max-w-none",
+  }[layout ?? "responsive"];
+
   return (
-    <div className="flex min-h-[28px] items-center gap-2.5 @max-[224px]/inspector:flex-wrap @max-[224px]/inspector:gap-y-1">
-      <PropertyLabel label={t(label)} className="max-w-[86px] text-panel-text-3 @max-[224px]/inspector:basis-full @max-[224px]/inspector:max-w-none" />
+    <div className={`flex min-h-[28px] items-center gap-2.5 ${rowLayout}`}>
+      <PropertyLabel
+        label={t(label)}
+        className={`text-panel-text-3 ${labelLayout}`}
+      />
       <div
         data-flat-slider-track="true"
         role="slider"
         aria-label={t(label)}
         aria-valuenow={draft}
+        aria-valuetext={stops ? displayValue : undefined}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-disabled={disabled}
@@ -502,7 +529,10 @@ export function FlatSlider({
             cancelDrag(e.currentTarget);
             return;
           }
-          const next = sliderKeyTarget(e.key, draft, min, max, step);
+          const nextStop = e.key === "PageUp"
+            ? stops?.find(stop => stop.value > draft)
+            : e.key === "PageDown" ? stops?.findLast(stop => stop.value < draft) : undefined;
+          const next = nextStop?.value ?? sliderKeyTarget(e.key, draft, min, max, step);
           if (next === null) return;
           e.preventDefault();
           setDraft(next);
@@ -533,6 +563,7 @@ export function FlatSlider({
             />
           )}
         </div>
+        {stops && <FlatSliderStops stops={stops} min={min} max={max} disabled={disabled} />}
         <div
           data-flat-slider-knob="true"
           className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${
@@ -544,6 +575,7 @@ export function FlatSlider({
       <FlatSliderReadout
         label={label}
         displayValue={displayValue}
+        appearance={readout}
         tier={tier}
         disabled={disabled}
         onCommitText={onCommitText}

@@ -12,6 +12,8 @@ import { accountErrorKinds, accountStages, type omEvents } from '../tracking/eve
 import { readSettings, writeSettings } from './settings-storage.ts';
 import { registeredProvider } from '../shared/provider-registry.ts';
 import { resolveGenerationParameters } from '../shared/generation-options.ts';
+import { apiJson, retryRead, type Fetcher } from './network.ts';
+import { resumableDownload, type DownloadProgress } from './resumable-download.ts';
 
 const execute = promisify(execFile);
 const consoleUrl = registeredProvider('account')!.website!;
@@ -23,6 +25,8 @@ type CredentialsFile = { profiles?: Record<string, Profile>; pendingRevocations?
 type AccountOptions = {
   pollMs?: number; binary?: string; authorizationMs?: number; log?: (line: string) => void;
   run?: (args: string[], signal?: AbortSignal) => Promise<string>; spawn?: typeof spawn;
+  fetcher?: Fetcher;
+  download?: typeof import('./network.ts').streamMedia;
   /** Receives one record per finished sign-in attempt. */
   track?: (record: SignInRecord) => void;
 };
@@ -214,7 +218,7 @@ export class OpenDesignAccount {
   prefetch() { void this.prepare().catch(() => {}); }
   async run(args: string[], signal?: AbortSignal) {
     if (this.options.run) return this.options.run(args, signal);
-    try { const { stdout } = await execute(await this.resolveRuntime(), args, { env: this.env(), timeout: 60_000, signal, maxBuffer: 2 * 1024 * 1024 }); return stdout; }
+    try { const { stdout } = await execute(await this.resolveRuntime(), args, { env: this.env(), timeout: 120_000, signal, maxBuffer: 2 * 1024 * 1024 }); return stdout; }
     catch (error) { throw new AccountRequestError(String((error as { stderr?: unknown }).stderr ?? '')); }
   }
   async summary(refresh = false): Promise<AccountSummary> {
@@ -465,7 +469,7 @@ export class OpenDesignAccount {
     return (await this.models()).filter(model => model.enabled && ['image', 'video', 'audio'].includes(model.kind)).map(model => ({ ...model, modality: model.kind as Model['modality'], mode: model.mode! }));
   }
   /** `reference` is the job's snapshotted input image; it turns an image job into an edit of that image. */
-  async generate(job: GenerationJob, directory: string, signal: AbortSignal, progress: (phase: string, id?: string) => Promise<void>, reference?: string) {
+  async generate(job: GenerationJob, directory: string, signal: AbortSignal, progress: (phase: string, id?: string, download?: DownloadProgress) => Promise<void>, reference?: string) {
     const kind = job.modality, params = resolveGenerationParameters(job.model, job.parameters, !!reference);
     if (job.providerOrigin !== await this.identity() || (await this.summary()).state !== 'signed-in') throw new Error(jobMessages.accountChangedBeforeSubmit);
     const music = kind === 'audio' && job.model.mode === 'text-to-audio';
@@ -480,10 +484,12 @@ export class OpenDesignAccount {
       else if (typeof value === 'string' || typeof value === 'number') args.push('--' + key.replaceAll('_', '-'), String(value));
       else throw new Error('Invalid account model parameter');
     }
-    const submitted = JSON.parse(await this.run(args, signal));
+    // Recovery never submits again, even when the draft or reference file has changed.
+    const submitted = job.remoteId ? { task_id: job.remoteId } : JSON.parse(await this.run(args, signal));
     if (typeof submitted.task_id !== 'string' || !/^[\w-]{1,180}$/.test(submitted.task_id)) throw new Error('Account provider did not return a task ID');
     const taskId = submitted.task_id;
     await progress('submitted', taskId);
+    if (kind === 'image') return [await this.imageResult(job, taskId, directory, signal, progress)];
     const output = path.join(directory, 'account-output.bin');
     for (;;) {
       await delay(this.options.pollMs ?? 2000, undefined, { signal });
@@ -494,10 +500,8 @@ export class OpenDesignAccount {
         if (error instanceof AccountRequestError) throw new Error(error.status === 401 || error.code === 'unauthorized' ? jobMessages.resultUnauthorized : jobMessages.resultUnreadable);
         throw error;
       }));
-      // `image get` prints the task while it runs, then the downloaded asset (no task ID) once it has succeeded.
-      const imageReady = kind === 'image' && task.task_id === undefined && typeof task.asset_id === 'string' && task.status === 'ready';
-      if (task.task_id !== taskId && !imageReady) throw new Error('Account provider returned an unexpected task');
-      if (task.status === 'succeeded' || imageReady) {
+      if (task.task_id !== taskId) throw new Error('Account provider returned an unexpected task');
+      if (task.status === 'succeeded') {
         const info = await lstat(output);
         if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024 * 1024) throw new Error('Invalid account media output');
         return [await readFile(output)];
@@ -506,6 +510,45 @@ export class OpenDesignAccount {
       if (!['queued', 'pending', 'running', 'processing', 'submitted'].includes(task.status)) throw new Error(jobMessages.unknownTaskStatus);
       await progress('generating');
     }
+  }
+  private async imageResult(job: GenerationJob, taskId: string, directory: string, signal: AbortSignal,
+    progress: (phase: string, id?: string, download?: DownloadProgress) => Promise<void>) {
+    const read = async () => {
+      if (job.providerOrigin !== await this.identity()) throw new Error(jobMessages.accountChangedAfterSubmit);
+      const profile = await this.profile();
+      if (!signedInProfile(profile)) throw new Error(jobMessages.resultUnauthorized);
+      try {
+        const task = await retryRead(() => apiJson(this.options.fetcher ?? fetch,
+          `${productionApi}/api/v1/media/images/tasks/${encodeURIComponent(taskId)}`,
+          { headers: { Authorization: `Bearer ${profile!.controlKey}` }, signal }, { timeoutMs: 15_000, maxBytes: 1024 * 1024 }), signal, 3);
+        if (job.providerOrigin !== await this.identity()) throw new Error(jobMessages.accountChangedAfterSubmit);
+        if (task.task_id !== taskId || task.model && task.model !== job.model.modelId) throw new Error(jobMessages.resultUnreadable);
+        return task;
+      } catch (error) {
+        if ((error as { status?: number }).status === 401) throw new Error(jobMessages.resultUnauthorized);
+        throw new Error(jobMessages.resultUnreadable);
+      }
+    };
+    const assetFrom = (task: any) => {
+      if (!Array.isArray(task.assets) || task.assets.length !== 1) throw new Error(jobMessages.resultUnreadable);
+      const asset = task.assets[0];
+      if (asset.status !== 'ready' || typeof asset.asset_id !== 'string' || !/^[\w-]{1,180}$/.test(asset.asset_id)
+        || typeof asset.url !== 'string' || typeof asset.mime_type !== 'string') throw new Error(jobMessages.resultUnreadable);
+      return { assetId: asset.asset_id, size: asset.size_bytes, mime: asset.mime_type, url: asset.url };
+    };
+    for (;;) {
+      const task = await read();
+      if (['failed', 'cancelled', 'canceled'].includes(task.status)) { await progress('remote_failed'); throw new Error(jobMessages.taskFailed); }
+      if (task.status === 'succeeded') break;
+      if (!['queued', 'pending', 'running', 'processing', 'submitted'].includes(task.status)) throw new Error(jobMessages.unknownTaskStatus);
+      await progress('generating'); await delay(this.options.pollMs ?? 2000, undefined, { signal });
+    }
+    return resumableDownload(directory, async () => {
+      const task = await read();
+      if (['failed', 'cancelled', 'canceled'].includes(task.status)) { await progress('remote_failed'); throw new Error(jobMessages.taskFailed); }
+      if (task.status !== 'succeeded') throw new Error(jobMessages.resultUnreadable);
+      return assetFrom(task);
+    }, signal, download => progress('downloading', undefined, download), this.options.download);
   }
   close() { this.generation++; this.child?.kill(); this.closing.abort(); }
 }

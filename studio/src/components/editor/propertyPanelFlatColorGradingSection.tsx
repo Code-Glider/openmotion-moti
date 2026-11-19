@@ -1,3 +1,5 @@
+import { NativeSelect } from "../ui/FormField";
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -377,15 +379,7 @@ export function FlatColorGradingSection({
           className="flex min-h-[30px] w-full items-center justify-between text-left"
         >
           <span className="text-[11px] text-panel-text-2">{t("Custom LUT")}</span>
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="currentColor"
-            className={`shrink-0 text-panel-text-5 transition-transform ${lutOpen ? "rotate-90" : ""}`}
-          >
-            <path d="M2 3l3 4 3-4z" />
-          </svg>
+          <RemixIcon name="arrow-down-s-fill" size={10} className={`shrink-0 text-panel-text-5 transition-transform ${lutOpen ? "rotate-90" : ""}`} />
         </button>
         {lutOpen && (
           <div className="space-y-1.5 pb-1">
@@ -393,7 +387,7 @@ export function FlatColorGradingSection({
               <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-panel-text-3">
                 {selectedLutName ?? t("None")}
               </span>
-              <select
+              <NativeSelect
                 data-flat-grade-lut-select="true"
                 aria-label={t("Custom LUT")}
                 value={lut?.src ?? ""}
@@ -410,7 +404,7 @@ export function FlatColorGradingSection({
                     {asset.split("/").pop() ?? asset}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <button
                 type="button"
                 disabled={!onImportAssets}
@@ -488,7 +482,7 @@ export function FlatColorGradingSection({
       {onApplyScopeAvailable && (
         <div className="flex items-center justify-between gap-2 border-t border-panel-hairline pt-1.5">
           <span className="flex items-center gap-1.5 text-[11px] text-panel-text-2">
-            {t("Copy grade to")}{" "}<select
+            {t("Copy grade to")}{" "}<NativeSelect
               aria-label={t("Copy grade to")}
               value={applyScope}
               onChange={(e) => {
@@ -500,7 +494,7 @@ export function FlatColorGradingSection({
             >
               <option value="source-file">{t("Current file media")}</option>
               <option value="project">{t("All project media")}</option>
-            </select>
+            </NativeSelect>
           </span>
           <button
             type="button"

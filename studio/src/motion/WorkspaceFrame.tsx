@@ -1,3 +1,5 @@
+import { FieldInput } from "../components/ui/FormField";
+import { DisclosureRow } from "../../../packages/design-system/react/DisclosureRow";
 import { useProjectArchives, ProjectArchiveMenu, type ProjectArchiveActions } from './ProjectArchives';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpClient } from './mcpClients';
@@ -5,9 +7,10 @@ import { CreativeNavigation } from './CreativeNavigation';
 import { ExploreStudios } from './ExploreStudios';
 import { creativeStudios, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
 import type { Modality } from '../../../shared/gateway';
-import { scenesForStudio, studioDestination, studioDraftKey, type StudioDestination } from './creativeStudios';
+import { motionStudio, scenesForStudio, studioDestination, studioDraftKey, type StudioDestination } from './creativeStudios';
 import { DeveloperPage } from './DeveloperPage';
 import { ModelOverview } from './ModelOverview';
+import { ModelHub } from './ModelHub';
 import { CreativeWorkspace } from './CreativeWorkspace';
 import { AssetsPage } from './AssetsPage';
 import type { AssetDraft } from './AssetComposer';
@@ -42,6 +45,7 @@ import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { BrandKitPage } from './BrandKitPage';
 import { clickMethod, searchStarted, trackStudioClick } from './editorTracking';
+import { reportCreativePageView, type CreativePage } from './exploreTracking';
 
 // Settings shares the model-picker dependencies. Keep it in the loaded shell so
 // an open editor never requests a removed Settings chunk after a local rebuild.
@@ -60,7 +64,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const hostChrome = window.parent !== window && new URLSearchParams(location.search).get('hostChrome') === '1';
   const templatesPage = libraryRequested && !page.creators && !hostChrome;
   // Resource pages cover the editor without unmounting it.
-  const pageOpen = templatesPage || page.motion || page.api || Boolean(page.modelOverview) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
+  const pageOpen = templatesPage || page.motion || page.api || Boolean(page.modelOverview) || Boolean(page.modelHub) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
   const lastExplore = useRef({ community: page.community, medium: page.medium });
   if (page.explore) lastExplore.current = { community: page.community, medium: page.medium };
   const [exploreVisited, setExploreVisited] = useState(page.explore);
@@ -213,14 +217,30 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     } else openStudio(studioDestination(entry, scenesForStudio(entry).find(scene => scene.modality === kind)?.id));
   };
   const openModel = (modelOverview: string) => navigatePage({ modelOverview, templates: false, ...lastExplore.current });
+  const openModelHub = (modelHub: string) => navigatePage({ modelHub, templates: false, ...lastExplore.current });
   const currentPage = templatesPage ? null : page.api ? 'api' : page.explore ? 'explore' : settings === 'mcp' ? 'mcp' : null;
+  // One page view per arrival on Explore, the Motion Studio landing, the API page or a model overview.
+  // Design, Cinema and Sound report from their own Studio form (AssetsPage), which knows the scene shown.
+  const routeView = templatesPage ? null : page.explore ? 'explore' : page.motion ? 'motion' : page.api ? 'api' : page.modelOverview ? 'model:' + page.modelOverview : null;
+  useEffect(() => {
+    if (!routeView) return;
+    const hasProject = Boolean(projectId);
+    if (routeView === 'explore') reportCreativePageView('explore', hasProject, { community: page.community, medium: page.medium ?? 'all' });
+    else if (routeView === 'motion') reportCreativePageView('creative_studio', hasProject, { studio: 'motion', landing: true });
+    else if (routeView === 'api') reportCreativePageView('api', hasProject);
+    else reportCreativePageView('model_overview', hasProject, { model: page.modelOverview });
+    // Only an arrival counts; filter changes within Explore are reported as clicks.
+  }, [routeView]);
+  // Where the top navigation is shown, so its clicks segment by the page the user was on.
+  const navTrackingPage: CreativePage = templatesPage ? 'studio' : currentPage ?? (settings === 'brand-kit' ? 'brand_kit' : settings ? 'settings'
+    : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio');
   const openPage = (target: 'explore' | 'api' | 'mcp', client?: McpClient) => {
     if (target === 'api') { navigatePage({ api: true, tool: null, templates: false, ...lastExplore.current }); return; }
     if (target === 'mcp') connectionEntry.current = 'app_header';
-    navigatePage(target === 'explore' ? { explore: true, templates: false, ...(page.motion || page.modelOverview || page.specialty || page.studio || page.skills ? { community: page.community, medium: page.medium } : lastExplore.current) } : { settings: 'mcp', templates: false, ...(client && { client, setup: 'agent' }) });
+    navigatePage(target === 'explore' ? { explore: true, templates: false, ...(page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills ? { community: page.community, medium: page.medium } : lastExplore.current) } : { settings: 'mcp', templates: false, ...(client && { client, setup: 'agent' }) });
   };
-  const galleryNavigation = !hostChrome && <CreativeNavigation onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} onSkill={openSkill} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} openProviders={value.openModelSettings} />;
-  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday} detailOnly={detailOnly}
+  const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} onSkill={openSkill} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} openProviders={value.openModelSettings} />;
+  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday} collectionSkillOpen={page.blackFriday && Boolean(page.skill)} detailOnly={detailOnly}
     initialTemplate={detailOnly && cardPreview.current?.locale === locale ? cardPreview.current.template : undefined}
     onBrowseTemplates={() => navigatePage({ templates: true, blackFriday: false, ...(page.blackFriday && { skill: null }), template: null })}
     onOpenSkill={(skill, trigger) => {
@@ -250,9 +270,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     {archives.manager}
     <Dialog.Root open={sidebarOpen && narrow && editorActive} onOpenChange={setSidebarOpen}>
     <div ref={applicationRef} className="om-application" data-embedded={presentation.embedded} data-host-chrome={hostChrome} data-navigation-collapsed={navigationCollapsed}>
-      <ApplicationHeader onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings} toggleResourceRail={resource && !hostChrome ? () => setResourceRailCollapsed(collapsed => !collapsed) : undefined}
+      <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
+        onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings} toggleResourceRail={resource && !hostChrome ? () => setResourceRailCollapsed(collapsed => !collapsed) : undefined}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
-        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} onNavigate={openStudio} />
+        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} onNavigate={openStudio} />
       {(editorRoute || resource) && <ApplicationRail resource={resource} openSettings={openSettings} projects={editorRoute ? <WorkspaceProjectsButton
         applicationRef={applicationRef}
         expanded={sidebarOpen && editorActive}
@@ -276,7 +297,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         {children}
       </div>
       {(exploreVisited || page.explore) && <div className="om-explore-host" hidden={!page.explore || templatesPage} inert={!page.explore || templatesPage}>
-        <ExploreStudios onModel={openModel} onOpenBlackFriday={trigger => {
+        <ExploreStudios onModel={openModel} onModelHub={openModelHub} onOpenBlackFriday={trigger => {
           libraryTrigger.current = trigger;
           workspace.clearError();
           reportBlackFridayEntry();
@@ -287,6 +308,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         onExplore={() => openPage('explore')} onOpenEditor={() => openStudio(null)} /></div>}
       {page.api && !templatesPage && <div className="om-explore-host"><DeveloperPage toolId={page.tool} onTool={tool => navigatePage({ tool })} onModel={openModel}
         onProviders={value.openModelSettings} onExplore={() => openPage('explore')} onConnect={() => openPage('mcp')} /></div>}
+      {page.modelHub && !templatesPage && <div className="om-explore-host"><ModelHub id={page.modelHub} hasProject={Boolean(projectId)} onExplore={() => openPage('explore')} onModel={openModel} onSettings={openSettings}
+        onProvider={provider => navigatePage({ settings: 'providers', provider, templates: false })}
+        onUse={() => chooseStudio(motionStudio)} /></div>}
       {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} onExplore={() => openPage('explore')}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudio} /></div>}
       <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenAssets={hostChrome ? openAssets : undefined} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })} onExplore={() => openPage('explore')} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} onNavigate={studio => navigatePage({ studio, templates: false })} /></div>
@@ -332,13 +356,15 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
         </button>
       </Tooltip>
     </div>
-    <label className="motion-session-search"><MotionIcon name="search" /><input type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
+    <label data-form-field="regular" className="motion-session-search"><MotionIcon name="search" /><FieldInput appearance="embedded" type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
     <nav className="motion-session-list" aria-label={t('Project list')} aria-busy={loadingProjects}>
       {loadingProjects && ['75%', '55%', '65%'].map(width => <div key={width} className="motion-session pointer-events-none" data-testid="project-list-skeleton" aria-hidden="true">
         <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
       </div>)}
       {workspace.status && !filtered.length && <p className="motion-session-empty">{t(query ? 'No matching projects' : 'Create a project with your Agent to start editing.')}</p>}
-      {filtered.map(project => <div key={project.id} className="om-project-sidebar-row om-nav-row" data-active={currentId === project.id}><Tooltip label={project.title} wrap><button aria-label={project.title} className="motion-session om-nav-row-link" aria-current={currentId === project.id ? 'page' : undefined}
+      {filtered.map(project => <DisclosureRow key={project.id} className="om-project-sidebar-row" active={currentId === project.id}
+        action={<ProjectArchiveMenu projectId={project.id} title={project.title} archives={archives} />}>
+        <Tooltip label={project.title} wrap><button aria-label={project.title} className="motion-session om-disclosure-row-label" aria-current={currentId === project.id ? 'page' : undefined}
         disabled={switchingDisabled} onClick={event => {
           if (project.id === currentId) return;
           void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'open_project', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
@@ -346,7 +372,8 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
           onNavigate?.();
         }}>
         <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>
-      </button></Tooltip><ProjectArchiveMenu projectId={project.id} title={project.title} archives={archives} /></div>)}
+      </button></Tooltip>
+      </DisclosureRow>)}
     </nav>
     <div className="motion-sidebar-footer">
       <button className="om-nav-item" type="button" onClick={archives.showManager}><RemixIcon name="folder-open-line" size={18} />{t('All projects')}</button>

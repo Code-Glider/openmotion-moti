@@ -55,6 +55,8 @@ export type GenerationJob = { id: string; projectId?: string; library?: LibraryG
   result?: Record<string, unknown>;
   /** Cloud confirmed failure/cancellation; polling cannot recover this task. */
   remoteTerminal?: boolean;
+  /** Original account image transfer; signed URLs and credentials are never persisted. */
+  download?: { assetId: string; receivedBytes: number; totalBytes: number };
   createdAt: number; updatedAt: number; startedAt?: number; workerPid?: number;
   phase: string; error?: string; remoteId?: string; assets: GeneratedAsset[] };
 
@@ -65,11 +67,11 @@ export function modelReferenceLimit(model: Model): number {
 }
 /** Local eligibility; the service additionally rechecks project, origin and credentials. */
 export function resumableJob(job: GenerationJob): boolean {
-  return job.model.provider === 'opendesign' && typeof job.remoteId === 'string' && /^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)
+  return (job.model.provider === 'opendesign' || job.model.provider === 'account' && job.modality === 'image') && typeof job.remoteId === 'string' && /^[a-zA-Z0-9_-]{1,180}$/.test(job.remoteId)
     && job.state === 'failed' && !job.savePending && !job.remoteTerminal
     && !legacyRemoteTerminal(job);
 }
 /** Earlier adapters recorded a Cloud-confirmed failure/cancellation only in the error message. */
 export function legacyRemoteTerminal(job: GenerationJob): boolean {
-  return /^OpenDesign Cloud task (failed|cancelled)\b/.test(job.error ?? '');
+  return /^OpenDesign Cloud task (failed|cancelled)\b|^Account media task failed\./.test(job.error ?? '');
 }

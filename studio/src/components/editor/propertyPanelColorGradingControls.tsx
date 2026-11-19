@@ -1,3 +1,4 @@
+import { NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -327,7 +328,7 @@ export function ColorGradingControls({
     <div className="space-y-3">
       <label className="grid min-w-0 gap-1.5">
         <span className={LABEL}>{t("Preset")}</span>
-        <select
+        <NativeSelect
           value={String(grading.preset ?? "neutral")}
           onChange={(event) => applyPreset(event.target.value)}
           className="w-full min-w-0 rounded-md bg-panel-input px-3 py-2 text-[11px] font-medium text-panel-text-1 outline-hidden"
@@ -337,7 +338,7 @@ export function ColorGradingControls({
               {t(preset.label)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
       <ColorGradingSliderControl
         label={t("Preset strength")}
@@ -370,7 +371,7 @@ export function ColorGradingControls({
         {lutOpen && (
           <div className="grid gap-1.5 border-t border-panel-border/60 p-1.5">
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_28px] gap-2">
-              <select
+              <NativeSelect
                 value={selectedLut}
                 onChange={(event) => {
                   const nextSrc = event.target.value;
@@ -393,7 +394,7 @@ export function ColorGradingControls({
                     ))}
                   </optgroup>
                 )}
-              </select>
+              </NativeSelect>
               <button
                 type="button"
                 disabled={!onImportAssets || lutImporting}

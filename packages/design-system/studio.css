@@ -15,6 +15,10 @@
 @import "./studio/media-detail.css";
 @import "./studio/audio-assets.css";
 @import "./studio/media-quick-actions.css";
+@import "./studio/formFields.css";
+@import "./studio/menuPanels.css";
+@import "./studio/propertyPanelControls.css";
+@import "./studio/disclosure.css";
 
 /* Asset geometry is shared; currentColor follows the application's selected theme. */
 .motion-brand-lockup {
@@ -25,6 +29,12 @@
   vertical-align: middle;
   background: currentColor;
   mask: url("./brand/openmotion-logo.svg") center / contain no-repeat;
+}
+
+.motion-brand-lockup:where([data-brand="editor"]) {
+  color: var(--motion-strong);
+  aspect-ratio: 1705 / 291;
+  mask-image: url("./opendesign-dark.svg");
 }
 
 /* Shared placement feedback: crisp target geometry and a readable live readout. */

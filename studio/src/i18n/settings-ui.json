@@ -337,7 +337,16 @@
     "Send this instruction to your Agent. It will check installation, start OpenMotion if needed, and verify the connection.": "将指令发给你的 Agent，它会检查安装状态，按需启动 OpenMotion 并验证连接。",
     "Available": "可用",
     "Signed in; multimodal generation requires OpenDesign Plus or above": "已登录；多模态生成需要 OpenDesign Plus 或以上套餐",
-    "Signed in; model access and balance are checked when generating": "已登录；生成时将检查模型权限和余额"
+    "Signed in; model access and balance are checked when generating": "已登录；生成时将检查模型权限和余额",
+    "Voiceover": "配音",
+    "Music": "音乐",
+    "Sign in to start multimodal generation": "登录 OpenDesign，开始多模态生成",
+    "Plus and above": "Plus 及以上",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "登录后升级到 Plus，即可在 OpenMotion 里直接生成图片、视频、配音和音乐，不用配置 API 密钥。",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "升级到 Plus，即可生成图片、视频、配音和音乐；Pro、Max 同样包含。",
+    "Upgrade to Plus": "升级到 Plus",
+    "Annual offer": "年付优惠",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus、Pro、Max 按年付比按月付省 30%。"
   },
   "ja": {
     "Local Agents": "ローカル Agent",
@@ -451,7 +460,16 @@
     "Auto save on": "自動保存オン",
     "Changes could not be saved. Resolve the error before continuing.": "変更を保存できませんでした。先にエラーを解決してください。",
     "Changes save automatically. Pending edits are checked every 15 seconds.": "変更は自動保存されます。15 秒ごとに未保存の編集を確認します。",
-    "Available": "利用可能"
+    "Available": "利用可能",
+    "Voiceover": "ナレーション",
+    "Music": "音楽",
+    "Sign in to start multimodal generation": "OpenDesign にサインインしてマルチモーダル生成を始める",
+    "Plus and above": "Plus 以上",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "サインイン後に Plus へアップグレードすると、OpenMotion で画像・動画・ナレーション・音楽を直接生成できます。API キーの設定は不要です。",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Plus にアップグレードすると画像・動画・ナレーション・音楽を生成できます。Pro と Max にも含まれます。",
+    "Upgrade to Plus": "Plus にアップグレード",
+    "Annual offer": "年払い特典",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus・Pro・Max は年払いで月払いより 30% お得です。"
   },
   "ko": {
     "What's new": "새로운 소식",
@@ -460,7 +478,16 @@
     "Auto saved: {time}": "자동 저장: {time}",
     "Auto save on": "자동 저장 켜짐",
     "Changes could not be saved. Resolve the error before continuing.": "변경 사항을 저장하지 못했습니다. 먼저 오류를 해결하세요.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "변경 사항은 자동으로 저장됩니다. 15초마다 대기 중인 편집을 확인합니다."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "변경 사항은 자동으로 저장됩니다. 15초마다 대기 중인 편집을 확인합니다.",
+    "Voiceover": "내레이션",
+    "Music": "음악",
+    "Sign in to start multimodal generation": "OpenDesign에 로그인하고 멀티모달 생성 시작하기",
+    "Plus and above": "Plus 이상",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "로그인 후 Plus로 업그레이드하면 OpenMotion에서 이미지, 영상, 내레이션, 음악을 바로 생성할 수 있습니다. API 키 설정이 필요 없습니다.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Plus로 업그레이드하면 이미지, 영상, 내레이션, 음악을 생성할 수 있습니다. Pro와 Max에도 포함됩니다.",
+    "Upgrade to Plus": "Plus로 업그레이드",
+    "Annual offer": "연간 결제 혜택",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro, Max는 연간 결제 시 월간 결제보다 30% 저렴합니다."
   },
   "de": {
     "What's new": "Neuigkeiten",
@@ -469,7 +496,16 @@
     "Auto saved: {time}": "Automatisch gespeichert: {time}",
     "Auto save on": "Automatisches Speichern aktiv",
     "Changes could not be saved. Resolve the error before continuing.": "Änderungen konnten nicht gespeichert werden. Beheben Sie zuerst den Fehler.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Änderungen werden automatisch gespeichert. Ausstehende Änderungen werden alle 15 Sekunden geprüft."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Änderungen werden automatisch gespeichert. Ausstehende Änderungen werden alle 15 Sekunden geprüft.",
+    "Voiceover": "Voiceover",
+    "Music": "Musik",
+    "Sign in to start multimodal generation": "Bei OpenDesign anmelden und multimodal generieren",
+    "Plus and above": "Ab Plus",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Melde dich an und upgrade auf Plus, um Bilder, Videos, Voiceovers und Musik direkt in OpenMotion zu erstellen. Keine API-Schlüssel nötig.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Upgrade auf Plus, um Bilder, Videos, Voiceovers und Musik zu erstellen. Auch in Pro und Max enthalten.",
+    "Upgrade to Plus": "Auf Plus upgraden",
+    "Annual offer": "Jahresangebot",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro und Max kosten bei jährlicher Zahlung 30 % weniger."
   },
   "fr": {
     "What's new": "Nouveautés",
@@ -478,7 +514,16 @@
     "Auto saved: {time}": "Enregistré automatiquement : {time}",
     "Auto save on": "Enregistrement automatique activé",
     "Changes could not be saved. Resolve the error before continuing.": "Les modifications n’ont pas pu être enregistrées. Résolvez d’abord l’erreur.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Les modifications sont enregistrées automatiquement et vérifiées toutes les 15 secondes."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Les modifications sont enregistrées automatiquement et vérifiées toutes les 15 secondes.",
+    "Voiceover": "Voix off",
+    "Music": "Musique",
+    "Sign in to start multimodal generation": "Connectez-vous à OpenDesign pour générer en multimodal",
+    "Plus and above": "Plus et au-delà",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Connectez-vous, puis passez à Plus pour générer images, vidéos, voix off et musique directement dans OpenMotion. Aucune clé API à configurer.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Passez à Plus pour générer images, vidéos, voix off et musique. Pro et Max les incluent aussi.",
+    "Upgrade to Plus": "Passer à Plus",
+    "Annual offer": "Offre annuelle",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro et Max coûtent 30 % de moins en paiement annuel."
   },
   "ru": {
     "What's new": "Что нового",
@@ -487,7 +532,16 @@
     "Auto saved: {time}": "Автосохранение: {time}",
     "Auto save on": "Автосохранение включено",
     "Changes could not be saved. Resolve the error before continuing.": "Не удалось сохранить изменения. Сначала устраните ошибку.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Изменения сохраняются автоматически. Проверка несохранённых изменений — каждые 15 секунд."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Изменения сохраняются автоматически. Проверка несохранённых изменений — каждые 15 секунд.",
+    "Voiceover": "Озвучка",
+    "Music": "Музыка",
+    "Sign in to start multimodal generation": "Войдите в OpenDesign и начните мультимодальную генерацию",
+    "Plus and above": "Plus и выше",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Войдите и перейдите на Plus, чтобы создавать изображения, видео, озвучку и музыку прямо в OpenMotion. Настраивать API-ключи не нужно.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Перейдите на Plus, чтобы создавать изображения, видео, озвучку и музыку. Pro и Max тоже это включают.",
+    "Upgrade to Plus": "Перейти на Plus",
+    "Annual offer": "Годовая выгода",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro и Max на 30% дешевле при оплате за год."
   },
   "es": {
     "What's new": "Novedades",
@@ -496,7 +550,16 @@
     "Auto saved: {time}": "Guardado automático: {time}",
     "Auto save on": "Guardado automático activado",
     "Changes could not be saved. Resolve the error before continuing.": "No se pudieron guardar los cambios. Resuelve el error antes de continuar.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Los cambios se guardan automáticamente. Se comprueban los cambios pendientes cada 15 segundos."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Los cambios se guardan automáticamente. Se comprueban los cambios pendientes cada 15 segundos.",
+    "Voiceover": "Locución",
+    "Music": "Música",
+    "Sign in to start multimodal generation": "Inicia sesión en OpenDesign para empezar a generar en multimodal",
+    "Plus and above": "Plus o superior",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Inicia sesión y mejora a Plus para generar imágenes, vídeo, locuciones y música directamente en OpenMotion. Sin configurar claves de API.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Mejora a Plus para generar imágenes, vídeo, locuciones y música. Pro y Max también lo incluyen.",
+    "Upgrade to Plus": "Mejorar a Plus",
+    "Annual offer": "Oferta anual",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro y Max cuestan un 30 % menos con pago anual."
   },
   "pt-BR": {
     "What's new": "Novidades",
@@ -505,7 +568,16 @@
     "Auto saved: {time}": "Salvo automaticamente: {time}",
     "Auto save on": "Salvamento automático ativado",
     "Changes could not be saved. Resolve the error before continuing.": "Não foi possível salvar as alterações. Resolva o erro antes de continuar.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "As alterações são salvas automaticamente. Edições pendentes são verificadas a cada 15 segundos."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "As alterações são salvas automaticamente. Edições pendentes são verificadas a cada 15 segundos.",
+    "Voiceover": "Narração",
+    "Music": "Música",
+    "Sign in to start multimodal generation": "Entre no OpenDesign para começar a gerar em multimodal",
+    "Plus and above": "Plus ou superior",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Entre e faça upgrade para o Plus para gerar imagens, vídeos, narrações e música direto no OpenMotion. Sem configurar chaves de API.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Faça upgrade para o Plus para gerar imagens, vídeos, narrações e música. Pro e Max também incluem.",
+    "Upgrade to Plus": "Fazer upgrade para o Plus",
+    "Annual offer": "Oferta anual",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro e Max custam 30% menos no pagamento anual."
   },
   "it": {
     "What's new": "Novità",
@@ -514,7 +586,16 @@
     "Auto saved: {time}": "Salvataggio automatico: {time}",
     "Auto save on": "Salvataggio automatico attivo",
     "Changes could not be saved. Resolve the error before continuing.": "Impossibile salvare le modifiche. Risolvi l’errore prima di continuare.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Le modifiche vengono salvate automaticamente. Quelle in sospeso vengono controllate ogni 15 secondi."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Le modifiche vengono salvate automaticamente. Quelle in sospeso vengono controllate ogni 15 secondi.",
+    "Voiceover": "Voce fuori campo",
+    "Music": "Musica",
+    "Sign in to start multimodal generation": "Accedi a OpenDesign per iniziare a generare in multimodale",
+    "Plus and above": "Plus e superiori",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Accedi e passa a Plus per generare immagini, video, voci fuori campo e musica direttamente in OpenMotion. Nessuna chiave API da configurare.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Passa a Plus per generare immagini, video, voci fuori campo e musica. Anche Pro e Max li includono.",
+    "Upgrade to Plus": "Passa a Plus",
+    "Annual offer": "Offerta annuale",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro e Max costano il 30% in meno con il pagamento annuale."
   },
   "tr": {
     "What's new": "Yenilikler",
@@ -523,6 +604,15 @@
     "Auto saved: {time}": "Otomatik kaydedildi: {time}",
     "Auto save on": "Otomatik kayıt açık",
     "Changes could not be saved. Resolve the error before continuing.": "Değişiklikler kaydedilemedi. Devam etmeden önce hatayı giderin.",
-    "Changes save automatically. Pending edits are checked every 15 seconds.": "Değişiklikler otomatik kaydedilir. Bekleyen düzenlemeler her 15 saniyede kontrol edilir."
+    "Changes save automatically. Pending edits are checked every 15 seconds.": "Değişiklikler otomatik kaydedilir. Bekleyen düzenlemeler her 15 saniyede kontrol edilir.",
+    "Voiceover": "Seslendirme",
+    "Music": "Müzik",
+    "Sign in to start multimodal generation": "OpenDesign'a giriş yap ve çok modlu üretime başla",
+    "Plus and above": "Plus ve üzeri",
+    "Sign in, then upgrade to Plus to generate images, video, voiceovers and music right in OpenMotion. No API keys to set up.": "Giriş yap, ardından Plus'a yükselterek görsel, video, seslendirme ve müziği doğrudan OpenMotion'da üret. API anahtarı ayarlamana gerek yok.",
+    "Upgrade to Plus to generate images, video, voiceovers and music. Pro and Max include them too.": "Plus'a yükselterek görsel, video, seslendirme ve müzik üret. Pro ve Max de bunları içerir.",
+    "Upgrade to Plus": "Plus'a yükselt",
+    "Annual offer": "Yıllık teklif",
+    "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro ve Max yıllık ödemede %30 daha ucuz."
   }
 }

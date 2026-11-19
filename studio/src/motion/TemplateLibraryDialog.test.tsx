@@ -75,23 +75,70 @@ async function fill(element: HTMLInputElement | HTMLTextAreaElement, value: stri
 const searchInput = () => host.querySelector<HTMLInputElement>('input[type=search]')!;
 const confirmSearch = () => act(async () => searchInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
 const clearKeyword = () => act(async () => button(`Remove filter ${searchInput().value}`).click());
-it('opens the Black Friday collection without the category row and previews videos in campaign order', async () => {
+it('shows all Black Friday templates in one masonry gallery and previews them in order', async () => {
   const onClose = vi.fn();
   await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog blackFriday open busy={false} error="" onClose={onClose} onOpen={vi.fn()} /></I18nProvider>));
   expect(host.querySelector('[aria-label="Video purpose"]')).toBeNull();
-  expect(host.querySelector('[data-black-friday] h1')?.textContent).toBe('Black Friday.');
+  const banner = host.querySelector('[data-black-friday] header')!;
+  expect(banner.querySelector('h1')?.textContent).toBe('Black Friday');
+  expect(button('Back to Explore', banner)).toBeTruthy();
+  expect(banner.querySelectorAll('button')).toHaveLength(1);
   expect(cards()).toHaveLength(10);
-  expect(host.querySelectorAll('[data-black-friday] .ui-text-link')).toHaveLength(5);
+  const galleries = host.querySelectorAll('[data-black-friday] .om-gallery-masonry');
+  expect(galleries).toHaveLength(1);
+  expect(galleries[0].querySelectorAll(':scope > .om-gallery-card')).toHaveLength(10);
+  expect(galleries[0].querySelector('.om-gallery-avatar')).toBeNull();
+  expect(galleries[0].querySelector('.om-gallery-card-caption small')?.textContent).toBe('Zzz_Futurist');
+  expect([...host.querySelectorAll('[data-black-friday] h2')].map(heading => heading.textContent)).toEqual(['Black Friday templates']);
+  expect(host.querySelector('[data-black-friday] .ui-text-link')).toBeNull();
   expect(document.activeElement).toBe(host.querySelector('[data-black-friday] h1'));
+  const filters = host.querySelector('nav[aria-label="Black Friday collection"]')!;
+  expect(filters.previousElementSibling?.textContent).toBe('Black Friday templates');
+  expect(filters.nextElementSibling?.querySelector('input[type=search]')).toBe(searchInput());
+  expect(host.querySelector('header .om-gallery-page-label, header .om-gallery-header-actions')).toBeNull();
+  const all = button('All', filters);
+  expect(filters.querySelector('button[aria-pressed="true"]')).toBe(all);
+  for (const [label, count] of [['Before the sale', 2], ['Sale launch', 6], ['Cyber Monday and last call', 2]] as const) {
+    const stage = button(label, filters);
+    await act(async () => stage.click());
+    expect([...filters.querySelectorAll('button[aria-pressed="true"]')]).toEqual([stage]);
+    expect(cards()).toHaveLength(count);
+  }
+  await act(async () => all.click());
+  expect(cards()).toHaveLength(10);
+  const playback = observer();
+  const visibleCards = playback.elements.slice(0, 2);
+  act(() => playback.emit(1, visibleCards));
+  expect(loadedVideos()).toHaveLength(2);
+  act(() => playback.emit(0, visibleCards));
+  expect(loadedVideos()).toHaveLength(0);
   await act(async () => preview('Black Friday | 3D Type and Product Reveal'));
   expect(current()).toBe('Black Friday | 3D Type and Product Reveal');
   expect(events('ui_click', { area: 'template_card', element: 'open_detail' }).at(-1)).toMatchObject({ placement: 'black_friday' });
   const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
   await act(async () => button('Next template', detail).click());
   expect(current()).toBe('Agentcard | Black-and-Gold Type and Card Launch');
+  await act(async () => button('Next template', detail).click());
+  expect(current()).toBe('Black Friday | Text-led SaaS Promotion');
   await act(async () => button('Close template preview', detail).click());
   await act(async () => button('Back to Explore').click());
   expect(onClose).toHaveBeenCalledOnce();
+});
+
+it('hides the project return only when the same template is opened from Black Friday', async () => {
+  sessionStorage.setItem('motion.template-handoff.preview', '1');
+  const template = { ...items[1], id: 'black-friday-a5238e113514', title: 'Black Friday | 3D Type and Product Reveal' };
+  fetchItems([template]);
+
+  for (const blackFriday of [true, false]) {
+    await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog key={String(blackFriday)} blackFriday={blackFriday} open inWorkspace busy={false} error="" onClose={vi.fn()} onOpen={vi.fn()} /></I18nProvider>));
+    await act(async () => preview(template.title));
+    const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+    expect(detail.open).toBe(true);
+    expect(current()).toBe(template.title);
+    expect(Boolean(button('Back to current project', detail))).toBe(!blackFriday);
+    await act(async () => button('Close template preview', detail).click());
+  }
 });
 
 it('keeps the search in the header and preserves filters when clearing the keyword', async () => {
@@ -124,7 +171,7 @@ it('opens the reference-link form from each category without changing browsing o
   expect(actions.querySelector('a')?.classList.contains('om-gallery-submit')).toBe(true);
   expect(button('Surprise me', actions).classList.contains('om-gallery-surprise')).toBe(true);
   expect(actions.nextElementSibling?.contains(trigger)).toBe(true);
-  expect(trigger.hasAttribute('data-primary')).toBe(true);
+  expect(trigger.hasAttribute('data-primary')).toBe(false);
   expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
   const initialCards = cards();
   expect(events('surface_view', { element: 'reference' })).toHaveLength(0);

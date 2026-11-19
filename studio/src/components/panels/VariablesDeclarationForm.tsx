@@ -1,3 +1,5 @@
+import { ColorField } from "../editor/propertyPanelColor";
+import { FieldInput, FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 /**
  * Add/edit form for a variable declaration. Builds a typed
@@ -196,18 +198,18 @@ function DefaultField({
 }) {
   if (draft.type === "boolean") {
     return (
-      <select
+      <NativeSelect
         value={draft.defaultRaw === "true" ? "true" : "false"}
         onChange={(e) => onChange(e.target.value)}
         className={VARIABLES_INPUT_CLASS}
       >
         <option value="false">false</option>
         <option value="true">true</option>
-      </select>
+      </NativeSelect>
     );
   }
   return (
-    <input
+    <FieldInput
       type="text"
       value={draft.defaultRaw}
       onChange={(e) => onChange(e.target.value)}
@@ -247,7 +249,7 @@ export function DeclarationForm({
     <div className="space-y-2 rounded-lg border border-neutral-800 bg-neutral-900/60 p-2">
       <div className="grid grid-cols-2 gap-2">
         <Field label="ID">
-          <input
+          <FieldInput
             type="text"
             value={draft.id}
             disabled={editingExisting}
@@ -257,7 +259,7 @@ export function DeclarationForm({
           />
         </Field>
         <Field label={t("Label")}>
-          <input
+          <FieldInput
             type="text"
             value={draft.label}
             onChange={(e) => set({ label: e.target.value })}
@@ -268,7 +270,7 @@ export function DeclarationForm({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Field label={t("Type")}>
-          <select
+          <NativeSelect
             value={draft.type}
             onChange={(e) => {
               const type = VARIABLE_TYPES.find((t) => t === e.target.value);
@@ -281,17 +283,27 @@ export function DeclarationForm({
                 {t}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </Field>
-        <Field label={t("Default")}>
-          <DefaultField draft={draft} onChange={(defaultRaw) => set({ defaultRaw })} />
-        </Field>
+        {draft.type === "color" ? (
+          <ColorField
+            layout="stacked"
+            label={t("Default")}
+            value={draft.defaultRaw}
+            allowCssValue
+            onCommit={(defaultRaw) => set({ defaultRaw })}
+          />
+        ) : (
+          <Field label={t("Default")}>
+            <DefaultField draft={draft} onChange={(defaultRaw) => set({ defaultRaw })} />
+          </Field>
+        )}
       </div>
       {draft.type === "number" && (
         <div className="grid grid-cols-3 gap-2">
           {(["min", "max", "step"] as const).map((key) => (
             <Field key={key} label={key}>
-              <input
+              <FieldInput
                 type="text"
                 value={draft[key]}
                 onChange={(e) => set({ [key]: e.target.value })}
@@ -303,7 +315,7 @@ export function DeclarationForm({
       )}
       {draft.type === "enum" && (
         <Field label={t("Options (one per line, value:Label)")}>
-          <textarea
+          <FieldTextarea
             value={draft.optionsRaw}
             onChange={(e) => set({ optionsRaw: e.target.value })}
             rows={3}
@@ -312,7 +324,7 @@ export function DeclarationForm({
         </Field>
       )}
       <Field label={t("Description (optional)")}>
-        <input
+        <FieldInput
           type="text"
           value={draft.description}
           onChange={(e) => set({ description: e.target.value })}

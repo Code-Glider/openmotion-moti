@@ -1,3 +1,4 @@
+import { FieldInput } from "../ui/FormField";
 import { Tooltip } from "../ui/Tooltip";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
@@ -187,7 +188,7 @@ export function CommitField({
   }, [disabled]);
 
   const input = (
-    <Tooltip label={parseNumericToken(value) ? t("Scroll or use Arrow keys to adjust") : undefined} wrap><input
+    <Tooltip label={parseNumericToken(value) ? t("Scroll or use Arrow keys to adjust") : undefined} wrap><FieldInput appearance="embedded"
       ref={inputRef}
       type="text"
       value={draft}
@@ -232,6 +233,7 @@ export function CommitField({
           <button
             key={direction}
             type="button"
+            data-inspector-step={direction}
             aria-label={t(direction === 1 ? "Increase" : "Decrease")}
             disabled={disabled || !parseNumericToken(draft)}
             onMouseDown={(event) => event.preventDefault()}
