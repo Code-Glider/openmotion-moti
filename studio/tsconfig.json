@@ -24,7 +24,8 @@
     "isolatedModules": true
   },
   "include": [
-    "src"
+    "src",
+    "../packages/design-system/components/site/**/*.tsx"
   ],
   "exclude": [
     "build",

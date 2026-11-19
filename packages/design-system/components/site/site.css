@@ -1,0 +1,104 @@
+@import "tailwindcss" source(none);
+@import "../../tailwind.css";
+@import "../../studio.css";
+
+@source "../*.tsx";
+@source "../../react/BrandLogo.tsx";
+
+body {
+  background: var(--motion-panel);
+  color: var(--motion-text);
+  font: var(--motion-text-body)/var(--motion-leading-body) var(--motion-font-sans);
+}
+
+.site-header {
+  border-bottom: 1px solid var(--motion-border-subtle);
+}
+
+.header-inner,
+.site-layout {
+  width: min(100%, 1080px);
+  margin-inline: auto;
+  padding-inline: clamp(var(--motion-space-16), 4vw, var(--motion-space-40));
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--motion-space-12);
+  padding-block: var(--motion-space-12);
+}
+
+.header-inner label, .button-examples, .entry-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--motion-space-8);
+}
+
+.site-layout {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: var(--motion-space-32);
+  padding-block: var(--motion-space-40);
+}
+
+.site-nav {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--motion-space-12);
+}
+
+.site-layout a {
+  color: var(--motion-text);
+  text-decoration: underline;
+  text-underline-offset: var(--motion-space-4);
+}
+
+.site-layout h1, .site-layout h2 {
+  color: var(--motion-strong);
+  font-weight: var(--motion-weight-semibold);
+}
+
+.site-layout h1 {
+  font-size: var(--motion-text-display);
+  line-height: var(--motion-leading-tight);
+}
+.site-layout h2 { font-size: var(--motion-text-title); }
+.site-layout p { color: var(--motion-muted); }
+.site-intro { margin-block: var(--motion-space-8) var(--motion-space-32); }
+
+.site-layout section {
+  display: grid;
+  gap: var(--motion-space-8);
+  margin-bottom: var(--motion-space-32);
+  scroll-margin-top: var(--motion-space-16);
+}
+
+.preview, .site-layout pre {
+  border: 1px solid var(--motion-border-subtle);
+  border-radius: var(--motion-radius-md);
+  padding: var(--motion-space-16);
+}
+
+.preview { background: var(--motion-bg); }
+.site-layout pre {
+  background: var(--motion-inset);
+  overflow-x: auto;
+  font: var(--motion-text-sm)/var(--motion-leading-body) var(--motion-font-mono);
+}
+
+.slider-example { max-width: 320px; }
+.slider-example > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--motion-space-8);
+}
+
+@media (max-width: 600px) {
+  .site-layout { grid-template-columns: minmax(0, 1fr); }
+  .site-nav { display: flex; flex-wrap: wrap; }
+}
