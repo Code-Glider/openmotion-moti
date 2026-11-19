@@ -1,3 +1,5 @@
+import type { GalleryTemplate } from '../../../shared/catalog';
+import type { WorkspaceChrome } from './WorkspaceChromeContext';
 import { reviewCommentsPrompt } from '../../../shared/review-comments';
 import { canvasPresets } from '../../../shared/composition-canvas';
 import { PlatformIcon } from '../../../packages/design-system/react/PlatformIcon';
@@ -24,7 +26,7 @@ import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import * as tracking from './pageTracking';
 import './McpConnectionPage.css';
 
-export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId }: { openLibrary: (trigger?: HTMLElement, templateId?: string) => void; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string }) {
+export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId }: { openLibrary: WorkspaceChrome['openLibrary']; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string }) {
   const { t, locale } = useI18n(), toast = useToast();
   const community = useCommunityLink();
   const { info, failed, retry } = useIntegrationInfo();
@@ -42,8 +44,8 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
   useEffect(() => { tracking.reportMcpPageView(entry, clientKey, hasProject); }, []);
   const click = (area: Parameters<typeof tracking.reportMcpClick>[0], element: Parameters<typeof tracking.reportMcpClick>[1], fields: Parameters<typeof tracking.reportMcpClick>[2] = {}) =>
     tracking.reportMcpClick(area, element, { mcp_client: clientKey, ...fields });
-  const openLibrary = (area: 'mcp_start' | 'mcp_templates' | 'mcp_footer') => (trigger?: HTMLElement, templateId?: string) => {
-    click(area, templateId ? 'open_detail' : 'open_library', templateId ? { template: templateId } : {}); openLibraryRaw(trigger, templateId);
+  const openLibrary = (area: 'mcp_start' | 'mcp_templates' | 'mcp_footer') => (trigger?: HTMLElement, template?: GalleryTemplate) => {
+    click(area, template ? 'open_detail' : 'open_library', template ? { template: template.id } : {}); openLibraryRaw(trigger, template);
   };
   const openProviders = (area: 'mcp_resources' | 'mcp_footer') => () => { click(area, 'manage_providers'); openProvidersRaw(); };
   const docLink = (area: 'mcp_resources' | 'mcp_footer', doc: 'mcp_tools' | 'skills' | 'agent_adapters' | 'docs_home' | 'repository') => () => click(area, 'view_documentation', { doc_id: doc });

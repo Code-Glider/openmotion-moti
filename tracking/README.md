@@ -131,9 +131,12 @@ Failures and cancellations omit that ID. The existing collection controls apply;
 Email, names, activation URLs, authorization codes and credentials are omitted.
 These fields describe the local OM result; AMR handoff attribution is separate.
 
-The account and subscription settings' **Manage subscription** link carries
-`od_origin=openmotion`, `od_entry_source=openmotion_manage_subscription`, and a
-fresh `od_entry_id` / UTC `od_entry_at` for each primary or middle click. The link
+The account and subscription settings' **Manage subscription** link, and the Free / Go
+plan card's **Upgrade to Plus** link, carry `od_origin=openmotion`,
+`od_entry_source=openmotion_manage_subscription`, and a fresh `od_entry_id` / UTC
+`od_entry_at` for each primary or middle click. The two links share that registered entry
+source; their `ui_click` elements (`manage_subscription` and `view_plans`) tell them apart.
+A dedicated upgrade source needs AMR to register it first. The link
 retains `billing=plan` and contains no account, installation or credential data.
 AMR must accept the OpenMotion origin and entry source in its attribution
 validation before these parameters can reach its subscription/payment events.
@@ -402,6 +405,20 @@ backend/data directory. Deterministic coverage lives in
   at load the timeline and file tree have usually not arrived, so the load values
   are mostly `unknown` and the export request is the reliable reading. No raw
   duration, count or file size is sent.
+- Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
+  one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
+  Motion Studio landing and the Design, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
+  `scene_id` and `landing`), the API page (`api`) and a model overview (`model_overview`). Filter and tab
+  changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
+  the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
+  `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
+  Studio form reports `asset_generation_submit_result` with `page_name=creative_studio` and the Studio, scene
+  and model (`model_provider` + `model_id` split from the catalogue key; custom providers send neither). Other destinations are catalogue ids accepted only as `slug`s;
+  prompts, example copy and model labels are never fields.
+- Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
+  sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and
+  `hub_availability` carry `hub_id`, `hub_video_id` (catalogue id), `signed_in` and, for scene filters, a
+  `filter_value` slug. Video titles, creators, post links and search text are never fields.
 - The template gallery shared with the website (`web/template-gallery.ts`, shown in the
   connection dialog):
   copy click and the actual copy result, preview open, use, category change and

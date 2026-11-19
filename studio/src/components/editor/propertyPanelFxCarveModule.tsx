@@ -1,3 +1,4 @@
+import { OverflowText } from "../ui/OverflowText";
 import { useI18n, type Translate } from "../../i18n/I18n";
 import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
 /**
@@ -348,10 +349,10 @@ function CarveSourceRow({
   const trackInput = useTrackDesignInput();
   return (
     <div className="hf-fx-row flex min-h-6 items-center gap-2">
-      {/* Wraps like every other name in this column (see FxParamRow) — one
-          truncating row beside wrapping ones reads as a rendering bug. */}
-      <span className="hf-fx-label w-[86px] shrink-0 wrap-break-word text-[10px] leading-tight text-panel-text-2">
-        {t("Listen to")}</span>
+      <OverflowText
+        text={t("Listen to")}
+        className="hf-fx-label w-[86px] shrink-0 truncate text-[10px] leading-tight text-panel-text-2"
+      />
       {soleVoice ? (
         <span
           className="hf-fx-carve-source min-w-0 flex-1 truncate font-mono text-[10px] text-panel-text-1"

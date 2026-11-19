@@ -92,6 +92,7 @@ The application shell reads its destination from the URL query. The native edito
 | Motion Studio | `page=motion` opens editable templates and an action to resume the timeline |
 | Shorts, Marketing and Explainer Studios | `page=shorts`, `page=marketing` or `page=explainer`. Add a supported `scene` to open the generator. A registered `skill` restores its brief on return. |
 | Model overview | `page=model&model=<provider-qualified-id>` lists compatible scenes and links to its provider and generation setup. |
+| Model hub | `page=model-hub&hub=<hub-id>`, for example `hub=gemini-4`. Opens a model family's landing page from its Explore spotlight slide: community videos with their detail preview, plus sign-in and own-key paths. It is a standalone page, so a session's first artifact does not return the viewer to the editor. An unknown `hub` shows a page-unavailable notice. |
 | 3D Studio | `page=3d&skill=three-js` opens the technique brief. Add `scene=text-to-video` for a 3D-style clip. The Agent handoff builds the editable scene. |
 | Asset detail | `page=assets&asset=<assetId>&version=<versionId>` opens the selected local version |
 | Explore | The workspace root or `page=explore` opens featured scenes and template previews. Optional filters such as `community=3d-motion` or `medium=video` restore discovery context |
@@ -104,7 +105,7 @@ The application shell reads its destination from the URL query. The native edito
 | Provider detail | `page=settings&section=providers&provider=openai` |
 | Template library | `templates=1` |
 | Creators and credited works | `templates=1&view=creators`, optionally with `creator=<credit-id>` and `template=<catalog-id>`. The underlying workspace survives closing the gallery. |
-| Template preview | `templates=1&template=<catalog-id>` |
+| Template preview | `template=<catalog-id>` opens a preview over the current page. Inside the template library the URL also keeps `templates=1`. |
 
 The [studio catalogue](../shared/studio-catalog.ts) supplies Explore, header links and scene tabs. To add a workspace using the media composer, register its ID and ordered scene IDs there. Each scene declares its entry surface (focused landing page or owning studio), media type and any reference-image or model-mode requirement. The same predicate filters discovery and generation. Both surfaces share an in-memory draft for each studio/scene pair. An unavailable pinned model keeps its identity and requires configuration or an explicit replacement. Provide a poster and prompt in the [scene showcase](../studio/src/motion/sceneShowcase.ts). The canvas presents stills, while reference, video and audio scenes offer controls beside a guide and results. A workspace can combine image and video scenes under one URL.
 

@@ -15,6 +15,10 @@
 @import "./studio/media-detail.css";
 @import "./studio/audio-assets.css";
 @import "./studio/media-quick-actions.css";
+@import "./studio/formFields.css";
+@import "./studio/menuPanels.css";
+@import "./studio/propertyPanelControls.css";
+@import "./studio/disclosure.css";
 
 /* Asset geometry is shared; currentColor follows the application's selected theme. */
 .motion-brand-lockup {

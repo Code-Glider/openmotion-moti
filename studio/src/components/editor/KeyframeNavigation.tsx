@@ -1,3 +1,4 @@
+import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { memo } from "react";
 import { KeyframeDiamond, type DiamondState } from "./KeyframeDiamond";
@@ -76,46 +77,6 @@ export function clipToTweenPercentage(
   return a.tweenPercentage! + (clipPct - a.percentage) * slope;
 }
 
-function ArrowLeft({ disabled }: { disabled: boolean }) {
-  return (
-    <svg
-      width="6"
-      height="10"
-      viewBox="0 0 6 10"
-      fill="none"
-      className={disabled ? "text-text-off" : "text-text-2"}
-    >
-      <path
-        d="M5 1L1 5L5 9"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ArrowRight({ disabled }: { disabled: boolean }) {
-  return (
-    <svg
-      width="6"
-      height="10"
-      viewBox="0 0 6 10"
-      fill="none"
-      className={disabled ? "text-text-off" : "text-text-2"}
-    >
-      <path
-        d="M1 1L5 5L1 9"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 // fallow-ignore-next-line complexity
 export const KeyframeNavigation = memo(function KeyframeNavigation({
   property,
@@ -183,7 +144,7 @@ export const KeyframeNavigation = memo(function KeyframeNavigation({
         aria-label={t("Previous {property} keyframe", { property: property })}
         className="relative flex h-5 w-3 items-center justify-center disabled:cursor-default before:absolute before:-inset-1.5 before:content-['']"
       >
-        <ArrowLeft disabled={!prevKf} />
+        <RemixIcon name="arrow-left-s-line" size={10} className={prevKf ? "text-text-2" : "text-text-off"} />
       </button>
       <KeyframeDiamond
         state={diamondState}
@@ -205,7 +166,7 @@ export const KeyframeNavigation = memo(function KeyframeNavigation({
         aria-label={t("Next {property} keyframe", { property: property })}
         className="relative flex h-5 w-3 items-center justify-center disabled:cursor-default before:absolute before:-inset-1.5 before:content-['']"
       >
-        <ArrowRight disabled={!nextKf} />
+        <RemixIcon name="arrow-right-s-line" size={10} className={nextKf ? "text-text-2" : "text-text-off"} />
       </button>
     </div>
   );

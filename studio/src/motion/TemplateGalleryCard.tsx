@@ -56,7 +56,21 @@ export function TemplatePoster({ template, eager = false, coverUrl, onCoverAspec
   </div>;
 }
 
-export const TemplateGalleryCard = memo(function TemplateGalleryCard({ template, onSelect, active, onPriority, playbackId, footer, brandCredit = false, resourceKind = 'template', animatedPreview, coverUrl }: { template: GalleryTemplate; onSelect: (template: GalleryTemplate, trigger: HTMLButtonElement) => void; footer?: ReactNode; brandCredit?: boolean; playbackId?: string; active: boolean; onPriority: (id: string | null) => void; resourceKind?: 'template' | 'brand-kit'; animatedPreview?: string; coverUrl?: string }) {
+export const TemplateGalleryCard = memo(function TemplateGalleryCard({
+  template, onSelect, active, onPriority, playbackId, footer, brandCredit = false, resourceKind = 'template', animatedPreview, coverUrl, showAvatar = true,
+}: {
+  template: GalleryTemplate;
+  onSelect: (template: GalleryTemplate, trigger: HTMLButtonElement) => void;
+  active: boolean;
+  onPriority: (id: string | null) => void;
+  playbackId?: string;
+  footer?: ReactNode;
+  brandCredit?: boolean;
+  resourceKind?: 'template' | 'brand-kit';
+  animatedPreview?: string;
+  coverUrl?: string;
+  showAvatar?: boolean;
+}) {
   const { t } = useI18n();
   const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -91,7 +105,11 @@ export const TemplateGalleryCard = memo(function TemplateGalleryCard({ template,
       {animatedPreview && active && animate && <iframe className="om-gallery-animation" src={animatedPreview} loading="lazy" sandbox="allow-scripts" title={template.title} tabIndex={-1} aria-hidden="true" />}
       <span className="om-gallery-card-shade" />
       <span className="om-gallery-card-top">{resourceKind === 'brand-kit' && <span>{t('Brand Kit')}</span>}{resourceKind === 'template' && <span>{t(isEditableTemplate(template) ? 'Ready to edit' : template.styles?.[0] || 'Motion design')}</span>}{template.duration != null && <span>{t('{value}s', { value: Number(template.duration.toFixed(1)) })}</span>}</span>
-      {!linkedSource && <span className="om-gallery-card-bottom"><TemplateIdentity template={template} brand={Boolean(brandName)} /><span className="om-gallery-card-caption" data-brand-credit={brandName ? true : undefined}><strong>{brandName || template.title}</strong><small>{brandName ? template.title : credit}</small></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={18} /></span></span>}
+      {!linkedSource && <span className="om-gallery-card-bottom">
+        {showAvatar && <TemplateIdentity template={template} brand={Boolean(brandName)} />}
+        <span className="om-gallery-card-caption" data-brand-credit={brandName ? true : undefined}><strong>{brandName || template.title}</strong><small>{brandName ? template.title : credit}</small></span>
+        <span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={18} /></span>
+      </span>}
     </button>
     </div>
     {linkedSource && <TemplateSourceLink template={template} className="om-gallery-card-source" />}

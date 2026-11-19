@@ -1,7 +1,7 @@
 /* Native Studio uses paper for light and no attribute for dark. */
 :root[data-motion-ui][data-motion-studio]:not([data-theme="paper"]) { --color-on-accent: var(--motion-inset); }
 
-:root[data-motion-ui] [data-motion-template-library] {
+:root[data-motion-ui] :is([data-motion-template-library], [data-motion-template-detail]) {
   --motion-floating-surface: var(--motion-gallery-surface);
   --color-text-0: var(--motion-strong);
   --color-text-1: var(--motion-strong);
