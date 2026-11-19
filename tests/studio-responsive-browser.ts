@@ -215,6 +215,18 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           assert.equal(await hero.evaluate(element => element.getBoundingClientRect().height), initialHeight);
         }
       }
+      const rail = '.om-highlights';
+      const next = rail + ' [data-edge="right"]', previous = rail + ' [data-edge="left"]';
+      await page.waitForSelector(next);
+      assert.equal(await page.$(previous), null);
+      assert.equal(await page.$eval('.om-stories-rail', list => getComputedStyle(list).scrollbarWidth), 'none');
+      await page.click(next);
+      await page.waitForSelector(previous);
+      assert.ok(await page.$(next), 'Both directions are available between the ends');
+      await page.$eval('.om-stories-rail', list => { list.scrollLeft = list.scrollWidth; });
+      await page.waitForSelector(next, { hidden: true });
+      await page.click(previous);
+      await page.waitForSelector(next);
       const artwork = '.om-feature-slide[aria-hidden="false"] .om-feature-camera';
       const cameraState = () => page.$eval(artwork, camera => getComputedStyle(camera).animationPlayState);
       assert.equal(await cameraState(), 'paused', 'Reduced motion starts with a still frame');

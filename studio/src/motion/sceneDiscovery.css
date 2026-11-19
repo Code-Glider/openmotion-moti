@@ -166,9 +166,16 @@
 @container (max-width: 900px) { .om-studio-template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 420px) { .om-studio-template-grid { grid-template-columns: minmax(0, 1fr); } }
 
+.om-highlights {
+  container-type: inline-size;
+  --highlight-width: clamp(min(78cqi, 16rem), 27cqi, 26rem);
+  --om-rail-arrow-size: var(--motion-space-40);
+  /* Centre the arrows on the 16:9 poster, independent of caption height. */
+  --om-rail-arrow-center: calc(var(--motion-space-4) + var(--highlight-width) * 9 / 32);
+}
 .om-stories-rail, .om-story-gallery { display: grid; gap: var(--motion-space-16); align-items: start; }
 .om-stories-rail {
-  grid-auto-flow: column; grid-auto-columns: clamp(min(78%, 16rem), 27%, 26rem);
+  grid-auto-flow: column; grid-auto-columns: var(--highlight-width);
   overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: var(--motion-space-4);
   padding: var(--motion-space-4); margin-inline: calc(-1 * var(--motion-space-4));
 }

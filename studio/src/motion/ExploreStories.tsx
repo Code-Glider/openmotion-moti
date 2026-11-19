@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { HorizontalRail } from './HorizontalRail';
 import { findTechniqueStudio, type CreativeStudio } from '../../../shared/studio-catalog';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -27,43 +27,20 @@ type StoryActions = {
 
 export function ExploreHighlights({ onChooseStudio, onOpenBlackFriday }: Pick<StoryActions, 'onChooseStudio' | 'onOpenBlackFriday'>) {
   const { t } = useI18n();
-  const rail = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ start: true, end: false });
-  useEffect(() => {
-    const node = rail.current!;
-    const measure = () => {
-      const start = node.scrollLeft <= 1, end = node.scrollWidth - node.clientWidth - node.scrollLeft <= 1;
-      setEdges(old => old.start === start && old.end === end ? old : { start, end });
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    node.addEventListener('scroll', measure);
-    return () => { observer.disconnect(); node.removeEventListener('scroll', measure); };
-  }, []);
-  const scroll = (direction: number) => rail.current?.scrollBy({
-    left: direction * rail.current.clientWidth * .8,
-    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-  });
   const jump = (id: string) => {
     const heading = document.getElementById('explore-' + id);
     heading?.focus({ preventScroll: true });
     heading?.scrollIntoView({ block: 'start' });
   };
   return <section aria-labelledby="explore-highlights">
-    <header className="om-discovery-heading"><h2 id="explore-highlights">{t('Explore highlights')}</h2>
-      <div className="om-control-row">
-        <button className="om-button om-icon-button" aria-label={t('Previous')} aria-controls="explore-highlights-rail" disabled={edges.start} onClick={() => scroll(-1)}><RemixIcon name="arrow-left-line" size={16} /></button>
-        <button className="om-button om-icon-button" aria-label={t('Next')} aria-controls="explore-highlights-rail" disabled={edges.end} onClick={() => scroll(1)}><RemixIcon name="arrow-right-line" size={16} /></button>
-      </div>
-    </header>
-    <div className="om-stories-rail" ref={rail} id="explore-highlights-rail">
+    <header className="om-discovery-heading"><h2 id="explore-highlights">{t('Explore highlights')}</h2></header>
+    <HorizontalRail label="Explore highlights" className="om-highlights" viewportClassName="om-stories-rail">
       <StoryCard title={seedanceStory.title} poster={paintedFilm} label={t('Cinema Studio') + ' · ' + t('Video')} description={seedanceStory.description} onClick={() => jump('seedance')} />
       <StoryCard title="Black Friday collection" poster={sale} label={t('Template library')} description="Browse Black Friday video references and Skills for your sale." onClick={event => onOpenBlackFriday(event.currentTarget)} />
       <StoryCard title="Claude Fable 5.2" poster={blueprint} label="Claude Code · OpenMotion MCP" description="From a keyframe to an anime opening" onClick={() => jump('claude')} />
       <StoryCard title={gptImageStory.title} poster={printCover} label={t('Design Studio') + ' · ' + t('Image')} description={gptImageStory.description} onClick={() => jump('gpt-image')} />
       <StoryCard title="Shorts Studio" poster={shorts} label={t('Short-form video')} description="Cut a recording into vertical shorts or assemble several clips into one reel." onClick={() => onChooseStudio(findTechniqueStudio('shorts')!)} />
-    </div>
+    </HorizontalRail>
   </section>;
 }
 
