@@ -13,7 +13,7 @@ import { DocLink, navigate, useCatalogPath } from './navigation';
 import './site.css';
 
 const libraryName = 'Open Design UI';
-const agentSkill = 'Follow .agents/skills/open-design-ui/SKILL.md in this checkout.';
+const agentSkill = 'Follow .agents/skills/odui-apply/SKILL.md in this checkout.';
 const components = registry.items;
 const studioRepo = 'https://github.com/nexu-io/openmotion/blob/main/';
 const componentHref = (name: string) => `/components/${name}`;

@@ -47,7 +47,8 @@ During an ongoing PR follow-up task, use the current client's available monitori
 
 Source-checkout contributor Skills live under `.agents/skills/`. When adding or maintaining a built-in BYOK media provider, read `.agents/skills/add-byok-provider/SKILL.md` in this checkout. It covers provider research, implementation, references and verification. These repository-local Skills are excluded from application/plugin distribution and host installation; root `skills/` continues to hold product workflows. Installed product copies may not contain `.agents/skills/`. Other Agents following `CLAUDE.md` use this same source-checkout guidance.
 
-When applying or migrating an existing shared control in Studio, follow the [Open Design UI contributor Skill](.agents/skills/open-design-ui/SKILL.md).
+When applying or migrating an existing shared control in Studio, follow the [ODUI apply Skill](.agents/skills/odui-apply/SKILL.md).
+For Open Design UI work, choose the repository-local Skill by intent. Use [odui-dev](.agents/skills/odui-dev/SKILL.md) for the local catalogue and live preview, [odui-build](.agents/skills/odui-build/SKILL.md) to create or evolve a component, [odui-apply](.agents/skills/odui-apply/SKILL.md) to adopt an existing component in Studio, and [odui-check](.agents/skills/odui-check/SKILL.md) before review. The component registry and component guide remain the shared source of truth.
 
 ## Shared design system — required for every Agent
 

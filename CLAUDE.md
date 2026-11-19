@@ -35,7 +35,7 @@ Each publication uses its exact sealed candidate bytes. Require both macOS and W
 
 ## UI design system and interaction feedback
 
-Follow the [Open Design UI contributor Skill](.agents/skills/open-design-ui/SKILL.md) when applying or migrating an existing shared control in Studio.
+Follow the [ODUI apply Skill](.agents/skills/odui-apply/SKILL.md) when applying or migrating an existing shared control in Studio.
 
 Use opaque, solid theme surfaces for product UI, including menus, Popovers, tooltips, dialogs and floating controls. Do not introduce frosted glass, translucent content backgrounds or background blur (`backdrop-filter`). Maintain this treatment in the shared design system, not feature-local overrides. Modal scrims may use a uniform tint without blur; authored video and imported artwork remain independent. The authoritative rule is in [AGENTS.md](AGENTS.md#ui-design-system-and-interaction-feedback).
 

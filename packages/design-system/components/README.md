@@ -18,7 +18,7 @@ Component details use paths such as `/components/slider`. Vite handles direct li
 
 ## Use from an Agent
 
-Ask the Agent to use the repository-local [Open Design UI Skill](../../../.agents/skills/open-design-ui/SKILL.md) and give it the Studio page or control to change. For example, `Use $open-design-ui to replace the retry button in workspace search. Keep its behavior and verify the existing test.`
+Ask the Agent to use the repository-local [ODUI apply Skill](../../../.agents/skills/odui-apply/SKILL.md) and give it the Studio page or control to change. For example, `Use $odui-apply to replace the retry button in workspace search. Keep its behavior and verify the existing test.`
 
 The component detail page offers **Copy to Agent** for a new use case and **Copy migration prompt** for replacing an existing control. Add the target Studio page or feature to the copied prompt before using it.
 
@@ -52,3 +52,16 @@ When the review condition is met, document the common Studio uses and any specia
 ### First migration
 
 [GenerationParameters](../../../studio/src/motion/GenerationParameters.tsx) now imports the shared Slider directly. The provider still owns the label, range, step, default and committed value. Existing React Button and Slider callers use the aliases directly. Component implementations depend on their own directory and shared UI dependencies. The preview can also load design system assets. `npm run design:check` checks these import boundaries.
+
+## Project Skills
+
+The repository-local Skills are split by intent:
+
+| Skill | Use it for |
+| --- | --- |
+| [`odui-dev`](../../../.agents/skills/odui-dev/SKILL.md) | Start the catalogue, inspect states and review live changes. |
+| [`odui-build`](../../../.agents/skills/odui-build/SKILL.md) | Create or evolve a component, example, registry item and real consumer. |
+| [`odui-apply`](../../../.agents/skills/odui-apply/SKILL.md) | Replace a business control with an existing shared component. |
+| [`odui-check`](../../../.agents/skills/odui-check/SKILL.md) | Audit tokens, boundaries, adoption status and browser evidence before review. |
+
+Use the Skill that matches the work. A catalogue preview does not replace verification of the real Studio consumer.
