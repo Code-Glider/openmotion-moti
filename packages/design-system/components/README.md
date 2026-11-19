@@ -18,6 +18,8 @@ Component details use paths such as `/components/slider`. Vite handles direct li
 
 ## Use from an Agent
 
+Ask the Agent to use the repository-local [Open Design UI Skill](../../../.agents/skills/open-design-ui/SKILL.md) and give it the Studio page or control to change. For example, `Use $open-design-ui to replace the retry button in workspace search. Keep its behavior and verify the existing test.`
+
 The component detail page offers **Copy to Agent** for a new use case and **Copy migration prompt** for replacing an existing control. Add the target Studio page or feature to the copied prompt before using it.
 
 Read [registry.json](registry.json) to discover each control's source path, import alias, named export, example and product consumer. The site also serves the same file at `/registry.json`. Use the listed alias in Studio and in the component site:

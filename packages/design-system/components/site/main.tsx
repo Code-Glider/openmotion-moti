@@ -13,6 +13,7 @@ import { DocLink, navigate, useCatalogPath } from './navigation';
 import './site.css';
 
 const libraryName = 'Open Design UI';
+const agentSkill = 'Follow .agents/skills/open-design-ui/SKILL.md in this checkout.';
 const components = registry.items;
 const studioRepo = 'https://github.com/nexu-io/openmotion/blob/main/';
 const componentHref = (name: string) => `/components/${name}`;
@@ -129,6 +130,7 @@ function ComponentPage({ item }: { item: Item }) {
   const index = components.indexOf(item);
   const agentPrompt = [
     `Use Open Design UI's ${item.title} in the OpenMotion Studio feature I specify.`,
+    agentSkill,
     importLine,
     `Component source: ${item.source}`,
     `Existing Studio example: ${item.consumer}`,
@@ -137,6 +139,7 @@ function ComponentPage({ item }: { item: Item }) {
   ].join('\n');
   const migrationPrompt = [
     `Migrate the existing control I specify to Open Design UI's ${item.title}. Keep the change scoped to that use case.`,
+    agentSkill,
     importLine,
     `Read ${item.source} and compare it with the Studio usage in ${item.consumer}.`,
     migration,
