@@ -8,7 +8,10 @@
 .om-community-picks .om-gallery-cover { height: 100%; }
 .om-explore-feed, .om-studio-collection { min-width: 0; }
 .om-discovery-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
-.om-explore-title { font: var(--motion-weight-bold) clamp(var(--motion-text-display), 3.8vw, var(--motion-text-display-lg))/1.05 var(--motion-font-display); letter-spacing: -.045em; }
+.om-explore-title { font: var(--motion-weight-bold) var(--motion-text-display)/1.05 var(--motion-font-display); letter-spacing: -.045em; }
+@container discovery (width > 600px) {
+  .om-explore-title + * { margin-block-start: calc(-1 * var(--motion-space-8)); }
+}
 .om-explore-features { display: grid; gap: var(--motion-space-16); }
 .om-explore-features[data-split="true"] { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 .om-discovery-hero, .om-featured-template, .om-featured-template-skeleton { position: relative; min-width: 0; min-height: clamp(275px, 25vw, 365px); overflow: hidden; border-radius: var(--motion-radius-xl); }

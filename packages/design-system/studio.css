@@ -27,6 +27,12 @@
   mask: url("./brand/openmotion-logo.svg") center / contain no-repeat;
 }
 
+.motion-brand-lockup:where([data-brand="editor"]) {
+  color: var(--motion-strong);
+  aspect-ratio: 1705 / 291;
+  mask-image: url("./opendesign-dark.svg");
+}
+
 /* Shared placement feedback: crisp target geometry and a readable live readout. */
 .motion-placement-outline {
   border: 2px solid var(--motion-accent);
