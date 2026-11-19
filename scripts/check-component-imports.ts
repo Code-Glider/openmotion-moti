@@ -38,7 +38,7 @@ export function componentImportViolation(file: string, specifier: string) {
   }
 }
 
-export function nativeControlLines(file: string, source: string) {
+function nativeControlLines(file: string, source: string) {
   const lines: Record<NativeControl, number[]> = { button: [], slider: [] };
   const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
   function visit(node: ts.Node) {
