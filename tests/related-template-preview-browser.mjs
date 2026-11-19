@@ -152,7 +152,18 @@ try {
     });
     assert(geometry.width >= 224 && geometry.height >= 126 && geometry.inViewport, `Brand preview remains visible at ${width}×${height}: ${JSON.stringify(geometry)}`);
     assert(Math.abs(geometry.width / geometry.height - 16 / 9) < .02, 'The brand preview keeps the video aspect ratio');
-    results.push({ mode: 'brand-preview', viewport: [width, height], ...geometry });
+    const actionDock = await page.$eval('dialog[aria-label="Figma brand story"][open] [aria-label="Work actions"]', element => {
+      const dock = element.getBoundingClientRect();
+      const video = element.closest('[aria-label="Selected release"]')?.querySelector('[aria-busy]')?.getBoundingClientRect();
+      const position = getComputedStyle(element).position;
+      return { top: dock.top, bottom: dock.bottom, position, videoBottom: video?.bottom ?? null,
+        overlapsVideo: video ? dock.top < video.bottom && dock.bottom > video.top : false };
+    });
+    if (width < 700 && width > height) {
+      assert.equal(actionDock.position, 'static', `Action dock should flow below the video at ${width}×${height}`);
+      assert.equal(actionDock.overlapsVideo, false, `Action dock should not cover the video at ${width}×${height}`);
+    }
+    results.push({ mode: 'brand-preview', viewport: [width, height], ...geometry, actionDock });
     await page.screenshot({ path: path.join(output, `brand-${width}x${height}.png`) });
   }
   console.log('PASS default masonry cards, player budget and same-dialog selection; legacy popup bounds, Retry and Escape in both themes at 640x360, 390x844 and 1440x900');

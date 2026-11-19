@@ -16,7 +16,7 @@ import { useI18n } from '../i18n/I18n';
 import { motionApi } from './useWorkspace';
 import { MotionIcon } from './icons';
 import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
-import { GalleryFilterPopover, GallerySortMenu, matchesGallerySearch, matchesGalleryFilters } from './GalleryFilters';
+import { GalleryFilterPopover, GallerySortMenu, matchesGalleryFilters } from './GalleryFilters';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Popover } from '../components/ui/Popover';
@@ -31,6 +31,9 @@ import { facetValues as values, templateFacets as facets, templateAspect, templa
 import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
 import { useTemplateImpressions } from './useTemplateImpressions';
+import { matchesTemplateSearch, normalizedTemplateQuery } from './templateSearch';
+import { TemplateReferenceDialog, TemplateSearchRecovery } from './TemplateSearchRecovery';
+import { useTemplateSearchContext } from './useTemplateSearchContext';
 import * as tracking from './templateLibraryTracking';
 import type { DetailView, FilterAction, FilterGroup, Placement, Sort } from './templateLibraryTracking';
 import { TemplateHandoffSteps, TemplateOpenRecovery, type TemplateOpenProgress } from './TemplateHandoffInfo';
@@ -204,6 +207,11 @@ export function TemplateLibraryDialog(props: Props) {
   useEffect(() => { if (guideOpen && preview) tracking.reportGuideShown(preview, detailView.current); }, [guideOpen, preview?.id]);
   const pendingResult = useRef<FilterAction | undefined>(undefined), composing = useRef(false), shownCards = useRef(new Set<string>()), instructionShown = useRef<string | undefined>(undefined);
   const [settle, setSettle] = useState(0);
+  const [settledKeyword, setSettledKeyword] = useState(''), [searchComposing, setSearchComposing] = useState(false);
+  const [recoveryExpanded, setRecoveryExpanded] = useState(false), [catalogVersion, setCatalogVersion] = useState('');
+  const [referenceTrigger, setReferenceTrigger] = useState<HTMLButtonElement | null>(null);
+  const referenceShownFor = useRef<string | undefined>(undefined);
+  const searchShortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
   useEffect(() => { if (props.open && props.error) showToast(props.error, 'error'); }, [props.open, props.error, showToast]);
   useEffect(() => { if (props.open && warning) showToast(warning, 'info'); }, [props.open, warning, showToast]);
   useEffect(() => {
@@ -212,11 +220,11 @@ export function TemplateLibraryDialog(props: Props) {
     return () => dismissToast(id);
   }, [props.open, props.busy, showToast, dismissToast]);
   useEffect(() => {
-    if (!props.open) { libraryShown.current = false; return; }
+    if (!props.open) { libraryShown.current = false; setReferenceTrigger(null); return; }
     const openedDialog = dialog.current;
     const trigger = props.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     openedDialog?.showModal();
-    if (openedDialog?.open && !libraryShown.current) { libraryShown.current = true; tracking.reportLibraryShown(); }
+    if (openedDialog?.open && !libraryShown.current) { libraryShown.current = true; tracking.reportLibraryShown(currentSearchContext.current.read()); }
     libraryClose.current?.focus({ preventScroll: true });
     return () => {
       detail.current?.close(); openedDialog?.close(); setPreview(null);
@@ -226,7 +234,7 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, props.returnFocus]);
   useEffect(() => {
     if (!props.open) return;
-    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setPreview(null); detail.current?.close();
+    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setQuery(''); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null); detail.current?.close();
     shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear(); seriesLists.current.clear(); shownSeries.current.clear();
     const controller = new AbortController();
     let version: string | undefined, pending = false;
@@ -238,7 +246,7 @@ export function TemplateLibraryDialog(props: Props) {
           const page: TemplatePage = await motionApi(`/template-catalog?category=all&covered=true&limit=60&offset=${offset}&locale=${encodeURIComponent(locale)}`, { signal: controller.signal });
           items.push(...page.items); offset = page.next; version = page.catalogVersion; setWarning(page.warning ?? '');
         }
-        if (!controller.signal.aborted) { setCatalog(items); shown.current = true; }
+        if (!controller.signal.aborted) { setCatalog(items); setCatalogVersion(version ?? ''); shown.current = true; }
       } catch (err) { if (!controller.signal.aborted) setError((err as Error).message); }
       finally { pending = false; if (!controller.signal.aborted) setLoading(false); }
     }
@@ -265,12 +273,7 @@ export function TemplateLibraryDialog(props: Props) {
   const industries = available.find(facet => facet.key === 'industries')?.values ?? [];
   const sortOptions = [['recommended', 'Recommended order'], ['name', 'Name A–Z'], ['reverse', 'Name Z–A'], ['duration', 'Duration']] as const;
   const hasFilters = Boolean(query || editableOnly || brandsOnly || compareWithout || Object.values(selected).some(items => items?.length));
-  const searchable = useMemo(() => {
-    return catalog.filter(item => {
-      const text = [item.id, item.title, item.description, item.authorName, item.author, ...item.tags, ...facets.flatMap(([key]) => values(item, key).flatMap(value => [value, t(value)]))].join(' ').toLocaleLowerCase();
-      return (props.creators || ((!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout))) && matchesGallerySearch(query, text);
-    });
-  }, [catalog, query, brandsOnly, compareWithout, props.creators, t]);
+  const searchable = useMemo(() => catalog.filter(item => (props.creators || ((!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout))) && matchesTemplateSearch(item, query, t)), [catalog, query, brandsOnly, compareWithout, props.creators, t]);
   const draftCount = useMemo(() => filtersOpen ? searchable.filter(item => matchesFilters(item, draftFilters, draftEditable)).length : 0, [filtersOpen, searchable, draftFilters, draftEditable]);
   const hasDraftFilters = draftEditable || Object.values(draftFilters).some(items => items?.length);
   const visible = useMemo(() => {
@@ -279,27 +282,54 @@ export function TemplateLibraryDialog(props: Props) {
   }, [searchable, selected, sort, locale, editableOnly, props.creators, props.creator]);
   useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly, compareWithout]);
   const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
+  const hasAppliedFilters = filterCount > 0;
+  const searchContextKey = JSON.stringify([normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
+  const searchContext = useTemplateSearchContext(props.open, !loading && shown.current && !error && !searchComposing, searchContextKey, Boolean(query.trim() || filterCount));
+  const currentSearchContext = useRef(searchContext); currentSearchContext.current = searchContext;
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
   // The list state is read when a handler, timer or effect fires, not when it was scheduled.
   const latest = useRef({ items: visible, query, sort, filterCount, covered: false }); latest.current = { items: visible, query, sort, filterCount, covered: Boolean(preview || brandStory) };
   const listContext = useCallback(() => {
     const { query, sort, filterCount } = latest.current, keyword = query.trim();
-    return { searchId: keyword && keyword === reportedQuery.current ? searchId.current : undefined, sort, filterCount };
+    return { searchId: keyword && normalizedTemplateQuery(keyword) === reportedQuery.current ? searchId.current : undefined, sort, filterCount, ...currentSearchContext.current.read() };
   }, []);
   // One search report per settled query: 500 ms after typing stops, or right before the user acts on the results,
   // and never mid-composition or before the catalogue has loaded. Each new keyword gets a new search id.
   const settleSearch = () => {
-    const keyword = query.trim();
-    if (!keyword || keyword === reportedQuery.current || composing.current || loading || !shown.current) return;
-    const id = tracking.newTrackingId(); reportedQuery.current = keyword; searchId.current = id;
-    tracking.reportSearchResult(id, query, visible.length, { sort, filterCount });
+    const keyword = normalizedTemplateQuery(query);
+    if (!keyword) { setSettledKeyword(''); return; }
+    if (keyword === reportedQuery.current) { setSettledKeyword(keyword); return; }
+    if (composing.current || loading || error || !shown.current) return;
+    const id = tracking.newTrackingId(); reportedQuery.current = keyword; searchId.current = id; setSettledKeyword(keyword);
+    currentSearchContext.current.activity();
+    tracking.reportSearchResult(id, query, visible.length, { sort, filterCount, ...currentSearchContext.current.read() });
   };
   const settleLatest = useRef(settleSearch); settleLatest.current = settleSearch;
   useEffect(() => {
-    if (!query.trim()) { reportedQuery.current = ''; searchId.current = undefined; return; }
+    if (!query.trim()) { reportedQuery.current = ''; searchId.current = undefined; setSettledKeyword(''); return; }
     const timer = setTimeout(() => settleLatest.current(), 500);
     return () => clearTimeout(timer);
   }, [query, settle, loading, catalog.length]);
+  const confirmSearch = () => { if (composing.current || !query.trim()) return; settleSearch(); dialog.current?.scrollTo?.({ top: 0 }); };
+  const clearSearch = () => { settleSearch(); tracking.reportRecoveryAction('clear_search', listContext()); setQuery(''); };
+  const stableSearch = !searchComposing && (!query.trim() || normalizedTemplateQuery(query) === settledKeyword);
+  const showRecovery = !loading && !error && stableSearch;
+  const showEmptyRecovery = !loading && !error && !visible.length;
+  const suggestedRemoval = useMemo(() => {
+    if (!showEmptyRecovery || !stableSearch || !hasAppliedFilters || !catalog.length) return;
+    const matches = catalog.filter(item => (!compareWithout || item.brand !== compareWithout) && matchesTemplateSearch(item, query, t));
+    const count = (filters: Filters, editable: boolean, brands: boolean) => matches.filter(item =>
+      (!brands || Boolean(item.brand?.trim())) && matchesFilters(item, filters, editable)).length;
+    const options = facets.flatMap(([key]) => (selected[key] ?? []).map(value => ({
+      key, value, label: key === 'brand' ? value : t(value),
+      count: count({ ...selected, [key]: selected[key]!.filter(item => item !== value) }, editableOnly, brandsOnly),
+    })));
+    const special = [
+      ...(editableOnly ? [{ key: 'editable' as const, value: '', label: t('Ready to edit'), count: count(selected, false, brandsOnly) }] : []),
+      ...(brandsOnly ? [{ key: 'top' as const, value: '', label: t('TOP 100 brands'), count: count(selected, editableOnly, false) }] : []),
+    ];
+    return [...options, ...special].filter(option => option.count > 0).sort((a, b) => b.count - a.count)[0];
+  }, [showEmptyRecovery, stableSearch, hasAppliedFilters, catalog, query, t, selected, editableOnly, brandsOnly, compareWithout]);
   // A filter, category or sort result is reported after the changed list has rendered, with the count the user now sees.
   useEffect(() => {
     const action = pendingResult.current; pendingResult.current = undefined;
@@ -322,6 +352,16 @@ export function TemplateLibraryDialog(props: Props) {
     tracking.reportCardShown(items[index], index + 1, listContext());
     return true;
   }, [listContext]);
+  const referenceSeen = (context = listContext()) => {
+    if (document.hidden || !context.resultSetId) return false;
+    if (referenceShownFor.current !== context.resultSetId) {
+      referenceShownFor.current = context.resultSetId;
+      tracking.reportReferenceEntryShown(context);
+    }
+    return true;
+  };
+  const referenceVisible = props.open && !loading && !error && !query.trim() && visible.length > 0 && !preview && !brandStory && !referenceTrigger;
+  useTemplateImpressions(dialog, 'library_home', referenceVisible, searchContextKey, () => referenceSeen(), 'data-reference-entry');
   useTemplateImpressions(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, resultSet, cardSeen);
   const brandGroups = useMemo(() => groupBrandSeries(catalog), [catalog]);
   const visibleBrandGroups = useMemo(() => groupBrandSeries(visible), [visible]);
@@ -352,7 +392,7 @@ export function TemplateLibraryDialog(props: Props) {
   const active = useTemplatePlayback(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, true, priority);
   const related = useMemo(() => preview ? (handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview]);
   const previewIndex = visible.findIndex(item => item.id === preview?.id);
-  const clear = () => { setQuery(''); setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
+  const clear = () => { setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
   const reset = () => {
     setCompareWithout('');
     if (hasFilters) { tracking.reportDiscoveryClick('filter_clear', listContext()); pendingResult.current = 'filter_clear'; }
@@ -409,7 +449,8 @@ export function TemplateLibraryDialog(props: Props) {
   };
   const show = useCallback((item: GalleryTemplate, placement: Placement = 'catalog', navigate = true, series?: SeriesView) => {
     if (navigate) routeChange.current?.(item.id);
-    const view: DetailView = { id: tracking.newTrackingId(), placement, ...(series ? { series: { ...series, series_surface: 'template_detail' } } : {}) }; detailView.current = view; instructionShown.current = undefined;
+    currentSearchContext.current.activity();
+    const view: DetailView = { id: tracking.newTrackingId(), placement, context: listContext(), ...(series ? { series: { ...series, series_surface: 'template_detail' } } : {}) }; detailView.current = view; instructionShown.current = undefined;
     const index = latest.current.items.findIndex(candidate => candidate.id === item.id);
     tracking.reportDetailShown(item, view, placement === 'related' || index < 0 ? undefined : index + 1);
     setPreview(item); setPrompt(''); setPromptError(false); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false);
@@ -545,14 +586,18 @@ export function TemplateLibraryDialog(props: Props) {
   const credit = preview && templateCredit(preview);
   return <dialog ref={dialog} className={styles.library} data-motion-template-library="" aria-label={t('Template library')} onKeyDown={event => {
     event.stopPropagation();
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen) { event.preventDefault(); search.current?.focus(); }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !preview && !filtersOpen && !(event.target instanceof HTMLElement && event.target.closest('[data-search-recovery]'))) { event.preventDefault(); search.current?.focus(); }
   }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
         <div className="om-gallery-wordmark"><BrandLogo compact /><span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>
         {props.navigation && <fieldset className="contents" disabled={props.busy}>{props.navigation}</fieldset>}
         <div className="om-control-row om-gallery-header-actions">
-          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t(props.creators && !props.creator ? 'Search creators' : 'Search templates, creators, styles…')} aria-label={t(props.creators && !props.creator ? 'Search creators' : 'Search templates')} /><kbd>⌘ K</kbd></label>
+          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)}
+            onFocus={() => { currentSearchContext.current.activity(); tracking.reportRecoveryAction('search_focus', listContext()); }}
+            onCompositionStart={() => { composing.current = true; setSearchComposing(true); }}
+            onCompositionEnd={() => { composing.current = false; setSearchComposing(false); setSettle(value => value + 1); }}
+            onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) confirmSearch(); }} placeholder={t(props.creators && !props.creator ? 'Search creators' : 'Search templates, creators, styles…')} aria-label={t(props.creators && !props.creator ? 'Search creators' : 'Search templates')} /><kbd>{searchShortcut}</kbd></label>
           <GitHubLink className="om-button" />
           <Tooltip label={t('Close template library')}><button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button></Tooltip>
         </div>
@@ -581,21 +626,45 @@ export function TemplateLibraryDialog(props: Props) {
           <GallerySortMenu value={sort} options={sortOptions} onChange={changeSort} />
         </div>
       </div>}
-      {!props.creators && hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={() => setQuery('')} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}<button onClick={reset}>{t('Clear filters')}</button><span>{t('{count} templates', { count: visible.length })}</span></div>}
+      {!props.creators && hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}{hasAppliedFilters && <button onClick={reset}>{t('Clear filters')}</button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>
     {props.creators ? <TemplateCreators catalog={catalog} creator={props.creator ?? null} query={query} works={visible} loading={loading}
       error={error} retry={() => retry(value => value + 1)} choose={chooseCreator} open={openCard} active={active} onPriority={setPriority} /> :
     <main className={styles.results} aria-busy={loading}>
       {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
       <div className={storiesPreview && brandsOnly ? storyStyles.brandGrid : styles.grid}>
-        <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())} />
+        {!showEmptyRecovery && <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())}
+          afterActions={!query.trim() && <div className={`om-media-detail-actions ${styles.referenceEntry}`}>
+            <span className={styles.referenceEntryLabel}>{t('Nothing suitable?')}</span>
+            <button type="button" className="om-button" data-primary data-reference-entry="library_home" aria-haspopup="dialog" aria-label={t('Paste a video link to make your own')} onClick={event => {
+              const context = listContext();
+              referenceSeen(context);
+              tracking.reportRecoveryAction('reference', context, 'library_home');
+              setReferenceTrigger(event.currentTarget);
+            }}>
+              <span>{t('Paste a video link to make your own')}</span><MotionIcon name="arrow-right" size={16} />
+            </button>
+          </div>} />}
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
         {storiesPreview && brandsOnly ? visibleBrandGroups.map(series => <BrandSeriesCard key={series.name} series={series} onOpen={(group, element) => openBrand(group, element, 'top100')} />) : visible.map((item, index) => <Fragment key={item.id}>{insertions.get(index) && <BrandSeriesCard series={insertions.get(index)!} discovery onOpen={(group, element) => openBrand(group, element, 'discovery')} />}<TemplateCard template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} /></Fragment>)}
       </div>
       {loading && !catalog.length && <span className={styles.visuallyHidden} role="status">{t('Loading templates…')}</span>}
       {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
-      {!loading && !visible.length && !error && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching templates. Try another name, creator or style.')}</p><button onClick={reset}>{t('Clear filters')}</button></div>}
+      {props.open && <div data-search-recovery="" hidden={!showRecovery}>
+        <TemplateSearchRecovery visible={showRecovery} query={query} context={listContext()} reason={!catalog.length ? 'catalog_empty' : showEmptyRecovery ? 'no_results' : 'unsuitable'} expanded={showEmptyRecovery || recoveryExpanded}
+          searchAction={showEmptyRecovery && (!catalog.length ? <button className="om-button" onClick={() => retry(value => value + 1)}>{t('Reload')}</button>
+            : suggestedRemoval ? <button className="om-button" onClick={() => {
+              if (suggestedRemoval.key === 'editable') toggleEditable(false);
+              else if (suggestedRemoval.key === 'top') chooseBrands(false);
+              else toggle(suggestedRemoval.key, suggestedRemoval.value);
+            }}>{t('Remove {condition} · Show {results}', { condition: suggestedRemoval.label, results: suggestedRemoval.count === 1 ? t('1 template') : t('{count} templates', { count: suggestedRemoval.count }) })}</button>
+              : query.trim() ? <button className="om-button" onClick={() => search.current?.focus()}>{t('Edit search')}</button>
+                : hasAppliedFilters ? <button className="om-button" onClick={reset}>{t('Clear filters')}</button> : null)}
+          onExpand={() => { settleSearch(); currentSearchContext.current.activity(); setRecoveryExpanded(true); }} onActivity={() => { currentSearchContext.current.activity(); return listContext(); }} showToast={(message, kind) => showToast(message, kind, 'feedback')} />
+      </div>}
     </main>}
+    {props.open && referenceTrigger && <TemplateReferenceDialog trigger={referenceTrigger} onClose={() => setReferenceTrigger(null)}
+      onActivity={listContext} showToast={(message, kind) => showToast(message, kind, 'feedback')} />}
     {props.open && storiesPreview && brandStory && <BrandStoriesDialog key={brandStory.view.series_view_id} series={brandStory.series} trackingView={brandStory.view} covered={Boolean(preview)} onCopy={copyBrandInstruction} onDownload={item => downloadMotion(item)} onClose={closeBrand} onTemplate={(item, guide) => { show(item, 'catalog', true, brandStory.view); if (guide) setGuideOpen(true); }} onCompare={purpose => {
       const name = brandStory.series.name;
       closeBrand(); setBrandsOnly(false); setQuery(''); setEditableOnly(false); setSelected({ uses: [purpose] }); setCompareWithout(name);

@@ -180,7 +180,7 @@
     "When you want confetti, sparks or an ambient particle background": "要彩纸、火花庆祝效果，或粒子氛围背景",
     "When to use": "什么时候用",
     "Remove the AI look": "去 AI 味",
-    "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "挑一个 Skill，填好需求、复制指令，Agent 会通过 OpenMotion 做出可继续编辑的项目。",
+    "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "挑一个 Skill，填好需求并复制指令，让 Agent 在 OpenMotion 中做出可编辑项目。",
     "Cover source": "封面来源",
     "Submit a skill": "提交 Skill",
     "How any company grew, on one timeline.": "一条时间线看懂任何公司怎么长大。",
@@ -221,7 +221,9 @@
     "Motion design principles for agents.": "给 Agent 的动效设计原则。",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "动画前先按它的动效导演清单：定情绪意图和动效性格，从它的表里选时长和缓动，运用动画 12 原则，按清楚的顺序编排元素。做完再对照它的质量清单检查。",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "编排仪表盘入场：先主图表，再数据卡片，最后侧栏",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "时长、缓动和入场顺序都有意设计的动效，每个动作都有目的"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "时长、缓动和入场顺序都有意设计的动效，每个动作都有目的",
+    "Your brief": "你的需求",
+    "See repository": "查看仓库"
   },
   "ja": {
     "Skills": "Skills",
@@ -445,7 +447,9 @@
     "Motion design principles for agents.": "エージェント向けのモーションデザイン原則。",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "アニメーションの前にモーションディレクターのチェックリストに従う：感情の意図とモーションの性格を決め、表から長さとイージングを選び、アニメーションの12原則を適用し、要素を明確な順序で振り付ける。最後に品質チェックリストで確認する。",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "ダッシュボードの登場を振り付け：まずメインチャート、次に数値、最後にサイドバー",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "長さ・イージング・登場順を意図して決めたモーション。すべての動きに目的がある"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "長さ・イージング・登場順を意図して決めたモーション。すべての動きに目的がある",
+    "Your brief": "ご要望",
+    "See repository": "リポジトリを確認"
   },
   "ko": {
     "Skills": "Skills",
@@ -669,7 +673,9 @@
     "Motion design principles for agents.": "에이전트를 위한 모션 디자인 원칙.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "애니메이션 전에 모션 디렉터 체크리스트를 따릅니다: 감정 의도와 모션 성격을 정하고, 표에서 길이와 이징을 고르고, 애니메이션 12원칙을 적용하고, 요소를 명확한 순서로 안무합니다. 그다음 품질 체크리스트로 결과를 검토합니다.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "대시보드 등장 안무: 메인 차트 먼저, 그다음 통계, 마지막 사이드바",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "길이, 이징, 등장 순서를 의도적으로 정한 모션. 모든 움직임에 목적이 있음"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "길이, 이징, 등장 순서를 의도적으로 정한 모션. 모든 움직임에 목적이 있음",
+    "Your brief": "요청 내용",
+    "See repository": "저장소 확인"
   },
   "ru": {
     "Skills": "Skills",
@@ -893,7 +899,9 @@
     "Motion design principles for agents.": "Принципы моушн-дизайна для агентов.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Перед анимацией пройдите его чек-лист моушн-режиссёра: выберите эмоциональную задачу и характер движения, подберите длительности и плавность по его таблицам, примените 12 принципов анимации и выстройте элементы в ясном порядке. Затем проверьте результат по его чек-листу качества.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Поставьте появление дашборда: сначала главный график, затем показатели, затем боковая панель",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Анимация с продуманными длительностями, плавностью и ясным порядком появления: у каждого движения есть цель"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Анимация с продуманными длительностями, плавностью и ясным порядком появления: у каждого движения есть цель",
+    "Your brief": "Ваша задача",
+    "See repository": "Смотреть репозиторий"
   },
   "de": {
     "Skills": "Skills",
@@ -1117,7 +1125,9 @@
     "Motion design principles for agents.": "Motion-Design-Prinzipien für Agents.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Folge vor dem Animieren seiner Motion-Director-Checkliste: Wähle die emotionale Absicht und eine Bewegungspersönlichkeit, nimm Dauern und Easing aus seinen Tabellen, wende die 12 Animationsprinzipien an und choreografiere die Elemente in klarer Reihenfolge. Prüfe das Ergebnis dann mit seiner Qualitäts-Checkliste.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Choreografiere den Auftritt eines Dashboards: zuerst das Hauptdiagramm, dann die Kennzahlen, dann die Seitenleiste",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Bewegung mit bewussten Dauern, Easing und klarer Auftrittsreihenfolge, sodass jede Bewegung einen Zweck hat"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Bewegung mit bewussten Dauern, Easing und klarer Auftrittsreihenfolge, sodass jede Bewegung einen Zweck hat",
+    "Your brief": "Dein Briefing",
+    "See repository": "Repository ansehen"
   },
   "fr": {
     "Skills": "Skills",
@@ -1341,7 +1351,9 @@
     "Motion design principles for agents.": "Principes de motion design pour agents.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Suivez sa checklist de directeur du mouvement avant d’animer : choisissez l’intention émotionnelle et une personnalité de mouvement, prenez durées et easing dans ses tableaux, appliquez les 12 principes de l’animation et chorégraphiez les éléments dans un ordre clair. Puis vérifiez le résultat avec sa checklist qualité.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Chorégraphiez l’entrée d’un tableau de bord : d’abord le graphique principal, puis les chiffres, puis la barre latérale",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Un mouvement aux durées, easing et ordre d’entrée réfléchis : chaque geste a un but"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Un mouvement aux durées, easing et ordre d’entrée réfléchis : chaque geste a un but",
+    "Your brief": "Votre demande",
+    "See repository": "Voir le dépôt"
   },
   "es": {
     "Skills": "Skills",
@@ -1565,7 +1577,9 @@
     "Motion design principles for agents.": "Principios de motion design para agentes.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Sigue su lista de director de movimiento antes de animar: elige la intención emocional y una personalidad de movimiento, toma duraciones y easing de sus tablas, aplica los 12 principios de la animación y coreografía los elementos en un orden claro. Después revisa el resultado con su lista de calidad.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Coreografía la entrada de un panel: primero el gráfico principal, luego las cifras y después la barra lateral",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Movimiento con duraciones, easing y un orden de entrada claro, para que cada gesto tenga un propósito"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Movimiento con duraciones, easing y un orden de entrada claro, para que cada gesto tenga un propósito",
+    "Your brief": "Tu solicitud",
+    "See repository": "Ver repositorio"
   },
   "pt-BR": {
     "Skills": "Skills",
@@ -1789,7 +1803,9 @@
     "Motion design principles for agents.": "Princípios de motion design para agentes.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Siga a checklist de diretor de movimento antes de animar: escolha a intenção emocional e uma personalidade de movimento, pegue durações e easing das tabelas, aplique os 12 princípios da animação e coreografe os elementos em ordem clara. Depois revise o resultado com a checklist de qualidade.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Coreografe a entrada de um painel: primeiro o gráfico principal, depois os números, por fim a barra lateral",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Movimento com durações, easing e ordem de entrada claras, para que cada gesto tenha propósito"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Movimento com durações, easing e ordem de entrada claras, para que cada gesto tenha propósito",
+    "Your brief": "Seu pedido",
+    "See repository": "Ver repositório"
   },
   "it": {
     "Skills": "Skill",
@@ -2013,7 +2029,9 @@
     "Motion design principles for agents.": "Principi di motion design per agenti.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Segui la sua checklist da regista del movimento prima di animare: scegli l’intento emotivo e una personalità di movimento, prendi durate ed easing dalle sue tabelle, applica i 12 principi dell’animazione e coreografa gli elementi in un ordine chiaro. Poi verifica il risultato con la sua checklist di qualità.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Coreografa l’ingresso di una dashboard: prima il grafico principale, poi i dati, infine la barra laterale",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Movimento con durate, easing e un ordine di ingresso chiaro, così che ogni gesto abbia uno scopo"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Movimento con durate, easing e un ordine di ingresso chiaro, così che ogni gesto abbia uno scopo",
+    "Your brief": "La tua richiesta",
+    "See repository": "Vedi repository"
   },
   "tr": {
     "Skills": "Skill’ler",
@@ -2237,6 +2255,8 @@
     "Motion design principles for agents.": "Ajanlar için hareket tasarımı ilkeleri.",
     "Follow its motion-director checklist before animating: pick the emotional intent and a motion personality, choose durations and easing from its tables, apply the 12 animation principles, and choreograph elements in a clear order. Then review the result against its quality checklist.": "Canlandırmadan önce hareket yönetmeni kontrol listesini izle: duygusal amacı ve bir hareket kişiliğini seç, süreleri ve yumuşatmayı tablolarından al, 12 animasyon ilkesini uygula ve öğeleri net bir sırayla koreografiye et. Ardından sonucu kalite kontrol listesine göre gözden geçir.",
     "Choreograph a dashboard entrance: hero chart first, then stats, then sidebar": "Bir panonun girişini koreografiye et: önce ana grafik, sonra istatistikler, en son kenar çubuğu",
-    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Süreleri, yumuşatması ve giriş sırası bilinçli seçilmiş hareket; her hareketin bir amacı var"
+    "Motion with deliberate durations, easing and a clear entrance order, so every move has a purpose": "Süreleri, yumuşatması ve giriş sırası bilinçli seçilmiş hareket; her hareketin bir amacı var",
+    "Your brief": "İsteğiniz",
+    "See repository": "Depoyu görüntüle"
   }
 }

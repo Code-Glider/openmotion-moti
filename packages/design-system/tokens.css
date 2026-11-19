@@ -126,7 +126,8 @@
   --motion-asset-filmstrip-selected-border: var(--motion-neutral-n11);
   --motion-muted: #5c5c5c;
   --motion-dim: #696969;
-  --motion-placeholder: #848484;
+  --motion-placeholder: var(--motion-neutral-n6);
+  --motion-focus: var(--motion-neutral-n7);
   --motion-strong: #202020;
   --motion-accent: #007106;
   --motion-accent-hover: #0d5400;
@@ -206,6 +207,7 @@
   --motion-muted: #bbc6d2;
   --motion-dim: #a6b4c3;
   --motion-placeholder: #a0adbd;
+  --motion-focus: var(--motion-placeholder);
   --motion-strong: #f5f9fd;
   --motion-accent: #9cf1bb;
   --motion-accent-hover: #bffbd3;
@@ -286,6 +288,7 @@
     --motion-muted: #bbc6d2;
     --motion-dim: #a6b4c3;
     --motion-placeholder: #a0adbd;
+    --motion-focus: var(--motion-placeholder);
     --motion-strong: #f5f9fd;
     --motion-accent: #9cf1bb;
     --motion-accent-hover: #bffbd3;
