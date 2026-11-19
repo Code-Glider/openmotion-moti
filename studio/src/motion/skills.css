@@ -132,17 +132,14 @@ a.om-skill-source { color: var(--motion-strong); }
 .om-skill-card-demo .om-skill-split-caption { bottom: var(--motion-space-4); font-size: var(--motion-text-xs); }
 .om-skill-card-demo .om-skill-split-caption[data-side="before"] { left: var(--motion-space-4); }
 .om-skill-card-demo .om-skill-split-caption[data-side="after"] { left: calc(50% + var(--motion-space-4)); }
-.om-gallery-intro.om-skills-intro { min-height: 0; max-width: none; padding: var(--motion-space-24) 0 var(--motion-space-8); margin-bottom: 0; }
-.om-skills-heading-row { display: flex; align-items: center; justify-content: space-between; gap: var(--motion-space-16); }
+.om-gallery-intro.om-skills-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--motion-space-16); min-height: 0; max-width: none; padding: var(--motion-space-24) 0 var(--motion-space-8); margin-bottom: 0; }
+.om-skills-heading-row { display: contents; }
 .om-gallery-intro.om-skills-intro h1 { max-width: none; margin-block: var(--motion-space-8); }
-.om-skills-heading-row .om-gallery-submit { flex-shrink: 0; }
-.om-gallery-intro.om-skills-intro p { max-width: none; margin-bottom: 0; }
-.om-skills-page:has(.om-skill-detail:not([hidden])) .om-skills-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--motion-space-16); }
-.om-skills-page:has(.om-skill-detail:not([hidden])) .om-skills-heading-row { display: contents; }
-.om-skills-page:has(.om-skill-detail:not([hidden])) .om-skills-intro p { grid-column: 1; }
-.om-skills-page:has(.om-skill-detail:not([hidden])) .om-gallery-submit { align-self: start; margin-top: var(--motion-space-4); }
+.om-skills-heading-row .om-gallery-submit { align-self: start; margin-top: var(--motion-space-4); }
+.om-gallery-intro.om-skills-intro p { grid-column: 1; max-width: none; margin-bottom: 0; }
 @container (max-width: 480px) {
-  .om-skills-heading-row { flex-wrap: wrap; gap: var(--motion-space-8); }
+  .om-gallery-intro.om-skills-intro { grid-template-columns: minmax(0, 1fr); }
+  .om-skills-heading-row .om-gallery-submit { grid-column: 1; grid-row: 3; justify-self: start; }
 }
 
 /* Release the list width as the detail exits so both sides settle together. */
