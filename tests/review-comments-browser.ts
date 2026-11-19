@@ -146,6 +146,7 @@ test('real review workflow preserves element context, clipboard fallback and Age
   const running = await startServer(store, 0, { editor: true });
   const browser = await puppeteer.launch({ executablePath: process.env.HYPERFRAMES_BROWSER_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
   const page = await browser.newPage();
+  let listRequestCount = 0;
   let commentReads: 'pass' | 'hold' | 'fail' = 'pass';
   const heldReads: HTTPRequest[] = [];
   const readFailure = { status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Review service unavailable' }) };
@@ -153,6 +154,7 @@ test('real review workflow preserves element context, clipboard fallback and Age
   page.on('request', request => {
     const input = request.url().includes('/phase1/call') && request.postData() ? JSON.parse(request.postData()!) : null;
     if (input?.arguments?.action === 'comments' && input.arguments.operation === 'list') {
+      listRequestCount++;
       if (commentReads === 'hold') { heldReads.push(request); return; }
       if (commentReads === 'fail') { void request.respond(readFailure).catch(() => {}); return; }
     }
@@ -178,6 +180,11 @@ test('real review workflow preserves element context, clipboard fallback and Age
     await page.setViewport({ width: 1440, height: 1000 });
     await page.screenshot({ path: path.join(output, 'player-entry-light.png') });
     await assertReviewToolStates(page, 'light');
+    assert.equal(await page.evaluate(() => document.querySelector<HTMLElement>('section[aria-label="Comments"]')?.checkVisibility() ?? false), false);
+    assert(listRequestCount > 0, 'An idle player must load its initial comment badge');
+    const idleReads = listRequestCount;
+    await new Promise(resolve => setTimeout(resolve, 5500));
+    assert.equal(listRequestCount, idleReads, 'An idle preview must not keep scanning the project for comments');
     await button(page, 'Play');
     await new Promise(resolve => setTimeout(resolve, 1200));
     await button(page, 'Pause');

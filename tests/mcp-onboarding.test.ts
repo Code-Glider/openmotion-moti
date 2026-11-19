@@ -108,3 +108,40 @@ test('final-video selection and recovery are localized throughout the handbook',
     }
   }
 });
+
+
+test('canvas and caption controls expose atomic operations and an actionable handbook example', () => {
+  const capability = mcpCapabilities.find(item => item.id === 'canvas-captions')!;
+  assert.match(capability.prompt, /openmotion_edit_project.*canvas=/);
+  assert.match(capability.prompt, /caption_toggle/);
+  assert.match(capability.prompt, /stable requestId/);
+  assert.match(capability.description, /Locked tracks.*Conflicts.*without automatic subject detection/);
+  const schema = phase1Tools.find(tool => tool.name === 'openmotion_edit_project')!.inputSchema;
+  assert.ok(schema.properties.canvas); assert.ok(!schema.required.includes('files'));
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/canvas-ui.json', import.meta.url), 'utf8'));
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing canvas guidance`);
+  }
+});
+
+test('fullscreen guidance distinguishes browser presentation from an Agent project operation', () => {
+  const capability = mcpCapabilities.find(item => item.id === 'fullscreen')!;
+  assert.deepEqual(capability.tools, ['openmotion_open_preview']);
+  assert.match(capability.description, /Embedded hosts may block/); assert.match(capability.prompt, /do not render or edit/);
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/fullscreen-ui.json', import.meta.url), 'utf8'));
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing fullscreen guidance`);
+  }
+});
+
+
+test('timeline hover inspection remains a localized, non-mutating preview scenario', () => {
+  const capability = mcpCapabilities.find(item => item.id === 'timeline-hover')!;
+  assert.deepEqual(capability.tools, ['openmotion_open_preview']);
+  assert.match(capability.description, /Pause playback.*Click the ruler.*if loading fails/);
+  assert.match(capability.prompt, /Preserve the source and selection; do not export or generate media/);
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/timeline-hover-ui.json', import.meta.url), 'utf8'));
+  for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
+    for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing hover guidance`);
+  }
+});

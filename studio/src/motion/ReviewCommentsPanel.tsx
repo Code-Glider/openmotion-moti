@@ -39,10 +39,10 @@ function ProjectReviewComments() {
   const composerOpen = useReviewPresentationStore(state => state.composerOpen);
   const placement = useReviewPresentationStore(state => state.placement);
   const time = usePlayerStore(state => state.currentTime), playing = usePlayerStore(state => state.isPlaying);
-  const review = useReviewComments(projectId, visible || Boolean(playerHost));
   const { info, failed: integrationFailed, retry: retryIntegration } = useIntegrationInfo();
   const [selecting, setSelecting] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null), [text, setText] = useState('');
+  const review = useReviewComments(projectId, visible || Boolean(playerHost && (draft || composerOpen)));
   const [needsRecapture, setNeedsRecapture] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('open');
   const [selected, setSelected] = useState<Set<string>>(new Set());

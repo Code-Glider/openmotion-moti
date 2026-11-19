@@ -149,9 +149,16 @@ test('packaged server imports without local dependencies and captions use the se
     const script = `
       await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'server.ts')).href)});
       const { loadCaptionSourceOperations } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/transcript-captions.ts')).href)});
-      const { manualCaptionSource, captionTracks } = await loadCaptionSourceOperations(${JSON.stringify(root)});
+      const { manualCaptionSource, captionTracks, toggleCaptionSource, parseHTML } = await loadCaptionSourceOperations(${JSON.stringify(root)});
       const result = manualCaptionSource('<div data-composition-id="main" data-duration="3"></div>', '11111111-1111-4111-8111-111111111111', { segments: [{ id: 'cue', text: 'Packaged caption', start: 0, end: 2 }] });
       if (captionTracks(result.content)[0]?.cueCount !== 1) throw new Error('Packaged caption operation failed');
+      const { compositionCanvasSource } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/composition-canvas.ts')).href)});
+      const { loadCanvasSourceOperations } = await import(${JSON.stringify(pathToFileURL(path.join(extracted, 'shared/composition-canvas-source.ts')).href)});
+      const canvasParsers = await loadCanvasSourceOperations(${JSON.stringify(root)});
+      const framed = compositionCanvasSource('<div data-composition-id="main" data-duration="3" data-width="640" data-height="360"></div>', canvasParsers, { ratio: '9:16', fit: 'cover' });
+      if (framed.canvas.width !== 1080 || framed.canvas.height !== 1920) throw new Error('Packaged canvas operation failed');
+      const enabled = toggleCaptionSource(framed.content, '22222222-2222-4222-8222-222222222222', true);
+      if (captionTracks(enabled.content)[0]?.cueCount !== 0) throw new Error('Packaged empty caption lane failed');
     `;
     const result = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', script], { cwd: extracted, encoding: 'utf8', timeout: 30000 });
     assert.equal(result.status, 0, result.stderr || result.error?.message);

@@ -105,6 +105,11 @@ With `action=brand_kit`, supply a nested `brandKit` command. This is the Studio 
 
 List has no arguments and returns source, indexPath, total and catalogVersion. Search the local JSONL index; repository rows include localSource paths. Get requires templateId and reads the selected template's instructions. Repository mode also returns motionDocument={path,content} and localSource paths for metadata, guide, manifest and examples, without requiring an editor/backend or CMS request; hosted catalog entries return motionDocument without localSource paths, and built-in examples stay answerable without a catalog request. Source checkouts default to repository; NPM distributions without catalog files default to the latest hosted `main` catalog, while explicit CMS mode retains publication caching. See [startup and source selection](template-repository.md#run-from-a-local-clone). Guidance-only entries return workflowGuide `recreate`: openmotion-recreate rebuilds them from their guidance package and linked reference video; direct projectType=template copying still requires actual editable project files.
 
+
+Library Skills are discoverable through `openmotion_list_templates`: `total` still counts templates and `skillTotal` counts the appended rows; `catalogVersion` stays the template catalog identity. Search the JSONL rows with `kind: "skill"` by title, description or scenario tags, then call `openmotion_get_template(templateId)` using the directory ID. Skill details return the complete `SKILL.md` in `instructions` and `motionDocument.content`, plus a relative file inventory (including references, scripts and assets). Repository mode includes an absolute `localSource` directory. Hosted/npm mode reads embedded instructions and inventory from the published main catalog without claiming local files exist; `objects` lists every supporting file with its path, bytes and SHA-256 and a URL in the same content-addressed object store as template sources, so the Agent can download and verify what SKILL.md references. CMS mode retains its existing template-only behavior and does not expose library Skills.
+
+Follow `SKILL.md` and use existing tools such as `openmotion_create_project(projectType="natural_language")` when needed. Skills are not editable template projects: template creation and `openmotion_apply_template` reject Skill IDs. Studio template galleries, website/plugin template lists and onboarding recommendations remain template-only. No MCP tool is added.
+
 ### openmotion_create_project
 
 必填 requestId、projectType、title、requirements；可选 sessionId 归入已有会话。projectType 为 natural_language/template/reference_video。template 必须给实际可复制的 builtin 或 Prism templateId；reference_video 必须给已知目录 referenceVideoId 或 HTTP(S) referenceUrl。
@@ -112,6 +117,8 @@ List has no arguments and returns source, indexPath, total and catalogVersion. S
 返回 projectId、sessionId、project（directory、html、files）、revision、version、currentVersionId/currentVersionNumber、需求/来源、previewUrl，以及 creationComplete=true、filmComplete=false。参考只记录来源，不在创建时假装看片或生成成片；外部 URL 可达性/内容由宿主实际检查。输入不符、模板不可复制或 ID 不存在时明确失败，保留旧项目。
 
 ### openmotion_open_preview
+
+Studio frame inspection uses this same project preview entry. While paused, hover over the timeline ruler or clips for a silent, temporary frame preview, then click the ruler to seek. Leaving or resuming playback closes it. Loading failure can be retried by leaving and hovering again. This interaction does not edit project source or require a model/export; hover state is client presentation, not a persisted MCP operation.
 
 For user-facing catalog browsing, comparison or recommendation, prepare `target=templates` and complete its host page handoff in the same turn unless the user requested text-only/no opening. Recommendations do not authorize creation. Use the shared [browsing policy](../skills/openmotion-production/references/templates.md#browsing-and-recommendations); background directory queries retain their read-only behavior. Verify actual native panel visibility and library content, retry failed presentation once, and report persistent display failures separately from unavailable host capability. Do not count a prepared URL or queued acknowledgment as display success.
 
@@ -287,6 +294,16 @@ For NEW generated media, use openmotion_media_use inspect/reference/models to di
 `openmotion_edit_project` accepts optional `namingLanguage` and `assetNames: [{path, name}]` with its existing `expectedRevision`, `expectedVersionId` and stable `requestId` guards. Use `files: []` for a metadata-only update; the batch is atomic, versioned and retry-safe. Set an unpinned language before assigning new names; change a saved language only on explicit user instruction. A display rename retains original-name metadata, stored bytes, paths, IDs and composition references. Unsupported or missing paths reject the entire batch. Reread after a version conflict instead of overwriting newer names.
 
 Imports accept readable `items[].name`; library generation/import accepts `name`. `import_to_project` defaults to the saved library name, including later library renames; provide `name` only for an explicit rename or missing-name repair. Project captions omit known media extensions and disambiguate duplicates with display-only numeric suffixes. UUID storage names fall back to parsed font metadata or localized type/sequence labels. Platform fallbacks cover Studio's eleven languages, with English for unsupported languages; the Agent can supply names in other languages. See the [shared Agent naming contract](../skills/openmotion-production/references/materials.md#asset-naming).
+
+### Native canvas and caption controls
+
+`openmotion_edit_project` accepts `canvas: { compositionPath, ratio, fit }` with `ratio` in `16:9`, `9:16`, `1:1`, `4:3`, `3:4` and `fit` in `contain`, `cover`. Files are optional for a canvas-only edit; a batch cannot also replace that same composition. Both revision guards and a stable request ID remain required. The operation preserves authored content at its original design size and updates the native output canvas for preview and export. Center cropping is geometric, without automatic subject detection.
+
+`openmotion_assets_use(action=transcript)` adds `caption_toggle`: supply `visible`, `projectId`, `compositionPath`, `expectedRevision`, `expectedVersionId` and `requestId`. First enabling creates an empty managed native caption lane; subsequent caption creation fills it. Disabling preserves all cues. Ordinary text tracks are unaffected. Locks and conflicts reject the complete mutation. `caption_tracks` includes empty tracks with zero cues; subtitle export omits them. Studio uses these same public operations, and MCP · Connect Agent includes the copyable canvas/caption scenario. No new tool names or model prerequisites are introduced.
+
+### Fullscreen preview playback
+
+`openmotion_open_preview` opens the existing editable preview without rendering. The user can enter browser fullscreen with the player button or F and exit with Esc. Fullscreen preserves playback position and editor state, hides editing overlays, and fits the authored aspect ratio. It requires a browser user gesture and an allowed Fullscreen policy; an MCP call cannot grant that permission or force entry. Embedded hosts can open Studio in a browser when their policy blocks fullscreen.
 
 
 ## Video review comments

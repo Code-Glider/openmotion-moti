@@ -16,7 +16,7 @@ const state = vi.hoisted(() => ({ projectId: 'project', composition: 'index.html
   selection: { current: null as DomEditSelection | null }, comments: [] as ReviewComment[],
   save: vi.fn<() => Promise<void>>(), toast: vi.fn(), request: vi.fn(), createError: '', updateError: '',
   iframe: { current: null as HTMLIFrameElement | null },
-  listMounted: true,
+  listMounted: true, visible: true,
 }));
 vi.mock('../contexts/StudioContext', () => ({ useStudioShellContext: () => ({
   projectId: state.projectId, activeCompPath: state.composition, setActiveCompPath: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('../contexts/DomEditContext', () => ({ useDomEditContext: () => ({
   domEditSelection: state.selection.current, domEditSelectionRef: state.selection,
   buildDomSelectionFromTarget: vi.fn(), applyDomSelection: vi.fn(),
 }) }));
-vi.mock('../components/dock/dockLayoutStore', () => ({ useDockLayoutStore: (selector: (value: unknown) => unknown) => selector({ visiblePanels: new Set(['comments']) }) }));
+vi.mock('../components/dock/dockLayoutStore', () => ({ useDockLayoutStore: (selector: (value: unknown) => unknown) => selector({ visiblePanels: new Set(state.visible ? ['comments'] : []) }) }));
 vi.mock('./useIntegrationInfo', () => ({ useIntegrationInfo: () => ({ info: { dataDirectory: '/fixture/workspace' } }) }));
 vi.mock('./reviewCommentsClient', async original => ({ ...await original<typeof import('./reviewCommentsClient')>(), requestComments: (...args: unknown[]) => state.request(...args) }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -50,7 +50,7 @@ beforeEach(async () => {
   state.projectId = 'project'; state.composition = 'index.html'; state.revision = 'a'.repeat(64);
   useReviewPresentationStore.setState({ playerHost: null, listHost: null, intent: null, drafting: false, busy: false, count: 0, mode: null, composerOpen: false, placement: null, frame: null });
   state.iframe.current = null;
-  state.listMounted = true;
+  state.listMounted = true; state.visible = true;
   state.selection.current = null; state.comments = []; state.createError = state.updateError = '';
   state.save.mockReset().mockResolvedValue(); state.toast.mockReset();
   state.request.mockReset().mockImplementation(async (input: ReviewCommentsInput) => {
@@ -66,7 +66,49 @@ beforeEach(async () => {
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   await render();
 });
-afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); });
+afterEach(() => { act(() => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks(); vi.useRealTimers(); });
+
+it('does not poll an idle player but refreshes on focus and while the review list is visible', async () => {
+  expect(state.request).toHaveBeenCalledTimes(1);
+  state.visible = false; await render();
+  expect(useReviewPresentationStore.getState().playerHost).toBeTruthy();
+  vi.useFakeTimers(); state.request.mockClear();
+  await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+  expect(state.request).not.toHaveBeenCalled();
+  await act(async () => window.dispatchEvent(new Event('focus')));
+  expect(state.request).toHaveBeenCalledTimes(1);
+  state.visible = true; await render();
+  expect(state.request).toHaveBeenCalledTimes(2);
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(state.request).toHaveBeenCalledTimes(3);
+  state.visible = false; await render(); state.request.mockClear();
+  await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+  expect(state.request).not.toHaveBeenCalled();
+});
+
+it('polls an active player draft with the sidebar closed and stops after cancellation', async () => {
+  state.visible = false; await render(); vi.useFakeTimers(); state.request.mockClear();
+  await click('Comment here');
+  expect(useReviewPresentationStore.getState().drafting).toBe(true);
+  state.request.mockClear();
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(state.request).toHaveBeenCalledTimes(1);
+  await act(async () => useReviewPresentationStore.getState().request(state.projectId, 'cancel'));
+  state.request.mockClear();
+  await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+  expect(state.request).not.toHaveBeenCalled();
+});
+
+it('skips background scans and refreshes when the document becomes visible', async () => {
+  state.visible = false; await render(); vi.useFakeTimers();
+  state.visible = true; await render(); state.request.mockClear();
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')); await vi.advanceTimersByTimeAsync(15000); });
+  expect(state.request).not.toHaveBeenCalled();
+  hidden.mockReturnValue(false);
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(state.request).toHaveBeenCalledTimes(1);
+});
 
 it('creates a comment in the player while the sidebar is unmounted', async () => {
   state.listMounted = false; await render();
