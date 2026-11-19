@@ -104,3 +104,7 @@
 }
 @media (max-width: 420px) { .om-gallery-masonry { column-gap: 9px; } .om-gallery-intro h1 { font-size: 21px; } .om-gallery-intro .om-gallery-surprise { font-size: var(--motion-text-xs); gap: var(--motion-space-6); padding: 9px; } .om-gallery-surprise > svg:last-child { display: none; } }
 /* Change category ink and surface together; a background-only theme fade loses contrast. */
+
+/* Neutral selection is opt-in so existing catalogue palettes stay independent. */
+.om-gallery-surface .om-gallery-categories[data-neutral] button[aria-pressed=true] { background: var(--motion-action); color: var(--motion-on-action); }
+.om-gallery-surface .om-gallery-categories[data-neutral] button[aria-pressed=true]:hover { background: var(--motion-action-hover); }

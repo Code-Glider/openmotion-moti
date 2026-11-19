@@ -11,6 +11,7 @@ import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration
 import { Popover } from '../components/ui/Popover';
 import { Collapsible } from '@base-ui/react/collapsible';
 import * as tracking from './pageTracking';
+import { useSkillLayoutMotion } from './useSkillLayoutMotion';
 import './skills.css';
 
 /** The contribution guide section with the paste-ready Agent brief for a new library Skill. */
@@ -18,6 +19,17 @@ export const skillSubmissionUrl = 'https://github.com/nexu-io/openmotion/blob/ma
 
 /** Cards lead with the task, like the template library; the upstream project name stays verbatim as the source. */
 const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => t(skill.title);
+
+/** Compare repository identity, ignoring file paths, query strings and anchors. */
+function githubRepositoryOf(source?: string): string | null {
+  if (!source) return null;
+  try {
+    const url = new URL(source);
+    if (!['http:', 'https:'].includes(url.protocol) || !['github.com', 'www.github.com'].includes(url.hostname)) return null;
+    const [owner, repository] = url.pathname.split('/').filter(Boolean);
+    return owner && repository ? `${owner}/${repository.replace(/\.git$/i, '')}`.toLowerCase() : null;
+  } catch { return null; }
+}
 
 const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', style: '' };
 
@@ -27,6 +39,8 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [instantDetail, setInstantDetail] = useState(false);
+  const main = useRef<HTMLDivElement>(null);
+  const captureLayout = useSkillLayoutMotion(main, instantDetail);
   const categories = useRef<HTMLDivElement>(null);
   const [categoryEdges, setCategoryEdges] = useState({ start: false, end: false });
   useEffect(() => {
@@ -65,6 +79,8 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
     if (element?.isConnected) { element.focus(); window.getSelection()?.selectAllChildren(element); }
   }, [manualCopy, commandOpen]);
   const selected = motionSkills.find(skill => skill.id === skillId) ?? null;
+  const sourceRepository = githubRepositoryOf(selected?.repository);
+  const sharedCoverRepository = sourceRepository !== null && sourceRepository === githubRepositoryOf(selected?.cover?.source);
   const matching = (group: SkillCategory | null, text: string) => {
     const needle = text.trim().toLocaleLowerCase();
     return motionSkills.filter(skill => (!group || skill.category === group)
@@ -94,7 +110,7 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
   const prompt = selected ? skillPrompt({ ...selected, output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
   const shortcut = selected ? skillShortcut({ ...selected, title: displayName(selected), example: t(selected.example) }, parameters, locale, installUrl) : '';
   const latest = useRef({ instruction: prompt, command: shortcut }); latest.current = { instruction: prompt, command: shortcut };
-  const open = (skill: MotionSkill, position: number) => { tracking.reportSkillCardOpened(skill, position, searchId.current); onSkillChange(skill.id); };
+  const open = (skill: MotionSkill, position: number) => { if (!selected) captureLayout(); tracking.reportSkillCardOpened(skill, position, searchId.current); onSkillChange(skill.id); };
   // A failed copy keeps its exact text for manual copying only until the brief changes; then show the live text again.
   useEffect(() => { setManualCopy(null); }, [prompt, shortcut]);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
@@ -118,7 +134,7 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
   return <Collapsible.Root open={Boolean(selected)} className="om-gallery-surface om-skills-page om-skills-library" data-detail={Boolean(selected)}
     onPointerDownCapture={() => setInstantDetail(false)} onKeyDownCapture={() => setInstantDetail(true)}>
     <StudioToastViewport {...toast} />
-    <div className="om-skills-main">
+    <div ref={main} className="om-skills-main">
       <main className="om-gallery-results">
         <section className="om-gallery-intro om-skills-intro">
           <div className="om-skills-heading-row">
@@ -129,7 +145,7 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
         </section>
         <div className="om-gallery-sticky-header">
           <div className="om-gallery-toolbar om-skills-toolbar">
-            <div ref={categories} className="om-gallery-categories om-overflow-fade" data-fade-start={categoryEdges.start} data-fade-end={categoryEdges.end} role="group" aria-label={t('Skill category')}>
+            <div ref={categories} className="om-gallery-categories om-overflow-fade" data-neutral data-fade-start={categoryEdges.start} data-fade-end={categoryEdges.end} role="group" aria-label={t('Skill category')}>
               <button aria-pressed={!category} onClick={() => pickCategory(null)}>{t('All')}</button>
               {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => pickCategory(value)}>{t(value)}</button>)}
             </div>
@@ -145,25 +161,25 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
     <Collapsible.Panel render={<aside />} className="om-skill-detail om-surface-divider om-detail-reveal" data-instant={instantDetail}
       inert={!selected} aria-hidden={!selected || undefined} aria-label={selected ? displayName(selected) : undefined}>
       <RetainedDetailContent>{selected ? <>
-      <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => { tracking.reportSkillDetailClick(selected, 'close_detail', detailView.current); onSkillChange(null); }}><RemixIcon name="close-line" size={18} /></button></header>
+      <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => { captureLayout(); tracking.reportSkillDetailClick(selected, 'close_detail', detailView.current); onSkillChange(null); }}><RemixIcon name="close-line" size={18} /></button></header>
       <SkillMedia key={selected.id} skill={selected} large />
-      <p className="om-skill-output"><span>{t('When to use')}</span>{t(selected.useWhen)}</p>
-      <p className="om-skill-output"><span>{t('You get')}</span>{t(selected.output)}</p>
-      {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillDetailClick(selected, 'view_source', detailView.current)}><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>
-        : <p className="om-skill-source"><RemixIcon name="flashlight-line" size={16} /><span>{t('OpenMotion skill')}</span></p>}
-      {selected.cover?.source && <p className="om-skill-credit"><span>{t('Cover source')}</span>{/^https?:\/\//.test(selected.cover.source)
-        ? <a href={selected.cover.source} target="_blank" rel="noopener noreferrer">{selected.cover.source.replace(/^https?:\/\//, '')}</a>
-        : selected.cover.source}</p>}
       <section className="om-skill-form" aria-label={t('Brief')}>
-        <label><span>{t('What to make')}</span><span className="om-field"><textarea rows={2} maxLength={500} value={parameters.subject} placeholder={t(selected.example)} onChange={event => setParameters({ ...parameters, subject: event.target.value })} /></span></label>
-        <fieldset><legend>{t('Duration')}</legend><div className="om-skill-options">{durations.map(value => <button key={value} className="om-nav-item" aria-pressed={parameters.duration === value} onClick={() => setParameters({ ...parameters, duration: value })}>{t('{count}s', { count: value })}</button>)}</div></fieldset>
-        <fieldset><legend>{t('Aspect ratio')}</legend><div className="om-skill-options">{aspectRatios.map(value => <button key={value} className="om-nav-item" aria-pressed={parameters.aspect === value} onClick={() => setParameters({ ...parameters, aspect: value })}>{value}</button>)}</div></fieldset>
-        <label><span>{t('Style (optional)')}</span><span className="om-field"><input maxLength={200} value={parameters.style} placeholder={t('e.g. dark background, neon green accents')} onChange={event => setParameters({ ...parameters, style: event.target.value })} /></span></label>
+        <label><span className="om-subtitle">{t('Your brief')}</span><span className="om-field"><textarea rows={4} maxLength={500} value={parameters.subject} placeholder={t(selected.example)} onChange={event => setParameters({ ...parameters, subject: event.target.value })} /></span></label>
+        <fieldset><legend className="om-subtitle">{t('Duration')}</legend><div className="om-segmented om-skill-options">{durations.map(value => <button key={value} className="om-nav-item" aria-pressed={parameters.duration === value} onClick={() => setParameters({ ...parameters, duration: value })}>{t('{count}s', { count: value })}</button>)}</div></fieldset>
+        <fieldset><legend className="om-subtitle">{t('Aspect ratio')}</legend><div className="om-segmented om-skill-options">{aspectRatios.map(value => <button key={value} className="om-nav-item" aria-pressed={parameters.aspect === value} onClick={() => setParameters({ ...parameters, aspect: value })}>{value}</button>)}</div></fieldset>
+        <label><span className="om-subtitle">{t('Style (optional)')}</span><span className="om-field"><input maxLength={200} value={parameters.style} placeholder={t('e.g. dark background, neon green accents')} onChange={event => setParameters({ ...parameters, style: event.target.value })} /></span></label>
       </section>
       <section className="om-skill-prompt" aria-label={t('Agent instruction')}>
         <span className="om-subtitle">{t('Agent instruction')}</span>
         <pre ref={instruction} data-manual={manualCopy?.surface === 'instruction'} tabIndex={0}>{manualCopy?.surface === 'instruction' ? manualCopy.text : prompt}</pre>
       </section>
+      <div className="om-skill-provenance">
+      {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillDetailClick(selected, 'view_source', detailView.current)}><GitHubMark width={14} height={14} /><span>{selected.repository.replace(/^https?:\/\/github\.com\//, '')}</span><span className="om-skill-license">{selected.license === 'See repository' ? t('See repository') : selected.license}</span><MotionIcon name="arrow-up-right" size={14} /></a>
+        : <p className="om-skill-source"><RemixIcon name="flashlight-line" size={16} /><span>{t('OpenMotion skill')}</span></p>}
+      {selected.cover?.source && !sharedCoverRepository && <p className="om-skill-credit"><span>{t('Cover source')}</span>{/^https?:\/\//.test(selected.cover.source)
+        ? <a href={selected.cover.source} target="_blank" rel="noopener noreferrer">{selected.cover.source.replace(/^https?:\/\//, '')}</a>
+        : selected.cover.source}</p>}
+      </div>
       <footer className="om-skill-footer">
         <div className="om-skill-actions">
           <button className="om-button" data-primary onClick={() => void copy()}><RemixIcon name="file-copy-line" size={16} />{t('Copy for Agent')}</button>
@@ -207,12 +223,12 @@ function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: Motion
   return <button ref={card} type="button" className="om-card om-skill-gallery-card" data-interactive data-skill-id={skill.id} data-selected={selected}
     onClick={onSelect} aria-pressed={selected} aria-labelledby={`skill-title-${skill.id}`} aria-describedby={`skill-purpose-${skill.id}`}
     onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
+    <span className="om-gallery-cover om-skill-card-demo">
+      <SkillMedia skill={skill} playing={active} near={near || hovered} />
+    </span>
     <span className="om-skill-card-meta">
       <span className="om-skill-card-heading"><strong id={`skill-title-${skill.id}`}>{name}</strong></span>
       <span className="om-skill-card-purpose" id={`skill-purpose-${skill.id}`} title={useWhen}>{useWhen}</span>
-    </span>
-    <span className="om-gallery-cover om-skill-card-demo">
-      <SkillMedia skill={skill} playing={active} near={near || hovered} />
     </span>
   </button>;
 }

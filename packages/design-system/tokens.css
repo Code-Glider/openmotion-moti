@@ -126,8 +126,8 @@
   --motion-asset-filmstrip-selected-border: var(--motion-neutral-n11);
   --motion-muted: #5c5c5c;
   --motion-dim: #696969;
-  --motion-placeholder: #848484;
-  --motion-focus: var(--motion-placeholder);
+  --motion-placeholder: var(--motion-neutral-n6);
+  --motion-focus: var(--motion-neutral-n7);
   --motion-strong: #202020;
   --motion-accent: #007106;
   --motion-accent-hover: #0d5400;

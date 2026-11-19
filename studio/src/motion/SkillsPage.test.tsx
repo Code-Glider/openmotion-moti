@@ -288,3 +288,15 @@ it('falls back to the poster when a cover video cannot load', () => {
 it('serves no cover video from raw GitHub, which sends it as an undecodable octet-stream', () => {
   expect(motionSkills.filter(skill => skill.cover?.video?.includes('raw.githubusercontent.com')).map(skill => skill.id)).toEqual([]);
 });
+
+it('merges same-repository cover credits while retaining external sources and attribution', () => {
+  for (const id of ['openmotion-design-styles', 'motionmaxxing']) {
+    act(() => root.render(<SkillsPage skillId={id} onSkillChange={() => {}} />));
+    expect(container.querySelector('a.om-skill-source')!.getAttribute('href')).toBe(motionSkills.find(skill => skill.id === id)!.repository);
+    expect(container.querySelector('.om-skill-credit')).toBeNull();
+  }
+  for (const id of ['lume', 'three-js', 'openmotion-growth-teardown']) {
+    act(() => root.render(<SkillsPage skillId={id} onSkillChange={() => {}} />));
+    expect(container.querySelector('.om-skill-credit')!.textContent).toContain(motionSkills.find(skill => skill.id === id)!.cover!.source!.replace(/^https?:\/\//, ''));
+  }
+});
