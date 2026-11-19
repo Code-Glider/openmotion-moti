@@ -5,7 +5,7 @@ import { useStudioShellContext } from '../contexts/StudioContext';
 import { useDomEditContext } from '../contexts/DomEditContext';
 import { usePlayerStore } from '../player/store/playerStore';
 import { useDockLayoutStore } from '../components/dock/dockLayoutStore';
-import { Button } from '@openmotion/ui/button';
+import { Button } from 'open-design-ui/button';
 import { IconButton, Tooltip } from '../components/ui';
 import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { Skeleton } from '../components/ui/Skeleton';

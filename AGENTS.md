@@ -73,6 +73,8 @@ Keep technical identifiers needed for setup, supported agent/model names and exp
 
 Check the [component library registry and contribution guide](packages/design-system/components/README.md) before adding a shared Studio control. Use the listed source import and update the live example when its recommended usage or behavior changes.
 
+Use the shared Button, IconButton or Slider for new Studio actions and range controls. The design check blocks native `<button>` and `<input type="range">` above the per-file legacy baseline. Lower the baseline when migrating a legacy control.
+
 Follow [the shared design system](docs/design-system.md#interaction-and-feedback-contract) for all new or changed product UI. Reuse its components and semantic tokens in both light and dark themes; do not introduce page-specific palettes or native-looking replacement controls.
 
 - Transient action feedback, including copy, download, save and failure notices, must use floating Toasts through the shared feedback layer. Never insert these messages below buttons or into normal document flow: showing or dismissing feedback must not move content or consume layout space.

@@ -2,7 +2,7 @@ import { Popover } from '@base-ui/react/popover';
 import { useEffect, useRef, useState } from 'react';
 import { projectAgentPrompt } from '../../../shared/project-agent-prompt';
 import { useStudioShellContext } from '../contexts/StudioContext';
-import { Button } from '@openmotion/ui/button';
+import { Button } from 'open-design-ui/button';
 import { IconButton, Tooltip } from '../components/ui';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';

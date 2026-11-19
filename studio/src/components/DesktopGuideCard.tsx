@@ -3,7 +3,7 @@ import { ArrowSquareOut, Check, Copy } from "../icons/RemixIcons";
 import { useEffect, useState, type ReactNode } from "react";
 import { copyTextToClipboard } from "../utils/clipboard";
 import { FrameyGlyph, type FrameyMood } from "./FrameyGlyph";
-import { Button } from "@openmotion/ui/button";
+import { Button } from "open-design-ui/button";
 import { cn } from "./ui";
 
 // The desktop-app guide card under OpenInDesktopButton: Framey and three steps (download, install, open), all drawn

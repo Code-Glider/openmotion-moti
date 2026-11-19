@@ -5,7 +5,7 @@ import { Camera } from "../icons/SystemIcons";
 import { useStudioShellContext } from "../contexts/StudioContext";
 import { usePanelLayoutContext } from "../contexts/PanelLayoutContext";
 import { trackStudioEvent } from "../utils/studioTelemetry";
-import { Button, buttonBase, buttonSizes, buttonVariants } from "@openmotion/ui/button";
+import { Button, buttonBase, buttonSizes, buttonVariants } from "open-design-ui/button";
 import { cn, Tooltip } from "./ui";
 import { ExportDialog } from "./renders/ExportDialog";
 import { Dock } from "./dock/Dock";

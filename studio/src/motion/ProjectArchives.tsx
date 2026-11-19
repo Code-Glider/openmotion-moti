@@ -4,7 +4,7 @@ import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { Menu, MenuItem, MenuSeparator } from '../components/ui/Menu';
 import { Checkbox } from '../components/ui/Checkbox';
-import { Button } from '@openmotion/ui/button';
+import { Button } from 'open-design-ui/button';
 import { Popover } from '../components/ui/Popover';
 import { Tabs, TabsList, Tab, TabPanel } from '../components/ui/Tabs';
 import { Skeleton } from '../components/ui/Skeleton';

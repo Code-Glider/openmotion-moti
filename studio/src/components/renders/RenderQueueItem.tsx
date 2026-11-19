@@ -5,7 +5,7 @@ import { clickMethod, trackStudioClick } from "../../motion/editorTracking";
 import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { RenderQueueInfo } from "./RenderQueueInfo";
 import { RenderPreview } from "./RenderPreview";
-import { Button } from "@openmotion/ui/button";
+import { Button } from "open-design-ui/button";
 import { IconButton } from "../ui/IconButton";
 import { Tooltip } from "../ui/Tooltip";
 import { ErrorNotice } from "../ui/ErrorNotice";

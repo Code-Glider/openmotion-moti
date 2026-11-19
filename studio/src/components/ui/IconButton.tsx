@@ -5,7 +5,7 @@
 
 import { forwardRef } from "react";
 import type { ReactNode } from "react";
-import { buttonBase, buttonVariants, type ButtonBaseProps, type ButtonSize } from "@openmotion/ui/button";
+import { buttonBase, buttonVariants, type ButtonBaseProps, type ButtonSize } from "open-design-ui/button";
 import { cn } from "./cn";
 
 interface IconButtonProps extends ButtonBaseProps {

@@ -1,4 +1,4 @@
-import { Button } from '@openmotion/ui/button';
+import { Button } from 'open-design-ui/button';
 import { Tooltip } from '../components/ui';
 import { useDockLayoutStore } from '../components/dock/dockLayoutStore';
 import { RemixIcon } from '../icons/RemixIcons';

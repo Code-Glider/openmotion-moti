@@ -1,4 +1,4 @@
-import { Button } from '@openmotion/ui/button';
+import { Button } from 'open-design-ui/button';
 import { Select } from '../components/ui/Select';
 import { Menu, MenuItem } from '../components/ui/Menu';
 import { RemixIcon } from '../icons/RemixIcons';

@@ -26,7 +26,7 @@ export default defineConfig({
   }],
   define: { __STUDIO_VERSION__: JSON.stringify('0.9.7'), ...(!process.env.VITEST ? { 'import.meta.env.VITE_HYPERFRAMES_NO_TELEMETRY': JSON.stringify('1') } : {}) },
   resolve: { alias: [
-    { find: '@openmotion/ui', replacement: local('../packages/design-system/components') },
+    { find: 'open-design-ui', replacement: local('../packages/design-system/components') },
     { find: 'canvas', replacement: local('./src/shims/canvasBrowserStub.js') },
     { find: /^\/design-system\//, replacement: local('../packages/design-system/') },
   ] },

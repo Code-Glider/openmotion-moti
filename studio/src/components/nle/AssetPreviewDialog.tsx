@@ -4,7 +4,7 @@ import { useI18n } from "../../i18n/I18n";
 import { useToast } from "../../hooks/useToast";
 import { StudioToastViewport } from "../StudioToastViewport";
 import { RemixIcon } from "../../icons/RemixIcons";
-import { Button } from "@openmotion/ui/button";
+import { Button } from "open-design-ui/button";
 import { IconButton, Tooltip } from "../ui";
 import { MediaPreviewPlayer } from "./MediaPreviewPlayer";
 

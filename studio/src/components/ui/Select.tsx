@@ -8,7 +8,7 @@ import { Select as BaseSelect } from "@base-ui/react/select";
 import { cn } from "./cn";
 import { fieldBase } from "./Input";
 import { floatingMotion, POPUP_LAYER } from "./Menu";
-import type { PreviewState } from "@openmotion/ui/button";
+import type { PreviewState } from "open-design-ui/button";
 import type { ReactNode } from "react";
 
 export interface SelectOption {

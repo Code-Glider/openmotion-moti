@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { designTokens } from './design-tokens.ts';
-import { checkComponentImports } from './check-component-imports.ts';
+import { checkComponentUsage } from './check-component-imports.ts';
 import { providerIcons, providerIconFiles } from '../packages/design-system/provider-icons.js';
 import { platformIconFiles } from '../packages/design-system/platform-icons.js';
 import { publicDesignFiles, designSystemRuntimeFiles } from '../packages/design-system/index.js';
@@ -17,7 +17,7 @@ const luminance = (hex: string) => {
   return values[0] * .2126 + values[1] * .7152 + values[2] * .0722;
 };
 export async function checkDesign() {
-  await checkComponentImports();
+  await checkComponentUsage();
   const tokens = await designTokens(true);
   for (const { id } of providerRegistry) {
     assert.ok(Object.hasOwn(providerIcons, id), `Built-in provider ${id} needs an explicit brand or generic icon.`);
@@ -78,6 +78,6 @@ export async function checkDesign() {
     }
   }
   for (const file of ['theme.js', 'catalog.js', 'catalog-view.js', 'token-model.js', 'generate.js']) execFileSync(process.execPath, ['--check', fileURLToPath(new URL('packages/design-system/' + file, root))]);
-  console.log('Design token freshness, theme parity, UI color references, contrast, component imports and browser scripts passed.');
+  console.log('Design token freshness, theme parity, UI color references, contrast, component usage and browser scripts passed.');
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await checkDesign();

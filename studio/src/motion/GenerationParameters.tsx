@@ -2,7 +2,7 @@ import { modelReferenceLimit, type Model } from '../../../shared/gateway';
 import { resolveGenerationParameters, usesInputImageRatio, type GenerationOption } from '../../../shared/generation-options';
 import { Popover } from '../components/ui/Popover';
 import { Select } from '../components/ui/Select';
-import { Slider } from '@openmotion/ui/slider';
+import { Slider } from 'open-design-ui/slider';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
 

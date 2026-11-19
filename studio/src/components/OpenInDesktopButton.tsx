@@ -15,7 +15,7 @@ import {
   type Progress,
 } from "./DesktopGuideCard";
 import { FrameyGlyph } from "./FrameyGlyph";
-import { Button } from "@openmotion/ui/button";
+import { Button } from "open-design-ui/button";
 import { Popover, cn } from "./ui";
 
 // "Install the desktop app": the preview server (`/api/open-in-desktop`) says whether to show it, whether the app is

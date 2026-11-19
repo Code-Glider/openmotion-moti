@@ -1,7 +1,7 @@
 import type { NativeComponent } from '../../../shared/native-runtime';
 import type { FfmpegStatus } from './renders/useFfmpegStatus';
 import { useI18n } from '../i18n/I18n';
-import { Button } from '@openmotion/ui/button';
+import { Button } from 'open-design-ui/button';
 import { Popover } from './ui';
 import { RemixIcon } from '../icons/RemixIcons';
 
