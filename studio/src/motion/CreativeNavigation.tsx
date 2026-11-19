@@ -1,3 +1,4 @@
+import { McpClientAvatar } from './McpClientAvatar';
 import type { CreativeStudio, TechniqueStudio } from '../../../shared/studio-catalog';
 import { useLayoutEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Modality } from '../../../shared/gateway';
@@ -152,10 +153,12 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
             primaryAction={<button className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => { track(id === 'mcp' ? 'nav_mcp' : 'nav_media', where); choose(onActivate); }}>{label}</button>}
             trigger={<button className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={expanded}><RemixIcon name="arrow-down-s-line" size={12} /></button>}>
             {id === 'mcp' ? <>
-              <h2 className="om-eyebrow" lang="en">{menuLabel}</h2>
-              {mcpClients.filter(supportsLocalConnection).map(client => <button className="om-nav-item" key={client.id} onClick={() => { track('select_client', { ...where, client: client.id }); choose(() => onOpenPage('mcp', client.id)); }}>
-                {t(client.name)}
-              </button>)}
+              <h2 lang="en">{menuLabel}</h2>
+              <div className="om-mcp-client-grid">
+                {mcpClients.filter(supportsLocalConnection).map(client => <button className="om-nav-item" key={client.id} onClick={() => { track('select_client', { ...where, client: client.id }); choose(() => onOpenPage('mcp', client.id)); }}>
+                  <McpClientAvatar client={client} /><span>{t(client.name)}</span>
+                </button>)}
+              </div>
             </> : expanded && <MediaChoices catalog={catalog.catalog} kind={id} destination={destination} onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />}
           </Popover>
         </div>;

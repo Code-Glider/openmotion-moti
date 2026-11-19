@@ -1,3 +1,4 @@
+import { McpClientAvatar } from './McpClientAvatar';
 import { WorkspaceBack } from './WorkspaceBack';
 import { reviewCommentsPrompt } from '../../../shared/review-comments';
 import { canvasPresets } from '../../../shared/composition-canvas';
@@ -94,7 +95,7 @@ export function McpConnectionPage({ onBack, openLibrary: openLibraryRaw, openPro
     <div className="om-page-back-row om-mcp-client-row">
       {onBack && <WorkspaceBack fallback={onBack} inline />}
       <TabsList className="om-mcp-client-tabs" aria-label={t('Agent client')}>
-        {clients.filter(supportsLocalConnection).map(item => <Tab value={item.id} key={item.id}><ClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}
+        {clients.filter(supportsLocalConnection).map(item => <Tab value={item.id} key={item.id}><McpClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}
       </TabsList>
     </div>
     <div className="om-mcp-content">
@@ -102,7 +103,7 @@ export function McpConnectionPage({ onBack, openLibrary: openLibraryRaw, openPro
         <div className="om-mcp-art" aria-hidden="true">
           <div className="om-mcp-art-tile om-mcp-art-left"><ProviderAvatar name="ChatGPT" provider={{ id: 'openai', custom: false }} /></div>
           <div className="om-mcp-art-tile om-mcp-art-center"><img src={designSystemAsset(brand.loadingMark)} alt="" /></div>
-          <div className="om-mcp-art-tile om-mcp-art-right"><ClientAvatar client={client} /></div>
+          <div className="om-mcp-art-tile om-mcp-art-right"><McpClientAvatar client={client} /></div>
         </div>
         <p className="om-mcp-eyebrow">OPENMOTION × MCP</p>
         <h1 id="mcp-title" ref={heading} tabIndex={-1}>{t('Create in {agent}', { agent: t(client.name) })}<br /><span>{t('Make it move with OpenMotion.')}</span></h1>
@@ -157,10 +158,4 @@ export function McpConnectionPage({ onBack, openLibrary: openLibraryRaw, openPro
 function ComparisonTable({ label, columns, rows, featured = false }: { label: string; columns: readonly string[]; rows: readonly (readonly string[])[]; featured?: boolean }) {
   const { t } = useI18n();
   return <div className="om-mcp-table-wrap" tabIndex={0} role="region" aria-label={t(label)}><table className="om-mcp-table" data-featured={featured}><thead><tr>{columns.map(column => <th key={column} scope="col">{t(column)}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row[0]}>{row.map((cell, i) => i === 0 ? <th scope="row" key={i}>{t(cell)}</th> : <td key={i}>{featured && i === 1 && <RemixIcon name="check-line" size={16} />}{t(cell)}</td>)}</tr>)}</tbody></table></div>;
-}
-
-function ClientAvatar({ client }: { client: typeof clients[number] }) {
-  return client.id === 'mcp'
-    ? <span className="om-avatar" aria-hidden="true"><RemixIcon name="plug-line" size={24} /></span>
-    : <ProviderAvatar name={client.name} provider={{ id: client.brand, custom: false }} />;
 }
