@@ -222,7 +222,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
         <div><h2 id="om-feed-heading">{t(community?.id === '3d-motion' ? '3D techniques' : 'Community & capabilities')}</h2>
           <p className="om-muted">{t(specialty?.briefHint ?? 'Open a template to see how it works, or pick a scene to start creating.')}</p>
         </div>
-        {!community && <div className="om-choice-tabs" role="group" aria-label={t('Media type')}>{(['all', 'image', 'video', 'audio'] as const).map(kind =>
+        {!community && <div className="om-community-tabs om-choice-tabs" role="group" aria-label={t('Media type')}>{(['all', 'image', 'video', 'audio'] as const).map(kind =>
           <button key={kind} className="om-nav-item" aria-pressed={(medium ?? 'all') === kind} onClick={() => onFilter({ medium: kind === 'all' ? null : kind })}>{t(kind === 'all' ? 'All' : mediaLabels[kind])}</button>)}</div>}
       </header>
       <div className="om-feed-group">
