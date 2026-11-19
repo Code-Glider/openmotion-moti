@@ -1,4 +1,4 @@
-import { Button } from "../ui/Button";
+import { Button } from "open-design-ui/button";
 import { MediaDurationBadge } from "./MediaDurationBadge";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";

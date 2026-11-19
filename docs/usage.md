@@ -127,6 +127,14 @@ npm start
 
 Open the printed `studioUrl` or `previewUrl`; do not assume port 4173. `npm start` and MCP share the existing startup logic and reuse a compatible service for the same workspace. macOS selects a port dynamically; other platforms try `PORT` (default 4173) and the next nine ports, skipping occupied ones. The service remains in the background after the launcher exits. Project links use `/?project=<id>` or `/#project/<id>` at the returned origin. Hyperframes uses a separate loopback port; OpenMotion proxies its APIs, file events and preview requests while serving its own editor. Compositions remain in isolated preview iframes. `npm run dev` retains the direct foreground server entry for development.
 
+For frontend hot updates, build Studio once and start its backend with `npm start`. Then pass the printed `previewUrl` to a separate local development server:
+
+```sh
+OPENMOTION_STUDIO_BACKEND=http://127.0.0.1:4173 npm run studio:dev
+```
+
+Use the URL printed by Vite to open Studio. It loads React source with Fast Refresh and forwards Studio APIs, file events and preview media to the selected backend. Use an isolated `MOTION_DATA_DIR` when starting the backend for a disposable test project. Edits in the development tab save to that backend. Browser preferences belong to the development URL, and changes across a React refresh boundary may reload the page.
+
 To run the Studio, MCP and export in a container instead, follow the [Docker deployment guide](../deploy/README.md). The image carries Node.js, Chromium, FFmpeg/ffprobe and CJK fonts; Compose publishes the port on the host's `127.0.0.1` only, and the server's Host and Origin checks are unchanged. The server listens on loopback unless `MOTION_BIND_HOST` is `0.0.0.0` or `::`; the Studio has no sign-in, so keep the published port on loopback.
 
 ## Agent 工具
