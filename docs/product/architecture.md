@@ -452,14 +452,30 @@ Brand Kit identities remain separate. Collection still honors installation opt-o
 and DNT; the local review proxy disables it. See the [series contract](../../tracking/README.md#brand-story-discovery-and-reuse)
 for trigger, deduplication, privacy and observable-result boundaries.
 
-The Black Friday collection opens from the second banner on Explore. It has its
-own stage navigation and reuses the published reference identities, template
-previews and the standard Skill detail panel. Closing a Skill returns focus to
-its collection card. A pinned reference snapshot supplies
-those exact IDs if the configured catalog has not published them yet. The same
-IDs resolve through the Agent's existing template-detail operation for
-recreation, with no project download or automatic creation. Video and Skill
-actions retain their existing events with Black Friday placement. The Explore
+The Black Friday collection opens from the second banner on Explore. Its
+campaign banner links back to Explore. A
+featured carousel presents the three campaign Skills before the filters and
+masonry gallery. The centered Skill plays its preview when visible and reveals
+its caption and arrow over the cover on hover or keyboard focus. Selecting a
+side card or an indicator beside the carousel heading changes the featured
+Skill. The centered card opens its standard detail and suspends the carousel
+preview until the detail closes. The carousel keeps all three Skills available
+through template searches and stage changes. The masonry gallery reuses the
+template library's video cards. Switching stage filters preserves the scroll
+position. Search matches template metadata, and choosing a stage during a
+search narrows the results. The gallery shows the template library's reference
+workflow when there are no matching templates. Clearing the keyword restores
+the stage selected before searching. Visible video templates use the template
+library's muted autoplay; preview navigation follows the filtered template order.
+Template captions reveal titles and author names on hover and keyboard focus.
+The collection reuses the published reference identities and the standard Skill
+detail panel.
+Closing a Skill returns focus to its carousel card. A
+pinned reference snapshot supplies those exact IDs if the configured catalog
+has not published them yet. The same IDs resolve through the Agent's existing
+template-detail operation for recreation, with no project download or automatic
+creation. Video and Skill actions retain their existing events with Black
+Friday placement. The Explore
 banner reports `ui_click` with `element: open_collection`, `placement: black_friday`
 and `position: 2`.
 
@@ -562,4 +578,4 @@ README sections retain examples, four product capabilities, technical documentat
 模板库、详情和复刻指令截图使用已安装的 0.6.5 运行时、隔离演示工作区和生产模板目录，分别记录中、英、日三种语言。全栈工作流部分另保留用户提供的真实 Studio 使用截图，其来源单独记录，不据此推断运行时版本。Screenshot and preview provenance and SHA-256 remain in `docs/readme/live-product/manifest.json` and `docs/readme/live-templates/manifest.json`. Complete bundles restore registered optional originals before hash verification; normal clones do not download those media.
 
 The template detail keeps reference-only resources distinct from editable projects. Copying hands an instruction to the user’s Agent through the clipboard; it does not send or create a film. Editable opening composes the existing guarded session/artifact operations into an independent project, remembers the exact request/result and retries opening that project rather than creating another copy. Motion guidance replaces the detail inside one native dialog; related cards reuse gallery masonry and bounded visible playback. Studio tracking separates copy outcomes, observed handoff results and real related-card impressions; external Agent adoption remains unobserved. The MCP template handbook continues to use the same public catalogue and creation/edit operations.
-Library Skill discovery uses its own MCP tools, `openmotion_list_skills` and `openmotion_get_skill`, sharing only the hosted publication and object store with templates; exact-ID reads return SKILL.md and a supporting-file inventory. Repository reads include local paths; hosted main catalogs embed instructions without local paths, while CMS remains template-only. Skills never enter template galleries or onboarding recommendations and cannot be copied as template projects.
+Library Skill discovery uses its own MCP tools, `openmotion_list_skills` and `openmotion_get_skill`, sharing only the hosted publication and object store with templates; exact-ID reads return SKILL.md and a supporting-file inventory. Repository reads include local paths; hosted main catalogs embed instructions without local paths, while CMS remains template-only. Skills stay out of the standard template galleries and onboarding recommendations and cannot be copied as template projects.

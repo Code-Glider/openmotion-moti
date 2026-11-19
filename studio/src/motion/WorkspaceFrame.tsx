@@ -223,7 +223,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     navigatePage(target === 'explore' ? { explore: true, templates: false, ...(page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills ? { community: page.community, medium: page.medium } : lastExplore.current) } : { settings: 'mcp', templates: false, ...(client && { client, setup: 'agent' }) });
   };
   const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" onModel={openModel} specialty={page.specialty} onChooseStudio={chooseStudio} onSkill={openSkill} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} openProviders={value.openModelSettings} />;
-  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday}
+  const library = connectionsOpen && <ConnectionDialog blackFriday={page.blackFriday} collectionSkillOpen={page.blackFriday && Boolean(page.skill)}
     onBrowseTemplates={() => navigatePage({ blackFriday: false, skill: null, template: null })}
     onOpenSkill={(skill, trigger) => {
       if (!templatesPage) { openSkill(skill); return; }
