@@ -7,12 +7,19 @@ export const providerSetupEntries = [
 export type ProviderSetupEntry = typeof providerSetupEntries[number];
 
 export type WorkspacePresentation = { embedded: boolean; sidebar: boolean; conversation: boolean };
+/** Project and template handoff URLs retain their editor context. */
+export function workspacePageName(query: URLSearchParams, hash: string) {
+  if (query.has('page')) return query.get('page');
+  if (query.has('project') || query.has('session') || hash.startsWith('#project/') || query.get('templates') === '1' || query.get('hostChrome') === '1') return null;
+  return 'explore';
+}
+
 /** Independent workspace pages remain usable even when the retained project cannot start. */
-export function isWorkspaceSettingsPage(search: string) {
-  const query = new URLSearchParams(search), page = query.get('page');
+export function isWorkspaceSettingsPage(search: string, hash = '') {
+  const query = new URLSearchParams(search), page = workspacePageName(query, hash);
   if (page === 'model') return Boolean(query.get('model'));
   if (page === 'create') return Boolean(findLandingScene(query.get('scene')));
-  return page === 'api' || page === 'settings' || page === 'mcp' || page === 'assets' || page === 'skills' || page === 'brand-kit' || page === 'explore' || Boolean(findMediaStudio(page) || findTechniqueStudio(page));
+  return page === 'api' || page === 'settings' || page === 'mcp' || page === 'assets' || page === 'skills' || page === 'brand-kit' || page === 'explore' || page === 'motion' || Boolean(findMediaStudio(page) || findTechniqueStudio(page));
 }
 export function workspacePresentation(search: string): WorkspacePresentation {
   const query = new URLSearchParams(search), embedded = query.get('embed') === '1';

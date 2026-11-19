@@ -111,12 +111,14 @@
 
 /* A translucent charcoal surface keeps the artwork visible behind the controls. */
 [data-motion-studio] .om-button[data-primary="media"]:enabled,
+[data-motion-studio] .om-button.om-media-caption,
 .om-media-pagination {
   color: var(--motion-overlay-ink);
   background: color-mix(in srgb, var(--motion-video-overlay) 90%, var(--motion-overlay-ink));
   border: 1px solid color-mix(in srgb, var(--motion-overlay-ink) 30%, transparent);
 }
-[data-motion-studio] .om-button[data-primary="media"]:enabled:hover {
+[data-motion-studio] .om-button[data-primary="media"]:enabled:hover,
+[data-motion-studio] button:is(:hover, :focus-visible) > .om-media-caption {
   color: var(--motion-overlay-ink);
   background: color-mix(in srgb, var(--motion-video-overlay) 82%, var(--motion-overlay-ink));
   border-color: color-mix(in srgb, currentColor 50%, transparent);
@@ -138,9 +140,31 @@
 .om-media-segments { display: flex; align-items: center; min-width: 0; }
 .om-media-segments button { min-width: 0; width: var(--motion-space-40); padding-inline: var(--motion-space-2); }
 .om-media-track { display: block; width: 100%; height: var(--motion-space-4); overflow: hidden; border-radius: var(--motion-radius-full); background: color-mix(in srgb, currentColor 35%, transparent); }
-.om-media-segments [aria-current] .om-media-track { background: color-mix(in srgb, currentColor 65%, transparent); }
-.om-media-progress { display: block; height: 100%; background: currentColor; transform-origin: left; animation: om-media-elapsed var(--slide-duration) linear both; }
+.om-media-segments [aria-current] .om-media-track { background: color-mix(in srgb, var(--motion-brand) 40%, transparent); }
+.om-media-progress { display: block; height: 100%; background: var(--motion-brand); transform-origin: left; animation: om-media-elapsed var(--slide-duration) linear both; }
 @keyframes om-media-elapsed { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) {
   .om-media-progress { animation: none; }
 }
+
+.om-scene-audio {
+  background: linear-gradient(125deg, var(--motion-accent-soft), var(--motion-panel) 70%);
+  color: var(--motion-text);
+  --motion-audio-preview-action: var(--motion-action);
+  --motion-audio-preview-on-action: var(--motion-on-action);
+  --motion-audio-preview-action-hover: var(--motion-action-hover);
+}
+.om-sound-track .motion-audio-preview-surface { background: transparent; }
+.om-sound-sleeve img { border-radius: var(--motion-radius-sm); box-shadow: var(--motion-shadow-md); }
+.om-sound-sleeve::before {
+  border-radius: var(--motion-radius-full);
+  background: repeating-radial-gradient(circle, var(--motion-video-ink) 0 2px, var(--motion-neutral-n9) 3px, var(--motion-video-ink) 4px);
+}
+.motion-waveform-seek { position: relative; width: 100%; height: clamp(48px, 9cqi, 88px); }
+.motion-waveform-seek svg { width: 100%; height: 100%; fill: var(--motion-dim); }
+.motion-waveform-seek rect[data-played="true"] { fill: var(--motion-accent); }
+:root[data-motion-ui] .motion-waveform-seek input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.motion-waveform-seek:focus-within { outline: 2px solid var(--motion-accent); outline-offset: 2px; border-radius: var(--motion-radius-sm); }
+
+.om-studio-template-grid .om-gallery-card-caption,
+.om-studio-template-grid .om-gallery-card-shade { opacity: 1; transform: none; }

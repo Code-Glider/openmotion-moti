@@ -45,7 +45,7 @@ export async function designTokens(checkOnly = false) {
     const html = await readFile(url, 'utf8');
     const block = /<!-- openmotion:metadata -->[\s\S]*?<!-- \/openmotion:metadata -->/;
     if (!block.test(html)) throw new Error(`${file} is missing its generated metadata block.`);
-    const theme = surface === 'studio' ? `\n<meta name="theme-color" content="${tokens.themes.light.shell}" data-light="${tokens.themes.light.shell}" data-dark="${tokens.themes.dark.shell}" />` : '';
+    const theme = surface === 'studio' ? `\n<meta name="theme-color" content="${tokens.themes.dark.shell}" data-light="${tokens.themes.light.shell}" data-dark="${tokens.themes.dark.shell}" />` : '';
     const generated = html.replace(block, `<!-- openmotion:metadata -->\n${renderPageMetadata('zh-CN', surface)}${theme}\n<!-- /openmotion:metadata -->`);
     if (checkOnly) {
       if (html !== generated) throw new Error(`${file} metadata is stale. Run npm run design:tokens.`);

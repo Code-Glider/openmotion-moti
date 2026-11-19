@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { AssetAudioPreview } from './AssetAudioPreview';
+import { Skeleton } from '../components/ui/Skeleton';
+import { MediaPreviewPlayer } from '../components/nle/MediaPreviewPlayer';
 import { needsImage, type StudioDestination } from './creativeStudios';
 import { studioExamples, sceneLayout, type SceneExample } from './sceneShowcase';
 
@@ -9,6 +10,27 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
   const { t } = useI18n();
   const stage = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [audioUrl, setAudioUrl] = useState('');
+  useEffect(() => {
+    if (!example.audio || !enabled || failed) return;
+    // The bundled demo is small. A blob URL supports seeking even on static hosts without byte ranges.
+    const controller = new AbortController();
+    let url: string | undefined;
+    fetch(example.audio, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) })
+      .then(response => {
+        if (!response.ok) throw new Error('Audio preview unavailable');
+        return response.blob();
+      }).then(blob => {
+        if (controller.signal.aborted) return;
+        url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+      }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => {
+      controller.abort();
+      if (url) URL.revokeObjectURL(url);
+      setAudioUrl('');
+    };
+  }, [example.audio, enabled, failed]);
   useEffect(() => {
     const pause = () => { if (!enabled || document.hidden) stage.current?.querySelector<HTMLMediaElement>('audio, video')?.pause(); };
     const element = stage.current;
@@ -21,7 +43,14 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
   }, [enabled]);
   return <div ref={stage} className="om-scene-example-media">
     {example.clip && !failed && enabled ? <video controls playsInline preload="none" poster={example.poster} src={example.clip} aria-label={t(example.title)} onError={() => setFailed(true)} /> : !example.audio && <img src={example.poster} alt="" />}
-    {example.audio && !failed && enabled && <div className="om-scene-audio"><span>{t('OpenMotion welcome soundtrack')}</span><AssetAudioPreview src={example.audio} onError={() => setFailed(true)} /></div>}
+    {example.audio && !failed && enabled && <div className="om-scene-audio">
+      <div className="om-sound-sleeve" aria-hidden="true"><img src={example.poster} alt="" /></div>
+      <div className="om-sound-track"><h3 className="om-subtitle">{t('OpenMotion welcome soundtrack')}</h3>
+        {audioUrl ? <MediaPreviewPlayer kind="audio" url={audioUrl} name={t('OpenMotion welcome soundtrack')} waveform={example.waveform}
+          autoPlay={false} onError={() => setFailed(true)} />
+          : <div className="om-sound-loading" role="status" aria-label={t('Loading…')}><Skeleton /></div>}
+      </div>
+    </div>}
     {failed && <button className="om-button om-scene-retry" onClick={() => setFailed(false)}>{t('Retry preview')}</button>}
     {example.credit && <small className="om-scene-credit">{example.credit}</small>}
   </div>;

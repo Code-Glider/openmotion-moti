@@ -7,7 +7,7 @@ import { motionApi } from './useWorkspace';
 import { useWorkspaceChrome } from './WorkspaceChromeContext';
 
 // Each Explore collection owns its loaded pages. New pages append to the existing collection.
-export function useExploreTemplates(category: string | undefined, locale: string) {
+export function useExploreTemplates(category: string | undefined, locale: string, search = '') {
   const [pages, setPages] = useState<TemplatePage[]>([]);
   const [offset, setOffset] = useState(0);
   const [attempt, setAttempt] = useState(0);
@@ -17,6 +17,7 @@ export function useExploreTemplates(category: string | undefined, locale: string
     if (!category) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ category, locale, covered: 'true', limit: '8', offset: String(offset) });
+    if (search) query.set('query', search);
     motionApi<TemplatePage>('/template-catalog?' + query, {
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]),
     }).then(page => {
@@ -34,7 +35,7 @@ export function useExploreTemplates(category: string | undefined, locale: string
     }).catch(() => { if (!controller.signal.aborted) setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [category, locale, offset, attempt]);
+  }, [category, locale, offset, attempt, search]);
   const next = pages.at(-1)?.next;
   function loadMore() {
     if (loading || next == null || next <= offset) return;
