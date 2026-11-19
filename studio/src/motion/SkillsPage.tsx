@@ -7,6 +7,8 @@ import { StudioToastViewport } from '../components/StudioToastViewport';
 import { studioSkillDefaults, localizedSkillPrompt, skillShotPrompt, aspectRatios, durations, motionSkills, skillCategories, skillShortcut, type MotionSkill, type SkillCategory, type SkillParameters } from './skillCatalog';
 import type { AssetDraft } from './AssetComposer';
 import { studioDestination, type StudioDestination } from './creativeStudios';
+import { useOptionalWorkspaceChrome } from './WorkspaceChromeContext';
+import { StudioTemplateShelf } from './StudioTemplateShelf';
 import { SkillMedia } from './SkillMedia';
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import { MotionIcon } from './icons';
@@ -37,8 +39,9 @@ function githubRepositoryOf(source?: string): string | null {
 }
 
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
-export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate, briefs, hasProject = false }: { studio?: TechniqueStudio; briefs?: Map<string, SkillParameters>; onCreate?: (destination: StudioDestination, draft?: AssetDraft) => void; onExplore?: () => void; skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
+export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate, briefs, previewsEnabled = true, hasProject = false }: { studio?: TechniqueStudio; previewsEnabled?: boolean; briefs?: Map<string, SkillParameters>; onCreate?: (destination: StudioDestination, draft?: AssetDraft) => void; onExplore?: () => void; skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
+  const chrome = useOptionalWorkspaceChrome();
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [picking, setPicking] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -166,7 +169,7 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
               {studio.id === 'marketing' && <button className="om-button" onClick={() => onCreate(studioDestination(studio, 'text-to-video'))}>{t('Create an ad clip')}</button>}
             </div>}
           </div>{featured?.cover?.poster && <button className="om-specialty-feature" onClick={() => open(featured, 1)}>
-            <img src={featured.cover.poster} alt="" /><span className="om-button">{t(featured.title)}<RemixIcon name="arrow-right-line" size={16} /></span>
+            <img src={featured.cover.poster} alt="" /><span className="om-button om-media-caption">{t(featured.title)}<RemixIcon name="arrow-right-line" size={16} /></span>
           </button>}
         </section> : <section className="om-gallery-intro om-skills-intro">
           <div className="om-skills-heading-row">
@@ -184,6 +187,8 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
             <label className="om-field om-search-field"><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd aria-hidden="true">⌘ K</kbd></label>
           </div>
         </div>
+        {studio && chrome && !query.trim() && <StudioTemplateShelf key={studio.id + locale} studio={studio.id} root={main} active={previewsEnabled && !selected} />}
+        {studio && <h2 className="om-title om-studio-techniques-title">{t('Techniques')}</h2>}
         <div className="om-gallery-masonry om-skills-grid">
           {cards.map((skill, index) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} selected={skill.id === skillId} onSelect={() => open(skill, index + (featureInHero ? 2 : 1))} />)}
         </div>

@@ -29,10 +29,11 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(127);
+  expect(motionSkills).toHaveLength(130);
   expect(motionSkills[0].id).toBe('motionmaxxing');
   expect(motionSkills[1].id).toBe('openmotion-growth-teardown');
   expect(motionSkills[2].id).toBe('openmotion-design-styles');
+  expect(motionSkills.slice(3, 6).map(skill => skill.id)).toEqual(['openmotion-sale-promo', 'openmotion-sale-countdown', 'openmotion-sale-carousel']);
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
   // Skills without an upstream repository are OpenMotion Library Skills (library/skills/<id>).
   for (const skill of motionSkills) if (!skill.repository) expect(skill.id).toMatch(/^openmotion-[a-z0-9-]+$/);

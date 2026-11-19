@@ -4,17 +4,20 @@ Explore, modality menus and Studio shortcuts use one [catalogue](../../shared/st
 
 | Start | Choose | Address and next action |
 | --- | --- | --- |
-| Explore spotlight or primary navigation | Motion Studio | Open the current project in the timeline editor. Browser Back returns to the previous view. |
+| Workspace root or OpenMotion wordmark | Explore | Opens Discover. Direct project links resume the editor. |
+| Explore spotlight or primary navigation | Motion Studio | `?page=motion` opens the editable template collection. Choose Open editor to resume the current project on its timeline. |
+| Explore → Discover, below the community feed | Motion, Design, Cinema, Sound, Shorts, Marketing, Explainer and 3D collections | The button beside each heading opens its Studio. A media example opens its scene with an editable prompt. A technique opens its Skill brief. The media filter narrows the displayed examples. |
 | Explore | Motion design, Product films or Short-form video | `?page=explore&community=motion-design`, `product-films` or `short-form`. View a work, start a scene with its example, or open the corresponding Skill. |
 | Explore | Explainers or 3D motion | `?page=explore&community=explainers` or `3d-motion`. Choose a technique and edit its brief in its Studio. |
 | Explore → Creators | Catalogue credit or original post publisher | `?page=explore&templates=1&view=creators`. Selecting a credit adds `creator`. Selecting a work adds `template` and opens its preview. Opening a template detail elsewhere can also lead to that credit. |
-| Image | Create an image, edit a reference, compose a shot still | `?page=create&scene=text-to-image` or `image-edit`; shot stills open `?page=cinema&scene=shot-image`. |
-| Video | Generate from text or animate a first frame | `?page=create&scene=text-to-video` or `?page=cinema&scene=image-to-video`. From the still inspector, the first frame can be a specific saved asset version. |
-| Audio | Music and sound, speech | `?page=create&scene=music` or `speech`. Available controls follow the model mode. |
+| Image, Video or Audio label | Open its generator | Enter Design, Cinema or Sound Studio respectively. Use the Studio’s provider and model pickers to generate. Hover anywhere on the control or activate its arrow for scene and model shortcuts. |
+| Image menu | Create an image, edit a reference, compose a shot still | `?page=create&scene=text-to-image` or `image-edit`; shot stills open `?page=cinema&scene=shot-image`. |
+| Video menu | Generate from text or animate a first frame | `?page=create&scene=text-to-video` or `?page=cinema&scene=image-to-video`. From the still inspector, the first frame can be a specific saved asset version. |
+| Audio menu | Music and sound, speech | `?page=create&scene=music` or `speech`. Available controls follow the model mode. |
 | Modality → Models | Model family offered by a specific provider | `?page=model&model=<qualified-id>`. Discover its compatible scenes, choose a scene and carry that model into the form. A scene-specific model choice goes straight to the form. |
-| Studio shortcuts | Design, Cinema or Sound | `?page=design`, `cinema` or `sound`. Switch the scene, provider or model within the media workspace. Motion Studio opens the project editor. |
-| Studio shortcuts | Shorts, Marketing, Explainer or 3D | `?page=shorts`, `marketing`, `explainer` or `3d`. Choose Create to open a supported `scene` directly, or add `skill=<registered-id>` to open its brief. A case can seed a single shot or provide the Agent instruction for the editable project. Marketing offers both product images and ad clips. Shorts defaults to a vertical canvas. |
-| MCP and API | A host or a tool | `?page=mcp&host=codex` opens installation-specific connection steps and examples. `?page=api` opens the model directory and the [public tool contract](../mcp-phase1-tools.md). Selecting a tool adds `tool=<name>` and displays its actual input schema. |
+| Studio shortcuts | Design, Cinema or Sound | `?page=design`, `cinema` or `sound`. Switch the scene, provider or model within the media workspace. |
+| Studio shortcuts | Shorts, Marketing, Explainer or 3D | `?page=shorts`, `marketing`, `explainer` or `3d`. Browse relevant catalogue templates, open a technique, or choose Create to open a supported `scene` directly, or add `skill=<registered-id>` to open its brief. A case can seed a single shot or provide the Agent instruction for the editable project. Marketing offers both product images and ad clips. Shorts defaults to a vertical canvas. |
+| MCP and API | Click MCP for the connection handbook, hover over MCP or activate its arrow for client shortcuts, and click API for the directory | `?page=mcp&host=codex` opens installation-specific connection steps and examples. `?page=api` opens the model directory and the [public tool contract](../mcp-phase1-tools.md). Selecting a tool adds `tool=<name>` and displays its actual input schema. |
 
 ## Three journeys
 

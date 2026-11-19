@@ -5,6 +5,15 @@
 - Bundle static WebP posters for Skills. Load preview videos when viewport autoplay, hover, keyboard focus or opening the Skill triggers playback. Keep the poster available when the network is unavailable.
 - Use the media preparation workflow for new previews and report the default npm package size in PR and release candidate builds.
 
+## 2026-11-18: Add the holiday-sale library Skills
+
+- Add optional [`openmotion-sale-promo`](../../library/skills/openmotion-sale-promo/SKILL.md): one offer → a 10 or 15 s promo (occasion, discount, regular price struck through before the sale price lands, code and real deadline, call to action) in 9:16, 4:5, 1:1 or 16:9.
+- Add optional [`openmotion-sale-countdown`](../../library/skills/openmotion-sale-countdown/SKILL.md): giant digits roll down to the true days or hours left, computed from the posting time and the sale's start or end.
+- Add optional [`openmotion-sale-carousel`](../../library/skills/openmotion-sale-carousel/SKILL.md): 3–7 sale products → one card per product with exact prices and a badge, then an end grid with code and call to action.
+- Every price, percentage, saving and remaining time is computed by the script; `--check` rejects contradictory prices, past deadlines, missing photos and text that will not fit. Themes for Black Friday, Cyber Monday, holiday, New Year and light; `labels` and `locale` localise the fixed words and prices.
+- The advertiser's brand leads each film; the end card carries a small "Made with OpenMotion" sign-off (`--no-credit` removes it). Each Skill ships an unchanged copy of the two design-system brand files.
+- Method adapted from the MIT-licensed iart-ai promo-video, countdown-video and photo-slideshow Skills, rewritten for OpenMotion HTML compositions. The Studio Skills page lists all three, linked to the upstream repositories. Library content only: not registered as an MCP resource. Sample runs: three offers, three countdowns and three carousels across 9:16, 1:1 and 16:9 with generated sample product photos. Each Skill ships the Anton display face (SIL OFL).
+
 ## 2026-11-18: Continue authored template-guide examples
 
 - Unify existing catalog guide pages while preserving each entry's own example, reference and breakdown. Declared text/accent trials can continue into an independent native project with the complete linked guide-source bundle.

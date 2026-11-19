@@ -4,6 +4,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { motionStudio, sceneDestination, studioScenes, type StudioDestination, type StudioScene } from './creativeStudios';
 import { sceneExamples } from './sceneShowcase';
 import { motionSkills } from './skillCatalog';
+import { useSkillPreview } from './useSkillPreview';
 
 export const featuredSceneIds: readonly StudioScene['id'][] = ['shot-image', 'text-to-video', 'text-to-image'];
 const slideDuration = 6000;
@@ -26,13 +27,16 @@ const slides: FeaturedSlide[] = [{
 function FeaturedClip({ src, poster, playing }: { src: string; poster: string; playing: boolean }) {
   const player = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
+  const [started, setStarted] = useState(playing);
+  const videoSource = useSkillPreview(src, (started || playing) && !failed);
+  useEffect(() => { if (playing) setStarted(true); }, [playing]);
   useEffect(() => {
     const video = player.current;
     if (!video) return;
     if (playing) void video.play().catch(() => { /* The poster remains available if autoplay is blocked. */ });
     else video.pause();
-  }, [playing]);
-  return failed ? null : <video ref={player} src={src} poster={poster} muted loop playsInline preload="none" aria-hidden="true" onError={() => setFailed(true)} />;
+  }, [playing, videoSource]);
+  return videoSource && !failed ? <video ref={player} src={videoSource} poster={poster} muted loop playsInline preload="none" aria-hidden="true" onError={() => setFailed(true)} /> : null;
 }
 
 export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
@@ -59,8 +63,8 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
     if (!element) return;
     let inView = false;
     const update = () => setVisible(inView && !document.hidden);
-    const observer = new IntersectionObserver(([entry]) => {
-      inView = entry.isIntersecting;
+    const observer = new IntersectionObserver(entries => {
+      inView = entries[entries.length - 1].isIntersecting;
       update();
     });
     observer.observe(element);
@@ -80,13 +84,16 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
   }, [index, playing]);
 
   const step = (delta: number) => setIndex(current => (current + delta + slides.length) % slides.length);
-  return <section ref={root} className="om-discovery-hero om-feature-carousel" data-scene={slides[index].id} aria-label={t('Featured')}>
+  return <section ref={root} className="om-discovery-hero om-feature-carousel" data-scene={slides[index].id} aria-label={t('Featured')}
+    style={{ '--slide-duration': slideDuration + 'ms', '--slide-play-state': playing ? 'running' : 'paused' } as CSSProperties}>
     {slides.map((slide, i) => {
       const current = i === index;
       const scene = slide.scene;
       return <div key={slide.id} className="om-feature-slide" data-scene={slide.id} aria-hidden={!current} inert={!current}>
-        <img src={slide.poster} alt="" />
-        {current && active && visible && slide.clip && <FeaturedClip src={slide.clip} poster={slide.poster} playing={playing} />}
+        <div className="om-feature-art" aria-hidden="true"><div className="om-feature-camera">
+          <img src={slide.poster} alt="" />
+          {current && active && visible && slide.clip && <FeaturedClip src={slide.clip} poster={slide.poster} playing={playing} />}
+        </div></div>
         {slide.credit && <small className="om-scene-credit">{slide.credit}</small>}
         <div className="om-discovery-hero-copy" onFocus={() => setReadingSlide(true)} onBlur={() => setReadingSlide(false)}>
           <span><RemixIcon name={slide.icon} size={16} />{t(slide.subtitle)}</span>
@@ -97,7 +104,7 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion }: {
         </div>
       </div>;
     })}
-    <div className="om-feature-controls om-media-pagination" style={{ '--slide-duration': slideDuration + 'ms' } as CSSProperties}>
+    <div className="om-feature-controls om-media-pagination">
       <button type="button" aria-label={t(paused ? 'Play' : 'Pause')} onClick={() => setPaused(!paused)}><RemixIcon name={paused ? 'play-fill' : 'pause-fill'} size={16} /></button>
       <div className="om-media-segments">
         {slides.map((slide, i) => <button type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => setIndex(i)}>

@@ -1,5 +1,6 @@
 import { creativeStudios } from '../../../shared/studio-catalog.ts';
 import { reviewCommentsPrompt } from '../../../shared/review-comments.ts';
+import { templateSearchBrief } from '../../../shared/template-search-brief.ts';
 import { assetNamingInstruction } from '../../../shared/asset-names.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
 import { templateGuideContinuationInstruction } from '../../../shared/template-guide.ts';
@@ -24,10 +25,17 @@ export const mcpCapabilities = [
   { id: 'export', icon: 'download-2-line', title: 'Deliver a finished video', description: 'In Export, download the current video or an existing scene, download timeline captions as SRT/VTT, or prepare a platform version. Keep the editable project.', tools: ['openmotion_export_request', 'openmotion_export_cancel', 'openmotion_assets_use'], prompt: 'Read the selected project with openmotion_get_project. Export the agreed version with openmotion_export_request using versionId, expectedRevision, a stable requestId and the correct audio policy. Use compositionPath only when I select an existing scene; otherwise export the full video. Follow the same job and verify playback. For subtitles, call openmotion_assets_use with action=transcript and command=caption_export, projectId, compositionPath and format=srt or vtt. It exports saved visible timeline captions, including manual edits, without an ASR model. Use caption_tracks to choose one track via transcriptId when needed. If no visible captions exist, ask me to add or enable them; never fabricate speech. Return the files and editable project.' },
 ] as const;
 
+export const searchRecoveryExample = (t: (message: string) => string) => templateSearchBrief({ mode: 'reference', source: 'link', query: '', reference: t('Your reference video link'), description: '' }, t);
+
 const exploreTemplateWorkflow = 'Open a template in Explore to inspect its project or recreation guide. Try as a video prompt copies its description into Cinema Studio. Edit the draft, choose an available model and generate when ready.';
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
 export const mcpScenarios = [{
+  id: 'search-recovery', icon: 'search-line', title: 'Create without a matching template',
+  description: 'In Template library, add a video link, choose a local video, or describe what you want. Copy the request and send it in your connected Agent. Local videos are saved to Assets and open in the same OpenMotion workspace.',
+  tools: ['openmotion_create_project', 'openmotion_edit_project', 'openmotion_open_preview'],
+  prompt: searchRecoveryExample(message => message),
+}, {
   id: 'template-guide', icon: 'layout-grid-line', title: 'Continue a guide example',
   description: 'Open a template’s motion guide and try its declared text and accent controls, then copy the requirements or enter the editor. Keep the exact template and draft. This creates the authored example, not the reference film; only confirmed unapplied failures permit a new creation request.',
   tools: ['openmotion_get_template', 'openmotion_create_project', 'openmotion_open_preview'],

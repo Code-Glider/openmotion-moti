@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { skillPreviewSnapshot, type MotionSkill, type SkillMotif } from './skillCatalog';
+import type { MotionSkill, SkillMotif } from './skillCatalog';
+import { useSkillPreview } from './useSkillPreview';
 import './skills.css';
 
 /** Upstream demo media when available; otherwise the package-token illustration. */
@@ -24,32 +25,6 @@ export function SkillMedia({ skill, playing = false, large = false }: { skill: M
     <span className="om-skill-split-caption" data-side="after" aria-hidden="true">{t('After')}</span>
   </span>;
   return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} video={video} play={play} large={large} onFail={() => setFailed(true)} /></span>;
-}
-
-function useSkillPreview(url: string | undefined, active: boolean) {
-  const [source, setSource] = useState<{ original: string; playable: string }>();
-  const snapshot = url?.startsWith(skillPreviewSnapshot);
-  useEffect(() => {
-    if (!active || !url || !snapshot) return;
-    const controller = new AbortController();
-    let playable: string | undefined;
-    // GitHub Raw serves archived MP4s as octet-stream.
-    void fetch(url, { signal: controller.signal, credentials: 'omit', redirect: 'error' }).then(async response => {
-      if (!response.ok) return;
-      const blob = await response.blob();
-      if (controller.signal.aborted) return;
-      playable = URL.createObjectURL(new Blob([blob], { type: 'video/mp4' }));
-      setSource({ original: url, playable });
-    }).catch(() => {});
-    return () => {
-      controller.abort();
-      if (playable) URL.revokeObjectURL(playable);
-      setSource(undefined);
-    };
-  }, [url, snapshot, active]);
-  if (!active) return undefined;
-  if (!snapshot) return url;
-  return source?.original === url ? source?.playable : undefined;
 }
 
 /** Keep the poster visible while an active card's demo loads. */
