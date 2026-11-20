@@ -6,7 +6,7 @@ import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { RenderQueueInfo } from "./RenderQueueInfo";
 import { RenderPreview } from "./RenderPreview";
 import { Button } from "open-design-ui/button";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "open-design-ui/icon-button";
 import { Tooltip } from "../ui/Tooltip";
 import { ErrorNotice } from "../ui/ErrorNotice";
 import type { RenderJob } from "./useRenderQueue";
@@ -197,7 +197,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
       <div className="flex flex-wrap items-center gap-2.5">
         {/* Thumbnail — static frame; swaps to live video on hover.
             A real button so keyboard users can open the render too. */}
-        <button
+        <Button variant="plain"
           type="button"
           onClick={canAccessFile ? () => void handleOpen() : undefined}
           disabled={!canAccessFile}
@@ -237,7 +237,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
               <div className="w-2 h-2 rounded-full bg-text-5" />
             </div>
           )}
-        </button>
+        </Button>
 
         <RenderQueueInfo job={job} />
 

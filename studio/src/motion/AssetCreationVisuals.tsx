@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { Tooltip } from "../components/ui/Tooltip";
 import { useRef, useState } from 'react';
 import { resumableJob, type GenerationJob, type Modality } from '../../../shared/gateway';
@@ -41,10 +42,10 @@ export function AssetGenerationCard({ job, onCancel, onView, onRetrySave, onResu
         {done && preview && preview !== failedPreview && job.modality === 'image' ? <img src={preview} onError={() => setFailedPreview(preview)} alt="" /> : working ? <WorkingIndicator /> : <RemixIcon name={done ? 'checkbox-circle-line' : job.state === 'failed' ? 'error-warning-line' : 'pause-line'} size={18} />}
       </div>
       <div className="om-creation-job-copy"><div className="om-creation-job-title"><Tooltip label={title} wrap><span className="om-creation-status" role="status">{t(saving && working ? 'Saving to assets' : working && job.phase === 'reconnecting' ? 'Reconnecting…' : job.state)}</span></Tooltip><span className="om-eyebrow">{job.model.label}</span></div><Tooltip label={job.prompt} wrap><p className="om-muted om-creation-job-prompt">{job.prompt}</p></Tooltip><span className="om-sr-only">{title}</span></div>
-      {working ? <button className="om-nav-item" onClick={() => onCancel(job)}>{t('Cancel')}</button> : <>
-        {resumable && onResume && <button className="om-nav-item" disabled={retrying} onClick={() => void resume()}>{t(accountImage ? retrying ? 'Continuing download…' : 'Continue download' : retrying ? 'Checking original task…' : 'Check original task')}</button>}
-        {job.savePending && onRetrySave && <button className="om-nav-item" disabled={retrying} onClick={() => void retrySave()}>{t(retrying ? 'Retrying save…' : 'Retry saving')}</button>}
-        {result && <button className="om-nav-item" onClick={() => onView(job)}>{t('View asset')}<RemixIcon name="arrow-right-up-line" size={14} /></button>}
+      {working ? <Button variant="plain" className="om-nav-item" onClick={() => onCancel(job)}>{t('Cancel')}</Button> : <>
+        {resumable && onResume && <Button variant="plain" className="om-nav-item" disabled={retrying} onClick={() => void resume()}>{t(accountImage ? retrying ? 'Continuing download…' : 'Continue download' : retrying ? 'Checking original task…' : 'Check original task')}</Button>}
+        {job.savePending && onRetrySave && <Button variant="plain" className="om-nav-item" disabled={retrying} onClick={() => void retrySave()}>{t(retrying ? 'Retrying save…' : 'Retry saving')}</Button>}
+        {result && <Button variant="plain" className="om-nav-item" onClick={() => onView(job)}>{t('View asset')}<RemixIcon name="arrow-right-up-line" size={14} /></Button>}
       </>}
     </div>
     {(working || done) && <ol className="om-creation-steps" aria-label={t('Generation progress')}>{['Submitted', 'Creating', 'Saved to assets'].map((label, i) => <li key={label} data-complete={done || i === 0 && job.state === 'running' || i === 1 && saving} data-current={working && (i === 0 && job.state === 'queued' || i === 1 && job.state === 'running' && !saving || i === 2 && saving)}><span>{done || i === 0 && job.state === 'running' || i === 1 && saving ? <RemixIcon name="check-line" size={12} /> : i + 1}</span>{t(label)}</li>)}</ol>}

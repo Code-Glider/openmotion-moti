@@ -1,5 +1,9 @@
 import type { ComponentType } from 'react';
 import { Button, type ButtonSize, type ButtonVariant } from 'open-design-ui/button';
+import { IconButton } from 'open-design-ui/icon-button';
+import { RemixIcon } from '../../react/RemixIcons';
+import { IconButtonDemo } from './demos/icon-button-demo';
+import iconButtonCode from './demos/icon-button-demo.tsx?raw';
 import { Slider } from 'open-design-ui/slider';
 import { ButtonDemo } from './demos/button-demo';
 import buttonCode from './demos/button-demo.tsx?raw';
@@ -11,6 +15,7 @@ const buttonVariants: { variant: ButtonVariant; label: string }[] = [
   { variant: 'secondary', label: 'Cancel' },
   { variant: 'ghost', label: 'Details' },
   { variant: 'danger', label: 'Delete' },
+  { variant: 'plain', label: 'Plain' },
 ];
 const buttonSizes: ButtonSize[] = ['sm', 'md', 'lg'];
 
@@ -66,12 +71,12 @@ export const componentDocs: Partial<Record<string, ComponentDocs>> = {
     code: buttonCode.trim(),
     migration: 'Map the existing action to a Button variant and size. Preserve native type (especially submit), handlers, disabled and loading behavior, and visible or accessible labels.',
     examples: [
-      { title: 'Variants', Demo: ButtonVariants, description: 'Use primary for the main action, secondary for alternatives, ghost for low-emphasis actions and danger for destructive actions.' },
+      { title: 'Variants', Demo: ButtonVariants, description: 'Use primary for the main action, secondary for alternatives, ghost for low-emphasis actions and danger for destructive actions. Plain keeps the layout and surface supplied by the caller.' },
       { title: 'Sizes', Demo: ButtonSizes, description: 'Match neighboring controls to the same size.' },
       { title: 'Interaction states', Demo: ButtonStates, description: 'Hover, pressed and focus are shown side by side for visual review.' },
     ],
     props: [
-      ['variant', '"primary" | "secondary" | "danger" | "ghost"', '"secondary"', 'Sets the visual emphasis.'],
+      ['variant', '"primary" | "secondary" | "danger" | "ghost" | "plain"', '"secondary"', 'Sets emphasis. Use plain to keep the surrounding layout and styles with keyboard focus.'],
       ['size', '"sm" | "md" | "lg"', '"md"', 'Sets the control height, padding and label size.'],
       ['type', '"button" | "submit" | "reset"', 'Browser default', 'Use button for regular actions and submit for form submission.'],
       ['icon', 'ReactNode', '—', 'Renders a leading icon.'],
@@ -82,6 +87,29 @@ export const componentDocs: Partial<Record<string, ComponentDocs>> = {
       'Use an action label that describes the outcome, such as Save changes.',
       'Tab moves focus to the button. Enter or Space activates it.',
       'Use the shared IconButton for icon-only actions and provide an accessible name.',
+    ],
+  },
+  'icon-button': {
+    icon: 'music-2-line',
+    Preview: IconButtonDemo,
+    code: iconButtonCode.trim(),
+    migration: 'Preserve the icon, accessible name, tooltip, disabled state and native button behavior.',
+    examples: [
+      { title: 'Sizes', Demo: () => <div className="demo-row">{buttonSizes.map(size =>
+        <IconButton key={size} type="button" size={size} aria-label="Add music" icon={<RemixIcon name="music-2-line" />} />,
+      )}</div> },
+      { title: 'Disabled', Demo: () => <IconButton type="button" disabled aria-label="Add music" icon={<RemixIcon name="music-2-line" />} /> },
+    ],
+    props: [
+      ['icon', 'ReactNode', 'Required', 'The icon displayed in the square button.'],
+      ['aria-label', 'string', 'Required', 'Names the action for assistive technology.'],
+      ['variant', '"primary" | "secondary" | "danger" | "ghost" | "plain"', '"ghost"', 'Sets emphasis. Use plain to keep the surrounding layout and styles with keyboard focus.'],
+      ['size', '"sm" | "md" | "lg"', '"md"', 'Sets both width and height to 24, 28 or 32 pixels.'],
+      ['disabled', 'boolean', 'false', 'Disables native button activation.'],
+    ],
+    guidance: [
+      'Name the action, for example Add music. Use aria-pressed for a two-state toggle with a stable label.',
+      'Use type="button" for toolbar actions. Enter and Space activate the focused control.',
     ],
   },
   slider: {

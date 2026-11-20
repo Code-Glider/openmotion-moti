@@ -135,6 +135,8 @@ OPENMOTION_STUDIO_BACKEND=http://127.0.0.1:4173 npm run studio:dev
 
 Use the URL printed by Vite to open Studio. It loads React source with Fast Refresh and forwards Studio APIs, file events and preview media to the selected backend. Use an isolated `MOTION_DATA_DIR` when starting the backend for a disposable test project. Edits in the development tab save to that backend. Browser preferences belong to the development URL, and changes across a React refresh boundary may reload the page.
 
+To inspect component adoption, add `debug=ui` to the Studio URL query (before the `#`). Open **UI inspector**, then select a component to outline its instances. Dashed outlines identify native buttons and ranges outside registered components. Counts include controls mounted in the Studio document, including hidden panels. Drag the launcher or focus it and use the arrow keys to move it. Closing the inspector removes the launcher until you reload this URL.
+
 To run the Studio, MCP and export in a container instead, follow the [Docker deployment guide](../deploy/README.md). The image carries Node.js, Chromium, FFmpeg/ffprobe and CJK fonts; Compose publishes the port on the host's `127.0.0.1` only, and the server's Host and Origin checks are unchanged. The server listens on loopback unless `MOTION_BIND_HOST` is `0.0.0.0` or `::`; the Studio has no sign-in, so keep the published port on loopback.
 
 ## Agent 工具

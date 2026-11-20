@@ -73,14 +73,14 @@ function FeedCard({ title, label, description, poster, posterPosition, credit, i
   title: string; label: string; description: string; poster?: string; posterPosition?: string; credit?: string; icon: string; onClick: () => void; sceneId?: string;
   children?: ReactNode; playbackId?: string; onPriority?: (id: string | null) => void;
 }) {
-  return <button className="om-scene-tile" data-scene={sceneId} data-playback-id={playbackId} onClick={onClick}
+  return <Button variant="plain" className="om-scene-tile" data-scene={sceneId} data-playback-id={playbackId} onClick={onClick}
     onMouseEnter={playbackId ? () => onPriority?.(playbackId) : undefined} onMouseLeave={playbackId ? () => onPriority?.(null) : undefined}
     onFocus={playbackId ? () => onPriority?.(playbackId) : undefined} onBlur={playbackId ? () => onPriority?.(null) : undefined}>
     <span className="om-scene-tile-art">{poster && <img src={poster} style={{ objectPosition: posterPosition }} loading="lazy" alt="" />}{children}{credit && <small className="om-scene-credit">{credit}</small>}</span>
     <span className="om-feed-card-label"><RemixIcon name={icon} size={14} />{label}</span>
     <strong>{title}<RemixIcon name="arrow-right-up-line" size={16} /></strong>
     <span className="om-feed-card-description">{description}</span>
-  </button>;
+  </Button>;
 }
 
 type FeedPlayback = { playing: Set<string>; onPriority: (id: string | null) => void };
@@ -125,21 +125,21 @@ function CommunitySpotlight({ community, skill, onChooseStudio }: {
   return <section className="om-discovery-hero" aria-label={t(community.label)}>
     {skill?.cover?.poster && <img src={skill.cover.poster} alt="" />}
     <div className="om-discovery-hero-copy"><span>{t('Communities')}</span><h2>{t(community.label)}</h2>
-      <p>{t(community.description)}</p><button className="om-button" data-primary="media" onClick={() => { track('explore_spotlight', 'open_studio', { studio: lead.id, community: community.id }); onChooseStudio(lead); }}>{t(lead.title)}<RemixIcon name="arrow-right-line" size={16} /></button>
+      <p>{t(community.description)}</p><Button variant="ghost" className="om-button h-auto" data-primary="media" onClick={() => { track('explore_spotlight', 'open_studio', { studio: lead.id, community: community.id }); onChooseStudio(lead); }}>{t(lead.title)}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </div>
   </section>;
 }
 
 function TemplateSpotlight({ item, onTry }: { item: GalleryTemplate; onTry: (prompt: string) => void }) {
   const { t } = useI18n(), { openLibrary } = useWorkspaceChrome();
-  return <article className="om-featured-template"><button className="om-featured-open" aria-label={t('Preview template {title}', { title: item.title })}
+  return <article className="om-featured-template"><Button variant="plain" className="om-featured-open" aria-label={t('Preview template {title}', { title: item.title })}
     onClick={event => { track('explore_featured', 'open_template', { template: item.id }); openLibrary(event.currentTarget, item); }}>
     <div className="om-featured-cover"><TemplatePoster key={item.id} template={item} eager /></div>
     <div className="om-featured-caption"><span className="om-feed-card-label">{t('Community template')}</span>
       <strong>{item.title}<RemixIcon name="arrow-right-up-line" size={22} /></strong>
       <small>{item.authorName || item.author || item.brand}</small>
     </div>
-  </button><TemplatePromptAction item={item} onTry={prompt => { track('explore_featured', 'try_prompt', { template: item.id }); onTry(prompt); }} /></article>;
+  </Button><TemplatePromptAction item={item} onTry={prompt => { track('explore_featured', 'try_prompt', { template: item.id }); onTry(prompt); }} /></article>;
 }
 
 function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate, ...playback }: FeedPlayback & {
@@ -170,7 +170,7 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
   if (!cards.length) return null;
   return <section className="om-studio-collection" aria-label={t(title)} data-studio={studio.id}>
     <header className="om-discovery-heading"><div><h2>{t(title)}</h2>{description && <p className="om-muted">{t(description)}</p>}</div>
-      <button className="om-button" onClick={() => { track('explore_collection', 'open_studio', { studio: studio.id, collection: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}<RemixIcon name="arrow-right-line" size={16} /></button>
+      <Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_collection', 'open_studio', { studio: studio.id, collection: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </header>
     <HorizontalRail label={title} viewportClassName="om-studio-collection-cards">{cards}</HorizontalRail>
   </section>;
@@ -185,43 +185,43 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
     <h2 id="om-capability-title">{t('Capability index')}</h2>
     <div className="om-capability-columns">
       {(['image', 'video', 'audio'] as const).map(kind => <div key={kind}><h3>{t(mediaLabels[kind])}</h3>
-        {studioScenes.filter(scene => scene.modality === kind).map(scene => <button className="om-nav-item" key={scene.id} onClick={() => {
+        {studioScenes.filter(scene => scene.modality === kind).map(scene => <Button variant="plain" className="om-nav-item" key={scene.id} onClick={() => {
           const target = sceneDestination(scene);
           track('capability_index', 'select_scene', destinationTarget(target));
           onNavigate(target);
-        }}>{t(scene.label)}</button>)}
-        <button className="om-nav-item" aria-expanded={modelsFor === kind} aria-controls={modelsFor === kind ? 'om-explore-models' : undefined}
+        }}>{t(scene.label)}</Button>)}
+        <Button variant="plain" className="om-nav-item" aria-expanded={modelsFor === kind} aria-controls={modelsFor === kind ? 'om-explore-models' : undefined}
           aria-label={t(mediaLabels[kind]) + ' · ' + t('Models')} onClick={() => { track('capability_index', 'models_toggle', { medium: kind, expanded: modelsFor !== kind }); setModelsFor(modelsFor === kind ? null : kind); }}>
           {t('Models')}<RemixIcon name="arrow-down-s-line" size={14} />
-        </button>
+        </Button>
         {modelsFor === kind && <div className="om-index-models" id="om-explore-models">
           <MediaModelChoices {...gateway} kind={kind} onModel={model => { track('capability_index', 'select_model', { medium: kind, model }); onModel(model); }}
             onNavigate={target => { track('capability_index', 'select_model', { medium: kind, ...destinationTarget(target) }); onNavigate(target); }}
             openProviders={() => { track('capability_index', 'open_providers', { medium: kind }); openModelSettings(); }} />
         </div>}
       </div>)}
-      <div><h3>{t('Studios')}</h3>{creativeStudios.map(studio => <button className="om-nav-item" key={studio.id} onClick={() => { track('capability_index', 'open_studio', { studio: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}</button>)}</div>
+      <div><h3>{t('Studios')}</h3>{creativeStudios.map(studio => <Button variant="plain" className="om-nav-item" key={studio.id} onClick={() => { track('capability_index', 'open_studio', { studio: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}</Button>)}</div>
       <div><h3>{t('Workspace')}</h3>
-        <button className="om-nav-item" onClick={event => { track('capability_index', 'template_library'); openLibrary(event.currentTarget); }}>{t('Template library')}</button>
-        <button className="om-nav-item" onClick={() => { track('capability_index', 'open_brand_kit'); onBrandKit(); }}>{t('Brand Kit')}</button>
-        <button className="om-nav-item" onClick={() => { track('capability_index', 'open_assets'); openAssets(); }}>{t('Workspace assets')}</button>
-        <button className="om-nav-item" onClick={() => { track('capability_index', 'open_providers'); openModelSettings(); }}>{t('Model providers')}</button>
-        <button className="om-nav-item" onClick={() => { track('capability_index', 'open_mcp'); onMcp(); }}>{t('MCP · Connect Agent')}</button>
+        <Button variant="plain" className="om-nav-item" onClick={event => { track('capability_index', 'template_library'); openLibrary(event.currentTarget); }}>{t('Template library')}</Button>
+        <Button variant="plain" className="om-nav-item" onClick={() => { track('capability_index', 'open_brand_kit'); onBrandKit(); }}>{t('Brand Kit')}</Button>
+        <Button variant="plain" className="om-nav-item" onClick={() => { track('capability_index', 'open_assets'); openAssets(); }}>{t('Workspace assets')}</Button>
+        <Button variant="plain" className="om-nav-item" onClick={() => { track('capability_index', 'open_providers'); openModelSettings(); }}>{t('Model providers')}</Button>
+        <Button variant="plain" className="om-nav-item" onClick={() => { track('capability_index', 'open_mcp'); onMcp(); }}>{t('MCP · Connect Agent')}</Button>
       </div>
     </div>
     <div className="om-index-skills">
-      <h3 className="om-subtitle"><button className="om-nav-item" onClick={() => { track('capability_index', 'open_skills'); openSkills(); }}>{t('Skills')}<RemixIcon name="arrow-right-line" size={16} /></button></h3>
+      <h3 className="om-subtitle"><Button variant="plain" className="om-nav-item" onClick={() => { track('capability_index', 'open_skills'); openSkills(); }}>{t('Skills')}<RemixIcon name="arrow-right-line" size={16} /></Button></h3>
       <div className="om-index-skill-categories" role="group" aria-label={t('Skill category')}>{skillCategories.map(category =>
-        <button className="om-nav-item" key={category} aria-expanded={skillCategory === category} onClick={() => {
+        <Button variant="plain" className="om-nav-item" key={category} aria-expanded={skillCategory === category} onClick={() => {
           send('ui_click', { page_name: 'explore', area: 'capability_index', element: 'skill_category', skill_category: skillCategoryId(category), expanded: category !== skillCategory });
           setSkillCategory(category === skillCategory ? null : category);
         }}>
           {t(category)}<RemixIcon name="arrow-down-s-line" size={14} />
-        </button>)}</div>
+        </Button>)}</div>
       {skillCategory && <div className="om-index-skill-links" aria-label={t(skillCategory)}>{motionSkills.filter(skill => skill.category === skillCategory).map(skill =>
-        <button className="om-nav-item om-creative-option" key={skill.id} onClick={() => { track('capability_index', 'select_skill', { skill: skill.id }); onSkill(skill.id); }}>
+        <Button variant="plain" className="om-nav-item om-creative-option" key={skill.id} onClick={() => { track('capability_index', 'select_skill', { skill: skill.id }); onSkill(skill.id); }}>
           <span><strong>{t(skill.title)}</strong><small className="om-muted">{t(skill.tagline)}</small></span>
-        </button>)}</div>}
+        </Button>)}</div>}
     </div>
   </section>;
 }
@@ -277,7 +277,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
     onNavigate={onNavigate} onChooseStudio={onChooseStudio} onSkill={onSkill} playing={playing} onPriority={setPriority} />;
   const initialLoading = templates.loading && !templates.pages.length;
   const showCommunityPicks = home && (initialLoading || communityPicks.length > 0);
-  const templateError = <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><button className="om-button" onClick={templates.retry}>{t('Retry')}</button></div>;
+  const templateError = <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><Button variant="ghost" className="om-button h-auto" onClick={templates.retry}>{t('Retry')}</Button></div>;
   return <>
     {!medium && <div className="om-explore-features" data-split={Boolean(featuredTemplate || initialTemplateError || initialLoading)}>
       {community ? <CommunitySpotlight community={community} skill={skills[0]} onChooseStudio={onChooseStudio} /> :
@@ -292,7 +292,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
     </>}
     {showCommunityPicks && <section aria-labelledby="explore-community">
       <header className="om-discovery-heading"><h2 id="explore-community">{t('Community showcase')}</h2>
-        <button className="om-nav-item" onClick={event => { track('explore_feed', 'creators'); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></button>
+        <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'creators'); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></Button>
       </header>
       {initialLoading && <div className="om-community-picks" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <Skeleton key={n} />)}</div>}
       {communityPicks.length > 0 && <div className="om-community-picks">{communityPicks.map(templateCard)}</div>}
@@ -314,10 +314,10 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
         {medium && initialTemplateError && templateError}
         {templates.loading && (medium || templates.pages.length > 0) && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <Skeleton key={n} />)}</div>}
         {templates.error && !initialTemplateError && templateError}
-        {!templates.error && !templates.loading && (templates.hasMore ? <button className="om-button" onClick={() => { track('explore_feed', 'load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></button> :
+        {!templates.error && !templates.loading && (templates.hasMore ? <Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_feed', 'load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></Button> :
           !firstPage.length && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>)}
-        <button className="om-nav-item" onClick={event => { track('explore_feed', 'view_all_templates', { community: community?.id }); openLibrary(event.currentTarget); }}>{t('View all templates')}<RemixIcon name="arrow-right-line" size={16} /></button>
-        {!showCommunityPicks && <button className="om-nav-item" onClick={event => { track('explore_feed', 'creators', { community: community?.id }); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></button>}
+        <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'view_all_templates', { community: community?.id }); openLibrary(event.currentTarget); }}>{t('View all templates')}<RemixIcon name="arrow-right-line" size={16} /></Button>
+        {!showCommunityPicks && <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'creators', { community: community?.id }); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></Button>}
       </div>}
     </section>
     {showShelves && <>

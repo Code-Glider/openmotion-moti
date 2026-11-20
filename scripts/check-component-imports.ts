@@ -11,7 +11,7 @@ const studio = 'studio/src/';
 const alias = 'open-design-ui/';
 const dependencies = /^(?:react|react-dom|@base-ui\/react|cn)(?:\/|$)/;
 const previewDependencies = new Set(['@lezer/highlight', '@lezer/javascript']);
-const legacyEntries = new Set([studio + 'components/ui/Button', studio + 'components/ui/Slider']);
+const legacyEntries = new Set([studio + 'components/ui/Button', studio + 'components/ui/IconButton', studio + 'components/ui/Slider']);
 const nativeControls = { button: '<button>', slider: '<input type="range">' } as const;
 type NativeControl = keyof typeof nativeControls;
 type NativeControlCounts = Partial<Record<NativeControl, number>>;

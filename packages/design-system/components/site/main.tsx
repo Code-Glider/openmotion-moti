@@ -13,9 +13,7 @@ import { DocLink, navigate, useCatalogPath } from './navigation';
 import './site.css';
 
 const libraryName = 'Open Design UI';
-const agentSkill = 'Follow .agents/skills/odui-apply/SKILL.md in this checkout.';
 const components = registry.items;
-const studioRepo = 'https://github.com/nexu-io/openmotion/blob/main/';
 const componentHref = (name: string) => `/components/${name}`;
 type Item = (typeof components)[number];
 type Section = readonly [id: string, title: string];
@@ -129,24 +127,18 @@ function ComponentPage({ item }: { item: Item }) {
   const importLine = `import { ${item.export} } from "${item.import}"`;
   const index = components.indexOf(item);
   const agentPrompt = [
-    `Use Open Design UI's ${item.title} in the OpenMotion Studio feature I specify.`,
-    agentSkill,
+    `Use Open Design UI's ${item.title} in the feature I specify.`,
     importLine,
-    `Component source: ${item.source}`,
-    `Existing Studio example: ${item.consumer}`,
     `Usage: ${item.example}`,
-    'Keep feature behavior and layout intact, use shared tokens, and run npm run design:check.',
+    'Keep feature behavior and layout intact, use shared tokens, and run the relevant UI checks.',
   ].join('\n');
   const migrationPrompt = [
     `Migrate the existing control I specify to Open Design UI's ${item.title}. Keep the change scoped to that use case.`,
-    agentSkill,
     importLine,
-    `Read ${item.source} and compare it with the Studio usage in ${item.consumer}.`,
     migration,
     'Preserve appearance in both themes, behavior, focus, accessible labels and keyboard interaction.',
     'If an equivalent shared option is missing, describe the gap before replacing the control.',
-    'Reduce the per-file legacy count in scripts/studio-native-controls.json if this removes a tracked native control.',
-    'Run npm run design:check, npm run typecheck:studio, and the relevant Studio tests.',
+    'Run the relevant type and interaction checks for the feature.',
   ].join('\n');
 
   return <>
@@ -175,12 +167,7 @@ function ComponentPage({ item }: { item: Item }) {
     </section>
     <section className="doc-section" id="usage">
       <h2>Usage</h2>
-      <p>Import the shared control directly in Studio.</p>
       <CodeBlock text={importLine} />
-      <div className="usage-links">
-        <span>Source <code>{item.source}</code></span>
-        <a href={studioRepo + item.consumer}>View Studio usage <RemixIcon name="external-link-line" size={14} /></a>
-      </div>
     </section>
     <section className="doc-section" id="examples">
       <h2>Examples</h2>
