@@ -35,7 +35,7 @@ import { ErrorNotice } from '../components/ui/ErrorNotice';
 import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
 import { preservePresentation, workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
-import { ApplicationHeader, ApplicationRail } from './ApplicationChrome';
+import { ApplicationHeader, WorkspaceUtilityActions } from './ApplicationChrome';
 import { SettingsCenter, type SettingsSection } from './SettingsCenter';
 import { SettingsSurfaceBoundary } from './SettingsSurfaceBoundary';
 import { McpConnectionPage } from './McpConnectionPage';
@@ -197,6 +197,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     openAccountSettings: () => openSettings('account'),
     openSubscriptionSettings: () => openSettings('subscription'),
     openHome, openAssets, assetsOpen: assetsOpen && !settings && !templatesPage, openSkills, skillsOpen: skillsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
+    projectNavigation: !hostChrome && editorActive ? <span className="motion-project-navigation-trigger" hidden={sidebarOpen && !narrow}>
+      <WorkspaceProjectsButton applicationRef={applicationRef} expanded={sidebarOpen} previewEnabled={!narrow && !sidebarOpen} onToggle={toggleSidebar}>
+        {close => <WorkspaceSidebar archives={archives} currentId={projectId} close={close} expand={() => { close(); toggleSidebar(); }} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} openSettings={openSettings} />}
+      </WorkspaceProjectsButton>
+    </span> : null,
     settingsOpen: Boolean(settings) || pageOpen };
   const openSkill = (skill: string) => {
     const specialty = creativeStudios.find((entry): entry is TechniqueStudio => entry.surface === 'techniques' && entry.techniques.some(id => id === skill));
@@ -287,22 +292,15 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
         onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} onNavigate={openStudio} />
-      {editorRoute && <ApplicationRail openSettings={openSettings} projects={<WorkspaceProjectsButton
-        applicationRef={applicationRef}
-        expanded={sidebarOpen && editorActive}
-        previewEnabled={!narrow && !sidebarOpen && editorActive}
-        onToggle={toggleSidebar}>
-        {close => <WorkspaceSidebar archives={archives} currentId={projectId} close={close} expand={() => { close(); toggleSidebar(); }} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
-      </WorkspaceProjectsButton>} />}
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
         <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
-          <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
+          <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} openSettings={openSettings} />
         </Dialog.Popup>
       </Dialog.Portal>
       {!narrow && editorRoute && <div id="om-project-navigation" className="om-project-navigation om-collapsible" data-collapsed={!sidebarOpen || navigationCollapsed} aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
-        <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
+        <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} openSettings={openSettings} />
       </div>}
       <div className="motion-workspace-content" hidden={!editorRoute} inert={!editorRoute}>
         {visibleNotice && <ErrorNotice key={noticeKey} message={notice}
@@ -341,8 +339,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   </WorkspaceChromeContext.Provider>;
 }
 
-function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery, onNavigate }: {
+function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery, onNavigate, openSettings }: {
   archives: ProjectArchiveActions; currentId?: string; close: () => void; expand?: () => void; query: string; setQuery: (query: string) => void; onNavigate?: () => void;
+  openSettings: (section: SettingsSection) => void;
 }) {
   const { t } = useI18n();
   const { workspace, switchingDisabled } = useWorkspaceChrome();
@@ -357,13 +356,18 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
     </div>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
-      <Tooltip label={t('New project')}>
-        <IconButton variant="ghost" type="button" className="motion-icon-button" aria-label={t('New project')} disabled={switchingDisabled} onClick={event => {
-          void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'new_creation', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
-          void workspace.create();
-          onNavigate?.();
-        }} icon={<MotionIcon name="plus" size={16} />} />
-      </Tooltip>
+      <div className="motion-session-heading-actions">
+        <Tooltip label={t(archives.busy === 'import' ? 'Importing…' : 'Import projects')}>
+          <IconButton variant="ghost" type="button" className="motion-icon-button" disabled={archives.locked} onClick={archives.chooseImport} aria-label={t(archives.busy === 'import' ? 'Importing…' : 'Import projects')} icon={<RemixIcon name="upload-2-line" size={16} />} />
+        </Tooltip>
+        <Tooltip label={t('New project')}>
+          <IconButton variant="ghost" type="button" className="motion-icon-button" aria-label={t('New project')} disabled={switchingDisabled} onClick={event => {
+            void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'new_creation', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
+            void workspace.create();
+            onNavigate?.();
+          }} icon={<MotionIcon name="plus-thin" size={20} />} />
+        </Tooltip>
+      </div>
     </div>
     <label data-form-field="regular" className="motion-session-search"><MotionIcon name="search" /><FieldInput appearance="embedded" type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
     <nav className="motion-session-list" aria-label={t('Project list')} aria-busy={loadingProjects}>
@@ -386,7 +390,7 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
     </nav>
     <div className="motion-sidebar-footer">
       <Button variant="plain" className="om-nav-item" type="button" onClick={archives.showManager}><RemixIcon name="folder-open-line" size={18} />{t('All projects')}</Button>
-      <Button variant="plain" className="om-nav-item" type="button" disabled={archives.locked} onClick={archives.chooseImport}><RemixIcon name="upload-2-line" size={18} />{t(archives.busy === 'import' ? 'Importing…' : 'Import projects')}</Button>
+      <WorkspaceUtilityActions openSettings={section => { close(); openSettings(section); }} />
     </div>
   </aside>;
 }
