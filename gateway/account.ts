@@ -11,7 +11,7 @@ import { validField, type EventFields } from '../tracking/core.ts';
 import { accountErrorKinds, accountStages, type omEvents } from '../tracking/events.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
 import { registeredProvider } from '../shared/provider-registry.ts';
-import { resolveGenerationParameters } from '../shared/generation-options.ts';
+import { defaultVideoAudioEnabled, resolveGenerationParameters } from '../shared/generation-options.ts';
 import { apiJson, retryRead, type Fetcher } from './network.ts';
 import { resumableDownload, type DownloadProgress } from './resumable-download.ts';
 
@@ -484,9 +484,15 @@ export class OpenDesignAccount {
     if (kind === 'audio' && !music && (typeof params.voice !== 'string' || !params.voice)) throw new Error('Choose a voice in parameters.voice');
     const operation = kind === 'audio' ? music ? 'music' : 'speech' : reference ? 'edit' : 'gen';
     const args = [kind, operation, '--model', job.model.modelId, '--prompt', job.prompt, ...(reference ? ['--image', reference] : []), '--no-wait', '--json'];
+    const generateAudio = kind === 'video' && params.generate_audio === undefined && defaultVideoAudioEnabled(job.model) ? true : params.generate_audio;
     for (const [key, value] of Object.entries(params)) {
-      if (key === 'generate_audio') { if (value === true) args.push('--generate-audio'); }
-      else if (typeof value === 'string' || typeof value === 'number') args.push('--' + key.replaceAll('_', '-'), String(value));
+      if (key === 'generate_audio') continue;
+      if (typeof value === 'string' || typeof value === 'number') args.push('--' + key.replaceAll('_', '-'), String(value));
+      else throw new Error('Invalid account model parameter');
+    }
+    if (generateAudio !== undefined) {
+      if (generateAudio === true) args.push('--generate-audio');
+      else if (generateAudio === false) args.push('--generate-audio=false');
       else throw new Error('Invalid account model parameter');
     }
     // Recovery never submits again, even when the draft or reference file has changed.

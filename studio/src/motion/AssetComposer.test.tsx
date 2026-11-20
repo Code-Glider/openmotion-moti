@@ -326,20 +326,33 @@ it('resumes an old account task while preserving a newer prompt draft', async ()
   expect(setDraft).not.toHaveBeenCalled(); expect(generate).not.toHaveBeenCalled();
 });
 
-it('switches Cinema Studio duration options between doubao-seedance-2-5-260628 and wan-2.7 and submits selected duration', async () => {
+it('renders quick parameter cards, slider duration ticks, resolution pills, and Seedance native audio toggle in Cinema Studio', async () => {
   const { studioDestination } = await import('./creativeStudios');
   const { generationOptions } = await import('../../../shared/generation-options');
-  const makeVideo = (modelId: string, durations: number[]): Model => {
+  const makeVideo = (modelId: string, nativeOptions: Record<string, unknown>): Model => {
     const base: Model = {
       id: `account:${modelId}`, provider: 'account', modelId, label: modelId, modality: 'video', mode: 'text-to-video', source: 'live',
-      nativeOptions: { durations: { values: durations, default: 5 } },
+      nativeOptions,
     };
     return { ...base, generationOptions: generationOptions(base) };
   };
-  const seedance = makeVideo('doubao-seedance-2-5-260628', Array.from({ length: 27 }, (_, i) => i + 4));
-  const wan = makeVideo('wan-2.7', Array.from({ length: 14 }, (_, i) => i + 2));
+  const seedance = makeVideo('doubao-seedance-2-5-260628', {
+    durations: { values: [5, 4, ...Array.from({ length: 25 }, (_, i) => i + 6)], default: 5 },
+    ratios: { values: ['16:9', '9:16', 'adaptive'], default: '16:9' },
+    resolutions: { values: ['720p', '480p', '1080p'], default: '720p' },
+  });
+  const wan = makeVideo('wan-2.7', {
+    durations: { values: [5, 2, 3, 4, ...Array.from({ length: 10 }, (_, i) => i + 6)], default: 5 },
+    ratios: { values: ['16:9', '9:16', 'adaptive'], default: '16:9' },
+    resolutions: { values: ['720p', '1080p'], default: '720p' },
+  });
+  const seedance20 = makeVideo('doubao-seedance-2-0-260128', {
+    durations: { values: [5, 10], default: 5 },
+    ratios: { values: ['16:9', '9:16'], default: '16:9' },
+    resolutions: { values: ['720p', '1080p'], default: '720p' },
+  });
   const catalog = {
-    models: [seedance, wan],
+    models: [seedance, wan, seedance20],
     status: { providers: [{ id: 'account', label: 'OpenDesign', available: true }], routes: { video: seedance.id } },
   };
   loadGateway.mockResolvedValue(catalog);
@@ -361,24 +374,44 @@ it('switches Cinema Studio duration options between doubao-seedance-2-5-260628 a
     return [...scope.querySelectorAll<HTMLElement>('[role="option"]')];
   };
 
-  // Open Generation settings for doubao-seedance-2-5-260628 and inspect Duration (seconds) choices (4–30s).
-  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
-  await act(async () => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Duration (seconds)"]')!.click());
-  const seedanceChoices = optionsOf('Duration (seconds)').map(node => node.textContent?.trim());
-  expect(seedanceChoices).toEqual(['Model default', ...Array.from({ length: 27 }, (_, i) => String(i + 4))]);
-  // Select 15s and submit.
-  await act(async () => optionsOf('Duration (seconds)').find(node => node.textContent?.trim() === '15')!.click());
+  // Seedance 2.5 renders quick parameter cards including Duration, Resolution, Aspect ratio, and Generate audio (On by default).
+  const durationCard = () => container.querySelector<HTMLButtonElement>('.om-param-card[aria-label="Duration"]')!;
+  const resolutionCard = () => container.querySelector<HTMLButtonElement>('.om-param-card[aria-label="Resolution"]')!;
+  const audioCard = () => container.querySelector<HTMLButtonElement>('.om-param-audio[aria-label="Generate audio"]')!;
+  expect(durationCard().textContent).toContain('5s');
+  expect(resolutionCard().textContent).toContain('720p');
+  expect(audioCard().getAttribute('aria-checked')).toBe('true');
+
+  // Clicking Duration card opens slider + tick buttons [4, 10, 15, 20, 30] instead of a 27-item dropdown.
+  await act(async () => durationCard().click());
+  expect(document.querySelector('[role="combobox"][aria-label="Duration (seconds)"]')).toBeNull();
+  const ticks = [...document.querySelectorAll<HTMLButtonElement>('.om-duration-tick')];
+  expect(ticks.map(node => node.textContent?.trim())).toEqual(['4', '10', '15', '20', '30']);
+  await act(async () => ticks.find(node => node.textContent?.trim() === '15')!.click());
+  expect(durationCard().textContent).toContain('15s');
+
+  // Toggle Generate audio off via quick card and verify submission carries duration: 15 and generate_audio: false.
+  await act(async () => audioCard().click());
+  expect(audioCard().getAttribute('aria-checked')).toBe('false');
   generate.mockResolvedValue({ job: { id: 'seedance-15s' } });
   await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
   expect(generate).toHaveBeenCalledWith(expect.objectContaining({
-    action: 'generate', model: seedance.id, parameters: { duration: 15 },
+    action: 'generate', model: seedance.id, parameters: { duration: 15, generate_audio: false },
   }));
 
-  // Switch model to wan-2.7 and verify Duration (seconds) choices update to 2–15s.
+  // Switch model to wan-2.7: audio toggle disappears, resolution has [720p, 1080p], duration ticks update to [2, 5, 10, 15].
   await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
   await act(async () => optionsOf('Generation model').find(node => node.textContent?.includes('wan-2.7'))!.click());
-  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
-  await act(async () => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Duration (seconds)"]')!.click());
-  const wanChoices = optionsOf('Duration (seconds)').map(node => node.textContent?.trim());
-  expect(wanChoices).toEqual(['Model default', ...Array.from({ length: 14 }, (_, i) => String(i + 2))]);
+  expect(container.querySelector('.om-param-audio')).toBeNull();
+  await act(async () => durationCard().click());
+  expect([...document.querySelectorAll<HTMLButtonElement>('.om-duration-tick')].map(node => node.textContent?.trim())).toEqual(['2', '5', '10', '15']);
+  await act(async () => resolutionCard().click());
+  expect([...document.querySelectorAll<HTMLButtonElement>('.om-option-pill')].map(node => node.textContent?.trim())).toEqual(['720p', '1080p']);
+
+  // Switch model to doubao-seedance-2-0-260128: discrete durations [5, 10] render as compact pills, not a slider.
+  await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
+  await act(async () => optionsOf('Generation model').find(node => node.textContent?.includes('doubao-seedance-2-0-260128'))!.click());
+  await act(async () => durationCard().click());
+  expect(document.querySelector('.om-duration-track')).toBeNull();
+  expect([...document.querySelectorAll<HTMLButtonElement>('.om-option-pill')].map(node => node.textContent?.trim())).toEqual(['5s', '10s']);
 });
