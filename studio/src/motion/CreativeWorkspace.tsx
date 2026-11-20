@@ -53,7 +53,13 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
     reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
     onNavigate(next);
   };
-  const heading = <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>;
+  const headingIconClass = studio.id === 'design' && !destination.landing ? 'om-creation-icon' : 'om-studio-heading-icon';
+  const heading = <h1 className="om-subtitle">
+    <span className={headingIconClass} data-tone={destination.landing ? scene.modality : studioIconTone(studio)}>
+      <RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} />
+    </span>
+    {destination.landing ? t(scene.label) : t(studio.title)}
+  </h1>;
   return <div className="om-assets-host om-creative-workspace">
     {breadcrumb}
     <header className="om-studio-bar">

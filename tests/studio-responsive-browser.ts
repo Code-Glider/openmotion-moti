@@ -143,12 +143,18 @@ test('Design Studio uses the same navigation styles and overflow controls across
         const { backgroundColor, borderTopWidth, boxShadow } = getComputedStyle(element);
         return [backgroundColor, borderTopWidth, boxShadow];
       });
+      const headingIconStyle = () => page.$eval('.om-studio-bar h1 > [data-tone="image"]', icon => {
+        const { backgroundColor, borderRadius, color, height, width } = getComputedStyle(icon);
+        return { backgroundColor, borderRadius, color, height, width };
+      });
       const transparentArrow = ['rgba(0, 0, 0, 0)', '0px', 'none'];
 
       await page.waitForSelector(active, { visible: true });
       assert.equal(await page.$eval(active, button => button.textContent), 'Image editing');
+      const imageHeadingIcon = await headingIconStyle();
       await page.click('.om-creative-navigation [data-nav-slot]:not([data-stowed]) > button[aria-label="Design Studio"]');
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Text to image', {}, active);
+      assert.deepEqual(await headingIconStyle(), imageHeadingIcon);
       assert.deepEqual(await page.$$eval(`${track} > button`, buttons =>
         [...new Set(buttons.map(button => getComputedStyle(button).fontSize))]), ['12px']);
       assert.equal(await page.$(next), null);
@@ -164,6 +170,8 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.click(prototype);
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Prototype', {}, active);
       assert.equal(await page.$('.om-studio-bar ::-p-text(Explore)'), null);
+      assert.notEqual(imageHeadingIcon.backgroundColor, 'rgba(0, 0, 0, 0)');
+      assert.deepEqual(await headingIconStyle(), imageHeadingIcon);
       assert.deepEqual(await style(active), imageSelected);
       const galleryHeader = '.om-design-page-with-dock > section:first-child > .om-design-section-head';
       await page.waitForSelector(galleryHeader, { visible: true });
