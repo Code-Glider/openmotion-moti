@@ -455,7 +455,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         onBackToExplore={showStudioBackToExplore || (hostChrome && !source) ? returnToExplore : undefined}
         onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)}
         onOpenStudio={studio => navigatePage({ studio, templates: false }, false, 'from-page')}
-        onNavigate={studio => navigatePage({ studio, templates: false }, false, 'keep')} /></div>
+        onNavigate={studio => {
+          const switchingDesignSceneFromExplore = showStudioBackToExplore && studio.studio.id === 'design'
+            && studio.scene.id !== page.studio?.scene.id;
+          navigatePage({ studio, templates: false }, false, switchingDesignSceneFromExplore ? undefined : 'keep');
+        }} /></div>
       {page.designScene && !templatesPage && (
         <div className="om-assets-host" style={{ padding: 0 }}>
           {page.designProject
@@ -473,7 +477,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
                 projectListVersion={designProjectListVersion}
                 onProjectsChanged={refreshDesignProjectLists}
                 projectNavigation={designProjectNavigation}
-                onExplore={returnToExplore}
+                onExplore={hostChrome ? returnToExplore : undefined}
                 onOpenMcp={() => openMcp(undefined, undefined, true)}
               />}
         </div>

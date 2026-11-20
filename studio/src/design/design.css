@@ -1343,10 +1343,10 @@
 .om-design-bottom-dock-wrap > * {
   width: 100%;
   max-width: calc(var(--om-design-page-width) - 2 * var(--om-design-page-gutter));
+  pointer-events: auto;
 }
 
 .om-design-bottom-composer {
-  pointer-events: auto;
   background: var(--motion-raised);
   box-shadow: var(--motion-shadow-lg);
 }

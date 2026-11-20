@@ -50,7 +50,7 @@ export function DesignScenePage({
   projectListVersion: number;
   onProjectsChanged?: () => void;
   projectNavigation?: ReactNode;
-  onExplore: () => void;
+  onExplore?: () => void;
   onOpenMcp: () => void;
 }) {
   const { t, locale } = useI18n();
@@ -342,9 +342,9 @@ export function DesignScenePage({
   return (
     <div className="om-assets-host om-creative-workspace om-design-workspace-shell">
       <header className="om-studio-bar">
-        <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="arrow-left-line" size={16} />} onClick={onExplore}>
+        {onExplore && <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="arrow-left-line" size={16} />} onClick={onExplore}>
           {t('Explore')}
-        </Button>
+        </Button>}
         <div className="om-design-project-heading">
           {projectNavigation}
           <h1 className="om-subtitle">
@@ -453,6 +453,7 @@ export function DesignScenePage({
                 onOpen={onOpenProject}
                 onViewAll={() => onSelectDesignScene('projects')}
                 refreshKey={projectListVersion}
+                onProjectsChanged={onProjectsChanged}
               />
             </div>
           </div>

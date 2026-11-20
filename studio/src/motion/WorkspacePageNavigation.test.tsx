@@ -746,8 +746,14 @@ it.each([
     const editTab = [...header.querySelectorAll<HTMLButtonElement>('nav button')].find(tab => tab.textContent === 'Image editing')!;
     await act(async () => editTab.click());
     expect(page().studio?.scene.id).toBe('image-edit');
+    expect(container.querySelector('.om-studio-bar .om-back-to-explore')).toBeNull();
+    await traverse(-1);
+    expect(page().studio?.scene.id).toBe('text-to-image');
   }
-  await act(async () => { returnControl!.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('.om-back-to-explore')!.click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
   expect(location.href).toBe(origin);
   expect(carousel.getAttribute('data-scene')).toBe(slide);
   expect(feed.scrollTop).toBe(56);

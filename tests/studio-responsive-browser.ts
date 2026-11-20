@@ -163,6 +163,7 @@ test('Design Studio uses the same navigation styles and overflow controls across
       assert.deepEqual(await style(prototype), imageHover);
       await page.click(prototype);
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Prototype', {}, active);
+      assert.equal(await page.$('.om-studio-bar ::-p-text(Explore)'), null);
       assert.deepEqual(await style(active), imageSelected);
       const galleryHeader = '.om-design-page-with-dock > section:first-child > .om-design-section-head';
       await page.waitForSelector(galleryHeader, { visible: true });
@@ -348,6 +349,26 @@ test('Design Studio copies template briefs in place and creates projects separat
       await page.click(`${recent} .om-design-section-head button`);
       await page.waitForFunction(() => new URLSearchParams(location.search).get('scene') === 'projects');
 
+      const composer = '.om-design-bottom-composer';
+      const fallback = '.om-design-bottom-dock-wrap textarea[readonly]';
+      for (const [button, expectedText] of [
+        [quickAction, 'velar-luxury-real-estate'],
+        [`${composer} ::-p-text(复制给 Agent)`, 'A brief to copy manually'],
+      ]) {
+        await page.goto(scene, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector(quickAction, { visible: true });
+        await page.evaluate(() => {
+          navigator.clipboard.writeText = async () => { throw new Error('Clipboard access denied'); };
+        });
+        await page.locator(`${composer} textarea`).fill('A brief to copy manually');
+        await page.locator(button).click();
+        const field = await page.waitForSelector(fallback, { visible: true, timeout: 5000 });
+        assert.ok((await field!.evaluate(el => el.value)).includes(expectedText));
+        await field!.click({ clickCount: 3 });
+        assert.ok(await field!.evaluate(el => document.activeElement === el && el.selectionEnd > el.selectionStart),
+          'The manual copy field must accept a pointer selection');
+      }
+
       await page.goto(explore, { waitUntil: 'domcontentloaded' });
       const exploreTemplate = '[data-design-template="velar-luxury-real-estate"] .om-design-card-title';
       await page.waitForSelector(exploreTemplate, { visible: true });
@@ -389,6 +410,7 @@ test('Design Studio opens projects from its collapsible sidebar', { timeout: 60_
       const row = `${sidebar} button[aria-label="Mobile app project"]`;
       const sidebarProject = `${sidebar} [data-design-project-row="${project.id}"]`;
       const galleryProject = `.om-design-card[data-design-project-row="${project.id}"]`;
+      const recentProjects = '.om-design-page-with-dock > section + section';
       const category = `${sidebar} .om-design-project-search button[aria-label="Filters"]`;
       const galleryCategory = '.om-design-page .om-design-project-search button[aria-haspopup="menu"]';
       const categoryMenu = '[role="menu"][aria-label="Project category"]:not([data-ending-style])';
@@ -446,6 +468,32 @@ test('Design Studio opens projects from its collapsible sidebar', { timeout: 60_
       await page.click(`${sidebar} button[aria-label="New project"]`);
       await page.waitForSelector('.om-design-popover ::-p-text(Mobile App)', { visible: true });
       await page.keyboard.press('Escape');
+
+      await openActions(`${recentProjects} ${galleryProject}`);
+      await selectAction('Duplicate');
+      const recentCopyTitle = await page.waitForSelector(`${recentProjects} .om-design-card-title ::-p-text(Mobile app project (Copy))`, { visible: true, timeout: 5000 });
+      const recentCopyId = await recentCopyTitle!.evaluate(el => el.closest('[data-design-project-row]')!.getAttribute('data-design-project-row'));
+      const recentCopy = `${recentProjects} [data-design-project-row="${recentCopyId}"]`;
+      const sidebarCopy = `${sidebar} [data-design-project-row="${recentCopyId}"]`;
+      await page.waitForSelector(`${sidebarCopy} button[aria-label="Mobile app project (Copy)"]`, { visible: true, timeout: 5000 });
+
+      await openActions(recentCopy);
+      await selectAction('Rename');
+      await page.locator(`${recentCopy} input[aria-label="Rename project"]`).fill('Renamed recent project');
+      await page.keyboard.press('Enter');
+      await page.waitForSelector(`${recentCopy} ::-p-text(Renamed recent project)`, { visible: true, timeout: 5000 });
+      await page.waitForSelector(`${sidebarCopy} button[aria-label="Renamed recent project"]`, { visible: true, timeout: 5000 });
+
+      await openActions(recentCopy);
+      await selectAction('Move to Trash');
+      await page.waitForSelector(recentCopy, { hidden: true, timeout: 5000 });
+      await page.waitForSelector(sidebarCopy, { hidden: true, timeout: 5000 });
+      await page.click(sidebarTrash);
+      await page.waitForSelector(sidebarCopy, { visible: true, timeout: 5000 });
+      await openActions(sidebarCopy);
+      await selectAction('Delete permanently');
+      await page.waitForSelector(sidebarCopy, { hidden: true, timeout: 5000 });
+      await page.click(sidebarTrash);
 
       await page.locator('.om-design-page .om-design-section-head ::-p-text(View all)').click();
       await page.waitForFunction(() => document.querySelector('.om-design-hero-title')?.textContent === 'Design projects');
