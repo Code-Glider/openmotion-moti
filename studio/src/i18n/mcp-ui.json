@@ -1,5 +1,7 @@
 {
   "zh-CN": {
+    "How do I review a storyboard or creative direction?": "怎样查看分镜或选择创作方向？",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "请 Agent 展示分镜或创作方向候选。支持聊天内 HTML 的 Codex 对话可以显示可放大的图片卡片，其他对话可按顺序展示图片。在聊天中回复你的选择或反馈。想检查动效和节奏时，请看可播放的样片。",
     "MCP": "MCP",
     "Current project": "当前项目",
     "Copy the instruction to another conversation to continue editing this project.": "复制指令到其他会话，继续编辑此项目。",
@@ -241,6 +243,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "在素材库上传或生成图片、视频和音频，并使用模型支持的参考图。查询中断的 Cloud 原任务，不重新生成；保留文件的保存可单独重试。读取确切版本并将选定素材导入影片。 账号图片下载中断后也可继续下载原任务，不会重新生成。"
   },
   "ja": {
+    "How do I review a storyboard or creative direction?": "絵コンテやクリエイティブの方向性はどう確認しますか？",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "エージェントに絵コンテや方向性の候補を頼んでください。インライン HTML に対応した Codex チャットでは、画像を拡大できるカードを表示できます。ほかのチャットでは画像を順番に表示できます。選択や感想はチャットで返信してください。動きやタイミングは再生できるサンプルで確認してください。",
     "Create and reuse assets": "アセットを作成して再利用",
     "How do I start from a template?": "テンプレートから始めるには？",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "テンプレートをプレビューし、接続した Agent に指示を送ってください。編集可能なテンプレートは変更することも、そのまま HTML プロジェクトと MP4 として書き出すこともでき、書き出したファイルを確認します。参考映像のみの項目は再制作が必要です。",
@@ -270,6 +274,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "素材で画像・動画・音声をアップロードまたは生成し、モデル対応の参照画像を使用できます。中断した Cloud タスクは再生成せずに確認し、保持済みファイルの保存は別途再試行します。固定バージョンを確認して選んだ素材を作品に読み込みます。 アカウント画像も再生成せずに元のタスクのダウンロードを再開できます。"
   },
   "ko": {
+    "How do I review a storyboard or creative direction?": "스토리보드나 제작 방향을 어떻게 검토하나요?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "에이전트에게 스토리보드나 제작 방향 후보를 요청하세요. 인라인 HTML을 지원하는 Codex 채팅에서는 이미지를 확대할 수 있는 카드가 표시될 수 있습니다. 다른 채팅에서는 이미지를 순서대로 볼 수 있습니다. 선택이나 의견은 채팅에 답장으로 남겨 주세요. 움직임과 타이밍은 재생 가능한 샘플로 확인하세요.",
     "Create and reuse assets": "에셋 생성 및 재사용",
     "How do I start from a template?": "템플릿으로 시작하려면 어떻게 하나요?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "템플릿을 미리 본 뒤 연결된 Agent에 프롬프트를 보내세요. 편집 가능한 템플릿은 수정하거나 원본 그대로 HTML 프로젝트와 MP4로 내보낼 수 있으며, 내보낸 파일을 확인합니다. 참고 영상만 제공하는 항목은 다시 제작해야 합니다.",
@@ -299,6 +305,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "에셋에서 이미지, 동영상, 오디오를 업로드하거나 생성하고 모델이 지원하는 참조를 사용합니다. 중단된 Cloud 작업은 재생성 없이 확인하며 보관된 파일 저장은 별도로 재시도합니다. 정확한 버전을 읽고 선택한 에셋을 영상에 가져옵니다. 계정 이미지도 다시 생성하지 않고 원래 작업의 다운로드를 재개할 수 있습니다."
   },
   "de": {
+    "How do I review a storyboard or creative direction?": "Wie kann ich ein Storyboard oder einen Gestaltungsvorschlag prüfen?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Bitte deinen Agenten um ein Storyboard oder mehrere Gestaltungsvorschläge. Codex-Chats mit eingebettetem HTML können Bilder als vergrößerbare Karten anzeigen. In anderen Chats können die Bilder der Reihe nach erscheinen. Antworte im Chat mit deiner Auswahl oder deinem Feedback. Prüfe Bewegung und Timing anhand einer abspielbaren Vorschau.",
     "Create and reuse assets": "Assets erstellen und wiederverwenden",
     "How do I start from a template?": "Wie beginne ich mit einer Vorlage?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Sieh dir eine Vorlage an und sende ihre Anweisung an deinen verbundenen Agent. Bearbeitbare Vorlagen lassen sich anpassen oder unverändert als HTML-Projekt und MP4 exportieren; die exportierte Datei wird geprüft. Reine Referenzbeispiele müssen nachgebaut werden.",
@@ -328,6 +336,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "Bilder, Videos und Audio in Assets hochladen oder mit unterstützten Referenzen erzeugen. Unterbrochene Cloud-Aufträge ohne erneute Generierung prüfen; gespeicherte Dateien separat erneut sichern. Exakte Versionen prüfen und ausgewählte Assets in Filme importieren. Auch Bilddownloads über das Konto lassen sich ohne erneute Generierung fortsetzen."
   },
   "fr": {
+    "How do I review a storyboard or creative direction?": "Comment examiner un storyboard ou une piste créative ?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Demandez à votre agent un storyboard ou plusieurs pistes créatives. Les conversations Codex compatibles avec le HTML intégré peuvent afficher des cartes dont on peut agrandir les images. Les autres conversations peuvent afficher les images dans l’ordre. Répondez dans la conversation avec votre choix ou vos commentaires. Utilisez un extrait vidéo pour examiner les mouvements et le rythme.",
     "Create and reuse assets": "Créer et réutiliser des ressources",
     "How do I start from a template?": "Comment commencer avec un modèle ?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Prévisualisez un modèle, puis envoyez sa consigne à votre Agent connecté. Les modèles modifiables peuvent être adaptés ou exportés tels quels en projet HTML et en MP4, avec vérification du fichier exporté. Les exemples fournis uniquement comme références doivent être recréés.",
@@ -357,6 +367,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "Importez ou générez des images, vidéos et sons avec les références prises en charge. Vérifiez une tâche Cloud interrompue sans régénérer ; réessayez séparément la sauvegarde des fichiers conservés. Consultez les versions exactes et importez les ressources choisies. Les téléchargements d’images du compte peuvent aussi reprendre sans régénération."
   },
   "ru": {
+    "How do I review a storyboard or creative direction?": "Как посмотреть раскадровку или варианты творческого направления?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Попросите агента показать раскадровку или варианты творческого направления. В чатах Codex с поддержкой встроенного HTML можно просматривать карточки и увеличивать изображения. В других чатах изображения можно показать по порядку. Ответьте в чате, какой вариант вам подходит, или оставьте замечания. Для оценки движения и ритма посмотрите видеофрагмент.",
     "Create and reuse assets": "Создавайте и используйте ресурсы повторно",
     "How do I start from a template?": "Как начать с шаблона?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Просмотрите шаблон и отправьте его инструкцию подключённому Agent. Редактируемые шаблоны можно адаптировать или экспортировать без изменений как HTML-проект и MP4 с проверкой экспортированного файла. Примеры, доступные только как референсы, нужно воссоздать.",
@@ -386,6 +398,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "Загружайте или создавайте изображения, видео и аудио с поддерживаемыми моделью референсами. Проверяйте прерванную задачу Cloud без повторной генерации; отдельно повторяйте сохранение оставшихся файлов. Просматривайте точные версии и импортируйте выбранные ресурсы в фильмы. Загрузку изображений аккаунта также можно продолжить без повторной генерации."
   },
   "es": {
+    "How do I review a storyboard or creative direction?": "¿Cómo reviso un guion gráfico o una dirección creativa?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Pide a tu agente un guion gráfico o varias opciones creativas. Los chats de Codex compatibles con HTML integrado pueden mostrar tarjetas con imágenes ampliables. En otros chats, las imágenes pueden mostrarse en orden. Responde en el chat con tu elección o tus comentarios. Usa una muestra reproducible para revisar el movimiento y el ritmo.",
     "Create and reuse assets": "Crear y reutilizar recursos",
     "How do I start from a template?": "¿Cómo empiezo con una plantilla?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Previsualiza una plantilla y envía sus instrucciones a tu Agent conectado. Las plantillas editables pueden adaptarse o exportarse sin cambios como proyecto HTML y MP4, con comprobación del archivo exportado. Los ejemplos que solo sirven de referencia deben recrearse.",
@@ -415,6 +429,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "Sube o genera imágenes, vídeo y audio con referencias compatibles. Consulta una tarea Cloud interrumpida sin volver a generar; reintenta por separado el guardado de los archivos conservados. Lee versiones exactas e importa los recursos elegidos. También puedes reanudar las descargas de imágenes de la cuenta sin generarlas de nuevo."
   },
   "pt-BR": {
+    "How do I review a storyboard or creative direction?": "Como reviso um storyboard ou uma direção criativa?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Peça ao seu agente um storyboard ou opções de direção criativa. As conversas no Codex com suporte a HTML incorporado podem exibir cartões com imagens ampliáveis. Outras conversas podem mostrar as imagens na ordem. Responda no chat com sua escolha ou seus comentários. Use uma amostra reproduzível para avaliar o movimento e o ritmo.",
     "Create and reuse assets": "Crie e reutilize recursos",
     "How do I start from a template?": "Como começo com um modelo?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Visualize um modelo e envie as instruções ao seu Agent conectado. Os modelos editáveis podem ser adaptados ou exportados sem alterações como projeto HTML e MP4, com verificação do arquivo exportado. Os exemplos que servem apenas de referência precisam ser recriados.",
@@ -444,6 +460,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "Envie ou gere imagens, vídeos e áudio com referências compatíveis. Consulte uma tarefa Cloud interrompida sem gerar novamente; tente salvar os arquivos retidos separadamente. Confira versões exatas e importe os recursos escolhidos. Downloads de imagens da conta também podem ser retomados sem gerar novamente."
   },
   "it": {
+    "How do I review a storyboard or creative direction?": "Come posso rivedere uno storyboard o una proposta creativa?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Chiedi al tuo agente uno storyboard o più proposte creative. Le chat Codex che supportano il codice HTML incorporato possono mostrare schede con immagini ingrandibili. Le altre chat possono mostrare le immagini in sequenza. Rispondi in chat con la tua scelta o il tuo feedback. Usa un’anteprima riproducibile per valutare movimento e ritmo.",
     "Create and reuse assets": "Crea e riutilizza risorse",
     "How do I start from a template?": "Come inizio da un modello?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Visualizza un modello e invia le istruzioni al tuo Agent connesso. I modelli modificabili possono essere adattati o esportati senza modifiche come progetto HTML e MP4, con verifica del file esportato. Gli esempi disponibili solo come riferimento devono essere ricreati.",
@@ -473,6 +491,8 @@
     "Upload or generate images, video and audio in Assets using model-supported references. Resume interrupted Cloud tasks or account image downloads without generating again; retry saving retained files separately. Read exact versions and import chosen assets into your films.": "Carica o genera immagini, video e audio con riferimenti supportati. Controlla un’attività Cloud interrotta senza rigenerare; riprova separatamente il salvataggio dei file conservati. Consulta versioni esatte e importa le risorse scelte. Anche i download delle immagini dell’account si possono riprendere senza generarle di nuovo."
   },
   "tr": {
+    "How do I review a storyboard or creative direction?": "Storyboard veya yaratıcı yönü nasıl incelerim?",
+    "Ask your Agent for a storyboard or direction options. Codex chats with inline HTML support can show expandable image cards. Other chats can show the images in order. Reply in chat with your choice or feedback. Use a playable sample to review motion and timing.": "Ajanınızdan bir storyboard veya yaratıcı yön seçenekleri isteyin. Satır içi HTML destekleyen Codex sohbetlerinde görseller büyütülebilir kartlarda gösterilebilir. Diğer sohbetlerde görseller sırasıyla gösterilebilir. Seçiminizi veya geri bildiriminizi sohbette paylaşın. Hareketi ve zamanlamayı incelemek için oynatılabilir bir örnek kullanın.",
     "Create and reuse assets": "Varlık oluşturun ve yeniden kullanın",
     "How do I start from a template?": "Bir şablonla nasıl başlayabilirim?",
     "Preview a template and send its prompt to your connected Agent. Ready-to-edit templates can be adapted or exported unchanged as an HTML project and MP4, with the exported file checked. Reference-only entries need reconstruction.": "Bir şablonu önizleyin ve yönergesini bağlı Agent’a gönderin. Düzenlenebilir şablonlar uyarlanabilir veya değiştirilmeden HTML projesi ve MP4 olarak dışa aktarılabilir; dışa aktarılan dosya kontrol edilir. Yalnızca referans olarak sunulan örneklerin yeniden oluşturulması gerekir.",

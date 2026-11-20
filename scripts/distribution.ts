@@ -748,6 +748,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'scripts/runtime-assets.mjs', 'scripts/vision-runtime.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/install-public-skill.ts', 'scripts/recover-workspace-lock.ts', 'scripts/cleanup-harness-bundles.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
     'scripts/install-onboarding.mjs', 'scripts/inline-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/onboarding-catalog.ts', 'scripts/open-template-library.ts', 'scripts/install-library-skill.mjs',
+    'scripts/inline-storyboard.mjs', 'mcp-ui/storyboard/inline.css', 'mcp-ui/storyboard/inline.js',
     'scripts/diagnostics.mjs', 'scripts/diagnostic-redaction.mjs', 'scripts/zip.mjs',
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts', 'scripts/build-template-guide.mjs',
     'scripts/repository-media.ts', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'scripts/build-template-cards.mjs',

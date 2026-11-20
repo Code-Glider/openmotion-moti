@@ -72,6 +72,14 @@ Hyperframes 指引只在 [原生引擎边界](native.md#engine-guidance-boundary
 
 操作工程时用 `openmotion_get_project({projectId})` 核对项目、sessionId 和当前版本；没有 projectId 时先查分页列表。独立新任务通过 `openmotion_create_project` 创建项目，可传已有 OpenMotion sessionId 归属。何时打开可编辑预览见 [Native 工程循环](native.md#project-loop) 第 6 步。宿主聊天 ID 不自动等于 OpenMotion sessionId，未绑定时不能用全局最近项目猜测归属。
 
+## 在聊天中展示静态创作预览
+
+本轮需要让用户比较创作方向或看分镜时，支持聊天内 HTML 的 Codex 可以沿用 onboarding 的可放大卡片。从当前 OpenMotion 运行时执行 `node scripts/inline-storyboard.mjs --manifest /absolute/preview.json --output /absolute/chat-visualization/preview-v1.html`。把输出路径放在当前聊天可访问的可视化目录，并在展示预览的回复里原样放入返回的 `contentReference`。宿主不支持或渲染失败时，按同一顺序显示单张图片和标签。
+
+- 清单共用本地化的 `title`、`openLabel`、`backLabel`。卡片提供 `title`、`alt` 及清单同目录的 PNG、JPEG 或 WebP 文件名 `image`。文档超过大小预算时，压缩源图重试。
+- 比较方向时用 `previewType: "creative_directions"` 和 `directions` 提供两到三个候选。每项写稳定的 `id` 和说明表现手法的 `note`。展示按返回的 `candidates` 顺序对应 A–C。收到明确回复后再沿用所选候选。
+- 展示分镜时用 `frames` 传按播放顺序排列的截图，每帧加 `time` 和可选的 `note`，最多 12 张。放大用于查看画面。选择和确认仍通过对话表达。需要验证动作、节奏或声画时，用可播放样片覆盖相关区间。
+
 ## 一份上下文
 
 复用现有 `STATE.md`、简报和脚本，不为每个 Skill 建一套记录。按任务规模记录：当前范围与主路线、阶段、事实和素材来源、保留的品牌/画面/声音决定、交付规格、目标 projectId、revision 与 currentVersionId、已完成操作和检查。局部任务可以只更新相关项。
