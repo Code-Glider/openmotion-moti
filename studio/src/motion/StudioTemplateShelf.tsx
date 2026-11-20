@@ -1,5 +1,5 @@
 import { Button } from 'open-design-ui/button';
-import { useState, type ReactNode, type RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useI18n, type Locale } from '../i18n/I18n';
@@ -24,8 +24,8 @@ const threeDimensionalTags: Record<Locale, string> = {
 };
 const shelfSize = 8;
 
-export function StudioTemplateShelf({ studio, root, active, navigation }: {
-  studio: 'motion' | TechniqueStudio['id']; root: RefObject<HTMLElement | null>; active: boolean; navigation?: ReactNode;
+export function StudioTemplateShelf({ studio, root, active }: {
+  studio: 'motion' | TechniqueStudio['id']; root: RefObject<HTMLElement | null>; active: boolean;
 }) {
   const { locale, t } = useI18n();
   const { openLibrary } = useWorkspaceChrome();
@@ -43,7 +43,7 @@ export function StudioTemplateShelf({ studio, root, active, navigation }: {
   const playing = useTemplatePlayback(root, items.map(item => item.id).join('|'), active, true, priority, true);
   const title = t(studio === 'motion' ? 'Motion templates' : 'Templates');
   return <section className="om-studio-template-shelf" data-studio={studio} aria-label={title}>
-    <header><div className="om-studio-template-heading">{navigation}<h2 className="om-title">{title}</h2></div>
+    <header><h2 className="om-title">{title}</h2>
       <Button variant="ghost" type="button" className="om-button h-auto" onClick={event => openLibrary(event.currentTarget)}>{t('Template library')}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </header>
     <div className="om-studio-template-grid">

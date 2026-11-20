@@ -5,14 +5,12 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { StudioTemplateShelf } from './StudioTemplateShelf';
 import { reportCreativeClick } from './exploreTracking';
 import { BackToExploreButton } from './BackToExploreButton';
-import { useWorkspaceChrome } from './WorkspaceChromeContext';
 import { motionStudioCover } from './skillCatalog';
 
 export function MotionStudioPage({ active, editorDisabled, onOpenEditor, onBackToExplore }: {
   active: boolean; editorDisabled: boolean; onOpenEditor: () => void; onBackToExplore?: () => void;
 }) {
   const { t, locale } = useI18n();
-  const { projectNavigation } = useWorkspaceChrome();
   const root = useRef<HTMLElement>(null);
   return <main ref={root} className="om-explore" aria-label={t('Motion templates')}>
     <div className="om-discovery-page">
@@ -33,6 +31,6 @@ export function MotionStudioPage({ active, editorDisabled, onOpenEditor, onBackT
         </Button>
       </div>
     </header>
-    <StudioTemplateShelf key={locale} studio="motion" root={root} active={active} navigation={projectNavigation} />
+    <StudioTemplateShelf key={locale} studio="motion" root={root} active={active} />
   </div></main>;
 }

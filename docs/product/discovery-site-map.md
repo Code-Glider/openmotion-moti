@@ -6,7 +6,8 @@ Explore, modality menus and Studio shortcuts use one [catalogue](../../shared/st
 | --- | --- | --- |
 | Workspace root or OpenMotion wordmark | Explore | Opens the full Explore feed. Direct project links resume the editor. |
 | Explore heading | Templates or Skills | Opens the complete template or Skill library using the same page as the corresponding shelf action. Close the library to return to Explore. |
-| Explore spotlight or primary navigation | Motion Studio | `?page=motion` opens Motion templates inside the workspace, with the project sidebar available. Select a project to open its timeline; Template library opens the global library. |
+| Primary navigation | Motion Studio | `?page=motion` shows the Motion banner and template grid. The banner opens the first project in the editor, where the project sidebar is available. Template library opens the global library. |
+| First Explore spotlight action | Motion Editor | Opens the last available project, or the first project on a fresh visit. |
 | Explore spotlight | Model hub, such as Gemini 4 Neon | `?page=model-hub&hub=gemini-4`. Browse community videos ranked by X views, filter by scene, open a video to copy its recreation instruction or download its `motion.md`, then sign in or connect your own API key. Back to Explore returns to the spotlight. |
 | Explore → Explore highlights | Model case studies, Black Friday collection, Claude workflows or Shorts Studio | Scroll through the cards or use the arrow buttons. Model cards jump to the corresponding gallery. The collection and Studio cards open their respective destinations. |
 | Explore → Seedance 2.5 or GPT Image 2.6 | Choose a case | The example opens its Studio with an editable prompt and a compatible provider-qualified model from the local catalogue. If the model is missing, the card offers a draft with a model of the user's choice. The provider-specific overview also shows compatible cases. |

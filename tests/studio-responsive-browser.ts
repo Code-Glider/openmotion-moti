@@ -84,8 +84,9 @@ test('Explore is home and project navigation stays in the workspace', { timeout:
       await page.setViewport({ width: 1440, height: 800 });
       await page.click('.om-app-header [aria-label="Motion Studio"]');
       await page.waitForSelector('main[aria-label="Motion templates"]', { visible: true });
-      const project = await page.waitForSelector('.om-project-navigation:not([inert]) button.motion-session', { visible: true });
-      await project!.click();
+      assert.equal(await page.$('.om-project-navigation'), null);
+      const openEditor = await page.waitForSelector('.om-studio-landing-hero button:not(:disabled)', { visible: true });
+      await openEditor!.click();
       await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
       await page.waitForSelector('.om-project-navigation:not([inert])', { visible: true });
       const editorUrl = page.url();
