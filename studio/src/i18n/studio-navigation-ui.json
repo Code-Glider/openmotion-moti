@@ -4,7 +4,7 @@
     "Editable templates": "可编辑模板",
     "Open editor": "打开编辑器",
     "Open workspace": "打开工作区",
-    "Techniques": "创作技法",
+    "Creative Skills": "创作 Skills",
     "Vintage camera study": "复古相机静物",
     "Product relighting": "产品重新布光",
     "Image design": "图像设计",
@@ -132,14 +132,16 @@
     "From studio to living room": "把音箱放进客厅",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "保持音箱的位置和外观，把它放在客厅的木质边桌上，让窗光从侧面照进来。",
     "Generate a shot reference": "生成镜头参考图",
-    "Use this prompt": "使用此提示词"
+    "Use this prompt": "使用此提示词",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "工作室即将上线。你可以先选择下方 Skill，将创作指令复制给 Agent 开始创作。",
+    "3D Creative Skills": "3D 创作 Skills"
   },
   "ja": {
     "Start with an editable motion template or open your timeline.": "編集可能なモーションテンプレートから始めるか、タイムラインを開きましょう。",
     "Editable templates": "編集可能なテンプレート",
     "Open editor": "エディターを開く",
     "Open workspace": "ワークスペースを開く",
-    "Techniques": "テクニック",
+    "Creative Skills": "制作 Skills",
     "Vintage camera study": "ヴィンテージカメラの静物写真",
     "Product relighting": "商品のライティング変更",
     "Image design": "画像デザイン",
@@ -267,14 +269,16 @@
     "From studio to living room": "スタジオからリビングへ",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "スピーカーの位置と外観を保ったまま、陽の差すリビングの木製サイドテーブルに置いてください。",
     "Generate a shot reference": "ショットの参考画像を生成",
-    "Use this prompt": "このプロンプトを使用"
+    "Use this prompt": "このプロンプトを使用",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Studio は近日公開です。下の Skill を選び、制作指示を Agent にコピーして創作を始められます。",
+    "3D Creative Skills": "3D 制作 Skills"
   },
   "ko": {
     "Start with an editable motion template or open your timeline.": "편집 가능한 모션 템플릿으로 시작하거나 타임라인을 여세요.",
     "Editable templates": "편집 가능한 템플릿",
     "Open editor": "편집기 열기",
     "Open workspace": "작업 공간 열기",
-    "Techniques": "제작 기법",
+    "Creative Skills": "창작 Skills",
     "Vintage camera study": "빈티지 카메라 정물",
     "Product relighting": "제품 조명 변경",
     "Image design": "이미지 디자인",
@@ -402,14 +406,16 @@
     "From studio to living room": "스튜디오에서 거실로",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "스피커의 위치와 모습을 유지하고, 햇살이 드는 거실의 나무 사이드 테이블 위에 놓아 주세요.",
     "Generate a shot reference": "샷 참고 이미지 생성",
-    "Use this prompt": "이 프롬프트 사용"
+    "Use this prompt": "이 프롬프트 사용",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Studio는 곧 출시됩니다. 아래 Skill을 선택하고 제작 지침을 Agent에게 복사해 창작을 시작하세요.",
+    "3D Creative Skills": "3D 창작 Skills"
   },
   "de": {
     "Start with an editable motion template or open your timeline.": "Starte mit einer editierbaren Motion-Vorlage oder öffne deine Zeitleiste.",
     "Editable templates": "Editierbare Vorlagen",
     "Open editor": "Editor öffnen",
     "Open workspace": "Arbeitsbereich öffnen",
-    "Techniques": "Techniken",
+    "Creative Skills": "Kreative Skills",
     "Vintage camera study": "Vintage-Kamera im Seitenlicht",
     "Product relighting": "Produkt neu ausleuchten",
     "Image design": "Bildgestaltung",
@@ -537,14 +543,16 @@
     "From studio to living room": "Vom Studio ins Wohnzimmer",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Lass den Lautsprecher an derselben Stelle. Platziere ihn auf einem Beistelltisch aus Holz in einem sonnigen Wohnzimmer.",
     "Generate a shot reference": "Referenzbild für die Einstellung erstellen",
-    "Use this prompt": "Diesen Prompt verwenden"
+    "Use this prompt": "Diesen Prompt verwenden",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Das Studio kommt bald. Wähle unten einen Skill und kopiere das Briefing für deinen Agent, um loszulegen.",
+    "3D Creative Skills": "3D Kreative Skills"
   },
   "fr": {
     "Start with an editable motion template or open your timeline.": "Partez d’un modèle d’animation modifiable ou ouvrez votre timeline.",
     "Editable templates": "Modèles modifiables",
     "Open editor": "Ouvrir l’éditeur",
     "Open workspace": "Ouvrir l’espace de travail",
-    "Techniques": "Techniques",
+    "Creative Skills": "Skills créatifs",
     "Vintage camera study": "Nature morte à l’appareil ancien",
     "Product relighting": "Rééclairer un produit",
     "Image design": "Création visuelle",
@@ -672,14 +680,16 @@
     "From studio to living room": "Du studio au salon",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Gardez l’enceinte à la même place. Posez-la sur une table d’appoint en bois dans un salon ensoleillé.",
     "Generate a shot reference": "Générer une image de référence du plan",
-    "Use this prompt": "Utiliser ce prompt"
+    "Use this prompt": "Utiliser ce prompt",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Le Studio arrive bientôt. Choisissez un Skill ci-dessous et copiez son brief dans votre Agent pour commencer.",
+    "3D Creative Skills": "3D Skills créatifs"
   },
   "ru": {
     "Start with an editable motion template or open your timeline.": "Начните с редактируемого шаблона анимации или откройте монтажную шкалу.",
     "Editable templates": "Редактируемые шаблоны",
     "Open editor": "Открыть редактор",
     "Open workspace": "Открыть рабочее пространство",
-    "Techniques": "Приёмы",
+    "Creative Skills": "Творческие Skills",
     "Vintage camera study": "Натюрморт с винтажной камерой",
     "Product relighting": "Новое освещение товара",
     "Image design": "Дизайн изображений",
@@ -807,14 +817,16 @@
     "From studio to living room": "Из студии в гостиную",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Сохраните положение колонки. Поставьте её на деревянный столик в залитой солнцем гостиной.",
     "Generate a shot reference": "Создать референс кадра",
-    "Use this prompt": "Использовать этот промпт"
+    "Use this prompt": "Использовать этот промпт",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Студия скоро появится. Выберите Skill ниже и скопируйте задание своему Agent, чтобы начать работу.",
+    "3D Creative Skills": "3D Творческие Skills"
   },
   "es": {
     "Start with an editable motion template or open your timeline.": "Empieza con una plantilla de animación editable o abre tu línea de tiempo.",
     "Editable templates": "Plantillas editables",
     "Open editor": "Abrir editor",
     "Open workspace": "Abrir espacio de trabajo",
-    "Techniques": "Técnicas",
+    "Creative Skills": "Skills creativos",
     "Vintage camera study": "Naturaleza muerta con cámara vintage",
     "Product relighting": "Cambiar la iluminación del producto",
     "Image design": "Diseño de imágenes",
@@ -942,14 +954,16 @@
     "From studio to living room": "Del estudio al salón",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Mantén el altavoz en la misma posición. Colócalo sobre una mesa auxiliar de madera en un salón soleado.",
     "Generate a shot reference": "Generar una imagen de referencia del plano",
-    "Use this prompt": "Usar este prompt"
+    "Use this prompt": "Usar este prompt",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "El Studio estará disponible pronto. Elige un Skill y copia sus instrucciones a tu Agent para empezar a crear.",
+    "3D Creative Skills": "3D Skills creativos"
   },
   "pt-BR": {
     "Start with an editable motion template or open your timeline.": "Comece com um modelo de animação editável ou abra sua linha do tempo.",
     "Editable templates": "Modelos editáveis",
     "Open editor": "Abrir editor",
     "Open workspace": "Abrir espaço de trabalho",
-    "Techniques": "Técnicas",
+    "Creative Skills": "Skills criativos",
     "Vintage camera study": "Natureza-morta com câmera vintage",
     "Product relighting": "Alterar a iluminação do produto",
     "Image design": "Design de imagens",
@@ -1077,14 +1091,16 @@
     "From studio to living room": "Do estúdio para a sala",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Mantenha a caixa de som na mesma posição. Coloque-a sobre uma mesa lateral de madeira em uma sala iluminada pelo sol.",
     "Generate a shot reference": "Gerar uma imagem de referência do plano",
-    "Use this prompt": "Usar este prompt"
+    "Use this prompt": "Usar este prompt",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "O Studio estará disponível em breve. Escolha um Skill abaixo e copie as instruções para seu Agent para começar.",
+    "3D Creative Skills": "3D Skills criativos"
   },
   "it": {
     "Start with an editable motion template or open your timeline.": "Inizia da un modello di animazione modificabile o apri la timeline.",
     "Editable templates": "Modelli modificabili",
     "Open editor": "Apri editor",
     "Open workspace": "Apri area di lavoro",
-    "Techniques": "Tecniche",
+    "Creative Skills": "Skills creativi",
     "Vintage camera study": "Natura morta con fotocamera vintage",
     "Product relighting": "Cambiare la luce sul prodotto",
     "Image design": "Design delle immagini",
@@ -1212,14 +1228,16 @@
     "From studio to living room": "Dallo studio al soggiorno",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Mantieni il diffusore nella stessa posizione. Appoggialo su un tavolino di legno in un soggiorno illuminato dal sole.",
     "Generate a shot reference": "Genera un’immagine di riferimento per l’inquadratura",
-    "Use this prompt": "Usa questo prompt"
+    "Use this prompt": "Usa questo prompt",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Lo Studio sarà disponibile a breve. Scegli uno Skill qui sotto e copia il brief nel tuo Agent per iniziare.",
+    "3D Creative Skills": "3D Skills creativi"
   },
   "tr": {
     "Start with an editable motion template or open your timeline.": "Düzenlenebilir bir hareketli grafik şablonuyla başlayın veya zaman çizelgenizi açın.",
     "Editable templates": "Düzenlenebilir şablonlar",
     "Open editor": "Düzenleyiciyi aç",
     "Open workspace": "Çalışma alanını aç",
-    "Techniques": "Teknikler",
+    "Creative Skills": "Yaratıcı Skills",
     "Vintage camera study": "Eski fotoğraf makinesiyle natürmort",
     "Product relighting": "Ürün ışığını değiştirme",
     "Image design": "Görsel tasarım",
@@ -1347,6 +1365,8 @@
     "From studio to living room": "Stüdyodan oturma odasına",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Hoparlörün konumunu koru. Onu güneş alan bir oturma odasında ahşap bir yan sehpaya yerleştir.",
     "Generate a shot reference": "Çekim için referans görseli oluştur",
-    "Use this prompt": "Bu istemi kullan"
+    "Use this prompt": "Bu istemi kullan",
+    "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Studio yakında geliyor. Oluşturmaya başlamak için aşağıdan bir Skill seçip talimatlarını Agent’ınıza kopyalayın.",
+    "3D Creative Skills": "3D Yaratıcı Skills"
   }
 }

@@ -930,21 +930,19 @@ it('recovers template discovery and appends only new cards without replacing ear
   expect(button('More community templates')).toBeUndefined();
 });
 
-it('returns from a 3D technique to the same community feed and keeps its scroll position', async () => {
+it('keeps Agent Skills available while the 3D studio is pending and preserves the community feed', async () => {
   await mount(); await click('Search workspace'); await click('3D motion');
   const feed = container.querySelector<HTMLElement>('.om-explore')!;
   feed.scrollTop = 326;
   await act(async () => feed.querySelector<HTMLButtonElement>('.om-scene-tile')!.click());
   expect(page()).toMatchObject({ specialty: { id: '3d' }, skill: 'three-js', community: '3d-motion' });
-  expect(container.querySelector('.om-specialty-intro button')?.textContent).toBe('Create a 3D-style clip');
-  expect([...container.querySelectorAll('.om-skills-grid [data-skill-id]')].map(node => node.getAttribute('data-skill-id'))).toEqual(page().specialty!.techniques.slice(1));
-  expect(button('3D showcase')).toBeTruthy();
-  expect(container.querySelector('.om-skill-detail')).not.toBeNull();
-  await click('Create a shot from this brief');
-  expect(page()).toMatchObject({ studio: { studio: { id: '3d' }, scene: { id: 'text-to-video' } }, skill: 'three-js' });
-  expect(container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value).toContain('A rotating 3D globe');
-  await clickWorkspaceBack();
-  expect(page()).toMatchObject({ specialty: { id: '3d' }, skill: 'three-js' });
+  expect(container.querySelector('.om-studio-coming-soon')?.textContent).toContain('Coming soon');
+  expect(container.querySelector('.om-specialty-intro')).toBeNull();
+  expect(container.querySelector('.om-studio-template-shelf')).toBeNull();
+  expect([...container.querySelectorAll('.om-skills-grid [data-skill-id]')].map(node => node.getAttribute('data-skill-id'))).toEqual([
+    'three-js', 'babylon-js', 'lume', 'blender', 'openmotion-isometric-card-flight', 'openmotion-surreal-3d-poster',
+  ]);
+  expect(button('Create a shot from this brief')).toBeUndefined();
   await clickWorkspaceBack();
   expect(page()).toMatchObject({ explore: true, community: '3d-motion', specialty: null, skill: null });
   expect(container.querySelector('.om-explore')).toBe(feed);
@@ -958,7 +956,7 @@ it('lists each primary destination once in order, with only three scene choices 
   expect(destinations).toEqual(['Explore', 'Image', 'Video', 'Audio', 'MCP', 'API', 'Design Studio', 'Motion Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
   const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node =>
     [node.getAttribute('aria-label'), document.getElementById(node.getAttribute('aria-describedby')!)?.textContent]);
-  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot']]);
+  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot'], ['3D Studio', 'Coming soon']]);
   await click('Image · Scenes');
   const menu = document.querySelector('.om-creative-menu')!;
   expect(menu.querySelector('h2')).toBeNull();
@@ -978,7 +976,7 @@ it('localizes every top navigation Studio label in Chinese while keeping English
     const badge = document.getElementById(node.getAttribute('aria-describedby')!);
     return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
   });
-  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['动效工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en']]);
+  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['动效工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en'], ['3D 工作室', 'Coming soon', 'en']]);
 });
 
 it.each([
@@ -1042,7 +1040,6 @@ it.each([
   ['Marketing Studio', 'Create a product image', 'marketing', 'text-to-image'],
   ['Marketing Studio', 'Create an ad clip', 'marketing', 'text-to-video'],
   ['Explainer Studio', 'Create an explainer clip', 'explainer', 'text-to-video'],
-  ['3D Studio', 'Create a 3D-style clip', '3d', 'text-to-video'],
 ])('opens %s through %s without selecting a Skill', async (title, action, id, scene) => {
   await mount();
   await click(title);
@@ -1050,6 +1047,27 @@ it.each([
   expect(page()).toMatchObject({ studio: { studio: { id }, scene: { id: scene } }, specialty: null, skill: null });
   await clickWorkspaceBack();
   expect(page()).toMatchObject({ specialty: { id }, studio: null, skill: null });
+});
+
+it.each(['text-to-video', 'image-to-video'])('shows Coming soon for a direct 3D %s link', async scene => {
+  history.replaceState(null, '', `/?page=3d&scene=${scene}`);
+  await mount();
+  expect(container.querySelector('.om-studio-coming-soon')?.textContent).toContain('Coming soon');
+  expect(container.querySelector('.om-asset-tabs')).toBeNull();
+  expect(container.querySelector('[aria-label="Asset draft"]')).toBeNull();
+  expect(container.querySelector('.om-studio-coming-soon button')).toBeNull();
+  await clickWorkspaceBack();
+  expect(page().explore).toBe(true);
+});
+
+it.each(['three-js', 'babylon-js', 'lume', 'blender', 'openmotion-surreal-3d-poster', 'openmotion-isometric-card-flight'])('keeps %s usable through an Agent without offering 3D generation', async skill => {
+  history.replaceState(null, '', `/?page=3d&skill=${skill}`);
+  await mount();
+  expect(button('Copy for Agent')).toBeDefined();
+  expect(button('Connect Agent')).toBeDefined();
+  expect(container.querySelector('.om-studio-skills-heading')?.textContent).toContain('copy its brief to your Agent');
+  expect(button('Create a shot from this brief')).toBeUndefined();
+  expect(container.querySelector('.om-studio-techniques-title')?.textContent).toBe('3D Creative Skills');
 });
 
 it('opens model cases with a compatible provider and the same prompt from both discovery entries', async () => {

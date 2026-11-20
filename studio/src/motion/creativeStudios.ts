@@ -7,6 +7,8 @@ type GeneratingStudio = MediaStudio | TechniqueStudio;
 export type StudioDestination = { studio: GeneratingStudio; scene: StudioScene; model: string | null; landing?: true };
 export const mediaLabels: Record<Modality, string> = { image: 'Image', video: 'Video', audio: 'Audio' };
 
+export const studioComingSoon = (studio: CreativeStudio | undefined) => Boolean(studio && 'navBadge' in studio && studio.navBadge === 'Coming soon');
+
 export function studioDraftKey({ studio, scene }: StudioDestination, skill?: string | null) {
   return [studio.id, scene.id, ...(studio.surface === 'techniques' && skill ? [skill] : [])].join('/');
 }

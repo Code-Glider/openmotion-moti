@@ -96,7 +96,7 @@
 .om-feed-template-copy p, .om-feed-card-description, .om-featured-caption small { color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); }
 .om-feed-card-description, .om-feed-card-detail > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .om-feed-template-copy .om-nav-item { gap: var(--motion-space-6); margin-inline-start: calc(var(--motion-space-8) * -1); }
-.om-feed-skill-badge { position: absolute; z-index: 1; top: var(--motion-space-12); right: var(--motion-space-12); font-weight: var(--motion-weight-medium); color: var(--motion-accent); background: var(--motion-brand-soft); }
+.om-feed-card-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8); }
 .om-feed-duration { color: var(--motion-dim); font-size: inherit; white-space: nowrap; }
 .om-feed-card-detail { display: flex; align-items: baseline; gap: var(--motion-space-6); text-align: start; color: var(--motion-muted); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); }
 .om-feed-card-detail svg { flex: none; align-self: flex-start; margin-top: var(--motion-space-2); }

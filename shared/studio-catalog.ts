@@ -16,7 +16,7 @@ export function findLandingScene(id: string | null) {
 }
 
 type StudioEntry = {
-  id: string; title: string; icon: string; navBadge?: 'Top' | 'New' | 'Hot';
+  id: string; title: string; icon: string; navBadge?: 'Top' | 'New' | 'Hot' | 'Coming soon';
 } & (
   | { surface: 'media'; primaryModality: StudioScene['modality']; scenes: readonly [StudioScene['id'], ...StudioScene['id'][]] }
   | { surface: 'editor'; modalities: readonly StudioScene['modality'][]; scenes: readonly [] }
@@ -32,7 +32,7 @@ export const creativeStudios = [
   { id: 'shorts', surface: 'techniques', title: 'Shorts Studio', briefHint: 'Cut a recording into vertical shorts or assemble several clips into one reel.', icon: 'movie-line', modalities: ['video'], scenes: ['text-to-video', 'image-to-video'], createLabel: 'Create a short clip', techniques: ['openmotion-shortlist-shorts', 'openmotion-multi-clips-to-reels', 'openmotion-caption-styling', 'openmotion-bilingual-captions', 'openmotion-livestream-clips', 'openmotion-edit-to-script', 'openmotion-multicam-edit', 'openmotion-talking-head-recreation', 'openmotion-electric-impact-type', 'openmotion-flat-beat'] },
   { id: 'marketing', surface: 'techniques', title: 'Marketing Studio', briefHint: 'Start with a product shot, a launch film or an ad script and adapt it to your brand.', icon: 'clapperboard-line', modalities: ['video', 'image'], scenes: ['text-to-image', 'text-to-video', 'image-edit', 'image-to-video'], createLabel: 'Create a product image', techniques: ['openmotion-flat-lay-product', 'openmotion-in-hand-product', 'openmotion-website-launch', 'openmotion-before-after', 'openmotion-ad-script', 'openmotion-splash-float-product', 'openmotion-light-shadow-product', 'openmotion-hidden-feature-demo', 'openmotion-spec-sheet', 'openmotion-growth-teardown'] },
   { id: 'explainer', surface: 'techniques', title: 'Explainer Studio', briefHint: 'Turn a topic, a tutorial or a set of figures into an editable visual explanation.', icon: 'film-line', modalities: ['video'], scenes: ['text-to-video', 'image-to-video'], createLabel: 'Create an explainer clip', techniques: ['openmotion-editorial-explainer', 'openmotion-paper-stop-motion', 'openmotion-step-by-step-tutorial', 'openmotion-clay-explainer', 'openmotion-editorial-webinar', 'openmotion-paper-collage-explainer', 'openmotion-whiteboard-doodle', 'openmotion-pixel-art-explainer', 'openmotion-paper-map-journey', 'openmotion-hand-drawn-explainer'] },
-  { id: '3d', surface: 'techniques', title: '3D Studio', briefHint: 'Choose a 3D technique, describe your shot and send the brief to your Agent.', icon: 'box-3-line', modalities: ['video'], scenes: ['text-to-video', 'image-to-video'], createLabel: 'Create a 3D-style clip', techniques: ['three-js', 'babylon-js', 'lume', 'blender', 'openmotion-isometric-card-flight', 'openmotion-surreal-3d-poster', 'openmotion-paper-diorama', 'openmotion-quantum-particles', 'openmotion-translucent-glass', 'openmotion-premium-halo'] },
+  { id: '3d', surface: 'techniques', title: '3D Studio', navBadge: 'Coming soon', briefHint: 'Choose a 3D technique, describe your shot and send the brief to your Agent.', icon: 'box-3-line', modalities: ['video'], scenes: ['text-to-video', 'image-to-video'], createLabel: 'Create a 3D-style clip', techniques: ['three-js', 'babylon-js', 'lume', 'blender', 'openmotion-isometric-card-flight', 'openmotion-surreal-3d-poster'] },
 ] as const satisfies readonly StudioEntry[];
 
 export type CreativeStudio = typeof creativeStudios[number];

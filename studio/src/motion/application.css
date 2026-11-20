@@ -267,9 +267,9 @@
   .om-explore-link > svg { display: block; }
   [data-motion-studio] .om-explore-link { width: var(--motion-control-sm); padding-inline: 0; justify-content: center; }
 }
-.om-nav-more-panel { width: min(380px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 70dvh); overflow: auto; }
+.om-nav-more-panel { width: min(460px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 70dvh); overflow: auto; }
 .om-nav-more-tools { display: flex; flex-wrap: wrap; gap: var(--motion-space-4); padding-bottom: var(--motion-space-8); margin-bottom: var(--motion-space-8); border-bottom: 1px solid var(--motion-border); }
-.om-nav-more-studios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(168px, 100%), 1fr)); gap: var(--motion-space-4); }
+.om-nav-more-studios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(208px, 100%), 1fr)); gap: var(--motion-space-4); }
 .om-nav-more-studios .om-nav-item { width: 100%; text-align: start; white-space: nowrap; }
 [data-theme="paper"] .om-nav-more-studios .om-nav-item { color: var(--motion-strong); }
 .om-creative-split { display: flex; align-items: center; }

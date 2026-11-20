@@ -76,8 +76,8 @@ type ExploreProps = {
   filters: ExploreFilters;
 };
 
-function FeedCard({ title, detail, promptAction, badge, description, poster, posterPosition, credit, icon, onClick, sceneId, children, playbackId, onPriority }: {
-  title: string; detail: string; promptAction?: boolean; badge?: string; description: string; poster?: string; posterPosition?: string; credit?: string; icon: string; onClick: () => void; sceneId?: string;
+function FeedCard({ title, detail, promptAction, badge, studioLabel, description, poster, posterPosition, credit, icon, onClick, sceneId, children, playbackId, onPriority }: {
+  title: string; detail: string; promptAction?: boolean; badge?: string; studioLabel?: string; description: string; poster?: string; posterPosition?: string; credit?: string; icon: string; onClick: () => void; sceneId?: string;
   children?: ReactNode; playbackId?: string; onPriority?: (id: string | null) => void;
 }) {
   return <Button variant="plain" className="om-scene-tile" data-scene={sceneId} data-playback-id={playbackId} onClick={onClick}
@@ -86,10 +86,13 @@ function FeedCard({ title, detail, promptAction, badge, description, poster, pos
     <span className="om-scene-tile-art">
       {poster && <img src={poster} style={{ objectPosition: posterPosition }} loading="lazy" alt="" />}{children}
       {credit && <small className="om-scene-credit">{credit}</small>}
-      {badge && <span className="om-feed-skill-badge">{badge}</span>}
     </span>
     <span className="om-feed-template-copy">
-      <strong>{title}</strong>
+      <span className="om-feed-card-title">
+        <strong>{title}</strong>
+        {badge && <span className="om-feed-skill-badge">{badge}</span>}
+      </span>
+      {studioLabel && <span className="om-feed-card-label">{studioLabel}</span>}
       <span className="om-feed-card-description">{description}</span>
       <span className="om-feed-card-detail"><RemixIcon name={icon} size={14} /><span>{detail}</span>{promptAction && <RemixIcon name="arrow-right-line" size={15} />}</span>
     </span>
@@ -101,9 +104,9 @@ function SceneFeedCard({ target, example, section, onNavigate, playing, onPriori
   target: StudioDestination; example: SceneExample; section: string; onNavigate: ExploreProps['onNavigate']; community?: string;
 }) {
   const { t } = useI18n();
-  const { scene } = target;
+  const { scene, studio } = target;
   const id = example.clip ? [section, scene.id, example.title].join('/') : undefined;
-  return <FeedCard sceneId={scene.id} icon={scene.icon} detail={t('Use this prompt')} promptAction title={t(example.title)}
+  return <FeedCard sceneId={scene.id} icon={scene.icon} detail={t('Use this prompt')} promptAction title={t(example.title)} studioLabel={t(studio.title) + ' · ' + t(scene.label)}
     description={t(scene.hint)} poster={example.poster} posterPosition={example.posterPosition} credit={example.credit}
     playbackId={id} onPriority={onPriority} onClick={() => {
       const { area, collection } = cardArea(section);

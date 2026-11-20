@@ -1,4 +1,6 @@
 import { WorkspaceBack } from './WorkspaceBack';
+import { StudioComingSoon } from './StudioComingSoon';
+import { studioComingSoon } from './creativeStudios';
 import { Button } from 'open-design-ui/button';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import type { RefObject } from 'react';
@@ -25,9 +27,11 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
-  const catalog = useMediaCatalog(active && Boolean(destination));
+  const comingSoon = studioComingSoon(destination?.studio);
+  const catalog = useMediaCatalog(active && Boolean(destination) && !comingSoon);
   if (!destination) return null;
   const { scene, studio } = destination;
+  if (comingSoon) return <div className="om-assets-host om-creative-workspace"><WorkspaceBack fallback={onExplore} /><StudioComingSoon studio={studio} /></div>;
   const draftKey = studioDraftKey(destination, skill);
   const firstFrameScene = studio.scenes.find(id => id === 'image-to-video');
   const useAsFirstFrame = scene.modality === 'image' && firstFrameScene ? (reference: AssetDraft['references'][number]) => {

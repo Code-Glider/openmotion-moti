@@ -6,6 +6,8 @@
 .om-skills-main { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; container-type: inline-size; }
 .om-skills-library .om-skills-grid { columns: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--motion-space-16); align-items: stretch; }
 .om-skills-library .om-skills-grid > * { margin-bottom: 0; }
+[data-motion-studio] .om-skills-library .om-studio-skills-heading { display: flex; flex-direction: column; gap: var(--motion-space-8); margin-bottom: var(--motion-space-12); }
+[data-motion-studio] .om-skills-library .om-studio-skills-heading :is(h2, p) { margin: 0; }
 @container (max-width: 1059px) { .om-skills-library .om-skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 679px) { .om-skills-library .om-skills-grid { grid-template-columns: minmax(0, 1fr); } }
 .om-gallery-toolbar.om-skills-toolbar { padding: var(--motion-space-12) 0; column-gap: var(--motion-space-24); }
