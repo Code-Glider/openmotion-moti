@@ -100,6 +100,46 @@ describe("InlineTextCaret", () => {
     ]);
   });
 
+  it.each([
+    { label: "Hebrew niqqud", value: "שָׁ", start: 0 },
+    { label: "Arabic vowel marks", value: "مَدّ", start: 2 },
+    { label: "emoji ZWJ sequence", value: "👩‍💻", start: 0 },
+    { label: "Syriac combining mark", value: "ܫܠܵ", start: 1 },
+  ])("End at a soft wrap measures the full $label grapheme", ({ value, start }) => {
+    const { element, iframe, session, text } = scene();
+    text.data = value;
+    window.getSelection()!.collapse(text, value.length);
+    const measured: Array<{ start: number; end: number; text: string }> = [];
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      if (this.collapsed) return [{ left: 0, top: 320, height: 120 }] as unknown as DOMRectList;
+      measured.push({ start: this.startOffset, end: this.endOffset, text: this.toString() });
+      return [{ left: 300, right: 400, top: 200, height: 120 }] as unknown as DOMRectList;
+    });
+    const caret = render(session, iframe).caret;
+    act(() => element.dispatchEvent(new KeyboardEvent("keydown", { key: "End" })));
+    fire(document, "selectionchange");
+    expect(measured.at(-1)).toEqual({ start, end: value.length, text: value.slice(start) });
+    expect(caret()?.style.top).toBe(`${50 + 200 / 4}px`);
+  });
+
+  it("does not measure a fragment when the DOM caret is inside a grapheme cluster", () => {
+    const { element, iframe, session, text } = scene();
+    text.data = "👩‍💻";
+    // An IME or scripted selection may temporarily produce an internal UTF-16
+    // offset; a partial emoji must not be treated as a complete visual glyph.
+    window.getSelection()!.collapse(text, 2);
+    const measured: string[] = [];
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      if (!this.collapsed) measured.push(this.toString());
+      return [{ left: 0, top: 320, height: 120 }] as unknown as DOMRectList;
+    });
+    const caret = render(session, iframe).caret;
+    act(() => element.dispatchEvent(new KeyboardEvent("keydown", { key: "End" })));
+    fire(document, "selectionchange");
+    expect(measured).toEqual([]);
+    expect(caret()?.style.top).toBe(`${50 + 320 / 4}px`);
+  });
+
   it("shows no caret while a range is selected, and again once the selection collapses", () => {
     const { iframe, session, text } = scene();
     const { caret } = render(session, iframe);
