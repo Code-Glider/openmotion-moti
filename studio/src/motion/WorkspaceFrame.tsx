@@ -43,8 +43,9 @@ import type { McpEntry } from './pageTracking';
 import { WorkspaceProjectsButton } from './WorkspaceProjectsButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { changesWorkspaceDestination, readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
-import { WORKSPACE_LOCATION_CHANGED, workspaceHistoryIndex, workspaceHistorySource, writeWorkspaceHistory } from '../utils/workspaceHistory';
+import { WORKSPACE_LOCATION_CHANGED, restoreWorkspaceSource, workspaceHistoryIndex, workspaceHistorySource, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { WorkspaceBreadcrumb } from './WorkspaceBreadcrumb';
+import { BackToExploreButton } from './BackToExploreButton';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { BrandKitPage } from './BrandKitPage';
@@ -63,6 +64,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const { t, locale } = useI18n();
   const [page, setPage] = useState(() => readWorkspacePage(location.search, location.hash));
   const [source, setSource] = useState(workspaceHistorySource);
+  const sourceUrl = source ? new URL(source.href) : null;
+  const sourcePage = sourceUrl && readWorkspacePage(sourceUrl.search, sourceUrl.hash);
+  const fromExplore = sourcePage?.explore && !sourcePage.templates && !sourcePage.template;
   const { settings, assets: assetsOpen, skills: skillsOpen, templates: libraryRequested } = page;
   const standaloneMcp = settings === 'mcp' && !page.mcpInSettings;
   const detailOnly = Boolean(page.template) && !libraryRequested;
@@ -206,7 +210,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       workspace.clearError();
       const openCollection = Boolean(collection) || !template;
       cardPreview.current = !openCollection && template ? { template, locale } : null;
-      navigatePage({ templates: openCollection, template: template?.id ?? null, templateCollection: openCollection ? (collection ?? null) : null, creators: false, creator: null, ...(page.templateCollection === 'black-friday' && { skill: null }) });
+      navigatePage({ templates: openCollection, template: template?.id ?? null, templateCollection: openCollection ? (collection ?? null) : null, creators: false, creator: null, ...(page.templateCollection === 'black-friday' && { skill: null }) },
+        false, collection === 'black-friday' && page.explore && !connectionsOpen ? 'from-page' : undefined);
     },
     openConnections: entry => {
       connectionEntry.current = entry;
@@ -235,7 +240,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const openStudioFromPage = (studio: StudioDestination, seed?: string | AssetDraft) => openStudio(studio, seed, true);
   const chooseStudio = (entry: CreativeStudio, kind?: Modality, fromPage = false) => {
     if (entry.surface === 'techniques') navigatePage({ specialty: entry, skill: null, templates: false, ...lastExplore.current });
-    else if (entry.surface === 'editor') navigatePage({ motion: true, templates: false, ...lastExplore.current });
+    else if (entry.surface === 'editor') navigatePage({ motion: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
     else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model), undefined, fromPage);
     } else openStudio(studioDestination(entry, scenesForStudio(entry).find(scene => scene.modality === kind)?.id), undefined, fromPage);
@@ -243,7 +248,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const openModel = (modelOverview: string, fromPage = false) =>
     navigatePage({ modelOverview, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
   const openModelFromPage = (id: string) => openModel(id, true);
-  const openModelHub = (modelHub: string) => navigatePage({ modelHub, templates: false, ...lastExplore.current });
+  const openModelHub = (modelHub: string) => navigatePage({ modelHub, templates: false, ...lastExplore.current }, false, 'from-page');
   const currentPage = templatesPage || page.explore || skillsOpen ? 'explore' : page.api ? 'api' : standaloneMcp ? 'mcp' : null;
   // One page view per arrival on Explore, the Motion Studio landing, the API page or a model overview.
   // Design, Cinema and Sound report from their own Studio form (AssetsPage), which knows the scene shown.
@@ -262,6 +267,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     : settings === 'brand-kit' ? 'brand_kit' : settings ? 'settings'
     : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio';
   const returnToExplore = () => {
+    if (source && fromExplore && restoreWorkspaceSource(source)) return;
     const filters = page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills
       ? { community: page.community, medium: page.medium } : lastExplore.current;
     navigatePage({ explore: true, templates: false, ...filters });
@@ -302,6 +308,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     return prepareTemplateProject(template, projectId, requestId);
   }} onOpenProject={id => workspace.open('projects', id)} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />;
   const visibleSettings = templatesPage || standaloneMcp ? null : settings;
+  const studioReturn = source && page.studio && (
+    page.studio.scene.modality === 'image' && fromExplore && !sourcePage.community && !sourcePage.medium
+      ? <div className="om-studio-return"><BackToExploreButton onClick={returnToExplore} /></div>
+      : <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />
+  );
   const mcpPage = settings === 'mcp' && <McpConnectionPage entry={connectionEntry.current} projectId={projectId}
     hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings}
     route={page} onRouteChange={navigatePage} inSettings={page.mcpInSettings}
@@ -354,7 +365,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} source={source} onExplore={hostChrome ? returnToExplore : undefined}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudioFromPage} /></div>}
       <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })}
-        breadcrumb={source && page.studio && <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />}
+        returnNavigation={studioReturn}
         onExplore={hostChrome ? returnToExplore : undefined} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)}
         onOpenStudio={studio => navigatePage({ studio, templates: false }, false, 'from-page')}
         onNavigate={studio => navigatePage({ studio, templates: false }, false, 'keep')} /></div>

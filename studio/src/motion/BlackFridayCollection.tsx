@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import { blackFridaySkillIds, blackFridayStages, type BlackFridayStageId } from '../../../shared/black-friday-collection';
 import { useI18n } from '../i18n/I18n';
-import { MotionIcon } from './icons';
+import { BackToExploreButton } from './BackToExploreButton';
 import { BlackFridaySkillCarousel } from './BlackFridaySkillCarousel';
 import { motionSkills } from './skillCatalog';
 import { TemplateGalleryCard } from './TemplateGalleryCard';
@@ -51,7 +51,7 @@ export function BlackFridayCollection({ templates, featuredPreviewsEnabled, sele
         <div className={styles.bannerArtwork}>BLACK</div>
       </div>
       <div className={styles.bannerNav}>
-        <Button variant="ghost" type="button" className="om-button h-auto" data-primary="media" onClick={onBack}><MotionIcon name="arrow-left" size={16} />{t('Back to Explore')}</Button>
+        <BackToExploreButton onClick={onBack} />
       </div>
       <div className={styles.bannerCopy}>
         <h1 id={prefix + 'title'} ref={title} tabIndex={-1}>{t('Black Friday')}</h1>

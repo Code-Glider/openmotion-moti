@@ -30,6 +30,13 @@ export function workspaceHistorySource(): WorkspaceSource | null {
   return source;
 }
 
+export function restoreWorkspaceSource(source: WorkspaceSource): boolean {
+  const index = workspaceHistoryIndex();
+  if (index === null || index <= source.index) return false;
+  history.go(source.index - index);
+  return true;
+}
+
 /** Keep history identity when the editor updates its hash or the shell resolves a project. */
 export function writeWorkspaceHistory(target: string | URL, replace = false, source?: WorkspaceSource | null) {
   const url = new URL(target, location.href);

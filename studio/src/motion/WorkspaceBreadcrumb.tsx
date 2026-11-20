@@ -1,7 +1,7 @@
 import { exploreCommunities } from '../../../shared/studio-catalog';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { workspaceHistoryIndex, type WorkspaceSource } from '../utils/workspaceHistory';
+import { restoreWorkspaceSource, type WorkspaceSource } from '../utils/workspaceHistory';
 import { settingsSectionLabel } from './SettingsCenter';
 import { readWorkspacePage } from './workspacePageRouting';
 
@@ -29,10 +29,7 @@ export function WorkspaceBreadcrumb({ source, destination }: { source: Workspace
   return <nav className="om-workspace-breadcrumb" aria-label={t('Breadcrumb')}>
     <a className="om-text-link" href={source.href} onClick={event => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const index = workspaceHistoryIndex();
-      if (index === null || index <= source.index) return;
-      event.preventDefault();
-      history.go(source.index - index);
+      if (restoreWorkspaceSource(source)) event.preventDefault();
     }}>{t(sourceLabel(source.href))}</a>
     <RemixIcon name="arrow-right-s-line" size={14} aria-hidden="true" />
     <span aria-current="page">{destination}</span>

@@ -663,6 +663,32 @@ it('browses both Explore shelves, opens exact details and restores the selected 
   expect(page()).toMatchObject({ explore: true, templates: true, template: null, templateCollection: 'builtin' });
 });
 
+it.each([
+  ['motion', 'motion'],
+  ['black-friday', 'explore'],
+  ['hub-gemini-4', 'model-hub'],
+  ['text-to-image', 'create'],
+])('uses the same Back to Explore control for the %s spotlight destination', async (slide, destination) => {
+  await mount();
+  await click('Explore');
+  const origin = location.href;
+  const feed = container.querySelector<HTMLElement>('.om-explore-host:not([hidden]) .om-explore')!;
+  const carousel = feed.querySelector('.om-feature-carousel')!;
+  const slides = [...carousel.querySelectorAll<HTMLElement>('.om-feature-slide')];
+  const segments = carousel.querySelectorAll<HTMLButtonElement>('.om-media-segments button');
+  await act(async () => segments[slides.findIndex(item => item.dataset.scene === slide)].click());
+  feed.scrollTop = 56;
+  await act(async () => carousel.querySelector<HTMLButtonElement>('.om-feature-slide:not([inert]) .om-discovery-hero-copy button')!.click());
+  expect(new URL(location.href).searchParams.get('page')).toBe(destination);
+  expect(breadcrumb()).toBeNull();
+  const returnControl = container.querySelector<HTMLButtonElement>('.om-back-to-explore');
+  expect(returnControl?.textContent).toBe('Back to Explore');
+  await act(async () => { returnControl!.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(location.href).toBe(origin);
+  expect(carousel.getAttribute('data-scene')).toBe(slide);
+  expect(feed.scrollTop).toBe(56);
+});
+
 it('opens the Gemini 4 hub from the third Explore slide and returns with browser Back', async () => {
   await mount();
   await click('Explore');
