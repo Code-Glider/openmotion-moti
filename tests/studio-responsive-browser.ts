@@ -9,6 +9,14 @@ import { startServer } from '../server.ts';
 import { designRoutes } from '../shared/design-project.ts';
 import { fixture } from './fixtures.ts';
 
+async function checkDesignComposerAlignment(page: Page) {
+  await page.waitForFunction(() => {
+    const gallery = document.querySelector('.om-design-page-with-dock > section')?.getBoundingClientRect();
+    const composer = document.querySelector('.om-design-bottom-composer')?.getBoundingClientRect();
+    return gallery && composer && Math.abs(gallery.left - composer.left) <= 1 && Math.abs(gallery.right - composer.right) <= 1;
+  }, { timeout: 5000 });
+}
+
 async function checkCreator(page: Page, stacked: boolean) {
   const geometry = await page.$eval('.om-creator-pane', pane => {
     const button = pane.querySelector<HTMLButtonElement>('.om-asset-direct > button.om-button')!;
@@ -159,6 +167,7 @@ test('Design Studio uses the same navigation styles and overflow controls across
       const galleryHeader = '.om-design-page-with-dock > section:first-child > .om-design-section-head';
       await page.waitForSelector(galleryHeader, { visible: true });
       assert.equal(await page.$eval(`${galleryHeader} h2`, title => title.textContent), 'Prototype templates');
+      await checkDesignComposerAlignment(page);
       assert.ok(await page.$eval(galleryHeader, header => {
         const { top, bottom } = header.querySelector('h2')!.getBoundingClientRect();
         return Array.from(header.querySelectorAll('input, button')).every(control => {
@@ -183,6 +192,7 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.goto(new URL('/?page=design&scene=webgl', origin).href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(next, { visible: true });
       assert.equal(await page.$eval(`${galleryHeader} h2`, title => title.textContent), 'WebGL templates');
+      await checkDesignComposerAlignment(page);
       assert.equal(await page.$eval(active, button => button.textContent), 'WebGL');
       assert.equal(await page.$eval(viewport, rail => rail.scrollLeft), 0);
       assert.equal(await page.$(previous), null);
@@ -426,6 +436,11 @@ test('Design Studio opens projects from its collapsible sidebar', { timeout: 60_
       await page.click(`${sidebar} button[aria-label="Close project list"]`);
       await page.waitForSelector(sidebar, { hidden: true });
       await page.waitForFunction(selector => document.activeElement?.matches(selector), {}, toggle);
+      assert.ok(await page.$eval(`.om-studio-bar ${toggle}`, button => {
+        const title = button.closest('.om-studio-bar')!.querySelector('h1')!;
+        return button.getBoundingClientRect().right <= title.getBoundingClientRect().left;
+      }));
+      await checkDesignComposerAlignment(page);
       await page.click(toggle);
       await page.waitForSelector(row, { visible: true });
       await page.click(`${sidebar} button[aria-label="New project"]`);

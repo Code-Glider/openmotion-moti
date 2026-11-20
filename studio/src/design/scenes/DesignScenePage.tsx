@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
@@ -75,6 +75,22 @@ export function DesignScenePage({
   const [remixing, setRemixing] = useState(false);
   const [manualPrompt, setManualPrompt] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DesignTemplateSummary | null>(null);
+  const galleryScrollRef = useRef<HTMLDivElement>(null);
+  const composerDockRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const gallery = galleryScrollRef.current;
+    const dock = composerDockRef.current;
+    if (!gallery || !dock) return;
+
+    const alignDock = () => {
+      dock.style.setProperty('--om-design-scrollbar-gutter', `${gallery.offsetWidth - gallery.clientWidth}px`);
+    };
+    alignDock();
+    const observer = new ResizeObserver(alignDock);
+    observer.observe(gallery);
+    return () => observer.disconnect();
+  }, [scenario?.id]);
 
   // @ mention autocomplete state
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -306,10 +322,13 @@ export function DesignScenePage({
         <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="arrow-left-line" size={16} />} onClick={onExplore}>
           {t('Explore')}
         </Button>
-        <h1 className="om-subtitle">
-          <span className="om-creation-icon" data-tone="image"><RemixIcon name="palette-line" size={18} /></span>
-          {t('Design Studio')}
-        </h1>
+        <div className="om-design-project-heading">
+          {projectNavigation}
+          <h1 className="om-subtitle">
+            <span className="om-creation-icon" data-tone="image"><RemixIcon name="palette-line" size={18} /></span>
+            {t('Design Studio')}
+          </h1>
+        </div>
         <DesignSceneTabs
           activeTab={scene}
           onSelectImageScene={item => onSelectImageScene(item.id)}
@@ -321,12 +340,9 @@ export function DesignScenePage({
         <div className="om-design-scroll-body">
           <div className="om-design-page">
             <div className="om-design-section-head">
-              <div className="om-design-project-heading">
-                {projectNavigation}
-                <div>
-                  <h2 className="om-design-hero-title" style={{ fontSize: 28 }}>{t('Design projects')}</h2>
-                  <p className="om-design-hero-sub" style={{ marginTop: 4 }}>{t('Preview responsive HTML designs, annotate elements, inspect versions and hand off edits to your MCP Agent.')}</p>
-                </div>
+              <div>
+                <h2 className="om-design-hero-title" style={{ fontSize: 28 }}>{t('Design projects')}</h2>
+                <p className="om-design-hero-sub" style={{ marginTop: 4 }}>{t('Preview responsive HTML designs, annotate elements, inspect versions and hand off edits to your MCP Agent.')}</p>
               </div>
               <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
                 {t('Connect an Agent')}
@@ -338,15 +354,12 @@ export function DesignScenePage({
       ) : (
         <>
           {/* Middle scrollable gallery & templates area (aligned with Image Studio & Manus) */}
-          <div className="om-design-scroll-body">
+          <div ref={galleryScrollRef} className="om-design-scroll-body">
             <div className="om-design-page om-design-page-with-dock">
               {/* Template gallery */}
               <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="om-design-section-head">
-                  <div className="om-design-project-heading">
-                    {projectNavigation}
-                    <h2 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h2>
-                  </div>
+                  <h2 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h2>
                   <div className="om-design-header-group">
                     <input
                       type="search"
@@ -406,7 +419,7 @@ export function DesignScenePage({
           </div>
 
           {/* Bottom floating composer dock (aligned with Image Studio & Manus) */}
-          <div className="om-design-bottom-dock-wrap">
+          <div ref={composerDockRef} className="om-design-bottom-dock-wrap">
             <div className="om-design-composer om-design-bottom-composer" style={{ position: 'relative', overflow: 'visible' }}>
               {mention && mentionOptions.length > 0 && (
                 <div ref={mentionMenuRef} className="om-design-popover om-design-mention-menu om-design-mention-up" role="listbox" aria-label={t('Mention template or skill')}>
@@ -536,7 +549,7 @@ export function DesignScenePage({
             </div>
 
             {manualPrompt && (
-              <div style={{ width: '100%', maxWidth: 820, marginTop: 8 }}>
+              <div style={{ marginTop: 8 }}>
                 <textarea className="om-design-textarea" readOnly value={manualPrompt} onFocus={e => e.currentTarget.select()} />
               </div>
             )}

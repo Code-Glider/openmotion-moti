@@ -560,9 +560,9 @@
 /* --- Design Scene Page: Editorial Hero + Composer + Gallery --- */
 .om-design-page {
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--om-design-page-width);
   margin: 0 auto;
-  padding: var(--motion-space-28) var(--motion-space-24) var(--motion-space-56);
+  padding: var(--motion-space-28) var(--om-design-page-gutter) var(--motion-space-56);
   display: flex;
   flex-direction: column;
   gap: var(--motion-space-32);
@@ -871,7 +871,7 @@
 
 @media (max-width: 760px) {
   .om-design-page {
-    padding: var(--motion-space-16) var(--motion-space-12) var(--motion-space-32);
+    padding-block: var(--motion-space-16) var(--motion-space-32);
     gap: var(--motion-space-20);
   }
   .om-design-body {
@@ -1239,12 +1239,20 @@
 
 /* --- Bottom Floating Composer Layout (aligned with Image Studio & Manus) --- */
 .om-design-workspace-shell {
+  --om-design-page-width: 1240px;
+  --om-design-page-gutter: var(--motion-space-24);
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
   position: relative;
+}
+
+@media (max-width: 760px) {
+  .om-design-workspace-shell {
+    --om-design-page-gutter: var(--motion-space-12);
+  }
 }
 
 .om-design-scroll-body {
@@ -1326,15 +1334,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--motion-space-10) var(--motion-space-24) var(--motion-space-16);
+  padding-block: var(--motion-space-10) var(--motion-space-16);
+  padding-inline: var(--om-design-page-gutter) calc(var(--om-design-page-gutter) + var(--om-design-scrollbar-gutter, 0px));
   pointer-events: none;
   z-index: 40;
 }
 
+.om-design-bottom-dock-wrap > * {
+  width: 100%;
+  max-width: calc(var(--om-design-page-width) - 2 * var(--om-design-page-gutter));
+}
+
 .om-design-bottom-composer {
   pointer-events: auto;
-  width: 100%;
-  max-width: 820px;
   background: var(--motion-raised);
   box-shadow: var(--motion-shadow-lg);
 }
