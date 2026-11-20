@@ -51,10 +51,6 @@ export function ModelCatalog({ models, defaultIds, render }: { models: Directory
           </div>}
         </div>
       </div>
-      {trimmedQuery && <div className="om-settings-tags om-model-active-filters">
-        <span className="om-muted">{filtered.length} / {scopedModels.length}</span>
-        <Button variant="ghost" className="om-button h-auto" onClick={() => setQuery('')}>{t('Clear filters')}</Button>
-      </div>}
     </>}
     <div className="om-model-list">{[...groups].map(([group, values]) => <section key={group}>{showGroups && <Button variant="plain" className="om-nav-item om-model-group" aria-expanded={!collapsed.includes(group)} onClick={() => setCollapsed(current => current.includes(group) ? current.filter(value => value !== group) : [...current, group])}><RemixIcon name={collapsed.includes(group) ? 'arrow-right-s-line' : 'arrow-down-s-line'} size={14} /><span>{group === 'Ungrouped' ? t(group) : group}</span><small className="om-muted">{values.length}</small></Button>}{(!showGroups || !collapsed.includes(group)) && values.map(render)}</section>)}
       {!filtered.length && <div className="om-empty"><RemixIcon name="box-3-line" size={32} /><h3 className="om-subtitle">{t(models.length ? 'No matching models' : 'Choose your models')}</h3><p className="om-muted">{t(models.length ? 'Try another search or clear the filters.' : 'Sync the provider catalogue or add a model by its exact ID.')}</p></div>}

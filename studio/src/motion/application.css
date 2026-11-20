@@ -168,7 +168,6 @@
 .om-model-search-row { display: flex; align-items: center; gap: var(--motion-space-8); flex: 1 1 200px; min-width: 0; }
 .om-model-search-row .om-field { flex: 1; min-width: 0; }
 .om-model-filter-controls { display: flex; align-items: center; gap: var(--motion-space-6); flex-shrink: 0; }
-.om-model-active-filters { padding-top: var(--motion-space-2); }
 .om-model-list { min-width: 0; }
 .om-model-row { display: flex; align-items: center; gap: var(--motion-space-12); padding-block: var(--motion-space-10); border-bottom: 1px solid var(--motion-border-subtle); }
 .om-model-name { min-width: 0; flex: 1; overflow-wrap: anywhere; }

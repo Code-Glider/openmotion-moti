@@ -122,7 +122,8 @@ it('switches modalities, searches models and retains group expansion for grouped
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a', 'c']);
   await fill('Search models', 'Reasoning');
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
-  await act(async () => button('Clear filters').click());
+  expect(document.querySelector('.om-model-active-filters')).toBeNull();
+  await fill('Search models', '');
   await act(async () => tabs[0].click());
   await act(async () => button('Collapse all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(0);
   await act(async () => button('Expand all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(3);
@@ -151,7 +152,7 @@ it('exposes modality tabs in Chinese as 文本, pins defaults, and hides redunda
   await act(async () => tabs[0].click());
 
   await fill('搜索模型', 'Alpha');
-  expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('1 / 3');
+  expect(document.querySelector('.om-model-active-filters')).toBeNull();
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
 });
 
