@@ -862,15 +862,25 @@ describe('SoundStudioWorkspace', () => {
   });
 
   it('hides redundant Advanced JSON panels for built-in audio models and keeps Custom voice ID inline inside the Voice card', async () => {
-    // 1. Built-in Music, SFX, and Speech models render zero Advanced/JSON sections.
-    for (const [tab, modelId] of [
-      ['music', accountMusic.id],
-      ['music', sunoMusic.id],
-      ['sfx', falSfx.id],
-      ['speech', kokoroSpeech.id],
-      ['speech', elevenSpeech.id],
+    // 1. Built-in Music, SFX, and Speech models (including OpenDesign Cloud music) render zero Advanced/JSON sections.
+    const cloudMusic: Model = withOptions({
+      id: 'opendesign:elevenlabs-music-v2',
+      provider: 'opendesign',
+      modelId: 'elevenlabs-music-v2',
+      label: 'ElevenLabs Music',
+      modality: 'audio',
+      mode: 'text-to-audio',
+      source: 'builtin',
+    });
+    for (const [tab, modelId, extraModels] of [
+      ['music', accountMusic.id, undefined],
+      ['music', cloudMusic.id, [cloudMusic]],
+      ['music', sunoMusic.id, undefined],
+      ['sfx', falSfx.id, undefined],
+      ['speech', kokoroSpeech.id, undefined],
+      ['speech', elevenSpeech.id, undefined],
     ] as const) {
-      const studio = makeStudio(tab, modelId);
+      const studio = makeStudio(tab, modelId, ['account', 'opendesign', 'atlascloud', 'fal'], extraModels ? [...extraModels] : undefined);
       await renderSound(studio, { assets: [] });
       expect(host.querySelector('.om-sound-advanced'), `${tab}:${modelId}`).toBeNull();
       expect(host.querySelector('textarea[aria-label="Model parameters"]'), `${tab}:${modelId}`).toBeNull();

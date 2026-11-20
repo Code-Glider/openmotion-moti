@@ -489,8 +489,8 @@ export function SoundAdvancedParameters({
   const idPrefix = useId();
   const { fields, secondaryFields, valueOf } = resolveParameterState(model, draft);
   // Only expose a raw JSON fallback for custom third-party models with no structured schema.
-  // Built-in and OpenDesign account models use dedicated controls and fixed parameter whitelists.
-  const showRawJson = fields.length === 0 && model.provider !== 'account';
+  // Built-in and OpenDesign (account/cloud) models use dedicated controls and fixed parameter contracts.
+  const showRawJson = fields.length === 0 && model.provider !== 'account' && model.provider !== 'opendesign';
 
   if (secondaryFields.length === 0 && !showRawJson) return null;
 
