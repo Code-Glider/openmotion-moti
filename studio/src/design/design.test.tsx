@@ -318,4 +318,96 @@ describe('DesignProjectEditor', () => {
     expect(container.querySelector('textarea[aria-label="Source editor"]')).toBeNull();
     expect(container.textContent).toContain('Unsaved manual draft');
   });
+
+  it('reads latest file content when clicking Discard draft & reload latest before post-conflict read resolves', async () => {
+    const newRevision = 'e'.repeat(64);
+    const savedRevision = 'f'.repeat(64);
+    let currentRevision = revision;
+    let storedContent = '<h1>v1</h1>';
+    const submittedWrites: { expectedRevision: string; content: string }[] = [];
+    let readCallCount = 0;
+    let resolveDeferredEffectRead: ((value: { path: string; content: string; offset: number; limit: number; totalBytes: number; hasMore: boolean; nextOffset: null }) => void) | null = null;
+
+    vi.spyOn(designClient, 'getProject').mockImplementation(async () => ({ project: { ...mockProject, revision: currentRevision } }));
+    vi.spyOn(designClient, 'listVersions').mockResolvedValue({ versions: [], currentVersionId: 'v-1', nextCursor: null });
+    vi.spyOn(designClient, 'listComments').mockResolvedValue({ comments: [], sourceRevision: revision });
+    vi.spyOn(designClient, 'detectEditors').mockResolvedValue({ editors: [] });
+    vi.spyOn(designClient, 'readFile').mockImplementation(async () => {
+      readCallCount += 1;
+      // 1st read: initial load (v1). 2nd read: post-conflict useEffect read held in flight.
+      if (readCallCount === 2) {
+        return new Promise(resolve => {
+          resolveDeferredEffectRead = resolve;
+        });
+      }
+      return { path: 'index.html', content: storedContent, offset: 0, limit: 100, totalBytes: storedContent.length, hasMore: false, nextOffset: null };
+    });
+    vi.spyOn(designClient, 'writeFiles').mockImplementation(async (_id, payload) => {
+      const content = payload.files?.[0]?.content ?? '';
+      submittedWrites.push({ expectedRevision: payload.expectedRevision, content });
+      if (payload.expectedRevision !== currentRevision) {
+        throw new DesignApiError('VERSION_CONFLICT', 'Expected revision mismatch', 409);
+      }
+      currentRevision = savedRevision;
+      storedContent = content;
+      return {
+        project: { ...mockProject, revision: savedRevision, versionLabel: 'v3' },
+        version: { id: 'v-3', label: 'v3', number: 3, createdAt: 1700000003000, source: 'manual', summary: 'Manual edit', prompt: null, restoredFrom: null, files: [] },
+      };
+    });
+
+    await act(async () => {
+      root.render(
+        <I18nProvider>
+          <DesignProjectEditor projectId={projectId} onBack={() => {}} />
+        </I18nProvider>,
+      );
+    });
+
+    const codeBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Code'));
+    await act(async () => { codeBtn!.click(); });
+
+    const editBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Edit source'));
+    await act(async () => { editBtn!.click(); });
+
+    const editor = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]')!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
+      setter.call(editor, '<h1>Stale user draft</h1>');
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    // External Agent updates project revision and file content on disk before user saves.
+    currentRevision = newRevision;
+    storedContent = '<h1>External Agent v2</h1>';
+
+    const saveBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Save version'));
+    await act(async () => { saveBtn!.click(); });
+
+    // Post-conflict effect read (#2) is still unresolved when user clicks Discard.
+    expect(resolveDeferredEffectRead).not.toBeNull();
+    const discardBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Discard draft & reload latest'));
+    expect(discardBtn).toBeTruthy();
+
+    await act(async () => { discardBtn!.click(); });
+
+    // Editor now holds the freshly fetched v2 content, NOT pre-conflict v1 content.
+    const reloadedEditor = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]')!;
+    expect(reloadedEditor.value).toBe('<h1>External Agent v2</h1>');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+
+    // Even if the earlier deferred read resolves late with stale content, it must not overwrite fileContent/draft.
+    await act(async () => {
+      resolveDeferredEffectRead!({ path: 'index.html', content: '<h1>v1</h1>', offset: 0, limit: 100, totalBytes: 11, hasMore: false, nextOffset: null });
+    });
+    expect(container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]')!.value).toBe('<h1>External Agent v2</h1>');
+
+    // Saving now rebases onto newRevision with the fresh content.
+    const saveAfterDiscard = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Save version'));
+    await act(async () => { saveAfterDiscard!.click(); });
+    expect(submittedWrites).toEqual([
+      { expectedRevision: revision, content: '<h1>Stale user draft</h1>' },
+      { expectedRevision: newRevision, content: '<h1>External Agent v2</h1>' },
+    ]);
+  });
 });

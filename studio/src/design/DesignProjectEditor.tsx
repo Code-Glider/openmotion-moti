@@ -188,6 +188,8 @@ export function DesignProjectEditor({
   const [codeConflict, setCodeConflict] = useState(false);
   const [codeDraft, setCodeDraft] = useState('');
   const [savingCode, setSavingCode] = useState(false);
+  const [reloadingCode, setReloadingCode] = useState(false);
+  const fileReadSeqRef = useRef(0);
 
   // Deck state
   const [activeSlide, setActiveSlide] = useState(0);
@@ -232,15 +234,16 @@ export function DesignProjectEditor({
   useEffect(() => {
     if (!project || !activeFile) return;
     let cancelled = false;
+    const seq = ++fileReadSeqRef.current;
     setCodeLoading(true);
     designClient.readFile(project.id, activeFile).then(res => {
-      if (cancelled) return;
+      if (cancelled || fileReadSeqRef.current !== seq) return;
       setFileContent(res.content);
       if (!codeEditing) setCodeDraft(res.content);
     }).catch(() => {
-      if (!cancelled) setFileContent('');
+      if (!cancelled && fileReadSeqRef.current === seq) setFileContent('');
     }).finally(() => {
-      if (!cancelled) setCodeLoading(false);
+      if (!cancelled && fileReadSeqRef.current === seq) setCodeLoading(false);
     });
     return () => { cancelled = true; };
   }, [project?.id, project?.revision, activeFile, reloadNonce]);
@@ -333,7 +336,7 @@ export function DesignProjectEditor({
   };
 
   const saveCode = async (overrideRevision?: string) => {
-    if (!project || !activeFile) return;
+    if (!project || !activeFile || savingCode || reloadingCode) return;
     setSavingCode(true);
     try {
       const { project: updated } = await designClient.writeFiles(project.id, {
@@ -351,14 +354,37 @@ export function DesignProjectEditor({
       toast.showToast(t('Saved new version'), 'info', 'feedback');
     } catch (err) {
       if (err instanceof DesignApiError && err.code === 'VERSION_CONFLICT') {
-        setCodeConflict(true);
         await refresh();
+        setCodeConflict(true);
         toast.showToast(t('Project changed externally. Reload to get the latest revision.'), 'error', 'feedback');
       } else {
         toast.showToast(err instanceof Error ? err.message : t('Could not save file'), 'error', 'feedback');
       }
     } finally {
       setSavingCode(false);
+    }
+  };
+
+  const discardAndReloadLatest = async () => {
+    if (!project || !activeFile || savingCode || reloadingCode) return;
+    setReloadingCode(true);
+    const seq = ++fileReadSeqRef.current;
+    try {
+      const { project: latest } = await designClient.getProject(project.id);
+      const targetFile = latest.files.some(f => f.path === activeFile) ? activeFile : latest.entry;
+      const { content } = await designClient.readFile(latest.id, targetFile);
+      if (fileReadSeqRef.current !== seq) return;
+      setProject(latest);
+      if (targetFile !== activeFile) setActiveFile(targetFile);
+      setFileContent(content);
+      setCodeDraft(content);
+      setCodeEditBaseRevision(latest.revision);
+      setCodeConflict(false);
+      setCodeLoading(false);
+    } catch (err) {
+      toast.showToast(err instanceof Error ? err.message : t('Could not reload file'), 'error', 'feedback');
+    } finally {
+      setReloadingCode(false);
     }
   };
 
@@ -1194,8 +1220,8 @@ export function DesignProjectEditor({
                 <div style={{ display: 'flex', gap: 6 }}>
                   {codeEditing ? (
                     <>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(null); setCodeConflict(false); setCodeEditing(false); }}>{t('Cancel')}</Button>
-                      <Button type="button" size="sm" variant="primary" loading={savingCode} icon={<RemixIcon name="save-line" size={14} />} onClick={() => void saveCode()}>
+                      <Button type="button" size="sm" variant="ghost" disabled={savingCode || reloadingCode} onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(null); setCodeConflict(false); setCodeEditing(false); }}>{t('Cancel')}</Button>
+                      <Button type="button" size="sm" variant="primary" loading={savingCode} disabled={reloadingCode} icon={<RemixIcon name="save-line" size={14} />} onClick={() => void saveCode()}>
                         {t('Save version')}
                       </Button>
                     </>
@@ -1220,6 +1246,7 @@ export function DesignProjectEditor({
                       size="sm"
                       variant="primary"
                       loading={savingCode}
+                      disabled={reloadingCode}
                       onClick={() => {
                         setCodeEditBaseRevision(project.revision);
                         void saveCode(project.revision);
@@ -1231,18 +1258,16 @@ export function DesignProjectEditor({
                       type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        setCodeDraft(fileContent);
-                        setCodeEditBaseRevision(project.revision);
-                        setCodeConflict(false);
-                      }}
+                      loading={reloadingCode}
+                      disabled={savingCode}
+                      onClick={() => void discardAndReloadLatest()}
                     >
                       {t('Discard draft & reload latest')}
                     </Button>
                   </div>
                 </div>
               )}
-              {codeLoading ? (
+              {reloadingCode || (!codeEditing && codeLoading) ? (
                 <div style={{ padding: 16 }} className="om-design-muted">{t('Loading file…')}</div>
               ) : codeEditing ? (
                 <textarea className="om-design-code-editor" aria-label={t('Source editor')} value={codeDraft} onChange={e => setCodeDraft(e.target.value)} spellCheck={false} />

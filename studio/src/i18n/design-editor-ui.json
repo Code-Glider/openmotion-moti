@@ -72,7 +72,8 @@
     "Copy code": "复制代码",
     "Loading file…": "正在加载文件…",
     "Overwrite with my draft": "用我的草稿覆盖保存",
-    "Discard draft & reload latest": "放弃草稿并加载最新版"
+    "Discard draft & reload latest": "放弃草稿并加载最新版",
+    "Could not reload file": "无法重新加载文件"
   },
   "ja": {
     "Loading design project…": "デザインプロジェクトを読み込み中…",
@@ -147,7 +148,8 @@
     "Copy code": "コードをコピー",
     "Loading file…": "ファイルを読み込み中…",
     "Overwrite with my draft": "下書きで上書き保存",
-    "Discard draft & reload latest": "下書きを破棄して最新を読み込む"
+    "Discard draft & reload latest": "下書きを破棄して最新を読み込む",
+    "Could not reload file": "ファイルを再読み込みできませんでした"
   },
   "ko": {
     "Loading design project…": "디자인 프로젝트 불러오는 중…",
@@ -222,7 +224,8 @@
     "Copy code": "코드 복사",
     "Loading file…": "파일 불러오는 중…",
     "Overwrite with my draft": "내 초안으로 덮어쓰기",
-    "Discard draft & reload latest": "초안 버리고 최신 불러오기"
+    "Discard draft & reload latest": "초안 버리고 최신 불러오기",
+    "Could not reload file": "파일을 다시 불러올 수 없습니다"
   },
   "de": {
     "Loading design project…": "Design-Projekt wird geladen…",
@@ -297,7 +300,8 @@
     "Copy code": "Code kopieren",
     "Loading file…": "Datei wird geladen…",
     "Overwrite with my draft": "Mit meinem Entwurf überschreiben",
-    "Discard draft & reload latest": "Entwurf verwerfen & neueste Version laden"
+    "Discard draft & reload latest": "Entwurf verwerfen & neueste Version laden",
+    "Could not reload file": "Datei konnte nicht neu geladen werden"
   },
   "fr": {
     "Loading design project…": "Chargement du projet…",
@@ -372,7 +376,8 @@
     "Copy code": "Copier le code",
     "Loading file…": "Chargement du fichier…",
     "Overwrite with my draft": "Écraser avec mon brouillon",
-    "Discard draft & reload latest": "Abandonner le brouillon et recharger"
+    "Discard draft & reload latest": "Abandonner le brouillon et recharger",
+    "Could not reload file": "Impossible de recharger le fichier"
   },
   "ru": {
     "Loading design project…": "Загрузка дизайн-проекта…",
@@ -447,7 +452,8 @@
     "Copy code": "Копировать код",
     "Loading file…": "Загрузка файла…",
     "Overwrite with my draft": "Перезаписать моим черновиком",
-    "Discard draft & reload latest": "Отменить черновик и загрузить последнюю версию"
+    "Discard draft & reload latest": "Отменить черновик и загрузить последнюю версию",
+    "Could not reload file": "Не удалось перезагрузить файл"
   },
   "es": {
     "Loading design project…": "Cargando proyecto de diseño…",
@@ -522,7 +528,8 @@
     "Copy code": "Copiar código",
     "Loading file…": "Cargando archivo…",
     "Overwrite with my draft": "Sobrescribir con mi borrador",
-    "Discard draft & reload latest": "Descartar borrador y cargar la última versión"
+    "Discard draft & reload latest": "Descartar borrador y cargar la última versión",
+    "Could not reload file": "No se pudo recargar el archivo"
   },
   "pt-BR": {
     "Loading design project…": "Carregando projeto de design…",
@@ -597,7 +604,8 @@
     "Copy code": "Copiar código",
     "Loading file…": "Carregando arquivo…",
     "Overwrite with my draft": "Sobrescrever com meu rascunho",
-    "Discard draft & reload latest": "Descartar rascunho e carregar última versão"
+    "Discard draft & reload latest": "Descartar rascunho e carregar última versão",
+    "Could not reload file": "Não foi possível recarregar o arquivo"
   },
   "it": {
     "Loading design project…": "Caricamento progetto di design…",
@@ -672,7 +680,8 @@
     "Copy code": "Copia codice",
     "Loading file…": "Caricamento file…",
     "Overwrite with my draft": "Sovrascrivi con la mia bozza",
-    "Discard draft & reload latest": "Scarta bozza e carica l’ultima versione"
+    "Discard draft & reload latest": "Scarta bozza e carica l’ultima versione",
+    "Could not reload file": "Impossibile ricaricare il file"
   },
   "tr": {
     "Loading design project…": "Tasarım projesi yükleniyor…",
@@ -747,6 +756,7 @@
     "Copy code": "Kodu kopyala",
     "Loading file…": "Dosya yükleniyor…",
     "Overwrite with my draft": "Taslağımla üzerine yaz",
-    "Discard draft & reload latest": "Taslağı at ve en son sürümü yükle"
+    "Discard draft & reload latest": "Taslağı at ve en son sürümü yükle",
+    "Could not reload file": "Dosya yeniden yüklenemedi"
   }
 }
