@@ -41,6 +41,13 @@ describe('editor language resources', () => {
     }
   });
 
+  it('localizes the storyboard review FAQ in every supported non-English locale', () => {
+    const entry = mcpFaq.find(([question]) => question === 'How do I review a storyboard or creative direction?')!;
+    for (const { locale } of languages.filter(language => language.locale !== 'en')) {
+      for (const message of entry) expect(translate(locale, message), locale).not.toBe(message);
+    }
+  });
+
   it('offers the eleven requested languages and a complete vocabulary in each dictionary', () => {
     expect(languages.map(language => language.locale)).toEqual(['en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']);
     const keys = Object.keys(dictionaries['zh-CN']).sort();

@@ -1397,3 +1397,17 @@
     opacity: 1;
   }
 }
+
+.om-design-template-placeholder {
+  aspect-ratio: 16 / 11;
+}
+
+.om-design-card-open {
+  min-width: 0;
+  align-self: stretch;
+  text-align: start;
+}
+
+.om-design-card-open .om-design-card-title {
+  display: block;
+}

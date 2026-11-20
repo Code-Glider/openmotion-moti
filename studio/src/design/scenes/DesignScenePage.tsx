@@ -9,8 +9,10 @@ import {
 import type { CreativeStudio, StudioScene } from '../../../../shared/studio-catalog';
 import { IconButton } from 'open-design-ui/icon-button';
 import { StudioToastViewport } from '../../components/StudioToastViewport';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';
+import { reportCreativeClick } from '../../motion/exploreTracking';
 import { useIntegrationInfo } from '../../motion/useIntegrationInfo';
 import { BrandKitPicker, type SelectedBrandKit } from '../BrandKitPicker';
 import { designClient } from '../designClient';
@@ -70,13 +72,28 @@ export function DesignScenePage({
   const [selectedTemplates, setSelectedTemplates] = useState<DesignTemplateSummary[]>([]);
   const [templates, setTemplates] = useState<DesignTemplateSummary[]>([]);
   const [templateQuery, setTemplateQuery] = useState('');
-  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [templatesFailed, setTemplatesFailed] = useState(false);
+  const [templateRetry, setTemplateRetry] = useState(0);
   const [creating, setCreating] = useState(false);
   const [remixing, setRemixing] = useState(false);
   const [manualPrompt, setManualPrompt] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DesignTemplateSummary | null>(null);
   const galleryScrollRef = useRef<HTMLDivElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
+  const templateTrigger = useRef<HTMLButtonElement>(null);
+
+  const openPreview = (template: DesignTemplateSummary, trigger: HTMLButtonElement) => {
+    templateTrigger.current = trigger;
+    setPreviewTemplate(template);
+    reportCreativeClick('creative_studio', 'studio_bar', 'open_template', {
+      studio: 'design', scene: template.scenario, template: template.id,
+    });
+  };
+  const closePreview = () => {
+    setPreviewTemplate(null);
+    requestAnimationFrame(() => templateTrigger.current?.focus());
+  };
 
   useLayoutEffect(() => {
     const gallery = galleryScrollRef.current;
@@ -116,6 +133,7 @@ export function DesignScenePage({
     setSelectedSkills([]);
     setManualPrompt(null);
     setMention(null);
+    setPreviewTemplate(null);
     if (!scenario || scenario.examples.length <= 1) return;
     const id = window.setInterval(() => setPlaceholderIndex(i => (i + 1) % scenario.examples.length), 6000);
     return () => window.clearInterval(id);
@@ -129,12 +147,17 @@ export function DesignScenePage({
     if (!scenario) return;
     let cancelled = false;
     setTemplatesLoading(true);
+    setTemplatesFailed(false);
     designClient.listTemplates({ scenario: scenario.id, q: templateQuery.trim() || undefined, limit: 24 })
-      .then(res => { if (!cancelled && Array.isArray(res?.items)) setTemplates(res.items); })
-      .catch(() => { if (!cancelled) setTemplates([]); })
+      .then(res => { if (!cancelled) setTemplates(Array.isArray(res?.items) ? res.items : []); })
+      .catch(() => {
+        if (cancelled) return;
+        setTemplates([]);
+        setTemplatesFailed(true);
+      })
       .finally(() => { if (!cancelled) setTemplatesLoading(false); });
     return () => { cancelled = true; };
-  }, [scenario?.id, templateQuery]);
+  }, [scenario?.id, templateQuery, templateRetry]);
 
   const filteredSkills = useMemo(() => {
     const q = skillQuery.trim().toLowerCase();
@@ -332,7 +355,11 @@ export function DesignScenePage({
         <DesignSceneTabs
           activeTab={scene}
           onSelectImageScene={item => onSelectImageScene(item.id)}
-          onSelectDesignScene={onSelectDesignScene}
+          onSelectDesignScene={next => {
+            if (next === scene) return;
+            reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', { studio: 'design', scene: next });
+            onSelectDesignScene(next);
+          }}
         />
       </header>
 
@@ -376,13 +403,23 @@ export function DesignScenePage({
                 </div>
 
                 {templatesLoading ? (
-                  <div className="om-design-muted">{t('Loading templates…')}</div>
+                  <div className="om-design-grid" role="status" aria-label={t('Loading templates…')}>
+                    {[0, 1, 2, 3].map(item => <Skeleton key={item} className="om-design-template-placeholder" />)}
+                  </div>
+                ) : templatesFailed ? (
+                  <div className="om-discovery-empty">
+                    <span>{t('Templates could not be loaded.')}</span>
+                    <Button type="button" variant="ghost" onClick={() => setTemplateRetry(value => value + 1)}>{t('Retry')}</Button>
+                  </div>
                 ) : templates.length === 0 ? (
                   <div className="om-design-muted">{t('No matching templates.')}</div>
                 ) : (
                   <div className="om-design-grid">
                     {templates.map(tpl => (
-                      <article key={tpl.id} className="om-design-card om-design-gallery-card" onClick={() => setPreviewTemplate(tpl)}>
+                      <article key={tpl.id} className="om-design-card om-design-gallery-card" onClick={event => {
+                        if (event.target instanceof Element && event.target.closest('button')) return;
+                        event.currentTarget.querySelector<HTMLButtonElement>('.om-design-card-open')?.click();
+                      }}>
                         <ScaledPreviewThumb
                           src={tpl.previewUrl}
                           title={tpl.title}
@@ -390,7 +427,9 @@ export function DesignScenePage({
                         />
                         <div className="om-design-card-body om-design-gallery-body">
                           <div className="om-design-gallery-copy">
-                            <strong className="om-design-card-title">{tpl.title}</strong>
+                            <Button type="button" variant="plain" className="om-design-card-open" onClick={event => openPreview(tpl, event.currentTarget)}>
+                              <strong className="om-design-card-title">{tpl.title}</strong>
+                            </Button>
                             <p className="om-design-card-desc">{tpl.description}</p>
                           </div>
                           <Button type="button" size="sm" variant="primary" className="om-design-gallery-action rounded-full" onClick={event => {
@@ -564,7 +603,7 @@ export function DesignScenePage({
           index={Math.max(0, templates.findIndex(tItem => tItem.id === previewTemplate.id))}
           remixing={remixing}
           onNavigate={nextIdx => { const next = templates[nextIdx]; if (next) setPreviewTemplate(next); }}
-          onClose={() => setPreviewTemplate(null)}
+          onClose={closePreview}
           onRemix={tpl => void handleRemixTemplate(tpl)}
           onUseWithAgent={handleUseTemplateWithAgent}
         />

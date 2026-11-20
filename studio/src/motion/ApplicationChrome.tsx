@@ -7,9 +7,11 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { Menu, MenuItem, MenuSeparator, MenuSubmenu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { Tooltip } from '../components/ui/Tooltip';
 import { languages, useI18n, type Locale } from '../i18n/I18n';
+import { setStudioTheme, useStudioThemePreference } from '../utils/studioTheme';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 import { useAccountSummary } from './AccountSettings';
 import { CommunityLink } from './CommunityLink';
+import { clickMethod, clickOption, trackStudioClick } from './editorTracking';
 import { GitHubLink } from './GitHubLink';
 import { repositorySupportLinks } from './githubRepository';
 import type { SettingsSection } from './SettingsCenter';
@@ -20,6 +22,7 @@ import { WorkspaceResourceActions } from './WorkspaceResourceActions';
 import { WorkspaceSearch } from './WorkspaceSearch';
 
 const avatarSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+const themeLabels = { light: 'Light', dark: 'Dark', system: 'System' } as const;
 
 export function ApplicationHeader({ settings, atExploreHome, onSkill, openAsset, onCommunity, openSettings, ...navigation }: CreativeNavigationProps & {
   onSkill: (id: string) => void;
@@ -53,7 +56,6 @@ export function ApplicationHeader({ settings, atExploreHome, onSkill, openAsset,
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
-      {settings && settings !== 'brand-kit' && <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome} icon={<RemixIcon name="close-line" size={20} />} />}
       <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
   </header>;
@@ -75,14 +77,27 @@ export function WorkspaceUtilityActions({ openSettings }: { openSettings: (secti
 export function ApplicationAccountMenu({ settings, openSettings }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void }) {
   const { t, locale, setLocale } = useI18n();
   const { account } = useAccountSummary();
+  const theme = useStudioThemePreference();
   const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
   const avatarInitial = avatarSegmenter.segment(userName)[Symbol.iterator]().next().value?.segment;
   return <Menu tooltip={t('Account menu')} modal={false} side="bottom" align="end" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<Button variant="plain" type="button" className="om-nav-item om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <RemixIcon className="om-default-avatar-icon" name="user-3-line" size={14} />}</span></Button>}>
       <MenuItem onClick={() => openSettings('account')}><span className="om-menu-label"><RemixIcon name="user-3-line" size={16} /><strong>{userName}</strong></span></MenuItem><MenuSeparator />
       <MenuItem onClick={() => openSettings('subscription')}><span className="om-menu-label"><RemixIcon name="bank-card-line" size={16} />{t('Subscription & usage')}</span></MenuItem>
       <MenuSeparator />
-      <MenuItem shortcut="⌘ ," onClick={() => openSettings('general')}><span className="om-menu-label"><RemixIcon name="settings-3-line" size={16} />{t('Settings')}</span></MenuItem>
-      <MenuItem onClick={() => openSettings('appearance')}><span className="om-menu-label"><RemixIcon name="sun-line" size={16} />{t('Appearance')}</span></MenuItem>
+      <MenuItem onClick={() => openSettings('general')}><span className="om-menu-label"><RemixIcon name="settings-3-line" size={16} />{t('Settings')}</span></MenuItem>
+      <MenuSubmenu aria-label={t('Appearance')} className="om-selection-panel om-menu-panel" label={<span className="om-menu-label"><RemixIcon name="sun-line" size={16} />{t('Appearance')}</span>} detail={t(themeLabels[theme])}>
+        <MenuRadioGroup value={theme}>
+          {(['light', 'dark', 'system'] as const).map(value => (
+            <MenuRadioItem key={value} value={value} closeOnClick onClick={event => {
+              if (theme === value) return;
+              trackStudioClick('settings', 'theme_toggle', undefined, clickMethod(event), clickOption(value));
+              setStudioTheme(value);
+            }}>
+              {t(themeLabels[value])}
+            </MenuRadioItem>
+          ))}
+        </MenuRadioGroup>
+      </MenuSubmenu>
       <MenuSubmenu aria-label={t('Language')} className="om-selection-panel om-menu-panel" label={<span className="om-menu-label"><RemixIcon name="global-line" size={16} />{t('Language')}</span>} detail={languages.find(language => language.locale === locale)?.label}>
         <MenuRadioGroup value={locale} onValueChange={value => setLocale(value as Locale)}>{languages.map(language => <MenuRadioItem key={language.locale} value={language.locale} closeOnClick>{language.label}</MenuRadioItem>)}</MenuRadioGroup>
       </MenuSubmenu>

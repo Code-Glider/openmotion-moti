@@ -2,7 +2,8 @@ import { Button } from 'open-design-ui/button';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { motionStudio, sceneDestination, studioScenes, type StudioDestination, type StudioScene } from './creativeStudios';
+import { findMediaStudio } from '../../../shared/studio-catalog';
+import { motionStudio, studioDestination, type StudioDestination, type StudioScene } from './creativeStudios';
 import { sceneExamples } from './sceneShowcase';
 import { findModelHub } from './modelHubs';
 import { motionSkills } from './skillCatalog';
@@ -13,8 +14,8 @@ const track = (element: Parameters<typeof reportCreativeClick>[2], target: Param
 
 /** Scenes the Explore feed leaves out because they are featured here; unchanged from main so the feed stays as it was. */
 export const featuredSceneIds: readonly StudioScene['id'][] = ['shot-image', 'text-to-video', 'text-to-image'];
-/** Scenes that currently have a spotlight slide. */
-const spotlightSceneIds: readonly StudioScene['id'][] = ['text-to-image'];
+/** Spotlight scenes open with their Studio's scene tabs. */
+const spotlightScenes = [studioDestination(findMediaStudio('design')!, 'text-to-image')];
 const slideDuration = 6000;
 const motionCover = motionSkills.find(skill => skill.id === 'openmotion-bubble-field')?.cover;
 const motionPoster = motionCover?.poster ?? '';
@@ -36,9 +37,10 @@ const slides: FeaturedSlide[] = [{
 }, {
   id: 'hub-' + geminiHub.id, title: geminiHub.latestModel, subtitle: geminiHub.eyebrow, icon: 'sparkling-line', poster: geminiHub.poster, hub: geminiHub.id,
   hint: geminiHub.summary,
-}, ...spotlightSceneIds.map(id => {
-  const scene = studioScenes.find(entry => entry.id === id)!;
-  const example = sceneExamples[id][0], target = sceneDestination(scene);
+}, ...spotlightScenes.map(target => {
+  const { scene } = target;
+  const { id } = scene;
+  const example = sceneExamples[id][0];
   return { ...example, id, icon: scene.icon, subtitle: target.studio.title, hint: scene.hint, scene: { target, prompt: example.prompt } };
 })];
 

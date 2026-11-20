@@ -287,7 +287,7 @@ test('Design Studio copies template briefs in place and creates projects separat
       assert.equal(await page.$(recent), null);
       await page.hover(card);
       assert.deepEqual(await page.$eval(`${card} .om-design-gallery-body`, actions =>
-        [...actions.querySelectorAll('button')].map(button => button.textContent)), ['复刻模版']);
+        [...actions.querySelectorAll(':scope > button')].map(button => button.textContent)), ['复刻模版']);
       assert.ok(await page.$eval(card, template => {
         const thumb = template.querySelector('.om-design-card-thumb')!.getBoundingClientRect();
         const description = template.querySelector('.om-design-card-desc')!;

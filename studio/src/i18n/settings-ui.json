@@ -1,5 +1,6 @@
 {
   "zh-CN": {
+    "Go back": "返回",
     "Account": "账户",
     "Account menu": "账户菜单",
     "Subscription & usage": "订阅与用量",
@@ -175,7 +176,11 @@
     "API key required": "需要 API 密钥",
     "Included with your account": "来自你的账户",
     "Sign in to use your account models": "登录后使用账户模型",
-    "OpenDesign sign-in requires the Vela connector. Run npm install -g @powerformer/vela-cli@0.1.10 in a terminal, then sign in again.": "登录 OpenDesign 需要 Vela 登录组件。请在终端运行 npm install -g @powerformer/vela-cli@0.1.10，然后重新登录。",
+    "Couldn't download the OpenDesign sign-in component. Check your network or proxy, then select Retry. If it keeps failing, run this command in a terminal, then select Retry:": "无法下载 OpenDesign 登录组件。请检查网络或代理后点「重试」。如果一直失败，请在终端运行下面的命令，然后点「重试」：",
+    "OpenMotion couldn't find npm to set up the OpenDesign sign-in component. Run this command in a terminal, then select Retry:": "OpenMotion 找不到 npm，无法安装 OpenDesign 登录组件。请在终端运行下面的命令，然后点「重试」：",
+    "The OpenDesign sign-in component couldn't start on this device. Run this command in a terminal to reinstall it, then select Retry:": "OpenDesign 登录组件无法在这台设备上启动。请在终端运行下面的命令重新安装，然后点「重试」：",
+    "Command copied": "命令已复制",
+    "The OpenDesign sign-in component set by OPENMOTION_ACCOUNT_CLI couldn't start. Check or clear that path, then select Retry.": "OPENMOTION_ACCOUNT_CLI 指定的 OpenDesign 登录组件无法启动。请检查或清除这个路径，然后点「重试」。",
     "Can't connect to OpenDesign right now. Check your network and try again.": "暂时无法连接 OpenDesign，请检查网络后重试。",
     "Browser authorization expired or was cancelled. Sign in again.": "浏览器授权已过期或被取消，请重新登录。",
     "Account credentials could not be verified. Sign in again, and contact us if this keeps happening.": "账号凭证校验失败，请重新登录；多次失败请联系我们。",
@@ -350,6 +355,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus、Pro、Max 按年付比按月付省 30%。"
   },
   "ja": {
+    "Go back": "戻る",
     "Local Agents": "ローカル Agent",
     "Default Agent & models": "既定の Agent とモデル",
     "Default Agent": "既定の Agent",
@@ -473,6 +479,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus・Pro・Max は年払いで月払いより 30% お得です。"
   },
   "ko": {
+    "Go back": "뒤로",
     "What's new": "새로운 소식",
     "Feedback": "피드백",
     "Not saved": "저장되지 않음",
@@ -491,6 +498,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro, Max는 연간 결제 시 월간 결제보다 30% 저렴합니다."
   },
   "de": {
+    "Go back": "Zurück",
     "What's new": "Neuigkeiten",
     "Feedback": "Feedback",
     "Not saved": "Nicht gespeichert",
@@ -509,6 +517,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro und Max kosten bei jährlicher Zahlung 30 % weniger."
   },
   "fr": {
+    "Go back": "Retour",
     "What's new": "Nouveautés",
     "Feedback": "Commentaires",
     "Not saved": "Non enregistré",
@@ -527,6 +536,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro et Max coûtent 30 % de moins en paiement annuel."
   },
   "ru": {
+    "Go back": "Назад",
     "What's new": "Что нового",
     "Feedback": "Обратная связь",
     "Not saved": "Не сохранено",
@@ -545,6 +555,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro и Max на 30% дешевле при оплате за год."
   },
   "es": {
+    "Go back": "Volver",
     "What's new": "Novedades",
     "Feedback": "Comentarios",
     "Not saved": "Sin guardar",
@@ -563,6 +574,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro y Max cuestan un 30 % menos con pago anual."
   },
   "pt-BR": {
+    "Go back": "Voltar",
     "What's new": "Novidades",
     "Feedback": "Feedback",
     "Not saved": "Não salvo",
@@ -581,6 +593,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro e Max custam 30% menos no pagamento anual."
   },
   "it": {
+    "Go back": "Indietro",
     "What's new": "Novità",
     "Feedback": "Feedback",
     "Not saved": "Non salvato",
@@ -599,6 +612,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro e Max costano il 30% in meno con il pagamento annuale."
   },
   "tr": {
+    "Go back": "Geri",
     "What's new": "Yenilikler",
     "Feedback": "Geri bildirim",
     "Not saved": "Kaydedilmedi",

@@ -24,7 +24,9 @@ vi.mock('./ExploreStudios', async () => {
     return <button onClick={event => openLibrary(event.currentTarget)}>Browse templates</button>;
   } };
 });
-vi.mock('./SettingsCenter', () => ({ SettingsCenter: () => <section data-testid="settings-center">Settings</section> }));
+vi.mock('./SettingsCenter', () => ({
+  SettingsCenter: ({ onBack }: { onBack: () => void }) => <section data-testid="settings-center"><button type="button" onClick={onBack}>返回</button></section>,
+}));
 
 const state = vi.hoisted(() => ({
   connectionError: '',
@@ -263,19 +265,32 @@ it.each([true, false])('preserves the desktop sidebar when opening and dismissin
   }
 });
 
-it.each([[1440, 'OpenDesign · 返回探索'], [800, 'OpenDesign · 返回探索'], [1440, '关闭设置'], [800, '关闭设置']] as const)('returns to Explore from settings without replacing the current editor at %ipx via %s', async (width, closeLabel) => {
+it.each([[1440, 'OpenDesign · 返回探索'], [800, 'OpenDesign · 返回探索'], [1440, '返回'], [800, '返回']] as const)('leaves settings without replacing the current editor at %ipx via %s', async (width, label) => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   render();
+  const editorUrl = location.href;
   const editor = container.querySelector('.motion-studio-header');
   if (!document.querySelector('.motion-sidebar-utilities')) openSidebar();
   await act(async () => document.querySelector<HTMLButtonElement>('.motion-sidebar-utilities [aria-label="设置"]')!.click());
   expect(container.querySelector('[data-testid="settings-center"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail')).toBeNull();
-  await act(async () => container.querySelector<HTMLButtonElement>(`[aria-label="${closeLabel}"]`)!.click());
+  await act(async () => {
+    if (label === '返回') {
+      button(label).click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    } else {
+      container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click();
+    }
+  });
   expect(container.querySelector('[data-testid="settings-center"]')).toBeNull();
-  expect(container.querySelector('.om-explore-host:not([hidden])')).not.toBeNull();
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
-  expect(container.querySelector('.om-project-navigation, .om-app-rail')).toBeNull();
+  if (label === '返回') {
+    expect(location.href).toBe(editorUrl);
+    expect(container.querySelector('.motion-workspace-content:not([hidden])')).not.toBeNull();
+  } else {
+    expect(container.querySelector('.om-explore-host:not([hidden])')).not.toBeNull();
+    expect(container.querySelector('.om-project-navigation, .om-app-rail')).toBeNull();
+  }
   expect(document.querySelector('.motion-sidebar-drawer:not([data-closed])')).toBeNull();
   expect(state.open).not.toHaveBeenCalled();
   expect(state.home).not.toHaveBeenCalled();

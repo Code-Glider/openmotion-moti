@@ -129,6 +129,9 @@ so account counts can deduplicate across installations and join AMR account fact
 Failures and cancellations omit that ID. The existing collection controls apply;
 `distinct_id` remains the installation ID, without identify/alias or person merging.
 Email, names, activation URLs, authorization codes and credentials are omitted.
+A `connector_unavailable` failure adds `connector_problem`: `npm_missing` (no npm
+was found to install the connector), `install_failed` (npm could not install it)
+or `start_failed` (the installed connector did not run). npm output stays local.
 These fields describe the local OM result; AMR handoff attribution is separate.
 
 The account and subscription settings' **Manage subscription** action, and the Free / Go
@@ -408,14 +411,16 @@ backend/data directory. Deterministic coverage lives in
   duration, count or file size is sent.
 - Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
   one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
-  Motion Studio landing and the Design, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
+  Motion and Design Studio template landings and the Design image, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
   `scene_id` and `landing`) and a model overview (`model_overview`). Filter and tab
   changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
   the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
   `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
   Studio form reports `asset_generation_submit_result` with `page_name=creative_studio` and the Studio, scene
   and model (`model_provider` + `model_id` split from the catalogue key; custom providers send neither). Other destinations are catalogue ids accepted only as `slug`s;
-  prompts, example copy and model labels are never fields.
+  prompts, example copy and model labels are never fields. The Design Studio template landing reports
+  `studio_id=design, landing=true`. Category changes report `studio_bar/scene_tab` with `scene_id` and template
+  opens report `studio_bar/open_template` with both `scene_id` and `template_id`.
 - Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
   sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and
   `hub_availability` carry `hub_id`, `hub_video_id` (catalogue id), `signed_in` and, for scene filters, a
