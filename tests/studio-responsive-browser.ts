@@ -26,7 +26,7 @@ async function checkCreator(page: Page, stacked: boolean) {
   assert.ok(stacked ? geometry.stacked : geometry.aligned, 'The model controls respond to the width of the creator pane');
 }
 
-test('Explore is home and only the editor shows the project navigation', { timeout: 60_000 }, async () => {
+test('Explore is home and project navigation stays in the workspace', { timeout: 60_000 }, async () => {
   await fixture(async store => {
     const running = await startServer(store, 0, { editor: true });
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
@@ -45,7 +45,7 @@ test('Explore is home and only the editor shows the project navigation', { timeo
         await page.setViewport({ width, height: 800 });
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }]);
         await page.waitForFunction(theme => (document.documentElement.dataset.theme === 'paper') === (theme === 'light'), {}, theme);
-        assert.equal(await page.$('.om-app-rail, .om-project-navigation'), null);
+        assert.equal(await page.$('.om-project-navigation'), null);
         const trigger = await page.waitForSelector('.om-app-header-actions .om-account-trigger', { visible: true });
         const anchor = (await trigger!.boundingBox())!;
         assert.ok(anchor.x + anchor.width <= width && anchor.x > width - 80);
@@ -83,17 +83,17 @@ test('Explore is home and only the editor shows the project navigation', { timeo
       }
       await page.setViewport({ width: 1440, height: 800 });
       await page.click('.om-app-header [aria-label="Motion Studio"]');
-      await page.waitForSelector('main[aria-label="Motion Studio"] .om-discovery-hero button[data-primary]', { visible: true });
-      assert.equal(await page.$('.om-app-rail'), null);
-      await page.click('main[aria-label="Motion Studio"] .om-discovery-hero button[data-primary]');
+      await page.waitForSelector('main[aria-label="Motion templates"]', { visible: true });
+      const project = await page.waitForSelector('.om-project-navigation:not([inert]) button.motion-session', { visible: true });
+      await project!.click();
       await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
-      assert.ok(await page.waitForSelector('.om-app-rail:not([inert])', { visible: true }));
+      await page.waitForSelector('.om-project-navigation:not([inert])', { visible: true });
       const editorUrl = page.url();
       await page.click('.om-app-brand');
       await page.waitForSelector('.om-explore-host:not([hidden])');
-      assert.equal(await page.$('.om-app-rail'), null);
+      assert.equal(await page.$('.om-project-navigation'), null);
       await page.goBack();
-      await page.waitForSelector('.om-app-rail', { visible: true });
+      await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
       assert.equal(new URL(page.url()).searchParams.get('project'), new URL(editorUrl).searchParams.get('project'));
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
