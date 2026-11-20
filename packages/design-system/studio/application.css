@@ -116,7 +116,7 @@
 [data-motion-studio] .om-nav-item:focus-visible { outline-offset: -2px; }
 [data-motion-studio] .om-button[data-primary]:enabled:hover { background: var(--motion-action-hover); color: var(--motion-on-action); }
 /* Chrome states stay quieter than the workspace's primary actions. */
-[data-motion-studio] .om-nav-item.om-account-trigger { padding: 0; border-radius: var(--motion-radius-full); }
+[data-motion-studio] .om-nav-item.om-account-trigger { padding: 0; border-radius: var(--motion-radius-full); background: transparent; }
 [data-motion-studio] .om-default-avatar-icon { color: var(--motion-dim); }
 [data-motion-studio] .om-account-trigger .om-avatar { border-radius: var(--motion-radius-full); white-space: nowrap; overflow: hidden; line-height: 1; }
 [data-motion-studio] .om-settings-sections .om-nav-item > svg { color: var(--motion-chrome-icon); }

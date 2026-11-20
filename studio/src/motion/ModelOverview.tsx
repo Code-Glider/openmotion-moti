@@ -1,7 +1,8 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import { Button } from 'open-design-ui/button';
 import { useI18n } from '../i18n/I18n';
 import { Skeleton } from '../components/ui/Skeleton';
-import { RemixIcon } from '../icons/RemixIcons';
+
 import { ModelAvatar } from './settingsPrimitives';
 import { useMediaCatalog } from './useMediaCatalog';
 import { mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
@@ -18,9 +19,9 @@ export function ModelOverview({ id, onExplore, onProvider, onScene }: {
   const model = catalog?.models.find(item => item.id === id);
   const story = model && modelStories.find(item => matchesStory(item, model) && item.cases.some(c => supportsScene(model, c.destination.scene)));
   const provider = model && catalog?.status.providers.find(item => item.id === model.provider);
-  return <main className="om-explore"><div className="om-discovery-page">
-    <div><Button variant="plain" className="om-nav-item" onClick={() => { reportCreativeClick('model_overview', 'model_overview', 'back_to_explore', { model: id }); onExplore(); }}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</Button></div>
-    {failed ? <Button variant="ghost" className="om-button h-auto" onClick={retry}>{t('Retry loading models')}</Button>
+  return <main className="om-explore"><WorkspaceBack onBack={() => reportCreativeClick('model_overview', 'model_overview', 'back_to_explore', { model: id })} fallback={onExplore} />
+    <div className="om-discovery-page">
+    {failed ? <Button variant="plain" className="om-button" onClick={retry}>{t('Retry loading models')}</Button>
       : !catalog ? <Skeleton className="om-featured-template-skeleton" />
       : !model ? <section><h1 className="om-title">{t('Model unavailable')}</h1><p className="om-muted">{id}</p><Button variant="ghost" className="om-button h-auto" onClick={() => { reportCreativeClick('model_overview', 'model_overview', 'open_providers', { model: id }); onProvider(); }}>{t('Manage providers')}</Button></section>
       : <>

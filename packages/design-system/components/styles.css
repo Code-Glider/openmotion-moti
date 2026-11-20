@@ -1,0 +1,6 @@
+@import "tailwindcss" source(none);
+@import "../tailwind.css";
+@import "../studio/control-recipes.css";
+
+@source "./**/*.{ts,tsx}";
+@source not "./site";

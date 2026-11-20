@@ -96,7 +96,7 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-creator-pane .om-asset-direct > button.om-button', { visible: true });
       await page.evaluate(() => document.fonts.ready);
-      for (const menuLabel of ['Image scenes and models', 'Video scenes and models', 'Audio scenes and models', 'Agent client']) {
+      for (const menuLabel of ['Image · Scenes', 'Video · Scenes', 'Audio · Scenes', 'Generate with Open Design MCP']) {
         const split = '.om-creative-split:has(> [aria-label="' + menuLabel + '"])';
         const popup = '[role="dialog"][aria-label="' + menuLabel + '"]';
         await page.hover(split + ' > .om-nav-row-link');
@@ -123,23 +123,19 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         const scenes = bar.querySelector('nav')!.getBoundingClientRect();
         return back.bottom <= scenes.top;
       }), 'The mobile Studio header keeps its return action above the scenes');
-      const imageNav = '.om-creative-split:has(> [aria-label="Image scenes and models"])';
-      await page.waitForFunction(selector => {
-        const link = document.querySelector<HTMLElement>(selector);
-        if (!link) return false;
-        const bounds = link.getBoundingClientRect();
-        return bounds.left >= 0 && bounds.right <= innerWidth;
-      }, {}, imageNav + ' > .om-nav-row-link');
+      const imageNav = '.om-creative-strip > [data-nav-slot]:not([data-stowed]) .om-creative-split:has(> [aria-label="Image · Scenes"])';
+      await page.waitForSelector('.om-creative-navigation[data-compact-actions]');
       for (const scheme of ['dark', 'light'] as const) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
+        await page.waitForSelector(imageNav + ' > .om-nav-row-link', { visible: true });
         await page.click(imageNav + ' > .om-nav-row-link');
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'design');
         await page.waitForSelector('.om-creative-menu', { hidden: true });
         await page.waitForSelector('.om-generation-pickers [aria-label="Generation model"]', { visible: true });
-        await page.mouse.move(5, 650);
+        await page.mouse.move(5, 675);
         await page.focus(imageNav + ' > .om-nav-row-link');
         await page.keyboard.press('Tab');
-        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image scenes and models');
+        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image · Scenes');
         await page.keyboard.press('Enter');
         const menu = await page.waitForSelector('.om-creative-menu', { visible: true });
         assert.ok(await menu!.evaluate(el => el.getBoundingClientRect().left >= 0 && el.getBoundingClientRect().right <= innerWidth));
@@ -307,14 +303,15 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       const segments = await page.$$('.om-media-segments button');
       for (const segment of segments) {
         await segment.click();
+        await segment.evaluate(element => (element as HTMLButtonElement).blur());
         const start = await page.$eval(artwork, camera => getComputedStyle(camera).transform);
         await page.waitForFunction((selector, start) => getComputedStyle(document.querySelector(selector)!).transform !== start, {}, artwork, start);
         const scene = await page.$eval('.om-feature-carousel', hero => hero.getAttribute('data-scene'));
-        if (scene !== 'shot-image') {
+        if (scene !== 'shot-image' && scene !== 'black-friday' && scene !== 'hub-gemini-4') {
           await page.waitForFunction(selector => (document.querySelector(selector)?.querySelector('video')?.currentTime ?? 0) > 0.1, {}, artwork);
         }
       }
-      await page.click('.om-media-pagination > button:first-child');
+      await page.focus('.om-media-segments [aria-current]');
       assert.equal(await cameraState(), 'paused');
       assert.ok(await page.$eval(artwork + ' video', video => (video as HTMLVideoElement).paused));
     } finally {

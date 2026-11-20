@@ -7,7 +7,7 @@ import { templateContributionUrl } from './templateContribution';
 import { MotionIcon } from './icons';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import { exploreCommunities, findMediaStudio, findTechniqueStudio, type CreativeStudio, type ExploreCommunity } from '../../../shared/studio-catalog';
-import type { GalleryTemplate } from '../../../shared/catalog';
+import type { GalleryTemplate, TemplatePage } from '../../../shared/catalog';
 import type { ExploreFilters, TemplateCollection } from './workspacePageRouting';
 import { useI18n } from '../i18n/I18n';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -48,7 +48,12 @@ function templateShelfTarget(value: ExploreTemplateFilter | null) {
 
 const templateVideoDestination = studioDestination(findMediaStudio('cinema')!, 'text-to-video');
 const discoveryStudios = [motionStudio, ...creativeStudios.filter(studio => studio.surface !== 'editor')];
-const mediaCollectionNames = { image: 'Image design', video: 'Cinematic shots', audio: 'Music and voiceover' } as const;
+const mediaCollections = {
+  image: { title: 'Image design', description: 'Create an image from a description or edit a reference image.' },
+  video: { title: 'Cinematic shots', description: 'Create a video shot from text or bring a still frame to life.' },
+  audio: { title: 'Music and voiceover', description: 'Set a mood with music or turn a script into voiceover.' },
+} as const;
+
 const templatePreviewLimit = 8;
 const skillFilters = [['all', 'All'], ...skillCategories.map(category => [category, category] as const)] as const;
 /** Round-robin covered Skills across categories so the four-column preview fills two complete rows. */
@@ -71,17 +76,23 @@ type ExploreProps = {
   filters: ExploreFilters;
 };
 
-function FeedCard({ title, label, description, poster, posterPosition, credit, icon, onClick, sceneId, children, playbackId, onPriority }: {
-  title: string; label: string; description: string; poster?: string; posterPosition?: string; credit?: string; icon: string; onClick: () => void; sceneId?: string;
+function FeedCard({ title, detail, promptAction, badge, description, poster, posterPosition, credit, icon, onClick, sceneId, children, playbackId, onPriority }: {
+  title: string; detail: string; promptAction?: boolean; badge?: string; description: string; poster?: string; posterPosition?: string; credit?: string; icon: string; onClick: () => void; sceneId?: string;
   children?: ReactNode; playbackId?: string; onPriority?: (id: string | null) => void;
 }) {
   return <Button variant="plain" className="om-scene-tile" data-scene={sceneId} data-playback-id={playbackId} onClick={onClick}
     onMouseEnter={playbackId ? () => onPriority?.(playbackId) : undefined} onMouseLeave={playbackId ? () => onPriority?.(null) : undefined}
     onFocus={playbackId ? () => onPriority?.(playbackId) : undefined} onBlur={playbackId ? () => onPriority?.(null) : undefined}>
-    <span className="om-scene-tile-art">{poster && <img src={poster} style={{ objectPosition: posterPosition }} loading="lazy" alt="" />}{children}{credit && <small className="om-scene-credit">{credit}</small>}</span>
-    <span className="om-feed-card-label"><RemixIcon name={icon} size={14} />{label}</span>
-    <strong>{title}<RemixIcon name="arrow-right-up-line" size={16} /></strong>
-    <span className="om-feed-card-description">{description}</span>
+    <span className="om-scene-tile-art">
+      {poster && <img src={poster} style={{ objectPosition: posterPosition }} loading="lazy" alt="" />}{children}
+      {credit && <small className="om-scene-credit">{credit}</small>}
+      {badge && <span className="om-feed-skill-badge">{badge}</span>}
+    </span>
+    <span className="om-feed-template-copy">
+      <strong>{title}</strong>
+      <span className="om-feed-card-description">{description}</span>
+      <span className="om-feed-card-detail"><RemixIcon name={icon} size={14} /><span>{detail}</span>{promptAction && <RemixIcon name="arrow-right-line" size={15} />}</span>
+    </span>
   </Button>;
 }
 
@@ -90,11 +101,10 @@ function SceneFeedCard({ target, example, section, onNavigate, playing, onPriori
   target: StudioDestination; example: SceneExample; section: string; onNavigate: ExploreProps['onNavigate']; community?: string;
 }) {
   const { t } = useI18n();
-  const { scene, studio } = target;
+  const { scene } = target;
   const id = example.clip ? [section, scene.id, example.title].join('/') : undefined;
-  const label = section === 'feed' ? t(studio.title) + ' · ' + t(scene.label) : t(scene.label);
-  return <FeedCard sceneId={scene.id} icon={scene.icon} label={label} title={t(example.title)}
-    description={t(section === 'feed' ? scene.hint : example.prompt)} poster={example.poster} posterPosition={example.posterPosition} credit={example.credit}
+  return <FeedCard sceneId={scene.id} icon={scene.icon} detail={t('Use this prompt')} promptAction title={t(example.title)}
+    description={t(scene.hint)} poster={example.poster} posterPosition={example.posterPosition} credit={example.credit}
     playbackId={id} onPriority={onPriority} onClick={() => {
       const { area, collection } = cardArea(section);
       track(area, 'open_scene', { ...destinationTarget(target), collection, community });
@@ -104,12 +114,12 @@ function SceneFeedCard({ target, example, section, onNavigate, playing, onPriori
   </FeedCard>;
 }
 
-function SkillFeedCard({ skill, section, icon, label, onSkill, playing, onPriority, community }: FeedPlayback & {
-  skill: MotionSkill; section: string; icon: string; label: string; onSkill: ExploreProps['onSkill']; community?: string;
+function SkillFeedCard({ skill, section, icon, onSkill, playing, onPriority, community }: FeedPlayback & {
+  skill: MotionSkill; section: string; icon: string; onSkill: ExploreProps['onSkill']; community?: string;
 }) {
   const { t } = useI18n();
   const id = section + '/' + skill.id;
-  return <FeedCard title={t(skill.title)} label={label} description={t(skill.tagline)} icon={icon}
+  return <FeedCard title={t(skill.title)} badge="Skill" detail={t(skill.output)} description={t(skill.tagline)} icon={icon}
     playbackId={id} onPriority={onPriority} onClick={() => {
       const { area, collection } = cardArea(section);
       track(area, 'open_skill', { skill: skill.id, collection, community });
@@ -149,11 +159,13 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
 } & Pick<ExploreProps, 'onChooseStudio' | 'onSkill' | 'onNavigate'>) {
   const { t } = useI18n();
   const community = exploreCommunities.find(item => item.studios[0] === studio.id);
-  const description = studio.surface === 'editor' ? 'Animate type and shapes, then edit their timing on the timeline.' : community?.description;
+  let description: string;
   let cards: ReactNode[];
   let title: string;
   if (studio.surface === 'media') {
-    title = mediaCollectionNames[studio.primaryModality];
+    const collection = mediaCollections[studio.primaryModality];
+    title = collection.title;
+    description = collection.description;
     cards = scenesForStudio(studio).filter(scene => !medium || medium === scene.modality).flatMap(scene => {
       const target = studioDestination(studio, scene.id);
       const examples = studio.id === 'design' ? sceneExamples[scene.id] : sceneExamples[scene.id].slice(0, 1);
@@ -163,15 +175,16 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
   } else {
     if (medium && medium !== 'video') return null;
     title = community?.label ?? studio.title;
+    description = studio.surface === 'editor' ? 'Animate type and shapes, then edit their timing on the timeline.' : community?.description ?? studio.briefHint;
     const techniques = studio.surface === 'techniques' ? studio.techniques : community?.source === 'templates' ? community.skills : [];
     cards = techniques.slice(0, templatePreviewLimit).flatMap(id => {
       const skill = motionSkills.find(item => item.id === id);
-      return skill ? [<SkillFeedCard key={id} section={studio.id} skill={skill} label={skill.name} icon={studio.icon} onSkill={onSkill} {...playback} />] : [];
+      return skill ? [<SkillFeedCard key={id} section={studio.id} skill={skill} icon={studio.icon} onSkill={onSkill} {...playback} />] : [];
     });
   }
   if (!cards.length) return null;
   return <section className="om-studio-collection" aria-label={t(title)} data-studio={studio.id}>
-    <header className="om-discovery-heading"><div><h2>{t(title)}</h2>{description && <p className="om-muted">{t(description)}</p>}</div>
+    <header className="om-discovery-heading"><div><h2>{t(title)}</h2><p className="om-muted">{t(description)}</p></div>
       <Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_collection', 'open_studio', { studio: studio.id, collection: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </header>
     <HorizontalRail label={title} viewportClassName="om-studio-collection-cards">{cards}</HorizontalRail>
@@ -230,7 +243,7 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
   </div></footer>;
 }
 
-function ExploreCollection({ community, root, ...props }: ExploreProps & { community?: ExploreCommunity; root: RefObject<HTMLElement | null> }) {
+function ExploreCollection({ community, root, firstPages, ...props }: ExploreProps & { firstPages: Map<string, TemplatePage>; community?: ExploreCommunity; root: RefObject<HTMLElement | null> }) {
   const { t, locale } = useI18n();
   const { active, onNavigate, onChooseStudio, onSkill, filters } = props;
   const { openLibrary, openSkills } = useWorkspaceChrome();
@@ -249,7 +262,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
     (community.source === 'templates' && community.scenes.some(id => id === scene.id))));
   const showMotion = !medium || medium === 'video';
   const showTemplates = showMotion && !specialty;
-  const templates = useExploreTemplates(community?.source === 'techniques' ? undefined : community?.category ?? 'all', locale, '', community ? templatePreviewLimit : templatePreviewLimit + 2);
+  const templates = useExploreTemplates(community?.source === 'techniques' ? undefined : community?.category ?? 'all', locale, '', community ? templatePreviewLimit : templatePreviewLimit + 2, firstPages);
   const showShelves = !community && showMotion;
   const shelf = useExploreTemplateShelf(templateFilter, locale, showShelves, active, templates, templatePreviewLimit);
   const shelfItems = shelf.items;
@@ -266,13 +279,20 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
       onNavigate={onNavigate} playing={playing} onPriority={setPriority} community={community?.id} />;
   });
   const skillCards = showMotion ? (community ? skills : skills.slice(0, 3)).map(skill => <SkillFeedCard key={skill.id} section="feed" skill={skill} icon={specialty?.icon ?? 'puzzle-line'}
-    label={t(specialty?.title ?? 'Skills')} onSkill={onSkill} playing={playing} onPriority={setPriority} community={community?.id} />) : [];
+    onSkill={onSkill} playing={playing} onPriority={setPriority} community={community?.id} />) : [];
   const tryVideoPrompt = (prompt: string) => onNavigate(templateVideoDestination, prompt);
   const templateCard = (item: GalleryTemplate) => <ExploreTemplateCard key={item.id} item={item} active={playing.has('community/' + item.id)} onPriority={setPriority}
     onOpen={() => track('explore_feed', 'open_template', { template: item.id, community: community?.id })}
     onTry={prompt => { track('explore_feed', 'try_prompt', { template: item.id, community: community?.id }); tryVideoPrompt(prompt); }} />;
   const feedStart = medium ? 0 : communityPicks.length + 1;
   const firstTemplates = showTemplates ? firstPage.slice(feedStart).map(templateCard) : [];
+
+  // Reserve the template slots so the scene and Skill beside each one stay in place on first load.
+  if (showTemplates && templates.loading && !templates.pages.length) {
+    for (let i = 0; i < Math.max(sceneCards.length, skillCards.length, 1); i++) {
+      firstTemplates.push(<div key={'pending-' + i} className="om-gallery-card" aria-hidden="true"><Skeleton className="om-feed-template-placeholder" /></div>);
+    }
+  }
   const firstGroup: ReactNode[] = [];
   for (let i = 0; i < Math.max(sceneCards.length, firstTemplates.length, skillCards.length); i++) {
     firstGroup.push(firstTemplates[i], sceneCards[i], skillCards[i]);
@@ -368,7 +388,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
         }}
         extraAction={<SkillSubmissionLink explore />}>
         <div className="om-explore-preview-grid">{shelfSkills.map(skill => <SkillFeedCard key={skill.id} skill={skill} section="skills"
-          icon="puzzle-line" label={t(skill.category)} onSkill={onSkill} playing={playing} onPriority={setPriority} />)}</div>
+          icon="puzzle-line" onSkill={onSkill} playing={playing} onPriority={setPriority} />)}</div>
       </ExploreShelf>
     </>}
     {!community && discoveryStudios.filter(studio => !home || studio.id !== 'design').map(studioSection)}
@@ -378,11 +398,14 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
 export function ExploreStudios(props: ExploreProps) {
   const { t, locale } = useI18n();
   const root = useRef<HTMLElement>(null);
+  const [firstPages] = useState(() => new Map<string, TemplatePage>());
   const community = exploreCommunities.find(item => item.id === props.filters.community);
   return <main ref={root} className="om-explore">
     <div className="om-discovery-page">
       <h1 className="om-explore-title">{t(!community && props.filters.medium ? mediaLabels[props.filters.medium] : 'Explore')}</h1>
-      <ExploreCollection key={locale + '/' + (community?.id ?? '')} community={community} root={root} {...props} />
+      <div className="om-explore-sections">
+        <ExploreCollection key={locale + '/' + (community?.id ?? '')} firstPages={firstPages} community={community} root={root} {...props} />
+      </div>
     </div>
     <CapabilityIndex {...props} />
   </main>;

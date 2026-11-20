@@ -1,7 +1,7 @@
 export const studioScenes = [
   { id: 'text-to-image', entry: 'landing', modality: 'image', label: 'Text to image', icon: 'image-line', hint: 'Describe a subject, a mood, a world.' },
   { id: 'image-edit', entry: 'landing', modality: 'image', requiresImage: true, label: 'Image editing', icon: 'edit-line', hint: 'Choose an image and describe your changes.' },
-  { id: 'shot-image', entry: 'studio', modality: 'image', label: 'Shot still', icon: 'camera-line', hint: 'Describe the framing, subject and light for your shot.' },
+  { id: 'shot-image', entry: 'studio', modality: 'image', label: 'Generate a shot reference', icon: 'camera-line', hint: 'Describe the framing, subject and light for your shot.' },
   { id: 'text-to-video', entry: 'landing', modality: 'video', label: 'Text to video', icon: 'film-line', hint: 'Describe the scene, movement and atmosphere.' },
   { id: 'image-to-video', entry: 'studio', modality: 'video', requiresImage: true, label: 'Image to video', icon: 'movie-line', hint: 'Choose a first frame and describe the motion.' },
   { id: 'music', entry: 'landing', modality: 'audio', modelMode: 'text-to-audio', label: 'Music & sound', icon: 'music-2-line', hint: 'Describe the mood, instruments and tempo.' },

@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import { Button } from 'open-design-ui/button';
 import { useState } from 'react';
 import { phase1Tools } from '../../../shared/phase1-tools';
@@ -16,8 +17,8 @@ export function DeveloperPage({ toolId, onTool, onModel, onProviders, onExplore,
   const { t } = useI18n();
   const [kind, setKind] = useState<Modality>('image');
   const catalog = useMediaCatalog(true);
-  return <main className="om-explore"><div className="om-discovery-page">
-    <div><Button variant="plain" className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</Button></div>
+  return <main className="om-explore"><WorkspaceBack fallback={onExplore} />
+    <div className="om-discovery-page">
     <header className="om-discovery-heading"><div><h1 className="om-title">OpenMotion API</h1>
       <p className="om-muted">{t('Inspect tool inputs and choose a model to try in Studio.')}</p></div>
       <Button variant="ghost" className="om-button h-auto" onClick={onConnect}>{t('MCP · Connect Agent')}</Button></header>

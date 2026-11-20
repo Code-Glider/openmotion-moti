@@ -10,7 +10,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { escapeRegex } from '../utils/sourcePatcher';
 import { assetRequest } from './assetClient';
 import { creationKinds } from './AssetCreationVisuals';
-import { mediaLabels, modelDestination, sceneDestination, studioDestination, supportsScene, type StudioDestination } from './creativeStudios';
+import { mediaLabels, modelDestination, sceneDestination, studioIconTone, supportsScene, type StudioDestination } from './creativeStudios';
 import { motionSkills } from './skillCatalog';
 import { ModelAvatar } from './settingsPrimitives';
 import { useMediaCatalog } from './useMediaCatalog';
@@ -61,7 +61,7 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
   const providers = new Map(catalog.catalog?.status.providers.map(provider => [provider.id, provider.label]));
   const groups: [string, Result[]][] = [
     ['Studios', creativeStudios.filter(studio => matches(studio.title, t(studio.title))).map(studio =>
-      ({ id: studio.id, label: t(studio.title), icon: searchIcon(studio.icon, studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality), open: () => onStudio(studio) }))],
+      ({ id: studio.id, label: t(studio.title), icon: searchIcon(studio.icon, studioIconTone(studio)), open: () => onStudio(studio) }))],
     ['Scenes', studioScenes.filter(scene => query && matches(scene.id, t(scene.label), t(scene.hint), t(mediaLabels[scene.modality]))).map(scene =>
       ({ id: scene.id, label: t(scene.label), detail: t(mediaLabels[scene.modality]), icon: searchIcon(scene.icon, scene.modality), open: () => onScene(sceneDestination(scene, destination)) }))],
     ['Skills', motionSkills.filter(skill => query && matches(skill.name, t(skill.title), t(skill.tagline), t(skill.category))).map(skill =>

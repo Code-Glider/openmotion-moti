@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import { Button } from 'open-design-ui/button';
 import { IconButton } from 'open-design-ui/icon-button';
 import { CategoryStrip } from './CategoryStrip';
@@ -10,7 +11,7 @@ import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { studioSkillDefaults, localizedSkillPrompt, skillShotPrompt, aspectRatios, durations, motionSkills, skillCategories, skillShortcut, type MotionSkill, type SkillCategory, type SkillParameters } from './skillCatalog';
 import type { AssetDraft } from './AssetComposer';
-import { studioDestination, type StudioDestination } from './creativeStudios';
+import { studioIconTone, studioDestination, type StudioDestination } from './creativeStudios';
 import { useOptionalWorkspaceChrome } from './WorkspaceChromeContext';
 import { StudioTemplateShelf } from './StudioTemplateShelf';
 import { SkillMedia } from './SkillMedia';
@@ -162,9 +163,10 @@ export function SkillsPage({ skillId, onSkillChange, routeCategory, onCategoryCh
     } : undefined}>
     <StudioToastViewport {...toast} />
     {!detailOnly && <div ref={main} className="om-skills-main">
+      {studio && onExplore && <WorkspaceBack fallback={onExplore} />}
       <main className="om-gallery-results">
         {studio ? <section className="om-specialty-intro">
-          <div><h1 className="om-title">{t(studio.title)}</h1><p className="om-muted">{t(studio.briefHint)}</p>
+          <div><h1 className="om-title"><span className="om-studio-heading-icon" data-tone={studioIconTone(studio)}><RemixIcon name={studio.icon} size={24} /></span>{t(studio.title)}</h1><p className="om-muted">{t(studio.briefHint)}</p>
             {onCreate && <div className="om-specialty-actions">
               <Button variant="ghost" className="om-button h-auto" data-primary onClick={() => onCreate(studioDestination(studio))}><RemixIcon name="add-line" size={16} />{t(studio.createLabel)}</Button>
               {studio.id === 'marketing' && <Button variant="ghost" className="om-button h-auto" onClick={() => onCreate(studioDestination(studio, 'text-to-video'))}>{t('Create an ad clip')}</Button>}
@@ -181,7 +183,7 @@ export function SkillsPage({ skillId, onSkillChange, routeCategory, onCategoryCh
         </section>}
         <div className="om-gallery-sticky-header">
           <div className="om-gallery-toolbar om-skills-toolbar">
-            {studio ? <Button variant="plain" className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</Button> : <CategoryStrip label="Skill category" selection={category} neutral>
+            {!studio && <CategoryStrip label="Skill category" selection={category} neutral>
               <Button variant="plain" aria-pressed={!category} onClick={() => pickCategory(null)}>{t('All')}</Button>
               {skillCategories.map(value => <Button variant="plain" key={value} aria-pressed={category === value} onClick={() => pickCategory(value)}>{t(value)}</Button>)}
             </CategoryStrip>}

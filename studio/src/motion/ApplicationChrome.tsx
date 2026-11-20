@@ -22,7 +22,8 @@ import { WorkspaceSearch } from './WorkspaceSearch';
 
 const avatarSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
-export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommunity, openSettings, ...navigation }: Omit<CreativeNavigationProps, 'openProviders'> & {
+export function ApplicationHeader({ settings, atExploreHome, onSkill, openAsset, onCommunity, openSettings, ...navigation }: CreativeNavigationProps & {
+  onSkill: (id: string) => void;
   atExploreHome: boolean;
   settings: SettingsSection | null;
   openSettings: (section: SettingsSection) => void;
@@ -30,7 +31,7 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
   onCommunity: (community: ExploreCommunity) => void;
 }) {
   const { t } = useI18n();
-  const { openAssets, openHome, openModelSettings } = useWorkspaceChrome();
+  const { openAssets, openHome } = useWorkspaceChrome();
   const homeHint = atExploreHome ? undefined : t('Back to Explore');
   const header = useRef<HTMLElement>(null);
   const [compactActions, setCompactActions] = useState(false);
@@ -42,14 +43,14 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
 
   function workspaceActions(closeMenu?: () => void) {
     return <>
-      <WorkspaceSearch onChoose={closeMenu} onSkill={navigation.onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={() => openSettings('account')} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
+      <WorkspaceSearch onChoose={closeMenu} onSkill={onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={() => openSettings('account')} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
       <WorkspaceResourceActions onBrandKit={() => openSettings('brand-kit')} brandKitOpen={settings === 'brand-kit'} closeMenu={closeMenu} />
     </>;
   }
 
   return <header ref={header} className="om-app-header">
     <Tooltip label={homeHint}><Button variant="plain" type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></Button></Tooltip>
-    <CreativeNavigation {...navigation} openProviders={openModelSettings} overflowActions={compactActions ? workspaceActions : undefined} />
+    <CreativeNavigation {...navigation} overflowActions={compactActions ? workspaceActions : undefined} />
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>

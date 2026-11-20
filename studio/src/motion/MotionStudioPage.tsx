@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import { Button } from 'open-design-ui/button';
 import { useRef } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -11,8 +12,8 @@ export function MotionStudioPage({ active, onExplore, onOpenEditor }: {
 }) {
   const { t, locale } = useI18n();
   const root = useRef<HTMLElement>(null);
-  return <main ref={root} className="om-explore" aria-label={t('Motion Studio')}><div className="om-discovery-page">
-    <div><Button variant="plain" className="om-nav-item" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', { studio: 'motion' }); onExplore(); }}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</Button></div>
+  return <main ref={root} className="om-explore" aria-label={t('Motion Studio')}><WorkspaceBack onBack={() => reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', { studio: 'motion' })} fallback={onExplore} />
+    <div className="om-discovery-page">
     <section className="om-discovery-hero"><img src={motionPoster} alt="" />
       <div className="om-discovery-hero-copy"><h1>{t('Motion Studio')}</h1><p>{t('Start with an editable motion template or open your timeline.')}</p>
         <Button variant="ghost" className="om-button h-auto" data-primary onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_editor', { studio: 'motion' }); onOpenEditor(); }}>{t('Open editor')}<RemixIcon name="arrow-right-line" size={16} /></Button>
