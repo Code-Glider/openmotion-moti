@@ -1,15 +1,14 @@
 import { McpClientAvatar } from './McpClientAvatar';
 import { Button } from 'open-design-ui/button';
-import type { CreativeStudio, TechniqueStudio } from '../../../shared/studio-catalog';
+import type { CreativeStudio, MediaStudio, TechniqueStudio } from '../../../shared/studio-catalog';
 import { useLayoutEffect, useId, useRef, useState, type ReactNode } from 'react';
-import type { Modality } from '../../../shared/gateway';
+import type { Model, Modality } from '../../../shared/gateway';
 import { Popover } from '../components/ui/Popover';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { creativeStudios, studioIconTone, mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
+import { creativeStudios, studioIconTone, mediaLabels, modelDestination, modelsForScenes, sceneDestination, scenesForStudio, supportsScene, type StudioDestination } from './creativeStudios';
 import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
-import { Tooltip } from '../components/ui/Tooltip';
 import { ModelAvatar } from './settingsPrimitives';
 import lunarStill from './scene-art/lunar-shot-still.webp';
 import speakerStudio from './scene-art/speaker-studio.webp';
@@ -29,18 +28,26 @@ export type CreativeNavigationProps = {
   trackingPage: CreativePage;
 };
 
-function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeNavigationProps, 'destination' | 'onNavigate'> & Pick<ReturnType<typeof useMediaCatalog>, 'catalog'> & { kind: Modality }) {
+function MediaChoices({ studio, destination, onNavigate, onSelectModel, catalog }: Pick<CreativeNavigationProps, 'destination' | 'onNavigate'> & Pick<ReturnType<typeof useMediaCatalog>, 'catalog'> & { studio: MediaStudio; onSelectModel: (target: StudioDestination) => void }) {
   const { t } = useI18n();
-  const scenes = studioScenes.filter(scene => scene.modality === kind);
+  const kind = studio.primaryModality;
+  const scenes = scenesForStudio(studio);
   const pinned = catalog?.models.find(model => model.id === destination?.model);
-  const models = catalog?.models.filter(model => model.modality === kind && scenes.some(scene => supportsScene(model, scene))) ?? [];
-  const distinctModels = [...new Map(models.map(model => [model.label, model])).values()];
+  const landingDestination = destination?.landing ? destination : null;
+  const models = modelsForScenes(catalog, kind);
+  const distinctModels: Model[] = [];
+  const seenLabels = new Set<string>();
+  for (const model of models) {
+    if (seenLabels.has(model.label)) continue;
+    seenLabels.add(model.label);
+    distinctModels.push(model);
+  }
   return <>
     <div className="om-media-menu-grid">
       {scenes.map(scene => {
         const example = sceneExamples[scene.id][0];
-        return <Button variant="plain" key={scene.id} className="om-scene-tile" aria-current={destination?.scene.id === scene.id ? 'page' : undefined}
-          onClick={() => onNavigate(sceneDestination(scene, destination, pinned && supportsScene(pinned, scene) ? pinned.id : null))}>
+        return <Button variant="plain" key={scene.id} className="om-scene-tile" aria-current={destination?.landing && destination.scene.id === scene.id ? 'page' : undefined}
+          onClick={() => onNavigate(sceneDestination(scene, landingDestination, pinned && supportsScene(pinned, scene) ? pinned.id : null))}>
           {scene.id === 'text-to-image' ? (
             <span className="om-scene-tile-art om-media-demo om-image-demo" aria-hidden="true">
               <span className="om-media-demo-frame">
@@ -76,11 +83,15 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
     </div>
     {distinctModels.length > 0 && <div className="om-media-menu-models" role="group" aria-label={t('Models')}>
       <span className="om-media-menu-model-label">{t('Models')}</span>
-      {distinctModels.map(model => <Tooltip key={model.id} label={model.label}>
-        <span tabIndex={0} role="img" aria-label={model.label}>
+      <div className="om-media-menu-model-list">
+        {distinctModels.map(model => <Button variant="plain" key={model.id} className="om-nav-item om-media-menu-model"
+          title={model.label}
+          aria-current={destination?.landing && (destination.model === model.id || (pinned?.modality === kind && pinned.label === model.label)) ? 'page' : undefined}
+          onClick={() => onSelectModel(modelDestination(model, landingDestination))}>
           <ModelAvatar name={model.label} modelId={model.modelId} provider={{ id: model.provider, custom: model.source === 'custom' }} />
-        </span>
-      </Tooltip>)}
+          <span className="om-media-menu-model-name">{model.label}</span>
+        </Button>)}
+      </div>
     </div>}
   </>;
 }
@@ -111,11 +122,13 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
       if (!available) return;
       const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
       const widths = items.map(item => item.getBoundingClientRect().width);
-      const total = widths.reduce((sum, width) => sum + width, 0) + gap * (widths.length - 1);
-      let count = widths.length;
-      if (total > available) {
+      // Keep only the first three studios (Design, Motion, Cinema) in the primary row; place the rest under More.
+      const maxVisible = Math.min(widths.length, studioStart + 3);
+      const total = widths.slice(0, maxVisible).reduce((sum, width) => sum + width, 0) + gap * Math.max(0, maxVisible - 1);
+      let count = maxVisible;
+      if (maxVisible < widths.length || total > available) {
         const compact = getComputedStyle(row).getPropertyValue('--compact-nav').trim() === '1';
-        const limit = compact ? 4 : widths.length;
+        const limit = compact ? Math.min(4, maxVisible) : maxVisible;
         let used = trigger.getBoundingClientRect().width;
         count = 0;
         while (count < limit && used + gap + widths[count] <= available) {
@@ -141,13 +154,19 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
     action();
   };
   const menuDestinations = [
-    ...creativeStudios.filter(studio => studio.surface === 'media').map(studio => {
+    ...creativeStudios.filter((studio): studio is MediaStudio => studio.surface === 'media').map(studio => {
       const kind = studio.primaryModality;
       const label = t(mediaLabels[kind]);
-      return { id: kind, label, current: destination?.scene.modality === kind ? 'location' as const : undefined,
-        menuLabel: label + ' · ' + t('Scenes'), onActivate: () => onChooseStudio(studio, kind) };
+      const studioSceneList = scenesForStudio(studio);
+      return { id: kind, studio, label, current: destination?.landing && destination.studio.id === studio.id ? 'location' as const : undefined,
+        menuLabel: label + ' · ' + t('Scenes'), onActivate: () => {
+          const sameModality = destination?.studio.id === studio.id && destination.scene.modality === kind;
+          const scene = sameModality ? destination.scene : studioSceneList.find(item => item.modality === kind) ?? studioSceneList[0];
+          const model = sameModality ? destination.model : null;
+          onNavigate(sceneDestination(scene, null, model));
+        } };
     }),
-    { id: 'mcp' as const, label: 'MCP', current: currentPage === 'mcp' ? 'page' as const : undefined,
+    { id: 'mcp' as const, studio: null, label: 'MCP', current: currentPage === 'mcp' ? 'page' as const : undefined,
       menuLabel: 'Generate with Open Design MCP', onActivate: () => onOpenPage('mcp') },
   ];
   const splitStart = 1;
@@ -161,12 +180,15 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
   }, [visibleCount, hasMore]);
 
   function splitItem(index: number, inPanel: boolean) {
-    const { id, label, current, menuLabel, onActivate } = menuDestinations[index - splitStart];
+    const { id, studio, label, current, menuLabel, onActivate } = menuDestinations[index - splitStart];
     const expanded = open === id && (index >= visibleCount) === inPanel;
     const where = { navTarget: id, inOverflow: inPanel };
     return <div className="om-nav-row om-creative-split" data-active={Boolean(current)}>
           <Popover container={popupHost} modal={false} openOnHover={!inPanel} open={expanded}
-            onOpenChange={value => setOpen(previous => value ? id : previous === id ? null : previous)}
+            onOpenChange={value => {
+              if (value && !inPanel) setMoreOpen(false);
+              setOpen(previous => value ? id : previous === id ? null : previous);
+            }}
             aria-label={menuLabel} align="start" className={id === 'mcp' ? 'om-selection-panel om-creative-client-menu' : `om-selection-panel om-creative-menu om-creative-menu-${id}`}
             primaryAction={<Button variant="plain" className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => { track(id === 'mcp' ? 'nav_mcp' : 'nav_media', where); choose(onActivate); }}>{label}</Button>}
             trigger={<Button variant="plain" className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={expanded}><RemixIcon name="arrow-down-s-line" size={12} /></Button>}>
@@ -177,7 +199,9 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
                   <McpClientAvatar client={client} /><span>{t(client.name)}</span>
                 </Button>)}
               </div>
-            </> : expanded && <MediaChoices catalog={catalog.catalog} kind={id} destination={destination} onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />}
+            </> : expanded && studio && <MediaChoices catalog={catalog.catalog} studio={studio} destination={destination}
+              onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }}
+              onSelectModel={next => { track('select_model', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />}
           </Popover>
         </div>;
   }
@@ -208,7 +232,18 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
         data-stowed={index >= visibleCount || undefined} inert={index >= visibleCount}>{item(index)}</div>)}
       <div ref={more} data-stowed={!hasMore || undefined} inert={!hasMore}>
         <Popover container={popupHost} modal={false} align="end" openOnHover open={moreOpen && hasMore}
-          onOpenChange={next => { setOpen(null); setMoreOpen(next); }} aria-label={t('More Studio')} className="om-selection-panel om-nav-more-panel"
+          onOpenChange={next => {
+            if (next) {
+              setOpen(null);
+            } else {
+              setOpen(previous => {
+                if (!previous) return null;
+                const index = splitStart + menuDestinations.findIndex(entry => entry.id === previous);
+                return index >= visibleCount ? null : previous;
+              });
+            }
+            setMoreOpen(next);
+          }} aria-label={t('More Studio')} className="om-selection-panel om-nav-more-panel"
           trigger={<Button variant="plain" type="button" className="om-nav-item">{t('More Studio')}</Button>}>
           {moreOpen && (overflowActions || hidden.some(index => index < studioStart)) && <div className="om-nav-more-tools">
             {overflowActions?.(() => setMoreOpen(false))}

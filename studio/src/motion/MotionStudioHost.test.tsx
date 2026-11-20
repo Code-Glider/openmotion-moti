@@ -68,7 +68,7 @@ let layoutStyle: HTMLStyleElement | undefined;
 const originalWidth = window.innerWidth;
 beforeEach(() => {
   history.replaceState(null, '', '/?project=demo');
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 });
   window.happyDOM.settings.enableIframePageLoading = false;
   vi.clearAllMocks();
   localStorage.clear();
@@ -308,7 +308,7 @@ async function hoverProjects(pointerType = 'mouse') {
 }
 
 it.each(['pinned', 'drawer', 'hover'] as const)('keeps the %s project list open when clicking the current project', async surface => {
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: surface === 'drawer' ? 800 : 1440 });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: surface === 'drawer' ? 700 : 1440 });
   await act(async () => render());
   const editor = container.querySelector('.motion-studio-header');
   if (surface !== 'pinned') openSidebar();

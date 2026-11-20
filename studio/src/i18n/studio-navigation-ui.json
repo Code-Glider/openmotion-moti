@@ -30,8 +30,8 @@
     "Shot still": "镜头定帧",
     "Describe the framing, subject and light for your shot.": "描述镜头的构图、主体和光线。",
     "Use as first frame": "用作视频首帧",
-    "In Cinema Studio, open a shot still, select a version and use it as the first frame. Choose a video model with image input.": "在影视工作室打开镜头参考图，选择图片版本并用作首帧，再选一个支持图片输入的视频模型。",
-    "Use openmotion_assets_use to find my shot still and confirm the version. Use openmotion_media_use to discover a configured video model with first-frame input. If none is available, guide me to Model providers. Use the confirmed image version as the reference in openmotion_assets_use and track the video job.": "用 openmotion_assets_use 找到我的镜头参考图并确认版本。用 openmotion_media_use 查找已配置且支持首帧的视频模型。如果没有，请引导我前往模型供应商设置。将确认的版本作为 openmotion_assets_use 的参考图，并跟踪视频任务。",
+    "In Cinema Studio, open a shot still, select a version and use it as the first frame. Choose a video model with image input.": "在影视工作室打开视频首帧，选择图片版本并用作首帧，再选一个支持图片输入的视频模型。",
+    "Use openmotion_assets_use to find my shot still and confirm the version. Use openmotion_media_use to discover a configured video model with first-frame input. If none is available, guide me to Model providers. Use the confirmed image version as the reference in openmotion_assets_use and track the video job.": "用 openmotion_assets_use 找到我的视频首帧并确认版本。用 openmotion_media_use 查找已配置且支持首帧的视频模型。如果没有，请引导我前往模型供应商设置。将确认的版本作为 openmotion_assets_use 的参考图，并跟踪视频任务。",
     "Frame a vintage camera in soft sidelight. Let the background fall into shadow.": "把一台老式相机放在柔和的侧光下，让背景隐入阴影。",
     "Lunar portrait": "月面人像",
     "Frame a lone astronaut on a silver lunar plain. Use a low horizon, deep shadows and light reflected in the visor.": "拍摄一名独自站在银灰色月面的宇航员。压低地平线，保留浓重的阴影和面罩上的反光。",
@@ -133,7 +133,7 @@
     "Set a mood with music or turn a script into voiceover.": "用配乐烘托气氛，或把文稿读成旁白。",
     "From studio to living room": "把音箱放进客厅",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "保持音箱的位置和外观，把它放在客厅的木质边桌上，让窗光从侧面照进来。",
-    "Generate a shot reference": "生成镜头参考图",
+    "Video first frame": "视频首帧",
     "Use this prompt": "使用此提示词",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "工作室即将上线。你可以先选择下方 Skill，将创作指令复制给 Agent 开始创作。",
     "3D Creative Skills": "3D 创作 Skills"
@@ -272,7 +272,7 @@
     "Set a mood with music or turn a script into voiceover.": "音楽で雰囲気を演出したり、台本からナレーションを作ったりできます。",
     "From studio to living room": "スタジオからリビングへ",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "スピーカーの位置と外観を保ったまま、陽の差すリビングの木製サイドテーブルに置いてください。",
-    "Generate a shot reference": "ショットの参考画像を生成",
+    "Video first frame": "動画の先頭フレーム",
     "Use this prompt": "このプロンプトを使用",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Studio は近日公開です。下の Skill を選び、制作指示を Agent にコピーして創作を始められます。",
     "3D Creative Skills": "3D 制作 Skills"
@@ -411,7 +411,7 @@
     "Set a mood with music or turn a script into voiceover.": "음악으로 분위기를 만들거나 대본을 내레이션으로 바꾸세요.",
     "From studio to living room": "스튜디오에서 거실로",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "스피커의 위치와 모습을 유지하고, 햇살이 드는 거실의 나무 사이드 테이블 위에 놓아 주세요.",
-    "Generate a shot reference": "샷 참고 이미지 생성",
+    "Video first frame": "비디오 첫 프레임",
     "Use this prompt": "이 프롬프트 사용",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Studio는 곧 출시됩니다. 아래 Skill을 선택하고 제작 지침을 Agent에게 복사해 창작을 시작하세요.",
     "3D Creative Skills": "3D 창작 Skills"
@@ -550,7 +550,7 @@
     "Set a mood with music or turn a script into voiceover.": "Schaffe mit Musik eine Stimmung oder vertone einen Text als Voiceover.",
     "From studio to living room": "Vom Studio ins Wohnzimmer",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Lass den Lautsprecher an derselben Stelle. Platziere ihn auf einem Beistelltisch aus Holz in einem sonnigen Wohnzimmer.",
-    "Generate a shot reference": "Referenzbild für die Einstellung erstellen",
+    "Video first frame": "Erstes Videobild",
     "Use this prompt": "Diesen Prompt verwenden",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Das Studio kommt bald. Wähle unten einen Skill und kopiere das Briefing für deinen Agent, um loszulegen.",
     "3D Creative Skills": "3D Kreative Skills"
@@ -689,7 +689,7 @@
     "Set a mood with music or turn a script into voiceover.": "Créez une ambiance musicale ou transformez un texte en voix off.",
     "From studio to living room": "Du studio au salon",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Gardez l’enceinte à la même place. Posez-la sur une table d’appoint en bois dans un salon ensoleillé.",
-    "Generate a shot reference": "Générer une image de référence du plan",
+    "Video first frame": "Première image vidéo",
     "Use this prompt": "Utiliser ce prompt",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Le Studio arrive bientôt. Choisissez un Skill ci-dessous et copiez son brief dans votre Agent pour commencer.",
     "3D Creative Skills": "3D Skills créatifs"
@@ -828,7 +828,7 @@
     "Set a mood with music or turn a script into voiceover.": "Задайте настроение музыкой или озвучьте текст за кадром.",
     "From studio to living room": "Из студии в гостиную",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Сохраните положение колонки. Поставьте её на деревянный столик в залитой солнцем гостиной.",
-    "Generate a shot reference": "Создать референс кадра",
+    "Video first frame": "Первый кадр видео",
     "Use this prompt": "Использовать этот промпт",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Студия скоро появится. Выберите Skill ниже и скопируйте задание своему Agent, чтобы начать работу.",
     "3D Creative Skills": "3D Творческие Skills"
@@ -967,7 +967,7 @@
     "Set a mood with music or turn a script into voiceover.": "Crea ambiente con música o convierte un guion en voz en off.",
     "From studio to living room": "Del estudio al salón",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Mantén el altavoz en la misma posición. Colócalo sobre una mesa auxiliar de madera en un salón soleado.",
-    "Generate a shot reference": "Generar una imagen de referencia del plano",
+    "Video first frame": "Primer fotograma",
     "Use this prompt": "Usar este prompt",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "El Studio estará disponible pronto. Elige un Skill y copia sus instrucciones a tu Agent para empezar a crear.",
     "3D Creative Skills": "3D Skills creativos"
@@ -1106,7 +1106,7 @@
     "Set a mood with music or turn a script into voiceover.": "Crie uma atmosfera com música ou transforme um roteiro em narração.",
     "From studio to living room": "Do estúdio para a sala",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Mantenha a caixa de som na mesma posição. Coloque-a sobre uma mesa lateral de madeira em uma sala iluminada pelo sol.",
-    "Generate a shot reference": "Gerar uma imagem de referência do plano",
+    "Video first frame": "Primeiro quadro",
     "Use this prompt": "Usar este prompt",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "O Studio estará disponível em breve. Escolha um Skill abaixo e copie as instruções para seu Agent para começar.",
     "3D Creative Skills": "3D Skills criativos"
@@ -1245,7 +1245,7 @@
     "Set a mood with music or turn a script into voiceover.": "Crea un’atmosfera con la musica o trasforma un testo in una voce narrante.",
     "From studio to living room": "Dallo studio al soggiorno",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Mantieni il diffusore nella stessa posizione. Appoggialo su un tavolino di legno in un soggiorno illuminato dal sole.",
-    "Generate a shot reference": "Genera un’immagine di riferimento per l’inquadratura",
+    "Video first frame": "Primo fotogramma",
     "Use this prompt": "Usa questo prompt",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Lo Studio sarà disponibile a breve. Scegli uno Skill qui sotto e copia il brief nel tuo Agent per iniziare.",
     "3D Creative Skills": "3D Skills creativi"
@@ -1384,7 +1384,7 @@
     "Set a mood with music or turn a script into voiceover.": "Müzikle bir atmosfer yaratın veya bir metni seslendirin.",
     "From studio to living room": "Stüdyodan oturma odasına",
     "Keep the speaker in place. Put it on a wooden side table in a sunlit living room.": "Hoparlörün konumunu koru. Onu güneş alan bir oturma odasında ahşap bir yan sehpaya yerleştir.",
-    "Generate a shot reference": "Çekim için referans görseli oluştur",
+    "Video first frame": "Video ilk karesi",
     "Use this prompt": "Bu istemi kullan",
     "While the Studio is coming soon, choose a Skill below and copy its brief to your Agent to start creating.": "Studio yakında geliyor. Oluşturmaya başlamak için aşağıdan bir Skill seçip talimatlarını Agent’ınıza kopyalayın.",
     "3D Creative Skills": "3D Yaratıcı Skills"

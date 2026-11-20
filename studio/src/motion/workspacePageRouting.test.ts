@@ -166,7 +166,8 @@ it('opens every scene on its registered surface and round-trips the selected mod
     expect(workspacePageHref(url.href, { explore: true })).toBe('/?embed=1&page=explore&community=product-films&medium=image#project/film?t=8');
   }
   expect(isWorkspaceSettingsPage('?page=create&scene=missing')).toBe(false);
-  expect(readWorkspacePage('?page=create&scene=shot-image').studio).toBeNull();
+  expect(readWorkspacePage('?page=create&scene=missing').studio).toBeNull();
+  expect(readWorkspacePage('?page=create&scene=shot-image').studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' }, landing: true });
   expect(workspacePageHref('http://localhost/?page=create&scene=bad&model=bad', { assets: true })).toBe('/?page=assets');
 });
 

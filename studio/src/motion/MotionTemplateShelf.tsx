@@ -13,13 +13,14 @@ import { TemplateGalleryCard } from './TemplateGalleryCard';
 import { TemplateIndustryMenu } from './TemplateIndustryMenu';
 import { useCoveredTemplates } from './useCoveredTemplates';
 import { useTemplatePlayback } from './useTemplatePlayback';
+import { trackMotion } from './tracking';
 import { useWorkspaceChrome } from './WorkspaceChromeContext';
 
 const batchSize = 16;
 
 export function MotionTemplateShelf({ root, active }: { root: RefObject<HTMLElement | null>; active: boolean }) {
   const { locale, t } = useI18n();
-  const { openLibrary } = useWorkspaceChrome();
+  const { openLibrary, workspace, switchingDisabled } = useWorkspaceChrome();
   const { catalog, firstPage, failed, retry } = useCoveredTemplates(locale, true, { showFirstPage: true });
   const [collection, setCollection] = useState<TemplateCollection | null>(null);
   const [limit, setLimit] = useState(batchSize);
@@ -59,6 +60,20 @@ export function MotionTemplateShelf({ root, active }: { root: RefObject<HTMLElem
     {!failed && !catalog && !firstPage && <div className="om-studio-template-grid" role="status" aria-label={t('Loading templates…')}>
       {Array.from({ length: 8 }, (_, index) => <Skeleton key={index} />)}</div>}
     <div className="om-studio-template-grid">
+      <article className="om-gallery-card" data-new-project="true">
+        <div className="om-gallery-card-media">
+          <Button variant="plain" type="button" className="om-studio-new-project-button" disabled={switchingDisabled}
+            aria-label={t('New project')}
+            onClick={event => {
+              void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'new_creation', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
+              void workspace.create();
+            }}>
+            <span className="om-studio-new-project-icon" aria-hidden="true"><RemixIcon name="add-line" size={24} /></span>
+            <strong>{t('New project')}</strong>
+            <small>{t('Create blank project')}</small>
+          </Button>
+        </div>
+      </article>
       {visible.map((item, index) => {
         const tags = [...new Set([discoveryPurposes(item)[0], item.styles?.[0]].filter((tag): tag is string => Boolean(tag)))];
         return <TemplateGalleryCard key={item.id} template={item} active={playing.has(item.id)} onPriority={setPriority}

@@ -167,12 +167,21 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (page.templateCollection === 'black-friday') collectionSkillTrigger.current?.focus({ preventScroll: true });
     collectionSkillTrigger.current = null;
   }, [page.templateCollection, page.skill]);
-  const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [projectQuery, setProjectQuery] = useState('');
   const editorRoute = !settings && !pageOpen;
   const editorActive = editorRoute && !connectionsOpen;
   const motionTemplatesOpen = page.motion && !templatesPage && !settings;
+  const previousOperationError = useRef('');
+  useEffect(() => {
+    const currentError = workspace.errorSource === 'operation' ? workspace.error : '';
+    const previousError = previousOperationError.current;
+    previousOperationError.current = currentError;
+    if (!currentError || currentError === previousError || !motionTemplatesOpen) return;
+    navigationToast.showToast(currentError, 'error', 'feedback');
+    workspace.clearError();
+  }, [motionTemplatesOpen, workspace.errorSource, workspace.error, workspace.clearError, navigationToast.showToast]);
   useEffect(() => setSidebarOpen(editorRoute && !narrow), [editorRoute, narrow]);
   const navigationCollapsed = !editorActive;
   const toggleSidebar = useCallback(() => setSidebarOpen(open => !open), []);
@@ -205,7 +214,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     return () => window.removeEventListener('motion:agents-open', open);
   }, [openSettings]);
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 999px)');
+    const query = window.matchMedia('(max-width: 767px)');
     const update = () => {
       // Close the desktop list in the same render that enables the modal drawer.
       if (query.matches) setSidebarOpen(false);
@@ -230,7 +239,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     const target = previous ?? workspace.projects[0];
     if (!target) return;
     if (target.id === projectId) openEditor();
-    else if (!await workspace.open('projects', target.id)) navigationToast.showToast(t('Could not open project'), 'error', 'feedback');
+    else if (!await workspace.open('projects', target.id) && !motionTemplatesOpen) {
+      navigationToast.showToast(t('Could not open project'), 'error', 'feedback');
+    }
   };
   const archives = useProjectArchives(workspace, beforeViewChange, switchingDisabled, () => { if (narrow) setSidebarOpen(false); });
   const reconnecting = Boolean(workspace.connectionError && isConnectionFailure(workspace.connectionError));
