@@ -400,31 +400,34 @@ describe("FlatTextFieldEditor controls", () => {
         onSetHtmlAttribute={onSetHtmlAttribute}
         onAddTextField={vi.fn()} onRemoveTextField={vi.fn()} />,
     );
-    const languageLabel = Array.from(host.querySelectorAll("span"))
-      .find((node) => node.textContent === "Language tag");
-    const languageRow = languageLabel?.parentElement;
-    const input = languageRow?.querySelector<HTMLInputElement>("input");
-    if (!input) throw new Error("expected editable BCP-47 language input");
-    const setInput = (value: string) => {
-      act(() => {
-        input.focus();
+    const languageInput = Array.from(host.querySelectorAll<HTMLInputElement>('[data-flat-row-value] input'))
+      .find((node) => node.closest(".group")?.textContent?.includes("Language tag"));
+    if (!languageInput) throw new Error("expected editable BCP-47 language input");
+    expect(languageInput.value).toBe("he");
+    const setInput = async (value: string) => {
+      await act(async () => {
+        languageInput.focus();
         const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-        setter?.call(input, value);
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        setter?.call(languageInput, value);
+        languageInput.dispatchEvent(new Event("input", { bubbles: true }));
+        await Promise.resolve();
       });
-      act(() => input.blur());
+      await act(async () => {
+        languageInput.blur();
+        await Promise.resolve();
+      });
     };
 
-    setInput("fa-arab");
+    await setInput("fa-arab");
     expect(onSetHtmlAttribute).toHaveBeenCalledExactlyOnceWith("lang", "fa-Arab");
     onSetHtmlAttribute.mockClear();
 
-    setInput("he-??");
+    await setInput("he-??");
     await act(async () => { await Promise.resolve(); });
     expect(onSetHtmlAttribute).not.toHaveBeenCalled();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("Invalid BCP-47 language tag");
 
-    const reset = languageRow?.querySelector<HTMLButtonElement>('[data-flat-row-reset="true"]');
+    const reset = languageInput.closest(".group")?.querySelector<HTMLButtonElement>('[data-flat-row-reset="true"]');
     act(() => reset?.click());
     expect(onSetHtmlAttribute).toHaveBeenCalledExactlyOnceWith("lang", null);
     act(() => root.unmount());
