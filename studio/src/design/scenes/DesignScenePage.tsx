@@ -4,7 +4,7 @@ import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
 import {
   designBriefPrompt, findDesignScenario,
-  type DesignSkillSummary, type DesignSystemSummary, type DesignTemplateSummary,
+  type DesignSkillSummary, type DesignTemplateSummary,
 } from '../../../../shared/design-project';
 import { findMediaStudio, type CreativeStudio } from '../../../../shared/studio-catalog';
 import { IconButton } from '../../components/ui';
@@ -12,6 +12,7 @@ import { StudioToastViewport } from '../../components/StudioToastViewport';
 import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';
 import { scenesForStudio } from '../../motion/creativeStudios';
+import { BrandKitPicker, type SelectedBrandKit } from '../BrandKitPicker';
 import { designClient } from '../designClient';
 import { DesignProjectList } from '../DesignProjectList';
 import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
@@ -44,10 +45,7 @@ export function DesignScenePage({
 
   const [brief, setBrief] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [systems, setSystems] = useState<DesignSystemSummary[]>([]);
-  const [systemQuery, setSystemQuery] = useState('');
-  const [selectedSystem, setSelectedSystem] = useState<DesignSystemSummary | null>(null);
-  const [systemOpen, setSystemOpen] = useState(false);
+  const [selectedBrandKit, setSelectedBrandKit] = useState<SelectedBrandKit | null>(null);
 
   const [skills, setSkills] = useState<DesignSkillSummary[]>([]);
   const [skillQuery, setSkillQuery] = useState('');
@@ -74,7 +72,6 @@ export function DesignScenePage({
   }, [scenario?.id]);
 
   useEffect(() => {
-    designClient.listSystems().then(res => { if (Array.isArray(res?.systems)) setSystems(res.systems); }).catch(() => setSystems([]));
     designClient.listSkills().then(res => { if (Array.isArray(res?.skills)) setSkills(res.skills); }).catch(() => setSkills([]));
   }, []);
 
@@ -88,11 +85,6 @@ export function DesignScenePage({
       .finally(() => { if (!cancelled) setTemplatesLoading(false); });
     return () => { cancelled = true; };
   }, [scenario?.id, templateQuery]);
-
-  const filteredSystems = useMemo(() => {
-    const q = systemQuery.trim().toLowerCase();
-    return systems.filter(s => !q || s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)).slice(0, 48);
-  }, [systems, systemQuery]);
 
   const filteredSkills = useMemo(() => {
     const q = skillQuery.trim().toLowerCase();
@@ -117,7 +109,7 @@ export function DesignScenePage({
     const prompt = designBriefPrompt({
       scenario: scenario.id,
       brief: text,
-      designSystemId: selectedSystem?.id ?? null,
+      designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
       skillId: selectedSkill?.id ?? null,
       templateId: selectedTemplate?.id ?? null,
       language: locale !== 'en' ? locale : null,
@@ -132,7 +124,7 @@ export function DesignScenePage({
       const { project } = await designClient.createProject({
         scenario: scenario.id,
         templateId: selectedTemplate?.id ?? null,
-        designSystemId: selectedSystem?.id ?? null,
+        designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
       });
       onOpenProject(project.id);
     } catch (err) {
@@ -148,7 +140,7 @@ export function DesignScenePage({
       const { project } = await designClient.createProject({
         scenario: template.scenario,
         templateId: template.id,
-        designSystemId: selectedSystem?.id ?? null,
+        designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
       });
       onOpenProject(project.id);
     } catch (err) {
@@ -165,7 +157,7 @@ export function DesignScenePage({
     const prompt = designBriefPrompt({
       scenario: template.scenario,
       brief: brief.trim() || seed,
-      designSystemId: selectedSystem?.id ?? null,
+      designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
       skillId: selectedSkill?.id ?? null,
       templateId: template.id,
       language: locale !== 'en' ? locale : null,
@@ -240,58 +232,8 @@ export function DesignScenePage({
                 />
                 <div className="om-design-composer-dock">
                   <div className="om-design-header-group">
-                    {/* Design System picker */}
-                    <Popover.Root modal={false} open={systemOpen} onOpenChange={setSystemOpen}>
-                      <Popover.Trigger render={
-                        <Button type="button" size="sm" variant={selectedSystem ? 'secondary' : 'ghost'} icon={<RemixIcon name="palette-line" size={14} />}>
-                          {selectedSystem ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <span>{selectedSystem.title}</span>
-                              <span className="om-design-swatches">
-                                {selectedSystem.swatches.slice(0, 3).map(hex => <span key={hex} className="om-design-swatch" style={{ backgroundColor: hex }} />)}
-                              </span>
-                            </span>
-                          ) : t('Design system')}
-                        </Button>
-                      } />
-                      <Popover.Portal>
-                        <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
-                          <Popover.Popup className="om-design-popover" style={{ width: 320, maxHeight: 360 }}>
-                            <input
-                              type="search"
-                              className="om-design-input"
-                              placeholder={t('Search design systems…')}
-                              value={systemQuery}
-                              onChange={e => setSystemQuery(e.target.value)}
-                            />
-                            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              {selectedSystem && (
-                                <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSystem(null); setSystemOpen(false); }}>
-                                  {t('Clear design system')}
-                                </Button>
-                              )}
-                              {filteredSystems.map(sys => (
-                                <Button
-                                  key={sys.id}
-                                  type="button"
-                                  size="sm"
-                                  variant={selectedSystem?.id === sys.id ? 'secondary' : 'ghost'}
-                                  style={{ justifyContent: 'space-between' }}
-                                  onClick={() => { setSelectedSystem(sys); setSystemOpen(false); }}
-                                >
-                                  <span>{sys.title}</span>
-                                  <span className="om-design-swatches">
-                                    {sys.swatches.slice(0, 4).map(hex => (
-                                      <span key={hex} className="om-design-swatch" style={{ backgroundColor: hex }} />
-                                    ))}
-                                  </span>
-                                </Button>
-                              ))}
-                            </div>
-                          </Popover.Popup>
-                        </Popover.Positioner>
-                      </Popover.Portal>
-                    </Popover.Root>
+                    {/* Brand Kit picker backed by Motion Brand Kits */}
+                    <BrandKitPicker selected={selectedBrandKit} onSelect={setSelectedBrandKit} />
 
                     {/* Design Skill picker */}
                     <Popover.Root modal={false} open={skillOpen} onOpenChange={setSkillOpen}>

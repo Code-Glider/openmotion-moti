@@ -65,7 +65,13 @@
     "Project actions": "项目操作",
     "Move to Trash": "移至回收站",
     "Mobile App": "移动应用",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "在 390×844 手机画框中预览的移动端 App 界面原型。"
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "在 390×844 手机画框中预览的移动端 App 界面原型。",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "搜索 Brand Kit…",
+    "Clear Brand Kit": "清除 Brand Kit",
+    "View Brand Kit details": "查看 Brand Kit 详情",
+    "View details": "查看详情",
+    "Use this Brand Kit": "使用此 Brand Kit"
   },
   "ja": {
     "Projects": "プロジェクト",
@@ -133,7 +139,13 @@
     "Project actions": "プロジェクト操作",
     "Move to Trash": "ゴミ箱へ移動",
     "Mobile App": "モバイルアプリ",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844のスマートフォン枠でプレビューするモバイルアプリUI。"
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844のスマートフォン枠でプレビューするモバイルアプリUI。",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Brand Kitを検索…",
+    "Clear Brand Kit": "Brand Kitを解除",
+    "View Brand Kit details": "Brand Kitの詳細を見る",
+    "View details": "詳細を見る",
+    "Use this Brand Kit": "このBrand Kitを使う"
   },
   "ko": {
     "Projects": "프로젝트",
@@ -201,7 +213,13 @@
     "Project actions": "프로젝트 작업",
     "Move to Trash": "휴지통으로 이동",
     "Mobile App": "모바일 앱",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844 모바일 프레임에서 미리 보는 모바일 앱 인터페이스."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844 모바일 프레임에서 미리 보는 모바일 앱 인터페이스.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Brand Kit 검색…",
+    "Clear Brand Kit": "Brand Kit 해제",
+    "View Brand Kit details": "Brand Kit 상세 보기",
+    "View details": "상세 보기",
+    "Use this Brand Kit": "이 Brand Kit 사용"
   },
   "de": {
     "Projects": "Projekte",
@@ -269,7 +287,13 @@
     "Project actions": "Projektaktionen",
     "Move to Trash": "In den Papierkorb",
     "Mobile App": "Mobile App",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "Mobile-App-Oberflächen in einem 390×844-Smartphone-Rahmen."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Mobile-App-Oberflächen in einem 390×844-Smartphone-Rahmen.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Brand Kits suchen…",
+    "Clear Brand Kit": "Brand Kit entfernen",
+    "View Brand Kit details": "Brand-Kit-Details anzeigen",
+    "View details": "Details anzeigen",
+    "Use this Brand Kit": "Dieses Brand Kit verwenden"
   },
   "fr": {
     "Projects": "Projets",
@@ -337,7 +361,13 @@
     "Project actions": "Actions du projet",
     "Move to Trash": "Mettre à la corbeille",
     "Mobile App": "Application mobile",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces d’application mobile prévisualisées dans un cadre 390×844."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces d’application mobile prévisualisées dans un cadre 390×844.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Rechercher des Brand Kits…",
+    "Clear Brand Kit": "Retirer le Brand Kit",
+    "View Brand Kit details": "Voir les détails du Brand Kit",
+    "View details": "Voir les détails",
+    "Use this Brand Kit": "Utiliser ce Brand Kit"
   },
   "ru": {
     "Projects": "Проекты",
@@ -405,7 +435,13 @@
     "Project actions": "Действия с проектом",
     "Move to Trash": "В корзину",
     "Mobile App": "Мобильное приложение",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "Интерфейсы мобильных приложений в рамке 390×844."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Интерфейсы мобильных приложений в рамке 390×844.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Поиск Brand Kit…",
+    "Clear Brand Kit": "Сбросить Brand Kit",
+    "View Brand Kit details": "Подробнее о Brand Kit",
+    "View details": "Подробнее",
+    "Use this Brand Kit": "Использовать этот Brand Kit"
   },
   "es": {
     "Projects": "Proyectos",
@@ -473,7 +509,13 @@
     "Project actions": "Acciones del proyecto",
     "Move to Trash": "Mover a la papelera",
     "Mobile App": "App móvil",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces de apps móviles en un marco de teléfono de 390×844."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces de apps móviles en un marco de teléfono de 390×844.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Buscar Brand Kits…",
+    "Clear Brand Kit": "Quitar Brand Kit",
+    "View Brand Kit details": "Ver detalles del Brand Kit",
+    "View details": "Ver detalles",
+    "Use this Brand Kit": "Usar este Brand Kit"
   },
   "pt-BR": {
     "Projects": "Projetos",
@@ -541,7 +583,13 @@
     "Project actions": "Ações do projeto",
     "Move to Trash": "Mover para a lixeira",
     "Mobile App": "App mobile",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces de aplicativos móveis em um quadro de 390×844."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces de aplicativos móveis em um quadro de 390×844.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Pesquisar Brand Kits…",
+    "Clear Brand Kit": "Limpar Brand Kit",
+    "View Brand Kit details": "Ver detalhes do Brand Kit",
+    "View details": "Ver detalhes",
+    "Use this Brand Kit": "Usar este Brand Kit"
   },
   "it": {
     "Projects": "Progetti",
@@ -609,7 +657,13 @@
     "Project actions": "Azioni progetto",
     "Move to Trash": "Sposta nel cestino",
     "Mobile App": "App mobile",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfacce di app mobile in anteprima in una cornice 390×844."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfacce di app mobile in anteprima in una cornice 390×844.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Cerca Brand Kit…",
+    "Clear Brand Kit": "Rimuovi Brand Kit",
+    "View Brand Kit details": "Vedi dettagli Brand Kit",
+    "View details": "Vedi dettagli",
+    "Use this Brand Kit": "Usa questo Brand Kit"
   },
   "tr": {
     "Projects": "Projeler",
@@ -677,6 +731,12 @@
     "Project actions": "Proje işlemleri",
     "Move to Trash": "Çöp kutusuna taşı",
     "Mobile App": "Mobil uygulama",
-    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844 telefon çerçevesinde önizlenen mobil uygulama arayüzleri."
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844 telefon çerçevesinde önizlenen mobil uygulama arayüzleri.",
+    "Brand Kit": "Brand Kit",
+    "Search Brand Kits…": "Brand Kit ara…",
+    "Clear Brand Kit": "Brand Kit temizle",
+    "View Brand Kit details": "Brand Kit ayrıntılarını gör",
+    "View details": "Ayrıntıları gör",
+    "Use this Brand Kit": "Bu Brand Kit’i kullan"
   }
 }
