@@ -1,5 +1,6 @@
 import type { LibraryGeneration } from './asset-library.ts';
 import type { GenerationOptions } from './generation-options.ts';
+import { openDesignImageReferenceCap } from './opendesign-models.ts';
 /** Public contract shared by the model gateway, MCP and Studio. Never contains credentials. */
 export const modalities = ['image', 'video', 'audio'] as const;
 export type Modality = typeof modalities[number];
@@ -62,7 +63,12 @@ export type GenerationJob = { id: string; projectId?: string; library?: LibraryG
 
 /** Effective adapter input contract, shared by service validation and existing Studio controls. */
 export function modelReferenceLimit(model: Model): number {
-  if (model.modality === 'image' && model.supportsImageReference) return ['account', 'codex'].includes(model.provider) ? 1 : model.maxInputImages ?? 1;
+  if (model.modality === 'image' && model.supportsImageReference) {
+    if (model.provider === 'codex') return 1;
+    const cap = ['opendesign', 'account'].includes(model.provider) ? openDesignImageReferenceCap(model.modelId) : undefined;
+    // Account catalogues saved before their max_input_images was kept fall back to the measured limit.
+    return Math.min(model.maxInputImages ?? (model.provider === 'account' ? cap : undefined) ?? 1, cap ?? Infinity);
+  }
   return model.modality === 'video' ? Math.min(model.maxInputImages ?? 0, 1) : 0;
 }
 /** Local eligibility; the service additionally rechecks project, origin and credentials. */

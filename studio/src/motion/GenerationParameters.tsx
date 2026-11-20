@@ -156,13 +156,14 @@ function DurationControl({
   );
 }
 
-export function GenerationParameters({ model, draft, hasInputImage = false, onChange }: { model: Model; draft: ParameterDraft; hasInputImage?: boolean; onChange: (draft: ParameterDraft) => void }) {
+/** `hidden` fields are set by the feature itself, so they are not offered as choices. */
+export function GenerationParameters({ model, draft, hasInputImage = false, hidden = [], onChange }: { model: Model; draft: ParameterDraft; hasInputImage?: boolean; hidden?: readonly string[]; onChange: (draft: ParameterDraft) => void }) {
   const { t } = useI18n();
   let extra: Record<string, unknown> = {};
   try { extra = requestParameters({ ...draft, values: {} }); } catch { /* The raw editor remains editable; submission reports parse errors through Toast. */ }
   const inputImageRatio = parameterInputImageRatio(model, draft, hasInputImage);
   const activeOptions = (hasInputImage ? generationOptions(model, true) : undefined) ?? model.generationOptions;
-  const fields = (activeOptions?.fields ?? []).filter(field => !inputImageRatio || field.key !== 'ratio');
+  const fields = (activeOptions?.fields ?? []).filter(field => (!inputImageRatio || field.key !== 'ratio') && !hidden.includes(field.key));
   const aspectField = fields.find(field => field.key === 'aspect_ratio');
   const activeAspectRatio = draft.values.aspect_ratio ?? extra.aspect_ratio ?? model.defaults?.aspect_ratio ?? aspectField?.default;
   const allowedResolutions = compatibleImageResolutions(model, activeAspectRatio, hasInputImage);
@@ -251,6 +252,18 @@ export function GenerationParameters({ model, draft, hasInputImage = false, onCh
     </div>
   );
 
+  const selectValue = (field: GenerationOption) => {
+    const current = value(field);
+    return current === undefined || typeof current === 'object' ? '__auto' : String(current);
+  };
+  const fieldSelect = (field: GenerationOption) => {
+    const choices = choicesFor(field);
+    return <Select label={t(field.label)} value={selectValue(field)} onCommit={next => set(field, choices.find(choice => String(choice.value) === next)?.value)}
+      options={[{ value: '__auto', label: t('Model default') }, ...choices.map(choice => ({
+        value: String(choice.value), label: t(field.key === 'resolution' && /^\d+k$/i.test(choice.label) ? choice.label.toUpperCase() : choice.label),
+        disabled: constraints[field.key] !== undefined && constraints[field.key] !== choice.value,
+      }))]} />;
+  };
   return <div className="om-generation-settings">
     {hasQuickCards && (
       <div className="om-param-cards">
@@ -378,10 +391,7 @@ export function GenerationParameters({ model, draft, hasInputImage = false, onCh
           {field.key === 'duration' && (field.kind === 'number' || (field.kind === 'choice' && (field.choices?.length ?? 0) <= 6))
             ? <DurationControl field={field} currentValue={typeof value(field) === 'number' ? value(field) as number : undefined} inputId={`generation-${field.key}`} onCommit={v => set(field, v)} />
             : <>
-                {field.kind === 'choice' && (field.presentation === 'ratio' ? renderRatioTiles(field) : isVideo && field.key === 'resolution' && (field.choices?.length ?? 0) <= 4 ? renderChoicePills(field) : (() => {
-                  const fieldChoices = choicesFor(field);
-                  return <Select label={t(field.label)} value={value(field) === undefined ? '__auto' : String(value(field))} onCommit={v => set(field, v === '__auto' ? undefined : fieldChoices.find(c => String(c.value) === v)!.value)} options={[{ value: '__auto', label: t('Model default') }, ...fieldChoices.map(c => ({ value: String(c.value), label: t(c.label) }))]} />;
-                })())}
+                {field.kind === 'choice' && (field.presentation === 'ratio' ? renderRatioTiles(field) : isVideo && field.key === 'resolution' && (field.choices?.length ?? 0) <= 4 ? renderChoicePills(field) : fieldSelect(field))}
                 {field.kind === 'boolean' && <button className="om-switch" role="switch" aria-label={t(field.label)} aria-checked={Boolean(value(field))} onClick={() => set(field, !value(field))}><span /></button>}
                 {field.kind === 'number' && <div className="om-generation-number"><label className="om-field"><input id={`generation-${field.key}`} aria-label={t(field.label)} type="number" min={field.min} max={field.max} step={field.step} placeholder={t('Auto')} value={typeof value(field) === 'number' ? value(field) as number : ''} onChange={e => set(field, e.target.value === '' ? undefined : Number(e.target.value))} /></label>{field.min !== undefined && field.max !== undefined && <Slider label={t(field.label)} min={field.min} max={field.max} step={field.step} value={Number(value(field) ?? field.min)} onCommit={v => set(field, v)} />}</div>}
                 {field.kind === 'text' && <label className="om-field"><input id={`generation-${field.key}`} aria-label={t(field.label)} value={String(value(field) ?? '')} onChange={e => set(field, e.target.value || undefined)} /></label>}
