@@ -70,7 +70,8 @@ export function BlackFridayTopBanner({ onClose, onExpire, trackingPage }: { onCl
   const copy = {
     aria: t('Black Friday campaign banner'),
     timerLabel: t('Ends in'),
-    dayUnit: t('d'),
+    // English keeps the short unit; other languages translate a descriptive key, never a one-letter message.
+    dayUnit: locale === 'en' ? 'd' : t('Countdown day unit'),
     offerBefore: t("Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more "),
     offerHighlight: t('7-day unlimited'),
     offerAfter: t(', up to 50% off annual'),

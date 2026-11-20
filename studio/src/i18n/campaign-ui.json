@@ -2,7 +2,7 @@
   "zh-CN": {
     "Black Friday campaign banner": "黑五活动 Banner",
     "Ends in": "距结束",
-    "d": "天",
+    "Countdown day unit": "天",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "黑五全年最低价！DeepSeek V4.1 Flash Eco、DeepSeek V4.1 Flash 等 ",
     "7-day unlimited": "7天无限用",
     ", up to 50% off annual": "，年付低至 5 折",
@@ -13,7 +13,7 @@
   "ja": {
     "Black Friday campaign banner": "ブラックフライデーキャンペーンバナー",
     "Ends in": "終了まで",
-    "d": "日",
+    "Countdown day unit": "日",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "ブラックフライデー年間最安値！DeepSeek V4.1 Flash Eco、DeepSeek V4.1 Flash など",
     "7-day unlimited": "7日間使い放題",
     ", up to 50% off annual": "、年払いは最大50%オフ",
@@ -24,7 +24,7 @@
   "ko": {
     "Black Friday campaign banner": "블랙프라이데이 캠페인 배너",
     "Ends in": "종료까지",
-    "d": "일",
+    "Countdown day unit": "일",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "블랙프라이데이 연중 최저가! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash 등 ",
     "7-day unlimited": "7일 무제한",
     ", up to 50% off annual": ", 연간 결제 최대 50% 할인",
@@ -35,7 +35,7 @@
   "de": {
     "Black Friday campaign banner": "Black-Friday-Aktionsbanner",
     "Ends in": "Endet in",
-    "d": "T",
+    "Countdown day unit": "Tg.",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "Black Friday – Tiefstpreis des Jahres! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash und mehr ",
     "7-day unlimited": "7 Tage unbegrenzt",
     ", up to 50% off annual": ", bis zu 50 % Rabatt auf Jahrespläne",
@@ -46,7 +46,7 @@
   "fr": {
     "Black Friday campaign banner": "Bannière de la campagne Black Friday",
     "Ends in": "Se termine dans",
-    "d": "j",
+    "Countdown day unit": "j",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "Black Friday : le prix le plus bas de l’année ! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash et plus ",
     "7-day unlimited": "illimités pendant 7 jours",
     ", up to 50% off annual": ", jusqu’à -50 % sur l’abonnement annuel",
@@ -57,7 +57,7 @@
   "ru": {
     "Black Friday campaign banner": "Баннер акции «Чёрная пятница»",
     "Ends in": "До конца",
-    "d": "д",
+    "Countdown day unit": "д",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "Чёрная пятница — самая низкая цена года! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash и другие: ",
     "7-day unlimited": "7 дней без ограничений",
     ", up to 50% off annual": ", годовой план со скидкой до 50%",
@@ -68,7 +68,7 @@
   "es": {
     "Black Friday campaign banner": "Banner de la campaña Black Friday",
     "Ends in": "Termina en",
-    "d": "d",
+    "Countdown day unit": "d",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "¡Black Friday, el precio más bajo del año! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash y más: ",
     "7-day unlimited": "7 días ilimitados",
     ", up to 50% off annual": ", hasta un 50 % de descuento en el plan anual",
@@ -79,7 +79,7 @@
   "pt-BR": {
     "Black Friday campaign banner": "Banner da campanha Black Friday",
     "Ends in": "Termina em",
-    "d": "d",
+    "Countdown day unit": "d",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "Black Friday, o menor preço do ano! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash e mais: ",
     "7-day unlimited": "7 dias ilimitados",
     ", up to 50% off annual": ", até 50% de desconto no plano anual",
@@ -90,7 +90,7 @@
   "it": {
     "Black Friday campaign banner": "Banner della campagna Black Friday",
     "Ends in": "Termina tra",
-    "d": "g",
+    "Countdown day unit": "g",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "Black Friday, il prezzo più basso dell’anno! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash e altri: ",
     "7-day unlimited": "7 giorni illimitati",
     ", up to 50% off annual": ", fino al 50% di sconto sul piano annuale",
@@ -101,7 +101,7 @@
   "tr": {
     "Black Friday campaign banner": "Black Friday kampanya banner'ı",
     "Ends in": "Bitişe",
-    "d": "g",
+    "Countdown day unit": "g",
     "Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ": "Black Friday, yılın en düşük fiyatı! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash ve daha fazlası: ",
     "7-day unlimited": "7 gün sınırsız",
     ", up to 50% off annual": ", yıllık planda %50'ye varan indirim",
