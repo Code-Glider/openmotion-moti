@@ -1,4 +1,5 @@
 import { Button } from 'open-design-ui/button';
+import { ExploreCoverImage } from './ExploreCoverImage';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -41,9 +42,10 @@ const slides: FeaturedSlide[] = [{
   return { ...example, id, icon: scene.icon, subtitle: target.studio.title, hint: scene.hint, scene: { target, prompt: example.prompt } };
 })];
 
-function FeaturedClip({ src, poster, playing }: { src: string; poster: string; playing: boolean }) {
+function FeaturedClip({ src, playing }: { src: string; playing: boolean }) {
   const player = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(playing);
   const videoSource = useSkillPreview(src, (started || playing) && !failed);
   useEffect(() => { if (playing) setStarted(true); }, [playing]);
@@ -53,7 +55,8 @@ function FeaturedClip({ src, poster, playing }: { src: string; poster: string; p
     if (playing) void video.play().catch(() => { /* The poster remains available if autoplay is blocked. */ });
     else video.pause();
   }, [playing, videoSource]);
-  return videoSource && !failed ? <video ref={player} src={videoSource} poster={poster} muted loop playsInline preload="none" aria-hidden="true" onError={() => setFailed(true)} /> : null;
+  return videoSource && !failed ? <video ref={player} src={videoSource} muted loop playsInline preload="none" aria-hidden="true"
+    style={{ opacity: ready ? 1 : 0 }} onLoadedData={() => setReady(true)} onError={() => setFailed(true)} /> : null;
 }
 
 export function ExploreSpotlight({ active, onNavigate, onOpenMotionEditor, motionEditorDisabled, onOpenBlackFriday, onModelHub }: {
@@ -114,8 +117,8 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotionEditor, motio
       return <div key={slide.id} className="om-feature-slide" data-scene={slide.id} data-clickable={slide.hub ? 'true' : undefined} aria-hidden={!current} inert={!current}
         onClick={slide.hub ? event => { if ((event.target as Element).closest('button')) return; track('slide_action', { slide: slide.id, position: i }); onModelHub(slide.hub!); } : undefined}>
         <div className="om-feature-art" aria-hidden="true"><div className="om-feature-camera">
-          <img src={slide.poster} alt="" />
-          {current && active && visible && slide.clip && <FeaturedClip src={slide.clip} poster={slide.poster} playing={playing} />}
+          <ExploreCoverImage src={slide.poster} eager={current} />
+          {current && active && visible && slide.clip && <FeaturedClip src={slide.clip} playing={playing} />}
         </div></div>
         {slide.credit && <small className="om-scene-credit">{slide.credit}</small>}
         <div className="om-discovery-hero-copy">

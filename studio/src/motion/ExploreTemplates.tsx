@@ -108,7 +108,7 @@ export function TemplatePromptAction({ item, onTry }: { item: GalleryTemplate; o
   const prompt = [item.description?.trim(), item.styleDescription?.trim()].filter(Boolean).join('\n\n');
   if (!prompt) return null;
   return <Button variant="plain" className="om-nav-item" onClick={() => onTry(prompt)}>
-    <RemixIcon name="movie-line" size={15} />{t('Use this prompt')}<RemixIcon name="arrow-right-line" size={15} />
+    {t('Use this prompt')}<RemixIcon name="arrow-right-line" size={15} />
   </Button>;
 }
 
@@ -117,7 +117,7 @@ export function ExploreTemplateCard({ item, active, onPriority, onTry, onOpen }:
 }) {
   const { t } = useI18n();
   const { openLibrary } = useWorkspaceChrome();
-  return <TemplateGalleryCard showCoverDuration={false} template={item} playbackId={'community/' + item.id} active={active} onPriority={onPriority}
+  return <TemplateGalleryCard brandedFallback showCoverDuration={false} template={item} playbackId={'community/' + item.id} active={active} onPriority={onPriority}
     onSelect={(template, trigger) => { onOpen?.(); openLibrary(trigger, template); }}
     footer={<div className="om-feed-template-copy">
       <strong>{item.title}</strong>

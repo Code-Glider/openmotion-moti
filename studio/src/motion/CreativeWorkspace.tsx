@@ -9,6 +9,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { WorkspaceResourceActions } from './WorkspaceResourceActions';
 import { BackToExploreButton } from './BackToExploreButton';
 import { AssetsPage } from './AssetsPage';
+import type { CinemaTemplate } from './cinemaTemplates';
 import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
 import { destinationTarget, reportCreativeClick } from './exploreTracking';
@@ -32,14 +33,15 @@ export type StudioCreation = {
   openCreate?: (prompt?: string, scene?: StudioScene['id']) => void;
 };
 
-export function CreativeWorkspace({ destination, soundTab, skill, visit, onNavigate, onOpenStudio, breadcrumb, onBackToExplore, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, soundTab, skill, visit, onNavigate, onOpenStudio, breadcrumb, onBackToExplore, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, hasProject, active, drafts, cinemaTemplate }: {
+  cinemaTemplate?: CinemaTemplate;
   onOpenBrandKit?: () => void;
   onSelectDesignScene?: (scene: DesignTabId) => void;
   soundTab?: SoundTabId | null;
   onOpenStudio: (next: StudioDestination) => void; breadcrumb?: ReactNode; onBackToExplore?: () => void;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination, nextSoundTab?: SoundTabId | null) => void; hasProject: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const comingSoon = studioComingSoon(destination?.studio);
   const catalog = useMediaCatalog(active && Boolean(destination) && !comingSoon);
   if (!destination) return null;
@@ -49,7 +51,14 @@ export function CreativeWorkspace({ destination, soundTab, skill, visit, onNavig
   const activeSoundTab: SoundTabId | undefined = isSoundStudio
     ? (destination.landing ? (scene.id === 'speech' ? 'speech' : 'music') : (soundTab ?? (scene.id === 'speech' ? 'speech' : 'music')))
     : undefined;
-  const draftKey = activeSoundTab ? `sound/${activeSoundTab}` : studioDraftKey(destination, skill);
+  const draftKey = activeSoundTab ? `sound/${activeSoundTab}` : studioDraftKey(destination, skill) + (cinemaTemplate ? '/' + cinemaTemplate.id : '');
+  const initialDraft: AssetDraft | undefined = drafts.current.get(draftKey) ?? (cinemaTemplate && {
+    modality: 'video',
+    prompt: (locale === 'zh-CN' ? cinemaTemplate.zh : cinemaTemplate.en).prompt,
+    preferredModel: cinemaTemplate.model.id,
+    shotPreferences: { aspect: cinemaTemplate.aspect, duration: cinemaTemplate.duration },
+    references: [],
+  });
   const firstFrameScene = studio.scenes.find(id => id === 'image-to-video');
   const useAsFirstFrame = scene.modality === 'image' && firstFrameScene ? (reference: AssetDraft['references'][number]) => {
     const next = studioDestination(studio, firstFrameScene);
@@ -94,8 +103,9 @@ export function CreativeWorkspace({ destination, soundTab, skill, visit, onNavig
     {breadcrumb}
     {destination.home ? (onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && <WorkspaceBack fallback={onExplore} />) : <>
     <header className="om-studio-bar" data-sound-bar={showSoundBar || undefined}>
-      {!showSoundBar && (onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && studio.surface === 'techniques' &&
-        <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination))} fallback={() => onCollection(studio)} />)}
+      {!showSoundBar && (onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} />
+        : !breadcrumb && studio.id === 'cinema' ? <WorkspaceBack inline fallback={onExplore} />
+        : !breadcrumb && studio.surface === 'techniques' && <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination))} fallback={() => onCollection(studio)} />)}
       {showSoundBar ? (
         <h1 className="sr-only">{destination.mediaTab ? t(mediaLabels[scene.modality]) : t(studio.title)}</h1>
       ) : (
@@ -117,7 +127,7 @@ export function CreativeWorkspace({ destination, soundTab, skill, visit, onNavig
       {onOpenBrandKit && <div className="om-control-row om-studio-library-link"><WorkspaceResourceActions onBrandKit={onOpenBrandKit} /></div>}
     </header>
     </>}
-    <AssetsPage key={isSoundStudio ? `sound/${visit}${destination.home ? ':home' : ''}` : draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, draftKey, soundTab: activeSoundTab, selectSoundTab, useAsFirstFrame, reuseInScene, initialDraft: drafts.current.get(draftKey),
+    <AssetsPage key={isSoundStudio ? `sound/${visit}${destination.home ? ':home' : ''}` : draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, draftKey, soundTab: activeSoundTab, selectSoundTab, useAsFirstFrame, reuseInScene, initialDraft,
       remember: draft => drafts.current.set(draftKey, draft), chooseModel: model => onNavigate({ ...destination, model }, activeSoundTab === 'music' || activeSoundTab === 'speech' ? null : activeSoundTab), openCreate }} />
   </div>;
 }

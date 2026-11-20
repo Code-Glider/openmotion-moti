@@ -150,6 +150,7 @@
   --motion-accent: #007106;
   --motion-accent-hover: #004a04;
   --motion-accent-soft: #eaffeb;
+  --motion-attribution-link: #47658c;
   --motion-brand-soft: #d7ffd8;
   --motion-highlight: #aaffab;
   --motion-action: #121212;
@@ -251,6 +252,7 @@
   --motion-accent: #00ff08;
   --motion-accent-hover: #75ff77;
   --motion-accent-soft: #0d350e;
+  --motion-attribution-link: #91a8ca;
   --motion-brand-soft: #0d350e;
   --motion-highlight: #004a04;
   --motion-action: #f7f7f7;
@@ -353,6 +355,7 @@
     --motion-accent: #00ff08;
     --motion-accent-hover: #75ff77;
     --motion-accent-soft: #0d350e;
+    --motion-attribution-link: #91a8ca;
     --motion-brand-soft: #0d350e;
     --motion-highlight: #004a04;
     --motion-action: #f7f7f7;

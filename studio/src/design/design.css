@@ -1308,6 +1308,17 @@
   cursor: pointer;
 }
 
+.om-design-explore-cover {
+  position: relative;
+}
+
+.om-design-explore-use {
+  position: absolute;
+  min-inline-size: var(--motion-space-56);
+  inset-inline-end: var(--motion-space-12);
+  inset-block-end: var(--motion-space-12);
+}
+
 .om-design-gallery-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1336,6 +1347,10 @@
 
   .om-design-gallery-card:is(:hover, :focus-within) .om-design-gallery-action {
     opacity: 1;
+  }
+
+  .om-design-gallery-card:not(:hover, :focus-within) .om-design-explore-use {
+    pointer-events: none;
   }
 }
 

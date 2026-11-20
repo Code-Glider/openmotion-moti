@@ -411,6 +411,12 @@
 [data-motion-studio] .om-button.om-filter-pill { border-color: transparent; border-radius: var(--motion-radius-full); background: var(--motion-gallery-control); color: var(--motion-muted); }
 [data-motion-studio] .om-button.om-filter-pill:hover { background: var(--motion-hover); color: var(--motion-strong); }
 [data-motion-studio] .om-button.om-filter-pill[aria-pressed="true"] { background: var(--motion-accent-soft); color: var(--motion-accent); }
+[data-motion-studio] .om-app-header .om-creative-strip > [data-nav-slot] > .om-nav-item[aria-current="page"],
+[data-motion-studio] .om-app-header .om-creative-strip > [data-nav-slot] > .om-creative-split[data-active="true"],
+[data-motion-studio] .om-explore-shelf .om-button.om-filter-pill[aria-pressed="true"] {
+  background: light-dark(var(--motion-hover), var(--motion-chrome-active));
+  color: var(--motion-accent);
+}
 [data-motion-studio] .om-creation-mode { padding: var(--motion-space-2); }
 [data-motion-studio] .om-creation-mode .om-nav-item { padding-block: var(--motion-space-4); }
 [data-motion-studio] .om-generation-settings .om-nav-item { min-height: var(--motion-control-sm); padding-block: var(--motion-space-4); font-size: var(--motion-text-sm); }

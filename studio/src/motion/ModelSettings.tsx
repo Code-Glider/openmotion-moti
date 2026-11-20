@@ -61,10 +61,13 @@ function providerSubtitle(provider: ProviderConnection, t: ReturnType<typeof use
 export function ModelSettings({ onClose, openAccount, initialCategory = 'all', providerId, onProviderChange }: { onClose?: () => void; openAccount?: () => void; initialCategory?: string; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t, locale } = useI18n(), directory = useProviderDirectory(), toast = useToast();
   const [localSelected, setSelected] = useState(initialCategory === 'local' ? 'codex' : 'account'), [query, setQuery] = useState(''), [category, setCategory] = useState(initialCategory);
-  const requestedProvider = providerId === undefined ? localSelected : providerId ?? 'account';
   const [status, setStatus] = useState('all'), [protocol, setProtocol] = useState('all');
   const [adding, setAdding] = useState(false), [localDetailOpen, setDetailOpen] = useState(false);
-  const detailOpen = providerId === undefined ? localDetailOpen : Boolean(providerId);
+  const [handoffProvider, setHandoffProvider] = useState<string>();
+  const handledHandoff = useRef(false);
+  const entry = tracking.settingsEntryFrom();
+  const requestedProvider = providerId ?? handoffProvider ?? (providerId === undefined ? localSelected : 'account');
+  const detailOpen = Boolean(providerId ?? handoffProvider) || (providerId === undefined && localDetailOpen);
   const data = directory.data;
   const visibleProviders = data?.providers.filter(provider => {
     const models = data.models.filter(model => model.provider === provider.id);
@@ -72,6 +75,16 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
     // New custom connections need to remain configurable before their first model sync.
     return !textOnly || provider.custom && !models.length;
   }) ?? [];
+  const rejectedProvider = visibleProviders.find(p => p.configured && p.verification === 'rejected')?.id;
+  useEffect(() => {
+    if (entry !== 'agent_media_key_rejected') {
+      handledHandoff.current = false;
+      setHandoffProvider(undefined);
+    } else if (providerId == null && rejectedProvider && !handledHandoff.current) {
+      handledHandoff.current = true;
+      setHandoffProvider(rejectedProvider);
+    }
+  }, [entry, providerId, rejectedProvider]);
   const selected = visibleProviders.some(provider => provider.id === requestedProvider) ? requestedProvider : 'account';
   const providers = visibleProviders.filter(provider => {
     const matches = category === 'all' || category === 'configured' && provider.configured || category === 'multimodal' && provider.kinds.length > 1
@@ -86,9 +99,13 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
   const select = (id: string) => {
     const item = visibleProviders.find(provider => provider.id === id);
     if (item) tracking.reportSettingsClick('provider_list', 'select_provider', { provider: item });
-    setSelected(id); setDetailOpen(true); onProviderChange?.(id);
+    handledHandoff.current = true;
+    setHandoffProvider(undefined); setSelected(id); setDetailOpen(true); onProviderChange?.(id);
   };
-  const closeDetail = () => { setDetailOpen(false); onProviderChange?.(null); };
+  const closeDetail = () => {
+    handledHandoff.current = true;
+    setHandoffProvider(undefined); setDetailOpen(false); onProviderChange?.(null);
+  };
   const renderProviderItem = (item: ProviderConnection) => {
     const official = isOfficialProvider(item);
     const roleHint = item.category === 'account' ? t('Your account') : official ? t('Official') : item.custom ? t('Custom provider') : item.kinds.length > 1 ? t('Multimodal') : modelKindLabel(item.kinds[0], t, locale);
@@ -164,15 +181,25 @@ function formatPlanLabel(plan?: string | null) {
  */
 function AccountProviderHeader({ provider, openAccount, showToast }: { provider: ProviderConnection; openAccount?: () => void; showToast: ReturnType<typeof useToast>['showToast'] }) {
   // Until the summary loads (or if it fails), the callout below still signs in here rather than leaving the page.
-  const { t } = useI18n(), { state: { account }, busy, action } = useAccountSignIn('provider_detail', showToast, provider);
+  const { t } = useI18n(), { state: { account }, busy, action, subscription, refreshBilling } = useAccountSignIn('provider_detail', showToast, provider);
+  const [refreshing, setRefreshing] = useState(false);
+  const entry = tracking.settingsEntryFrom();
   const plan = upgradePlan(account);
   const showStatusGuide = Boolean(account && ['signed-out', 'unavailable', 'authorizing', 'reauth-required'].includes(account.state));
   const showUpgradeGuide = Boolean(plan && account);
-  const showSignInFallback = !showStatusGuide && !showUpgradeGuide && !provider.configured;
-  const advisoryReason = !showStatusGuide && !showUpgradeGuide && provider.configured && provider.reason && provider.reason !== 'Included with your account' ? provider.reason : undefined;
+  const showBillingRecovery = Boolean(!showStatusGuide && !showUpgradeGuide && account?.state === 'signed-in' && (account.billingUnavailable || entry === 'agent_media_balance_low'));
+  const showSignInFallback = !showStatusGuide && !showUpgradeGuide && !showBillingRecovery && !provider.configured;
+  const advisoryReason = !showStatusGuide && !showUpgradeGuide && !showBillingRecovery && provider.configured && provider.reason && provider.reason !== 'Included with your account' ? provider.reason : undefined;
   const identity = account?.user?.email?.trim() || account?.user?.name?.trim();
-  const planBadge = !showStatusGuide && !showUpgradeGuide && provider.configured ? formatPlanLabel(account?.plan) : undefined;
+  const planBadge = !showStatusGuide && !showUpgradeGuide && !showBillingRecovery && provider.configured ? formatPlanLabel(account?.plan) : undefined;
   const meta = identity ? `${identity} · ${t('Your account')}` : t('Your account');
+  async function retryBilling() {
+    tracking.reportSettingsClick('provider_detail', 'refresh_billing');
+    setRefreshing(true);
+    try { await refreshBilling(); } finally { setRefreshing(false); }
+  }
+  const billingUnavailable = Boolean(account?.billingUnavailable);
+  const upgradeEntry = entry === 'agent_media_upgrade_free' || entry === 'agent_media_upgrade_go';
   return <>
     <header className="om-settings-row om-provider-header">
       <div className="om-provider-heading">
@@ -187,10 +214,19 @@ function AccountProviderHeader({ provider, openAccount, showToast }: { provider:
           <p className="om-muted om-provider-meta">{meta}</p>
         </div>
       </div>
-      {provider.configured && openAccount && !showStatusGuide && !showUpgradeGuide && <Button variant="ghost" className="om-button h-auto" onClick={openAccount}>{t('Manage account')}<RemixIcon name="arrow-right-line" size={14} /></Button>}
+      {provider.configured && openAccount && !showStatusGuide && !showUpgradeGuide && !showBillingRecovery && <Button variant="ghost" className="om-button h-auto" onClick={openAccount}>{t('Manage account')}<RemixIcon name="arrow-right-line" size={14} /></Button>}
     </header>
     {showStatusGuide ? <AccountStatus account={account!} busy={busy} action={action} showToast={showToast} />
-      : showUpgradeGuide ? <UpgradeGuide plan={plan!} area="provider_detail" showToast={showToast} />
+      : showUpgradeGuide ? <UpgradeGuide plan={plan!} subscription={subscription} />
+      : showBillingRecovery ? <section className="om-card om-card-stack">
+        <h2 className="om-subtitle">{t(billingUnavailable ? 'OpenDesign billing is unavailable' : 'OpenDesign balance is too low')}</h2>
+        <p className="om-muted">{t(billingUnavailable ? "Couldn't verify your OpenDesign plan and balance right now." : 'Your OpenDesign balance was too low for the media request. Check your credits in OpenDesign, then refresh here.')}</p>
+        {billingUnavailable && upgradeEntry && <p className="om-muted">{t('Multimodal generation requires OpenDesign Plus or above.')}</p>}
+        <div className="om-settings-actions">
+          {subscription.button('manage_subscription')}{subscription.link}
+          <Button variant="ghost" className="om-button h-auto" disabled={refreshing} aria-busy={refreshing} onClick={() => void retryBilling()}>{t('Refresh')}</Button>
+        </div>
+      </section>
       : showSignInFallback ? <div className="om-card om-account-callout">
         <span className="om-account-callout-icon" aria-hidden="true"><RemixIcon name="account-circle-line" size={22} /></span>
         <div className="om-account-callout-body">
@@ -254,6 +290,7 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
       : <form noValidate ref={validation.formRef} className="om-provider-form" onSubmit={event => { event.preventDefault(); if (!validation.validate()) return; void change(async () => {
         await gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}), ...(!fixedOrigin ? { baseUrl: baseUrl.trim() } : {}), ...(provider.custom ? { label } : {}) }); validation.reset(); setApiKey(''); setVisible(false);
       }, 'Provider settings saved'); }}>
+        {provider.verification === 'rejected' && <p className="om-muted" role="alert">{t('Credentials or permissions rejected; update the key')}</p>}
         {nonMediaProtocolNotice && <div className="om-provider-notice" role="note"><RemixIcon name="information-line" size={16} /><span>{t('This protocol currently syncs models and saves text defaults only; image, video and audio generation are not executed through it.')}</span></div>}
         {provider.custom && <TextField label={t('Provider name')} value={label} onChange={setLabel} error={validation.errors.label} required />}
         <label className="om-label">{t('API key')}<span className="om-field"><input type={visible ? 'text' : 'password'} aria-label={`${provider.label} API key`} aria-invalid={Boolean(validation.errors.apiKey) || undefined} aria-describedby={validation.errors.apiKey ? keyErrorId : undefined} autoComplete="off" spellCheck={false} value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={t(provider.configured ? 'Key saved · enter to replace' : 'Paste your API key')} /><Tooltip label={t(visible ? 'Hide API key' : 'Show API key')} wrap><IconButton variant="ghost" type="button" className="motion-icon-button" aria-label={t(visible ? 'Hide API key' : 'Show API key')} onClick={() => setVisible(value => !value)} icon={<RemixIcon name={visible ? 'eye-off-line' : 'eye-line'} size={16} />} /></Tooltip></span><small id={keyErrorId} className="om-field-error" role={validation.errors.apiKey ? 'alert' : undefined}>{validation.errors.apiKey ? t(validation.errors.apiKey) : null}</small></label>

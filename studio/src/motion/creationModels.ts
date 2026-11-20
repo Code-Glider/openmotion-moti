@@ -1,12 +1,13 @@
 import { modelReferenceLimit, type Modality } from '../../../shared/gateway';
 import { imageFeatures } from '../../../shared/image-features';
-import { sceneFeature, supportsScene, type StudioScene } from './creativeStudios';
+import { videoFeatures } from '../../../shared/video-features';
+import { sceneFeature, sceneVideoFeature, supportsScene, type StudioScene } from './creativeStudios';
 import type { loadGateway } from './gatewayClient';
 import { isOpenDesignProvider, menuRank, providerRank, providerReady, withOpenDesignModels } from './imageMenuModels';
 
 /** `openDesignOnly` serves feature entries: only OpenDesign models, with any other pinned model ignored.
  * With two or more references, models that accept fewer drop out (Seedream 5.5 rejects them with HTTP 400). */
-export function creationModels(gateway: Awaited<ReturnType<typeof loadGateway>> | undefined, modality: Modality, modelId?: string | null, scene?: StudioScene, openDesignOnly = false, referenceCount = 0) {
+export function creationModels(gateway: Awaited<ReturnType<typeof loadGateway>> | undefined, modality: Modality, modelId?: string | null, scene?: StudioScene, openDesignOnly = false, referenceCount = 0, templateModelId?: string) {
   const providers = gateway?.status.providers ?? [];
   // Studios offer the same fixed list as the navigation menus; ordinary Assets library creation retains every configured provider.
   const listed = (gateway ? (scene ? withOpenDesignModels(gateway.models, providers) : gateway.models).filter(model => model.modality === modality
@@ -20,9 +21,12 @@ export function creationModels(gateway: Awaited<ReturnType<typeof loadGateway>> 
   const available = compatible.filter(model => providerReady(providers, model.provider));
   const pinned = modelId ? compatible.find(model => model.id === modelId) : undefined;
   const feature = scene && sceneFeature(scene);
-  const recommended = (models: typeof listed) => feature ? models.find(model => model.modelId === imageFeatures[feature].recommended) : undefined;
+  const videoFeature = scene && sceneVideoFeature(scene);
+  const recommendedId = feature ? imageFeatures[feature].recommended : videoFeature ? videoFeatures[videoFeature].recommended : undefined;
+  const recommended = (models: typeof listed) => recommendedId ? models.find(model => model.modelId === recommendedId) : undefined;
   const preferred = pinned ?? (modelId && !openDesignOnly ? undefined
-    : recommended(available) ?? available.find(model => model.id === gateway?.status.routes[modality]) ?? available[0]
+    : available.find(model => model.modelId === templateModelId) ?? recommended(available)
+      ?? available.find(model => model.id === gateway?.status.routes[modality]) ?? available[0]
       ?? (scene ? recommended(compatible) ?? compatible[0] : undefined));
   const selected = available.find(model => model.id === preferred?.id);
   const choices = scene ? compatible : available;

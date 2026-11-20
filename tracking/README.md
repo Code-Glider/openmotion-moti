@@ -427,7 +427,7 @@ backend/data directory. Deterministic coverage lives in
   duration, count or file size is sent.
 - Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
   one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
-  Motion and Design Studio template landings and the Design image, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
+  Motion, Design and Cinema Studio template landings and the Design image, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
   `scene_id` and `landing`) and a model overview (`model_overview`). Filter and tab
   changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
   the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
@@ -442,6 +442,8 @@ backend/data directory. Deterministic coverage lives in
   and `open_template`. Explore Design template cards and their Try buttons report `explore_collection/open_template`
   with their Design scenario and template IDs.
   The Explore banner's editor button retains `explore_spotlight/slide_action` for the first Motion slide.
+  A Cinema template card uses `studio_bar/try_prompt` with its `template_id`, `scene_id` and zero-based `position`.
+  Opening a template prepares a draft. Generation submission is counted separately.
 - Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
   sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and
   `hub_availability` carry `hub_id`, `hub_video_id` (catalogue id), `signed_in` and, for scene filters, a

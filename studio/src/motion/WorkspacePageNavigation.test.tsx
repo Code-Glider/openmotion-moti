@@ -459,7 +459,7 @@ it('switches studios and restores a scene through history while retaining the ed
   expect(page().designScene).toBe('deck');
   expect(button('Design deck fixture')).toBeTruthy();
   await click('Cinema Studio');
-  expect(page().studio?.scene.id).toBe('text-to-video');
+  expect(page()).toMatchObject({ cinemaLanding: true, studio: null });
   await traverse(-1);
   expect(page().designScene).toBe('deck');
   await click('Motion Studio');
@@ -662,6 +662,7 @@ it('reports Explore once per arrival and its spotlight, index links and top navi
   await traverse(-1);
   await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });
+  await act(async () => inside('.om-cinema-home', 'Text to video').click());
   await act(async () => inside('.om-studio-bar', 'Image to video').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'creative_studio', area: 'studio_bar', element: 'scene_tab', studio_id: 'cinema', scene_id: 'image-to-video' });
   const nav = container.querySelector('.om-creative-navigation')!;
@@ -752,24 +753,41 @@ it('opens a collection with its filters and opens individual Explore cards direc
   expect(container.querySelector('dialog[open] h2')).toBeTruthy();
 });
 
-it('opens the same Design detail from the Explore template card and its Try action', async () => {
+it('previews an Explore Design template from its cover and title and creates a project with Use', async () => {
+  const fallback = fetcher.getMockImplementation()!;
+  const createDesign = vi.fn<(body: RequestInit['body']) => Response>(() => Response.json({ project: { id: 'my-design' } }));
+  fetcher.mockImplementation((input: string, init?: RequestInit) => {
+    const { pathname } = new URL(input, location.origin);
+    if (pathname.endsWith('/design/projects') && init?.method === 'POST') return Promise.resolve(createDesign(init.body));
+    if (pathname.endsWith('/design/projects/my-design')) return Promise.resolve(new Response(null, { status: 404 }));
+    return fallback(input, init);
+  });
   await mount();
   await click('Explore');
-  const card = container.querySelector<HTMLDivElement>('[data-design-explore-section] [data-design-template="fixture-prototype"]')!;
-  const tryButton = [...card.querySelectorAll('button')].find(node => node.textContent === 'Try')!;
+  const card = container.querySelector<HTMLElement>('[data-design-explore-section] [data-design-template="fixture-prototype"]')!;
+  const cover = card.querySelector<HTMLElement>('.om-design-card-thumb')!;
+  const title = card.querySelector<HTMLButtonElement>('.om-design-card-open')!;
+  const use = card.querySelector<HTMLButtonElement>('button.om-design-explore-use')!;
   const details = () => document.querySelector('[role="dialog"].om-design-tpl-detail-popup');
-  tryButton.focus();
-  await act(async () => tryButton.click());
+  expect([...card.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Use', 'Design prototype fixture']);
+  await act(async () => cover.click());
   expect(page().explore).toBe(true);
   expect(page().designScene).toBeUndefined();
   expect(details()?.getAttribute('aria-label')).toBe('Design prototype fixture');
   const close = details()!.querySelector<HTMLButtonElement>('[aria-label="Close"]')!;
   await act(async () => { close.click(); });
   expect(details()).toBeNull();
-  await act(async () => card.click());
+  await act(async () => title.click());
   expect(page().explore).toBe(true);
   expect(page().designScene).toBeUndefined();
   expect(details()?.getAttribute('aria-label')).toBe('Design prototype fixture');
+  expect(createDesign).not.toHaveBeenCalled();
+  await act(async () => details()!.querySelector<HTMLButtonElement>('[aria-label="Close"]')!.click());
+  await act(async () => use.click());
+  expect(createDesign).toHaveBeenCalledOnce();
+  expect(JSON.parse(String(createDesign.mock.calls[0][0]))).toMatchObject({ scenario: 'prototype', templateId: 'fixture-prototype' });
+  expect(page()).toMatchObject({ designScene: 'projects', designProject: 'my-design' });
+  expect(details()).toBeNull();
 });
 
 it('browses both Explore shelves, opens exact details and restores the selected categories', async () => {
@@ -1107,6 +1125,37 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   expect(container.querySelector('[aria-label="Video purpose"] [aria-label="Black Friday collection"]')).toBeNull();
 });
 
+it('browses Cinema templates and opens editable generation drafts without submitting', async () => {
+  const { trackMotion } = await import('./tracking');
+  await mount();
+  await click('Cinema Studio');
+  expect(page()).toMatchObject({ cinemaLanding: true, studio: null });
+  expect(container.querySelector('.om-cinema-home .om-discovery-page')?.firstElementChild?.className).toBe('om-discovery-hero');
+  const grid = container.querySelector('.om-cinema-home .om-studio-template-grid')!;
+  expect(grid.querySelectorAll('.om-design-gallery-card')).toHaveLength(5);
+  expect(grid.querySelector('[data-template-id="drink-splash-slow-motion"] .om-design-thumb-badge')?.textContent).toBe('Text to video');
+  expect(grid.querySelector('[data-template-id="product-window-light-push-in"] .om-design-thumb-badge')?.textContent).toBe('Image to video');
+  await click('Slow-motion drink splash');
+  expect(page()).toMatchObject({ cinemaTemplate: 'drink-splash-slow-motion', studio: { scene: { id: 'text-to-video' } } });
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('orange soda bottle');
+  await traverse(-1);
+  await click('Warm window light product shot');
+  expect(page()).toMatchObject({ cinemaTemplate: 'product-window-light-push-in', studio: { scene: { id: 'image-to-video' } } });
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('supplied frame');
+  await traverse(-1);
+  await click('Product light reveal');
+  expect(page()).toMatchObject({ cinemaTemplate: 'product-light-reveal', studio: { scene: { id: 'text-to-video' } } });
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('vertical product shot');
+  expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ area: 'studio_bar', element: 'try_prompt', studio_id: 'cinema', template_id: 'product-light-reveal' }));
+  await traverse(-1);
+  expect(page().cinemaLanding).toBe(true);
+  await click('Interior slow push-in');
+  expect(page()).toMatchObject({ cinemaTemplate: 'interior-first-frame', studio: { scene: { id: 'image-to-video' } } });
+  await mount(1);
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('as the first frame');
+  expect(fetcher.mock.calls.some(([, options]) => options?.body && String(options.body).includes('"action":"generate"'))).toBe(false);
+});
+
 it('carries a community template brief and an audio example into the matching studio without submitting generation', async () => {
   await mount(); await click('Search workspace'); await click('Product films');
   expect(page().community).toBe('product-films');
@@ -1132,7 +1181,7 @@ it('carries a community template brief and an audio example into the matching st
   expect(fetcher.mock.calls.some(([, options]) => options?.body && String(options.body).includes('"action":"generate"'))).toBe(false);
 });
 
-it('recovers template discovery and appends only new cards without replacing earlier results', async () => {
+it('recovers community templates and opens the library from the community heading', async () => {
   const fallback = fetcher.getMockImplementation()!;
   const template = (id: string) => ({ id, title: id, description: 'A product reveal.', kind: 'builtin', tags: [] });
   let failures = 0;
@@ -1141,8 +1190,7 @@ it('recovers template discovery and appends only new cards without replacing ear
     if (!url.pathname.endsWith('/template-catalog')) return fallback(input, options);
     if (url.searchParams.get('limit') === '60') return fallback(input, options);
     if (failures++ === 0) return new Response(null, { status: 503 });
-    const offset = Number(url.searchParams.get('offset'));
-    return Response.json({ offset, items: (offset ? ['second', 'third', 'third'] : ['first', 'second']).map(template), next: offset ? null : 2 });
+    return Response.json({ offset: 0, items: ['first', 'second', 'second'].map(template), next: 2 });
   });
   await mount(); await click('Explore');
   const spotlight = container.querySelector('.om-explore-features')!;
@@ -1153,14 +1201,18 @@ it('recovers template discovery and appends only new cards without replacing ear
   const sections = [...container.querySelector('.om-explore-sections')!.children].slice(0, 7);
   expect(sections.map(section => section.getAttribute('aria-labelledby') ?? section.getAttribute('data-studio') ?? section.className))
     .toEqual(['om-explore-features', 'explore-highlights', 'explore-claude', 'explore-community', 'explore-seedance', 'design', 'explore-gpt-image']);
+  for (const id of ['explore-seedance', 'explore-gpt-image']) {
+    const heading = container.querySelector(`#${id}`)!;
+    expect(heading.previousElementSibling).toBeNull();
+  }
   const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
-  const card = picks.querySelector('[data-template-id="second"]');
-  expect(card).not.toBeNull();
-  await click('More community templates');
-  expect(container.querySelector('[data-template-id="second"]')).toBe(card);
   expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second']);
-  expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['third']);
-  expect(button('More community templates')).toBeUndefined();
+  const communities = container.querySelector('[aria-labelledby="om-feed-heading"]')!;
+  expect(communities.querySelector('.om-feed-more')).toBeNull();
+  const openLibrary = communities.querySelector<HTMLButtonElement>('header button')!;
+  expect(openLibrary.textContent).toBe('More community templates');
+  await act(async () => openLibrary.click());
+  expect(page()).toMatchObject({ templates: true, template: null });
 });
 
 it('keeps Agent Skills available while the 3D studio is pending and preserves the community feed', async () => {
@@ -1191,7 +1243,7 @@ it('lists each primary destination once in order, with the Image mega menu and t
   expect(destinations).toEqual(['Explore', 'Image', 'Video', 'Audio', 'MCP', 'Design Studio', 'Motion Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
   const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node =>
     [node.getAttribute('aria-label'), document.getElementById(node.getAttribute('aria-describedby')!)?.textContent]);
-  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot'], ['3D Studio', 'Coming soon']]);
+  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot']]);
   await click('Image · Scenes');
   const menu = document.querySelector('.om-creative-menu-image')!;
   expect([...menu.querySelectorAll('.om-media-mega-columns h2')].map(node => node.textContent)).toEqual(['Features', 'Models']);
@@ -1222,9 +1274,9 @@ it('lists each primary destination once in order, with the Image mega menu and t
   expect(page().studio).toMatchObject({ studio: { id: 'design' }, scene: { id: 'text-to-image' }, landing: true, model: null });
   expect(button('Design Studio').getAttribute('aria-current')).toBeNull();
   await click('Video · Scenes');
-  const videoMenu = document.querySelector('.om-creative-menu')!;
-  expect([...videoMenu.querySelectorAll('.om-scene-tile')].map(node => node.querySelector('strong')?.textContent)).toEqual(['Text to video', 'Image to video', 'Video first frame']);
-  const still = [...videoMenu.querySelectorAll<HTMLButtonElement>('.om-scene-tile')].find(node => node.querySelector('strong')?.textContent === 'Video first frame')!;
+  const videoMenu = document.querySelector('.om-creative-menu-video')!;
+  expect([...videoMenu.querySelectorAll('.om-scene-tile')].map(node => node.querySelector('strong')?.textContent)).toEqual(['Create video', 'Image to video', 'Camera control', 'Start & end frames']);
+  const still = [...videoMenu.querySelectorAll<HTMLButtonElement>('.om-media-mega-row')].find(node => node.textContent?.includes('Video first frame'))!;
   await act(async () => still.click());
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' }, landing: true });
   // Character consistency and the live feature rows open their own landing pages without a pinned model.
@@ -1250,7 +1302,7 @@ it('localizes every top navigation Studio label in Chinese while keeping English
     const badge = document.getElementById(node.getAttribute('aria-describedby')!);
     return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
   });
-  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['Motion 工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en'], ['3D 工作室', 'Coming soon', 'en']]);
+  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['Motion 工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en']]);
 });
 
 it.each([
@@ -1275,6 +1327,8 @@ it.each([
   if (studio === 'design') {
     expect(page().designScene).toBeTruthy();
     expect(page().studio).toBeNull();
+  } else if (studio === 'cinema') {
+    expect(page()).toMatchObject({ cinemaLanding: true, studio: null });
   } else {
     expect(page().studio).toMatchObject({ studio: { id: studio }, scene: { id: scene } });
     expect(page().studio?.landing).toBeUndefined();
@@ -1286,7 +1340,7 @@ it.each([
 });
 
 it.each([
-  ['Video', 'Text to video', 'text-to-video'],
+  ['Video', 'Create video', 'text-to-video'],
   ['Audio', 'Text to speech', 'speech'],
 ])('opens the %s dropdown scene without a breadcrumb', async (label, sceneLabel, scene) => {
   await mount(); await click('Explore');
@@ -1408,7 +1462,7 @@ it('retains the active model and scene on same-modality entry and switches a Cin
   history.replaceState(null, '', firstUrl.replace('#', '&page=create&scene=speech&model=voice%3Anarrator#'));
   await mount(); await click('Audio');
   expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech' }, model: 'voice:narrator' });
-  await click('Cinema Studio'); await click('Video first frame');
+  await click('Cinema Studio'); await click('Text to video'); await click('Video first frame');
   await click('Video');
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'text-to-video' }, model: null });
 });
@@ -1652,7 +1706,7 @@ it('shows the Explore shortcuts, fills two complete rows across Skills and techn
     expect(new Set(studioCards.map(card => card.dataset.playbackId)).size, studio).toBe(expectedCount);
   }
   expect(container.querySelectorAll('.om-studio-collection[data-studio="design"] .om-scene-tile')).toHaveLength(7);
-  expect(container.querySelectorAll('.om-studio-collection[data-studio="cinema"] .om-scene-tile')).toHaveLength(3);
+  expect(container.querySelectorAll('.om-studio-collection[data-studio="cinema"] .om-scene-tile')).toHaveLength(6);
   expect(container.querySelectorAll('.om-studio-collection[data-studio="sound"] .om-scene-tile')).toHaveLength(2);
   const footer = container.querySelector('main.om-explore > footer.om-capability-index');
   expect(footer).not.toBeNull();

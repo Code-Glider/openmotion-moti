@@ -7,6 +7,7 @@ import { assetNamingInstruction } from '../shared/asset-names.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
 import { imageFeaturePrompt } from '../shared/image-features.ts';
+import { videoFeatureParameters, videoFeaturePrompt } from '../shared/video-features.ts';
 
 test('MCP onboarding covers every public domain tool and scenarios only compose real tools', () => {
   const described = mcpCapabilities.flatMap(capability => [...capability.tools]);
@@ -91,23 +92,30 @@ test('media example preserves setup and task continuation across supported langu
   const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
   assert.match(media.prompt, /inspect/);
   assert.match(media.prompt, /Plus or above/);
-  assert.match(media.prompt, /not-included.*openmotion_open_preview with target=providers.*page handoff/);
-  assert.match(media.prompt, /Only when signed in.*unknown, continue model discovery/);
+  assert.match(media.prompt, /settingsHandoff from inspect.*page handoff/);
+  assert.match(media.prompt, /not-included.*openmotion_open_preview with target=providers and entry=agent_media_upgrade_go for Go or entry=agent_media_upgrade_free for Free/);
+  assert.match(media.prompt, /Continue model discovery.*included or signed-in unknown.*another usable provider/);
+  assert.match(media.prompt, /entry=agent_media_signed_out.*Sign in with OpenDesign directly/);
+  assert.match(media.prompt, /Upgrade to Plus directly on the opened OpenDesign page/);
+  assert.match(media.prompt, /entry=agent_media_key_rejected.*entry=agent_media_handbook only if no specific reason applies/);
+  assert.doesNotMatch(media.prompt, /Settings > Account|Subscription & usage/);
   assert.match(media.prompt, /mediaEntitlement/);
   assert.match(media.prompt, /OpenDesign Cloud/);
   assert.match(media.prompt, /target=providers/);
-  assert.match(media.prompt, /once I have saved/);
+  assert.match(media.prompt, /confirm after setup/);
   assert.match(media.prompt, /inspect again/);
   assert.match(media.prompt, /original request/);
-  assert.ok(translations['zh-CN'][media.prompt]);
+  const chinesePrompt = translations['zh-CN'][media.prompt];
+  assert.match(chinesePrompt, /agent_media_upgrade_go.*agent_media_upgrade_free.*升级到 Plus.*agent_media_signed_out.*使用 OpenDesign 登录.*agent_media_key_rejected.*agent_media_handbook/);
   const skill = readFileSync(new URL('../skills/openmotion-media/SKILL.md', import.meta.url), 'utf8');
   const setupLink = skill.match(/\[Discovery and setup\]\(([^)]+)\)/);
   assert.ok(setupLink, 'Media entry must expose provider setup');
   const setup = readFileSync(new URL(setupLink[1], new URL('../skills/openmotion-media/SKILL.md', import.meta.url)), 'utf8');
   assert.match(setup, /target: "providers"/);
   assert.match(setup, /## Media handbook handoff/);
-  assert.match(setup, /not-included.*openmotion_open_preview.*target: "providers".*page handoff/);
-  assert.match(setup, /Signed-in account.*available: true.*unknown/);
+  assert.match(setup, /settingsHandoff.*openmotion_open_preview.*target: "providers".*page handoff/);
+  assert.match(setup, /signed-in account.*available: true.*unknown/);
+  assert.match(setup, /not-included.*agent_media_upgrade_go.*agent_media_upgrade_free.*Upgrade to Plus.*directly/);
   assert.match(setup, /MCP handbook media-generation example/);
   assert.match(setup, /read-only `inspect`/);
   assert.match(skill, /MCP handbook example \| \[Discovery and setup\]/);
@@ -189,6 +197,27 @@ test('image feature handbook scenarios cover background removal, relight and cha
     assert.match(scenario.prompt, /target=providers/);
     assert.match(scenario.prompt, /action=resume/);
     assert.match(scenario.prompt, /2 MiB/);
+    for (const locale of Object.values(translations) as Record<string, string>[]) {
+      assert.ok(locale[scenario.title]?.trim());
+      assert.ok(locale[scenario.description]?.trim());
+    }
+  }
+});
+
+test('video feature handbook scenarios cover camera control, multi-shot and native audio with limits and recovery', () => {
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  const camera = mcpScenarios.find(item => item.id === 'video-camera-control')!;
+  const multiShot = mcpScenarios.find(item => item.id === 'video-multi-shot')!;
+  const nativeAudio = mcpScenarios.find(item => item.id === 'video-native-audio')!;
+  assert.ok(camera.prompt.includes(videoFeaturePrompt('camera-control', 'A vintage camera on dark stone with warm rim lighting.', { movement: 'orbit', pace: 'slow' })));
+  assert.ok(multiShot.prompt.includes(videoFeaturePrompt('multi-shot', 'An astronaut crossing a silver lunar ridge.', { shots: '3', style: 'narrative' })));
+  assert.ok(multiShot.prompt.includes(JSON.stringify(videoFeatureParameters('multi-shot', { provider: 'opendesign', modelId: 'doubao-seedance-2-5-260628' }))));
+  assert.ok(nativeAudio.prompt.includes(videoFeaturePrompt('native-audio', 'Rain falling across a neon-lit alley at night.', { audioStyle: 'ambience' })));
+  assert.ok(nativeAudio.prompt.includes(JSON.stringify(videoFeatureParameters('native-audio', { provider: 'opendesign', modelId: 'doubao-seedance-2-5-260628' }))));
+  for (const scenario of [camera, multiShot, nativeAudio]) {
+    assert.match(scenario.prompt, /target=providers/);
+    assert.match(scenario.prompt, /2 MiB/);
+    assert.match(scenario.prompt, /omit fixed ratio/i);
     for (const locale of Object.values(translations) as Record<string, string>[]) {
       assert.ok(locale[scenario.title]?.trim());
       assert.ok(locale[scenario.description]?.trim());

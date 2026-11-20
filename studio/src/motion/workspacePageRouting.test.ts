@@ -85,8 +85,10 @@ it('preserves a Brand Kit selection behind template browsing and clears it when 
 });
 
 it('keeps entry_from while switching settings sections and clears it when leaving settings', () => {
-  const source = 'http://localhost/?page=settings&section=providers&entry_from=agent_media_upgrade_go&embed=1';
+  const source = 'http://localhost/?page=settings&section=providers&provider=account&entry_from=agent_media_upgrade_go&embed=1';
+  expect(readWorkspacePage(new URL(source).search)).toMatchObject({ settings: 'providers', provider: 'account' });
   const account = new URL(workspacePageHref(source, { settings: 'account' }), source);
+  expect(account.searchParams.has('provider')).toBe(false);
   expect(account.searchParams.get('section')).toBe('account');
   expect(account.searchParams.get('entry_from')).toBe('agent_media_upgrade_go');
   const subscription = new URL(workspacePageHref(account.href, { settings: 'subscription' }), source);
@@ -149,7 +151,7 @@ it('round-trips every registered studio scene and resolves models in the current
   }
   expect(registered).toEqual(new Set(studioScenes.map(scene => scene.id)));
   const model: Model = { id: 'image:still', provider: 'image', modelId: 'still', label: 'Still', modality: 'image', mode: 'text-to-image', source: 'custom' };
-  expect(modelDestination(model, readWorkspacePage('?page=cinema').studio)).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
+  expect(modelDestination(model, readWorkspacePage('?page=cinema&scene=text-to-video').studio)).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
   expect(modelDestination(model)).toMatchObject({ studio: { id: 'design' }, scene: { id: 'text-to-image' } });
 });
 
