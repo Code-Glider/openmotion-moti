@@ -7,6 +7,7 @@ import { compile } from "tailwindcss";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FlatTextLayerList, FlatTextSection } from "./propertyPanelFlatTextSection";
 import type { DomEditSelection, DomEditTextField } from "./domEditingTypes";
+import { applyPatchByTarget } from "../../utils/sourcePatcher";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -190,6 +191,65 @@ function segmentedRowButtons(host: HTMLElement, label: string): HTMLButtonElemen
 }
 
 describe("FlatTextFieldEditor controls", () => {
+  it("commits RTL/LTR CSS direction without rewriting logical alignment or Hebrew copy", () => {
+    const onSetTextFieldStyle = vi.fn();
+    const element = makeSingleFieldElement({
+      value: "שלום (2026) world",
+      computedStyles: { direction: "rtl", "text-align": "start" },
+    });
+    const unchanged = JSON.stringify(element.textFields);
+    const { host, root } = renderInto(
+      <FlatTextSection
+        element={element}
+        styles={{}}
+        fontAssets={[]}
+        onSetText={vi.fn()}
+        onSetTextFieldStyle={onSetTextFieldStyle}
+        onAddTextField={vi.fn()}
+        onRemoveTextField={vi.fn()}
+      />,
+    );
+    const direction = segmentedRowButtons(host, "Direction");
+    expect(direction.map((button) => button.textContent)).toEqual(["LTR", "RTL"]);
+    const ltr = direction.find((button) => button.getAttribute("aria-label") === "Left to right");
+    const rtl = direction.find((button) => button.getAttribute("aria-label") === "Right to left");
+    expect(rtl?.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      segmentedRowButtons(host, "Align").find((button) => button.textContent === "R")?.getAttribute("aria-pressed"),
+    ).toBe("true");
+    act(() => rtl?.click());
+    expect(onSetTextFieldStyle).not.toHaveBeenCalled();
+    act(() => ltr?.click());
+    expect(onSetTextFieldStyle).toHaveBeenCalledExactlyOnceWith("a", "direction", "ltr");
+    expect(JSON.stringify(element.textFields)).toBe(unchanged);
+    act(() => root.unmount());
+  });
+
+  it("targets only the selected text layer when setting RTL direction", () => {
+    const onSetTextFieldStyle = vi.fn();
+    const element = makeMultiFieldElement();
+    element.textFields[0].computedStyles = { direction: "rtl" };
+    element.textFields[1].computedStyles = { direction: "ltr" };
+    const { host, root } = renderInto(
+      <FlatTextSection
+        element={element}
+        styles={{}}
+        fontAssets={[]}
+        onSetText={vi.fn()}
+        onSetTextFieldStyle={onSetTextFieldStyle}
+        onAddTextField={vi.fn()}
+        onRemoveTextField={vi.fn()}
+      />,
+    );
+    const rows = host.querySelectorAll('[data-flat-text-layer-row="true"]');
+    act(() => rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    const rtl = segmentedRowButtons(host, "Direction").find((button) => button.textContent === "RTL");
+    expect(rtl?.getAttribute("aria-pressed")).toBe("false");
+    act(() => rtl?.click());
+    expect(onSetTextFieldStyle).toHaveBeenCalledExactlyOnceWith("b", "direction", "rtl");
+    act(() => root.unmount());
+  });
+
   it("commits text-transform: capitalize when the new 'Ag' case button is clicked", () => {
     const onSetTextFieldStyle = vi.fn();
     const { host, root } = renderInto(
@@ -295,6 +355,100 @@ describe("FlatTextFieldEditor controls", () => {
     expect(onSetTextFieldStyle).toHaveBeenCalledWith("a", "font-size", "24px");
     act(() => root.unmount());
   });
+
+  it("authors semantic HTML dir independently of CSS direction and logical alignment", () => {
+    const onSetTextFieldStyle = vi.fn();
+    const element = makeSingleFieldElement({
+      value: "שלום (2026) world",
+      attributes: [{ name: "dir", value: "rtl" }, { name: "lang", value: "he" }],
+      computedStyles: { direction: "ltr", "text-align": "start" },
+    });
+    let source = '<div id="headline" dir="rtl" lang="he">שלום (2026) world</div>';
+    const onSetHtmlAttribute = vi.fn((name: string, value: string | null) => {
+      source = applyPatchByTarget(source, { id: "headline" }, {
+        type: "html-attribute", property: name, value,
+      });
+    });
+    const before = JSON.stringify(element.textFields);
+    const { host, root } = renderInto(
+      <FlatTextSection element={element} styles={{}} fontAssets={[]}
+        onSetText={vi.fn()} onSetTextFieldStyle={onSetTextFieldStyle}
+        onSetHtmlAttribute={onSetHtmlAttribute}
+        onAddTextField={vi.fn()} onRemoveTextField={vi.fn()} />,
+    );
+    const htmlDirButtons = segmentedRowButtons(host, "HTML dir");
+    expect(htmlDirButtons.map((button) => button.textContent)).toEqual(["—", "Auto", "LTR", "RTL"]);
+    expect(htmlDirButtons[3].getAttribute("aria-pressed")).toBe("true");
+    act(() => htmlDirButtons[3].click());
+    expect(onSetHtmlAttribute).not.toHaveBeenCalled();
+    act(() => htmlDirButtons[1].click());
+    expect(onSetHtmlAttribute).toHaveBeenCalledExactlyOnceWith("dir", "auto");
+    expect(source).toContain('dir="auto"');
+    expect(source).toContain('lang="he"');
+    expect(source).toContain("שלום (2026) world");
+    expect(onSetTextFieldStyle).not.toHaveBeenCalled();
+    expect(JSON.stringify(element.textFields)).toBe(before);
+    act(() => root.unmount());
+  });
+
+  it("canonicalizes BCP-47 language, rejects malformed tags, and removes authored language", async () => {
+    const onSetHtmlAttribute = vi.fn();
+    const element = makeSingleFieldElement({ attributes: [{ name: "lang", value: "he" }] });
+    const { host, root } = renderInto(
+      <FlatTextSection element={element} styles={{}} fontAssets={[]}
+        onSetText={vi.fn()} onSetTextFieldStyle={vi.fn()}
+        onSetHtmlAttribute={onSetHtmlAttribute}
+        onAddTextField={vi.fn()} onRemoveTextField={vi.fn()} />,
+    );
+    const languageInput = Array.from(host.querySelectorAll<HTMLInputElement>('[data-flat-row-value] input'))
+      .find((node) => node.closest(".group")?.textContent?.includes("Language tag"));
+    if (!languageInput) throw new Error("expected editable BCP-47 language input");
+    expect(languageInput.value).toBe("he");
+    const setInput = async (value: string) => {
+      await act(async () => {
+        languageInput.focus();
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        setter?.call(languageInput, value);
+        languageInput.dispatchEvent(new Event("input", { bubbles: true }));
+        await Promise.resolve();
+      });
+      await act(async () => {
+        languageInput.blur();
+        await Promise.resolve();
+      });
+    };
+
+    await setInput("fa-arab");
+    expect(onSetHtmlAttribute).toHaveBeenCalledExactlyOnceWith("lang", "fa-Arab");
+    onSetHtmlAttribute.mockClear();
+
+    await setInput("he-??");
+    await act(async () => { await Promise.resolve(); });
+    expect(onSetHtmlAttribute).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Invalid BCP-47 language tag");
+
+    const reset = languageInput.closest(".group")?.querySelector<HTMLButtonElement>('[data-flat-row-reset="true"]');
+    act(() => reset?.click());
+    expect(onSetHtmlAttribute).toHaveBeenCalledExactlyOnceWith("lang", null);
+    act(() => root.unmount());
+  });
+
+  it("does not expose parent HTML attribute edits for child or multi-field text", () => {
+    const props = { styles: {}, fontAssets: [], onSetText: vi.fn(), onSetTextFieldStyle: vi.fn(),
+      onSetHtmlAttribute: vi.fn(), onAddTextField: vi.fn(), onRemoveTextField: vi.fn() };
+    const child = makeSingleFieldElement({ source: "child", sourceChildIndex: 0 });
+    const first = renderInto(<FlatTextSection element={child} {...props} />);
+    expect(segmentedRowButtons(first.host, "HTML dir")).toHaveLength(0);
+    expect(first.host.textContent).not.toContain("Language tag");
+    act(() => first.root.unmount());
+
+    const multi = renderInto(<FlatTextSection element={makeMultiFieldElement()} {...props} />);
+    expect(segmentedRowButtons(multi.host, "HTML dir")).toHaveLength(0);
+    expect(multi.host.textContent).not.toContain("Language tag");
+    expect(props.onSetHtmlAttribute).not.toHaveBeenCalled();
+    act(() => multi.root.unmount());
+  });
+
 });
 
 describe("FlatTextSection — multi-field", () => {

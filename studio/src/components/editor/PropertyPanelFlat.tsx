@@ -341,6 +341,7 @@ export function PropertyPanelFlat({
             onImportFonts={onImportFonts}
             onSetText={onSetText}
             onSetTextFieldStyle={onSetTextFieldStyle}
+            onSetHtmlAttribute={forwardedProps.onSetHtmlAttribute}
             onPreviewTextFieldStyle={onPreviewTextFieldStyle}
             onAddTextField={onAddTextField}
             onRemoveTextField={onRemoveTextField}
