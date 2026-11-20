@@ -354,13 +354,20 @@ it('switches Cinema Studio duration options between doubao-seedance-2-5-260628 a
   }
   await act(async () => root.render(<Harness />));
 
+  const optionsOf = (label: string) => {
+    const trigger = document.querySelector<HTMLButtonElement>(`[role="combobox"][aria-label="${label}"]`)!;
+    const listboxId = trigger.getAttribute('aria-controls');
+    const scope = (listboxId && document.getElementById(listboxId)) || document;
+    return [...scope.querySelectorAll<HTMLElement>('[role="option"]')];
+  };
+
   // Open Generation settings for doubao-seedance-2-5-260628 and inspect Duration (seconds) choices (4–30s).
   await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
   await act(async () => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Duration (seconds)"]')!.click());
-  const seedanceChoices = [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(node => node.textContent?.trim());
+  const seedanceChoices = optionsOf('Duration (seconds)').map(node => node.textContent?.trim());
   expect(seedanceChoices).toEqual(['Model default', ...Array.from({ length: 27 }, (_, i) => String(i + 4))]);
   // Select 15s and submit.
-  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.textContent?.trim() === '15')!.click());
+  await act(async () => optionsOf('Duration (seconds)').find(node => node.textContent?.trim() === '15')!.click());
   generate.mockResolvedValue({ job: { id: 'seedance-15s' } });
   await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
   expect(generate).toHaveBeenCalledWith(expect.objectContaining({
@@ -369,9 +376,9 @@ it('switches Cinema Studio duration options between doubao-seedance-2-5-260628 a
 
   // Switch model to wan-2.7 and verify Duration (seconds) choices update to 2–15s.
   await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
-  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.textContent?.includes('wan-2.7'))!.click());
+  await act(async () => optionsOf('Generation model').find(node => node.textContent?.includes('wan-2.7'))!.click());
   await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
   await act(async () => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Duration (seconds)"]')!.click());
-  const wanChoices = [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(node => node.textContent?.trim());
+  const wanChoices = optionsOf('Duration (seconds)').map(node => node.textContent?.trim());
   expect(wanChoices).toEqual(['Model default', ...Array.from({ length: 14 }, (_, i) => String(i + 2))]);
 });
