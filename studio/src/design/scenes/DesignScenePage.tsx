@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
 import {
   designBriefPrompt, findDesignScenario,
-  type DesignSystemSummary, type DesignTemplateSummary,
+  type DesignSkillSummary, type DesignSystemSummary, type DesignTemplateSummary,
 } from '../../../../shared/design-project';
 import { findMediaStudio, type CreativeStudio } from '../../../../shared/studio-catalog';
 import { IconButton } from '../../components/ui';
@@ -14,29 +14,9 @@ import { useI18n } from '../../i18n/I18n';
 import { scenesForStudio } from '../../motion/creativeStudios';
 import { designClient } from '../designClient';
 import { DesignProjectList } from '../DesignProjectList';
+import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
 import { DesignSceneTabs, type DesignTabId } from './DesignSceneTabs';
 import '../design.css';
-
-function TemplateCardThumb({ url, title }: { url: string; title: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setVisible(true); return; }
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: '120px' });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} className="om-design-card-thumb">
-      {visible && <iframe title={title} src={url} loading="lazy" sandbox="allow-scripts" tabIndex={-1} />}
-    </div>
-  );
-}
 
 export function DesignScenePage({
   scene,
@@ -57,6 +37,7 @@ export function DesignScenePage({
 }) {
   const { t, locale } = useI18n();
   const toast = useToast();
+  const showToast = toast.showToast;
   const designMediaStudio = findMediaStudio('design')!;
   const imageScenes = scenesForStudio(designMediaStudio);
   const scenario = scene === 'projects' ? null : findDesignScenario(scene) ?? null;
@@ -67,6 +48,12 @@ export function DesignScenePage({
   const [systemQuery, setSystemQuery] = useState('');
   const [selectedSystem, setSelectedSystem] = useState<DesignSystemSummary | null>(null);
   const [systemOpen, setSystemOpen] = useState(false);
+
+  const [skills, setSkills] = useState<DesignSkillSummary[]>([]);
+  const [skillQuery, setSkillQuery] = useState('');
+  const [selectedSkill, setSelectedSkill] = useState<DesignSkillSummary | null>(null);
+  const [skillOpen, setSkillOpen] = useState(false);
+
   const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplateSummary | null>(null);
   const [templates, setTemplates] = useState<DesignTemplateSummary[]>([]);
   const [templateQuery, setTemplateQuery] = useState('');
@@ -76,28 +63,27 @@ export function DesignScenePage({
   const [manualPrompt, setManualPrompt] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DesignTemplateSummary | null>(null);
 
-  // Rotate example placeholder hints gently when scenario changes
   useEffect(() => {
     setPlaceholderIndex(0);
     setSelectedTemplate(null);
+    setSelectedSkill(null);
     setManualPrompt(null);
     if (!scenario || scenario.examples.length <= 1) return;
     const id = window.setInterval(() => setPlaceholderIndex(i => (i + 1) % scenario.examples.length), 6000);
     return () => window.clearInterval(id);
   }, [scenario?.id]);
 
-  // Load design systems once
   useEffect(() => {
-    designClient.listSystems().then(res => setSystems(res.systems)).catch(() => setSystems([]));
+    designClient.listSystems().then(res => { if (Array.isArray(res?.systems)) setSystems(res.systems); }).catch(() => setSystems([]));
+    designClient.listSkills().then(res => { if (Array.isArray(res?.skills)) setSkills(res.skills); }).catch(() => setSkills([]));
   }, []);
 
-  // Load templates for active HTML scenario
   useEffect(() => {
     if (!scenario) return;
     let cancelled = false;
     setTemplatesLoading(true);
     designClient.listTemplates({ scenario: scenario.id, q: templateQuery.trim() || undefined, limit: 24 })
-      .then(res => { if (!cancelled) setTemplates(res.items); })
+      .then(res => { if (!cancelled && Array.isArray(res?.items)) setTemplates(res.items); })
       .catch(() => { if (!cancelled) setTemplates([]); })
       .finally(() => { if (!cancelled) setTemplatesLoading(false); });
     return () => { cancelled = true; };
@@ -105,10 +91,15 @@ export function DesignScenePage({
 
   const filteredSystems = useMemo(() => {
     const q = systemQuery.trim().toLowerCase();
-    return systems.filter(s => !q || s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)).slice(0, 40);
+    return systems.filter(s => !q || s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)).slice(0, 48);
   }, [systems, systemQuery]);
 
-  const showToast = toast.showToast;
+  const filteredSkills = useMemo(() => {
+    const q = skillQuery.trim().toLowerCase();
+    const list = skills.filter(s => !q || s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q) || s.id.includes(q));
+    return [...list].sort((a, b) => Number(b.scenario === scenario?.id) - Number(a.scenario === scenario?.id)).slice(0, 48);
+  }, [skills, skillQuery, scenario?.id]);
+
   const copyInstruction = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -127,6 +118,7 @@ export function DesignScenePage({
       scenario: scenario.id,
       brief: text,
       designSystemId: selectedSystem?.id ?? null,
+      skillId: selectedSkill?.id ?? null,
       templateId: selectedTemplate?.id ?? null,
       language: locale !== 'en' ? locale : null,
     });
@@ -144,7 +136,7 @@ export function DesignScenePage({
       });
       onOpenProject(project.id);
     } catch (err) {
-      toast.showToast(err instanceof Error ? err.message : t('Could not create project'), 'error', 'feedback');
+      showToast(err instanceof Error ? err.message : t('Could not create project'), 'error', 'feedback');
     } finally {
       setCreating(false);
     }
@@ -160,7 +152,7 @@ export function DesignScenePage({
       });
       onOpenProject(project.id);
     } catch (err) {
-      toast.showToast(err instanceof Error ? err.message : t('Could not remix template'), 'error', 'feedback');
+      showToast(err instanceof Error ? err.message : t('Could not remix template'), 'error', 'feedback');
     } finally {
       setRemixingId(null);
     }
@@ -174,6 +166,7 @@ export function DesignScenePage({
       scenario: template.scenario,
       brief: brief.trim() || seed,
       designSystemId: selectedSystem?.id ?? null,
+      skillId: selectedSkill?.id ?? null,
       templateId: template.id,
       language: locale !== 'en' ? locale : null,
     });
@@ -202,6 +195,7 @@ export function DesignScenePage({
               {t(item.label)}
             </Button>
           ))}
+          <span className="om-design-divider" aria-hidden="true" />
           <DesignSceneTabs
             activeTab={scene}
             onSelectDesignScene={onSelectDesignScene}
@@ -214,10 +208,10 @@ export function DesignScenePage({
       <div className="om-design-page">
         {scene === 'projects' || !scenario ? (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div className="om-design-section-head">
               <div>
-                <h2 style={{ margin: 0 }}>{t('Design projects')}</h2>
-                <p className="om-design-muted" style={{ margin: '4px 0 0' }}>{t('Preview responsive HTML designs, annotate elements, inspect versions and hand off edits to your MCP Agent.')}</p>
+                <h2 className="om-design-hero-title" style={{ fontSize: 28 }}>{t('Design projects')}</h2>
+                <p className="om-design-hero-sub" style={{ marginTop: 4 }}>{t('Preview responsive HTML designs, annotate elements, inspect versions and hand off edits to your MCP Agent.')}</p>
               </div>
               <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
                 {t('Connect an Agent')}
@@ -227,98 +221,166 @@ export function DesignScenePage({
           </>
         ) : (
           <>
-            {/* Brief Composer Hero */}
-            <section className="om-design-hero">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <RemixIcon name={scenario.icon} size={22} />
-                  <div>
-                    <h2 style={{ margin: 0 }}>{t(scenario.label)}</h2>
-                    <p className="om-design-muted" style={{ margin: '2px 0 0' }}>{t(scenario.hint)}</p>
+            {/* Editorial centered Hero + Composer */}
+            <section className="om-design-hero-wrap">
+              <div className="om-design-hero-head">
+                <span className="om-design-badge">
+                  <RemixIcon name={scenario.icon} size={13} />
+                  {t(scenario.label)}
+                </span>
+                <h2 className="om-design-hero-title">{t('What would you like to design?')}</h2>
+                <p className="om-design-hero-sub">{t(scenario.hint)}</p>
+              </div>
+
+              <div className="om-design-composer">
+                <textarea
+                  className="om-design-composer-input"
+                  aria-label={t('Design brief')}
+                  placeholder={scenario.examples[placeholderIndex] ?? t(scenario.hint)}
+                  value={brief}
+                  onChange={e => setBrief(e.target.value)}
+                />
+                <div className="om-design-composer-dock">
+                  <div className="om-design-header-group">
+                    {/* Design System picker */}
+                    <Popover.Root modal={false} open={systemOpen} onOpenChange={setSystemOpen}>
+                      <Popover.Trigger render={
+                        <Button type="button" size="sm" variant={selectedSystem ? 'secondary' : 'ghost'} icon={<RemixIcon name="palette-line" size={14} />}>
+                          {selectedSystem ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <span>{selectedSystem.title}</span>
+                              <span className="om-design-swatches">
+                                {selectedSystem.swatches.slice(0, 3).map(hex => <span key={hex} className="om-design-swatch" style={{ backgroundColor: hex }} />)}
+                              </span>
+                            </span>
+                          ) : t('Design system')}
+                        </Button>
+                      } />
+                      <Popover.Portal>
+                        <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
+                          <Popover.Popup className="om-design-popover" style={{ width: 320, maxHeight: 360 }}>
+                            <input
+                              type="search"
+                              className="om-design-input"
+                              placeholder={t('Search design systems…')}
+                              value={systemQuery}
+                              onChange={e => setSystemQuery(e.target.value)}
+                            />
+                            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {selectedSystem && (
+                                <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSystem(null); setSystemOpen(false); }}>
+                                  {t('Clear design system')}
+                                </Button>
+                              )}
+                              {filteredSystems.map(sys => (
+                                <Button
+                                  key={sys.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={selectedSystem?.id === sys.id ? 'secondary' : 'ghost'}
+                                  style={{ justifyContent: 'space-between' }}
+                                  onClick={() => { setSelectedSystem(sys); setSystemOpen(false); }}
+                                >
+                                  <span>{sys.title}</span>
+                                  <span className="om-design-swatches">
+                                    {sys.swatches.slice(0, 4).map(hex => (
+                                      <span key={hex} className="om-design-swatch" style={{ backgroundColor: hex }} />
+                                    ))}
+                                  </span>
+                                </Button>
+                              ))}
+                            </div>
+                          </Popover.Popup>
+                        </Popover.Positioner>
+                      </Popover.Portal>
+                    </Popover.Root>
+
+                    {/* Design Skill picker */}
+                    <Popover.Root modal={false} open={skillOpen} onOpenChange={setSkillOpen}>
+                      <Popover.Trigger render={
+                        <Button type="button" size="sm" variant={selectedSkill ? 'secondary' : 'ghost'} icon={<RemixIcon name="book-open-line" size={14} />}>
+                          {selectedSkill ? selectedSkill.title : t('Design skill')}
+                        </Button>
+                      } />
+                      <Popover.Portal>
+                        <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
+                          <Popover.Popup className="om-design-popover" style={{ width: 340, maxHeight: 360 }}>
+                            <input
+                              type="search"
+                              className="om-design-input"
+                              placeholder={t('Search design skills…')}
+                              value={skillQuery}
+                              onChange={e => setSkillQuery(e.target.value)}
+                            />
+                            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {selectedSkill && (
+                                <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSkill(null); setSkillOpen(false); }}>
+                                  {t('Clear design skill')}
+                                </Button>
+                              )}
+                              {filteredSkills.map(sk => (
+                                <Button
+                                  key={sk.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={selectedSkill?.id === sk.id ? 'secondary' : 'ghost'}
+                                  style={{ justifyContent: 'space-between' }}
+                                  onClick={() => { setSelectedSkill(sk); setSkillOpen(false); }}
+                                >
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{sk.title}</span>
+                                  {sk.scenario && <span className="om-design-badge">{sk.scenario}</span>}
+                                </Button>
+                              ))}
+                            </div>
+                          </Popover.Popup>
+                        </Popover.Positioner>
+                      </Popover.Portal>
+                    </Popover.Root>
+
+                    {selectedTemplate && (
+                      <span className="om-design-badge">
+                        {t('Template')}: {selectedTemplate.title}
+                        <IconButton aria-label={t('Clear template')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedTemplate(null)} />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="om-design-header-group">
+                    <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
+                      {t('Connect an Agent')}
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={14} />} onClick={() => void handleCreateBlank()}>
+                      {t('Create blank project')}
+                    </Button>
+                    <Button type="button" size="sm" variant="primary" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={handleCopyBrief}>
+                      {t('Copy to Agent')}
+                    </Button>
                   </div>
                 </div>
-                <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
-                  {t('Connect an Agent')}
-                </Button>
               </div>
 
-              <textarea
-                className="om-design-textarea"
-                style={{ minHeight: 96 }}
-                aria-label={t('Design brief')}
-                placeholder={scenario.examples[placeholderIndex] ?? t(scenario.hint)}
-                value={brief}
-                onChange={e => setBrief(e.target.value)}
-              />
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {/* Design System picker */}
-                  <Popover.Root modal={false} open={systemOpen} onOpenChange={setSystemOpen}>
-                    <Popover.Trigger render={
-                      <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="palette-line" size={14} />}>
-                        {selectedSystem ? selectedSystem.title : t('Design system')}
-                      </Button>
-                    } />
-                    <Popover.Portal>
-                      <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
-                        <Popover.Popup className="om-design-popover" style={{ width: 320, maxHeight: 360 }}>
-                          <input
-                            type="search"
-                            className="om-design-input"
-                            placeholder={t('Search design systems…')}
-                            value={systemQuery}
-                            onChange={e => setSystemQuery(e.target.value)}
-                          />
-                          <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {selectedSystem && (
-                              <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSystem(null); setSystemOpen(false); }}>
-                                {t('Clear design system')}
-                              </Button>
-                            )}
-                            {filteredSystems.map(sys => (
-                              <Button
-                                key={sys.id}
-                                type="button"
-                                size="sm"
-                                variant={selectedSystem?.id === sys.id ? 'secondary' : 'ghost'}
-                                style={{ justifyContent: 'space-between' }}
-                                onClick={() => { setSelectedSystem(sys); setSystemOpen(false); }}
-                              >
-                                <span>{sys.title}</span>
-                                <span className="om-design-swatches">
-                                  {sys.swatches.slice(0, 4).map(hex => (
-                                    <span key={hex} className="om-design-swatch" style={{ backgroundColor: hex }} />
-                                  ))}
-                                </span>
-                              </Button>
-                            ))}
-                          </div>
-                        </Popover.Popup>
-                      </Popover.Positioner>
-                    </Popover.Portal>
-                  </Popover.Root>
-
-                  {selectedTemplate && (
-                    <span className="om-design-badge">
-                      {t('Template')}: {selectedTemplate.title}
-                      <IconButton aria-label={t('Clear template')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedTemplate(null)} />
-                    </span>
-                  )}
+              {/* Quick example prompt chips */}
+              {scenario.examples.length > 0 && (
+                <div className="om-design-example-chips">
+                  {scenario.examples.map(example => (
+                    <Button
+                      key={example}
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="om-design-example-chip"
+                      title={example}
+                      icon={<RemixIcon name="sparkling-line" size={13} />}
+                      onClick={() => setBrief(example)}
+                    >
+                      <span className="om-design-example-chip-label">{example}</span>
+                    </Button>
+                  ))}
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Button type="button" size="md" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={15} />} onClick={() => void handleCreateBlank()}>
-                    {t('Create blank project')}
-                  </Button>
-                  <Button type="button" size="md" variant="primary" icon={<RemixIcon name="plug-line" size={15} />} onClick={handleCopyBrief}>
-                    {t('Copy to Agent')}
-                  </Button>
-                </div>
-              </div>
+              )}
 
               {manualPrompt && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ width: '100%', maxWidth: 820, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="om-design-muted">{t('Copy this MCP instruction manually')}</span>
                   <textarea className="om-design-textarea" readOnly value={manualPrompt} onFocus={e => e.currentTarget.select()} />
                 </div>
@@ -326,9 +388,9 @@ export function DesignScenePage({
             </section>
 
             {/* Template gallery */}
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                <h3 style={{ margin: 0 }}>{t('{scenario} templates', { scenario: t(scenario.label) })}</h3>
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="om-design-section-head">
+                <h3 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h3>
                 <input
                   type="search"
                   className="om-design-input"
@@ -347,15 +409,21 @@ export function DesignScenePage({
                 <div className="om-design-grid">
                   {templates.map(tpl => (
                     <article key={tpl.id} className="om-design-card">
-                      <TemplateCardThumb url={tpl.previewUrl} title={tpl.title} />
+                      <ScaledPreviewThumb
+                        src={tpl.previewUrl}
+                        title={tpl.title}
+                        badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
+                        topRight={
+                          <IconButton
+                            aria-label={t('Enlarge preview')}
+                            icon={<RemixIcon name="fullscreen-line" size={14} />}
+                            onClick={() => setPreviewTemplate(tpl)}
+                          />
+                        }
+                      />
                       <div className="om-design-card-body">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                          <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tpl.title}</strong>
-                          <IconButton aria-label={t('Enlarge preview')} icon={<RemixIcon name="fullscreen-line" size={14} />} onClick={() => setPreviewTemplate(tpl)} />
-                        </div>
-                        <p className="om-design-muted" style={{ margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {tpl.description}
-                        </p>
+                        <strong className="om-design-card-title">{tpl.title}</strong>
+                        <p className="om-design-card-desc">{tpl.description}</p>
                         <div style={{ display: 'flex', gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
                           <Button type="button" size="sm" variant="primary" onClick={() => handleUseTemplateWithAgent(tpl)}>
                             {t('Use with Agent')}
@@ -372,9 +440,9 @@ export function DesignScenePage({
             </section>
 
             {/* Recent projects for this scenario */}
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 style={{ margin: 0 }}>{t('Recent projects')}</h3>
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="om-design-section-head">
+                <h3 className="om-design-section-title">{t('Recent projects')}</h3>
                 <Button type="button" size="sm" variant="ghost" onClick={() => onSelectDesignScene('projects')}>{t('View all')}</Button>
               </div>
               <DesignProjectList scenario={scenario.id} compact onOpen={onOpenProject} />
@@ -383,10 +451,10 @@ export function DesignScenePage({
         )}
       </div>
 
-      {/* Template enlarge preview overlay */}
+      {/* Template enlarge preview dialog */}
       {previewTemplate && (
         <div role="dialog" aria-label={previewTemplate.title} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--motion-scrim)', display: 'grid', placeItems: 'center', padding: 24 }}>
-          <div style={{ width: 'min(1120px, 94vw)', height: 'min(760px, 88vh)', background: 'var(--motion-panel)', border: '1px solid var(--motion-border)', borderRadius: 'var(--motion-radius-xl)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ width: 'min(1140px, 94vw)', height: 'min(780px, 88vh)', background: 'var(--motion-panel)', border: '1px solid var(--motion-border)', borderRadius: 'var(--motion-radius-xl)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--motion-shadow-lg)' }}>
             <div className="om-design-header">
               <strong>{previewTemplate.title}</strong>
               <div className="om-design-header-group">

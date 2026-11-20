@@ -3,7 +3,7 @@ import { Popover } from '@base-ui/react/popover';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../packages/design-system/react/RemixIcons';
 import {
-  designCommentsPrompt, designProjectPrompt, designRoutes, designViewports,
+  designCommentsPrompt, designProjectPrompt, designRoutes, designViewports, findDesignScenario,
   type DesignComment, type DesignCommentAnchor, type DesignExportFormat, type DesignViewportId,
 } from '../../../shared/design-project';
 import type { ReviewAnnotation, ReviewPoint } from '../../../shared/review-comments';
@@ -13,6 +13,7 @@ import { useToast } from '../hooks/useToast';
 import { useI18n } from '../i18n/I18n';
 import { ResizablePane } from '../motion/ResizablePane';
 import { ReviewAnnotationGraphic } from '../motion/ReviewAnnotationGraphic';
+import { CodeViewer } from './CodeViewer';
 import { DesignApiError, designClient, makeRequestId } from './designClient';
 import { buildBridgeSrcDoc, looksLikeDeck, parseDeckSlides, parseSpeakerNotes, type PickedElement } from './previewBridge';
 import { useDesignProject } from './useDesignProject';
@@ -32,6 +33,10 @@ const ZOOM_STEPS = [50, 75, 100, 125, 150];
 
 function formatTime(ms: number) {
   try { return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+}
+
+function formatBytes(bytes: number) {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 export function DesignProjectEditor({
@@ -60,6 +65,7 @@ export function DesignProjectEditor({
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files');
   const [commentFilter, setCommentFilter] = useState<'open' | 'all' | 'resolved'>('open');
   const [activeTool, setActiveTool] = useState<AnnotationTool>('none');
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [pendingDraft, setPendingDraft] = useState<PendingDraft | null>(null);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -120,7 +126,8 @@ export function DesignProjectEditor({
   }, [project?.id, project?.revision, activeFile, reloadNonce]);
 
   const htmlFiles = useMemo(() => project?.files.filter(f => f.kind === 'html') ?? [], [project]);
-  const isHtmlActive = useMemo(() => /\.html?$/i.test(activeFile), [activeFile]);
+  const effectiveFile = activeFile || project?.entry || '';
+  const isHtmlActive = useMemo(() => /\.html?$/i.test(effectiveFile), [effectiveFile]);
   const isDeck = useMemo(() => project?.scenario === 'deck' || (isHtmlActive && looksLikeDeck(fileContent)), [project?.scenario, isHtmlActive, fileContent]);
   const deckSlides = useMemo(() => (isDeck && fileContent ? parseDeckSlides(fileContent) : []), [isDeck, fileContent]);
   const speakerNotes = useMemo(() => (isDeck && fileContent ? parseSpeakerNotes(fileContent) : []), [isDeck, fileContent]);
@@ -356,6 +363,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
   // Pointer handlers for region box & pen drawing overlay
   const onOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (activeTool !== 'region' && activeTool !== 'pen') return;
+    if (event.target !== event.currentTarget) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -414,9 +422,14 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
     && (!isDeck || c.anchor.slideIndex === undefined || c.anchor.slideIndex === activeSlide),
   ), [openComments, activeFile, project?.entry, isDeck, activeSlide]);
 
-  const useSrcDoc = viewMode === 'preview' && isHtmlActive && !previewVersionId && Boolean(fileContent) && (activeTool === 'comment' || isDeck);
-  const baseHref = project ? new URL(designRoutes.raw(project.id, ''), window.location.origin).href : '';
-  const srcDocValue = useMemo(() => (useSrcDoc ? buildBridgeSrcDoc(fileContent, baseHref, bridgeToken, activeTool === 'comment') : undefined), [useSrcDoc, fileContent, baseHref, bridgeToken, activeTool]);
+  const awaitingSrcDoc = viewMode === 'preview' && isHtmlActive && !previewVersionId && !fileContent;
+  const useSrcDoc = viewMode === 'preview' && isHtmlActive && !previewVersionId && Boolean(fileContent);
+  const baseHref = useMemo(() => {
+    if (!project) return '';
+    const relDir = activeFile.includes('/') ? activeFile.slice(0, activeFile.lastIndexOf('/') + 1) : '';
+    return new URL(designRoutes.raw(project.id, relDir), window.location.origin).href;
+  }, [project, activeFile]);
+  const srcDocValue = useMemo(() => (useSrcDoc ? buildBridgeSrcDoc(fileContent, baseHref, bridgeToken, false) : undefined), [useSrcDoc, fileContent, baseHref, bridgeToken]);
   const rawPreviewUrl = project ? `${designRoutes.raw(project.id, activeFile || project.entry)}${previewVersionId ? `?version=${encodeURIComponent(previewVersionId)}&r=${reloadNonce}` : `?r=${reloadNonce}`}` : '';
 
   if (loading && !project) {
@@ -445,6 +458,12 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
             onBlur={commitTitle}
             onKeyDown={e => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
           />
+          {findDesignScenario(project.scenario) && (
+            <span className="om-design-badge">
+              <RemixIcon name={findDesignScenario(project.scenario)!.icon} size={12} />
+              {t(findDesignScenario(project.scenario)!.label)}
+            </span>
+          )}
           {htmlFiles.length > 1 && htmlFiles.slice(0, 4).map(file => (
             <Button key={file.path} type="button" size="sm" variant={activeFile === file.path ? 'secondary' : 'ghost'} onClick={() => setActiveFile(file.path)}>
               {file.path}
@@ -466,7 +485,8 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
           <Popover.Root modal={false} open={deviceOpen} onOpenChange={setDeviceOpen}>
             <Popover.Trigger render={
               <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name={currentViewport.icon} size={14} />}>
-                {t(currentViewport.label)}
+                <span>{t(currentViewport.label)}</span>
+                <RemixIcon name="arrow-down-s-line" size={14} />
               </Button>
             } />
             <Popover.Portal>
@@ -708,10 +728,13 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
             <div className="om-design-sidebar-scroll">
               {sidebarTab === 'files' && project.files.map(file => (
                 <Button key={file.path} type="button" size="sm" variant={activeFile === file.path ? 'secondary' : 'ghost'}
-                  icon={<RemixIcon name={file.kind === 'html' ? 'file-code-line' : file.kind === 'image' ? 'file-image-line' : 'file-text-line'} size={14} />}
-                  style={{ justifyContent: 'flex-start' }}
+                  className="om-design-file-row"
                   onClick={() => { setActiveFile(file.path); if (file.kind !== 'html') setViewMode('code'); }}>
-                  {file.path}
+                  <span className="om-design-file-name">
+                    <RemixIcon name={file.kind === 'html' ? 'file-code-line' : file.kind === 'image' ? 'file-image-line' : 'file-text-line'} size={14} />
+                    <span>{file.path}</span>
+                  </span>
+                  <span className="om-design-file-size">{formatBytes(file.size)}</span>
                 </Button>
               ))}
 
@@ -738,13 +761,13 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                   )}
 
                   {visibleComments.map((comment, idx) => (
-                    <div key={comment.id} className="om-design-item-card">
+                    <div key={comment.id} className="om-design-item-card" data-active={selectedCommentId === comment.id} onClick={() => setSelectedCommentId(comment.id)}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
                         <span className="om-design-badge">#{idx + 1} · {comment.anchor.viewport.id}</span>
                         <span className="om-design-muted">{comment.status}</span>
                       </div>
-                      {comment.anchor.element && <code style={{ fontSize: 11, wordBreak: 'break-all' }}>{comment.anchor.element.selector}</code>}
-                      <p style={{ margin: 0, fontSize: 13 }}>{comment.text}</p>
+                      {comment.anchor.element && <code className="om-design-selector-chip">{comment.anchor.element.selector}</code>}
+                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{comment.text}</p>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {comment.anchor.slideIndex !== undefined && (
                           <Button type="button" size="sm" variant="ghost" onClick={() => sendDeckCommand('go', comment.anchor.slideIndex)}>
@@ -803,10 +826,19 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
 
           {viewMode === 'preview' ? (
             <>
-              <div className="om-design-stage-viewport" data-fluid={viewportId === 'desktop' && zoom === 100}>
+              <div className="om-design-stage-viewport" data-fluid={viewportId === 'desktop' && zoom === 100 && project.scenario !== 'document'}>
+                {(viewportId !== 'desktop' || zoom !== 100) && (
+                  <div className="om-design-device-caption">
+                    <RemixIcon name={currentViewport.icon} size={13} />
+                    <span>{t(currentViewport.label)}</span>
+                    {frameWidth && frameHeight && <span>· {frameWidth} × {frameHeight}</span>}
+                    <span>· {zoom}%</span>
+                  </div>
+                )}
                 <div
                   className="om-design-frame-wrap"
-                  data-fluid={viewportId === 'desktop' && zoom === 100}
+                  data-fluid={viewportId === 'desktop' && zoom === 100 && project.scenario !== 'document'}
+                  data-document={viewportId === 'desktop' && project.scenario === 'document'}
                   style={{
                     ...(frameWidth ? { width: frameWidth, height: frameHeight! } : { width: '100%', height: '100%' }),
                     ...(zoom !== 100 ? { transform: `scale(${zoom / 100})` } : {}),
@@ -814,11 +846,17 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                 >
                   <iframe
                     ref={iframeRef}
+                    key={`${project.id}:${activeFile}:${reloadNonce}`}
                     title={project.title}
                     className="om-design-iframe"
                     sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
-                    src={useSrcDoc ? undefined : rawPreviewUrl}
+                    src={useSrcDoc || awaitingSrcDoc ? undefined : rawPreviewUrl}
                     srcDoc={useSrcDoc ? srcDocValue : undefined}
+                    onLoad={() => {
+                      try {
+                        iframeRef.current?.contentWindow?.postMessage({ type: 'om:design-mode', token: bridgeToken, pick: activeTool === 'comment' }, '*');
+                      } catch { /* ignore */ }
+                    }}
                   />
 
                   {/* Annotation & Pins overlay */}
@@ -855,7 +893,14 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                       const x = c.anchor.region ? c.anchor.region.x + c.anchor.region.width / 2 : c.anchor.element ? c.anchor.element.box.x + c.anchor.element.box.width / 2 : 32 + idx * 28;
                       const y = c.anchor.region ? c.anchor.region.y + c.anchor.region.height / 2 : c.anchor.element ? c.anchor.element.box.y + 12 : 32;
                       return (
-                        <div key={c.id} className="om-design-pin" style={{ left: x, top: y }} title={c.text}>
+                        <div
+                          key={c.id}
+                          className="om-design-pin"
+                          data-selected={selectedCommentId === c.id}
+                          style={{ left: x, top: y }}
+                          title={c.text}
+                          onClick={() => { setSelectedCommentId(c.id); setSidebarOpen(true); setSidebarTab('comments'); }}
+                        >
                           {idx + 1}
                         </div>
                       );
@@ -901,7 +946,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                     <Button key={slide.index} type="button" size="sm" variant={slide.index === activeSlide ? 'secondary' : 'ghost'}
                       className="om-design-deck-thumb" data-active={slide.index === activeSlide}
                       onClick={() => sendDeckCommand('go', slide.index)}>
-                      <span style={{ fontSize: 11, opacity: 0.7 }}>{String(slide.index + 1).padStart(2, '0')}</span>
+                      <span className="om-design-slide-num">{String(slide.index + 1).padStart(2, '0')}</span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{slide.label}</span>
                     </Button>
                   ))}
@@ -921,9 +966,14 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                       </Button>
                     </>
                   ) : (
-                    <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="edit-line" size={14} />} onClick={() => { setCodeDraft(fileContent); setCodeEditing(true); }}>
-                      {t('Edit source')}
-                    </Button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={() => void copyPrompt(fileContent)}>
+                        {t('Copy code')}
+                      </Button>
+                      <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="edit-line" size={14} />} onClick={() => { setCodeDraft(fileContent); setCodeEditing(true); }}>
+                        {t('Edit source')}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -932,7 +982,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
               ) : codeEditing ? (
                 <textarea className="om-design-code-editor" aria-label={t('Source editor')} value={codeDraft} onChange={e => setCodeDraft(e.target.value)} spellCheck={false} />
               ) : (
-                <pre className="om-design-code-pre"><code>{fileContent}</code></pre>
+                <CodeViewer content={fileContent} />
               )}
             </div>
           )}

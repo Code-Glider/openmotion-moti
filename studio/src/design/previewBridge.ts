@@ -125,7 +125,7 @@ export function buildBridgeSrcDoc(rawHtml: string, baseHref: string, token: stri
     window.parent.postMessage({
       type: 'om:design-pick', token: TOKEN,
       element: describe(el),
-      clientPoint: { x: e.clientX, y: e.clientY },
+      clientPoint: { x: e.clientX || Math.round(r.left + r.width / 2), y: e.clientY || Math.round(r.top + r.height / 2) },
       viewport: { width: innerWidth, height: innerHeight },
       rect: { x: r.left, y: r.top, width: r.width, height: r.height }
     }, '*');

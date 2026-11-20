@@ -135,7 +135,7 @@ const fence = (value: string) => value.replace(/```/g, '`\u200b``');
 
 /** Brief from a Design Studio scene composer, copied to an external Agent. */
 export function designBriefPrompt(input: {
-  scenario: DesignScenarioId; brief: string; designSystemId?: string | null; templateId?: string | null; projectId?: string | null; language?: string | null;
+  scenario: DesignScenarioId; brief: string; designSystemId?: string | null; templateId?: string | null; skillId?: string | null; projectId?: string | null; language?: string | null;
 }) {
   const scenario = findDesignScenario(input.scenario)!;
   return [
@@ -144,6 +144,7 @@ export function designBriefPrompt(input: {
     `Scenario: ${scenario.id}`,
     input.projectId ? `Project: ${input.projectId}` : null,
     input.designSystemId ? `Design system: ${input.designSystemId} (read it with openmotion_design_catalog action=get_design_system)` : null,
+    input.skillId ? `Design skill: ${input.skillId} (read it with openmotion_design_catalog action=get_skill id=${input.skillId})` : null,
     input.templateId ? `Start from template: ${input.templateId} (openmotion_design_project action=create templateId=${input.templateId})` : null,
     input.language ? `Reply and write visible copy in: ${input.language}` : null,
     '',

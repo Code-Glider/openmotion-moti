@@ -4,8 +4,10 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18n';
 import { readWorkspacePage, workspacePageHref } from '../motion/workspacePageRouting';
+import { CodeViewer } from './CodeViewer';
 import { DesignApiError, designClient } from './designClient';
 import { DesignProjectEditor } from './DesignProjectEditor';
+import { DesignProjectList } from './DesignProjectList';
 import { buildBridgeSrcDoc, looksLikeDeck, parseDeckSlides, parseSpeakerNotes } from './previewBridge';
 
 const projectId = '22222222-2222-4222-8222-222222222222';
@@ -173,5 +175,41 @@ describe('DesignProjectEditor', () => {
     await act(async () => { resolveBtn!.click(); });
     expect(resolved).toBe(true);
     expect(DesignApiError).toBeDefined();
+  });
+
+  it('renders line numbers and syntax token classes in CodeViewer', async () => {
+    await act(async () => {
+      root.render(<CodeViewer content={'<!-- hero -->\n<h1 class="title">Hello</h1>\nconst count = 42;'} />);
+    });
+    const lines = container.querySelectorAll('.om-design-code-line');
+    expect(lines.length).toBe(3);
+    expect(container.querySelector('.om-design-tok-comment')?.textContent).toBe('<!-- hero -->');
+    expect(container.querySelector('.om-design-tok-tag')?.textContent).toBe('<h1');
+    expect(container.querySelector('.om-design-tok-string')?.textContent).toBe('"title"');
+    expect(container.querySelector('.om-design-tok-keyword')?.textContent).toBe('const');
+    expect(container.querySelector('.om-design-tok-number')?.textContent).toBe('42');
+  });
+
+  it('lists design projects and opens a project from DesignProjectList', async () => {
+    const opened: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/editors')) return Response.json({ editors: [{ id: 'vscode', label: 'VS Code', icon: 'code-s-slash-line', available: true }] });
+      if (url.includes('/projects')) return Response.json({ projects: [mockProject] });
+      return Response.json({});
+    });
+    await act(async () => {
+      root.render(
+        <I18nProvider>
+          <DesignProjectList onOpen={id => opened.push(id)} />
+        </I18nProvider>,
+      );
+    });
+    expect(container.textContent).toContain('Test Prototype');
+    expect(container.textContent).toContain('v1');
+    const openBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Open');
+    expect(openBtn).toBeTruthy();
+    await act(async () => { openBtn!.click(); });
+    expect(opened).toEqual([projectId]);
   });
 });
