@@ -65,7 +65,7 @@ export const mcpScenarios = [animeOpeningScenario, {
   prompt: 'Read my selected template with openmotion_get_template and adapt its description into a video prompt. Find a compatible model with openmotion_media_use. Show me the draft and model before generating with openmotion_assets_use.',
 }, {
   id: 'studio-shot', icon: 'film-line', title: 'Create a shot from this brief',
-  description: 'Generate a clip in Shorts, Marketing, Explainer or 3D Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.',
+  description: 'Generate a clip in Shorts, Marketing or Explainer Studio. Marketing also offers product images. Start from your idea or a Skill brief and choose a configured model.',
   tools: ['openmotion_media_use', 'openmotion_assets_use'],
   prompt: 'Generate one clip for the brief below. Find a compatible configured model with openmotion_media_use. If needed, help me configure a provider. Confirm the model and any first-frame image version, then submit once with openmotion_assets_use and track the original job.',
 }, {
@@ -75,7 +75,7 @@ export const mcpScenarios = [animeOpeningScenario, {
   prompt: 'Use openmotion_assets_use to find my shot still and confirm the version. Use openmotion_media_use to discover a configured video model with first-frame input. If none is available, guide me to Model providers. Use the confirmed image version as the reference in openmotion_assets_use and track the video job.',
 }, {
   id: 'spatial-scene', icon: 'box-3-line', title: '3D showcase',
-  description: 'In Explore, open 3D motion and choose a technique in 3D Studio. Set the brief and copy it to a connected Agent. Your Agent creates the editable scene in OpenMotion.',
+  description: '3D Studio is coming soon and does not support direct generation. Choose one of its six 3D creative Skills, fill in a brief and copy it to a connected Agent to create an editable scene in OpenMotion.',
   tools: ['openmotion_assets_use', 'openmotion_create_project', 'openmotion_edit_project'],
   prompt: 'Use openmotion_create_project for the new scene and openmotion_edit_project for revision-checked edits. If the brief names a reference, read its pinned version with openmotion_assets_use.',
 }, {
