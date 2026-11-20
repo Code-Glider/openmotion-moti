@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
 import { useI18n } from '../i18n/I18n';
@@ -103,7 +104,7 @@ export const TemplateGalleryCard = memo(function TemplateGalleryCard({
   const fixedAspect = resourceKind === 'brand-kit';
   return <article className="om-gallery-card" data-template-id={template.id} data-playback-id={template.previewUrl ? playbackId : undefined} data-has-video={Boolean(template.previewUrl || animatedPreview)} data-website-cover={Boolean(coverUrl)}>
     <div className="om-gallery-card-media">
-    <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: fixedAspect ? templateAspect(template) : Math.max(0.8, Math.min(1.9, coverAspect || templateAspect(template))) }} onClick={event => onSelect(template, event.currentTarget)}
+    <Button variant="plain" className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: fixedAspect ? templateAspect(template) : Math.max(0.8, Math.min(1.9, coverAspect || templateAspect(template))) }} onClick={event => onSelect(template, event.currentTarget)}
       onMouseEnter={() => onPriority(playbackId ?? template.id)} onMouseLeave={() => onPriority(null)} onFocus={() => onPriority(playbackId ?? template.id)} onBlur={() => onPriority(null)}
       aria-label={t(resourceKind === 'brand-kit' ? 'Preview Brand Kit {title}' : 'Preview template {title}', { title: template.title })}>
       <TemplatePoster key={template.posterUrl} template={template} coverUrl={coverUrl} onCoverAspect={fixedAspect ? undefined : setCoverAspect} />
@@ -116,7 +117,7 @@ export const TemplateGalleryCard = memo(function TemplateGalleryCard({
         <span className="om-gallery-card-caption" data-brand-credit={brandName ? true : undefined}><strong>{brandName || template.title}</strong><small>{brandName ? template.title : credit}</small></span>
         <span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={18} /></span>
       </span>}
-    </button>
+    </Button>
     </div>
     {linkedSource && <TemplateSourceLink template={template} className="om-gallery-card-source" />}
     {footer}

@@ -17,6 +17,17 @@
       "adoption": { "mode": "enforced" }
     },
     {
+      "name": "icon-button",
+      "title": "IconButton",
+      "description": "Trigger an action with a square, icon-only button.",
+      "source": "packages/design-system/components/icon-button.tsx",
+      "export": "IconButton",
+      "example": "<IconButton type=\"button\" aria-label=\"Add music\" icon={musicIcon} onClick={chooseFile} />",
+      "consumer": "studio/src/motion/TimelineCaptionActions.tsx",
+      "import": "open-design-ui/icon-button",
+      "adoption": { "mode": "opt-in", "review": "Check focus and hit areas in compact timeline toolbars before requiring IconButton for icon-only actions." }
+    },
+    {
       "name": "slider",
       "title": "Slider",
       "description": "Adjust a bounded number by dragging or using the keyboard.",

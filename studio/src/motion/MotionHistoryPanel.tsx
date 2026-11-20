@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { trackStudioClick, trackVersionHistoryResult } from './editorTracking';
 import { Tooltip } from "../components/ui/Tooltip";
 import { useI18n } from "../i18n/I18n";
@@ -106,23 +107,23 @@ export function MotionHistoryPanel({ onRestored = reloadProject, compact = false
   return <section className="motion-history-panel" aria-label={t("Version history")} aria-busy={busy || loading}>
     {(!compact || allowPinning) && <div className={`motion-history-toolbar${compact ? ' motion-history-toolbar-compact' : ''}`}>
       {!compact && <div><strong>{t("Version history")}</strong><span>{t("Changes are recorded automatically. Pin important versions to keep them.")}</span></div>}
-      {allowPinning && <button type="button" className="motion-button" disabled={disabled || loading} onClick={() => { trackStudioClick('version_history', 'keep_current', projectId); void keepCurrent(); }}>
-        <MotionIcon name="save" size={14} />{t("Keep current version")}</button>}
+      {allowPinning && <Button variant="plain" type="button" className="motion-button" disabled={disabled || loading} onClick={() => { trackStudioClick('version_history', 'keep_current', projectId); void keepCurrent(); }}>
+        <MotionIcon name="save" size={14} />{t("Keep current version")}</Button>}
     </div>}
     {allowPinning && <div className="motion-history-filters" aria-label={t("Filter versions")}>
-      <button type="button" aria-pressed={!onlyPinned} onClick={() => { if (onlyPinned) trackStudioClick('version_history', 'history_filter', projectId, undefined, 'all'); setOnlyPinned(false); }}>{t("All changes")}{" "}<span>{entries.length}</span></button>
-      <button type="button" aria-pressed={onlyPinned} onClick={() => { if (!onlyPinned) trackStudioClick('version_history', 'history_filter', projectId, undefined, 'pinned'); setOnlyPinned(true); }}>{t("Pinned")}{" "}<span>{entries.filter(entry => entry.pinned).length}</span></button>
+      <Button variant="plain" type="button" aria-pressed={!onlyPinned} onClick={() => { if (onlyPinned) trackStudioClick('version_history', 'history_filter', projectId, undefined, 'all'); setOnlyPinned(false); }}>{t("All changes")}{" "}<span>{entries.length}</span></Button>
+      <Button variant="plain" type="button" aria-pressed={onlyPinned} onClick={() => { if (!onlyPinned) trackStudioClick('version_history', 'history_filter', projectId, undefined, 'pinned'); setOnlyPinned(true); }}>{t("Pinned")}{" "}<span>{entries.filter(entry => entry.pinned).length}</span></Button>
     </div>}
     {(error || writeBlockedReason) && <div className="motion-history-message motion-error" role="alert">
       {t(error || writeBlockedReason || '')}
-      {error && <button type="button" className="motion-button motion-button-quiet" disabled={busy}
-        onClick={() => void run(async () => { await refresh(); })}>{t("Try again")}</button>}
+      {error && <Button variant="plain" type="button" className="motion-button motion-button-quiet" disabled={busy}
+        onClick={() => void run(async () => { await refresh(); })}>{t("Try again")}</Button>}
     </div>}
     {notice && <div className="motion-history-message" role="status">{t(notice)}</div>}
     <div className="motion-history-list" aria-label={t("History entries")}>
       {loading ? <p className="motion-history-empty">{t("Reading versions…")}</p> : !shown.length ? <p className="motion-history-empty">
         {allowPinning && onlyPinned ? t("No pinned versions yet. Select an entry to pin it.") : t("No edits yet")}
-      </p> : shown.map(entry => <button type="button" key={entry.id} className="motion-history-entry"
+      </p> : shown.map(entry => <Button variant="plain" type="button" key={entry.id} className="motion-history-entry"
         aria-pressed={selected?.id === entry.id} onClick={() => { if (selected?.id !== entry.id) trackStudioClick('version_history', 'select_version', projectId); setSelectedId(entry.id); }}>
         <span className="motion-history-entry-heading"><Tooltip label={entry.restoredTo ? t('Restored a previous version') : historyEntryLabel(entry.label, t)} wrap><strong>{entry.restoredTo ? t('Restored a previous version') : historyEntryLabel(entry.label, t)}</strong></Tooltip>
           {allowPinning && entry.pinned && <span className="motion-history-badge">{t("Pinned")}</span>}
@@ -131,16 +132,16 @@ export function MotionHistoryPanel({ onRestored = reloadProject, compact = false
         <span className="motion-history-entry-meta"><time dateTime={new Date(entry.endedAt).toISOString()}>{formatDate(entry.endedAt, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time>
           <span>{entry.who.kind === 'person' ? t("Manual edit") : entry.who.kind === 'agent' ? entry.who.name : t("External change")} · {t('{count} files', { count: entry.files.length })}{entry.undone ? ` · ${t('Undone')}` : ''}</span>
         </span>
-      </button>)}
+      </Button>)}
     </div>
     {selected && <div className="motion-history-detail">
       {!compact && <><div className="motion-history-detail-title">{t("Changes in this version")}</div>
       <ul>{selected.files.map(file => <li key={file.path}><Tooltip label={file.path} wrap><code>{file.path}</code></Tooltip>
         <span>{file.before === null ? t('Created') : file.after === null ? t("Deleted") : t("Modified")}</span></li>)}</ul></>}
       <div className="motion-history-detail-actions">
-        {allowPinning && <button type="button" className="motion-button" disabled={disabled} onClick={() => { trackStudioClick('version_history', 'pin_version', projectId, undefined, selected.pinned ? 'off' : 'on'); void pin(selected); }}>{selected.pinned ? t("Unpin version") : t("Keep this version")}</button>}
-        <button type="button" className="motion-button motion-button-primary" disabled={disabled || selected.id === entries.at(-1)?.id}
-          onClick={() => { trackStudioClick('version_history', 'restore_version', projectId); void restore(selected); }}>{t("Restore this version")}</button>
+        {allowPinning && <Button variant="plain" type="button" className="motion-button" disabled={disabled} onClick={() => { trackStudioClick('version_history', 'pin_version', projectId, undefined, selected.pinned ? 'off' : 'on'); void pin(selected); }}>{selected.pinned ? t("Unpin version") : t("Keep this version")}</Button>}
+        <Button variant="plain" type="button" className="motion-button motion-button-primary" disabled={disabled || selected.id === entries.at(-1)?.id}
+          onClick={() => { trackStudioClick('version_history', 'restore_version', projectId); void restore(selected); }}>{t("Restore this version")}</Button>
       </div>
       {!compact && <p>{t("Restoring creates a new entry and keeps your current changes in history.")}</p>}
     </div>}

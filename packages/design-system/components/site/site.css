@@ -44,7 +44,6 @@ body {
 .wordmark,
 .toolbar,
 .catalog-meta,
-.usage-links,
 .preview-tabs,
 .preview-tabs button,
 .search-form,
@@ -298,16 +297,8 @@ body {
 .syntax-comment { color: var(--color-code-comment); }
 .syntax-string { color: var(--color-code-string); }
 
-.usage-links {
-  flex-wrap: wrap;
-  justify-content: space-between;
-  color: var(--motion-muted);
-  font-size: var(--motion-text-md);
-}
-
-.usage-links span, .doc-list li { overflow-wrap: anywhere; }
-.usage-links a { display: inline-flex; gap: var(--motion-space-4); align-items: center; color: var(--motion-strong); }
-.usage-links a:hover, .doc-list a { text-decoration: underline; text-underline-offset: var(--motion-space-2); }
+.doc-list li { overflow-wrap: anywhere; }
+.doc-list a { text-decoration: underline; text-underline-offset: var(--motion-space-2); }
 
 .example-list { display: grid; gap: var(--motion-space-24); }
 .example p { margin-top: var(--motion-space-4); }

@@ -1,3 +1,5 @@
+import { Button } from 'open-design-ui/button';
+import { IconButton } from 'open-design-ui/icon-button';
 import type { CreativeStudio, TechniqueStudio } from '../../../shared/studio-catalog';
 import { useLayoutEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Modality } from '../../../shared/gateway';
@@ -44,25 +46,25 @@ function MediaChoices({ kind, onModel, destination, onNavigate, onModelNavigate,
         const filtering = modelScene?.id === scene.id;
         const filterLabel = t('Models for {scene}', { scene: t(scene.label) });
         return <div className="om-nav-row om-creative-scene-row" data-active={current} key={scene.id}>
-          <button className="om-nav-item om-nav-row-link om-creative-option" aria-current={current ? 'page' : undefined}
+          <Button variant="plain" className="om-nav-item om-nav-row-link om-creative-option" aria-current={current ? 'page' : undefined}
             onClick={() => onNavigate(sceneDestination(scene, destination, pinned && supportsScene(pinned, scene) ? pinned.id : null))}>
             <span className="om-creation-icon" data-tone={kind}><RemixIcon name={scene.icon} size={18} /></span>
             <span><strong>{t(scene.label)}</strong><small className="om-muted">{t(scene.hint)}</small></span>
-          </button>
-          <button className="om-nav-item om-nav-row-action" title={filterLabel} aria-label={filterLabel} aria-pressed={filtering}
+          </Button>
+          <IconButton variant="plain" className="om-nav-item om-nav-row-action" title={filterLabel} aria-label={filterLabel} aria-pressed={filtering}
             onClick={() => {
               setModelScene(filtering ? null : scene);
               if (window.matchMedia('(max-width: 560px)').matches) modelsHeading.current?.scrollIntoView({ block: 'nearest' });
-            }}><RemixIcon name={filtering ? 'equalizer-fill' : 'equalizer-line'} size={16} /></button>
+            }} icon={<RemixIcon name={filtering ? 'equalizer-fill' : 'equalizer-line'} size={16} />} />
         </div>;
       })}
     </section>
     <section><h2 className="om-eyebrow" ref={modelsHeading}>{t('Models')}</h2>
-      {modelScene && <button className="om-nav-item om-model-scene-chip" aria-label={t('Clear filters')} onClick={() => setModelScene(null)}>{t(modelScene.label)}<RemixIcon name="close-line" size={14} /></button>}
+      {modelScene && <Button variant="plain" className="om-nav-item om-model-scene-chip" aria-label={t('Clear filters')} onClick={() => setModelScene(null)}>{t(modelScene.label)}<RemixIcon name="close-line" size={14} /></Button>}
       <MediaModelChoices scene={modelScene} onNavigate={onModelNavigate} {...{ kind, onModel, destination, openProviders, catalog, failed, retry }} />
     </section>
     {kind === 'video' && <section className="om-creative-related-skills"><h2 className="om-eyebrow">{t('Skills')}</h2><div>
-      {editingPresets.map(skill => <button className="om-nav-item" key={skill.id} onClick={() => onSkill(skill.id)}><RemixIcon name="movie-line" size={15} /><span>{t(skill.title)}</span></button>)}
+      {editingPresets.map(skill => <Button variant="plain" className="om-nav-item" key={skill.id} onClick={() => onSkill(skill.id)}><RemixIcon name="movie-line" size={15} /><span>{t(skill.title)}</span></Button>)}
     </div></section>}
   </div>;
 }
@@ -151,13 +153,13 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
           <Popover container={popupHost} modal={false} openOnHover={!inPanel} open={expanded}
             onOpenChange={value => setOpen(previous => value ? id : previous === id ? null : previous)}
             aria-label={menuLabel} align="start" className={id === 'mcp' ? 'om-selection-panel om-creative-client-menu' : 'om-selection-panel om-creative-menu'}
-            primaryAction={<button className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => { track(id === 'mcp' ? 'nav_mcp' : 'nav_media', where); choose(onActivate); }}>{label}</button>}
-            trigger={<button className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={expanded}><RemixIcon name="arrow-down-s-line" size={12} /></button>}>
+            primaryAction={<Button variant="plain" className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => { track(id === 'mcp' ? 'nav_mcp' : 'nav_media', where); choose(onActivate); }}>{label}</Button>}
+            trigger={<IconButton variant="plain" className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={expanded} icon={<RemixIcon name="arrow-down-s-line" size={12} />} />}>
             {id === 'mcp' ? <>
               <h2 className="om-eyebrow">{t('Agent client')}</h2>
-              {mcpClients.map(client => <button className="om-nav-item" key={client.id} onClick={() => { track('select_client', { ...where, client: client.id }); choose(() => onOpenPage('mcp', client.id)); }}>
+              {mcpClients.map(client => <Button variant="plain" className="om-nav-item" key={client.id} onClick={() => { track('select_client', { ...where, client: client.id }); choose(() => onOpenPage('mcp', client.id)); }}>
                 {t(client.name)}{client.host === 'chatgpt' && <small className="om-muted">{t('Remote connection unavailable')}</small>}
-              </button>)}
+              </Button>)}
             </> : expanded && <MediaChoices {...catalog} kind={id} destination={destination}
               onModel={model => { track('select_model', { ...where, model }); choose(() => onModel(model)); }}
               onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }}
@@ -169,10 +171,10 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
   }
 
   function item(index: number, inPanel = false) {
-    if (index === 0) return <button className="om-nav-item om-explore-link" aria-label={t('Explore')} title={t('Explore')}
+    if (index === 0) return <Button variant="plain" className="om-nav-item om-explore-link" aria-label={t('Explore')} title={t('Explore')}
       aria-current={currentPage === 'explore' ? 'page' : undefined} onClick={() => { track('nav_explore', { navTarget: 'explore', inOverflow: inPanel }); choose(() => onOpenPage('explore')); }}>
       <RemixIcon name="global-line" size={17} /><span>{t('Explore')}</span>
-    </button>;
+    </Button>;
     if (index < apiIndex) return splitItem(index, inPanel);
     if (index === apiIndex) return (
       <a className="om-nav-item" href={workspacePageHref(location.href, { api: true, tool: null, templates: false })} aria-current={currentPage === 'api' ? 'page' : undefined}
@@ -183,11 +185,11 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
       : (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
     const badge = 'navBadge' in studio ? studio.navBadge : undefined;
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
-    return <button className="om-nav-item" aria-current={isCurrent ? 'page' : undefined}
+    return <Button variant="plain" className="om-nav-item" aria-current={isCurrent ? 'page' : undefined}
       aria-label={t(studio.title)} aria-describedby={badgeId} onClick={() => { track('nav_studio', { navTarget: studio.id, studio: studio.id, inOverflow: inPanel }); choose(() => onChooseStudio(studio)); }}>
       {inPanel && <RemixIcon name={studio.icon} size={17} />}
       {t(studio.title)}{badge && <span className="om-badge" data-nav-badge={badge} id={badgeId} lang="en">{badge}</span>}
-    </button>;
+    </Button>;
   }
 
   const indices = Array.from({ length: count }, (_, index) => index);
@@ -199,7 +201,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
       <div ref={more} data-stowed={!hasMore || undefined} inert={!hasMore}>
         <Popover container={popupHost} modal={false} align="end" openOnHover open={moreOpen && hasMore}
           onOpenChange={next => { setOpen(null); setMoreOpen(next); }} aria-label={t('More Studio')} className="om-selection-panel om-nav-more-panel"
-          trigger={<button type="button" className="om-nav-item">{t('More Studio')}</button>}>
+          trigger={<Button variant="plain" type="button" className="om-nav-item">{t('More Studio')}</Button>}>
           {moreOpen && (overflowActions || hidden.some(index => index < studioStart)) && <div className="om-nav-more-tools">
             {overflowActions?.(() => setMoreOpen(false))}
             {hidden.filter(index => index < studioStart).map(index => <div key={index}>{item(index, true)}</div>)}

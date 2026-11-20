@@ -1,3 +1,5 @@
+import { Button } from 'open-design-ui/button';
+import { IconButton } from 'open-design-ui/icon-button';
 import type { ExploreCommunity } from '../../../shared/studio-catalog';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
 import { brand } from '../../../packages/design-system/index.js';
@@ -46,12 +48,12 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
   }
 
   return <header ref={header} className="om-app-header">
-    <Tooltip label={homeHint}><button type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></button></Tooltip>
+    <Tooltip label={homeHint}><Button variant="plain" type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></Button></Tooltip>
     <CreativeNavigation {...navigation} openProviders={openModelSettings} overflowActions={compactActions ? workspaceActions : undefined} />
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
-      {settings && settings !== 'brand-kit' && <button className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome}><RemixIcon name="close-line" size={20} /></button>}
+      {settings && settings !== 'brand-kit' && <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome} icon={<RemixIcon name="close-line" size={20} />} />}
       <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
   </header>;
@@ -85,7 +87,7 @@ export function ApplicationAccountMenu({ settings, openSettings }: { settings: S
   const { account } = useAccountSummary();
   const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
   const avatarInitial = avatarSegmenter.segment(userName)[Symbol.iterator]().next().value?.segment;
-  return <Menu tooltip={t('Account menu')} modal={false} side="bottom" align="end" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<button type="button" className="om-nav-item om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <RemixIcon className="om-default-avatar-icon" name="user-3-line" size={14} />}</span></button>}>
+  return <Menu tooltip={t('Account menu')} modal={false} side="bottom" align="end" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<Button variant="plain" type="button" className="om-nav-item om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <RemixIcon className="om-default-avatar-icon" name="user-3-line" size={14} />}</span></Button>}>
       <MenuItem onClick={() => openSettings('account')}><span className="om-menu-label"><RemixIcon name="user-3-line" size={16} /><strong>{userName}</strong></span></MenuItem><MenuSeparator />
       <MenuItem onClick={() => openSettings('subscription')}><span className="om-menu-label"><RemixIcon name="bank-card-line" size={16} />{t('Subscription & usage')}</span></MenuItem>
       <MenuSeparator />

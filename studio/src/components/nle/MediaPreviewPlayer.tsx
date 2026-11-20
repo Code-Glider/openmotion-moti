@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useI18n } from "../../i18n/I18n";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -68,14 +69,14 @@ export function MediaPreviewPlayer({ url, kind, name, autoPlay = true, waveform,
       {!waveform && seek}
       <div className={audioMode ? "motion-player-control-row motion-player-control-row-lg" : "motion-player-control-row"}>
         <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-text-2">{formatTime(time)} / {formatTime(duration)}</span>
-        <Tooltip label={t(playing ? "Pause" : "Play")}><button type="button" aria-label={t(playing ? "Pause" : "Play")} onClick={toggle} disabled={failed}
-          className={`${audioMode ? "motion-audio-preview-play " : ""}flex h-7 w-8 items-center justify-center justify-self-center rounded-md hover:bg-hover disabled:opacity-30`}><RemixIcon name={playing ? "pause-fill" : "play-fill"} size={20} /></button></Tooltip>
+        <Tooltip label={t(playing ? "Pause" : "Play")}><IconButton variant="plain" type="button" aria-label={t(playing ? "Pause" : "Play")} onClick={toggle} disabled={failed}
+          className={`${audioMode ? "motion-audio-preview-play " : ""}flex h-7 w-8 items-center justify-center justify-self-center rounded-md hover:bg-hover disabled:opacity-30`} icon={<RemixIcon name={playing ? "pause-fill" : "play-fill"} size={20} />} /></Tooltip>
         <div className="motion-player-secondary flex min-w-0 items-center justify-self-end">
           <VolumeControl audioVolume={volume} audioMuted={muted} setAudioVolume={setVolume} setAudioMuted={setMuted} disabled={failed} />
           <span className="flex items-center gap-[inherit]">
             <SpeedMenu playbackRate={rate} setPlaybackRate={setRate} disabled={failed} />
-            <Tooltip label={t(loop ? "Disable loop playback" : "Enable loop playback")}><button type="button" aria-label={t(loop ? "Disable loop playback" : "Enable loop playback")} aria-pressed={loop} onClick={() => setLoop(!loop)} disabled={failed}
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover"><RemixIcon name="repeat-line" size={16} /></button></Tooltip>
+            <Tooltip label={t(loop ? "Disable loop playback" : "Enable loop playback")}><IconButton variant="plain" type="button" aria-label={t(loop ? "Disable loop playback" : "Enable loop playback")} aria-pressed={loop} onClick={() => setLoop(!loop)} disabled={failed}
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover" icon={<RemixIcon name="repeat-line" size={16} />} /></Tooltip>
           </span>
         </div>
       </div>

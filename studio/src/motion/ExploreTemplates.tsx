@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { blackFridayTemplates } from '../../../shared/black-friday-collection';
 import { groupBrandSeries, rankDiscoverySeries } from './brandStoryData';
 import { collectionFacet, formatCategories, isFormatCategory, type TemplateCollection } from './templateCollections';
@@ -117,9 +118,9 @@ export function TemplatePromptAction({ item, onTry }: { item: GalleryTemplate; o
   const { t } = useI18n();
   const prompt = [item.description?.trim(), item.styleDescription?.trim()].filter(Boolean).join('\n\n');
   if (!prompt) return null;
-  return <button className="om-nav-item" onClick={() => onTry(prompt)}>
+  return <Button variant="plain" className="om-nav-item" onClick={() => onTry(prompt)}>
     <RemixIcon name="movie-line" size={15} />{t('Try as a video prompt')}<RemixIcon name="arrow-right-line" size={15} />
-  </button>;
+  </Button>;
 }
 
 export function ExploreTemplateCard({ item, active, onPriority, onTry, onOpen }: {

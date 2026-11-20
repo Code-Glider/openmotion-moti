@@ -192,6 +192,7 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
     try {
       const page = await browser.newPage();
+      await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
       const items = Array.from({ length: 10 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [], uses: ['Product launch', 'Partnership announcement'], industries: ['AI & technology', 'Design tools'] }));
       await page.setRequestInterception(true);
       page.on('request', request => {
@@ -337,5 +338,44 @@ test('Sound Studio previews and seeks the welcome track in both wide and compact
       await running.close();
       await gateway.close();
     }
+  });
+});
+
+test('the opt-in UI inspector outlines component roots, excludes its own controls and follows a modal', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      const url = new URL('/', (await running.info()).previewUrl);
+      await page.goto(url.href);
+      await page.waitForSelector('[data-odui-component="button"]');
+      assert.equal(await page.$('.odui-inspector'), null);
+      url.searchParams.set('debug', 'ui');
+      await page.goto(url.href);
+      await page.waitForSelector('.odui-inspector-launcher', { visible: true });
+      await page.click('.odui-inspector-launcher');
+      const row = '.odui-inspector-row';
+      await page.click(row);
+      assert.equal(await page.$eval('[data-odui-component="button"]:not(.odui-inspector *)', el => getComputedStyle(el).outlineStyle), 'solid');
+      await page.waitForFunction(() =>
+        Number(document.querySelector('.odui-inspector-row .odui-count')?.textContent) ===
+        document.querySelectorAll('button[data-odui-component="button"]:not(.odui-inspector *)').length);
+      await page.evaluate(() => {
+        const dialog = document.createElement('dialog');
+        dialog.id = 'inspector-test';
+        dialog.innerHTML = '<button>Native</button><div data-odui-component="slider"><input type="range"></div>';
+        document.body.append(dialog);
+        dialog.showModal();
+      });
+      await page.waitForSelector('#inspector-test .odui-inspector:popover-open');
+      await page.click(row + ':has(.native)');
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('#inspector-test > button')!).outlineStyle === 'dashed');
+      await page.click(row + ':last-child');
+      assert.notEqual(await page.$eval('#inspector-test input', el => getComputedStyle(el).outlineStyle), 'dashed');
+      await page.click('.odui-inspector-bar button:last-child');
+      assert.equal(await page.$('.odui-inspector'), null);
+      assert.notEqual(await page.$eval('#inspector-test > button', el => getComputedStyle(el).outlineStyle), 'dashed');
+    } finally { await browser.close(); await running.close(); }
   });
 });

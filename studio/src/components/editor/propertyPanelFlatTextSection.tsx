@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { NativeSelect } from "../ui/FormField";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -339,7 +341,7 @@ export function FlatTextSection({
         onSetTextFieldStyle={onSetTextFieldStyle}
         onPreviewTextFieldStyle={onPreviewTextFieldStyle}
       />
-      {!mvp && <button
+      {!mvp && <Button variant="plain"
         type="button"
         onClick={() => {
           track("button", "Add text field");
@@ -352,7 +354,7 @@ export function FlatTextSection({
         className="mt-0.5 flex items-center gap-[5px] text-[10px] text-panel-text-4 hover:text-panel-text-2"
       >
         <Plus size={10} />
-        {t("Add text field")}</button>}
+        {t("Add text field")}</Button>}
     </div>
   );
 }
@@ -411,7 +413,7 @@ export function FlatTextLayerList({
                 {field.tagName}
               </span>
               {fields.length > 1 && (
-                <button
+                <IconButton variant="plain"
                   type="button"
                   data-flat-text-layer-remove="true"
                   aria-label={t("Remove text field")}
@@ -421,15 +423,14 @@ export function FlatTextLayerList({
                     onRemove(field.key);
                   }}
                   className="shrink-0 text-panel-text-4 hover:text-panel-text-1"
-                >
-                  <X size={10} />
-                </button>
+                  icon={<X size={10} />}
+                />
               )}
             </div>
           );
         })}
       </div>
-      {!mvp && <button
+      {!mvp && <Button variant="plain"
         type="button"
         data-flat-text-layer-add="true"
         onClick={() => {
@@ -439,7 +440,7 @@ export function FlatTextLayerList({
         className="mt-1 flex items-center gap-[5px] text-[10px] text-panel-text-4 hover:text-panel-text-2"
       >
         <Plus size={10} />
-        {t("Add text field")}</button>}
+        {t("Add text field")}</Button>}
     </div>
   );
 }

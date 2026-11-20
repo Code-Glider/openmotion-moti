@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -49,8 +50,8 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
   }, [enabled]);
   return <div ref={stage} className="om-scene-example-media">
     {clip && !failed ? <video controls playsInline autoPlay={archivedClip} preload="none" poster={example.poster} src={clip} aria-label={t(example.title)} onError={() => setFailed(true)} /> : !example.audio && <img src={example.poster} alt="" />}
-    {enabled && archivedClip && !clip && !failed && <button type="button" className="om-button om-scene-preview-action"
-      disabled={requestedClip === example.clip} onClick={() => setRequestedClip(example.clip)}>{t(requestedClip === example.clip ? 'Loading…' : 'Play')}</button>}
+    {enabled && archivedClip && !clip && !failed && <Button variant="plain" type="button" className="om-button om-scene-preview-action"
+      disabled={requestedClip === example.clip} onClick={() => setRequestedClip(example.clip)}>{t(requestedClip === example.clip ? 'Loading…' : 'Play')}</Button>}
     {example.audio && !failed && enabled && <div className="om-scene-audio">
       <div className="om-sound-sleeve" aria-hidden="true"><img src={example.poster} alt="" /></div>
       <div className="om-sound-track"><h3 className="om-subtitle">{t('OpenMotion welcome soundtrack')}</h3>
@@ -59,7 +60,7 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
           : <div className="om-sound-loading" role="status" aria-label={t('Loading…')}><Skeleton /></div>}
       </div>
     </div>}
-    {failed && <button className="om-button om-scene-preview-action" onClick={() => setFailed(false)}>{t('Retry preview')}</button>}
+    {failed && <Button variant="plain" className="om-button om-scene-preview-action" onClick={() => setFailed(false)}>{t('Retry preview')}</Button>}
     {example.credit && <small className="om-scene-credit">{example.credit}</small>}
   </div>;
 }
@@ -73,16 +74,16 @@ export function StudioIdeas({ destination, onPrompt, active = true }: { destinat
   const canvas = sceneLayout(scene) === 'canvas';
   return canvas ? <section className="om-canvas-ideas">
     <div className="om-canvas-deck" role="group" aria-label={t('Try an idea')}>{options.map((item, index) =>
-      <button key={item.title} aria-label={t(item.title)} aria-pressed={index === selected} data-current={index === selected} onClick={() => setSelected(index)}>
+      <Button variant="plain" key={item.title} aria-label={t(item.title)} aria-pressed={index === selected} data-current={index === selected} onClick={() => setSelected(index)}>
         <img src={item.poster} alt="" />{item.credit && <small className="om-scene-credit">{item.credit}</small>}
-      </button>)}</div>
+      </Button>)}</div>
     <h2 className="om-title">{t(idea.title)}</h2><p className="om-muted">{t(idea.prompt)}</p>
-    <button className="om-button" onClick={() => onPrompt(t(idea.prompt))}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</button>
+    <Button variant="ghost" className="om-button h-auto" onClick={() => onPrompt(t(idea.prompt))}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</Button>
   </section> : <section className="om-scene-guide">
     <div className="om-guide-heading">{idea.title !== scene.label && <span className="om-eyebrow">{t(scene.label)}</span>}<h2 className="om-title">{t(idea.title)}</h2></div>
     <div className="om-scene-example om-card">
       {scene.id === 'speech' ? <blockquote className="om-speech-script"><RemixIcon name="voiceprint-line" size={28} /><p>{t(idea.prompt)}</p></blockquote> : <ExampleMedia key={idea.title} example={idea} enabled={active} />}
-      <div className="om-scene-example-copy">{scene.id === 'speech' ? <span className="om-muted">{t('Speech text')}</span> : <p>{t(idea.prompt)}</p>}<button className="om-button" onClick={() => onPrompt(t(idea.prompt))}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</button></div>
+      <div className="om-scene-example-copy">{scene.id === 'speech' ? <span className="om-muted">{t('Speech text')}</span> : <p>{t(idea.prompt)}</p>}<Button variant="ghost" className="om-button h-auto" onClick={() => onPrompt(t(idea.prompt))}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</Button></div>
     </div>
     <ol className="om-guide-steps">{[
       [needsImage(scene) ? 'image-line' : scene.icon, needsImage(scene) ? 'Reference asset' : scene.id === 'speech' ? 'Speech text' : 'Your idea', scene.hint],
