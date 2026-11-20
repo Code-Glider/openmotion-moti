@@ -32,6 +32,19 @@ function buildTestModel(wordsPerGroup = 5) {
 // ---------------------------------------------------------------------------
 
 describe("generateCaptionHtml", () => {
+  it("emits exact caption group IDs for script-safe RTL hit-target lookup", () => {
+    const model = buildTestModel();
+    const originalId = model.groupOrder[0];
+    const group = model.groups.get(originalId)!;
+    model.groups.delete(originalId);
+    const rtlId = "קבוצה-א";
+    model.groupOrder[0] = rtlId;
+    model.groups.set(rtlId, group);
+    const html = generateCaptionHtml(model);
+    expect(html).toContain('.dataset.captionGroupId = "קבוצה-א";');
+    expect(html).toContain('.dataset.captionGroupId = "group-1";');
+  });
+
   it("keeps script-closing text and word IDs as data when HTML is parsed", () => {
     const text = '</ScRiPt><img src=x onerror="alert(1)"><!-- <script> & end';
     const id = '</script><svg onload="alert(2)">';

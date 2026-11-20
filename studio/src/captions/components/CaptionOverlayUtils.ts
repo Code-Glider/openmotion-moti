@@ -1,3 +1,4 @@
+import { splitCaptionWordRuns } from "./captionWordRuns";
 // DOM helpers for CaptionOverlay — word box reading, transform I/O, wrapper management
 
 export interface WordBox {
@@ -9,14 +10,153 @@ export interface WordBox {
   y: number;
   width: number;
   height: number;
+  /** Text ranges are selectable but must never be transformed as DOM elements. */
+  editable: boolean;
+}
+
+/** A caption hit box must be refreshed when its geometry or word identity changes.
+ * Subpixel jitter below half a CSS pixel is ignored, but a resized word or
+ * a newly editable authored span must not leave stale overlay handles behind.
+ */
+export function sameWordBoxes(previous: readonly WordBox[], next: readonly WordBox[]): boolean {
+  if (previous.length !== next.length) return false;
+  return next.every((box, index) => {
+    const before = previous[index];
+    return before.segmentId === box.segmentId
+      && before.groupId === box.groupId
+      && before.groupIndex === box.groupIndex
+      && before.wordIndex === box.wordIndex
+      && before.editable === box.editable
+      && Math.abs(before.x - box.x) < 0.5
+      && Math.abs(before.y - box.y) < 0.5
+      && Math.abs(before.width - box.width) < 0.5
+      && Math.abs(before.height - box.height) < 0.5;
+  });
+}
+
+interface CaptionHitModel {
+  groupOrder: string[];
+  groups: Map<string, { segmentIds: string[] }>;
+  segments: Map<string, { text: string }>;
+}
+
+function groupWords(model: CaptionHitModel, groupId: string): string[] | null {
+  const group = model.groups.get(groupId);
+  if (!group) return null;
+  const words = group.segmentIds.map((id) => model.segments.get(id)?.text);
+  if (words.some((word) => !word?.trim())) return null;
+  return words as string[];
+}
+
+/**
+ * Only one-to-one direct spans are transform targets. A styled span around a
+ * whole sentence is not a word, even when it happens to be the first child.
+ */
+function directWordElements(groupEl: HTMLElement, words: readonly string[]): HTMLElement[] {
+  if (Array.from(groupEl.childNodes).some((node) =>
+    node.nodeType === 3 && Boolean(node.textContent?.trim()))) return [];
+  const children = Array.from(groupEl.children) as HTMLElement[];
+  if (children.length !== words.length) return [];
+  const candidates = children.map((child) =>
+    child.dataset.captionWrapper === "true"
+      ? child.querySelector<HTMLElement>(":scope > span")
+      : child.tagName === "SPAN" ? child : null,
+  );
+  if (candidates.some((el, index) => !el || el.textContent?.trim() !== words[index].trim())) return [];
+  return candidates as HTMLElement[];
+}
+
+/**
+ * Read-only Range geometry for legacy text and styled markup. Timed words must
+ * match the complete original logical Unicode text, including spacing. Browser
+ * layout resolves BiDi and shaping; we neither reverse characters nor rewrite
+ * a text node during measurement.
+ */
+function measureTextRuns(groupEl: HTMLElement, words: string[]): DOMRect[] {
+  const doc = groupEl.ownerDocument;
+  const walker = doc.createTreeWalker(groupEl, 4 /* NodeFilter.SHOW_TEXT */);
+  const nodes: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.parentElement?.closest("script, style, [hidden]")) nodes.push(node as Text);
+  }
+  if (nodes.length === 0) return [];
+  const text = nodes.map((node) => node.data).join("");
+  const runs = splitCaptionWordRuns(text, words);
+  if (!runs) return [];
+
+  const boundaries = new Set<number>([0, text.length]);
+  for (const { index, segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)) {
+    boundaries.add(index);
+    boundaries.add(index + segment.length);
+  }
+
+  const positions: Array<[number, number]> = [];
+  let cursor = 0;
+  for (let i = 0; i < runs.length; i++) {
+    const nonspaceOffset = runs[i].search(/\S/u);
+    if (nonspaceOffset < 0) return [];
+    const start = cursor + nonspaceOffset;
+    const end = start + words[i].length;
+    if (!boundaries.has(start) || !boundaries.has(end)) return [];
+    positions.push([start, end]);
+    cursor += runs[i].length;
+  }
+
+  const locate = (offset: number, afterBoundary: boolean): [Text, number] => {
+    let remaining = offset;
+    for (const node of nodes) {
+      if (remaining < node.length || (!afterBoundary && remaining === node.length)) {
+        return [node, remaining];
+      }
+      remaining -= node.length;
+    }
+    const last = nodes[nodes.length - 1];
+    return [last, last.length];
+  };
+  try {
+    return positions.map(([start, end]) => {
+      const [startNode, startOffset] = locate(start, true);
+      const [endNode, endOffset] = locate(end, false);
+      const range = doc.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+      const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+      if (rects.length === 0) throw new Error("CAPTION_RANGE_NOT_LAID_OUT");
+      const left = Math.min(...rects.map((rect) => rect.left));
+      const top = Math.min(...rects.map((rect) => rect.top));
+      const right = Math.max(...rects.map((rect) => rect.right));
+      const bottom = Math.max(...rects.map((rect) => rect.bottom));
+      return { left, top, width: right - left, height: bottom - top } as DOMRect;
+    });
+  } catch {
+    // Non-layout test DOMs and hidden text return no hit targets, not fake ones.
+    return [];
+  }
+}
+
+/**
+ * Generated captions carry their exact group ID so an empty/omitted group
+ * cannot shift a later group's word hit targets onto the wrong DOM element.
+ * Unlabelled legacy compositions retain positional lookup. If any IDs are
+ * present, missing or duplicate IDs fail closed instead of guessing.
+ */
+function captionGroupLookup(doc: Document): (groupId: string, index: number) => HTMLElement | null {
+  const groupEls = Array.from(doc.querySelectorAll<HTMLElement>(".caption-group"));
+  const identified = new Map<string, HTMLElement | null>();
+  let hasIdentifiers = false;
+  for (const groupEl of groupEls) {
+    if (!groupEl.hasAttribute("data-caption-group-id")) continue;
+    hasIdentifiers = true;
+    const id = groupEl.dataset.captionGroupId ?? "";
+    identified.set(id, identified.has(id) ? null : groupEl);
+  }
+  return (groupId, index) =>
+    hasIdentifiers ? identified.get(groupId) ?? null : groupEls[index] ?? null;
 }
 
 export function readWordBoxes(
   iframe: HTMLIFrameElement,
-  model: {
-    groupOrder: string[];
-    groups: Map<string, { segmentIds: string[] }>;
-  },
+  model: CaptionHitModel,
   overlayEl: HTMLElement,
 ): WordBox[] {
   let doc: Document | null = null;
@@ -36,66 +176,34 @@ export function readWordBoxes(
   const offsetX = iframeDisplayRect.left - overlayRect.left;
   const offsetY = iframeDisplayRect.top - overlayRect.top;
 
-  const groupEls = doc.querySelectorAll<HTMLElement>(".caption-group");
+  const captionGroupAt = captionGroupLookup(doc);
   const boxes: WordBox[] = [];
 
   for (let gi = 0; gi < model.groupOrder.length; gi++) {
     const groupId = model.groupOrder[gi];
     const group = model.groups.get(groupId);
     if (!group) continue;
-    const groupEl = groupEls[gi] as HTMLElement | undefined;
+    const groupEl = captionGroupAt(groupId, gi);
     if (!groupEl) continue;
     const computed = win.getComputedStyle(groupEl);
     if (parseFloat(computed.opacity) <= 0.01 || computed.visibility === "hidden") continue;
-    const resolvedWordEls: HTMLElement[] = [];
-    for (const child of groupEl.children) {
-      const c = child as HTMLElement;
-      if (c.dataset.captionWrapper === "true") {
-        const inner = c.querySelector<HTMLElement>(":scope > span");
-        if (inner) resolvedWordEls.push(inner);
-      } else if (c.tagName === "SPAN") {
-        resolvedWordEls.push(c);
-      }
-    }
-    if (resolvedWordEls.length === 0 && groupEl.textContent?.trim()) {
-      const textNode = groupEl.childNodes[0];
-      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-        const words = (textNode.textContent || "").split(/\s+/).filter(Boolean);
-        const frag = doc.createDocumentFragment();
-        for (const word of words) {
-          const span = doc.createElement("span");
-          span.textContent = word + " ";
-          span.style.display = "inline";
-          frag.appendChild(span);
-          resolvedWordEls.push(span);
-        }
-        groupEl.replaceChild(frag, textNode);
-      } else {
-        const singleSpan = groupEl.querySelector<HTMLElement>(":scope > span");
-        if (singleSpan && singleSpan.textContent?.trim()) {
-          const words = singleSpan.textContent.split(/\s+/).filter(Boolean);
-          const frag = doc.createDocumentFragment();
-          for (const word of words) {
-            const span = doc.createElement("span");
-            span.textContent = word + " ";
-            span.style.display = "inline";
-            frag.appendChild(span);
-            resolvedWordEls.push(span);
-          }
-          singleSpan.replaceWith(frag);
-        }
-      }
-    }
+    const words = groupWords(model, groupId);
+    if (!words) continue;
+
+    const elements = directWordElements(groupEl, words);
+    const rects = elements.length
+      ? elements.map((wordEl) => wordEl.getBoundingClientRect())
+      : measureTextRuns(groupEl, words);
+    if (rects.length !== group.segmentIds.length) continue;
+
     for (let wi = 0; wi < group.segmentIds.length; wi++) {
-      const segId = group.segmentIds[wi];
-      const wordEl = resolvedWordEls[wi] as HTMLElement | undefined;
-      if (!wordEl) continue;
-      const rect = wordEl.getBoundingClientRect();
+      const rect = rects[wi];
       boxes.push({
-        segmentId: segId,
+        segmentId: group.segmentIds[wi],
         groupId,
         groupIndex: gi,
         wordIndex: wi,
+        editable: elements.length > 0,
         x: rect.left * cssScale + offsetX,
         y: rect.top * cssScale + offsetY,
         width: rect.width * cssScale,
@@ -106,10 +214,12 @@ export function readWordBoxes(
   return boxes;
 }
 
+/** Return only a verified one-to-one DOM word, never a sentence-wide wrapper. */
 export function getWordEl(
   iframe: HTMLIFrameElement,
   groupIndex: number,
   wordIndex: number,
+  model: CaptionHitModel,
 ): HTMLElement | null {
   let doc: Document | null = null;
   try {
@@ -118,19 +228,12 @@ export function getWordEl(
     return null;
   }
   if (!doc) return null;
-  const groupEl = doc.querySelectorAll<HTMLElement>(".caption-group")[groupIndex];
+  const groupId = model.groupOrder[groupIndex];
+  const words = groupId === undefined ? null : groupWords(model, groupId);
+  if (!words) return null;
+  const groupEl = captionGroupLookup(doc)(groupId, groupIndex);
   if (!groupEl) return null;
-  const wordEls: HTMLElement[] = [];
-  for (const child of groupEl.children) {
-    const el = child as HTMLElement;
-    if (el.dataset.captionWrapper === "true") {
-      const inner = el.querySelector<HTMLElement>(":scope > span");
-      if (inner) wordEls.push(inner);
-    } else if (el.tagName === "SPAN") {
-      wordEls.push(el);
-    }
-  }
-  return wordEls[wordIndex] ?? null;
+  return directWordElements(groupEl, words)[wordIndex] ?? null;
 }
 
 /**
@@ -233,7 +336,7 @@ export function isCaptionPreviewVisible(): boolean {
 export function applyCaptionModelToIframe(model: {
   groupOrder: string[];
   groups: Map<string, { segmentIds: string[] }>;
-  segments: Map<string, { style: { x?: number; y?: number; scaleX?: number; rotation?: number } }>;
+  segments: Map<string, { text: string; style: { x?: number; y?: number; scaleX?: number; rotation?: number } }>;
 }): void {
   const iframe = registeredIframe?.current;
   if (!iframe) return;
@@ -250,7 +353,7 @@ export function applyCaptionModelToIframe(model: {
     for (let wi = 0; wi < group.segmentIds.length; wi++) {
       const seg = model.segments.get(group.segmentIds[wi]);
       if (!seg) continue;
-      const wordEl = getWordEl(iframe, gi, wi);
+      const wordEl = getWordEl(iframe, gi, wi, model);
       if (!wordEl) continue;
       const s = seg.style;
       writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0);

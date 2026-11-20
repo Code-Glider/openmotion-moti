@@ -7,6 +7,7 @@ import { resolveCaptionNudge, isEditableEventTarget } from "../keyboard";
 import { matchesKey } from "../../player/components/studioShortcuts";
 import {
   readWordBoxes,
+  sameWordBoxes,
   getWordEl,
   readGsapTransform,
   getOrCreateWrapper,
@@ -45,6 +46,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const overlayRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef(model);
   modelRef.current = model;
+  const scheduleLayoutRef = useRef<(() => void) | null>(null);
   // Set by the mount effect; lets Escape handling cancel an in-flight drag.
   const cancelDragRef = useRef<(() => boolean) | null>(null);
 
@@ -100,15 +102,11 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const iframe = iframeRef.current;
       const m = modelRef.current;
       const overlay = overlayRef.current;
-      if (!iframe || !m || !overlay) return;
-      const next = readWordBoxes(iframe, m, overlay);
-      if (
-        next.length === prevBoxes.length &&
-        next.every(
-          (b, i) => Math.abs(b.x - prevBoxes[i].x) < 0.5 && Math.abs(b.y - prevBoxes[i].y) < 0.5,
-        )
-      )
-        return;
+      if (!iframe || !overlay) return;
+      // A cleared or replaced caption model must remove the previous hit
+      // targets, even if the iframe itself hasn't moved.
+      const next = m ? readWordBoxes(iframe, m, overlay) : [];
+      if (sameWordBoxes(prevBoxes, next)) return;
       prevBoxes = next;
       setWordBoxes(next);
     };
@@ -117,6 +115,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     const scheduleTick = () => {
       if (rafId === null) rafId = requestAnimationFrame(tick);
     };
+    scheduleLayoutRef.current = scheduleTick;
 
     // Event sources: player state changes (seek/scrub/select), preview
     // messages, element resize, window resize.
@@ -213,7 +212,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
           if (!group) continue;
           const wi = group.segmentIds.indexOf(segId);
           if (wi < 0) continue;
-          const wordEl = getWordEl(iframe, gi, wi);
+          const wordEl = getWordEl(iframe, gi, wi, m);
           if (!wordEl) continue;
           const wrapper = getOrCreateWrapper(wordEl);
           const state = readGsapTransform(wrapper, win);
@@ -237,9 +236,16 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       window.removeEventListener("resize", scheduleTick);
       window.removeEventListener("keydown", handleKeyDown);
       cancelDragRef.current = null;
+      if (scheduleLayoutRef.current === scheduleTick) scheduleLayoutRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [livePreviewIframe]);
+  }, [livePreviewIframe, isEditMode]);
+
+  // Caption edits and history restores do not necessarily move the playhead,
+  // resize the iframe or generate a preview message. Re-measure their hit boxes.
+  useEffect(() => {
+    if (isEditMode) scheduleLayoutRef.current?.();
+  }, [isEditMode, model]);
 
   const getCssScale = useCallback(() => {
     const iframe = iframeRef.current;
@@ -256,7 +262,8 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const iframe = iframeRef.current;
       if (!iframe) return;
-      const wordEl = getWordEl(iframe, groupIndex, wordIndex);
+      const liveModel = modelRef.current;
+      const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
@@ -283,7 +290,8 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const iframe = iframeRef.current;
       if (!iframe) return;
-      const wordEl = getWordEl(iframe, groupIndex, wordIndex);
+      const liveModel = modelRef.current;
+      const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
       const rect = wordEl.getBoundingClientRect();
@@ -316,7 +324,8 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const iframe = iframeRef.current;
       if (!iframe) return;
-      const wordEl = getWordEl(iframe, box.groupIndex, box.wordIndex);
+      const liveModel = modelRef.current;
+      const wordEl = liveModel ? getWordEl(iframe, box.groupIndex, box.wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
@@ -420,7 +429,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               top: box.y,
               width: box.width,
               height: box.height,
-              cursor: isSelected ? "move" : "pointer",
+              cursor: isSelected && box.editable ? "move" : "pointer",
               touchAction: "none",
               borderRadius: 2,
             }}
@@ -429,10 +438,10 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               selectSegment(box.segmentId, e.shiftKey);
             }}
             onPointerDown={(e) => {
-              if (isSelected) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
+              if (isSelected && box.editable) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
             }}
           >
-            {isSelected && (
+            {isSelected && box.editable && (
               <>
                 {/* Rotation handle — 24px hit area around an 8px dot */}
                 <div

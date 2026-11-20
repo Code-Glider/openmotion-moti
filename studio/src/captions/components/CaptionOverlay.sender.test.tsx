@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { CaptionOverlay } from "./CaptionOverlay";
 import { useCaptionStore } from "../store";
+import { DEFAULT_ANIMATION_SET } from "../types";
 import { usePreviewIframeStore } from "../../player/store/previewIframeStore";
 
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
@@ -14,7 +15,13 @@ it("only schedules caption layout for messages from its preview", () => {
   const foreign = document.createElement("iframe");
   document.body.append(host, preview, foreign);
   const root = createRoot(host);
-  const schedule = vi.fn(() => 1);
+  // A model refresh may already have queued a frame on mount; drain that
+  // initial request before checking which message origins schedule a new one.
+  const callbacks: FrameRequestCallback[] = [];
+  const schedule = vi.fn((callback: FrameRequestCallback) => {
+    callbacks.push(callback);
+    return callbacks.length;
+  });
   vi.stubGlobal("requestAnimationFrame", schedule);
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   vi.stubGlobal(
@@ -31,11 +38,13 @@ it("only schedules caption layout for messages from its preview", () => {
     });
   try {
     act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    act(() => { for (const callback of callbacks.splice(0)) callback(0); });
     schedule.mockClear();
     send(foreign.contentWindow);
     send(null);
     expect(schedule).not.toHaveBeenCalled();
     send(preview.contentWindow);
+    send(preview.contentWindow); // Coalesced while the previous frame remains pending.
     expect(schedule).toHaveBeenCalledOnce();
   } finally {
     act(() => root.unmount());
@@ -94,6 +103,79 @@ it("observes and accepts messages from the promoted iframe, not the old one", ()
     host.remove();
     a.remove();
     b.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+
+it("begins observing its iframe when caption editing is enabled after mount", () => {
+  const host = document.createElement("div");
+  const preview = document.createElement("iframe");
+  document.body.append(host, preview);
+  const root = createRoot(host);
+  // A model refresh may already have queued a frame on mount; drain that
+  // initial request before checking which message origins schedule a new one.
+  const callbacks: FrameRequestCallback[] = [];
+  const schedule = vi.fn((callback: FrameRequestCallback) => {
+    callbacks.push(callback);
+    return callbacks.length;
+  });
+  vi.stubGlobal("requestAnimationFrame", schedule);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  useCaptionStore.getState().setEditMode(false);
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    act(() => useCaptionStore.getState().setEditMode(true));
+    act(() => { for (const callback of callbacks.splice(0)) callback(0); });
+    schedule.mockClear();
+    act(() => window.dispatchEvent(new MessageEvent("message", {
+      source: preview.contentWindow, data: { source: "hf-preview" },
+    })));
+    expect(schedule).toHaveBeenCalledOnce();
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    preview.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("requests caption hit remeasurement on model changes without a player event", () => {
+  const host = document.createElement("div");
+  const preview = document.createElement("iframe");
+  document.body.append(host, preview);
+  const root = createRoot(host);
+  const callbacks: FrameRequestCallback[] = [];
+  const schedule = vi.fn((callback: FrameRequestCallback) => {
+    callbacks.push(callback);
+    return callbacks.length;
+  });
+  vi.stubGlobal("requestAnimationFrame", schedule);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  useCaptionStore.getState().reset();
+  useCaptionStore.getState().setEditMode(true);
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    act(() => { for (const callback of callbacks.splice(0)) callback(0); });
+    schedule.mockClear();
+    act(() => useCaptionStore.getState().setModel({
+      width: 640, height: 360, duration: 3,
+      segments: new Map(), groups: new Map(), groupOrder: [],
+      defaultAnimation: DEFAULT_ANIMATION_SET,
+    }));
+    expect(schedule).toHaveBeenCalledOnce();
+    act(() => { for (const callback of callbacks.splice(0)) callback(0); });
+    schedule.mockClear();
+    act(() => useCaptionStore.getState().setModel(null));
+    expect(schedule).toHaveBeenCalledOnce();
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    preview.remove();
     vi.unstubAllGlobals();
   }
 });
