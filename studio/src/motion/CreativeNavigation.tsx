@@ -41,7 +41,7 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
           onClick={() => onNavigate(sceneDestination(scene, destination, pinned && supportsScene(pinned, scene) ? pinned.id : null))}>
           {scene.id === 'text-to-image' ? (
             <span className="om-scene-tile-art om-image-demo" aria-hidden="true">
-              <span className="om-image-demo-frame">
+              <span className="om-media-demo-frame">
                 <img src={example.poster} alt="" />
                 <span className="om-image-demo-input">
                   <span className="om-image-demo-lines"><i /><i /><i /></span>
@@ -51,12 +51,10 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
             </span>
           ) : scene.id === 'image-edit' ? (
             <span className="om-scene-tile-art om-edit-demo" aria-hidden="true">
-              <img src={example.poster} alt="" />
-              <span className="om-edit-demo-before">
+              <span className="om-media-demo-frame">
                 <img src={speakerStudio} alt="" />
-                <small>{t('Before')}</small>
+                <img className="om-edit-demo-result" src={example.poster} alt="" />
               </span>
-              <small className="om-edit-demo-after">{t('After')}</small>
             </span>
           ) : (
             <span className="om-scene-tile-art"><img src={example.poster} alt="" style={{ objectPosition: example.posterPosition }} /></span>
