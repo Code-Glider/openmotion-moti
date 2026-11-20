@@ -102,8 +102,10 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const iframe = iframeRef.current;
       const m = modelRef.current;
       const overlay = overlayRef.current;
-      if (!iframe || !m || !overlay) return;
-      const next = readWordBoxes(iframe, m, overlay);
+      if (!iframe || !overlay) return;
+      // A cleared or replaced caption model must remove the previous hit
+      // targets, even if the iframe itself hasn't moved.
+      const next = m ? readWordBoxes(iframe, m, overlay) : [];
       if (sameWordBoxes(prevBoxes, next)) return;
       prevBoxes = next;
       setWordBoxes(next);
@@ -242,7 +244,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   // Caption edits and history restores do not necessarily move the playhead,
   // resize the iframe or generate a preview message. Re-measure their hit boxes.
   useEffect(() => {
-    if (isEditMode && model) scheduleLayoutRef.current?.();
+    if (isEditMode) scheduleLayoutRef.current?.();
   }, [isEditMode, model]);
 
   const getCssScale = useCallback(() => {

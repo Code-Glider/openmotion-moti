@@ -132,7 +132,11 @@ it("requests caption hit remeasurement on model changes without a player event",
   const preview = document.createElement("iframe");
   document.body.append(host, preview);
   const root = createRoot(host);
-  const schedule = vi.fn(() => 1);
+  const callbacks: FrameRequestCallback[] = [];
+  const schedule = vi.fn((callback: FrameRequestCallback) => {
+    callbacks.push(callback);
+    return callbacks.length;
+  });
   vi.stubGlobal("requestAnimationFrame", schedule);
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
@@ -140,12 +144,17 @@ it("requests caption hit remeasurement on model changes without a player event",
   useCaptionStore.getState().setEditMode(true);
   try {
     act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    act(() => { for (const callback of callbacks.splice(0)) callback(0); });
     schedule.mockClear();
     act(() => useCaptionStore.getState().setModel({
       width: 640, height: 360, duration: 3,
       segments: new Map(), groups: new Map(), groupOrder: [],
       defaultAnimation: DEFAULT_ANIMATION_SET,
     }));
+    expect(schedule).toHaveBeenCalledOnce();
+    act(() => { for (const callback of callbacks.splice(0)) callback(0); });
+    schedule.mockClear();
+    act(() => useCaptionStore.getState().setModel(null));
     expect(schedule).toHaveBeenCalledOnce();
   } finally {
     act(() => root.unmount());
