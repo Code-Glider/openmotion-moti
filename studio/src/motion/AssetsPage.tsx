@@ -24,6 +24,8 @@ import { sceneLayout } from './sceneShowcase';
 import { StudioIdeas } from './StudioIdeas';
 import { AudioStudioLanding } from './AudioStudioLanding';
 import { SoundStudioWorkspace } from './SoundStudioWorkspace';
+import { creationModels } from './creationModels';
+import { imageModelLabel } from './imageMenuModels';
 import './assets.css';
 export function AssetsPage({ active, hasProject = false, studio, routeId, routeVersion, onAssetRoute }: { routeId?: string | null; routeVersion?: string | null; onAssetRoute?: (id: string | null, version: string | null) => void; active: boolean; hasProject?: boolean; studio?: StudioCreation }) {
   const { t } = useI18n(), toast = useToast();
@@ -281,7 +283,9 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
     finally { if (request === selectionRequest.current) setSelectingTask(false); }
   };
   const blankCanvas = layout === 'canvas' && browser.data?.total === 0 && !browser.query && browser.source === 'all';
-  const studioEmpty = studio && (layout === 'canvas' && !hasGuide ? <StudioIdeas destination={studio.destination} onPrompt={applyPrompt} /> : <p className="om-muted">{t('No assets yet')}</p>);
+  const canvasModels = studioForm && layout === 'canvas' ? creationModels(studioForm.catalog.catalog, draft.modality, studioForm.destination.model ?? draft.model, studioForm.destination.scene, !studioForm.destination.model) : undefined;
+  const studioEmpty = studio && (layout === 'canvas' ? <StudioIdeas destination={studio.destination} onPrompt={applyPrompt}
+    modelName={canvasModels?.selected && imageModelLabel(canvasModels.selected)} /> : <p className="om-muted">{t('No assets yet')}</p>);
   const history = { tasks, selectedKey, loading: historyLoading, error: historyError, onRetry: () => { setHistoryLoading(true); setHistoryRetry(value => value + 1); }, onSelect: (task: AssetTask) => { tracking.reportAssetsClick('asset_tasks', 'select_task', { task_mode: task.mode }); void selectTask(task); } };
   const taskMenu = <AssetTaskMenu {...history} disabled={selectingTask} />;
   const composer = <AssetComposer studio={studioForm} key={taskEpoch} active={active} draft={draft} setDraft={setDraft} agentReferences={agentReferences} setAgentReferences={setAgentReferences} jobs={jobs} mode={mode} onMode={next => { if (next !== mode) tracking.reportAssetsClick('asset_create', 'mode_switch', { task_mode: next }); setMode(next); }} taskIds={taskIds} history={history} selectingTask={selectingTask}
@@ -331,7 +335,7 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
       <Button variant="plain" className="om-nav-item" aria-pressed={mobileView === 'create'} onClick={() => setMobileView('create')}>{t('AI Create')}</Button>
     </div></div>}
     <div className="om-assets-library">
-    {creating && layout === 'workbench' && <ResizablePane className="om-creator-pane" storageKey="motion-studio-controls-width" initial={378} min={310} max={650} edge="right" label={t('Resize creator')}>{composer}</ResizablePane>}
+    {creating && studio && <ResizablePane className="om-creator-pane" storageKey="motion-studio-controls-width" initial={378} min={310} max={650} edge="right" label={t('Resize creator')}>{composer}</ResizablePane>}
     <main ref={gallery} className="om-assets-main" onDragOver={e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }} onDrop={e => { if (e.dataTransfer.files.length) { e.preventDefault(); void importFiles(Array.from(e.dataTransfer.files), false, 'library_drop'); } }}>
       {audioStudio?.openCreate ? <AudioStudioLanding destination={audioStudio.destination} active={active} onPrompt={audioStudio.openCreate} onCreate={() => audioStudio.openCreate?.()} /> : <>
       {studio ? <header className="om-assets-heading">{hasGuide ? <div className="om-choice-tabs" role="group" aria-label={t('Guide & assets')}>
@@ -342,7 +346,6 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
       {guide && studio ? <StudioIdeas destination={studio.destination} active={active} onPrompt={applyPrompt} /> : <AssetBrowserContent browser={browser} hoverPreview={active} emptyContent={studioEmpty} toolbar={studio ? (blankCanvas ? <></> : undefined) : <AssetGalleryToolbar browser={browser} onKindChange={next => { if (next !== kind) tracking.reportAssetsClick('assets_library', next === 'trash' ? 'trash_view' : 'kind_filter', { asset_kind: next }); setKind(next); }} />} onOpen={asset => { tracking.reportAssetsClick('assets_library', 'open_asset', { modality: asset.modality }); open(asset); }} onCreate={studio ? undefined : modality => { tracking.reportAssetsClick('assets_library', 'create_asset', { modality }); startDraft({ modality, prompt: '', references: [] }); }} />}
       </>}
     </main>
-    {creating && layout === 'canvas' && <div className="om-canvas-dock om-card">{composer}</div>}
     {creating && !studio && <ResizablePane className="om-creator-pane" storageKey="motion-assets-creator-width" initial={460} min={340} max={800} edge="left" label={t('Resize creator')}>{composer}</ResizablePane>}
     </div>
     </>}

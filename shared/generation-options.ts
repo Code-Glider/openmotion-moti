@@ -217,6 +217,22 @@ export function defaultVideoAudioEnabled(model: Model): boolean {
     && (publishedAudioToggle(model)?.default === true || alwaysOnVideoAudioModels.has(model.modelId));
 }
 
+/** The fields each production OpenDesign image model honours, measured 2026-11-20 ("OpenDesign API image model
+ * capabilities, tested"). GPT Image 2.6 ignores sizes and ratios; Seedream rejects any ratio but 1:1, so neither
+ * shows one. `background` offers only "transparent", the value background removal sends. */
+function openDesignImageFields(model: Model): GenerationOption[] | undefined {
+  if (/^gpt-image-2\.6-/.test(model.modelId)) {
+    const published = publishedStrings(model.nativeOptions?.quality);
+    return [
+      choice('quality', 'Quality', published?.values ?? ['low', 'medium', 'high'], published?.default ?? 'low'),
+      { ...choice('background', 'Background', []), choices: [{ value: 'transparent', label: 'Transparent' }] },
+    ];
+  }
+  if (model.modelId === 'seedream-5.0-flash') return [choice('size', 'Image size', ['1K', '1.5K', '2K'], '1K')];
+  if (model.modelId === 'seedream-5.5') return [choice('size', 'Image size', ['1K', '2K'], '1K')];
+  return undefined;
+}
+
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
  * An unknown catalogue model deliberately gets no guessed schema. */
 export function generationOptions(model: Model, hasInputImage = false): GenerationOptions | undefined {
@@ -257,8 +273,10 @@ export function generationOptions(model: Model, hasInputImage = false): Generati
     number('duration_seconds', 'Duration (seconds)', undefined, 0.5, 22, 0.5),
     toggle('loop', 'Seamless loop'),
   ];
+  const fixedImageFields = isOpenDesignMedia(model) && model.modality === 'image' ? openDesignImageFields(model) : undefined;
+  if (fixedImageFields) fields = fixedImageFields;
   // Cloud and account image models publish output profile pairs (`profiles`), legacy `sizes`, and optional `quality`.
-  if (isOpenDesignMedia(model) && model.modality === 'image') {
+  else if (isOpenDesignMedia(model) && model.modality === 'image') {
     const imageFields: GenerationOption[] = [];
     const profiles = publishedImageProfiles(model, hasInputImage);
     if (profiles) {

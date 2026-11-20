@@ -101,7 +101,7 @@ export function CreativeWorkspace({ destination, soundTab, skill, visit, onNavig
       ) : (
         <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : destination.mediaTab ? t(mediaLabels[scene.modality]) : t(studio.title)}</h1>
       )}
-      {destination.landing ? <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onOpenStudio(studioDestination(studio, scene.id, destination.model)); }}>
+      {destination.landing ? studio.id !== 'design' && <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onOpenStudio(studioDestination(studio, scene.id, destination.model)); }}>
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />
       </Button> : isSoundStudio && activeSoundTab && selectSoundTab ? (
         <nav className="om-asset-tabs om-sound-studio-tabs" aria-label={t('Scenes')}>

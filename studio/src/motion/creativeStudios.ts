@@ -1,4 +1,5 @@
 import { modelReferenceLimit, type Model, type Modality } from '../../../shared/gateway';
+import { imageFeatureModel, type ImageFeatureId } from '../../../shared/image-features';
 import { creativeStudios, studioScenes, type CreativeStudio, type MediaStudio, type TechniqueStudio, type StudioScene } from '../../../shared/studio-catalog';
 
 export { creativeStudios, studioScenes, type StudioScene };
@@ -38,9 +39,12 @@ export function sceneDestination(scene: StudioScene, current?: StudioDestination
 }
 
 export const needsImage = (scene: StudioScene) => 'requiresImage' in scene && scene.requiresImage;
+export const sceneFeature = (scene: StudioScene): ImageFeatureId | undefined => 'feature' in scene ? scene.feature : undefined;
 
 export function supportsScene(model: Model, scene: StudioScene) {
   if (model.modality !== scene.modality) return false;
+  const feature = sceneFeature(scene);
+  if (feature && !imageFeatureModel(feature, model)) return false;
   if ('modelMode' in scene && model.mode !== scene.modelMode) return false;
   // Reference-only endpoints need an input that a prompt-only scene cannot supply.
   return needsImage(scene) ? modelReferenceLimit(model) > 0 : !/^(image|video)-to-/.test(model.mode);

@@ -9,7 +9,7 @@ import type { AssetDraft } from './AssetComposer';
 import { assetRequest } from './assetClient';
 import { supportsScene } from './creativeStudios';
 import type { StudioCreation } from './CreativeWorkspace';
-import { GenerationModelPickers } from './GenerationModelPickers';
+import { CreationModelPicker } from './GenerationModelPickers';
 import { emptyParameters, requestParameters, type ParameterDraft } from './GenerationParameters';
 import * as tracking from './pageTracking';
 import { SoundAdvancedParameters, SoundParameters } from './SoundParameters';
@@ -294,15 +294,17 @@ export function SoundComposer({
         <section className="om-sound-block om-sound-model-block">
           <div className="om-creation-model">
             {gateway && !failed && compatible.length > 0 ? (
-              <GenerationModelPickers
+              <CreationModelPicker
                 models={compatible}
                 providers={gateway.status.providers}
-                showProvider
+                selected={preferred}
                 modelHeading={modelHeading}
-                preferred={preferred}
-                defaultModel={gateway.status.routes.audio}
                 disabled={busy}
                 onChoose={model => studio.chooseModel(model)}
+                onManageProviders={openModelSettings}
+                onConfigureProvider={providerId => providerId === 'account'
+                  ? (openAccountSettings ?? openModelSettings)()
+                  : openProviderSettings ? openProviderSettings(providerId) : openModelSettings()}
               />
             ) : (
               <>

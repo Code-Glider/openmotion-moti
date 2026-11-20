@@ -8,6 +8,8 @@ import { providerAdapters } from '../gateway/providers.ts';
 import type { GenerationJob, Model } from '../shared/gateway.ts';
 import { OpenDesignAccount } from '../gateway/account.ts';
 import type { AccountSummary } from '../shared/provider-directory.ts';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 
 for (const provider of ['opendesign', 'account']) for (const modelId of ['wan-2.7', 'doubao-seedance-2-5-260628']) {
   test(`${provider}:${modelId} first-frame parameters follow the image without inheriting a fixed ratio`, () => {
@@ -76,6 +78,44 @@ test('account first-frame video rejects fixed ratios before running the connecto
   } finally { account.close(); }
 }));
 
+test('account image jobs with a transparent background or several references go to the media API with the account key', () => fixture(async store => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
+  const calls: { url: string; method: string; body?: any; auth?: string }[] = [];
+  let submitResponse = () => Response.json({ task_id: 'task-1', status: 'queued' }, { status: 202 });
+  const fetcher = (async (input: any, init: any = {}) => {
+    const url = String(input), method = init.method ?? 'GET';
+    calls.push({ url, method, body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined, auth: init.headers?.Authorization });
+    if (url.startsWith('https://storage.example/')) return new Response(null, { status: 200 });
+    const api = url.replace('https://amr-api.open-design.ai/api/v1/media', '');
+    if (api === '/uploads') return Response.json({ asset_id: `upload-${calls.filter(call => call.url.endsWith('/uploads')).length}`, upload_url: `https://storage.example/${calls.length}` });
+    if (/^\/uploads\/upload-\d+\/commit$/.test(api)) return Response.json({ status: 'ready' });
+    if (api === '/images/edits' || api === '/images/generations') return submitResponse();
+    if (api === '/images/tasks/task-1') return Response.json({ task_id: 'task-1', status: 'succeeded', model: 'gpt-image-2.6-sunburst',
+      assets: [{ asset_id: 'result', status: 'ready', mime_type: 'image/png', size_bytes: png.length, url: 'https://media.example/result' }] });
+    throw new Error('unexpected request ' + url);
+  }) as typeof fetch;
+  const account = new OpenDesignAccount(store.directory, { pollMs: 1, fetcher, run: async () => { throw new Error('unexpected connector call'); },
+    download: async () => new Response(png, { headers: { etag: '"fixture"', 'content-length': String(png.length) } }) });
+  account.identity = async () => 'fixture-session';
+  account.summary = async () => ({ state: 'signed-in' } as AccountSummary);
+  await mkdir(account.home, { recursive: true });
+  await writeFile(path.join(account.home, 'config.json'), JSON.stringify({ profiles: { prod: { user: { id: 'test' }, controlKey: 'test-control', controlKeyId: 'test-id', runtimeKey: 'test-runtime' } } }));
+  const references = await Promise.all(['one', 'two'].map(async name => { const file = path.join(store.directory, name + '.png'); await writeFile(file, png); return { file, mimeType: 'image/png', bytes: png.length }; }));
+  const model: Model = { id: 'account:gpt-image-2.6-sunburst', provider: 'account', modelId: 'gpt-image-2.6-sunburst', label: 'GPT Image 2.6 Sunburst', modality: 'image', mode: 'text-to-image', source: 'live', supportsImageReference: true, maxInputImages: 16 };
+  const job = { id: 'job-1', model, modality: 'image', prompt: 'Keep only the speaker.', providerOrigin: 'fixture-session', parameters: { background: 'transparent', quality: 'low' } } as unknown as GenerationJob;
+  const run = (input: GenerationJob, inputs = references.slice(0, 1)) => account.generate(input, store.directory, new AbortController().signal, async () => {}, inputs[0]?.file, inputs);
+  try {
+    await run(job);
+    const submit = calls.find(call => call.url.endsWith('/images/edits'))!;
+    assert.deepEqual(submit.body, { background: 'transparent', quality: 'low', model: 'gpt-image-2.6-sunburst', prompt: 'Keep only the speaker.', images: ['upload-1'] });
+    assert.ok(calls.filter(call => call.url.startsWith('https://amr-api')).every(call => call.auth === 'Bearer test-control'));
+    calls.length = 0;
+    await run({ ...job, parameters: { quality: 'low' } }, references);
+    assert.deepEqual(calls.find(call => call.url.endsWith('/images/edits'))!.body.images, ['upload-1', 'upload-2']);
+    submitResponse = () => Response.json({ error: { code: 'insufficient_balance' } }, { status: 402 });
+    await assert.rejects(run(job), /Your OpenDesign balance is too low/);
+  } finally { account.close(); }
+}));
 test('exact endpoint schemas preserve provider types and never guess from a model label', () => {
   const seedance = builtinModels.find(m => m.modelId === 'bytedance/seedance-2.0/text-to-video')!;
   const schema = generationOptions(seedance)!;
@@ -412,6 +452,18 @@ test('OpenDesign Cloud and account image models derive paired profiles, complete
   assert.deepEqual(generationOptions(rawSized)!.fields.map(f => [f.key, f.default]), [['size', undefined], ['quality', undefined]]);
 });
 
+test('production OpenDesign image models show only the fields they honour', () => {
+  const image = (provider: string, modelId: string, nativeOptions?: Record<string, unknown>): Model => ({ id: `${provider}:${modelId}`, provider, modelId, label: modelId, modality: 'image', mode: 'text-to-image', source: 'live', nativeOptions });
+  const fields = (model: Model) => generationOptions(model)?.fields.map(f => [f.key, f.choices?.map(c => c.value), f.default]);
+  // Seedream 5.5 publishes a 1:1 profile, but only size is offered: other ratios fail and size excludes output.
+  const profiles = { profiles: { generations: { profiles: [{ aspect_ratio: '1:1', resolution: '1K' }, { aspect_ratio: '1:1', resolution: '2K' }] } } };
+  assert.deepEqual(fields(image('opendesign', 'seedream-5.5', profiles)), [['size', ['1K', '2K'], '1K']]);
+  assert.deepEqual(fields(image('account', 'seedream-5.0-flash')), [['size', ['1K', '1.5K', '2K'], '1K']]);
+  assert.deepEqual(fields(image('opendesign', 'gpt-image-2.6-flare')), [['quality', ['low', 'medium', 'high'], 'low'], ['background', ['transparent'], undefined]]);
+  assert.deepEqual(fields(image('account', 'gpt-image-2.6-sunburst', { quality: { values: ['low', 'high'], default: 'high' } })), [['quality', ['low', 'high'], 'high'], ['background', ['transparent'], undefined]]);
+  assert.doesNotThrow(() => validateGenerationOptions(image('opendesign', 'seedream-5.0-flash'), { size: '1.5K' }));
+  assert.throws(() => validateGenerationOptions(image('opendesign', 'seedream-5.5'), { size: '1.5K' }), /Invalid Image size/);
+});
 test('OpenDesign image edit mode validates and filters against the distinct edits profile envelope', () => {
   const model: Model = {
     id: 'opendesign:nano-banana-2', provider: 'opendesign', modelId: 'nano-banana-2', label: 'Nano Banana 2', modality: 'image', mode: 'text-to-image', source: 'live',
