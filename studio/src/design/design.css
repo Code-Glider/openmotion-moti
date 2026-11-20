@@ -555,17 +555,27 @@
 }
 
 .om-design-composer-input {
+  display: block;
   width: 100%;
   min-height: 104px;
   padding: var(--motion-space-16) var(--motion-space-20) var(--motion-space-12);
   border: 0;
+  border-radius: var(--motion-radius-xl) var(--motion-radius-xl) 0 0;
   background: transparent;
   color: var(--motion-text);
   font-family: var(--motion-font-sans);
   font-size: var(--motion-text-md);
   line-height: var(--motion-leading-prose);
-  resize: vertical;
+  resize: none;
   outline: none;
+  box-shadow: none;
+}
+
+.om-design-composer-input:focus,
+.om-design-composer-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: 0;
 }
 
 .om-design-composer-input::placeholder {
@@ -580,6 +590,7 @@
   padding: var(--motion-space-10) var(--motion-space-14);
   background: var(--motion-inset);
   border-top: 1px solid var(--motion-border-subtle);
+  border-radius: 0 0 var(--motion-radius-xl) var(--motion-radius-xl);
   flex-wrap: wrap;
 }
 
