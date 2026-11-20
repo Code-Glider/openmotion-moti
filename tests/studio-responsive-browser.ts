@@ -219,7 +219,7 @@ test('Design Studio dismisses mention suggestions on an outside press', { timeou
   });
 });
 
-test('Design Studio template actions copy an Agent brief or create a project', { timeout: 60_000 }, async () => {
+test('Design Studio copies template briefs in place and creates projects separately', { timeout: 60_000 }, async () => {
   await fixture(async store => {
     const running = await startServer(store, 0, { editor: true });
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
@@ -232,11 +232,13 @@ test('Design Studio template actions copy an Agent brief or create a project', {
       });
       const origin = (await running.info()).previewUrl;
       const scene = new URL('/?page=design&scene=prototype', origin).href;
+      const explore = new URL('/?page=explore', origin).href;
       const card = '.om-design-gallery-card';
       const quickAction = `${card} .om-design-thumb-action > button`;
       const popup = '.om-design-tpl-detail-popup';
       const primary = `${popup} .om-media-detail-action-row > button[data-primary]`;
       const remix = `${popup} button[aria-label="复用为项目"]`;
+      const feedback = `${popup} [data-feedback-layer]`;
       const creates: string[] = [];
       page.on('request', request => {
         if (request.method() === 'POST' && new URL(request.url()).pathname === '/motion-api/design/projects') {
@@ -280,19 +282,35 @@ test('Design Studio template actions copy an Agent brief or create a project', {
         assert.equal(remixWidth, '40px');
         assert.ok(remixRect.left > primaryRect.right);
 
+        const preview = await page.$(`${popup} iframe.om-design-iframe`);
         await page.focus(primary);
         await page.keyboard.press('Enter');
         await page.waitForFunction(() => document.documentElement.dataset.copiedBrief?.includes('velar-luxury-real-estate'));
-        await page.waitForSelector(popup, { hidden: true });
+        const notice = await page.waitForSelector(`${feedback} [role="status"]`, { visible: true });
+        assert.equal(await notice!.evaluate(element => element.textContent), '已复制，发给 Agent 即可。');
+        assert.equal(await page.$eval(feedback, layer => !layer.closest('[aria-hidden="true"], [inert]')), true);
+        assert.equal(await preview!.evaluate(element => element.isConnected), true);
+        assert.equal(page.url(), scene);
         assert.equal(creates.length, 0);
       }
 
-      await page.click(`${card} .om-design-card-title`);
-      await page.waitForSelector(remix, { visible: true });
       await page.click(remix);
       await page.waitForFunction(() => new URLSearchParams(location.search).has('designProject'));
       assert.equal(creates.length, 1);
       assert.equal(JSON.parse(creates[0]).templateId, 'velar-luxury-real-estate');
+
+      await page.goto(explore, { waitUntil: 'domcontentloaded' });
+      const exploreTemplate = '[data-design-template="velar-luxury-real-estate"] .om-design-card-title';
+      await page.waitForSelector(exploreTemplate, { visible: true });
+      await page.click(exploreTemplate);
+      await page.waitForSelector(primary, { visible: true });
+      await page.evaluate(() => {
+        navigator.clipboard.writeText = async () => { throw new Error('Clipboard access denied'); };
+      });
+      await page.click(primary);
+      const errorNotice = await page.waitForSelector(`${feedback} [role="alert"]`, { visible: true });
+      assert.equal(await errorNotice!.evaluate(element => element.textContent), '复制失败，请检查剪贴板权限后重试。');
+      assert.equal(page.url(), explore);
     } finally { await browser.close(); await running.close(); }
   });
 });

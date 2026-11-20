@@ -223,14 +223,14 @@ export function DesignScenePage({
     textareaRef.current?.focus();
   };
 
-  const copyInstruction = useCallback(async (text: string) => {
+  const copyInstruction = useCallback(async (text: string, fromDetail = false) => {
     try {
       await navigator.clipboard.writeText(text);
       setManualPrompt(null);
       showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback');
     } catch {
       setManualPrompt(text);
-      showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback');
+      showToast(t(fromDetail ? 'Copy failed. Check clipboard permissions and try again.' : 'Could not copy. Select and copy the text manually.'), 'error', 'feedback');
     }
   }, [showToast, t]);
 
@@ -301,7 +301,7 @@ export function DesignScenePage({
       language: locale !== 'en' ? locale : null,
       integration: integrationInfo,
     });
-    void copyInstruction(prompt);
+    void copyInstruction(prompt, previewTemplate !== null);
   };
 
   return (
@@ -579,7 +579,7 @@ export function DesignScenePage({
           onNavigate={nextIdx => { const next = templates[nextIdx]; if (next) setPreviewTemplate(next); }}
           onClose={() => setPreviewTemplate(null)}
           onRemix={tpl => void handleRemixTemplate(tpl)}
-          onUseWithAgent={tpl => { handleUseTemplateWithAgent(tpl); setPreviewTemplate(null); }}
+          onUseWithAgent={handleUseTemplateWithAgent}
         />
       )}
 
