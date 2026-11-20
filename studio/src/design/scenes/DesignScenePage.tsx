@@ -381,32 +381,27 @@ export function DesignScenePage({
                 ) : (
                   <div className="om-design-grid">
                     {templates.map(tpl => (
-                      <article key={tpl.id} className="om-design-card">
-                        <div style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>
-                          <ScaledPreviewThumb
-                            src={tpl.previewUrl}
-                            title={tpl.title}
-                            badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
-                            topRight={
+                      <article key={tpl.id} className="om-design-card om-design-gallery-card" onClick={() => setPreviewTemplate(tpl)}>
+                        <ScaledPreviewThumb
+                          src={tpl.previewUrl}
+                          title={tpl.title}
+                          badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
+                          topRight={
+                            <div className="om-design-card-hover-actions" onClick={e => e.stopPropagation()}>
+                              <Button type="button" size="sm" variant="primary" loading={remixingId === tpl.id} onClick={() => void handleRemixTemplate(tpl)}>
+                                {t('Remix')}
+                              </Button>
                               <IconButton
-                                aria-label={t('Enlarge preview')}
-                                icon={<RemixIcon name="fullscreen-line" size={14} />}
-                                onClick={e => { e.stopPropagation(); setPreviewTemplate(tpl); }}
+                                aria-label={t('Use with Agent')}
+                                icon={<RemixIcon name="plug-line" size={14} />}
+                                onClick={() => handleUseTemplateWithAgent(tpl)}
                               />
-                            }
-                          />
-                        </div>
-                        <div className="om-design-card-body">
-                          <strong className="om-design-card-title" style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>{tpl.title}</strong>
+                            </div>
+                          }
+                        />
+                        <div className="om-design-card-body om-design-gallery-body">
+                          <strong className="om-design-card-title">{tpl.title}</strong>
                           <p className="om-design-card-desc">{tpl.description}</p>
-                          <div style={{ display: 'flex', gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
-                            <Button type="button" size="sm" variant="primary" onClick={() => handleUseTemplateWithAgent(tpl)}>
-                              {t('Use with Agent')}
-                            </Button>
-                            <Button type="button" size="sm" variant="secondary" loading={remixingId === tpl.id} onClick={() => void handleRemixTemplate(tpl)}>
-                              {t('Remix into project')}
-                            </Button>
-                          </div>
                         </div>
                       </article>
                     ))}

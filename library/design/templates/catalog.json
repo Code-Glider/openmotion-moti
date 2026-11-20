@@ -2,6 +2,606 @@
   "schemaVersion": 1,
   "templates": [
     {
+      "id": "velar-luxury-real-estate",
+      "title": "Velar Luxury Real Estate",
+      "description": "Cinematic single-page luxury real-estate landing page: a typewriter preloader that lifts away, a scroll-driven building image that rises from below and scales up while pinning to a dark statement section, a sticky dark stats band with co...",
+      "scenario": "prototype",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "web",
+        "desktop",
+        "real-estate",
+        "luxury",
+        "landing-page",
+        "scroll-animation"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/velar-luxury-real-estate"
+    },
+    {
+      "id": "saas-landing",
+      "title": "SAAS Landing",
+      "description": "Single-page SaaS landing with hero, features, social proof, pricing, and CTA. Respects the active DESIGN.md color/typography/layout tokens. Trigger keywords: \"saas landing\", \"marketing page\", \"product landing\".",
+      "scenario": "prototype",
+      "category": "marketing",
+      "tags": [
+        "prototype",
+        "marketing",
+        "web",
+        "desktop",
+        "saas-landing",
+        "marketing-page",
+        "product-landing"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/design-templates/saas-landing"
+    },
+    {
+      "id": "web-prototype-taste-soft",
+      "title": "Web Prototype Taste Soft",
+      "description": "Apple-tier soft web prototype. Silver/cream canvas, double-bezel cards, button-in-button CTAs, generous squircle radii, spring motion, ambient mesh. Distilled from Leonxlnx/taste-skill `soft-skill` + sections 4–8 of `taste-skill`.",
+      "scenario": "prototype",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "web"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/design-templates/web-prototype-taste-soft"
+    },
+    {
+      "id": "web-prototype-taste-editorial",
+      "title": "Web Prototype Taste Editorial",
+      "description": "Editorial-minimalist web prototype. Warm monochrome canvas, serif display + grotesque body, 1px hairline borders, muted pastel chips, generous macro-whitespace, ambient micro-motion. Distilled from Leonxlnx/taste-skill `minimalist-skill`.",
+      "scenario": "prototype",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "web"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/design-templates/web-prototype-taste-editorial"
+    },
+    {
+      "id": "web-prototype-taste-brutalist",
+      "title": "Web Prototype Taste Brutalist",
+      "description": "Swiss industrial-print web prototype. Newsprint canvas, monolithic black grotesque, viewport-bleeding numerals, hairline grid dividers, hazard-red accent, ASCII syntax decoration. Distilled from Leonxlnx/taste-skill `brutalist-skill` (Sw...",
+      "scenario": "prototype",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "web"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/design-templates/web-prototype-taste-brutalist"
+    },
+    {
+      "id": "codex-interactive-capability-map",
+      "title": "Codex Interactive Capability Map",
+      "description": "Turn a long-form article, thread, memo, or product narrative into a Codex-style clickable capability map with a workflow loop, use-case matrix, and responsive detail panel.",
+      "scenario": "prototype",
+      "category": "knowledge",
+      "tags": [
+        "prototype",
+        "knowledge",
+        "web",
+        "desktop",
+        "codex",
+        "article",
+        "thread",
+        "knowledge-map"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Turn this long-form article or thread into a Codex-style interactive capability map. Extract the core concepts, organize them into a workflow loop and use-case matrix, then build a polished single-file HTML prototype with clickable cards and a detail panel.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/codex-interactive-capability-map"
+    },
+    {
+      "id": "pricing-page",
+      "title": "Pricing Page",
+      "description": "A standalone pricing page — header, plan tiers, feature comparison table, and an FAQ. Use when the brief asks for \"pricing\", \"plans\", \"subscription tiers\", or a \"compare plans\" page.",
+      "scenario": "prototype",
+      "category": "sales",
+      "tags": [
+        "prototype",
+        "sales",
+        "web",
+        "desktop",
+        "pricing",
+        "pricing-page",
+        "plans",
+        "subscription"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/design-templates/pricing-page"
+    },
+    {
+      "id": "trading-analysis-dashboard-template",
+      "title": "Trading Analysis Dashboard Template",
+      "description": "Professional trading analysis dashboard template (single-file HTML) with light/dark theme switch, dense market panels, chart interactions, demo/live playback, and command palette behavior. Use when users ask for a Wall-Street-style analy...",
+      "scenario": "prototype",
+      "category": "template",
+      "tags": [
+        "template",
+        "live-artifacts",
+        "web",
+        "desktop",
+        "trading-analysis-dashboard-template",
+        "wall-street-dashboard-template",
+        "financial-terminal-template",
+        "trading-cockpit-template"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create a Wall-Street-grade trading analysis dashboard template with a left rail, risk cockpit, market charts, live/demo mode, and realistic dense data. Keep it single-file HTML.",
+      "license": "MIT",
+      "source": "open-design/design-templates/trading-analysis-dashboard-template"
+    },
+    {
+      "id": "kanban-board",
+      "title": "Kanban Board",
+      "description": "Kanban / task board with columns (To do / In progress / In review / Done), draggable-looking cards, assignee avatars, swimlanes, and a top filter bar. Use when the brief mentions \"kanban\", \"task board\", \"sprint board\", \"trello\", \"看板\".",
+      "scenario": "prototype",
+      "category": "operations",
+      "tags": [
+        "prototype",
+        "operations",
+        "web",
+        "desktop",
+        "kanban",
+        "task-board",
+        "sprint-board",
+        "trello"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Make me a kanban board for a 5-person growth squad mid-sprint — backlog, doing, review, done.",
+      "license": "MIT",
+      "source": "open-design/design-templates/kanban-board"
+    },
+    {
+      "id": "github-dashboard",
+      "title": "Github Dashboard",
+      "description": "GitHub repository analytics dashboard — stars, forks, contributors, issues, pull requests, recent activity, and top contributors. Use when the brief asks for a GitHub repo dashboard, open-source growth report, repository health page, or...",
+      "scenario": "prototype",
+      "category": "operation",
+      "tags": [
+        "prototype",
+        "operation",
+        "web",
+        "desktop",
+        "github-dashboard",
+        "repo-dashboard",
+        "repository-dashboard",
+        "github-analytics"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Build a GitHub dashboard for nexu-io/open-design — stars, forks, contributors, issues, PRs, recent activity, and top contributors.",
+      "license": "MIT",
+      "source": "open-design/design-templates/github-dashboard"
+    },
+    {
+      "id": "social-media-dashboard",
+      "title": "Social Media Dashboard",
+      "description": "Creator-facing social media analytics dashboard in a single HTML file. A platform switcher (X / LinkedIn / YouTube / Instagram), a row of KPI cards (followers, engagement rate, likes, reposts), a follower-growth chart, a \"top post this w...",
+      "scenario": "prototype",
+      "category": "creator",
+      "tags": [
+        "prototype",
+        "creator",
+        "web",
+        "desktop",
+        "social-media-dashboard",
+        "social-analytics",
+        "creator-dashboard",
+        "creator-analytics"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create a social media analytics dashboard using my Design System. Show X, LinkedIn, YouTube, Instagram with follower counts, engagement rate, likes, reposts, trending topics, and top comments.",
+      "license": "MIT",
+      "source": "open-design/design-templates/social-media-dashboard"
+    },
+    {
+      "id": "waitlist-page",
+      "title": "Waitlist Page",
+      "description": "Minimal pre-launch landing with email capture, brand logo, and optional decorative layer. Reads DESIGN.md for colors, typography, and layout rules. Best for: product launches, beta signups, early access programs, indie projects.",
+      "scenario": "prototype",
+      "category": "marketing",
+      "tags": [
+        "prototype",
+        "marketing",
+        "web",
+        "desktop",
+        "waitlist-page",
+        "coming-soon-page",
+        "pre-launch-landing-page",
+        "email-capture-page"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Make a waitlist page for a design tool — clean, minimal, with a custom logo and one call-to-action.",
+      "license": "MIT",
+      "source": "open-design/design-templates/waitlist-page"
+    },
+    {
+      "id": "mobile-app",
+      "title": "Mobile App",
+      "description": "A mobile-app screen rendered inside a pixel-accurate iPhone 15 Pro frame on the page. Built by copying the seed `assets/template.html` and pasting one screen archetype from `references/layouts.md`. Use when the brief asks for \"mobile app...",
+      "scenario": "mobile-app",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "web",
+        "mobile",
+        "mobile-app",
+        "ios-app",
+        "android-app",
+        "phone-screen"
+      ],
+      "entry": "example.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/design-templates/mobile-app"
+    },
+    {
+      "id": "mobile-onboarding",
+      "title": "Mobile Onboarding",
+      "description": "A multi-screen mobile onboarding flow rendered as three phone frames side by side — splash, value-prop, sign-in. Status bar, swipe dots, primary CTA. Use when the brief mentions \"mobile onboarding\", \"iOS onboarding\", \"phone signup\", or \"...",
+      "scenario": "mobile-app",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "web",
+        "mobile",
+        "mobile-onboarding",
+        "ios-onboarding",
+        "android-onboarding",
+        "phone-signup"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Design a 3-screen mobile onboarding flow for a meditation app — welcome, value props, sign-in.",
+      "license": "MIT",
+      "source": "open-design/design-templates/mobile-onboarding"
+    },
+    {
+      "id": "gamified-app",
+      "title": "Gamified App",
+      "description": "A multi-frame gamified mobile-app prototype — three phone frames on a dark showcase stage. Frame 1: cover / poster, Frame 2: today's quests with XP ribbons and a level bar, Frame 3: quest detail. Vivid quest tiles, level ribbon, bottom t...",
+      "scenario": "mobile-app",
+      "category": "personal",
+      "tags": [
+        "prototype",
+        "personal",
+        "web",
+        "mobile",
+        "gamified-app",
+        "habit-tracker",
+        "rpg-app",
+        "level-up-app"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Design a gamified life-management app — multi-screen mobile prototype: cover poster, today's quests with XP, and a quest detail. ‘Daily quests for becoming a better human.’",
+      "license": "MIT",
+      "source": "open-design/design-templates/gamified-app"
+    },
+    {
+      "id": "mockup-device-3d",
+      "title": "Mockup Device 3D",
+      "description": "Static iPhone and MacBook 3D-style showcase with real HTML embedded on screens, glass-lens refraction, and 360-degree turntable composition.",
+      "scenario": "mobile-app",
+      "category": "product",
+      "tags": [
+        "prototype",
+        "product",
+        "web",
+        "desktop",
+        "device",
+        "mockup",
+        "iphone",
+        "macbook"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Use the Device 3D Showcase template to turn my content into a static iPhone and MacBook 3D-style showcase with real HTML embedded on the screens. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/mockup-device-3d"
+    },
+    {
+      "id": "social-spotify-card",
+      "title": "Social Spotify Card",
+      "description": "Spotify Now Playing-style card with album art, progress bar, and playback controls, suited to video overlays or personal homepages.",
+      "scenario": "mobile-app",
+      "category": "personal",
+      "tags": [
+        "prototype",
+        "personal",
+        "web",
+        "desktop",
+        "spotify",
+        "music",
+        "now-playing",
+        "card"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Use the Spotify Now-Playing Card template to turn my content into a Spotify Now Playing-style card with album art, progress bar, and playback controls for a video overlay or personal homepage. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/social-spotify-card"
+    },
+    {
+      "id": "card-xiaohongshu",
+      "title": "Card Xiaohongshu",
+      "description": "Xiaohongshu-style knowledge cards, arranged as a swipeable multi-card carousel.",
+      "scenario": "mobile-app",
+      "category": "marketing",
+      "tags": [
+        "prototype",
+        "marketing",
+        "web",
+        "desktop",
+        "xhs",
+        "carousel"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Use the Xiaohongshu Card template to turn my content into a Xiaohongshu-style swipeable knowledge-card carousel. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/card-xiaohongshu"
+    },
+    {
+      "id": "social-carousel",
+      "title": "Social Carousel",
+      "description": "A three-card social-media carousel laid out as 1080×1080 squares — three cinematic, on-brand panels with display headlines that connect across the series (\"onwards.\" → \"to the next one.\" → \"looking ahead.\"). Each card has a brand mark, a...",
+      "scenario": "mobile-app",
+      "category": "marketing",
+      "tags": [
+        "prototype",
+        "marketing",
+        "web",
+        "desktop",
+        "social-carousel",
+        "carousel-post",
+        "instagram-carousel",
+        "linkedin-carousel"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Design a 3-card cinematic social carousel — ‘onwards.’, ‘to the next one.’, ‘looking ahead.’. 1080×1080 squares, drop-into-Instagram ready.",
+      "license": "MIT",
+      "source": "open-design/design-templates/social-carousel"
+    },
+    {
+      "id": "poster-hero",
+      "title": "Poster Hero",
+      "description": "Vertical poster or Moments-style share image with strong visual impact.",
+      "scenario": "mobile-app",
+      "category": "marketing",
+      "tags": [
+        "prototype",
+        "marketing",
+        "web",
+        "desktop",
+        "poster"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Use the Marketing Poster template to turn my content into a vertical poster or Moments-style share image with strong visual impact. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/poster-hero"
+    },
+    {
+      "id": "wireframe-mobile-flow",
+      "title": "Wireframe Mobile Flow",
+      "description": "A lo-fi mobile app flow wireframe — three to four phone frames in a row (onboarding → home feed → item detail → confirm), greybox content inside each device, dashed connector arrows with numbered step labels, and sticky-note annotations....",
+      "scenario": "mobile-app",
+      "category": "design",
+      "tags": [
+        "prototype",
+        "design",
+        "mobile",
+        "app",
+        "wireframe",
+        "mobile-wireframe",
+        "app-flow",
+        "user-flow"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Wireframe a lo-fi mobile flow v0.1 — three phone frames in a row (Onboarding → Home feed → Item detail), grey-box screens, dashed step arrows between them, and two annotation callouts.",
+      "license": "MIT",
+      "source": "open-design/design-templates/wireframe-mobile-flow"
+    },
+    {
+      "id": "contact-widget",
+      "title": "Contact Widget",
+      "description": "Self-contained floating chat widget with welcome screen, social links, meeting button, and message input. Single HTML file, zero dependencies.",
+      "scenario": "mobile-app",
+      "category": "prototype",
+      "tags": [],
+      "entry": "example.html",
+      "examplePrompt": "Create a contact widget for my portfolio site. Primary color #4F7CFF, agent name 'Alex', greeting 'Hey! How can I help you today?', show Telegram and WhatsApp links.",
+      "license": "Apache-2.0",
+      "source": "open-design/design-templates/contact-widget"
+    },
+    {
+      "id": "deck-swiss-international",
+      "title": "Deck Swiss International",
+      "description": "OpenDesign's FY26 board pre-read: the open-core bet, growth vs burn, and the one decision the board must approve. Built as a decision-grade corporate strategy deck for board, CEO, CFO.",
+      "scenario": "deck",
+      "category": "corporate-strategy",
+      "tags": [
+        "deck",
+        "marketing",
+        "web",
+        "swiss",
+        "grid",
+        "international",
+        "ikb",
+        "editorial"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Write a Board Pre-Read like a Fortune-500 Board Chair\\\" as a decision-grade Corporate strategy deck in this template's own visual system. Subject: OpenDesign's FY26 board pre-read: the open-core bet, growth vs burn, and the one decision the board must approve. Audience: board, CEO, CFO. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would a board member know what to approve and why before page five.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/deck-swiss-international"
+    },
+    {
+      "id": "deck-guizang-editorial",
+      "title": "Deck Guizang Editorial",
+      "description": "OpenDesign's FY26 marketing plan: brand-to-pipeline — audience, offer, channel mix, and the launch calendar that ties creative to growth. Built as a decision-grade marketing & GTM deck for CMO, growth lead, founder.",
+      "scenario": "deck",
+      "category": "marketing-gtm",
+      "tags": [
+        "deck",
+        "marketing",
+        "web",
+        "editorial",
+        "e-ink",
+        "magazine",
+        "narrative",
+        "guizang"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Write an Annual Marketing Plan like a World-Class CMO\\\" as a decision-grade Marketing & GTM deck in this template's own visual system. Subject: OpenDesign's FY26 marketing plan: brand-to-pipeline — audience, offer, channel mix, and the launch calendar that ties creative to growth. Audience: CMO, growth lead, founder. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can the plan connect creative choices to measurable growth.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/deck-guizang-editorial"
+    },
+    {
+      "id": "deck-open-slide-canvas",
+      "title": "Deck Open Slide Canvas",
+      "description": "OpenDesign's architecture review: the local daemon + agent-runtime design, the tradeoffs, and the decision to lock. Built as a decision-grade product management deck for staff eng, tech leads, security.",
+      "scenario": "deck",
+      "category": "product-management",
+      "tags": [
+        "deck",
+        "design",
+        "web",
+        "canvas",
+        "open-slide",
+        "freeform",
+        "1920",
+        "react"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Write an Architecture Review like a World-Class Staff Engineer\\\" as a decision-grade Product management deck in this template's own visual system. Subject: OpenDesign's architecture review: the local daemon + agent-runtime design, the tradeoffs, and the decision to lock. Audience: staff eng, tech leads, security. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can cross-functional reviewers agree on the next irreversible step.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/deck-open-slide-canvas"
+    },
+    {
+      "id": "frontend-slides",
+      "title": "Frontend Slides",
+      "description": "OpenDesign as a worked AI-workflow example: how local agents read your files and design on your desktop — concretely. Built as a decision-grade AI literacy deck for teams new to AI, leadership.",
+      "scenario": "deck",
+      "category": "ai-literacy",
+      "tags": [
+        "community",
+        "deck",
+        "slides",
+        "presentation",
+        "animation",
+        "web",
+        "ppt",
+        "consulting-deliverable"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Write an AI-Workflow 101 like a Top Technology Explainer\\\" as a decision-grade AI literacy deck in this template's own visual system. Subject: OpenDesign as a worked AI-workflow example: how local agents read your files and design on your desktop — concretely. Audience: teams new to AI, leadership. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: does the deck make AI implementation concrete enough to fund.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/frontend-slides"
+    },
+    {
+      "id": "guizang-ppt",
+      "title": "Magazine Web PPT",
+      "description": "For marketing and gtm work: bind launches, campaigns, events, and brand plans to growth and pipeline outcomes. Built around the core query \"annual-marketing-plan\", with GTM strategy lead judgment, buyer-ready proof, and this outcome: app...",
+      "scenario": "deck",
+      "category": "marketing",
+      "tags": [
+        "deck",
+        "marketing",
+        "web",
+        "ppt",
+        "slides",
+        "presentation",
+        "magazine",
+        "horizontal-swipe"
+      ],
+      "entry": "assets/template.html",
+      "examplePrompt": "Create \\\"Write a Brand-to-Revenue Story like a Growth Strategy Lead\\\" as a Marketing and GTM deck in the Guizang Ppt visual system. Scene: annual-marketing-plan. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce a commercial-grade slide plan, written slides, visual direction, speaker-ready structure, and critic pass against this rubric: can the plan connect creative choices to measurable growth.",
+      "license": "MIT",
+      "source": "open-design/design-templates/guizang-ppt"
+    },
+    {
+      "id": "hps-memphis-pop",
+      "title": "Hps Memphis Pop",
+      "description": "A pop-culture retrospective on how 1980s design language shaped today's apps — the scenes, the turning point, and the takeaway. Built as a decision-grade story deck for talk audience, design community.",
+      "scenario": "deck",
+      "category": "life",
+      "tags": [
+        "community",
+        "deck",
+        "slides",
+        "ppt",
+        "presentation",
+        "memphis",
+        "pop",
+        "retro-80s"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Turn a Pop-Culture Retrospective into a Talk like an Editorial Curator\\\" as a decision-grade Life & story deck in this template's own visual system. Subject: A pop-culture retrospective on how 1980s design language shaped today's apps — the scenes, the turning point, and the takeaway. Audience: talk audience, design community. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would someone retell the story after seeing it once.",
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/hps-memphis-pop"
+    },
+    {
+      "id": "html-ppt-hermes-cyber-terminal",
+      "title": "HTML PPT Hermes Cyber Terminal",
+      "description": "OpenDesign + BYOK: choosing and wiring your own model, hands-on — cost, quality, and the routing decision. Built as a decision-grade AI literacy deck for engineers, IT, applied-AI teams.",
+      "scenario": "deck",
+      "category": "ai-literacy",
+      "tags": [
+        "deck",
+        "engineering",
+        "web",
+        "terminal-review",
+        "cli-review",
+        "agent-review",
+        "honest-review",
+        "dev-tool-review"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Run a BYOK Model-Choice Session like an Applied-AI Engineer\\\" as a decision-grade AI literacy deck in this template's own visual system. Subject: OpenDesign + BYOK: choosing and wiring your own model, hands-on — cost, quality, and the routing decision. Audience: engineers, IT, applied-AI teams. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: does the deck make AI implementation concrete enough to fund.",
+      "license": "MIT",
+      "source": "open-design/design-templates/html-ppt-hermes-cyber-terminal"
+    },
+    {
+      "id": "html-ppt-zhangzara-cobalt-grid",
+      "title": "HTML PPT Zhangzara Cobalt Grid",
+      "description": "OpenDesign renewal + seat-expansion business case for a growing customer: realized value, usage proof, and the expansion ROI. Built as a decision-grade B2B sales deck for champion, finance approver.",
+      "scenario": "deck",
+      "category": "b2b-sales",
+      "tags": [
+        "deck",
+        "marketing",
+        "web",
+        "cobalt-grid",
+        "zhangzara-cobalt-grid",
+        "editorial",
+        "design-research",
+        "considered"
+      ],
+      "entry": "example.html",
+      "examplePrompt": "Create \\\"Write a Renewal & Expansion Business Case like an Account Director\\\" as a decision-grade B2B sales deck in this template's own visual system. Subject: OpenDesign renewal + seat-expansion business case for a growing customer: realized value, usage proof, and the expansion ROI. Audience: champion, finance approver. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can the champion forward this internally without rewriting it.",
+      "license": "MIT",
+      "source": "open-design/design-templates/html-ppt-zhangzara-cobalt-grid"
+    },
+    {
       "id": "article-magazine",
       "title": "Article Magazine",
       "description": "Huashu / huashu-md-html-inspired magazine article layout for turning Markdown or notes into a polished long-form HTML essay.",
@@ -63,25 +663,6 @@
       "source": "open-design/plugins/_official/examples/card-twitter"
     },
     {
-      "id": "card-xiaohongshu",
-      "title": "Card Xiaohongshu",
-      "description": "Xiaohongshu-style knowledge cards, arranged as a swipeable multi-card carousel.",
-      "scenario": "mobile-app",
-      "category": "marketing",
-      "tags": [
-        "prototype",
-        "marketing",
-        "web",
-        "desktop",
-        "xhs",
-        "carousel"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Use the Xiaohongshu Card template to turn my content into a Xiaohongshu-style swipeable knowledge-card carousel. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/card-xiaohongshu"
-    },
-    {
       "id": "clinical-case-report",
       "title": "Clinical Case Report",
       "description": "Structured medical case presentation for clinical rounds, conferences, and documentation. Generates SOAP-format or narrative case reports with physiologically accurate vitals, labs, and evidence-based plans. Use when the brief mentions \"...",
@@ -101,39 +682,6 @@
       "examplePrompt": "58-year-old male with 2 hours of substernal chest pain radiating to the left arm, diaphoresis, and ST elevation in leads II, III, aVF. Generate a full emergency cardiology case presentation.",
       "license": "MIT",
       "source": "open-design/design-templates/clinical-case-report"
-    },
-    {
-      "id": "codex-interactive-capability-map",
-      "title": "Codex Interactive Capability Map",
-      "description": "Turn a long-form article, thread, memo, or product narrative into a Codex-style clickable capability map with a workflow loop, use-case matrix, and responsive detail panel.",
-      "scenario": "prototype",
-      "category": "knowledge",
-      "tags": [
-        "prototype",
-        "knowledge",
-        "web",
-        "desktop",
-        "codex",
-        "article",
-        "thread",
-        "knowledge-map"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Turn this long-form article or thread into a Codex-style interactive capability map. Extract the core concepts, organize them into a workflow loop and use-case matrix, then build a polished single-file HTML prototype with clickable cards and a detail panel.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/codex-interactive-capability-map"
-    },
-    {
-      "id": "contact-widget",
-      "title": "Contact Widget",
-      "description": "Self-contained floating chat widget with welcome screen, social links, meeting button, and message input. Single HTML file, zero dependencies.",
-      "scenario": "mobile-app",
-      "category": "prototype",
-      "tags": [],
-      "entry": "example.html",
-      "examplePrompt": "Create a contact widget for my portfolio site. Primary color #4F7CFF, agent name 'Alex', greeting 'Hey! How can I help you today?', show Telegram and WhatsApp links.",
-      "license": "Apache-2.0",
-      "source": "open-design/design-templates/contact-widget"
     },
     {
       "id": "critique",
@@ -217,69 +765,6 @@
       "examplePrompt": "Design ‘mutuals’ — a dating site for X posters. Daily digest dashboard with stats, mutual-matches bar chart, and a community ticker.",
       "license": "MIT",
       "source": "open-design/design-templates/dating-web"
-    },
-    {
-      "id": "deck-guizang-editorial",
-      "title": "Deck Guizang Editorial",
-      "description": "OpenDesign's FY26 marketing plan: brand-to-pipeline — audience, offer, channel mix, and the launch calendar that ties creative to growth. Built as a decision-grade marketing & GTM deck for CMO, growth lead, founder.",
-      "scenario": "deck",
-      "category": "marketing-gtm",
-      "tags": [
-        "deck",
-        "marketing",
-        "web",
-        "editorial",
-        "e-ink",
-        "magazine",
-        "narrative",
-        "guizang"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Write an Annual Marketing Plan like a World-Class CMO\\\" as a decision-grade Marketing & GTM deck in this template's own visual system. Subject: OpenDesign's FY26 marketing plan: brand-to-pipeline — audience, offer, channel mix, and the launch calendar that ties creative to growth. Audience: CMO, growth lead, founder. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can the plan connect creative choices to measurable growth.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/deck-guizang-editorial"
-    },
-    {
-      "id": "deck-open-slide-canvas",
-      "title": "Deck Open Slide Canvas",
-      "description": "OpenDesign's architecture review: the local daemon + agent-runtime design, the tradeoffs, and the decision to lock. Built as a decision-grade product management deck for staff eng, tech leads, security.",
-      "scenario": "deck",
-      "category": "product-management",
-      "tags": [
-        "deck",
-        "design",
-        "web",
-        "canvas",
-        "open-slide",
-        "freeform",
-        "1920",
-        "react"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Write an Architecture Review like a World-Class Staff Engineer\\\" as a decision-grade Product management deck in this template's own visual system. Subject: OpenDesign's architecture review: the local daemon + agent-runtime design, the tradeoffs, and the decision to lock. Audience: staff eng, tech leads, security. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can cross-functional reviewers agree on the next irreversible step.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/deck-open-slide-canvas"
-    },
-    {
-      "id": "deck-swiss-international",
-      "title": "Deck Swiss International",
-      "description": "OpenDesign's FY26 board pre-read: the open-core bet, growth vs burn, and the one decision the board must approve. Built as a decision-grade corporate strategy deck for board, CEO, CFO.",
-      "scenario": "deck",
-      "category": "corporate-strategy",
-      "tags": [
-        "deck",
-        "marketing",
-        "web",
-        "swiss",
-        "grid",
-        "international",
-        "ikb",
-        "editorial"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Write a Board Pre-Read like a Fortune-500 Board Chair\\\" as a decision-grade Corporate strategy deck in this template's own visual system. Subject: OpenDesign's FY26 board pre-read: the open-core bet, growth vs burn, and the one decision the board must approve. Audience: board, CEO, CFO. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would a board member know what to approve and why before page five.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/deck-swiss-international"
     },
     {
       "id": "digital-eguide",
@@ -429,27 +914,6 @@
       "source": "open-design/design-templates/flowai-live-dashboard-template"
     },
     {
-      "id": "frontend-slides",
-      "title": "Frontend Slides",
-      "description": "OpenDesign as a worked AI-workflow example: how local agents read your files and design on your desktop — concretely. Built as a decision-grade AI literacy deck for teams new to AI, leadership.",
-      "scenario": "deck",
-      "category": "ai-literacy",
-      "tags": [
-        "community",
-        "deck",
-        "slides",
-        "presentation",
-        "animation",
-        "web",
-        "ppt",
-        "consulting-deliverable"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Write an AI-Workflow 101 like a Top Technology Explainer\\\" as a decision-grade AI literacy deck in this template's own visual system. Subject: OpenDesign as a worked AI-workflow example: how local agents read your files and design on your desktop — concretely. Audience: teams new to AI, leadership. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: does the deck make AI implementation concrete enough to fund.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/frontend-slides"
-    },
-    {
       "id": "fs-creative-voltage",
       "title": "Fs Creative Voltage",
       "description": "OpenDesign's seed pitch: the open, local alternative to closed AI design — why now, the wedge, and the ask. Built as a decision-grade fundraising pitch deck for pre-seed & seed VCs.",
@@ -555,69 +1019,6 @@
       "source": "open-design/plugins/_official/examples/fs-notebook-tabs"
     },
     {
-      "id": "gamified-app",
-      "title": "Gamified App",
-      "description": "A multi-frame gamified mobile-app prototype — three phone frames on a dark showcase stage. Frame 1: cover / poster, Frame 2: today's quests with XP ribbons and a level bar, Frame 3: quest detail. Vivid quest tiles, level ribbon, bottom t...",
-      "scenario": "mobile-app",
-      "category": "personal",
-      "tags": [
-        "prototype",
-        "personal",
-        "web",
-        "mobile",
-        "gamified-app",
-        "habit-tracker",
-        "rpg-app",
-        "level-up-app"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Design a gamified life-management app — multi-screen mobile prototype: cover poster, today's quests with XP, and a quest detail. ‘Daily quests for becoming a better human.’",
-      "license": "MIT",
-      "source": "open-design/design-templates/gamified-app"
-    },
-    {
-      "id": "github-dashboard",
-      "title": "Github Dashboard",
-      "description": "GitHub repository analytics dashboard — stars, forks, contributors, issues, pull requests, recent activity, and top contributors. Use when the brief asks for a GitHub repo dashboard, open-source growth report, repository health page, or...",
-      "scenario": "prototype",
-      "category": "operation",
-      "tags": [
-        "prototype",
-        "operation",
-        "web",
-        "desktop",
-        "github-dashboard",
-        "repo-dashboard",
-        "repository-dashboard",
-        "github-analytics"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Build a GitHub dashboard for nexu-io/open-design — stars, forks, contributors, issues, PRs, recent activity, and top contributors.",
-      "license": "MIT",
-      "source": "open-design/design-templates/github-dashboard"
-    },
-    {
-      "id": "guizang-ppt",
-      "title": "Magazine Web PPT",
-      "description": "For marketing and gtm work: bind launches, campaigns, events, and brand plans to growth and pipeline outcomes. Built around the core query \"annual-marketing-plan\", with GTM strategy lead judgment, buyer-ready proof, and this outcome: app...",
-      "scenario": "deck",
-      "category": "marketing",
-      "tags": [
-        "deck",
-        "marketing",
-        "web",
-        "ppt",
-        "slides",
-        "presentation",
-        "magazine",
-        "horizontal-swipe"
-      ],
-      "entry": "assets/template.html",
-      "examplePrompt": "Create \\\"Write a Brand-to-Revenue Story like a Growth Strategy Lead\\\" as a Marketing and GTM deck in the Guizang Ppt visual system. Scene: annual-marketing-plan. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce a commercial-grade slide plan, written slides, visual direction, speaker-ready structure, and critic pass against this rubric: can the plan connect creative choices to measurable growth.",
-      "license": "MIT",
-      "source": "open-design/design-templates/guizang-ppt"
-    },
-    {
       "id": "hps-academic-paper",
       "title": "Hps Academic Paper",
       "description": "A review deck on compositional generalization in large language models — the field map, the gap, the evidence, and open questions. Built as a decision-grade academic research deck for PI, lab group, reviewers.",
@@ -658,27 +1059,6 @@
       "examplePrompt": "Create \\\"Teach Design Fundamentals like a World-Class Studio Mentor\\\" as a decision-grade Professional training deck in this template's own visual system. Subject: A visual-design fundamentals course for new brand designers — grid, type, color, and the exercises that build the eye. Audience: junior designers, new hires. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can a learner perform the target task the next day.",
       "license": "MIT",
       "source": "open-design/plugins/_official/examples/hps-bauhaus"
-    },
-    {
-      "id": "hps-memphis-pop",
-      "title": "Hps Memphis Pop",
-      "description": "A pop-culture retrospective on how 1980s design language shaped today's apps — the scenes, the turning point, and the takeaway. Built as a decision-grade story deck for talk audience, design community.",
-      "scenario": "deck",
-      "category": "life",
-      "tags": [
-        "community",
-        "deck",
-        "slides",
-        "ppt",
-        "presentation",
-        "memphis",
-        "pop",
-        "retro-80s"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Turn a Pop-Culture Retrospective into a Talk like an Editorial Curator\\\" as a decision-grade Life & story deck in this template's own visual system. Subject: A pop-culture retrospective on how 1980s design language shaped today's apps — the scenes, the turning point, and the takeaway. Audience: talk audience, design community. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would someone retell the story after seeing it once.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/hps-memphis-pop"
     },
     {
       "id": "hps-retro-tv",
@@ -804,27 +1184,6 @@
       "examplePrompt": "Create \\\"Write a Feature Business Case like a Principal PM\\\" as a decision-grade Product management deck in this template's own visual system. Subject: OpenDesign's feature business case for the plugin marketplace: the user pain, options, tradeoffs, and the measure of success. Audience: PM, eng, design, leadership. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can cross-functional reviewers agree on the next irreversible step.",
       "license": "MIT",
       "source": "open-design/design-templates/html-ppt-graphify-dark-graph"
-    },
-    {
-      "id": "html-ppt-hermes-cyber-terminal",
-      "title": "HTML PPT Hermes Cyber Terminal",
-      "description": "OpenDesign + BYOK: choosing and wiring your own model, hands-on — cost, quality, and the routing decision. Built as a decision-grade AI literacy deck for engineers, IT, applied-AI teams.",
-      "scenario": "deck",
-      "category": "ai-literacy",
-      "tags": [
-        "deck",
-        "engineering",
-        "web",
-        "terminal-review",
-        "cli-review",
-        "agent-review",
-        "honest-review",
-        "dev-tool-review"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Run a BYOK Model-Choice Session like an Applied-AI Engineer\\\" as a decision-grade AI literacy deck in this template's own visual system. Subject: OpenDesign + BYOK: choosing and wiring your own model, hands-on — cost, quality, and the routing decision. Audience: engineers, IT, applied-AI teams. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: does the deck make AI implementation concrete enough to fund.",
-      "license": "MIT",
-      "source": "open-design/design-templates/html-ppt-hermes-cyber-terminal"
     },
     {
       "id": "html-ppt-knowledge-arch-blueprint",
@@ -1235,27 +1594,6 @@
       "examplePrompt": "Create \\\"Present a Senior Thesis Defense like a Distinction-Grade Economics Student\\\" as a decision-grade Student coursework deck in this template's own visual system. Subject: An economics senior thesis on the employment effects of local minimum-wage increases — identification strategy, evidence, and limitations. Audience: thesis committee. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can a reviewer find the contribution, evidence, and limitation in under 90 seconds.",
       "license": "MIT",
       "source": "open-design/design-templates/html-ppt-zhangzara-cartesian"
-    },
-    {
-      "id": "html-ppt-zhangzara-cobalt-grid",
-      "title": "HTML PPT Zhangzara Cobalt Grid",
-      "description": "OpenDesign renewal + seat-expansion business case for a growing customer: realized value, usage proof, and the expansion ROI. Built as a decision-grade B2B sales deck for champion, finance approver.",
-      "scenario": "deck",
-      "category": "b2b-sales",
-      "tags": [
-        "deck",
-        "marketing",
-        "web",
-        "cobalt-grid",
-        "zhangzara-cobalt-grid",
-        "editorial",
-        "design-research",
-        "considered"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create \\\"Write a Renewal & Expansion Business Case like an Account Director\\\" as a decision-grade B2B sales deck in this template's own visual system. Subject: OpenDesign renewal + seat-expansion business case for a growing customer: realized value, usage proof, and the expansion ROI. Audience: champion, finance approver. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: can the champion forward this internally without rewriting it.",
-      "license": "MIT",
-      "source": "open-design/design-templates/html-ppt-zhangzara-cobalt-grid"
     },
     {
       "id": "html-ppt-zhangzara-coral",
@@ -2013,27 +2351,6 @@
       "source": "open-design/design-templates/kami-landing"
     },
     {
-      "id": "kanban-board",
-      "title": "Kanban Board",
-      "description": "Kanban / task board with columns (To do / In progress / In review / Done), draggable-looking cards, assignee avatars, swimlanes, and a top filter bar. Use when the brief mentions \"kanban\", \"task board\", \"sprint board\", \"trello\", \"看板\".",
-      "scenario": "prototype",
-      "category": "operations",
-      "tags": [
-        "prototype",
-        "operations",
-        "web",
-        "desktop",
-        "kanban",
-        "task-board",
-        "sprint-board",
-        "trello"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Make me a kanban board for a 5-person growth squad mid-sprint — backlog, doing, review, done.",
-      "license": "MIT",
-      "source": "open-design/design-templates/kanban-board"
-    },
-    {
       "id": "live-artifact",
       "title": "Live Artifact",
       "description": "Create refreshable, auditable OpenDesign artifacts backed by connector or local data. Trigger when the user asks for live dashboards, refreshable reports, synced views, or reusable data-backed artifacts.",
@@ -2116,69 +2433,6 @@
       "examplePrompt": "Write up notes from a 60-minute Growth squad weekly — agenda, decisions, action items with owners, next meeting.",
       "license": "MIT",
       "source": "open-design/design-templates/meeting-notes"
-    },
-    {
-      "id": "mobile-app",
-      "title": "Mobile App",
-      "description": "A mobile-app screen rendered inside a pixel-accurate iPhone 15 Pro frame on the page. Built by copying the seed `assets/template.html` and pasting one screen archetype from `references/layouts.md`. Use when the brief asks for \"mobile app...",
-      "scenario": "mobile-app",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "web",
-        "mobile",
-        "mobile-app",
-        "ios-app",
-        "android-app",
-        "phone-screen"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/design-templates/mobile-app"
-    },
-    {
-      "id": "mobile-onboarding",
-      "title": "Mobile Onboarding",
-      "description": "A multi-screen mobile onboarding flow rendered as three phone frames side by side — splash, value-prop, sign-in. Status bar, swipe dots, primary CTA. Use when the brief mentions \"mobile onboarding\", \"iOS onboarding\", \"phone signup\", or \"...",
-      "scenario": "mobile-app",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "web",
-        "mobile",
-        "mobile-onboarding",
-        "ios-onboarding",
-        "android-onboarding",
-        "phone-signup"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Design a 3-screen mobile onboarding flow for a meditation app — welcome, value props, sign-in.",
-      "license": "MIT",
-      "source": "open-design/design-templates/mobile-onboarding"
-    },
-    {
-      "id": "mockup-device-3d",
-      "title": "Mockup Device 3D",
-      "description": "Static iPhone and MacBook 3D-style showcase with real HTML embedded on screens, glass-lens refraction, and 360-degree turntable composition.",
-      "scenario": "mobile-app",
-      "category": "product",
-      "tags": [
-        "prototype",
-        "product",
-        "web",
-        "desktop",
-        "device",
-        "mockup",
-        "iphone",
-        "macbook"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Use the Device 3D Showcase template to turn my content into a static iPhone and MacBook 3D-style showcase with real HTML embedded on the screens. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/mockup-device-3d"
     },
     {
       "id": "open-design-landing-deck",
@@ -2342,24 +2596,6 @@
       "source": "open-design/design-templates/pm-spec"
     },
     {
-      "id": "poster-hero",
-      "title": "Poster Hero",
-      "description": "Vertical poster or Moments-style share image with strong visual impact.",
-      "scenario": "mobile-app",
-      "category": "marketing",
-      "tags": [
-        "prototype",
-        "marketing",
-        "web",
-        "desktop",
-        "poster"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Use the Marketing Poster template to turn my content into a vertical poster or Moments-style share image with strong visual impact. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/poster-hero"
-    },
-    {
       "id": "ppt-keynote",
       "title": "PPT Keynote",
       "description": "An operating-model redesign for a scaling logistics firm — the diagnosis, the target model, and the transition roadmap. Built as a decision-grade consulting deck for client sponsor, ops leaders.",
@@ -2379,27 +2615,6 @@
       "examplePrompt": "Create \\\"Present an Operating-Model Redesign like a Strategy Engagement Lead\\\" as a decision-grade Consulting deck in this template's own visual system. Subject: An operating-model redesign for a scaling logistics firm — the diagnosis, the target model, and the transition roadmap. Audience: client sponsor, ops leaders. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would a client know what to do Monday morning.",
       "license": "MIT",
       "source": "open-design/plugins/_official/examples/ppt-keynote"
-    },
-    {
-      "id": "pricing-page",
-      "title": "Pricing Page",
-      "description": "A standalone pricing page — header, plan tiers, feature comparison table, and an FAQ. Use when the brief asks for \"pricing\", \"plans\", \"subscription tiers\", or a \"compare plans\" page.",
-      "scenario": "prototype",
-      "category": "sales",
-      "tags": [
-        "prototype",
-        "sales",
-        "web",
-        "desktop",
-        "pricing",
-        "pricing-page",
-        "plans",
-        "subscription"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/design-templates/pricing-page"
     },
     {
       "id": "replit-deck",
@@ -2442,26 +2657,6 @@
       "source": "open-design/plugins/_official/examples/resume-modern"
     },
     {
-      "id": "saas-landing",
-      "title": "SAAS Landing",
-      "description": "Single-page SaaS landing with hero, features, social proof, pricing, and CTA. Respects the active DESIGN.md color/typography/layout tokens. Trigger keywords: \"saas landing\", \"marketing page\", \"product landing\".",
-      "scenario": "prototype",
-      "category": "marketing",
-      "tags": [
-        "prototype",
-        "marketing",
-        "web",
-        "desktop",
-        "saas-landing",
-        "marketing-page",
-        "product-landing"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/design-templates/saas-landing"
-    },
-    {
       "id": "simple-deck",
       "title": "Simple Deck",
       "description": "OpenDesign's operating review: growth, burn, and the concrete path to sustainability without losing the open ethos. Built as a decision-grade corporate strategy deck for leadership team.",
@@ -2481,48 +2676,6 @@
       "examplePrompt": "Create \\\"Write an Operating Review like a Disciplined COO\\\" as a decision-grade Corporate strategy deck in this template's own visual system. Subject: OpenDesign's operating review: growth, burn, and the concrete path to sustainability without losing the open ethos. Audience: leadership team. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would a board member know what to approve and why before page five.",
       "license": "MIT",
       "source": "open-design/design-templates/simple-deck"
-    },
-    {
-      "id": "social-carousel",
-      "title": "Social Carousel",
-      "description": "A three-card social-media carousel laid out as 1080×1080 squares — three cinematic, on-brand panels with display headlines that connect across the series (\"onwards.\" → \"to the next one.\" → \"looking ahead.\"). Each card has a brand mark, a...",
-      "scenario": "mobile-app",
-      "category": "marketing",
-      "tags": [
-        "prototype",
-        "marketing",
-        "web",
-        "desktop",
-        "social-carousel",
-        "carousel-post",
-        "instagram-carousel",
-        "linkedin-carousel"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Design a 3-card cinematic social carousel — ‘onwards.’, ‘to the next one.’, ‘looking ahead.’. 1080×1080 squares, drop-into-Instagram ready.",
-      "license": "MIT",
-      "source": "open-design/design-templates/social-carousel"
-    },
-    {
-      "id": "social-media-dashboard",
-      "title": "Social Media Dashboard",
-      "description": "Creator-facing social media analytics dashboard in a single HTML file. A platform switcher (X / LinkedIn / YouTube / Instagram), a row of KPI cards (followers, engagement rate, likes, reposts), a follower-growth chart, a \"top post this w...",
-      "scenario": "prototype",
-      "category": "creator",
-      "tags": [
-        "prototype",
-        "creator",
-        "web",
-        "desktop",
-        "social-media-dashboard",
-        "social-analytics",
-        "creator-dashboard",
-        "creator-analytics"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create a social media analytics dashboard using my Design System. Show X, LinkedIn, YouTube, Instagram with follower counts, engagement rate, likes, reposts, trending topics, and top comments.",
-      "license": "MIT",
-      "source": "open-design/design-templates/social-media-dashboard"
     },
     {
       "id": "social-media-matrix-tracker-template",
@@ -2565,27 +2718,6 @@
       "examplePrompt": "Use the Reddit Post Card template to turn my content into a realistic Reddit post card with vote rail and comment count for a video overlay or story share. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
       "license": "MIT",
       "source": "open-design/plugins/_official/examples/social-reddit-card"
-    },
-    {
-      "id": "social-spotify-card",
-      "title": "Social Spotify Card",
-      "description": "Spotify Now Playing-style card with album art, progress bar, and playback controls, suited to video overlays or personal homepages.",
-      "scenario": "mobile-app",
-      "category": "personal",
-      "tags": [
-        "prototype",
-        "personal",
-        "web",
-        "desktop",
-        "spotify",
-        "music",
-        "now-playing",
-        "card"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Use the Spotify Now-Playing Card template to turn my content into a Spotify Now Playing-style card with album art, progress bar, and playback controls for a video overlay or personal homepage. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/social-spotify-card"
     },
     {
       "id": "social-x-post-card",
@@ -2651,27 +2783,6 @@
       "source": "open-design/design-templates/team-okrs"
     },
     {
-      "id": "trading-analysis-dashboard-template",
-      "title": "Trading Analysis Dashboard Template",
-      "description": "Professional trading analysis dashboard template (single-file HTML) with light/dark theme switch, dense market panels, chart interactions, demo/live playback, and command palette behavior. Use when users ask for a Wall-Street-style analy...",
-      "scenario": "prototype",
-      "category": "template",
-      "tags": [
-        "template",
-        "live-artifacts",
-        "web",
-        "desktop",
-        "trading-analysis-dashboard-template",
-        "wall-street-dashboard-template",
-        "financial-terminal-template",
-        "trading-cockpit-template"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Create a Wall-Street-grade trading analysis dashboard template with a left rail, risk cockpit, market charts, live/demo mode, and realistic dense data. Keep it single-file HTML.",
-      "license": "MIT",
-      "source": "open-design/design-templates/trading-analysis-dashboard-template"
-    },
-    {
       "id": "tweaks",
       "title": "tweaks",
       "description": "Wrap any HTML artifact with a side panel of live, parameterized controls — accent color, type scale, density, motion, theme — that rewrite CSS custom properties in real time and persist to localStorage. Lets the user explore variants of...",
@@ -2735,69 +2846,6 @@
       "source": "open-design/plugins/_official/examples/ve-terminal-mono"
     },
     {
-      "id": "velar-luxury-real-estate",
-      "title": "Velar Luxury Real Estate",
-      "description": "Cinematic single-page luxury real-estate landing page: a typewriter preloader that lifts away, a scroll-driven building image that rises from below and scales up while pinning to a dark statement section, a sticky dark stats band with co...",
-      "scenario": "prototype",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "web",
-        "desktop",
-        "real-estate",
-        "luxury",
-        "landing-page",
-        "scroll-animation"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/velar-luxury-real-estate"
-    },
-    {
-      "id": "waitlist-page",
-      "title": "Waitlist Page",
-      "description": "Minimal pre-launch landing with email capture, brand logo, and optional decorative layer. Reads DESIGN.md for colors, typography, and layout rules. Best for: product launches, beta signups, early access programs, indie projects.",
-      "scenario": "prototype",
-      "category": "marketing",
-      "tags": [
-        "prototype",
-        "marketing",
-        "web",
-        "desktop",
-        "waitlist-page",
-        "coming-soon-page",
-        "pre-launch-landing-page",
-        "email-capture-page"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Make a waitlist page for a design tool — clean, minimal, with a custom logo and one call-to-action.",
-      "license": "MIT",
-      "source": "open-design/design-templates/waitlist-page"
-    },
-    {
-      "id": "web-clone",
-      "title": "Website Clone",
-      "description": "Clone or visually recreate a website using source-first reconnaissance, route crawling, interaction probes, asset capture, and post-clone audit notes.",
-      "scenario": "web-clone",
-      "category": "prototype",
-      "tags": [
-        "prototype",
-        "web",
-        "website",
-        "web-clone",
-        "website-clone",
-        "site-clone",
-        "reproduce-site",
-        "visual-clone"
-      ],
-      "entry": "index.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/plugins/_official/examples/web-clone"
-    },
-    {
       "id": "web-prototype",
       "title": "Web Prototype",
       "description": "General-purpose desktop web prototype. Single self-contained HTML file built by copying the seed `assets/template.html` and pasting section layouts from `references/layouts.md`. Default for any landing / marketing / docs / SaaS page when...",
@@ -2817,54 +2865,6 @@
       "examplePrompt": null,
       "license": "MIT",
       "source": "open-design/design-templates/web-prototype"
-    },
-    {
-      "id": "web-prototype-taste-brutalist",
-      "title": "Web Prototype Taste Brutalist",
-      "description": "Swiss industrial-print web prototype. Newsprint canvas, monolithic black grotesque, viewport-bleeding numerals, hairline grid dividers, hazard-red accent, ASCII syntax decoration. Distilled from Leonxlnx/taste-skill `brutalist-skill` (Sw...",
-      "scenario": "prototype",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "web"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/design-templates/web-prototype-taste-brutalist"
-    },
-    {
-      "id": "web-prototype-taste-editorial",
-      "title": "Web Prototype Taste Editorial",
-      "description": "Editorial-minimalist web prototype. Warm monochrome canvas, serif display + grotesque body, 1px hairline borders, muted pastel chips, generous macro-whitespace, ambient micro-motion. Distilled from Leonxlnx/taste-skill `minimalist-skill`.",
-      "scenario": "prototype",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "web"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/design-templates/web-prototype-taste-editorial"
-    },
-    {
-      "id": "web-prototype-taste-soft",
-      "title": "Web Prototype Taste Soft",
-      "description": "Apple-tier soft web prototype. Silver/cream canvas, double-bezel cards, button-in-button CTAs, generous squircle radii, spring motion, ambient mesh. Distilled from Leonxlnx/taste-skill `soft-skill` + sections 4–8 of `taste-skill`.",
-      "scenario": "prototype",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "web"
-      ],
-      "entry": "example.html",
-      "examplePrompt": null,
-      "license": "MIT",
-      "source": "open-design/design-templates/web-prototype-taste-soft"
     },
     {
       "id": "webgl-aurora-veil",
@@ -3098,6 +3098,27 @@
       "source": "open-design/plugins/_official/examples/webgl-voronoi-cells"
     },
     {
+      "id": "web-clone",
+      "title": "Website Clone",
+      "description": "Clone or visually recreate a website using source-first reconnaissance, route crawling, interaction probes, asset capture, and post-clone audit notes.",
+      "scenario": "web-clone",
+      "category": "prototype",
+      "tags": [
+        "prototype",
+        "web",
+        "website",
+        "web-clone",
+        "website-clone",
+        "site-clone",
+        "reproduce-site",
+        "visual-clone"
+      ],
+      "entry": "index.html",
+      "examplePrompt": null,
+      "license": "MIT",
+      "source": "open-design/plugins/_official/examples/web-clone"
+    },
+    {
       "id": "weekly-update",
       "title": "Weekly Update",
       "description": "OpenDesign's weekly metrics standup: this week's numbers, the one anomaly, and the single decision it forces. Built as a decision-grade data & finance deck for ops & growth team.",
@@ -3159,27 +3180,6 @@
       "examplePrompt": "Greybox a lo-fi blueprint wireframe for a desktop SaaS dashboard — app bar, sidebar nav, a 4-up KPI row, a schematic chart panel, and a list/table with image-placeholder thumbnails, all in neutral grey with monospace redline annotations.",
       "license": "MIT",
       "source": "open-design/design-templates/wireframe-greybox"
-    },
-    {
-      "id": "wireframe-mobile-flow",
-      "title": "Wireframe Mobile Flow",
-      "description": "A lo-fi mobile app flow wireframe — three to four phone frames in a row (onboarding → home feed → item detail → confirm), greybox content inside each device, dashed connector arrows with numbered step labels, and sticky-note annotations....",
-      "scenario": "mobile-app",
-      "category": "design",
-      "tags": [
-        "prototype",
-        "design",
-        "mobile",
-        "app",
-        "wireframe",
-        "mobile-wireframe",
-        "app-flow",
-        "user-flow"
-      ],
-      "entry": "example.html",
-      "examplePrompt": "Wireframe a lo-fi mobile flow v0.1 — three phone frames in a row (Onboarding → Home feed → Item detail), grey-box screens, dashed step arrows between them, and two annotation callouts.",
-      "license": "MIT",
-      "source": "open-design/design-templates/wireframe-mobile-flow"
     },
     {
       "id": "wireframe-sketch",
