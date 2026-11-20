@@ -1,5 +1,4 @@
 import { Button } from 'open-design-ui/button';
-import { IconButton } from 'open-design-ui/icon-button';
 import type { ExploreCommunity } from '../../../shared/studio-catalog';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
 import { brand } from '../../../packages/design-system/index.js';
@@ -56,7 +55,6 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
-      {settings && settings !== 'brand-kit' && <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome} icon={<RemixIcon name="close-line" size={20} />} />}
       <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
   </header>;

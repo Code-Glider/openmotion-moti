@@ -49,6 +49,11 @@ async function openMcp() {
   await click('MCP');
 }
 const traverse = async (delta: number) => { await act(async () => { history.go(delta); await new Promise(resolve => setTimeout(resolve, 0)); }); };
+const settingsBack = () => container.querySelector<HTMLButtonElement>('.om-settings-heading button[aria-label="Back"]');
+const leaveSettings = async () => {
+  expect(settingsBack()).not.toBeNull();
+  await act(async () => { settingsBack()!.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
+};
 const breadcrumb = () => container.querySelector<HTMLAnchorElement>('.om-workspace-breadcrumb a');
 const returnThroughBreadcrumb = async (label: string) => {
   const link = breadcrumb();
@@ -115,7 +120,8 @@ it('navigates settings, MCP tabs and history without remounting or flushing the 
   await mount(); const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   draft.value = 'Keep this edit'; const wait = vi.fn(async () => {}); editor.wait = wait;
   await accountAction('Settings'); expect(page().settings).toBe('general');
-  expect(button('Close settings')).toBeTruthy();
+  expect(settingsBack()).not.toBeNull();
+  expect(button('Close settings')).toBeUndefined();
   await click('Appearance'); expect(page().settings).toBe('appearance');
   await openMcp(); expect(page().settings).toBe('mcp');
   expect(breadcrumb()).toBeNull();
@@ -126,6 +132,7 @@ it('navigates settings, MCP tabs and history without remounting or flushing the 
   await traverse(-1); expect(page().client).toBe('codex');
   await traverse(-1); expect(page().settings).toBe('appearance');
   await traverse(1); expect(page().settings).toBe('mcp');
+  expect(settingsBack()).toBeNull();
   expect(button('Close settings')).toBeUndefined();
   await click('Explore'); expect(page()).toMatchObject({ explore: true, settings: null });
   expect(container.querySelector('input[aria-label="Editor draft"]')).toBe(draft);
@@ -1109,6 +1116,21 @@ it('returns from the settings connection action to the originating section', asy
   expect(page().settings).toBe('general');
 });
 
+it('returns from the settings header to the exact source after changing sections and reloading', async () => {
+  history.replaceState(null, '', firstUrl.replace('#', '&page=explore&community=product-films#'));
+  await mount();
+  const exploreUrl = location.href;
+  await accountAction('Settings');
+  const generalUrl = location.href;
+  await click('Set up connection');
+  await click('Claude Code'); await click('Manual setup');
+  await mount(1);
+  expect(breadcrumb()?.href).toBe(generalUrl);
+  await leaveSettings();
+  expect(location.href).toBe(exploreUrl);
+  expect(page()).toMatchObject({ explore: true, community: 'product-films' });
+});
+
 it('keeps the settings sidebar mounted across MCP, agent and provider sections', async () => {
   history.replaceState(null, '', firstUrl.replace('#', '&page=settings&section=local#'));
   await mount();
@@ -1119,7 +1141,8 @@ it('keeps the settings sidebar mounted across MCP, agent and provider sections',
   expect(sidebar?.querySelector('[aria-current=page]')?.textContent).toBe('MCP · Connect Agent');
   expect(container.querySelector('.om-settings-main .om-mcp-page')).not.toBeNull();
   expect(button('MCP').getAttribute('aria-current')).toBeNull();
-  expect(button('Close settings')).toBeTruthy();
+  expect(settingsBack()).not.toBeNull();
+  expect(button('Close settings')).toBeUndefined();
   expect(breadcrumb()).toBeNull();
   await click('Claude Code'); await click('Manual setup');
   const setupUrl = location.href;
@@ -1133,9 +1156,14 @@ it('keeps the settings sidebar mounted across MCP, agent and provider sections',
   expect(page()).toMatchObject({ client: 'claude', setup: 'manual', mcpInSettings: true });
   await mount(1);
   expect(container.querySelector('.om-settings-main a[download]')?.getAttribute('href')).toBe('/connect/config?host=claude');
+  await leaveSettings();
+  expect(page()).toMatchObject({ explore: true, settings: null });
+  await traverse(-1);
+  expect(location.href).toBe(setupUrl);
   await openMcp();
   expect(page()).toMatchObject({ settings: 'mcp', mcpInSettings: false });
   expect(container.querySelector('.om-settings-sections')).toBeNull();
+  expect(settingsBack()).toBeNull();
   expect(button('Close settings')).toBeUndefined();
   expect(breadcrumb()).toBeNull();
 });

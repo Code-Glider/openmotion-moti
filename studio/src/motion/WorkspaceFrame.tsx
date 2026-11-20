@@ -43,7 +43,7 @@ import type { McpEntry } from './pageTracking';
 import { WorkspaceProjectsButton } from './WorkspaceProjectsButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { changesWorkspaceDestination, readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
-import { WORKSPACE_LOCATION_CHANGED, restoreWorkspaceSource, workspaceHistoryIndex, workspaceHistorySource, writeWorkspaceHistory } from '../utils/workspaceHistory';
+import { WORKSPACE_LOCATION_CHANGED, restoreWorkspaceSource, workspaceHistoryIndex, workspaceHistorySource, workspaceSettingsSource, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { WorkspaceBreadcrumb } from './WorkspaceBreadcrumb';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
@@ -96,17 +96,21 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     return () => window.removeEventListener(WORKSPACE_LOCATION_CHANGED, sync);
   }, []);
   const navigatePage = useCallback((patch: Partial<WorkspacePage>, replace = false, mode?: 'from-page' | 'keep') => {
-    const target = workspacePageHref(location.href, patch);
+    const current = new URL(location.href);
+    const target = new URL(workspacePageHref(current.href, patch), current);
+    const index = workspaceHistoryIndex();
+    const origin = !replace && index !== null && target.href !== current.href ? { href: current.href, index } : null;
     let nextSource = workspaceHistorySource();
     if (mode === 'from-page') {
-      const index = workspaceHistoryIndex();
-      if (!replace && index !== null && target !== location.pathname + location.search + location.hash) {
-        nextSource = { href: location.href, index };
-      }
+      if (origin) nextSource = origin;
     } else if (mode !== 'keep' && changesWorkspaceDestination(patch)) {
       nextSource = null;
     }
-    writeWorkspaceHistory(target, replace, nextSource);
+    let settingsSource = null;
+    if (target.searchParams.get('page') === 'settings') {
+      settingsSource = current.searchParams.get('page') === 'settings' ? workspaceSettingsSource() : origin;
+    }
+    writeWorkspaceHistory(target, replace, { page: nextSource, settings: settingsSource });
   }, []);
   const presentation = workspacePresentation(location.search);
   const guard = useRef<EditorGuard | null>(null);
@@ -170,6 +174,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     navigatePage({ explore: true, community: null, medium: null, templates: false });
     requestAnimationFrame(() => applicationRef.current?.querySelector<HTMLButtonElement>('.om-app-brand')?.focus());
   }, [navigatePage]);
+  const closeSettings = () => {
+    const settingsSource = workspaceSettingsSource();
+    if (!settingsSource || !restoreWorkspaceSource(settingsSource)) openHome();
+  };
   useEffect(() => {
     const open = () => openSettings('local');
     window.addEventListener('motion:agents-open', open);
@@ -370,7 +378,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       {standaloneMcp && !templatesPage && <SettingsSurfaceBoundary>{mcpPage}</SettingsSurfaceBoundary>}
       {visibleSettings === 'brand-kit'
         ? <SettingsSurfaceBoundary key="brand-kit"><BrandKitPage inWorkspace={!hostChrome} onClose={openHome} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} hasProject={Boolean(projectId)} /></SettingsSurfaceBoundary>
-        : visibleSettings && <SettingsSurfaceBoundary key="settings"><SettingsCenter hasProject={Boolean(projectId)} section={visibleSettings}
+        : visibleSettings && <SettingsSurfaceBoundary key="settings"><SettingsCenter hasProject={Boolean(projectId)} section={visibleSettings} onBack={closeSettings}
           onSection={openSettings} openConnections={entry => openSettings('mcp', entry)} mcp={mcpPage}
           providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} /></SettingsSurfaceBoundary>}
       {(templatesPage || detailOnly) && library}
