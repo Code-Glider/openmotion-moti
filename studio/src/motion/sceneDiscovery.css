@@ -9,6 +9,7 @@
 .om-explore-feed, .om-studio-collection { min-width: 0; }
 .om-discovery-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
 .om-explore-title { font: var(--motion-weight-bold) var(--motion-text-display)/1.05 var(--motion-font-display); letter-spacing: -.045em; }
+.om-explore-nav { display: flex; flex-wrap: wrap; gap: var(--motion-space-8); margin-inline-start: auto; }
 .om-explore > .om-discovery-page { row-gap: var(--motion-space-24); }
 .om-explore-sections { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-40); }
 .om-feed-template-placeholder { display: block; width: 100%; aspect-ratio: 16/9; }

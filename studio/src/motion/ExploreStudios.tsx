@@ -385,9 +385,9 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
           setSkillFilter(next);
         }}
         action="View all"
-        onOpen={() => {
+        onOpen={trigger => {
           send('ui_click', { page_name: 'explore', area: 'explore_feed', element: 'open_skills', ...(skillFilter === 'all' ? {} : { skill_category: skillCategoryId(skillFilter) }) });
-          openSkills(skillFilter === 'all' ? null : skillFilter);
+          openSkills(skillFilter === 'all' ? null : skillFilter, trigger);
         }}
         extraAction={<SkillSubmissionLink explore />}>
         <div className="om-explore-preview-grid">{shelfSkills.map(skill => <SkillFeedCard key={skill.id} skill={skill} section="skills"
@@ -400,12 +400,25 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
 
 export function ExploreStudios(props: ExploreProps) {
   const { t, locale } = useI18n();
+  const { openLibrary, openSkills } = useWorkspaceChrome();
   const root = useRef<HTMLElement>(null);
   const [firstPages] = useState(() => new Map<string, TemplatePage>());
   const community = exploreCommunities.find(item => item.id === props.filters.community);
   return <main ref={root} className="om-explore">
     <div className="om-discovery-page">
-      <h1 className="om-explore-title">{t(!community && props.filters.medium ? mediaLabels[props.filters.medium] : 'Explore')}</h1>
+      <header className="om-discovery-heading">
+        <h1 className="om-explore-title">{t(!community && props.filters.medium ? mediaLabels[props.filters.medium] : 'Explore')}</h1>
+        {!community && !props.filters.medium && <nav className="om-explore-nav" aria-label={t('Explore')}>
+          <Button type="button" variant="ghost" className="om-button" onClick={event => {
+            track('explore_tabs', 'template_library');
+            openLibrary(event.currentTarget);
+          }}>{t('Templates')}</Button>
+          <Button type="button" variant="ghost" className="om-button" onClick={event => {
+            track('explore_tabs', 'open_skills');
+            openSkills(null, event.currentTarget);
+          }}>{t('Skills')}</Button>
+        </nav>}
+      </header>
       <div className="om-explore-sections">
         <ExploreCollection key={locale + '/' + (community?.id ?? '')} firstPages={firstPages} community={community} root={root} {...props} />
       </div>

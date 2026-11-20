@@ -1147,10 +1147,35 @@ it('keeps unlisted model briefs usable and links an Explore workflow to the Clau
   expect(document.activeElement?.id).toBe('mcp-example-anime-opening');
 });
 
-it('keeps only the Explore heading at the top, fills two complete rows across Skills and technique Studios and renders a full-bleed footer', async () => {
+it('opens the same libraries from the Explore header and the shelf actions', async () => {
+  await mount(); await click('Explore');
+  const [templates, skills] = container.querySelectorAll<HTMLButtonElement>('.om-explore-nav button');
+  const shelfAction = (name: string) => container.querySelector<HTMLButtonElement>(`.om-explore-shelf[aria-label="${name}"] header button`)!;
+
+  await act(async () => templates.click());
+  expect(page()).toMatchObject({ explore: true, templates: true, templateCollection: null });
+  expect(container.querySelector('[data-workspace-gallery] .om-gallery-page-label')?.textContent).toBe('Template library');
+  const templatesUrl = location.href;
+  await click('Close template library');
+  await act(async () => shelfAction('Templates').click());
+  expect(location.href).toBe(templatesUrl);
+  await click('Close template library');
+
+  for (const trigger of [skills, shelfAction('Skills')]) {
+    await act(async () => trigger.click());
+    expect(page()).toMatchObject({ skills: true, skillCategory: null, skill: null });
+    expect(container.querySelector('.om-skills-intro h1')?.textContent).toBe('Teach your Agent new moves.');
+    const close = container.querySelector<HTMLButtonElement>('.om-skills-heading-actions button[aria-label="Close"]')!;
+    await act(async () => close.click());
+    expect(page()).toMatchObject({ explore: true, skills: false });
+    expect(document.activeElement).toBe(trigger);
+  }
+});
+
+it('shows the Explore shortcuts, fills two complete rows across Skills and technique Studios and renders a full-bleed footer', async () => {
   await mount(); await click('Explore');
   expect(container.querySelector('.om-explore-title')?.textContent).toBe('Explore');
-  expect(container.querySelector('.om-explore-nav')).toBeNull();
+  expect([...container.querySelectorAll('.om-explore-nav button')].map(button => button.textContent)).toEqual(['Templates', 'Skills']);
   const skillsShelf = [...container.querySelectorAll('.om-explore-shelf')].find(section => section.querySelector('h2')?.textContent === 'Skills')!;
   const cards = [...skillsShelf.querySelectorAll<HTMLButtonElement>('.om-explore-preview-grid .om-scene-tile')];
   expect(cards).toHaveLength(8);

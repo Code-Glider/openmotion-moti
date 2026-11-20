@@ -690,7 +690,10 @@ export function TemplateLibraryDialog(props: Props) {
   const gallery = !detailOnly && <>
     {(!blackFriday || props.navigation) && <div className={styles.stickyHeader}>
       <header className={styles.header}>
-        {!blackFriday && <div className="om-gallery-wordmark">{!props.inWorkspace && <BrandLogo compact />}<span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>}
+        {!blackFriday && <div className="om-gallery-wordmark">
+          {!props.inWorkspace && <BrandLogo compact />}
+          <span className={`om-gallery-page-label${props.inWorkspace ? ` ${styles.libraryTitle}` : ''}`}>{t(props.creators ? 'Creators' : 'Template library')}</span>
+        </div>}
         {props.navigation && <fieldset className="contents" disabled={props.busy}>{props.navigation}</fieldset>}
         {!blackFriday && <div className="om-control-row om-gallery-header-actions">
           {searchField}

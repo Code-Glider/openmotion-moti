@@ -105,6 +105,7 @@
   .recoveryActions > button { white-space: normal; height: auto; min-height: var(--motion-control); }
 }
 .header { composes: om-gallery-header from global; }
+.header .libraryTitle { color: var(--motion-text); font-size: var(--motion-text-title); font-weight: var(--motion-weight-semibold); }
 .library :global(.om-gallery-header-actions) input:focus-visible { outline: none; }
 .library .iconButton { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 var(--motion-control); width: var(--motion-control); height: var(--motion-control); padding: 0; border-radius: 50%; }
 .iconButton:hover:not(:disabled) { background: var(--color-template-hover); }
