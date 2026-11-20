@@ -122,6 +122,46 @@ describe("InlineTextCaret", () => {
     expect(caret()?.style.top).toBe(`${50 + 200 / 4}px`);
   });
 
+  it.each([
+    { script: "Hebrew niqqud", value: "שָׁלוֹם" },
+    { script: "Arabic vowel marks", value: "مَرْحَبًا" },
+    { script: "Persian", value: "سلام" },
+    { script: "Urdu", value: "اردو" },
+    { script: "Syriac", value: "ܫܠܡܐ" },
+  ])("puts a soft-wrap End caret on the left visual edge of $script", ({ value }) => {
+    const { element, iframe, session, text } = scene();
+    element.dir = "rtl";
+    text.data = value;
+    window.getSelection()!.collapse(text, value.length);
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      return (this.collapsed
+        ? [{ left: 0, top: 320, height: 120 }]
+        : [{ left: 300, right: 400, top: 200, height: 120 }]) as unknown as DOMRectList;
+    });
+    const caret = render(session, iframe).caret;
+    act(() => element.dispatchEvent(new KeyboardEvent("keydown", { key: "End" })));
+    fire(document, "selectionchange");
+    expect([caret()!.style.left, caret()!.style.top]).toEqual([
+      `${100 + 300 / 4 - CARET_PX / 2}px`,
+      `${50 + 200 / 4}px`,
+    ]);
+  });
+
+  it("places an RTL caret at the left edge of a final nested formatted node", () => {
+    document.body.innerHTML = `<h1 dir="rtl" contenteditable="true">שלום <strong>עולם</strong></h1>`;
+    const element = document.body.firstElementChild as HTMLElement;
+    const iframe = fakeFrame();
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      return (this.collapsed ? [] : [{ left: 300, right: 500, top: 200, height: 120 }]) as unknown as DOMRectList;
+    });
+    element.focus();
+    window.getSelection()!.collapse(element, element.childNodes.length);
+    const session = { element, original: "", outline: "", outlineOffset: "" };
+    const caret = render(session, iframe).caret();
+    expect(caret!.style.left).toBe(`${100 + 300 / 4 - CARET_PX / 2}px`);
+    expect(caret!.style.top).toBe(`${50 + 200 / 4}px`);
+  });
+
   it("does not measure a fragment when the DOM caret is inside a grapheme cluster", () => {
     const { element, iframe, session, text } = scene();
     text.data = "👩‍💻";

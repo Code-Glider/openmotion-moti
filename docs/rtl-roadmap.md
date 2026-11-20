@@ -28,7 +28,9 @@ Updated 2026-11-20. This is a tracked engineering checklist, not a claim of fini
 
 ## Phase 3 — text editing
 - [ ] Editable dir/lang inspector controls, logical alignment and source persistence.
-- [x] Wrapped `End` caret measurement now reads the complete preceding grapheme cluster (Hebrew niqqud, Arabic/Syriac vowel marks, emoji ZWJ), and refuses interior UTF-16 offsets rather than measuring a partial glyph. Dedicated unit tests added in the Phase 3 branch; CI pending.
+- [x] Wrapped `End` caret measurement reads complete grapheme clusters (Hebrew niqqud, Arabic/Syriac vowel marks, emoji ZWJ) and refuses interior UTF-16 offsets. Both Phase 3 focused RTL CI [44805786568](https://github.com/Code-Glider/openmotion-moti/actions/runs/44805786568) and independent standalone CI [44805786408](https://github.com/Code-Glider/openmotion-moti/actions/runs/44805786408) passed at `5f9867ef`.
+- [x] Correct the visual trailing edge when measuring **unmixed** Hebrew/Arabic/Persian/Urdu/Syriac runs at soft-wrap `End` and formatted-node boundaries. Add focused unit regressions; this change is awaiting fresh CI on the next commit.
+- [ ] UAX #9 embedding-level/affinity behavior for mixed scripts, numbers, bidi isolation and CSS overrides remains unverified; the unmixed-run edge correction is deliberately not advertised as full mixed-BiDi caret support.
 - [ ] Prove visual caret affinity and selection geometry across mixed BiDi boundaries, wraps and IME in actual Chromium. The limited grapheme fix is **not** full UAX #9 caret behavior.
 - [ ] Retain English Studio editing of RTL video and left-to-right media time axis.
 

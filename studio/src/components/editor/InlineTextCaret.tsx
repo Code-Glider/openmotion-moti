@@ -202,7 +202,12 @@ function endOfCharBefore({ startContainer: at, startOffset: offset }: Range) {
   char.setEnd(at, offset);
   // A trailing space at a wrap has a box on each line; the earlier line's comes first.
   const rect = [...char.getClientRects()].find((each) => each.height > 0);
-  return rect ? { left: rect.right, top: rect.top, height: rect.height } : null;
+  // The logical end of an unmixed RTL run is its *left* visual edge.
+  // A bounding box's right edge is correct for English, but places Hebrew,
+  // Arabic, Persian, Urdu and Syriac carets on the wrong side of a glyph.
+  // Mixed BiDi runs still need browser-level affinity verification; do not
+  // infer their resolved embedding levels from a paragraph direction.
+  return rect ? { left: isUnmixedRtlRun(at) ? rect.left : rect.right, top: rect.top, height: rect.height } : null;
 }
 
 /** At an element boundary: the end of the node before, or the start of the node after (a line break's own line). */
@@ -215,7 +220,28 @@ function besideNode(range: Range) {
   const rects = [...around.getClientRects()].filter((rect) => rect.height > 0);
   const end = node === before;
   const rect = end ? rects.at(-1) : rects[0];
-  return rect ? { left: end ? rect.right : rect.left, top: rect.top, height: rect.height } : null;
+  const rtl = isUnmixedRtlRun(node);
+  return rect
+    ? { left: end ? (rtl ? rect.left : rect.right) : (rtl ? rect.right : rect.left), top: rect.top, height: rect.height }
+    : null;
+}
+
+/**
+ * Narrow visual-edge correction for text containing only strong RTL letters
+ * and neutrals/combining marks. Numbers and mixed strong directions are
+ * deliberately excluded: resolving their positions requires the browser's
+ * UAX #9 embedding levels, not a CSS direction or Unicode-script guess.
+ */
+function isUnmixedRtlRun(node: Node): boolean {
+  let sawRtlLetter = false;
+  for (const scalar of node.textContent ?? "") {
+    if (!/[\p{L}\p{N}]/u.test(scalar)) continue;
+    if (!/[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}]/u.test(scalar) || !/\p{L}/u.test(scalar)) {
+      return false;
+    }
+    sawRtlLetter = true;
+  }
+  return sawRtlLetter;
 }
 
 /** The nodes either side of a collapsed range; an empty text node is a boundary too, between its siblings. */
