@@ -5,6 +5,7 @@ import { assetNamingInstruction } from '../../../shared/asset-names.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
 import { templateGuideContinuationInstruction } from '../../../shared/template-guide.ts';
 import { designBriefPrompt } from '../../../shared/design-project.ts';
+import { imageFeaturePrompt, imageFeatures } from '../../../shared/image-features.ts';
 import type { IntegrationInfo } from '../../../shared/integration.ts';
 
 /** Maintained product descriptions; coverage is checked against the public MCP contract. */
@@ -115,6 +116,21 @@ export const mcpScenarios = [animeOpeningScenario, {
   description: 'Render a Design Studio slide deck at 1920×1080 into PDF or PowerPoint (.pptx) with speaker notes, or export standalone HTML and PNG screenshots from the current or historical version.',
   tools: ['openmotion_design_project'],
   prompt: 'Inspect my Design Studio deck with openmotion_design_project action=get and export it with openmotion_design_project action=export format=pptx (or format=pdf). Return the saved output path.',
+}, {
+  id: 'image-remove-background', icon: 'scissors-cut-line', title: 'Remove image background',
+  description: 'Isolate a subject from 1 reference image onto a transparent PNG background using OpenDesign GPT Image 2.6 (Cloud API key or Plus+ account).',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_open_preview'],
+  prompt: `Remove the background from my image asset. First call openmotion_media_use action=inspect to check for an available OpenDesign Cloud API key or Plus+ account model (${imageFeatures['remove-background'].models.join(' or ')}). If neither is ready, call openmotion_open_preview with target=providers so I can configure OpenDesign and tell you when ready. Confirm the 1 reference image version (at most ${imageFeatures['remove-background'].maxReferences} reference, up to 2 MiB) via openmotion_assets_use, then submit once with openmotion_assets_use action=generate using parameters=${JSON.stringify(imageFeatures['remove-background'].parameters)} and prompt: "${imageFeaturePrompt('remove-background', '')}". Track the same jobId; if an account download is interrupted, recover with openmotion_assets_use action=resume rather than regenerating.`,
+}, {
+  id: 'image-relight', icon: 'sun-line', title: 'Relight an image',
+  description: 'Change light direction, color temperature and mood on 1 reference image while preserving subject details using OpenDesign models.',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_open_preview'],
+  prompt: `Relight my image asset while keeping the subject unchanged. First call openmotion_media_use action=inspect to discover an available OpenDesign model (${imageFeatures.relight.models.join(', ')}; prefer ${imageFeatures.relight.recommended}). If no OpenDesign route is ready, call openmotion_open_preview with target=providers and wait for my confirmation. Confirm 1 reference image version (max ${imageFeatures.relight.maxReferences}, up to 2 MiB) with openmotion_assets_use, ask for any custom lighting note, then submit once with openmotion_assets_use action=generate using prompt: "${imageFeaturePrompt('relight', 'Keep the logo sharp.', { direction: 'left', temperature: 'warm', mood: 'golden-hour' })}". Track the original jobId and use openmotion_assets_use action=resume if an account download is interrupted.`,
+}, {
+  id: 'image-character', icon: 'user-3-line', title: 'Keep a character consistent',
+  description: 'Place the same character into a new scene from 1 to 5 reference images on OpenDesign (use GPT Image 2.6 or Seedream 5.0 Flash for 2–5 references; Seedream 5.5 accepts 1).',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_open_preview'],
+  prompt: `Generate a new scene keeping my character consistent across 1 to ${imageFeatures.character.maxReferences} reference images (up to 2 MiB each). First call openmotion_media_use action=inspect for an available OpenDesign model (${imageFeatures.character.models.join(', ')}; drop seedream-5.5 when using 2 or more references). If no OpenDesign route is ready, call openmotion_open_preview with target=providers and wait for confirmation. Confirm the pinned asset versions via openmotion_assets_use, then submit once with openmotion_assets_use action=generate using prompt: "${imageFeaturePrompt('character', 'Show the character walking through a sunlit café.')}". Track the same jobId and recover interrupted downloads with openmotion_assets_use action=resume without generating again.`,
 }] as const;
 
 export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'adapt', locale, workspace });

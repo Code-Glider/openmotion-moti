@@ -3,7 +3,7 @@ import { Button } from 'open-design-ui/button';
 import type { Model } from '../../../shared/gateway';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { sceneDestination, studioScenes, type StudioDestination, type StudioScene } from './creativeStudios';
+import { sceneDestination, studioScenes, supportsScene, type StudioDestination, type StudioScene } from './creativeStudios';
 import { sceneExamples } from './sceneShowcase';
 import { editImageScene, imageMenuModels, imageModelBadge, imageScene, type ModelFamily } from './imageMenuModels';
 import { ModelAvatar } from './settingsPrimitives';
@@ -86,13 +86,15 @@ export function ImageMegaMenu({ catalog, destination, onNavigate }: {
 }) {
   const { t } = useI18n();
   const { rows, hd } = imageMenuModels(catalog?.models ?? [], catalog?.status.providers ?? []);
-  // Features never pin a model: the Studio then offers only OpenDesign models for them.
+  const pinned = catalog?.models.find(model => model.id === destination?.model);
+  // Non-feature image scenes keep a compatible pinned model; feature scenes open without a pin so OpenDesign defaults apply.
+  const openScene = (scene: StudioScene, seed?: ImageParameterSeed) => onNavigate(sceneDestination(scene, destination, pinned && supportsScene(pinned, scene) ? pinned.id : null), seed);
   const openFeature = (scene: StudioScene, seed?: ImageParameterSeed) => onNavigate(sceneDestination(scene, destination, null), seed);
 
   return <div className="om-media-mega">
     <div className="om-media-menu-grid om-media-mega-entries">
       {sceneCards.map(([scene, title]) => <Button variant="plain" key={scene.id} className="om-scene-tile"
-        aria-current={destination?.scene.id === scene.id ? 'page' : undefined} onClick={() => openFeature(scene)}>
+        aria-current={destination?.scene.id === scene.id ? 'page' : undefined} onClick={() => openScene(scene)}>
         <ImageMenuArt scene={scene.id} /><strong>{t(title)}</strong>
       </Button>)}
       <Button variant="plain" className="om-scene-tile" aria-current={destination?.scene.id === characterScene.id ? 'page' : undefined} onClick={() => openFeature(characterScene)}>
@@ -109,7 +111,7 @@ export function ImageMegaMenu({ catalog, destination, onNavigate }: {
     </div>
     <div className="om-media-mega-columns">
       <MegaMenuColumn title={t('Features')} items={[
-        <Button key="fusion" variant="plain" className="om-nav-item om-media-mega-row" onClick={() => openFeature(editImageScene)}><span className="om-image-menu-icon"><RemixIcon name="image-line" size={16} /></span><span className="om-media-mega-label">{t('Multi-image fusion')}</span></Button>,
+        <Button key="fusion" variant="plain" className="om-nav-item om-media-mega-row" onClick={() => openScene(editImageScene)}><span className="om-image-menu-icon"><RemixIcon name="image-line" size={16} /></span><span className="om-media-mega-label">{t('Multi-image fusion')}</span></Button>,
         <Button key="2k" variant="plain" className="om-nav-item om-media-mega-row" onClick={() => openFeature(imageScene, hd ? { model: hd.model.id, parameters: hd.parameters } : undefined)}><span className="om-image-menu-icon"><RemixIcon name="sparkling-line" size={16} /></span><span className="om-media-mega-label">{t('2K HD output')}</span></Button>,
         ...featureScenes.map(scene => <Button key={scene.id} variant="plain" className="om-nav-item om-media-mega-row" aria-current={destination?.scene.id === scene.id ? 'page' : undefined} onClick={() => openFeature(scene)}>
           <span className="om-image-menu-icon"><RemixIcon name={scene.icon} size={16} /></span><span className="om-media-mega-label">{t(scene.label)}</span>

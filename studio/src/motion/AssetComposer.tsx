@@ -40,8 +40,10 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
 }) {
   const { t } = useI18n(), { openModelSettings, openProviderSettings, openAccountSettings, openSubscriptionSettings } = useWorkspaceChrome();
   const scene = studio?.destination.scene;
-  // A Studio opened from a feature (no pinned model) offers only OpenDesign models and keeps the choice in the draft.
-  const featureMode = Boolean(studio && !studio.destination.model);
+  const feature = scene && sceneFeature(scene);
+  const featureRule = feature ? imageFeatures[feature] : undefined;
+  // Image feature scenes (remove-background, relight, character) offer only OpenDesign models.
+  const featureMode = Boolean(feature);
   const modelId = studio?.destination.model ?? draft.model;
   const promptId = useId();
   const libraryCatalog = useMediaCatalog(active && !studio);
@@ -53,8 +55,6 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
   const [syncing, setSyncing] = useState(false);
   const selectedTask = history.tasks.find(task => task.key === history.selectedKey);
   const switching = busy || agentSending || selectingTask;
-  const feature = scene && sceneFeature(scene);
-  const featureRule = feature ? imageFeatures[feature] : undefined;
   const { available, selected, choices, compatible, preferred } = creationModels(gateway, draft.modality, modelId, scene, featureMode, draft.references.length);
   const preferredProvider = preferred && gateway?.status.providers.find(provider => provider.id === preferred.provider);
   const unconfiguredPreferred = Boolean(studio && gateway && preferred && !selected && preferredProvider && !preferredProvider.available);
@@ -126,7 +126,7 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
     : openProviderSettings ? openProviderSettings(providerId) : openModelSettings();
   const chooseModel = (model: string) => {
     setDraft(current => ({ ...current, model, parameters: undefined }));
-    if (studio && !featureMode) studio.chooseModel(model);
+    if (studio) studio.chooseModel(model);
   };
   const modelPicker = gateway && !failed && (studio ? compatible.length > 0 : choices.length > 0) ? (studio
     ? <CreationModelPicker models={compatible} providers={gateway.status.providers} selected={preferred}

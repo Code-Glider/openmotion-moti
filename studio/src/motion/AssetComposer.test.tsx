@@ -644,20 +644,29 @@ it('chooses a provider, then one of its fixed-list models, keeping unconfigured 
 it('offers only OpenDesign providers for feature entries and keeps the prompt while asking for setup', async () => {
   const { findMediaStudio } = await import('../../../shared/studio-catalog');
   const { studioDestination } = await import('./creativeStudios');
-  const base = { modality: 'image' as const, mode: 'text-to-image' as const, source: 'live' as const };
+  const base = { modality: 'image' as const, mode: 'text-to-image' as const, source: 'live' as const, supportsImageReference: true, maxInputImages: 1 };
   const cloud: Model = { ...base, id: 'opendesign:seedream-5.5', provider: 'opendesign', modelId: 'seedream-5.5', label: 'seedream-5.5' };
   const flux: Model = { ...base, id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell' };
-  const render = (models: Model[], providers: { id: string; label: string; available: boolean }[]) => act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: 'Neon skyline', references: [] }} studio={{
-    catalog: { catalog: { models, status: { routes: {}, providers } }, failed: false, retry: vi.fn() }, chooseModel: vi.fn(), remember: vi.fn(),
-    destination: studioDestination(findMediaStudio('design')!, 'text-to-image', null),
+  const codex: Model = { ...base, id: 'codex:image-generation', provider: 'codex', modelId: 'image-generation', label: 'Codex Image', source: 'builtin' };
+  const chooseModel = vi.fn();
+  const render = (sceneId: 'relight' | 'text-to-image', models: Model[], providers: { id: string; label: string; available: boolean }[]) => act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: 'Neon skyline', references: [] }} studio={{
+    catalog: { catalog: { models, status: { routes: {}, providers } }, failed: false, retry: vi.fn() }, chooseModel, remember: vi.fn(),
+    destination: studioDestination(findMediaStudio('design')!, sceneId, null),
   }} />));
   const names = () => [...document.querySelectorAll('[role="option"] strong')].map(node => node.textContent);
-  await render([flux, cloud], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
+  // Ordinary non-feature Studio entries keep Codex Image alongside OpenDesign and persist choices via studio.chooseModel.
+  await render('text-to-image', [flux, cloud, codex], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'codex', label: 'Codex', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  expect(names()).toEqual(['OpenDesign API Key', 'OpenDesign account', 'Codex']);
+  await act(async () => [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')][2].click());
+  expect(chooseModel).toHaveBeenCalledWith(codex.id);
+  // Feature scenes restrict strictly to OpenDesign providers and preserve the prompt when OpenDesign needs setup.
+  await render('relight', [flux, cloud, codex], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'codex', label: 'Codex', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
   await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
   expect(names()).toEqual(['OpenDesign API Key', 'OpenDesign account']);
   await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
   expect(names()).toEqual(['Seedream 5.5']);
-  await render([flux], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: false }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
+  await render('relight', [flux], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: false }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
   const submit = container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!;
   expect(submit.textContent).toContain('Set up to generate');
   expect(submit.disabled).toBe(false);
@@ -665,6 +674,17 @@ it('offers only OpenDesign providers for feature entries and keeps the prompt wh
   expect(chrome.openProviderSettings).toHaveBeenCalledExactlyOnceWith('opendesign');
   expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Asset prompt"]')!.value).toBe('Neon skyline');
   expect(generate).not.toHaveBeenCalled();
+});
+
+it('preserves configured BYOK models on an unpinned ordinary Assets library draft', async () => {
+  const flux: Model = { id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell', modality: 'image', mode: 'text-to-image', source: 'builtin' };
+  loadGateway.mockResolvedValue({ models: [flux], status: { routes: { image: flux.id }, providers: [{ id: 'fal', label: 'fal.ai', available: true }] } });
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: 'Sunrise poster', references: [] }} />));
+  const submit = container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!;
+  expect(submit.disabled).toBe(false);
+  generate.mockResolvedValue({ job: { id: 'fal-job' } });
+  await act(async () => submit.click());
+  expect(generate).toHaveBeenCalledWith(expect.objectContaining({ model: flux.id, prompt: 'Sunrise poster' }));
 });
 
 const featureModels = () => {
