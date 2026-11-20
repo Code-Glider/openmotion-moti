@@ -296,7 +296,7 @@ export function isCaptionPreviewVisible(): boolean {
 export function applyCaptionModelToIframe(model: {
   groupOrder: string[];
   groups: Map<string, { segmentIds: string[] }>;
-  segments: Map<string, { style: { x?: number; y?: number; scaleX?: number; rotation?: number } }>;
+  segments: Map<string, { text: string; style: { x?: number; y?: number; scaleX?: number; rotation?: number } }>;
 }): void {
   const iframe = registeredIframe?.current;
   if (!iframe) return;
@@ -313,7 +313,7 @@ export function applyCaptionModelToIframe(model: {
     for (let wi = 0; wi < group.segmentIds.length; wi++) {
       const seg = model.segments.get(group.segmentIds[wi]);
       if (!seg) continue;
-      const wordEl = getWordEl(iframe, gi, wi);
+      const wordEl = getWordEl(iframe, gi, wi, model);
       if (!wordEl) continue;
       const s = seg.style;
       writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0);
