@@ -368,7 +368,7 @@
     background: var(--motion-overlay-ink);
     box-shadow: 0 0 2px var(--motion-video-overlay);
   }
-  .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo { --shot-timing: 3s ease-in-out both; }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo { --shot-timing: 4s ease-in-out infinite; }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-composition { animation: om-shot-compose var(--shot-timing); }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-viewfinder { animation: om-shot-frame var(--shot-timing); }
 }
@@ -378,14 +378,14 @@
 }
 /* Enlarge the chosen window around the same anchor so its edges fill the preview. */
 @keyframes om-shot-compose {
-  0%, 53% { transform: scale(1); }
-  78%, 100% { transform: scale(calc(1 / var(--shot-window))); }
+  0%, 40%, 100% { transform: scale(1); }
+  59%, 88% { transform: scale(calc(1 / var(--shot-window))); }
 }
 @keyframes om-shot-frame {
-  0% { opacity: 0; transform: scale(.98); }
-  10% { opacity: 1; transform: scale(.98); }
-  44%, 64% { opacity: 1; transform: scale(var(--shot-window)); }
-  78%, 100% { opacity: 0; transform: scale(var(--shot-window)); }
+  0%, 100% { opacity: 0; transform: scale(.98); }
+  8% { opacity: 1; transform: scale(.98); }
+  33%, 48% { opacity: 1; transform: scale(var(--shot-window)); }
+  59%, 88% { opacity: 0; transform: scale(var(--shot-window)); }
 }
 .om-image-demo-input {
   position: absolute;
