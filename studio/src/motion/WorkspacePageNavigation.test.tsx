@@ -1174,6 +1174,10 @@ it('recovers community templates and opens the library from the community headin
   const sections = [...container.querySelector('.om-explore-sections')!.children].slice(0, 7);
   expect(sections.map(section => section.getAttribute('aria-labelledby') ?? section.getAttribute('data-studio') ?? section.className))
     .toEqual(['om-explore-features', 'explore-highlights', 'explore-claude', 'explore-community', 'explore-seedance', 'design', 'explore-gpt-image']);
+  for (const id of ['explore-seedance', 'explore-gpt-image']) {
+    const heading = container.querySelector(`#${id}`)!;
+    expect(heading.previousElementSibling).toBeNull();
+  }
   const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
   expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second']);
   const communities = container.querySelector('[aria-labelledby="om-feed-heading"]')!;

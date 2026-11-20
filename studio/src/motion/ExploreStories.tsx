@@ -58,7 +58,7 @@ export function ModelCollection({ story, gateway, onNavigate, onModel }: {
   const heading = 'explore-' + story.id;
   return <section aria-labelledby={heading}>
     <header className="om-discovery-heading"><div>
-      <div className="om-story-model-title"><ProviderAvatar name={story.title} provider={{ id: story.brand, custom: false }} /><h2 id={heading} tabIndex={-1}>{story.title}</h2></div>
+      <h2 id={heading} tabIndex={-1}>{story.title}</h2>
       <p className="om-muted">{t(story.description)}</p>
     </div>
       {loading ? <Skeleton className="om-story-action-skeleton" /> : gateway.failed ? <Button type="button" variant="secondary" className="om-button" onClick={gateway.retry}>{t('Retry loading models')}</Button> :
