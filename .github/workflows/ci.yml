@@ -141,11 +141,14 @@ jobs:
       - name: Measure component adoption and detached styles
         if: steps.scope.outputs.full == 'true'
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           node --test tests/ui-metrics.test.ts
           args=()
-          if [[ -n "$PR_BASE" ]]; then args+=(--base "$PR_BASE"); fi
+          if [[ -n "$PR_HEAD" ]]; then
+            test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
+            args+=(--base "$(git rev-parse HEAD^1)")
+          fi
           npm run design:metrics -- "${args[@]}"
           cat dist/ui-metrics/report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload UI metrics with source locations
