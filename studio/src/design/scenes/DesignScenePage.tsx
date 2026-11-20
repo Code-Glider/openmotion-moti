@@ -17,8 +17,16 @@ import { designClient } from '../designClient';
 import { DesignProjectList } from '../DesignProjectList';
 import { DesignTemplateDetailModal } from '../DesignTemplateDetailModal';
 import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
+import designMentionTitlesZh from '../design-mention-titles.zh-CN.json';
 import { DesignSceneTabs, type DesignTabId } from './DesignSceneTabs';
 import '../design.css';
+
+// Keep the bundled Open Design manifest titles and the UI labels separate from catalogue IDs.
+const mentionTitlesZh = {
+  templates: new Map(Object.entries(designMentionTitlesZh.templates)),
+  skills: new Map(Object.entries(designMentionTitlesZh.skills)),
+};
+const mentionKindLabels = { template: 'Template', skill: 'Skill', prompt: 'Prompt' } as const;
 
 export function DesignScenePage({
   scene,
@@ -100,34 +108,38 @@ export function DesignScenePage({
   }, [skills, skillQuery, scenario?.id]);
 
   type MentionOption =
-    | { kind: 'template'; id: string; label: string; sub: string; item: DesignTemplateSummary }
-    | { kind: 'skill'; id: string; label: string; sub: string; item: DesignSkillSummary }
-    | { kind: 'prompt'; id: string; label: string; sub: string; text: string };
+    | { kind: 'template'; id: string; label: string; item: DesignTemplateSummary }
+    | { kind: 'skill'; id: string; label: string; item: DesignSkillSummary }
+    | { kind: 'prompt'; id: string; label: string; text: string };
 
   const mentionOptions = useMemo<MentionOption[]>(() => {
     if (!mention) return [];
     const q = mention.query.trim().toLowerCase();
+    const localizedTitles = locale === 'zh-CN' ? mentionTitlesZh : undefined;
+    const matches = (...terms: string[]) => !q || terms.some(term => term.toLowerCase().includes(q));
     const out: MentionOption[] = [];
     for (const tpl of templates) {
-      if (!q || tpl.title.toLowerCase().includes(q) || tpl.id.toLowerCase().includes(q) || tpl.category.toLowerCase().includes(q)) {
-        out.push({ kind: 'template', id: `tpl:${tpl.id}`, label: tpl.title, sub: `@template:${tpl.id}`, item: tpl });
+      const label = localizedTitles?.templates.get(tpl.id) ?? tpl.title;
+      if (matches(label, tpl.title, tpl.id, tpl.category)) {
+        out.push({ kind: 'template', id: `tpl:${tpl.id}`, label, item: tpl });
         if (out.length >= 6) break;
       }
     }
     let skillCount = 0;
     for (const sk of skills) {
-      if (!q || sk.title.toLowerCase().includes(q) || sk.id.toLowerCase().includes(q)) {
-        out.push({ kind: 'skill', id: `sk:${sk.id}`, label: sk.title, sub: `@skill:${sk.id}`, item: sk });
+      const label = localizedTitles?.skills.get(sk.id) ?? sk.title;
+      if (matches(label, sk.title, sk.id)) {
+        out.push({ kind: 'skill', id: `sk:${sk.id}`, label, item: sk });
         if (++skillCount >= 6) break;
       }
     }
     for (const [i, ex] of examples.entries()) {
-      if (!q || ex.toLowerCase().includes(q)) {
-        out.push({ kind: 'prompt', id: `pr:${i}`, label: ex, sub: t('Prompt'), text: ex });
+      if (matches(ex)) {
+        out.push({ kind: 'prompt', id: `pr:${i}`, label: ex, text: ex });
       }
     }
     return out;
-  }, [mention, templates, skills, examples, t]);
+  }, [mention, templates, skills, examples, locale]);
 
   const syncMention = (value: string, cursor: number) => {
     const before = value.slice(0, cursor);
@@ -421,12 +433,13 @@ export function DesignScenePage({
                       size="sm"
                       variant={idx === mentionIndex ? 'secondary' : 'ghost'}
                       className="om-design-mention-item"
+                      data-kind={opt.kind}
                       icon={<RemixIcon name={opt.kind === 'template' ? 'layout-line' : opt.kind === 'skill' ? 'book-open-line' : 'sparkling-line'} size={14} />}
                       onMouseEnter={() => setMentionIndex(idx)}
                       onClick={() => applyMention(opt)}
                     >
                       <span className="om-design-mention-label">{opt.label}</span>
-                      <span className="om-design-muted" style={{ fontSize: 11 }}>{opt.sub}</span>
+                      <span className="om-design-mention-type">{t(mentionKindLabels[opt.kind])}</span>
                     </Button>
                   ))}
                 </div>

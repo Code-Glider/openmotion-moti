@@ -1159,16 +1159,30 @@
 
 .om-design-mention-item {
   width: 100%;
-  justify-content: space-between !important;
+  height: auto;
+  min-height: var(--motion-control-sm);
+  padding-block: var(--motion-space-4);
   gap: var(--motion-space-10);
 }
 
 .om-design-mention-label {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.om-design-mention-item[data-kind="prompt"] .om-design-mention-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
-  text-align: left;
+}
+
+.om-design-mention-type {
+  flex: none;
+  color: var(--motion-muted);
+  font-size: var(--motion-text-xs);
 }
 
 .om-design-attached-chips {

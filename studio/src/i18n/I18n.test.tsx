@@ -314,6 +314,66 @@ it('localizes design examples across all scenes and uses them in the design brie
   expect(chips().map(chip => chip.textContent)).toEqual(designScenarios.find(scenario => scenario.id === 'mobile-app')?.examples);
 });
 
+it('localizes Design Studio mention names and types while preserving reference IDs', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({
+    kits: [], entries: [], projects: [],
+    items: [{
+      id: 'frontend-slides', title: 'Frontend Slides', category: 'presentation', scenario: 'deck',
+      description: '', tags: [], entry: 'index.html', previewUrl: 'about:blank',
+      examplePrompt: null, license: 'Apache-2.0', source: '',
+    }],
+    skills: [{ id: 'ad-creative', title: 'Ad Creative' }, { id: 'agent-browser', title: 'Agent Browser' }].map(skill => ({
+      ...skill, description: '', scenario: null, category: 'design', examplePrompt: null,
+    })),
+  }));
+  const renderScene = (locale: 'zh-CN' | 'en') => act(async () => {
+    root.render(<I18nProvider key={locale} initialLocale={locale}>
+      <DesignScenePage scene="deck" onSelectDesignScene={vi.fn()} onSelectImageScene={vi.fn()}
+        onChooseStudio={vi.fn()} onOpenProject={vi.fn()} onExplore={vi.fn()} onOpenMcp={vi.fn()} />
+    </I18nProvider>);
+  });
+  const brief = () => host.querySelector<HTMLTextAreaElement>('.om-design-bottom-input')!;
+  const mention = (value: string) => act(async () => {
+    const input = brief();
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value);
+    input.setSelectionRange(value.length, value.length);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const options = () => [...host.querySelectorAll<HTMLButtonElement>('.om-design-mention-item')];
+  const rows = () => options().map(option => [
+    option.querySelector('.om-design-mention-label')?.textContent,
+    option.querySelector('.om-design-mention-type')?.textContent,
+  ]);
+
+  await renderScene('zh-CN');
+  await mention('@');
+  expect(rows().slice(0, 3)).toEqual([
+    ['像顶级技术解释者一样写 AI 工作流 101', '模板'],
+    ['广告创意', 'Skill'],
+    ['Agent Browser', 'Skill'],
+  ]);
+  expect(rows().slice(3).map(([, kind]) => kind)).toEqual(['提示词', '提示词']);
+  expect(host.querySelector('.om-design-mention-menu')?.textContent).not.toMatch(/@(?:template|skill):/);
+
+  await mention('@工作流');
+  expect(rows()).toEqual([['像顶级技术解释者一样写 AI 工作流 101', '模板']]);
+  await act(async () => options()[0].click());
+  expect(brief().value).toBe('@template:frontend-slides ');
+
+  await mention('@广告');
+  expect(rows()).toEqual([['广告创意', 'Skill']]);
+  await act(async () => options()[0].click());
+  expect(brief().value).toBe('@skill:ad-creative ');
+
+  await renderScene('en');
+  await mention('@');
+  expect(rows().slice(0, 3)).toEqual([
+    ['Frontend Slides', 'Template'],
+    ['Ad Creative', 'Skill'],
+    ['Agent Browser', 'Skill'],
+  ]);
+});
+
 it('preserves custom console-error titles and original diagnostics in the shared lint dialog', () => {
   const message = 'ReferenceError: Preview is not defined';
   act(() => root.render(<I18nProvider initialLocale="zh-CN">
