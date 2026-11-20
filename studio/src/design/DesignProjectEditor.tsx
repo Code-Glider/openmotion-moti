@@ -651,21 +651,21 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
           </Tooltip>
         </div>
 
-        {/* Deck controls */}
-        {isDeck && viewMode === 'preview' && (
+        {/* Deck controls (centered in 3-column toolbar grid) */}
+        {isDeck && viewMode === 'preview' ? (
           <div className="om-design-header-group">
             <IconButton aria-label={t('Previous slide')} icon={<RemixIcon name="arrow-left-s-line" size={16} />} onClick={() => sendDeckCommand('prev')} />
-            <span className="om-design-muted">{activeSlide + 1} / {Math.max(1, slideCount || deckSlides.length)}</span>
+            <span className="om-design-muted" style={{ minWidth: 40, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{activeSlide + 1} / {Math.max(1, slideCount || deckSlides.length)}</span>
             <IconButton aria-label={t('Next slide')} icon={<RemixIcon name="arrow-right-s-line" size={16} />} onClick={() => sendDeckCommand('next')} />
             <Button type="button" size="sm" variant={notesOpen ? 'secondary' : 'ghost'} onClick={() => setNotesOpen(v => !v)}>{t('Notes')}</Button>
             <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="fullscreen-line" size={14} />} onClick={() => iframeRef.current?.requestFullscreen?.()}>{t('Present')}</Button>
             <Button type="button" size="sm" variant="ghost" onClick={openPresenterPopup}>{t('Presenter view')}</Button>
           </div>
-        )}
+        ) : <div />}
 
         {/* Annotation tools & Zoom */}
         <div className="om-design-header-group">
-          <div className="om-design-segmented" role="group" aria-label={t('Annotation tools')}>
+          <div className="om-design-header-group" role="group" aria-label={t('Annotation tools')} style={{ gap: 2 }}>
             <Tooltip label={t('Comment on element')}>
               <Button type="button" size="sm" variant={activeTool === 'comment' ? 'primary' : 'ghost'} icon={<RemixIcon name="chat-1-line" size={14} />}
                 onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'comment' ? 'none' : 'comment'); }}>

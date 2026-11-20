@@ -70,14 +70,26 @@
 }
 
 .om-design-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--motion-space-10);
   padding: var(--motion-space-6) var(--motion-space-14);
   background: var(--motion-panel-header);
   border-bottom: 1px solid var(--motion-border-subtle);
-  flex-wrap: wrap;
+  min-height: 44px;
+}
+
+.om-design-toolbar > :first-child {
+  justify-self: start;
+}
+
+.om-design-toolbar > :nth-child(2) {
+  justify-self: center;
+}
+
+.om-design-toolbar > :last-child {
+  justify-self: end;
 }
 
 .om-design-divider {
