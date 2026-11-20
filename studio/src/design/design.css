@@ -313,6 +313,44 @@
   box-shadow: var(--motion-shadow-xs);
 }
 
+.om-design-annotation-group {
+  opacity: 0.9;
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.om-design-annotation-group[data-selected="true"] {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--motion-accent));
+}
+
+.om-design-annotation-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--motion-radius-sm);
+  border: 1px solid var(--motion-border-subtle);
+  background: var(--motion-canvas);
+  overflow: hidden;
+  display: block;
+}
+
+.om-design-annotation-thumb-region {
+  position: absolute;
+  border: 1.5px solid var(--motion-accent);
+  background: color-mix(in srgb, var(--motion-accent) 16%, transparent);
+  border-radius: 2px;
+}
+
+.om-design-annotation-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--motion-space-6);
+  font-size: 11px;
+  color: var(--motion-muted);
+  font-family: var(--motion-font-mono);
+}
+
 /* --- Syntax-highlighted Code Viewer --- */
 .om-design-code-wrap {
   flex: 1;

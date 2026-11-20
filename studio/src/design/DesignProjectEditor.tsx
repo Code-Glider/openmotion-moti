@@ -41,6 +41,65 @@ function formatBytes(bytes: number) {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+function annotationBounds(annotation: ReviewAnnotation) {
+  const pts = annotation.marks.flatMap(m => m.points);
+  if (!pts.length) return { minX: 0.05, minY: 0.05, maxX: 0.2, maxY: 0.2 };
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
+}
+
+function AnnotationVisualPreview({
+  element,
+  region,
+  annotation,
+  viewport,
+}: {
+  element?: { selector: string };
+  region?: { x: number; y: number; width: number; height: number };
+  annotation?: ReviewAnnotation;
+  viewport?: { width: number; height: number };
+}) {
+  if (annotation) {
+    const b = annotationBounds(annotation);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="om-design-annotation-thumb" aria-hidden="true">
+          <svg width="100%" height="100%" viewBox="0 0 160 90" preserveAspectRatio="none" style={{ display: 'block' }}>
+            <ReviewAnnotationGraphic annotation={{ ...annotation, width: 160, height: 90 }} />
+          </svg>
+        </div>
+        <div className="om-design-annotation-meta">
+          <span>Draw · {annotation.marks.length} stroke</span>
+          <span>{Math.round(b.minX * 100)}%–{Math.round(b.maxX * 100)}%, {Math.round(b.minY * 100)}%–{Math.round(b.maxY * 100)}%</span>
+        </div>
+      </div>
+    );
+  }
+  if (region) {
+    const vw = Math.max(1, viewport?.width ?? 1440);
+    const vh = Math.max(1, viewport?.height ?? 900);
+    const leftPct = Math.max(0, Math.min(96, (region.x / vw) * 100));
+    const topPct = Math.max(0, Math.min(96, (region.y / vh) * 100));
+    const widthPct = Math.max(4, Math.min(100 - leftPct, (region.width / vw) * 100));
+    const heightPct = Math.max(4, Math.min(100 - topPct, (region.height / vh) * 100));
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="om-design-annotation-thumb" aria-hidden="true">
+          <div className="om-design-annotation-thumb-region" style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${widthPct}%`, height: `${heightPct}%` }} />
+        </div>
+        <div className="om-design-annotation-meta">
+          <span>Region · {Math.round(region.width)} × {Math.round(region.height)}</span>
+          <span>({Math.round(region.x)}, {Math.round(region.y)})</span>
+        </div>
+      </div>
+    );
+  }
+  if (element) {
+    return <code className="om-design-selector-chip">{element.selector}</code>;
+  }
+  return null;
+}
+
 export function DesignProjectEditor({
   projectId,
   onBack,
@@ -369,6 +428,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
   const onOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (activeTool !== 'region' && activeTool !== 'pen') return;
     if (event.target !== event.currentTarget) return;
+    setPendingDraft(null);
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -402,15 +462,15 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
       setDragStart(null);
       setDragCurrent(null);
       if (width > 8 && height > 8) {
-        setPendingDraft({ region: { x, y, width, height }, pinX: x + width / 2, pinY: y + height / 2 });
+        setPendingDraft({ region: { x, y, width, height }, pinX: x, pinY: y });
         setCommentText('');
       }
     } else if (activeTool === 'pen' && penPoints.length >= 2) {
       const w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
       const annotation: ReviewAnnotation = { version: 1, coordinateSpace: 'normalized', width: w, height: h, marks: [{ kind: 'pen', points: penPoints }] };
-      const last = penPoints[penPoints.length - 1];
+      const bounds = annotationBounds(annotation);
       setPenPoints([]);
-      setPendingDraft({ annotation, pinX: last.x * w, pinY: last.y * h });
+      setPendingDraft({ annotation, pinX: bounds.minX * w, pinY: bounds.minY * h });
       setCommentText('');
     }
   };
@@ -772,30 +832,50 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                     <p className="om-design-muted">{t('No annotations yet. Pick Comment, Region or Draw to mark an element, then copy the brief to your Agent.')}</p>
                   )}
 
-                  {visibleComments.map((comment, idx) => (
-                    <div key={comment.id} className="om-design-item-card" data-active={selectedCommentId === comment.id} onClick={() => setSelectedCommentId(comment.id)}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="om-design-badge">#{idx + 1} · {comment.anchor.viewport.id}</span>
-                        <span className="om-design-muted">{comment.status}</span>
-                      </div>
-                      {comment.anchor.element && <code className="om-design-selector-chip">{comment.anchor.element.selector}</code>}
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{comment.text}</p>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {comment.anchor.slideIndex !== undefined && (
-                          <Button type="button" size="sm" variant="ghost" onClick={() => sendDeckCommand('go', comment.anchor.slideIndex)}>
-                            {t('Slide {n}', { n: comment.anchor.slideIndex + 1 })}
+                  {visibleComments.map((comment, idx) => {
+                    const kindLabel = comment.anchor.annotation ? t('Draw') : comment.anchor.region ? t('Region') : t('Comment');
+                    const kindIcon = comment.anchor.annotation ? 'pen-nib-line' : comment.anchor.region ? 'shape-2-line' : 'chat-1-line';
+                    const focusComment = () => {
+                      setSelectedCommentId(comment.id);
+                      setViewMode('preview');
+                      if (comment.anchor.filePath && comment.anchor.filePath !== activeFile) setActiveFile(comment.anchor.filePath);
+                      if (isDeck && comment.anchor.slideIndex !== undefined && comment.anchor.slideIndex !== activeSlide) {
+                        sendDeckCommand('go', comment.anchor.slideIndex);
+                      }
+                    };
+                    return (
+                      <div key={comment.id} className="om-design-item-card" data-active={selectedCommentId === comment.id} style={{ cursor: 'pointer' }} onClick={focusComment}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                          <span className="om-design-badge">
+                            <RemixIcon name={kindIcon} size={11} />
+                            <span>#{idx + 1} · {kindLabel} · {comment.anchor.viewport.id}</span>
+                          </span>
+                          <span className="om-design-muted">{comment.status}</span>
+                        </div>
+                        <AnnotationVisualPreview
+                          element={comment.anchor.element}
+                          region={comment.anchor.region}
+                          annotation={comment.anchor.annotation}
+                          viewport={comment.anchor.viewport}
+                        />
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{comment.text}</p>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                          {comment.anchor.slideIndex !== undefined && (
+                            <Button type="button" size="sm" variant="ghost" onClick={focusComment}>
+                              {t('Slide {n}', { n: comment.anchor.slideIndex + 1 })}
+                            </Button>
+                          )}
+                          <Button type="button" size="sm" variant="ghost" onClick={() => void toggleCommentStatus(comment)}>
+                            {comment.status === 'open' ? t('Resolve') : t('Reopen')}
                           </Button>
-                        )}
-                        <Button type="button" size="sm" variant="ghost" onClick={() => void toggleCommentStatus(comment)}>
-                          {comment.status === 'open' ? t('Resolve') : t('Reopen')}
-                        </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => void copyPrompt(designCommentsPrompt(project, [comment], undefined, promptOptions))}>
-                          {t('Copy')}
-                        </Button>
-                        <IconButton aria-label={t('Delete annotation')} icon={<RemixIcon name="delete-bin-line" size={14} />} onClick={() => void removeComment(comment.id)} />
+                          <Button type="button" size="sm" variant="ghost" onClick={() => void copyPrompt(designCommentsPrompt(project, [comment], undefined, promptOptions))}>
+                            {t('Copy')}
+                          </Button>
+                          <IconButton aria-label={t('Delete annotation')} icon={<RemixIcon name="delete-bin-line" size={14} />} onClick={() => void removeComment(comment.id)} />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </>
               )}
 
@@ -926,20 +1006,42 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                       />
                     ) : null)}
 
-                    {/* Live pen stroke & saved vector annotations */}
+                    {/* Live pen stroke, pending draft stroke & saved vector annotations */}
                     <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                       {penPoints.length >= 2 && (
                         <ReviewAnnotationGraphic annotation={{ version: 1, coordinateSpace: 'normalized', width: 1000, height: 1000, marks: [{ kind: 'pen', points: penPoints }] }} />
                       )}
+                      {pendingDraft?.annotation && (
+                        <g className="om-design-annotation-group" data-selected="true">
+                          <ReviewAnnotationGraphic annotation={{ ...pendingDraft.annotation, width: 1000, height: 1000 }} />
+                        </g>
+                      )}
                       {pinComments.map(c => c.anchor.annotation ? (
-                        <ReviewAnnotationGraphic key={c.id} annotation={{ ...c.anchor.annotation, width: 1000, height: 1000 }} />
+                        <g key={c.id} className="om-design-annotation-group" data-selected={selectedCommentId === c.id}>
+                          <ReviewAnnotationGraphic annotation={{ ...c.anchor.annotation, width: 1000, height: 1000 }} />
+                        </g>
                       ) : null)}
                     </svg>
 
                     {/* Saved pins */}
                     {pinComments.map((c, idx) => {
-                      const x = c.anchor.region ? c.anchor.region.x : c.anchor.element ? c.anchor.element.box.x + c.anchor.element.box.width / 2 : 32 + idx * 28;
-                      const y = c.anchor.region ? c.anchor.region.y : c.anchor.element ? c.anchor.element.box.y + 12 : 32;
+                      const ow = overlayRef.current?.clientWidth ?? c.anchor.viewport.width ?? 960;
+                      const oh = overlayRef.current?.clientHeight ?? c.anchor.viewport.height ?? 640;
+                      const drawBounds = c.anchor.annotation ? annotationBounds(c.anchor.annotation) : null;
+                      const x = c.anchor.region
+                        ? c.anchor.region.x
+                        : drawBounds
+                          ? drawBounds.minX * ow
+                          : c.anchor.element
+                            ? c.anchor.element.box.x + c.anchor.element.box.width / 2
+                            : 32 + idx * 28;
+                      const y = c.anchor.region
+                        ? c.anchor.region.y
+                        : drawBounds
+                          ? drawBounds.minY * oh
+                          : c.anchor.element
+                            ? c.anchor.element.box.y + 12
+                            : 32;
                       return (
                         <div
                           key={c.id}
@@ -954,17 +1056,22 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                       );
                     })}
 
-                    {/* Pending comment composer anchored cleanly outside the marked region */}
+                    {/* Pending comment composer anchored cleanly outside the marked region or drawing */}
                     {pendingDraft && (() => {
                       const ow = overlayRef.current?.clientWidth ?? 960;
                       const oh = overlayRef.current?.clientHeight ?? 640;
                       const popW = 300;
-                      const popH = 176;
-                      const preferredX = pendingDraft.region ? pendingDraft.region.x : pendingDraft.pinX;
-                      const preferredY = pendingDraft.region
-                        ? (pendingDraft.region.y + pendingDraft.region.height + 12 + popH <= oh
-                          ? pendingDraft.region.y + pendingDraft.region.height + 12
-                          : Math.max(12, pendingDraft.region.y - popH - 12))
+                      const popH = pendingDraft.annotation || pendingDraft.region ? 290 : 196;
+                      const drawBox = pendingDraft.annotation ? (() => {
+                        const b = annotationBounds(pendingDraft.annotation);
+                        return { x: b.minX * ow, y: b.minY * oh, width: (b.maxX - b.minX) * ow, height: (b.maxY - b.minY) * oh };
+                      })() : null;
+                      const anchorBox = pendingDraft.region ?? drawBox;
+                      const preferredX = anchorBox ? anchorBox.x : pendingDraft.pinX;
+                      const preferredY = anchorBox
+                        ? (anchorBox.y + anchorBox.height + 12 + popH <= oh
+                          ? anchorBox.y + anchorBox.height + 12
+                          : Math.max(12, anchorBox.y - popH - 12))
                         : (pendingDraft.pinY + 14 + popH <= oh
                           ? pendingDraft.pinY + 14
                           : Math.max(12, pendingDraft.pinY - popH - 14));
@@ -976,6 +1083,12 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                             <strong>{pendingDraft.element ? `<${pendingDraft.element.tagName}> ${pendingDraft.element.label}` : pendingDraft.region ? t('Region annotation') : t('Pen annotation')}</strong>
                             <IconButton aria-label={t('Cancel')} icon={<RemixIcon name="close-line" size={14} />} onClick={() => setPendingDraft(null)} />
                           </div>
+                          <AnnotationVisualPreview
+                            element={pendingDraft.element}
+                            region={pendingDraft.region}
+                            annotation={pendingDraft.annotation}
+                            viewport={{ width: ow, height: oh }}
+                          />
                           <textarea
                             className="om-design-textarea"
                             autoFocus
