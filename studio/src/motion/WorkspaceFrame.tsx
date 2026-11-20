@@ -360,8 +360,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       </div>}
       {page.motion && !templatesPage && <div className="om-explore-host"><MotionStudioPage active={!connectionsOpen}
         onExplore={returnToExplore} onOpenEditor={() => openStudio(null)} /></div>}
-      {page.api && !templatesPage && <div className="om-explore-host"><DeveloperPage toolId={page.tool} onTool={tool => navigatePage({ tool })} onModel={openModelFromPage}
-        breadcrumb={source && <WorkspaceBreadcrumb source={source} destination="API" />} onProviders={value.openModelSettings} onExplore={hostChrome ? returnToExplore : undefined} onConnect={() => openMcp(undefined, undefined, true)} /></div>}
+      {page.api && !templatesPage && <div className="om-explore-host"><DeveloperPage toolId={page.tool} onTool={tool => navigatePage({ tool })} onModel={openModel}
+        onProviders={value.openModelSettings} onExplore={returnToExplore} onConnect={() => openPage('mcp')} /></div>}
       {page.modelHub && !templatesPage && <div className="om-explore-host"><ModelHub id={page.modelHub} hasProject={Boolean(projectId)} onExplore={returnToExplore} onModel={openModelFromPage} onSettings={openSettings}
         onProvider={provider => navigatePage({ settings: 'providers', provider, templates: false })}
         onUse={() => chooseStudio(motionStudio)} /></div>}

@@ -1074,27 +1074,19 @@ it.each([
   expect(breadcrumb()).toBeNull();
 });
 
-it('returns from MCP client and setup tabs to the exact API tool, and clears the source on a direct visit', async () => {
-  await mount();
-  const api = container.querySelector<HTMLAnchorElement>('.om-creative-navigation a[href*="page=api"]')!;
-  await act(async () => api.click());
-  expect(page().api).toBe(true);
-  expect(container.querySelector('.om-discovery-heading h1')?.textContent).toBe('OpenMotion API');
-  expect(button('Back to Explore')).toBeUndefined();
-  expect(breadcrumb()).toBeNull();
-  await click('openmotion_list_templates');
-  const toolUrl = location.href;
+it('returns from MCP client and setup tabs to Explore, and clears the source on a direct visit', async () => {
+  await mount(); await click('Explore');
+  const exploreUrl = location.href;
   await click('MCP · Connect Agent');
   expect(page().settings).toBe('mcp');
   expect(button('Close settings')).toBeUndefined();
   await click('Claude Code'); await click('Manual setup');
-  expect(breadcrumb()?.href).toBe(toolUrl);
+  expect(breadcrumb()?.href).toBe(exploreUrl);
   await mount(1);
-  await returnThroughBreadcrumb('API');
-  expect(location.href).toBe(toolUrl);
-  expect(button('openmotion_list_templates').getAttribute('aria-expanded')).toBe('true');
+  await returnThroughBreadcrumb('Explore');
+  expect(location.href).toBe(exploreUrl);
   await traverse(3);
-  expect(breadcrumb()?.href).toBe(toolUrl);
+  expect(breadcrumb()?.href).toBe(exploreUrl);
   const handbookUrl = location.href;
   const entries = history.length;
   await openMcp();

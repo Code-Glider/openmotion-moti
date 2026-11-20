@@ -1,5 +1,5 @@
 import { Button } from 'open-design-ui/button';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { phase1Tools } from '../../../shared/phase1-tools';
 import { modalities, type Modality } from '../../../shared/gateway';
 import { useI18n } from '../i18n/I18n';
@@ -9,15 +9,15 @@ import { MediaModelChoices } from './MediaModelChoices';
 import { mediaLabels } from './creativeStudios';
 import { useMediaCatalog } from './useMediaCatalog';
 
-export function DeveloperPage({ toolId, onTool, onModel, onProviders, onExplore, onConnect, breadcrumb }: {
+export function DeveloperPage({ toolId, onTool, onModel, onProviders, onExplore, onConnect }: {
   toolId: string | null; onTool: (id: string | null) => void; onModel: (id: string) => void;
-  onProviders: () => void; onExplore?: () => void; onConnect: () => void; breadcrumb?: ReactNode;
+  onProviders: () => void; onExplore: () => void; onConnect: () => void;
 }) {
   const { t } = useI18n();
   const [kind, setKind] = useState<Modality>('image');
   const catalog = useMediaCatalog(true);
   return <main className="om-explore"><div className="om-discovery-page">
-    {breadcrumb ?? (onExplore && <div><Button variant="plain" className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</Button></div>)}
+    <div><Button variant="plain" className="om-nav-item" onClick={onExplore}><RemixIcon name="arrow-left-line" size={16} />{t('Back to Explore')}</Button></div>
     <header className="om-discovery-heading"><div><h1 className="om-title">OpenMotion API</h1>
       <p className="om-muted">{t('Inspect tool inputs and choose a model to try in Studio.')}</p></div>
       <Button variant="ghost" className="om-button h-auto" onClick={onConnect}>{t('MCP · Connect Agent')}</Button></header>

@@ -10,7 +10,6 @@ function sourceLabel(href: string): string {
   const page = readWorkspacePage(url.search, url.hash);
   if (page.creators) return 'Creators';
   if (page.templates || page.template) return 'Template library';
-  if (page.api) return 'API';
   if (page.settings === 'mcp') return 'MCP';
   if (page.settings === 'brand-kit') return 'Brand Kit';
   if (page.settings) return settingsSectionLabel(page.settings);
