@@ -42,7 +42,7 @@ test('catalog returns a local searchable index; disk cache revalidates with ETag
 test('resolves a Black Friday reference by ID when the configured catalog omits it', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'motion-prism-black-friday-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const catalog = new TemplateCatalog(directory, { fetch: mockPrism().request });
+  const catalog = new TemplateCatalog(directory, { locale: 'zh-CN', fetch: mockPrism().request });
   const id = 'black-friday-a5238e113514';
   const entry = await catalog.get(id);
   assert.equal(entry.kind, 'reference');
@@ -51,6 +51,14 @@ test('resolves a Black Friday reference by ID when the configured catalog omits 
   assert.equal(detail.workflowGuide.workflow, 'recreate');
   assert.match(detail.instructions, new RegExp(id));
   assert.ok(entry.previewUrl && detail.instructions.includes(entry.previewUrl));
+
+  const newest = await catalog.detail('black-friday-e9cd78349c94');
+  assert.equal(newest.kind, 'reference');
+  assert.equal(newest.hasHtmlProject, false);
+  assert.equal(newest.workflowGuide.workflow, 'recreate');
+  assert.match(newest.title, /最后一天/);
+  assert.match(newest.motionGuideUrl!, /^https:\/\/r\.open-design\.ai\/files\/[a-f0-9]{64}$/);
+  assert.match(newest.motionDocumentUrl!, /^https:\/\/r\.open-design\.ai\/files\/[a-f0-9]{64}$/);
 });
 
 test('published changes replace the catalog; invalid publications preserve the last good cache', async t => {

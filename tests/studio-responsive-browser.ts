@@ -26,7 +26,7 @@ async function checkCreator(page: Page, stacked: boolean) {
   assert.ok(stacked ? geometry.stacked : geometry.aligned, 'The model controls respond to the width of the creator pane');
 }
 
-test('Explore is home and only the editor shows the project navigation', { timeout: 60_000 }, async () => {
+test('Explore is home and project navigation stays in the workspace', { timeout: 60_000 }, async () => {
   await fixture(async store => {
     const running = await startServer(store, 0, { editor: true });
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
@@ -45,7 +45,7 @@ test('Explore is home and only the editor shows the project navigation', { timeo
         await page.setViewport({ width, height: 800 });
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }]);
         await page.waitForFunction(theme => (document.documentElement.dataset.theme === 'paper') === (theme === 'light'), {}, theme);
-        assert.equal(await page.$('.om-app-rail, .om-project-navigation'), null);
+        assert.equal(await page.$('.om-project-navigation'), null);
         const trigger = await page.waitForSelector('.om-app-header-actions .om-account-trigger', { visible: true });
         const anchor = (await trigger!.boundingBox())!;
         assert.ok(anchor.x + anchor.width <= width && anchor.x > width - 80);
@@ -55,20 +55,45 @@ test('Explore is home and only the editor shows the project navigation', { timeo
         assert.ok(bounds.y >= anchor.y + anchor.height - 1 && bounds.x >= 0 && bounds.x + bounds.width <= width + 1);
         await page.keyboard.press('Escape');
         await page.waitForSelector('.om-account-menu', { hidden: true });
+        const galleryTitleStyles = [];
+        for (const [name, closeSelector, titleSelector] of [
+          ['Templates', '[data-workspace-gallery] button[aria-label="Close template library"]', '[data-workspace-gallery] .om-gallery-page-label'],
+          ['Skills', '.om-skills-heading-actions button[aria-label="Close"]', '.om-skills-intro h1'],
+        ]) {
+          const shortcut = await page.waitForSelector(`.om-explore-nav ::-p-text(${name})`, { visible: true });
+          const shortcutBounds = (await shortcut!.boundingBox())!;
+          assert.ok(shortcutBounds.x >= 0 && shortcutBounds.x + shortcutBounds.width <= width);
+          assert.equal(await shortcut!.evaluate(element => getComputedStyle(element).borderTopWidth), '0px');
+          await shortcut!.focus();
+          await page.keyboard.press('Enter');
+          const close = await page.waitForSelector(closeSelector, { visible: true });
+          if (name === 'Templates') assert.equal(await page.$('[data-workspace-gallery] .om-gallery-header-actions a[href*="github.com"]'), null);
+          galleryTitleStyles.push(await page.$eval(titleSelector, element => {
+            const { color, fontFamily, fontSize, fontWeight, letterSpacing, lineHeight } = getComputedStyle(element);
+            return { color, fontFamily, fontSize, fontWeight, letterSpacing, lineHeight };
+          }));
+          const closeBounds = (await close!.boundingBox())!;
+          assert.ok(closeBounds.x >= 0 && closeBounds.x + closeBounds.width <= width);
+          await close!.focus();
+          await page.keyboard.press('Enter');
+          await page.waitForSelector('.om-explore-nav', { visible: true });
+          assert.ok(await shortcut!.evaluate(element => element === document.activeElement));
+        }
+        assert.deepEqual(galleryTitleStyles[0], galleryTitleStyles[1]);
       }
       await page.setViewport({ width: 1440, height: 800 });
       await page.click('.om-app-header [aria-label="Motion Studio"]');
-      await page.waitForSelector('main[aria-label="Motion Studio"] .om-discovery-hero button[data-primary]', { visible: true });
-      assert.equal(await page.$('.om-app-rail'), null);
-      await page.click('main[aria-label="Motion Studio"] .om-discovery-hero button[data-primary]');
+      await page.waitForSelector('main[aria-label="Motion templates"]', { visible: true });
+      const project = await page.waitForSelector('.om-project-navigation:not([inert]) button.motion-session', { visible: true });
+      await project!.click();
       await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
-      assert.ok(await page.waitForSelector('.om-app-rail:not([inert])', { visible: true }));
+      await page.waitForSelector('.om-project-navigation:not([inert])', { visible: true });
       const editorUrl = page.url();
       await page.click('.om-app-brand');
       await page.waitForSelector('.om-explore-host:not([hidden])');
-      assert.equal(await page.$('.om-app-rail'), null);
+      assert.equal(await page.$('.om-project-navigation'), null);
       await page.goBack();
-      await page.waitForSelector('.om-app-rail', { visible: true });
+      await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
       assert.equal(new URL(page.url()).searchParams.get('project'), new URL(editorUrl).searchParams.get('project'));
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.motion-timeline-icon-controls', { visible: true });
@@ -202,7 +227,7 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-feed-group [data-template-id]');
       await page.evaluate(() => document.fonts.ready);
-      for (const [width, expectedCards] of [[1512, 8], [1060, 6], [760, 4], [320, 2]]) {
+      for (const [width, expectedCards] of [[1512, 8], [1280, 8], [1060, 6], [760, 4], [320, 2]]) {
         await page.setViewport({ width, height: 850 });
         const rowsFill = await page.$eval('.om-feed-group', feed => {
           const bounds = feed.getBoundingClientRect();
@@ -218,11 +243,38 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           });
         });
         assert.ok(rowsFill, 'Gallery rows follow reading order and fill the available width at ' + width);
-        const shelf = await page.$eval('.om-explore-shelf .om-explore-preview-grid', grid => {
-          const cards = Array.from(grid.children).filter(card => card.getClientRects().length);
-          return { count: cards.length, rows: new Set(cards.map(card => card.getBoundingClientRect().top)).size };
-        });
-        assert.deepEqual(shelf, { count: expectedCards, rows: 2 }, 'Template previews fit two rows at ' + width);
+        const shelves = await page.$$eval('.om-explore-shelf .om-explore-preview-grid', grids => grids.map(grid => {
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const full = [...rows.values()].every(row => Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { count: cards.length, rows: rows.size, full };
+        }));
+        assert.deepEqual(shelves, [
+          { count: expectedCards, rows: 2, full: true },
+          { count: expectedCards, rows: 2, full: true },
+        ], 'Template and Skill previews fit two complete rows at ' + width);
+        const studios = await page.$$eval('.om-studio-collection', sections => sections.map(section => {
+          const grid = section.querySelector<HTMLElement>('.om-studio-collection-cards')!;
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          if (getComputedStyle(grid).overflowX === 'auto') {
+            return { studio: section.getAttribute('data-studio'), rail: true, full: cards.length > 0 && cards.every(card => Math.abs(card.top - cards[0].top) < 2) };
+          }
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const rowLists = [...rows.values()];
+          const full = rowLists.every(row => row.length === rowLists[0].length && Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { studio: section.getAttribute('data-studio'), count: cards.length, rows: rowLists.length, full };
+        }));
+        assert.ok(studios.length === 8 && studios.every(item => item.full), 'Every Studio collection renders complete rows at ' + width + ': ' + JSON.stringify(studios));
         const toolbarGeometry = await page.$eval('.om-explore-shelf[aria-label="Templates"]', section => {
           const submit = section.querySelector<HTMLAnchorElement>('header a[href*="CONTRIBUTING.md"]');
           const dropdown = section.querySelector<HTMLButtonElement>('.om-shelf-toolbar .om-gallery-dropdown');
@@ -329,6 +381,38 @@ test('Sound Studio previews and seeks the welcome track in both wide and compact
           const audio = document.querySelector<HTMLAudioElement>('.om-scene-audio audio');
           return audio && audio.paused && audio.currentTime > audio.duration * 0.4;
         });
+      }
+    } finally {
+      await browser.close();
+      await running.close();
+      await gateway.close();
+    }
+  });
+});
+
+test('Sound Studio home shows the banner and templates and plays a template without a creator', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const gateway = gatewayFor(store);
+    gateway.options.detect = async () => [];
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
+      const url = new URL((await running.info()).previewUrl);
+      url.searchParams.set('page', 'sound');
+      url.searchParams.set('home', '1');
+      for (const width of [1280, 390]) {
+        await page.setViewport({ width, height: 800 });
+        await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.om-audio-landing .om-specialty-feature', { visible: true });
+        assert.equal(await page.$('.om-studio-bar, .om-canvas-dock, .om-creator-pane'), null);
+        assert.ok(await page.$$eval('.om-audio-card', cards => cards.length) >= 6);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await page.click('.om-audio-landing .om-specialty-feature');
+        await page.waitForFunction(() => (document.querySelector<HTMLAudioElement>('.om-audio-landing audio')?.currentTime ?? 0) > 0);
+        await page.click('.om-audio-landing .om-specialty-feature');
+        await page.waitForFunction(() => document.querySelector<HTMLAudioElement>('.om-audio-landing audio')?.paused);
       }
     } finally {
       await browser.close();

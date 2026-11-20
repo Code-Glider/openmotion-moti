@@ -17,7 +17,7 @@ const PAGE_SIZE = 48;
 const entryValues = (entry: BrandCatalogEntry, key: string) => key === 'category' ? [entry.category] : key === 'appearance' ? [entry.appearance] : entry.colors;
 const card = (entry: BrandCatalogEntry): GalleryTemplate => {
   const { duration, width, height } = brandKitShowcase;
-  return { id: entry.id, title: entry.name, author: entry.name, brand: entry.name, sourceUrl: entry.websiteUrl || entry.sourceUrl, brandLogoUrl: entry.websiteUrl ? brandCatalogFile(entry.id, 'favicon') : undefined, posterUrl: brandCatalogFile(entry.id, 'style-cover.svg'), width, height, duration, subtitle: entry.category, description: entry.description, collection: "reference", kind: "reference", tags: entry.tags };
+  return { id: entry.id, title: entry.name, author: entry.name, brand: entry.name, sourceUrl: entry.websiteUrl || entry.sourceUrl, brandLogoUrl: brandCatalogFile(entry.id, 'favicon'), posterUrl: brandCatalogFile(entry.id, 'style-cover.svg'), width, height, duration, subtitle: entry.category, description: entry.description, collection: "reference", kind: "reference", tags: entry.tags };
 };
 
 export const BrandCatalogGallery = memo(function BrandCatalogGallery({ onImport, onCreate, busy, previewsEnabled, scrollRoot, query, onQueryChange }: { onImport: (id: string, visible: string[], trigger?: HTMLElement) => Promise<void>; onCreate: () => void; busy: boolean; previewsEnabled: boolean; scrollRoot: RefObject<HTMLElement | null>; query: string; onQueryChange: (value: string) => void }) {
@@ -79,7 +79,7 @@ export const BrandCatalogGallery = memo(function BrandCatalogGallery({ onImport,
       <div className="om-gallery-masonry" aria-busy={busy || (!catalog && !error)} aria-label={!catalog && !error ? t('Loading Brand Kits') : undefined}>
         <GalleryIntro eyebrow={t('Official collection')} title={t('Find your next brand.')} count={t('{count} brand kits', { count: visible.length })} disabled={busy || !visible.length} onSurprise={surprise} submitLabel={t('Submit Brand Kit')} submitUrl={templateContributionUrl} createAction={{ label: t('New Brand Kit'), onClick: onCreate }} />
         {!catalog && !error && Array.from({ length: 12 }, (_, key) => <div key={key} className="om-gallery-skeleton" aria-hidden="true"><Skeleton className="om-brand-loading" /></div>)}
-        {catalog && rendered.map(entry => <TemplateGalleryCard key={entry.id} template={cards.get(entry.id)!} resourceKind="brand-kit" coverUrl={entry.websiteUrl ? brandCatalogFile(entry.id, 'cover') : undefined} animatedPreview={brandCatalogFile(entry.id, 'showcase')} active={priority === entry.id && playback.has(entry.id)} onPriority={setCardPriority} onSelect={selectCard} />)}
+        {catalog && rendered.map(entry => <TemplateGalleryCard key={entry.id} template={cards.get(entry.id)!} resourceKind="brand-kit" coverUrl={brandCatalogFile(entry.id, 'cover')} animatedPreview={brandCatalogFile(entry.id, 'showcase')} active={priority === entry.id && playback.has(entry.id)} onPriority={setCardPriority} onSelect={selectCard} />)}
       </div>
       {catalog && rendered.length < visible.length && <div ref={loadMore} className="om-gallery-load-more" aria-hidden="true" />}
       {error && <div className="om-empty" role="alert"><h2 className="om-subtitle">{t('Could not load the official collection')}</h2><Button variant="ghost" className="om-button h-auto" onClick={() => setRevision(value => value + 1)}>{t('Retry')}</Button></div>}

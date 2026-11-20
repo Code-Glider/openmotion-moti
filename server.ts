@@ -51,6 +51,7 @@ import { TaskLedger } from './tracking/task-ledger.ts';
 import { WorkRounds, workRoundMode } from './inline-video.ts';
 import { brandKitHttp } from './gateway/brand-http.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
+import { designHttp } from './design-projects.ts';
 
 const sharedStore = new WorkspaceStore();
 export type Service = { trackingHosts?: Map<string, { host: HostContext; createdAt: number }>; diagnostics?: { running: boolean; lastExport: number; events: number; window: number }; studio?: Studio; runtimeRoot?: string; nativeRoot?: string; ffmpeg?: boolean; switching?: boolean; studioPort?: number; browser?: WorkspaceBrowser; editorToken?: string; ensureStudio?: (projectId?: string) => Promise<Studio>; launchStudio?: (directory: string, port: number) => Promise<Studio>; phase1?: Phase1Service; phase1Mutation?: Promise<void>; tracking?: OmTracking };
@@ -406,6 +407,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
     if (motionRequest && url.pathname.startsWith('/api/assets/') && await assetHttp(req, res, url, store)) return;
     if (motionRequest && await brandKitHttp(req, res, url, store.directory, input)) return;
     const editorUrl = `http://${host || 'localhost'}/#project/${store.projectId}`;
+    if (motionRequest && url.pathname.startsWith('/api/design/') && await designHttp(req, res, url, (store.workspaceStore ?? store).directory, new URL(editorUrl).origin, input)) return;
     if (motionRequest && ['/api/diagnostics', '/api/diagnostics/events'].includes(url.pathname)) {
       // Downloads are POST-only: cross-origin links must not trigger a collection.
       if (req.method !== 'POST') return json(res, 405, { error: 'POST_REQUIRED' });
@@ -605,6 +607,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       if (url.pathname === '/api/settings/account/login' && req.method === 'POST') return json(res, 200, await gateway.account.login());
       if (url.pathname === '/api/settings/account/cancel' && req.method === 'POST') return json(res, 200, await gateway.account.cancel());
       if (url.pathname === '/api/settings/account/logout' && req.method === 'POST') return json(res, 200, await gateway.account.logout());
+      if (url.pathname === '/api/settings/account/subscription' && req.method === 'POST') return json(res, 200, await gateway.account.openSubscription());
       return json(res, 404, { error: 'Settings endpoint not found' });
     }
     if (motionRequest && (url.pathname.startsWith('/api/models') || url.pathname.startsWith('/api/generations'))) {

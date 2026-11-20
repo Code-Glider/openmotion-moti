@@ -1,7 +1,7 @@
 import { onboardingTemplateIds, onboardingSourceFiles, builtinRecommendationIds } from '../shared/onboarding-templates.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,34 @@ test('an empty application selection does not require optional showcase download
 test('the onboarding distribution keeps the in-turn renderer without the retired queue scheduler', async () => {
   const files = await distributionFiles('phase1', file => /^scripts\/(?:install-onboarding|inline-onboarding|onboarding-callback)\.mjs$/.test(file));
   assert.deepEqual(files.sort(), ['scripts/inline-onboarding.mjs', 'scripts/install-onboarding.mjs']);
+});
+
+test('an installed storyboard renderer can produce a card using only its shipped files', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'om-packaged-storyboard-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const expected = ['mcp-ui/storyboard/inline.css', 'mcp-ui/storyboard/inline.js',
+    'packages/design-system/tokens.css', 'scripts/inline-storyboard.mjs'];
+  const manifest = path.join(directory, 'storyboard.json');
+  await writeFile(path.join(directory, 'still.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64'));
+  await writeFile(manifest, JSON.stringify({
+    title: 'Storyboard', openLabel: 'Enlarge', backLabel: 'Back',
+    frames: [{ image: 'still.png', title: 'Opening', time: '00:00', alt: 'Opening frame' }],
+  }));
+  for (const profile of ['phase1', 'legacy']) {
+    const installedRoot = path.join(directory, profile);
+    const files = await distributionFiles(profile, file => expected.includes(file));
+    assert.deepEqual(files, expected);
+    for (const file of files) {
+      const target = path.join(installedRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await cp(path.join(appRoot, file), target);
+    }
+    const output = path.join(directory, profile + '.html');
+    const result = JSON.parse(await runFile(process.execPath,
+      [path.join(installedRoot, 'scripts/inline-storyboard.mjs'), '--manifest', manifest, '--output', output]));
+    assert.equal(result.frameCount, 1);
+    assert.match(await readFile(output, 'utf8'), /data:image\/png;base64,/);
+  }
 });
 
 test('packaged onboarding prepares and publishes real cards from the allowlist without dependencies', async t => {

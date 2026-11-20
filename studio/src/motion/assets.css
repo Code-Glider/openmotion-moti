@@ -318,9 +318,11 @@
 .om-creative-workspace .om-studio-bar { padding-inline-start: var(--motion-space-12); }
 .om-studio-heading-icon { display: inline-flex; flex: none; color: var(--creation-color); }
 .om-studio-bar h1 { display: inline-flex; align-items: center; gap: var(--motion-space-8); }
+.om-creative-workspace > .om-workspace-breadcrumb { flex: none; padding: var(--motion-space-4) var(--motion-space-24) 0; }
 .om-studio-library-link { margin-inline-start: auto; }
 @container asset-workspace (max-width: 680px) {
   .om-studio-bar { padding: var(--motion-space-8) var(--motion-space-16); }
+  .om-creative-workspace > .om-workspace-breadcrumb { padding-inline: var(--motion-space-16); }
 }
 @container asset-workspace (max-width: 480px) {
   .om-studio-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--motion-space-8); }
@@ -431,3 +433,13 @@
   [data-motion-studio] .om-canvas-dock .om-creation-prompt { gap: var(--motion-space-4); padding: var(--motion-space-8); }
   [data-motion-studio] .om-canvas-dock .om-creation-prompt textarea { min-height: var(--motion-control); height: var(--motion-control); }
 }
+
+/* Sound Studio landing: the technique-studio banner and template grid, with audio previews. */
+.om-audio-landing { display: grid; gap: var(--motion-space-32); container-type: inline-size; }
+.om-audio-card .om-gallery-poster img { opacity: 1; }
+.om-audio-card[data-current="true"] .om-gallery-cover { outline: 2px solid var(--motion-accent); outline-offset: 2px; }
+.om-audio-card-prompt { display: grid; justify-items: start; gap: var(--motion-space-8); padding-block-start: var(--motion-space-12); }
+.om-audio-card-prompt p { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.om-audio-card-prompt p span { display: block; color: var(--motion-text); font-weight: var(--motion-weight-medium); }
+
+.om-audio-card .om-gallery-card-top { opacity: 1; }

@@ -4,8 +4,11 @@ import { creativeStudios, studioScenes, type CreativeStudio, type MediaStudio, t
 export { creativeStudios, studioScenes, type StudioScene };
 export const motionStudio = creativeStudios.find(studio => studio.surface === 'editor')!;
 type GeneratingStudio = MediaStudio | TechniqueStudio;
-export type StudioDestination = { studio: GeneratingStudio; scene: StudioScene; model: string | null; landing?: true };
+/** home: the Sound Studio home (banner and templates) rather than its generation page. */
+export type StudioDestination = { studio: GeneratingStudio; scene: StudioScene; model: string | null; landing?: true; home?: true };
 export const mediaLabels: Record<Modality, string> = { image: 'Image', video: 'Video', audio: 'Audio' };
+
+export const studioComingSoon = (studio: CreativeStudio | undefined) => Boolean(studio && 'navBadge' in studio && studio.navBadge === 'Coming soon');
 
 export function studioDraftKey({ studio, scene }: StudioDestination, skill?: string | null) {
   return [studio.id, scene.id, ...(studio.surface === 'techniques' && skill ? [skill] : [])].join('/');
@@ -19,6 +22,9 @@ export function studioDestination(studio: GeneratingStudio, sceneId?: string | n
   const scenes = scenesForStudio(studio);
   return { studio, scene: scenes.find(scene => scene.id === sceneId) ?? scenes[0], model };
 }
+
+/** Studios with a separate home page, opened from the studio entry rather than the media menu. */
+export const hasStudioHome = (studio: CreativeStudio) => studio.id === 'sound';
 
 export function studioIconTone(studio: CreativeStudio): Modality {
   return studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality;
@@ -38,6 +44,18 @@ export function supportsScene(model: Model, scene: StudioScene) {
   if ('modelMode' in scene && model.mode !== scene.modelMode) return false;
   // Reference-only endpoints need an input that a prompt-only scene cannot supply.
   return needsImage(scene) ? modelReferenceLimit(model) > 0 : !/^(image|video)-to-/.test(model.mode);
+}
+
+export function modelsForScenes(
+  catalog: { models: readonly Model[]; status: { providers: readonly { id: string; available: boolean }[] } } | undefined,
+  modality: Modality,
+  scenes: readonly StudioScene[] = studioScenes.filter(scene => scene.modality === modality),
+): Model[] {
+  if (!catalog) return [];
+  const available = new Set(catalog.status.providers.filter(provider => provider.available).map(provider => provider.id));
+  return catalog.models
+    .filter(model => model.modality === modality && scenes.some(scene => supportsScene(model, scene)))
+    .sort((a, b) => Number(available.has(b.provider)) - Number(available.has(a.provider)));
 }
 
 export function modelDestination(model: Model, current?: StudioDestination | null): StudioDestination {

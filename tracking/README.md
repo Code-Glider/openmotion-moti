@@ -129,14 +129,18 @@ so account counts can deduplicate across installations and join AMR account fact
 Failures and cancellations omit that ID. The existing collection controls apply;
 `distinct_id` remains the installation ID, without identify/alias or person merging.
 Email, names, activation URLs, authorization codes and credentials are omitted.
+A `connector_unavailable` failure adds `connector_problem`: `npm_missing` (no npm
+was found to install the connector), `install_failed` (npm could not install it)
+or `start_failed` (the installed connector did not run). npm output stays local.
 These fields describe the local OM result; AMR handoff attribution is separate.
 
-The account and subscription settings' **Manage subscription** link, and the Free / Go
-plan card's **Upgrade to Plus** link, carry `od_origin=openmotion`,
+The account and subscription settings' **Manage subscription** action, and the Free / Go
+plan card's **Upgrade to Plus** action, carry `od_origin=openmotion`,
 `od_entry_source=openmotion_manage_subscription`, and a fresh `od_entry_id` / UTC
-`od_entry_at` for each primary or middle click. The two links share that registered entry
+`od_entry_at` for each click. The local service builds that page address and opens it in the
+system browser through a one-time account intent (`/login?intentId=…`) when it can. The two actions share that registered entry
 source; their `ui_click` elements (`manage_subscription` and `view_plans`) tell them apart.
-A dedicated upgrade source needs AMR to register it first. The link
+A dedicated upgrade source needs AMR to register it first. The page address
 retains `billing=plan` and contains no account, installation or credential data.
 AMR must accept the OpenMotion origin and entry source in its attribution
 validation before these parameters can reach its subscription/payment events.
@@ -407,14 +411,16 @@ backend/data directory. Deterministic coverage lives in
   duration, count or file size is sent.
 - Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
   one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
-  Motion Studio landing and the Design, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
-  `scene_id` and `landing`), the API page (`api`) and a model overview (`model_overview`). Filter and tab
+  Motion and Design Studio template landings and the Design image, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
+  `scene_id` and `landing`) and a model overview (`model_overview`). Filter and tab
   changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
   the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
   `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
   Studio form reports `asset_generation_submit_result` with `page_name=creative_studio` and the Studio, scene
   and model (`model_provider` + `model_id` split from the catalogue key; custom providers send neither). Other destinations are catalogue ids accepted only as `slug`s;
-  prompts, example copy and model labels are never fields.
+  prompts, example copy and model labels are never fields. The Design Studio template landing reports
+  `studio_id=design, landing=true`. Category changes report `studio_bar/scene_tab` with `scene_id` and template
+  opens report `studio_bar/open_template` with both `scene_id` and `template_id`.
 - Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
   sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and
   `hub_availability` carry `hub_id`, `hub_video_id` (catalogue id), `signed_in` and, for scene filters, a
@@ -579,8 +585,11 @@ for a session; no query parameter is needed for the new flow.
 | Question | Event and trigger | Join and deduplication |
 | --- | --- | --- |
 | Did someone inspect related options? | `surface_view` for `template_related/related` after its first eligible card impression; `template_card/card` for each related card | At least 50% visible for one uninterrupted second in a visible tab; once per source detail and card. Related cards and clicks include `source_template_id`, target `template_id`, source `detail_view_id` and displayed `position`. |
-| Was guidance or help used? | `ui_click`: `view_guide`, `back_to_template`, `view_full_page`, `handoff_help`, `copy_color`, `back_to_project`, `close_detail`; `surface_view` `template_guide/guide` when the same-dialog guide opens | The current template and detail-view UUID; a help opening counts once per opening, not per pointer move. Color clicks never carry a color value. |
+| Was guidance or help used? | `ui_click`: `view_guide`, `back_to_template`, `view_full_page`, `handoff_help`, `copy_color`, `close_detail`; `surface_view` `template_guide/guide` when the same-dialog guide opens | The current template and detail-view UUID; a help opening counts once per opening, not per pointer move. Color clicks never carry a color value. |
 | Did editable handoff resolve and open? | `ui_click/start_use` for `open_edit`, followed by `template_project_result` on observed `create`, `reconcile` or `open` completion | The click and results share the stable `operation_id` for the guarded request; fresh `handoff_attempt_id` per operation attempt; captured initiating detail; confirmed project UUID only. |
+
+Studio no longer emits `back_to_project` after removing the button. The event
+registry still accepts it from older Studio versions.
 
 Create-stage success means the preparation call resolved to an exact project,
 including recovery of the same request; it is not a count of newly created projects.

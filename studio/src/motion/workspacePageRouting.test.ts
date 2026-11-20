@@ -24,6 +24,19 @@ it('retains the library return page and selected detail, and clears page-specifi
   expect(workspacePageHref(providers.href, { settings: 'general' })).toBe('/?page=settings&section=general');
 });
 
+it('keeps MCP setup inside settings until a standalone destination is explicitly selected', () => {
+  const source = 'http://localhost/?page=settings&section=local&entry_from=agent_media_signed_out';
+  const mcp = new URL(workspacePageHref(source, { settings: 'mcp', mcpInSettings: true }), source);
+  const setup = new URL(workspacePageHref(mcp.href, { client: 'claude', setup: 'manual' }), source);
+  expect(setup.searchParams.get('page')).toBe('settings');
+  expect(setup.searchParams.get('section')).toBe('mcp');
+  expect(setup.searchParams.get('entry_from')).toBe('agent_media_signed_out');
+  expect(readWorkspacePage(setup.search)).toMatchObject({ settings: 'mcp', mcpInSettings: true, client: 'claude', setup: 'manual' });
+  const standalone = new URL(workspacePageHref(setup.href, { settings: 'mcp' }), source);
+  expect(standalone.search).toBe('?page=mcp&host=claude&setup=manual');
+  expect(readWorkspacePage(standalone.search).mcpInSettings).toBe(false);
+});
+
 it('round-trips the Black Friday collection and its selected Skill without leaking either into the regular library', () => {
   const origin = 'http://localhost/?page=explore';
   const collection = new URL(workspacePageHref(origin, { templates: true, templateCollection: 'black-friday', skill: 'openmotion-sale-promo' }), origin);
@@ -32,6 +45,14 @@ it('round-trips the Black Friday collection and its selected Skill without leaki
   expect(readWorkspacePage('?templates=1&view=creators&collection=black-friday').templateCollection).toBeNull();
   expect(workspacePageHref(collection.href, { templates: false })).toBe('/?page=explore');
   expect(workspacePageHref(collection.href, { templateCollection: null, skill: null })).toBe('/?page=explore&templates=1');
+});
+
+it('opens retired API links in the usual workspace and drops their tool on navigation', () => {
+  const link = 'http://localhost/?page=api&tool=openmotion_media_use';
+  expect(readWorkspacePage(new URL(link).search).explore).toBe(true);
+  const project = new URL(link + '&project=film#project/film');
+  expect(readWorkspacePage(project.search, project.hash)).toEqual(readWorkspacePage('?project=film', project.hash));
+  expect(workspacePageHref(project.href, { motion: true })).toBe('/?project=film&page=motion#project/film');
 });
 
 it('keeps legacy editor and template URLs and safely defaults unknown options', () => {
@@ -145,7 +166,8 @@ it('opens every scene on its registered surface and round-trips the selected mod
     expect(workspacePageHref(url.href, { explore: true })).toBe('/?embed=1&page=explore&community=product-films&medium=image#project/film?t=8');
   }
   expect(isWorkspaceSettingsPage('?page=create&scene=missing')).toBe(false);
-  expect(readWorkspacePage('?page=create&scene=shot-image').studio).toBeNull();
+  expect(readWorkspacePage('?page=create&scene=missing').studio).toBeNull();
+  expect(readWorkspacePage('?page=create&scene=shot-image').studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' }, landing: true });
   expect(workspacePageHref('http://localhost/?page=create&scene=bad&model=bad', { assets: true })).toBe('/?page=assets');
 });
 

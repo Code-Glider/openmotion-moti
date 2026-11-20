@@ -36,15 +36,16 @@
     "templates:manifest": "node --experimental-strip-types scripts/template-library.ts manifest",
     "media:prepare": "node --experimental-strip-types scripts/prepare-pr-media.ts",
     "media:pull": "node --experimental-strip-types scripts/repository-media.ts",
-    "components:dev": "vite --config packages/design-system/components/vite.config.ts --host 127.0.0.1",
-    "components:build": "vite build --config packages/design-system/components/vite.config.ts",
+    "components:dev": "vite --config packages/open-design-ui/vite.config.ts --host 127.0.0.1",
+    "components:build": "vite build --config packages/open-design-ui/vite.config.ts",
     "build:open-design-ui": "node scripts/build-open-design-ui.mjs",
     "design:dev": "node packages/design-system/workbench/server.js",
     "design:test": "node --test packages/design-system/workbench/*.test.js",
     "build:inline": "node scripts/build-inline-ui.mjs",
     "typecheck:backend": "tsc -p tsconfig.backend.json",
     "typecheck:template-cards": "tsc -p mcp-ui/tsconfig.json",
-    "build:template-cards": "npm run typecheck:template-cards && node --experimental-strip-types scripts/build-template-cards.mjs"
+    "build:template-cards": "npm run typecheck:template-cards && node --experimental-strip-types scripts/build-template-cards.mjs",
+    "design:metrics": "node scripts/ui-metrics.ts"
   },
   "dependencies": {
     "@hyperframes/core": "0.9.7",
@@ -57,6 +58,7 @@
     "fontkit": "2.0.4",
     "gsap": "3.15.0",
     "hyperframes": "0.9.7",
+    "pptxgenjs": "4.0.1",
     "puppeteer-core": "25.16.0"
   },
   "overrides": {
@@ -94,6 +96,7 @@
     "happy-dom": "21.0.4",
     "jsdom": "30.1.3",
     "mediabunny": "1.45.3",
+    "postcss": "8.5.32",
     "react": "19.2.9",
     "react-dom": "19.2.9",
     "tailwindcss": "4.3.3",

@@ -6,6 +6,7 @@ import { templateDiscoveryGuide, skillDiscoveryGuide } from './workflow-entry.js
 import { projectArchiveTool } from './project-archive.ts';
 import { projectManagementTool } from './project-management.ts';
 import { assetLibraryTool, workspaceAssetUseTool } from './asset-tools.ts';
+import { designTools } from './design-tools.ts';
 import { providerSetupEntries } from './workspace-url.ts';
 import { canvasPresets } from './composition-canvas.ts';
 const providerEntry = { enum: [...providerSetupEntries], description: 'Optional entry reason when target=providers (for example agent_media_signed_out, agent_media_upgrade_free, agent_media_upgrade_go, agent_media_balance_low, agent_media_key_rejected, agent_media_handbook); defaults to agent_providers.' } as const;
@@ -63,6 +64,7 @@ export const phase1Tools = [
     inputSchema: object({ projectId, requestId: id, versionId: id, expectedRevision: revision, expectedVersionId: id, presentation }, ['projectId', 'requestId', 'versionId', 'expectedRevision', 'expectedVersionId']), annotations: write },
   { name: 'openmotion_export_cancel', title: 'OpenMotion · Export Cancel', description: 'Cancel the specified export owned by this project. Distinguish cancellation accepted/cancelling from a confirmed cancelled terminal state. A completed task stays completed. Cancellation does not restore source, delete older results or promise a refund. Stopping a host conversation does not automatically call this tool.',
     inputSchema: object({ projectId, requestId: id, jobId: id }, ['projectId', 'requestId', 'jobId']), annotations: write },
+  ...designTools,
 ];
 
 // Increment for incompatible request/response semantics; optional fields and new Tools are additive.

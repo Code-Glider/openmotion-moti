@@ -3,7 +3,7 @@ import { IconButton } from 'open-design-ui/icon-button';
 import { Slider } from 'open-design-ui/slider';
 import { useId, useState } from 'react';
 import { modelReferenceLimit, type Model } from '../../../shared/gateway';
-import { resolveGenerationParameters, usesInputImageRatio, videoAudioAlwaysOn, type GenerationOption } from '../../../shared/generation-options';
+import { compatibleImageResolutions, generationOptions, resolveGenerationParameters, usesInputImageRatio, videoAudioAlwaysOn, type GenerationOption } from '../../../shared/generation-options';
 import { Popover } from '../components/ui/Popover';
 import { Select } from '../components/ui/Select';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -161,8 +161,25 @@ export function GenerationParameters({ model, draft, hasInputImage = false, onCh
   let extra: Record<string, unknown> = {};
   try { extra = requestParameters({ ...draft, values: {} }); } catch { /* The raw editor remains editable; submission reports parse errors through Toast. */ }
   const inputImageRatio = parameterInputImageRatio(model, draft, hasInputImage);
-  const fields = (model.generationOptions?.fields ?? []).filter(field => !inputImageRatio || field.key !== 'ratio');
-  const value = (field: GenerationOption) => draft.values[field.key] ?? extra[field.key] ?? model.defaults?.[field.key] ?? field.default;
+  const activeOptions = (hasInputImage ? generationOptions(model, true) : undefined) ?? model.generationOptions;
+  const fields = (activeOptions?.fields ?? []).filter(field => !inputImageRatio || field.key !== 'ratio');
+  const aspectField = fields.find(field => field.key === 'aspect_ratio');
+  const activeAspectRatio = draft.values.aspect_ratio ?? extra.aspect_ratio ?? model.defaults?.aspect_ratio ?? aspectField?.default;
+  const allowedResolutions = compatibleImageResolutions(model, activeAspectRatio, hasInputImage);
+  const effectiveDefault = (field: GenerationOption) => {
+    if (field.key === 'resolution' && allowedResolutions) {
+      if (!allowedResolutions.length) return undefined;
+      return typeof field.default === 'string' && allowedResolutions.includes(field.default) ? field.default : allowedResolutions[0];
+    }
+    return field.default;
+  };
+  const value = (field: GenerationOption) => draft.values[field.key] ?? extra[field.key] ?? model.defaults?.[field.key] ?? effectiveDefault(field);
+  const choicesFor = (field: GenerationOption) => {
+    const choices = field.choices ?? [];
+    if (field.key !== 'resolution' || !allowedResolutions) return choices;
+    const current = value(field);
+    return choices.filter(c => allowedResolutions.includes(String(c.value)) || c.value === current);
+  };
   const label = (field: GenerationOption) => {
     const v = value(field), option = field.choices?.find(c => c.value === v);
     if (v === undefined) return t('Auto');
@@ -175,16 +192,21 @@ export function GenerationParameters({ model, draft, hasInputImage = false, onCh
     const values = { ...draft.values };
     if (value === undefined) delete values[field.key]; else values[field.key] = value;
     Object.assign(values, field.choices?.find(c => c.value === value)?.requires);
+    if (field.key === 'aspect_ratio') {
+      const nextAllowed = compatibleImageResolutions(model, value ?? extra.aspect_ratio ?? model.defaults?.aspect_ratio ?? aspectField?.default, hasInputImage);
+      if (nextAllowed && typeof values.resolution === 'string' && !nextAllowed.includes(values.resolution)) delete values.resolution;
+    }
     onChange({ ...draft, values });
   };
   const summary = [...(inputImageRatio ? [t('Follows first frame')] : []), ...fields.filter(f => f.kind !== 'text' && f.key !== 'seed' && f.presentation !== 'count' && value(f) !== undefined).map(label)].slice(0, 3).join(' · ');
   const constraints = Object.assign({}, ...fields.map(f => f.choices?.find(c => c.value === value(f))?.requires)) as Record<string, string | number>;
   const count = fields.find(f => f.presentation === 'count');
-  const durationField = fields.find(f => f.key === 'duration');
-  const resolutionField = fields.find(f => f.key === 'resolution');
-  const ratioField = fields.find(f => f.key === 'ratio');
-  const audioField = fields.find(f => f.key === 'generate_audio' && f.kind === 'boolean');
-  const alwaysOnAudio = !audioField && videoAudioAlwaysOn(model);
+  const isVideo = model.modality === 'video';
+  const durationField = isVideo ? fields.find(f => f.key === 'duration') : undefined;
+  const resolutionField = isVideo ? fields.find(f => f.key === 'resolution') : undefined;
+  const ratioField = isVideo ? fields.find(f => f.key === 'ratio') : undefined;
+  const audioField = isVideo ? fields.find(f => f.key === 'generate_audio' && f.kind === 'boolean') : undefined;
+  const alwaysOnAudio = isVideo && !audioField && videoAudioAlwaysOn(model);
   const hasQuickCards = Boolean(durationField || resolutionField || ratioField || audioField || alwaysOnAudio);
   const quickCardKeys = new Set(['duration', 'resolution', 'ratio', 'generate_audio']);
   const remainingFields = fields.filter(f => !quickCardKeys.has(f.key));
@@ -214,7 +236,7 @@ export function GenerationParameters({ model, draft, hasInputImage = false, onCh
 
   const renderChoicePills = (field: GenerationOption) => (
     <div className="om-option-pills" role="group" aria-label={t(field.label)}>
-      {field.choices?.map(option => (
+      {choicesFor(field).map(option => (
         <Button
           variant="plain"
           key={String(option.value)}
@@ -349,14 +371,17 @@ export function GenerationParameters({ model, draft, hasInputImage = false, onCh
         <div className="om-creation-row"><strong>{t('Generation settings')}</strong><Button variant="plain" className="om-nav-item" onClick={() => onChange(emptyParameters)}>{t('Reset')}</Button></div>
         <p className="om-eyebrow">{model.label}</p>
         {inputImageRatio && <p className="om-muted">{t('Aspect ratio follows the first frame.')}</p>}
-        {model.generationOptions?.delivery === 'prompt' && <p className="om-muted">{t('Creative preferences sent to Codex. The Agent chooses the final output settings.')}</p>}
+        {activeOptions?.delivery === 'prompt' && <p className="om-muted">{t('Creative preferences sent to Codex. The Agent chooses the final output settings.')}</p>}
         {!fields.length && <p className="om-muted">{t('This model uses provider-specific parameters. Add them in Advanced parameters.')}</p>}
         {popoverFields.length > 0 && <div className="om-generation-fields">{popoverFields.map(field => <div className="om-generation-field" key={field.key}>
           <div className="om-creation-row"><label className="om-label" htmlFor={`generation-${field.key}`}>{t(field.label)}{field.required ? ' *' : ''}</label>{Object.hasOwn(draft.values, field.key) && <IconButton variant="plain" className="om-nav-item" aria-label={t('Reset {name}', { name: t(field.label) })} onClick={() => set(field, undefined)} icon={<RemixIcon name="refresh-line" size={14} />} />}</div>
           {field.key === 'duration' && (field.kind === 'number' || (field.kind === 'choice' && (field.choices?.length ?? 0) <= 6))
             ? <DurationControl field={field} currentValue={typeof value(field) === 'number' ? value(field) as number : undefined} inputId={`generation-${field.key}`} onCommit={v => set(field, v)} />
             : <>
-                {field.kind === 'choice' && (field.presentation === 'ratio' ? renderRatioTiles(field) : field.key === 'resolution' && (field.choices?.length ?? 0) <= 4 ? renderChoicePills(field) : <Select label={t(field.label)} value={value(field) === undefined ? '__auto' : String(value(field))} onCommit={v => set(field, v === '__auto' ? undefined : field.choices!.find(c => String(c.value) === v)!.value)} options={[{ value: '__auto', label: t('Model default') }, ...field.choices!.map(c => ({ value: String(c.value), label: t(c.label) }))]} />)}
+                {field.kind === 'choice' && (field.presentation === 'ratio' ? renderRatioTiles(field) : isVideo && field.key === 'resolution' && (field.choices?.length ?? 0) <= 4 ? renderChoicePills(field) : (() => {
+                  const fieldChoices = choicesFor(field);
+                  return <Select label={t(field.label)} value={value(field) === undefined ? '__auto' : String(value(field))} onCommit={v => set(field, v === '__auto' ? undefined : fieldChoices.find(c => String(c.value) === v)!.value)} options={[{ value: '__auto', label: t('Model default') }, ...fieldChoices.map(c => ({ value: String(c.value), label: t(c.label) }))]} />;
+                })())}
                 {field.kind === 'boolean' && <button className="om-switch" role="switch" aria-label={t(field.label)} aria-checked={Boolean(value(field))} onClick={() => set(field, !value(field))}><span /></button>}
                 {field.kind === 'number' && <div className="om-generation-number"><label className="om-field"><input id={`generation-${field.key}`} aria-label={t(field.label)} type="number" min={field.min} max={field.max} step={field.step} placeholder={t('Auto')} value={typeof value(field) === 'number' ? value(field) as number : ''} onChange={e => set(field, e.target.value === '' ? undefined : Number(e.target.value))} /></label>{field.min !== undefined && field.max !== undefined && <Slider label={t(field.label)} min={field.min} max={field.max} step={field.step} value={Number(value(field) ?? field.min)} onCommit={v => set(field, v)} />}</div>}
                 {field.kind === 'text' && <label className="om-field"><input id={`generation-${field.key}`} aria-label={t(field.label)} value={String(value(field) ?? '')} onChange={e => set(field, e.target.value || undefined)} /></label>}
