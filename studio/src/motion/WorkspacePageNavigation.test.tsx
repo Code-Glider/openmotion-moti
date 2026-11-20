@@ -863,8 +863,8 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   await click('Close skill');
   expect(document.activeElement).toBe(promo);
   const gallery = () => collection.querySelector('.om-gallery-masonry');
-  expect(gallery()?.children).toHaveLength(10);
-  expect(gallery()?.querySelectorAll('[data-template-id]')).toHaveLength(10);
+  expect(gallery()?.children).toHaveLength(59);
+  expect(gallery()?.querySelectorAll('[data-template-id]')).toHaveLength(59);
   expect(collection.querySelector('.om-skill-gallery-card')).toBeNull();
   const search = collection.querySelector<HTMLInputElement>('input[type="search"]')!;
   expect(search.placeholder).toBe('Search templates…');
@@ -877,7 +877,7 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   collectionScroll.scrollTop = 240;
   await click('Before the sale');
   expect(collectionScroll.scrollTop).toBe(240);
-  expect(collection.querySelectorAll('[data-template-id]')).toHaveLength(2);
+  expect(collection.querySelectorAll('[data-template-id]')).toHaveLength(5);
   await setKeyword('Kuro');
   expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(1);
   expect(collection.querySelector('[data-search-recovery]')).toBeNull();
@@ -886,10 +886,10 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   expect(featured()).toBe(promo);
   expect(allFilter.getAttribute('aria-pressed')).toBe('true');
   await setKeyword('Black Friday');
-  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(10);
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(59);
   expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
   await click('Sale launch');
-  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(6);
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(48);
   expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
   await setKeyword('Sale countdown');
   expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(0);
@@ -909,7 +909,7 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   expect(search.value).toBe('');
   expect(collection.querySelector('[data-search-recovery]')).toBeNull();
   expect(button('Before the sale').getAttribute('aria-pressed')).toBe('true');
-  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(2);
+  expect(collection.querySelectorAll('.om-gallery-card')).toHaveLength(5);
   expect(collection.querySelector('.om-skill-gallery-card')).toBeNull();
   expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
   await click('Back to Explore');
