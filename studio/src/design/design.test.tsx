@@ -410,4 +410,68 @@ describe('DesignProjectEditor', () => {
       { expectedRevision: newRevision, content: '<h1>External Agent v2</h1>' },
     ]);
   });
+
+  it('clears codeLoading when discard reload fails after invalidating an in-flight post-conflict read', async () => {
+    const newRevision = '1'.repeat(64);
+    let currentRevision = revision;
+    let readCallCount = 0;
+
+    vi.spyOn(designClient, 'getProject').mockImplementation(async () => ({ project: { ...mockProject, revision: currentRevision } }));
+    vi.spyOn(designClient, 'listVersions').mockResolvedValue({ versions: [], currentVersionId: 'v-1', nextCursor: null });
+    vi.spyOn(designClient, 'listComments').mockResolvedValue({ comments: [], sourceRevision: revision });
+    vi.spyOn(designClient, 'detectEditors').mockResolvedValue({ editors: [] });
+    vi.spyOn(designClient, 'readFile').mockImplementation(async () => {
+      readCallCount += 1;
+      if (readCallCount === 1) {
+        return { path: 'index.html', content: '<h1>v1</h1>', offset: 0, limit: 100, totalBytes: 11, hasMore: false, nextOffset: null };
+      }
+      if (readCallCount === 2) {
+        // Post-conflict effect read stays pending so Discard invalidates its sequence.
+        return new Promise(() => {});
+      }
+      throw new Error('Transient read failure');
+    });
+    vi.spyOn(designClient, 'writeFiles').mockRejectedValue(new DesignApiError('VERSION_CONFLICT', 'Expected revision mismatch', 409));
+
+    await act(async () => {
+      root.render(
+        <I18nProvider>
+          <DesignProjectEditor projectId={projectId} onBack={() => {}} />
+        </I18nProvider>,
+      );
+    });
+
+    const codeBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Code'));
+    await act(async () => { codeBtn!.click(); });
+
+    const editBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Edit source'));
+    await act(async () => { editBtn!.click(); });
+
+    const editor = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]')!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
+      setter.call(editor, '<h1>Unsaved draft</h1>');
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    currentRevision = newRevision;
+    const saveBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Save version'));
+    await act(async () => { saveBtn!.click(); });
+
+    const discardBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Discard draft & reload latest'));
+    expect(discardBtn).toBeTruthy();
+    await act(async () => { discardBtn!.click(); });
+
+    // Failure keeps the conflict banner and draft intact.
+    expect(container.querySelector('[role="alert"]')).toBeTruthy();
+    expect(container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]')!.value).toBe('<h1>Unsaved draft</h1>');
+
+    // Clicking Cancel must exit edit mode cleanly without stranding the code panel in "Loading file…".
+    const cancelBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Cancel');
+    expect(cancelBtn).toBeTruthy();
+    await act(async () => { cancelBtn!.click(); });
+
+    expect(container.textContent).not.toContain('Loading file');
+    expect(container.querySelector('.om-design-code-pre')).toBeTruthy();
+  });
 });

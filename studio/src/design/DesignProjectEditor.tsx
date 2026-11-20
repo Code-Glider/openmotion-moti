@@ -380,10 +380,12 @@ export function DesignProjectEditor({
       setCodeDraft(content);
       setCodeEditBaseRevision(latest.revision);
       setCodeConflict(false);
-      setCodeLoading(false);
     } catch (err) {
-      toast.showToast(err instanceof Error ? err.message : t('Could not reload file'), 'error', 'feedback');
+      if (fileReadSeqRef.current === seq) {
+        toast.showToast(err instanceof Error ? err.message : t('Could not reload file'), 'error', 'feedback');
+      }
     } finally {
+      if (fileReadSeqRef.current === seq) setCodeLoading(false);
       setReloadingCode(false);
     }
   };
