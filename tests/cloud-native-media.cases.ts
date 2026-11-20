@@ -94,6 +94,40 @@ test('Cloud image editing uploads every library reference and submits their asse
   await gateway.close();
 }));
 
+test('OpenDesign image guards: Seedream 5.5 takes one reference, GPT Image 2.6 forwards a transparent background, references stay within 2 MiB', () => fixture(async store => {
+  const added = [
+    { model: 'gpt-image-2.6-sunburst', kind: 'image', capabilities: { edits: true, max_input_images: 16, quality: { values: ['low', 'medium', 'high'], default: 'low' } } },
+    // A catalogue that overstates the limit still meets the measured cap of one.
+    { model: 'seedream-5.5', kind: 'image', capabilities: { edits: true, max_input_images: 4 } },
+  ];
+  catalogue.push(...added);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  try {
+    gateway.options.download = async () => readFile(await image(store.directory, 'out.png', 'green'));
+    const submits: [string, any][] = [];
+    cloud(gateway, (p, body) => submits.push([p, body]));
+    await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+    const models = (await gateway.listModels({ provider: 'opendesign', refresh: true })).models;
+    const seedream = models.find(m => m.modelId === 'seedream-5.5')!, sunburst = models.find(m => m.modelId === 'gpt-image-2.6-sunburst')!;
+    assert.deepEqual(seedream.generationOptions?.fields.map(f => [f.key, f.choices?.map(c => c.value)]), [['size', ['1K', '2K']]]);
+    assert.deepEqual(sunburst.generationOptions?.fields.map(f => [f.key, f.choices?.map(c => c.value)]), [['quality', ['low', 'medium', 'high']], ['background', ['transparent']]]);
+    const a = await libraryRef(store, 'a.png', 'red'), b = await libraryRef(store, 'b.png', 'blue');
+    await assert.rejects(gateway.submit({ library: { references: [a, b] }, model: seedream.id, modality: 'image', prompt: 'merge', parameters: {} }), /at most 1 input image\b/);
+    const job = await finish(store, (await gateway.submit({ library: { references: [a] }, model: sunburst.id, modality: 'image', prompt: 'cut out', parameters: { quality: 'medium', background: 'transparent' } })).id);
+    assert.equal(job.state, 'completed', job.error);
+    assert.deepEqual(submits, [['/api/v1/media/images/edits', { quality: 'medium', background: 'transparent', model: 'gpt-image-2.6-sunburst', prompt: 'cut out', images: ['ma_0'] }]]);
+    const noisy = path.join(store.directory, 'noisy.png');
+    const made = await execute(verificationBinaries().ffmpeg, ['-v', 'error', '-f', 'lavfi', '-i', 'nullsrc=s=1200x1200,geq=random(1)*255:random(2)*255:random(3)*255', '-frames:v', '1', '-y', noisy], store.directory, 20_000);
+    assert.equal(made.code, 0, made.stderr);
+    assert.ok((await readFile(noisy)).length > 2 * 1024 * 1024);
+    const large = await new AssetLibrary(store).importFile(noisy, { requestId: 'noisy', name: 'noisy.png' });
+    await assert.rejects(gateway.submit({ library: { references: [{ assetId: large.id, versionId: large.currentVersionId }] }, model: sunburst.id, modality: 'image', prompt: 'cut out', parameters: {} }), /larger than the 2 MiB OpenDesign upload limit/);
+    assert.equal(submits.length, 1);
+  } finally {
+    catalogue.splice(catalogue.length - added.length, added.length);
+    await gateway.close();
+  }
+}));
 test('reference counts follow each model: the published maximum, no edits, no video input image', () => fixture(async store => {
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
   let submitted = 0; cloud(gateway, () => submitted++);

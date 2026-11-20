@@ -2,6 +2,7 @@ import type { StudioDestination, StudioScene } from './creativeStudios';
 import { archivedSkillPoster, motionSkills } from './skillCatalog';
 import lunar from './scene-art/apollo-11.jpg';
 import speakerRoom from './scene-art/speaker-room.webp';
+import speakerStudio from './scene-art/speaker-studio.webp';
 import soundtrackCover from './scene-art/ambient-piano.webp';
 import welcomeMusic from '../../../template-library/openmotion-welcome/assets/soundtrack.m4a?url';
 import studiesScore from '../../../examples/motion-studies/assets/score.m4a?url';
@@ -64,6 +65,9 @@ const orange = { title: 'Slow motion detail', prompt: 'Film a slow-motion close-
 export const sceneExamples: Record<StudioScene['id'], readonly [SceneExample, ...SceneExample[]]> = {
   'text-to-image': [portrait, moon, cameraStudy],
   'image-edit': [{ title: 'From studio to living room', prompt: 'Keep the speaker in place. Put it on a wooden side table in a sunlit living room.', poster: speakerRoom }],
+  'remove-background': [{ title: 'A clean product cutout', prompt: 'Keep only the speaker.', poster: speakerStudio }],
+  relight: [{ title: 'Late afternoon light', prompt: 'Let the light fall across the table and leave soft shadows behind the speaker.', poster: speakerRoom }],
+  character: [{ title: 'The same astronaut, a new place', prompt: 'Show the same astronaut walking through a neon-lit city street at night.', poster: lunar, posterPosition: 'center top', credit: 'NASA · AS11-40-5903' }],
   'shot-image': [moon, cameraStudy, portrait],
   'text-to-video': [orange],
   'image-to-video': [{ title: 'A cinematic opening', prompt: 'Start on the supplied frame. Push in slowly as a band of sunlight moves across the product.', poster: product, clip: productClip }],

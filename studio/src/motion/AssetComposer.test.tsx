@@ -258,43 +258,41 @@ it('never substitutes a music model for a routed speech model', async () => {
   expect(generate).not.toHaveBeenCalled();
 });
 
-it('keeps the prompt and pinned reference while switching providers with identically named models', async () => {
+it('keeps the prompt and pinned reference while switching providers serving the same model', async () => {
   const { studioDestination } = await import('./creativeStudios');
-  const editing = { ...model, label: 'Studio Image', supportsImageReference: true };
-  const alternate = { ...editing, id: 'other:image', provider: 'other' };
-  const offline = { ...editing, id: 'offline:image', provider: 'offline' };
+  const base = { modality: 'image' as const, mode: 'text-to-image' as const, source: 'live' as const, label: 'seedream-5.5', modelId: 'seedream-5.5', supportsImageReference: true, maxInputImages: 1 };
+  const account: Model = { ...base, id: 'account:seedream-5.5', provider: 'account' };
+  const cloud: Model = { ...base, id: 'opendesign:seedream-5.5', provider: 'opendesign' };
+  const codex: Model = { ...base, id: 'codex:image-generation', provider: 'codex', modelId: 'image-generation', label: 'Codex Image' };
   const reference = { assetId: 'product', versionId: 'v1' };
-  const catalog = { models: [editing, alternate, offline], status: {
-    providers: [{ id: 'codex', label: 'Codex', available: true }, { id: 'other', label: 'Alternate', available: true }, { id: 'offline', label: 'Offline', available: false }],
-    routes: { image: model.id }
+  const catalog = { models: [account, cloud, codex], status: {
+    providers: [{ id: 'codex', label: 'Codex', available: false }, { id: 'account', label: 'OpenDesign', available: true }, { id: 'opendesign', label: 'OpenDesign Cloud', available: true }],
+    routes: {}
   } };
   loadGateway.mockResolvedValue(catalog);
   const loaded = await loadGateway();
   function Harness() {
-    const [id, chooseModel] = useState(editing.id);
+    const [id, chooseModel] = useState(account.id);
     const [draft, setDraft] = useState<AssetDraft>({ ...props.draft, references: [{ reference, name: 'Photo' }] });
     return <AssetComposer {...props} draft={draft} setDraft={setDraft} studio={{
       catalog: { catalog: loaded, failed: false, retry: vi.fn() }, chooseModel, remember: vi.fn(),
       destination: studioDestination(findMediaStudio('design')!, 'image-edit', id)
     }} />;
   }
-  const switchTo = async (label: string) => {
-    await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Provider"]')!.click());
-    await act(async () => [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.includes(label))!.click());
-  };
+  const option = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find(item => item.textContent?.includes(label))!;
   await act(async () => root.render(<Harness />));
-  await switchTo('Offline');
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  expect(option('Codex').disabled).toBe(true);
+  await act(async () => option('OpenDesign API Key').click());
+  expect(container.querySelector('button[aria-label="Generation model"]')!.textContent).toContain('Seedream 5.5');
   const submit = () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!;
-  expect(submit().disabled).toBe(true);
-  await switchTo('Alternate');
   expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Asset prompt"]')!.value).toBe(props.draft.prompt);
   expect(generate).not.toHaveBeenCalled();
   generate.mockResolvedValue({ job: { id: 'new' } });
   await act(async () => submit().click());
-  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ action: 'generate', model: alternate.id, mode: alternate.mode,
-    prompt: props.draft.prompt, references: [reference], parameters: {} }));
+  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ action: 'generate', model: cloud.id, mode: cloud.mode,
+    prompt: props.draft.prompt, references: [reference] }));
 });
-
 it.each([
   { scene: 'text-to-video', duration: 10, expected: { duration: 10, ratio: '9:16' } },
   { scene: 'image-to-video', duration: 30, expected: {} },
@@ -363,16 +361,14 @@ it('links directly to provider or account setup when a Studio selects an unconfi
     destination: studioDestination(findMediaStudio('design')!, 'text-to-image', falModel.id),
   }} />));
   expect(container.textContent).toContain('{provider} needs setup before generating.');
-  const configure = [...container.querySelectorAll('button')].find(node => node.textContent === 'Configure {provider}')!;
-  await act(async () => configure.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
   expect(chrome.openProviderSettings).toHaveBeenCalledExactlyOnceWith('fal');
 
   await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, model: undefined }} studio={{
     catalog: { catalog, failed: false, retry: vi.fn() }, chooseModel: vi.fn(), remember: vi.fn(),
     destination: studioDestination(findMediaStudio('design')!, 'text-to-image', accountModel.id),
   }} />));
-  const signIn = [...container.querySelectorAll('button')].find(node => node.textContent === 'Sign in with OpenDesign')!;
-  await act(async () => signIn.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
   expect(chrome.openAccountSettings).toHaveBeenCalledTimes(1);
 });
 
@@ -527,8 +523,10 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
   };
   loadGateway.mockResolvedValue(catalog);
   const loaded = await loadGateway();
+  let pick!: (id: string) => void;
   function Harness() {
     const [id, chooseModel] = useState(seedance.id);
+    pick = chooseModel;
     const [draft, setDraft] = useState<AssetDraft>({ modality: 'video', prompt: 'Drive on Los Santos Blvd', references: [] });
     return <AssetComposer {...props} draft={draft} setDraft={setDraft} studio={{
       catalog: { catalog: loaded, failed: false, retry: vi.fn() }, chooseModel, remember: vi.fn(),
@@ -536,13 +534,6 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
     }} />;
   }
   await act(async () => root.render(<Harness />));
-
-  const optionsOf = (label: string) => {
-    const trigger = document.querySelector<HTMLButtonElement>(`[role="combobox"][aria-label="${label}"]`)!;
-    const listboxId = trigger.getAttribute('aria-controls');
-    const scope = (listboxId && document.getElementById(listboxId)) || document;
-    return [...scope.querySelectorAll<HTMLElement>('[role="option"]')];
-  };
 
   // Seedance 2.5 renders quick parameter cards including Duration, Resolution, Aspect ratio, and Generate audio (On by default),
   // and keeps the summary row compact as "Advanced parameters" rather than repeating values.
@@ -572,8 +563,8 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
   }));
 
   // Switch model to wan-2.7: audio renders as a static always-on card (no switch), resolution has [720p, 1080p], duration ticks update to [2, 5, 10, 15].
-  await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
-  await act(async () => optionsOf('Generation model').find(node => node.textContent?.includes('wan-2.7'))!.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
+  await act(async () => [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find(node => node.textContent?.includes('Wan 2.7'))!.click());
   expect(container.querySelector('.om-param-audio[role="switch"]')).toBeNull();
   const staticAudio = container.querySelector('.om-param-card-static[aria-label="Generate audio"]')!;
   expect(staticAudio.textContent).toContain('Generate audio');
@@ -583,9 +574,8 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
   await act(async () => resolutionCard().click());
   expect([...document.querySelectorAll<HTMLButtonElement>('.om-option-pill')].map(node => node.textContent?.trim())).toEqual(['720p', '1080p']);
 
-  // Switch model to doubao-seedance-2-0-260128: discrete durations [5, 10] render as compact pills, not a slider.
-  await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
-  await act(async () => optionsOf('Generation model').find(node => node.textContent?.includes('doubao-seedance-2-0-260128'))!.click());
+  // A pinned doubao-seedance-2-0-260128 (outside the fixed menu list): discrete durations [5, 10] render as compact pills, not a slider.
+  await act(async () => pick(seedance20.id));
   await act(async () => durationCard().click());
   expect(document.querySelector('.om-duration-track')).toBeNull();
   expect([...document.querySelectorAll<HTMLButtonElement>('.om-option-pill')].map(node => node.textContent?.trim())).toEqual(['5s', '10s']);
@@ -613,4 +603,161 @@ it('hides reference controls when unsupported and clears image references when s
   expect(latest.modality).toBe('audio');
   expect(latest.references).toEqual([]);
   expect(container.querySelector('.om-creation-reference')).toBeNull();
+});
+
+it('chooses a provider, then one of its fixed-list models, keeping unconfigured providers visible but unavailable', async () => {
+  const { findMediaStudio } = await import('../../../shared/studio-catalog');
+  const { studioDestination } = await import('./creativeStudios');
+  const base = { modality: 'image' as const, mode: 'text-to-image' as const, source: 'live' as const };
+  const seedream: Model = { ...base, id: 'account:seedream-5.5', provider: 'account', modelId: 'seedream-5.5', label: 'seedream-5.5' };
+  const flare: Model = { ...base, id: 'account:gpt-image-2.6-flare', provider: 'account', modelId: 'gpt-image-2.6-flare', label: 'gpt-image-2.6-flare' };
+  const nano: Model = { ...base, id: 'account:nano-banana-2', provider: 'account', modelId: 'nano-banana-2', label: 'nano-banana-2' };
+  const flux: Model = { ...base, id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell' };
+  const codex: Model = { ...base, id: 'codex:image-generation', provider: 'codex', modelId: 'image-generation', label: 'Codex Image', source: 'builtin' };
+  const catalog = { models: [nano, seedream, flux, flare, codex], status: { routes: {}, providers: [
+    { id: 'account', label: 'OpenDesign', available: true }, { id: 'opendesign', label: 'OpenDesign Cloud', available: false },
+    { id: 'fal', label: 'fal.ai', available: true }, { id: 'codex', label: 'Codex', available: true },
+  ] } };
+  const chooseModel = vi.fn();
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: 'Neon skyline', references: [] }} studio={{
+    catalog: { catalog, failed: false, retry: vi.fn() }, chooseModel, remember: vi.fn(),
+    destination: studioDestination(findMediaStudio('design')!, 'text-to-image', seedream.id),
+  }} />));
+  const options = () => [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')];
+  const names = () => options().map(option => option.querySelector('strong')?.textContent);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  expect(names()).toEqual(['OpenDesign API Key', 'OpenDesign account', 'Codex']);
+  expect(options()[0].disabled).toBe(true);
+  expect(options()[0].textContent).toContain('API key required');
+  await act(async () => document.querySelector<HTMLButtonElement>('.om-picker-setup')!.click());
+  expect(chrome.openProviderSettings).toHaveBeenCalledExactlyOnceWith('opendesign');
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
+  // Only the chosen provider's models from the fixed list; others such as Nano Banana and FLUX are not offered.
+  expect(names()).toEqual(['GPT Image 2.6 Flare', 'Seedream 5.5']);
+  await act(async () => options()[0].click());
+  expect(chooseModel).toHaveBeenCalledExactlyOnceWith(flare.id);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  await act(async () => options()[2].click());
+  expect(chooseModel).toHaveBeenLastCalledWith(codex.id);
+});
+
+it('offers only OpenDesign providers for feature entries and keeps the prompt while asking for setup', async () => {
+  const { findMediaStudio } = await import('../../../shared/studio-catalog');
+  const { studioDestination } = await import('./creativeStudios');
+  const base = { modality: 'image' as const, mode: 'text-to-image' as const, source: 'live' as const, supportsImageReference: true, maxInputImages: 1 };
+  const cloud: Model = { ...base, id: 'opendesign:seedream-5.5', provider: 'opendesign', modelId: 'seedream-5.5', label: 'seedream-5.5' };
+  const flux: Model = { ...base, id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell' };
+  const codex: Model = { ...base, id: 'codex:image-generation', provider: 'codex', modelId: 'image-generation', label: 'Codex Image', source: 'builtin' };
+  const chooseModel = vi.fn();
+  const render = (sceneId: 'relight' | 'text-to-image', models: Model[], providers: { id: string; label: string; available: boolean }[]) => act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: 'Neon skyline', references: [] }} studio={{
+    catalog: { catalog: { models, status: { routes: {}, providers } }, failed: false, retry: vi.fn() }, chooseModel, remember: vi.fn(),
+    destination: studioDestination(findMediaStudio('design')!, sceneId, null),
+  }} />));
+  const names = () => [...document.querySelectorAll('[role="option"] strong')].map(node => node.textContent);
+  // Ordinary non-feature Studio entries keep Codex Image alongside OpenDesign and persist choices via studio.chooseModel.
+  await render('text-to-image', [flux, cloud, codex], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'codex', label: 'Codex', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  expect(names()).toEqual(['OpenDesign API Key', 'OpenDesign account', 'Codex']);
+  await act(async () => [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')][2].click());
+  expect(chooseModel).toHaveBeenCalledWith(codex.id);
+  // Feature scenes restrict strictly to OpenDesign providers and preserve the prompt when OpenDesign needs setup.
+  await render('relight', [flux, cloud, codex], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'codex', label: 'Codex', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  expect(names()).toEqual(['OpenDesign API Key', 'OpenDesign account']);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
+  expect(names()).toEqual(['Seedream 5.5']);
+  await render('relight', [flux], [{ id: 'opendesign', label: 'OpenDesign Cloud', available: false }, { id: 'fal', label: 'fal.ai', available: true }, { id: 'account', label: 'OpenDesign', available: false }]);
+  const submit = container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!;
+  expect(submit.textContent).toContain('Set up to generate');
+  expect(submit.disabled).toBe(false);
+  await act(async () => submit.click());
+  expect(chrome.openProviderSettings).toHaveBeenCalledExactlyOnceWith('opendesign');
+  expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Asset prompt"]')!.value).toBe('Neon skyline');
+  expect(generate).not.toHaveBeenCalled();
+});
+
+it('preserves configured BYOK models on an unpinned ordinary Assets library draft', async () => {
+  const flux: Model = { id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell', modality: 'image', mode: 'text-to-image', source: 'builtin' };
+  loadGateway.mockResolvedValue({ models: [flux], status: { routes: { image: flux.id }, providers: [{ id: 'fal', label: 'fal.ai', available: true }] } });
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: 'Sunrise poster', references: [] }} />));
+  const submit = container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!;
+  expect(submit.disabled).toBe(false);
+  generate.mockResolvedValue({ job: { id: 'fal-job' } });
+  await act(async () => submit.click());
+  expect(generate).toHaveBeenCalledWith(expect.objectContaining({ model: flux.id, prompt: 'Sunrise poster' }));
+});
+
+const featureModels = () => {
+  const base = { modality: 'image' as const, mode: 'text-to-image' as const, source: 'live' as const, supportsImageReference: true, maxInputImages: 16 };
+  return {
+    sunburst: { ...base, id: 'opendesign:gpt-image-2.6-sunburst', provider: 'opendesign', modelId: 'gpt-image-2.6-sunburst', label: 'gpt-image-2.6-sunburst' } as Model,
+    flare: { ...base, id: 'opendesign:gpt-image-2.6-flare', provider: 'opendesign', modelId: 'gpt-image-2.6-flare', label: 'gpt-image-2.6-flare' } as Model,
+    seedream: { ...base, id: 'opendesign:seedream-5.5', provider: 'opendesign', modelId: 'seedream-5.5', label: 'seedream-5.5' } as Model,
+    flash: { ...base, id: 'opendesign:seedream-5.0-flash', provider: 'opendesign', modelId: 'seedream-5.0-flash', label: 'seedream-5.0-flash', maxInputImages: 10 } as Model,
+    accountGpt: { ...base, id: 'account:gpt-image-2.6-sunburst', provider: 'account', modelId: 'gpt-image-2.6-sunburst', label: 'gpt-image-2.6-sunburst' } as Model,
+  };
+};
+async function renderFeature(scene: 'remove-background' | 'relight' | 'character', draft: Partial<AssetDraft>) {
+  const { sceneDestination, studioScenes } = await import('./creativeStudios');
+  const models = Object.values(featureModels());
+  const catalog = { models, status: { routes: {}, providers: [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }, { id: 'account', label: 'OpenDesign', available: true }] } };
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'image', prompt: '', references: [], ...draft }} studio={{
+    catalog: { catalog, failed: false, retry: vi.fn() }, chooseModel: vi.fn(), remember: vi.fn(),
+    destination: sceneDestination(studioScenes.find(item => item.id === scene)!),
+  }} />));
+}
+const optionNames = () => [...document.querySelectorAll('[role="option"] strong')].map(node => node.textContent);
+const reference = (id: string) => ({ reference: { assetId: id, versionId: 'v1' }, name: id });
+
+it('removes a background with GPT Image 2.6 on either OpenDesign route, an optional prompt and a fixed transparent background', async () => {
+  await renderFeature('remove-background', { references: [reference('product')] });
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  expect(optionNames()).toEqual(['OpenDesign API Key', 'OpenDesign account']);
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Provider"]')!.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
+  expect(optionNames()).toEqual(['GPT Image 2.6 Flare', 'GPT Image 2.6 Sunburst']);
+  expect(container.textContent).toContain('The result is a PNG with a transparent background.');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  expect(document.querySelector('.om-generation-popover')?.textContent).toContain('Quality');
+  expect(document.querySelector('.om-generation-popover')?.textContent).not.toContain('Background');
+  const submit = container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!;
+  expect(submit.disabled).toBe(false);
+  generate.mockResolvedValue({ job: { id: 'job' } });
+  await act(async () => submit.click());
+  const request = generate.mock.calls[0][0];
+  expect(request).toMatchObject({ model: 'opendesign:gpt-image-2.6-sunburst', parameters: { background: 'transparent' }, references: [{ assetId: 'product', versionId: 'v1' }] });
+  expect(request.prompt).toMatch(/^Remove the entire background.*transparent background/);
+});
+
+it('relights one image with Seedream 5.5 by default and writes the chosen light into the prompt', async () => {
+  await renderFeature('relight', { prompt: 'Keep the logo sharp.', references: [reference('room')], relight: { direction: 'back', temperature: 'cool', mood: 'neon' } });
+  expect([...container.querySelectorAll('.om-relight-field .om-eyebrow')].map(node => node.textContent)).toEqual(['Light direction', 'Color temperature', 'Lighting mood']);
+  expect(container.querySelector('button[aria-label="Generation model"]')?.textContent).toContain('Seedream 5.5');
+  // One reference is the limit, so the picker offers no second one.
+  expect(container.querySelector('.om-source-actions')).toBeNull();
+  generate.mockResolvedValue({ job: { id: 'job' } });
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  const { prompt, model: chosen } = generate.mock.calls[0][0];
+  expect(chosen).toBe('opendesign:seedream-5.5');
+  expect(prompt).toContain('backlight with a rim of light');
+  expect(prompt).toContain('cool color temperature');
+  expect(prompt).toContain('neon night lighting');
+  expect(prompt.endsWith('Keep the logo sharp.')).toBe(true);
+});
+
+it('keeps a character consistent across up to five references and drops Seedream 5.5 from two references', async () => {
+  await renderFeature('character', { references: [reference('one')] });
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
+  expect(optionNames()).toEqual(['GPT Image 2.6 Flare', 'GPT Image 2.6 Sunburst', 'Seedream 5.5', 'Seedream 5.0 Flash']);
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.disabled).toBe(true);
+  await act(async () => root.unmount()); root = createRoot(container);
+  await renderFeature('character', { prompt: 'Walk through a night market.', model: 'opendesign:seedream-5.5', references: [reference('one'), reference('two')] });
+  await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Generation model"]')!.click());
+  expect(optionNames()).toEqual(['GPT Image 2.6 Flare', 'GPT Image 2.6 Sunburst', 'Seedream 5.0 Flash']);
+  generate.mockResolvedValue({ job: { id: 'job' } });
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  const request = generate.mock.calls[0][0];
+  expect(request.model).toBe('opendesign:gpt-image-2.6-sunburst');
+  expect(request.prompt).toMatch(/^Keep the character from the reference images consistent.*Walk through a night market\.$/);
+  expect(request.references).toHaveLength(2);
 });
