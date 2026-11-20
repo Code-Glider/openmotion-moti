@@ -48,7 +48,12 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
       || category === 'language' && provider.kinds.includes('text') || category === 'media' && provider.kinds.some(kind => ['image', 'video', 'audio', 'transcription'].includes(kind))
       || category === 'local' && provider.category === 'local' || category === 'custom' && provider.custom;
     return matches && (status === 'all' || status === 'enabled' && provider.enabled || status === 'disabled' && !provider.enabled || status === 'configured' && provider.configured || status === 'unconfigured' && !provider.configured) && (protocol === 'all' || provider.protocol === protocol) && `${provider.label} ${provider.id}`.toLowerCase().includes(query.toLowerCase());
-  }) ?? [];
+  }).sort((a, b) => {
+    if (a.id === 'account') return -1;
+    if (b.id === 'account') return 1;
+    const rank = (item: ProviderConnection) => item.available ? 0 : item.configured ? 1 : 2;
+    return rank(a) - rank(b);
+  });
   const provider = visibleProviders.find(provider => provider.id === selected);
   const select = (id: string) => {
     const item = visibleProviders.find(provider => provider.id === id);
@@ -116,9 +121,29 @@ function AccountProviderGuide({ provider, openAccount, showToast }: { provider: 
   const plan = upgradePlan(account);
   if (account && ['signed-out', 'unavailable', 'authorizing', 'reauth-required'].includes(account.state)) return <AccountStatus account={account} busy={busy} action={action} showToast={showToast} />;
   if (plan && account) return <UpgradeGuide plan={plan} area="provider_detail" showToast={showToast} />;
-  return <><div className="om-settings-tags">{provider.kinds.map(kind => <span className="om-badge" key={kind}>{t(kindLabels[kind])}</span>)}<span className="om-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span></div>
-    <div className="om-card om-account-callout"><RemixIcon name="account-circle-line" size={28} /><div><h2 className="om-subtitle">{t(provider.configured ? 'Your OpenDesign models, in OpenMotion' : 'One account. Your models, together.')}</h2><p className="om-muted">{t(provider.configured ? 'Account models and your own providers can be selected side by side.' : 'Sign in with OpenDesign to sync your models, subscription and usage.')}</p>{provider.configured && provider.reason && <p className="om-muted">{t(provider.reason)}</p>}{provider.configured ? openAccount && <Button variant="ghost" className="om-button h-auto" data-primary onClick={openAccount}>{t('Manage account')}</Button>
-      : <Button variant="ghost" className="om-button h-auto" data-primary disabled={busy} onClick={() => void action('login')}>{t('Sign in with OpenDesign')}</Button>}</div></div></>;
+  const identity = account?.user?.email?.trim() || account?.user?.name?.trim();
+  const planBadge = account?.plan?.trim();
+  const advisoryReason = provider.configured && provider.reason && provider.reason !== 'Included with your account' ? provider.reason : undefined;
+  const description = advisoryReason
+    ? t(advisoryReason)
+    : provider.configured
+      ? (identity ? `${identity} · ${t('Account models and your own providers can be selected side by side.')}` : t('Account models and your own providers can be selected side by side.'))
+      : t('Sign in with OpenDesign to sync your models, subscription and usage.');
+  return <div className="om-card om-account-callout">
+    <span className="om-account-callout-icon" aria-hidden="true"><RemixIcon name="account-circle-line" size={22} /></span>
+    <div className="om-account-callout-body">
+      <div className="om-account-callout-head">
+        <h2 className="om-subtitle">{t(provider.configured ? 'Your OpenDesign models, in OpenMotion' : 'One account. Your models, together.')}</h2>
+        {provider.configured && planBadge && <span className="om-badge">{planBadge}</span>}
+      </div>
+      <p className="om-muted">{description}</p>
+    </div>
+    <div className="om-account-callout-action">
+      {provider.configured
+        ? openAccount && <Button variant="ghost" className="om-button h-auto" onClick={openAccount}>{t('Manage account')}<RemixIcon name="arrow-right-line" size={14} /></Button>
+        : <Button variant="ghost" className="om-button h-auto" data-primary disabled={busy} onClick={() => void action('login')}>{t('Sign in with OpenDesign')}</Button>}
+    </div>
+  </div>;
 }
 
 function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: { provider: ProviderConnection; data: ProviderDirectory; openAccount?: () => void; showToast: ReturnType<typeof useToast>['showToast']; onRemoved: () => void }) {
@@ -139,11 +164,23 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     catch (error) { if (reported) tracking.reportProviderSetting(provider, reported, 'failure'); showToast(error instanceof Error ? error.message : t('Could not save settings'), 'error'); return false; }
     finally { setBusy(false); }
   };
+  const kindSummary = provider.kinds.map(kind => t(kindLabels[kind])).join(' · ');
+  const providerRole = t(provider.category === 'account' ? 'Your account' : provider.custom ? 'Custom provider' : 'Built-in provider');
   return <div className="om-provider-detail-inner">
-    <header className="om-settings-row"><div className="om-provider-heading"><ProviderAvatar name={provider.label} provider={provider} /><div><h1 className="om-title">{provider.label}</h1><span className="om-muted">{t(provider.category === 'account' ? 'Your account' : provider.custom ? 'Custom provider' : 'Built-in provider')}</span></div></div>
+    <header className="om-settings-row om-provider-header">
+      <div className="om-provider-heading">
+        <ProviderAvatar name={provider.label} provider={provider} />
+        <div className="om-provider-heading-copy">
+          <div className="om-provider-title-row">
+            <h1 className="om-title">{provider.label}</h1>
+            <span className="om-badge om-provider-status-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span>
+          </div>
+          <p className="om-muted om-provider-meta">{kindSummary ? `${providerRole} · ${kindSummary}` : providerRole}</p>
+        </div>
+      </div>
       {provider.protocol !== 'account' && !provider.setupRequired && <Toggle label={t('Enable provider')} checked={provider.enabled} disabled={busy || !provider.configured && provider.protocol !== 'agent'} onChange={enabled => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { enabled }), 'Provider updated')} />}
     </header>
-    {provider.protocol === 'account' ? <AccountProviderGuide provider={provider} openAccount={openAccount} showToast={showToast} /> : <div className="om-settings-tags">{provider.kinds.map(kind => <span className="om-badge" key={kind}>{t(kindLabels[kind])}</span>)}<span className="om-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span></div>}
+    {provider.protocol === 'account' ? <AccountProviderGuide provider={provider} openAccount={openAccount} showToast={showToast} /> : null}
     {provider.protocol === 'account' ? null
       : provider.protocol === 'agent' ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Local Agent')}</h2><p className="om-muted">{t(provider.reason)}</p><p className="om-muted">{t('Uses your installed Agent and its own sign-in. No API key is copied.')}</p><Button variant="ghost" className="om-button h-auto" disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Agent status refreshed')}>{t('Refresh status')}</Button></div>
       : provider.setupRequired ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Dedicated integration required')}</h2><p className="om-muted">{t(provider.reason)}</p>{provider.website && <a className="om-button" href={provider.website} target="_blank" rel="noreferrer">{t('Provider website')}<RemixIcon name="external-link-line" size={14} /></a>}</div>
@@ -174,8 +211,17 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
 function ModelRow({ model, provider, selected, busy, change, edit }: { model: DirectoryModel; provider: ProviderConnection; selected: boolean; busy: boolean; change: Change; edit: () => void }) {
   const { t } = useI18n();
   const executable = !['image', 'video', 'audio'].includes(model.kind) || ['media', 'agent', 'account'].includes(provider.protocol) || provider.protocol === 'openai' && ['image', 'audio'].includes(model.kind);
-  return <div className="om-model-row"><ModelAvatar name={model.label} modelId={model.modelId} provider={provider} /><div className="om-model-name"><strong>{model.label}</strong><small className="om-muted">{model.modelId}</small><div className="om-settings-tags om-model-metadata">{[...(model.capabilities ?? []), ...(model.inputs ?? [])].map(value => <span className="om-badge" key={value}>{t(capabilityLabels[value])}</span>)}{model.contextWindow && <span className="om-muted">{Intl.NumberFormat().format(model.contextWindow)} {t('context tokens')}</span>}</div></div><span className="om-badge">{t(kindLabels[model.kind])}</span>
-    <Button variant="ghost" className="om-button h-auto" disabled={busy || !model.enabled || !provider.available || !executable} aria-label={t('Use {model} as default', { model: model.label })} onClick={() => void change(() => gatewayRequest('settings/default-model', 'PUT', { kind: model.kind, model: selected ? null : model.id }), 'Default model updated')}>{selected ? <><RemixIcon name="check-line" size={14} />{t('Default')}</> : t('Use model')}</Button>
+  const showModelId = model.modelId.trim() !== '' && model.modelId.trim() !== model.label.trim();
+  const hasMetadata = Boolean(model.capabilities?.length || model.inputs?.length || model.contextWindow);
+  return <div className="om-model-row" data-selected={selected || undefined}>
+    <ModelAvatar name={model.label} modelId={model.modelId} provider={provider} />
+    <div className="om-model-name">
+      <strong>{model.label}</strong>
+      {showModelId && <small className="om-muted">{model.modelId}</small>}
+      {hasMetadata && <div className="om-settings-tags om-model-metadata">{[...(model.capabilities ?? []), ...(model.inputs ?? [])].map(value => <span className="om-badge" key={value}>{t(capabilityLabels[value])}</span>)}{model.contextWindow && <span className="om-muted">{Intl.NumberFormat().format(model.contextWindow)} {t('context tokens')}</span>}</div>}
+    </div>
+    <span className="om-badge om-model-kind-badge">{t(kindLabels[model.kind])}</span>
+    <Button variant="ghost" className="om-button h-auto om-model-default-button" data-active={selected || undefined} aria-pressed={selected} disabled={busy || !model.enabled || !provider.available || !executable} aria-label={t('Use {model} as default', { model: model.label })} onClick={() => void change(() => gatewayRequest('settings/default-model', 'PUT', { kind: model.kind, model: selected ? null : model.id }), 'Default model updated')}>{selected ? <><RemixIcon name="check-line" size={14} />{t('Default')}</> : t('Use model')}</Button>
     <Menu tooltip={t('Model options')} modal={false} trigger={<IconButton variant="ghost" className="motion-icon-button" aria-label={t('Model options')} icon={<RemixIcon name="more-2-line" size={16} />} />}><MenuItem onClick={edit}>{t('Edit model')}</MenuItem>{!['media', 'agent', 'account'].includes(provider.protocol) && <><MenuSeparator /><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: !model.enabled }), 'Model updated')}>{t(model.enabled ? 'Disable model' : 'Enable model')}</MenuItem><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: null }), 'Model removed')}>{t('Remove model')}</MenuItem></>}</Menu>
   </div>;
 }

@@ -234,3 +234,51 @@ it('signs in in place even before the account summary loads', async () => {
   expect(posts).toEqual(['/motion-api/settings/account/login']);
   expect(openAccount).not.toHaveBeenCalled();
 });
+
+it('separates provider status from inline capabilities, compacts configured account banner, deduplicates model IDs and prioritizes configured providers', async () => {
+  const configuredAccount = {
+    ...account,
+    kinds: ['text', 'image', 'video', 'audio'],
+    configured: true,
+    enabled: true,
+    available: true,
+    reason: 'Included with your account',
+  };
+  const providers = [
+    configuredAccount,
+    { id: 'fal', label: 'fal.ai', protocol: 'media', category: 'multimodal', kinds: ['image', 'video'], configured: false, enabled: false, available: false },
+    { id: 'cloud', label: 'OpenDesign Cloud', protocol: 'media', category: 'multimodal', kinds: ['image', 'video'], configured: true, enabled: true, available: true },
+  ];
+  const models = [
+    { id: 'account:claude-fable-5', provider: 'account', modelId: 'claude-fable-5', label: 'claude-fable-5', kind: 'text', enabled: true, source: 'live' },
+    { id: 'account:flux-pro', provider: 'account', modelId: 'flux-pro-1.1', label: 'FLUX Pro', kind: 'image', enabled: true, source: 'live' },
+  ];
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => /\/settings\/account(\?|$)/.test(String(url))
+    ? Response.json({ consoleUrl: 'https://console.example', state: 'signed-in', plan: 'Plus', user: { email: 'creator@example.com' } })
+    : Response.json({ providers, models, defaults: { text: 'account:claude-fable-5' } })));
+  await mount('account');
+
+  // Configured providers float right beneath OpenDesign.
+  const sidebarNames = [...document.querySelectorAll('.om-provider-item-name')].map(node => node.firstChild?.textContent);
+  expect(sidebarNames).toEqual(['OpenDesign', 'OpenDesign Cloud', 'fal.ai']);
+
+  // Status badge sits beside the heading; capabilities stay inline metadata without pill clutter.
+  expect(document.querySelector('.om-provider-title-row .om-provider-status-badge')?.textContent).toBe('Configured');
+  expect(document.querySelector('.om-provider-meta')?.textContent).toBe('Your account · Language · Image · Video · Audio');
+  expect(document.querySelector('.om-provider-detail-inner > .om-settings-tags')).toBeNull();
+
+  // Configured account callout surfaces account identity + plan, omits redundant reason, and demotes Manage account to secondary.
+  const callout = document.querySelector('.om-account-callout')!;
+  expect(callout.textContent).toContain('Plus');
+  expect(callout.textContent).toContain('creator@example.com');
+  expect(callout.textContent).not.toContain('Included with your account');
+  const manageBtn = [...callout.querySelectorAll('button')].find(btn => btn.textContent?.includes('Manage account'))!;
+  expect(manageBtn.hasAttribute('data-primary')).toBe(false);
+
+  // Model rows deduplicate identical label/modelId and highlight the active default button.
+  const rows = [...document.querySelectorAll('.om-model-row')];
+  expect(rows[0].querySelector('.om-model-name small')).toBeNull();
+  expect(rows[0].querySelector('.om-model-default-button')?.getAttribute('data-active')).toBe('true');
+  expect(rows[1].querySelector('.om-model-name small')?.textContent).toBe('flux-pro-1.1');
+  expect(rows[1].querySelector('.om-model-default-button')?.getAttribute('data-active')).toBeNull();
+});

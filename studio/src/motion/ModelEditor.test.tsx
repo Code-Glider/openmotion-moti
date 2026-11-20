@@ -37,6 +37,30 @@ it('combines independent model filters, removes chips and retains group expansio
   await act(async () => button('Expand all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(3);
 });
 
+it('hides redundant group headers, group toggles and filter counts for ungrouped catalogues while labeling sort order', async () => {
+  const models = [
+    { id: 'b', modelId: 'b', label: 'Beta model', kind: 'text', enabled: true, source: 'live' },
+    { id: 'a', modelId: 'a', label: 'Alpha model', kind: 'image', enabled: true, source: 'live' },
+  ] as DirectoryModel[];
+  await mount(<ModelCatalog models={models} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />);
+
+  expect(document.querySelector('.om-model-group')).toBeNull();
+  expect(document.querySelector('[aria-label="Group models"]')).toBeNull();
+  expect(document.querySelector('[aria-label="Collapse all groups"]')).toBeNull();
+  expect(document.querySelector('.om-model-active-filters')).toBeNull();
+
+  const sortBtn = button('Sort models');
+  expect(sortBtn.textContent).toContain('Catalogue order');
+  await act(async () => sortBtn.click());
+  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(el => el.textContent === 'Name')!.click());
+  expect(button('Sort models').textContent).toContain('Name');
+  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a', 'b']);
+
+  await fill('Search models', 'Alpha');
+  expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('1 / 2');
+  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
+});
+
 async function fillDefaults(value: string) {
   await act(async () => {
     const input = document.querySelector('textarea')!;
