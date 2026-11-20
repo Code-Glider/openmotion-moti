@@ -12,19 +12,108 @@ afterEach(() => { act(() => root?.unmount()); document.body.innerHTML = ''; vi.r
 async function mount(child: React.ReactNode, locale: 'en' | 'zh-CN' = 'en') { const host = document.createElement('div'); document.body.append(host); root = createRoot(host); await act(async () => root.render(<I18nProvider initialLocale={locale}>{child}</I18nProvider>)); }
 function button(label: string) { const value = [...document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.getAttribute('aria-label') === label || item.textContent?.trim() === label); expect(value).toBeTruthy(); return value!; }
 async function fill(label: string, value: string) { await act(async () => { const input = document.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value); input.dispatchEvent(new Event('input', { bubbles: true })); }); }
+async function pickSelect(label: string, optionText: string) {
+  const trigger = document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
+  expect(trigger).toBeTruthy();
+  await act(async () => trigger.click());
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.textContent?.trim() === optionText);
+  expect(option, `Option "${optionText}" in select "${label}"`).toBeTruthy();
+  await act(async () => option!.click());
+}
 const provider = { id: 'test', label: 'Test', protocol: 'openai', kinds: ['text'] } as ProviderConnection;
-it('saves grouping, classification, exact token limits and default parameters through one model form', async () => {
+
+it('saves grouping, directly accessible model type and defaults without non-executable capability or token fields', async () => {
   const save = vi.fn(async () => true), close = vi.fn();
   await mount(<ModelEditor provider={provider} save={save} onClose={close} />);
   await fill('Model ID', 'test-model'); await fill('Display name', 'My model'); await fill('Group name', 'Research');
-  await act(async () => button('More settings').click());
-  await act(async () => button('Reasoning').click()); await act(async () => button('Vision').click());
-  await act(async () => button('Context window: 200000').click()); await act(async () => button('Max output tokens: 65536').click());
+  // Model type is directly visible without opening More settings.
+  await act(async () => button('Image').click());
+  // Non-executable LLM metadata controls are removed.
+  expect(document.body.textContent).not.toContain('Model capabilities');
+  expect(document.body.textContent).not.toContain('Input modalities');
+  expect(document.body.textContent).not.toContain('Context window');
+  expect(document.body.textContent).not.toContain('Max output tokens');
   await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-  expect(save).toHaveBeenCalledWith(expect.objectContaining({ modelId: 'test-model', label: 'My model', group: 'Research', capabilities: ['reasoning'], inputs: ['vision'], contextWindow: 200000, maxOutputTokens: 65536, defaults: {} })); expect(close).toHaveBeenCalledOnce();
+  expect(save).toHaveBeenCalledWith({ id: undefined, modelId: 'test-model', label: 'My model', kind: 'image', group: 'Research', defaults: {} });
+  expect(close).toHaveBeenCalledOnce();
 });
+
+it('renders structured default parameter controls for schema-backed media models and keeps raw JSON collapsed until needed', async () => {
+  const save = vi.fn(async () => true), close = vi.fn();
+  const cloudProvider = { id: 'opendesign', label: 'OpenDesign Cloud', protocol: 'media', kinds: ['image', 'video', 'audio'] } as ProviderConnection;
+  const model: DirectoryModel = {
+    id: 'opendesign:custom-pro-image',
+    provider: 'opendesign',
+    modelId: 'custom-pro-image',
+    label: 'Pro Image',
+    kind: 'image',
+    mode: 'text-to-image',
+    enabled: true,
+    source: 'live',
+    defaults: { aspect_ratio: '16:9', resolution: '2K' },
+    nativeOptions: {
+      profiles: {
+        generations: {
+          profiles: [
+            { aspect_ratio: '16:9', resolution: '2K' },
+            { aspect_ratio: '1:1', resolution: '1K' },
+          ],
+        },
+      },
+      quality: ['standard', 'high'],
+    },
+  };
+  await mount(<ModelEditor provider={cloudProvider} model={model} save={save} onClose={close} />);
+  // Locked media protocol does not show a disabled Model type row when editing.
+  expect(document.body.textContent).not.toContain('Model type');
+  // Structured parameter controls are shown directly; raw JSON stays collapsed by default.
+  expect(document.body.textContent).toContain('Default parameters');
+  expect(document.querySelector('textarea')).toBeNull();
+
+  // Changing aspect_ratio to 1:1 clears the incompatible 2K resolution automatically.
+  await pickSelect('Aspect ratio', '1:1');
+  await pickSelect('Quality', 'high');
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({
+    id: 'opendesign:custom-pro-image',
+    kind: 'image',
+    defaults: { aspect_ratio: '1:1', quality: 'high' },
+  }));
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it('validates structured number parameters and supports boolean defaults on media models', async () => {
+  const save = vi.fn(async () => true), close = vi.fn();
+  const atlasProvider = { id: 'atlascloud', label: 'Atlas Cloud', protocol: 'media', kinds: ['image', 'video', 'audio'] } as ProviderConnection;
+  const videoModel: DirectoryModel = {
+    id: 'atlascloud:bytedance/seedance-2.0/text-to-video',
+    provider: 'atlascloud',
+    modelId: 'bytedance/seedance-2.0/text-to-video',
+    label: 'Seedance 2.0',
+    kind: 'video',
+    mode: 'text-to-video',
+    enabled: true,
+    source: 'builtin',
+  };
+  await mount(<ModelEditor provider={atlasProvider} model={videoModel} save={save} onClose={close} />);
+  await pickSelect('Generate audio', 'Disabled');
+  await pickSelect('Resolution', '4K');
+  await fill('Seed', 'not-a-number');
+  await submitModel();
+  expect(document.querySelector('[role="alert"]')?.textContent).toBe('Enter a valid number.');
+  expect(save).not.toHaveBeenCalled();
+
+  await fill('Seed', '42');
+  await submitModel();
+  // Selecting 4k automatically satisfies its required 16:9 ratio constraint.
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({
+    defaults: { generate_audio: false, resolution: '4k', ratio: '16:9', seed: 42 },
+  }));
+  expect(close).toHaveBeenCalledOnce();
+});
+
 it('switches modalities, searches models and retains group expansion for grouped catalogues', async () => {
-  const models = [{ id: 'a', modelId: 'a', label: 'Reasoning model', kind: 'text', group: 'Research', capabilities: ['reasoning'], enabled: true, source: 'live' }, { id: 'b', modelId: 'b', label: 'Image model', kind: 'image', group: 'Creative', enabled: true, source: 'custom' }, { id: 'c', modelId: 'c', label: 'Disabled model', kind: 'text', group: 'Research', enabled: false, source: 'live' }] as DirectoryModel[];
+  const models = [{ id: 'a', modelId: 'a', label: 'Reasoning model', kind: 'text', group: 'Research', enabled: true, source: 'live' }, { id: 'b', modelId: 'b', label: 'Image model', kind: 'image', group: 'Creative', enabled: true, source: 'custom' }, { id: 'c', modelId: 'c', label: 'Disabled model', kind: 'text', group: 'Research', enabled: false, source: 'live' }] as DirectoryModel[];
   await mount(<ModelCatalog models={models} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />);
   expect(document.querySelector('[aria-label="Filter models"]')).toBeNull();
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
@@ -132,62 +221,6 @@ it('localizes the inline error in Chinese and retains valid input when saving fa
   expect(close).not.toHaveBeenCalled();
   expect(document.querySelector('[role="alert"]')).toBeNull();
   expect(document.querySelector('textarea')!.value).toBe('{"temperature":0.5}');
-});
-it.each(['-1', '0', '1.5', '100000001', 'abc', '-', '1e', '1e309'])('retains invalid token draft %j and focuses its field even when collapsed', async value => {
-  const save = vi.fn(async () => true);
-  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={save} onClose={vi.fn()} />);
-  await fill('Context window', value);
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-  await act(async () => button('More settings').click());
-  await submitModel();
-  const input = document.querySelector<HTMLInputElement>('[aria-label="Context window"]')!;
-  expect(input.value).toBe(value);
-  expect(document.activeElement).toBe(input);
-  expect(input.getAttribute('aria-invalid')).toBe('true');
-  const error = document.getElementById(input.getAttribute('aria-describedby')!)!;
-  expect(error.textContent).toBe(value === '100000001' ? 'The value cannot exceed 100,000,000.' : 'Enter an integer between 1 and 100,000,000.');
-  expect(save).not.toHaveBeenCalled();
-});
-it.each([false, true])('shows all token relationship errors and revalidates them when context changes (editing: %s)', async editing => {
-  const save = vi.fn(async () => true), close = vi.fn();
-  await mount(<ModelEditor provider={provider} model={editing ? { id: 'test:model', modelId: 'model' } as DirectoryModel : undefined} save={save} onClose={close} />);
-  if (!editing) { await fill('Model ID', 'model'); await act(async () => button('More settings').click()); }
-  await fill('Context window', '128000'); await fill('Max input tokens', '200000'); await fill('Max output tokens', '256000');
-  for (let attempt = 0; attempt < 2; attempt++) {
-    await act(async () => button('More settings').click()); await submitModel();
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('Max input tokens');
-    expect([...document.querySelectorAll('[role="alert"]')].map(el => el.textContent)).toEqual([
-      'Max input tokens cannot exceed the context window (currently 128,000).',
-      'Max output tokens cannot exceed the context window (currently 128,000).',
-    ]);
-    expect(save).not.toHaveBeenCalled();
-  }
-  await act(async () => button('Context window: 200000').click());
-  expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1);
-  expect(document.querySelector('[role="alert"]')!.textContent).toContain('currently 200,000');
-  await fill('Max output tokens', '200000');
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-  await submitModel();
-  expect(save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ contextWindow: 200000, maxInputTokens: 200000, maxOutputTokens: 200000 }));
-  expect(close).toHaveBeenCalledOnce();
-});
-it('allows optional empty token limits and valid integer boundaries', async () => {
-  const save = vi.fn(async () => false);
-  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={save} onClose={vi.fn()} />);
-  await fill('Context window', ' '); await submitModel();
-  expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ contextWindow: null, maxInputTokens: null, maxOutputTokens: null }));
-  await fill('Context window', '100000000'); await fill('Max input tokens', '1'); await fill('Max output tokens', '100000000'); await submitModel();
-  expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ contextWindow: 100000000, maxInputTokens: 1, maxOutputTokens: 100000000 }));
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-});
-it('shows Chinese token errors beside each field along with an independent JSON error', async () => {
-  await mount(<ModelEditor provider={provider} model={{ id: 'test:model', modelId: 'model' } as DirectoryModel} save={vi.fn()} onClose={vi.fn()} />, 'zh-CN');
-  await fill('上下文窗口', '128000'); await fill('最大输入 Token', '200000'); await fill('最大输出 Token', '-1'); await fillDefaults('[]'); await submitModel();
-  expect([...document.querySelectorAll('[role="alert"]')].map(el => el.textContent)).toEqual([
-    '最大输入 Token 不能超过上下文窗口（当前为 128,000）。', '请输入 1～100,000,000 之间的整数。', '请输入有效的 JSON 对象。',
-  ]);
-  await fill('上下文窗口', ''); await fill('最大输出 Token', '100000001');
-  expect([...document.querySelectorAll('[role="alert"]')].map(el => el.textContent)).toEqual(['数值不能超过 100,000,000。', '请输入有效的 JSON 对象。']);
 });
 
 it('shows all basic field errors, focuses the first and preserves drafts until corrected', async () => {

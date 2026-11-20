@@ -14,7 +14,8 @@ import { gatewayRequest } from './gatewayClient';
 import { notifyProvidersChanged, useProviderDirectory } from './useProviderDirectory';
 import { ProviderAvatar, ModelAvatar, SettingsDialog, SettingsError, SettingsLoading, Toggle } from './settingsPrimitives';
 
-import { ModelEditor, modelKindLabel, capabilityLabels } from './ModelEditor';
+import { ModelEditor, modelKindLabel } from './ModelEditor';
+import { modelDisplayLabel, modelMediaCapabilities, shouldShowInlineModelId } from './modelMediaCapabilities';
 import { ModelCatalog } from './ModelCatalog';
 import { apiKeyError, apiUrlError, providerNameError } from './settingsValidation';
 import { AccountStatus, UpgradeGuide, upgradePlan, useAccountSignIn } from './AccountSettings';
@@ -26,6 +27,35 @@ type Change = (action: () => Promise<unknown>, message: string) => Promise<boole
 export function providerListStatus(provider: { configured: boolean; enabled: boolean; available: boolean }): 'available' | 'disabled' | null {
   if (provider.available) return 'available';
   return provider.configured && !provider.enabled ? 'disabled' : null;
+}
+
+export function isOfficialProvider(provider: Pick<ProviderConnection, 'id'>): boolean {
+  return provider.id === 'account' || provider.id === 'opendesign';
+}
+
+function providerSortRank(provider: ProviderConnection): number {
+  if (provider.id === 'account') return 0;
+  if (provider.id === 'opendesign') return 1;
+  if (provider.setupRequired) return 5;
+  if (provider.available) return 2;
+  if (provider.configured) return 3;
+  return 4;
+}
+
+const protocolLabels: Record<string, string> = {
+  openai: 'OpenAI compatible',
+  anthropic: 'Anthropic',
+  google: 'Google Gemini',
+};
+
+function providerSubtitle(provider: ProviderConnection, t: ReturnType<typeof useI18n>['t']): string {
+  if (provider.id === 'opendesign') return t('Official API · API key');
+  if (provider.protocol === 'agent') return t('Local Agent · Uses installed sign-in, no API key needed');
+  if (provider.setupRequired) return t(provider.category === 'local' ? 'Local' : 'Built-in provider');
+  if (provider.protocol === 'media') return t('Dedicated media · API key');
+  const proto = protocolLabels[provider.protocol] ? t(protocolLabels[provider.protocol]) : provider.protocol;
+  if (provider.custom) return `${t('Custom provider')} · ${proto}`;
+  return proto;
 }
 
 export function ModelSettings({ onClose, openAccount, initialCategory = 'all', providerId, onProviderChange }: { onClose?: () => void; openAccount?: () => void; initialCategory?: string; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
@@ -48,12 +78,10 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
       || category === 'language' && provider.kinds.includes('text') || category === 'media' && provider.kinds.some(kind => ['image', 'video', 'audio', 'transcription'].includes(kind))
       || category === 'local' && provider.category === 'local' || category === 'custom' && provider.custom;
     return matches && (status === 'all' || status === 'enabled' && provider.enabled || status === 'disabled' && !provider.enabled || status === 'configured' && provider.configured || status === 'unconfigured' && !provider.configured) && (protocol === 'all' || provider.protocol === protocol) && `${provider.label} ${provider.id}`.toLowerCase().includes(query.toLowerCase());
-  }).sort((a, b) => {
-    if (a.id === 'account') return -1;
-    if (b.id === 'account') return 1;
-    const rank = (item: ProviderConnection) => item.available ? 0 : item.configured ? 1 : 2;
-    return rank(a) - rank(b);
-  });
+  }).sort((a, b) => providerSortRank(a) - providerSortRank(b));
+  const officialProviders = providers.filter(isOfficialProvider);
+  const otherProviders = providers.filter(item => !isOfficialProvider(item));
+  const showSidebarGroups = officialProviders.length > 0 && otherProviders.length > 0;
   const provider = visibleProviders.find(provider => provider.id === selected);
   const select = (id: string) => {
     const item = visibleProviders.find(provider => provider.id === id);
@@ -61,6 +89,15 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
     setSelected(id); setDetailOpen(true); onProviderChange?.(id);
   };
   const closeDetail = () => { setDetailOpen(false); onProviderChange?.(null); };
+  const renderProviderItem = (item: ProviderConnection) => {
+    const official = isOfficialProvider(item);
+    const roleHint = item.category === 'account' ? t('Your account') : official ? t('Official') : item.custom ? t('Custom provider') : item.kinds.length > 1 ? t('Multimodal') : modelKindLabel(item.kinds[0], t, locale);
+    return <Tooltip label={`${item.label} · ${roleHint}`} wrap key={item.id}><Button variant="plain" aria-label={`${item.label} · ${roleHint}${providerListStatus(item) ? ` · ${t(providerListStatus(item) === 'available' ? 'Available' : 'Disabled')}` : ''}`} className="om-nav-item om-provider-item" data-status={providerListStatus(item)} onClick={() => select(item.id)} aria-current={item.id === selected ? 'page' : undefined}>
+      <ProviderAvatar name={item.label} provider={item} /><span className="om-provider-item-name">{item.label}<small className="sr-only">{roleHint}</small></span>
+      {official && <span className="om-badge om-official-badge">{t('Official')}</span>}
+      {providerListStatus(item) === 'available' ? <span className="om-status-dot" role="img" aria-label={t('Available')} /> : providerListStatus(item) === 'disabled' ? <span className="om-badge">{t('Disabled')}</span> : null}
+    </Button></Tooltip>;
+  };
   return <section className="om-provider-settings" data-detail={detailOpen} aria-label={t('Model providers')}>
     <aside className="om-provider-list">
       <div className="om-provider-search"><label className="om-field"><RemixIcon name="search-line" size={16} /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search providers…')} aria-label={t('Search providers')} /></label>
@@ -71,10 +108,14 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
       <div className="om-provider-list-caption"><span className="om-eyebrow">{category === 'language' ? modelKindLabel('text', t, locale) : t(categories.find(item => item.id === category)?.label ?? 'All providers')} · {providers.length}</span>{(category !== 'all' || query || status !== 'all' || protocol !== 'all') && <Tooltip label={t('Clear filters')} wrap><IconButton variant="ghost" className="motion-icon-button" aria-label={t('Clear filters')} onClick={() => { setQuery(''); setCategory('all'); setStatus('all'); setProtocol('all'); }} icon={<RemixIcon name="close-line" size={14} />} /></Tooltip>}</div>
       <div className="om-settings-tags om-provider-filter-tags">{status !== 'all' && <Button variant="plain" className="om-badge" onClick={() => setStatus('all')}>{t(({ enabled: 'Enabled', disabled: 'Disabled', configured: 'Configured', unconfigured: 'Not configured' } as Record<string, string>)[status])}<RemixIcon name="close-line" size={12} /></Button>}{protocol !== 'all' && <Button variant="plain" className="om-badge" onClick={() => setProtocol('all')}>{protocol}<RemixIcon name="close-line" size={12} /></Button>}</div>
       <div className="om-provider-list-state">{directory.error ? <SettingsError retry={directory.refresh} /> : !directory.data ? <SettingsLoading /> : null}</div>
-      <nav aria-label={t('Providers')} className="om-provider-items">{providers.map(item => <Tooltip label={`${item.label} · ${item.category === 'account' ? t('Your account') : item.custom ? t('Custom provider') : item.kinds.length > 1 ? t('Multimodal') : modelKindLabel(item.kinds[0], t, locale)}`} wrap key={item.id}><Button variant="plain" aria-label={`${item.label} · ${item.category === 'account' ? t('Your account') : item.custom ? t('Custom provider') : item.kinds.length > 1 ? t('Multimodal') : modelKindLabel(item.kinds[0], t, locale)}${providerListStatus(item) ? ` · ${t(providerListStatus(item) === 'available' ? 'Available' : 'Disabled')}` : ''}`} className="om-nav-item om-provider-item" data-status={providerListStatus(item)} onClick={() => select(item.id)} aria-current={item.id === selected ? 'page' : undefined}>
-        <ProviderAvatar name={item.label} provider={item} /><span className="om-provider-item-name">{item.label}<small className="sr-only">{item.category === 'account' ? t('Your account') : item.custom ? t('Custom provider') : item.kinds.length > 1 ? t('Multimodal') : modelKindLabel(item.kinds[0], t, locale)}</small></span>
-        {providerListStatus(item) === 'available' ? <span className="om-status-dot" role="img" aria-label={t('Available')} /> : providerListStatus(item) === 'disabled' ? <span className="om-badge">{t('Disabled')}</span> : null}
-      </Button></Tooltip>)}{directory.data && !providers.length && <p className="om-empty om-muted">{t('No matching providers')}</p>}</nav>
+      <nav aria-label={t('Providers')} className="om-provider-items">
+        {showSidebarGroups ? <>
+          {officialProviders.map(renderProviderItem)}
+          <div className="om-provider-divider" role="separator" />
+          {otherProviders.map(renderProviderItem)}
+        </> : providers.map(renderProviderItem)}
+        {directory.data && !providers.length && <p className="om-empty om-muted">{t('No matching providers')}</p>}
+      </nav>
       <Button variant="plain" className="om-button om-add-provider" onClick={() => { tracking.reportSettingsClick('provider_list', 'add_provider'); setAdding(true); }}><RemixIcon name="add-line" size={16} />{t('Add provider')}</Button>
     </aside>
     <div className="om-provider-detail">
@@ -139,6 +180,7 @@ function AccountProviderHeader({ provider, openAccount, showToast }: { provider:
         <div className="om-provider-heading-copy">
           <div className="om-provider-title-row">
             <h1 className="om-title">{provider.label}</h1>
+            <span className="om-badge om-official-badge">{t('Official')}</span>
             {planBadge && <span className="om-badge om-provider-plan-badge">{planBadge}</span>}
             <span className="om-badge om-provider-status-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span>
           </div>
@@ -182,8 +224,9 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     catch (error) { if (reported) tracking.reportProviderSetting(provider, reported, 'failure'); showToast(error instanceof Error ? error.message : t('Could not save settings'), 'error'); return false; }
     finally { setBusy(false); }
   };
-  const providerRole = t(provider.custom ? 'Custom provider' : 'Built-in provider');
-  const emptyKindSummary = !models.length && provider.kinds.length ? provider.kinds.map(kind => modelKindLabel(kind, t, locale)).join(' / ') : '';
+  const subtitle = providerSubtitle(provider, t);
+  const official = isOfficialProvider(provider);
+  const nonMediaProtocolNotice = !provider.setupRequired && ['anthropic', 'google'].includes(provider.protocol);
   const hasMultipleKinds = new Set(models.map(model => model.kind)).size > 1;
   const defaultIds = new Set(Object.values(data.defaults).filter((value): value is string => Boolean(value)));
   return <div className="om-provider-detail-inner">
@@ -193,19 +236,25 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
         <div className="om-provider-heading-copy">
           <div className="om-provider-title-row">
             <h1 className="om-title">{provider.label}</h1>
-            <span className="om-badge om-provider-status-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span>
+            {official && <span className="om-badge om-official-badge">{t('Official')}</span>}
+            {!provider.setupRequired && <span className="om-badge om-provider-status-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span>}
           </div>
-          <p className="om-muted om-provider-meta">{emptyKindSummary ? `${providerRole} · ${emptyKindSummary}` : providerRole}</p>
+          <p className="om-muted om-provider-meta">{subtitle}</p>
         </div>
       </div>
       {!provider.setupRequired && <Toggle label={t('Enable provider')} checked={provider.enabled} disabled={busy || !provider.configured && provider.protocol !== 'agent'} onChange={enabled => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { enabled }), 'Provider updated')} />}
     </header>}
     {provider.protocol === 'account' ? null
-      : provider.protocol === 'agent' ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Local Agent')}</h2><p className="om-muted">{t(provider.reason)}</p><p className="om-muted">{t('Uses your installed Agent and its own sign-in. No API key is copied.')}</p><Button variant="ghost" className="om-button h-auto" disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Agent status refreshed')}>{t('Refresh status')}</Button></div>
+      : provider.protocol === 'agent' ? <div className="om-provider-notice om-agent-status-bar" role="status">
+        <RemixIcon name={provider.available ? 'checkbox-circle-line' : 'information-line'} size={16} />
+        <span className="om-agent-status-copy">{t(provider.reason)}</span>
+        <Button variant="ghost" className="om-button h-auto" disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Agent status refreshed')}><RemixIcon name="refresh-line" size={14} />{t(busy ? 'Working…' : 'Refresh status')}</Button>
+      </div>
       : provider.setupRequired ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Dedicated integration required')}</h2><p className="om-muted">{t(provider.reason)}</p>{provider.website && <a className="om-button" href={provider.website} target="_blank" rel="noreferrer">{t('Provider website')}<RemixIcon name="external-link-line" size={14} /></a>}</div>
       : <form noValidate ref={validation.formRef} className="om-provider-form" onSubmit={event => { event.preventDefault(); if (!validation.validate()) return; void change(async () => {
         await gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}), ...(!fixedOrigin ? { baseUrl: baseUrl.trim() } : {}), ...(provider.custom ? { label } : {}) }); validation.reset(); setApiKey(''); setVisible(false);
       }, 'Provider settings saved'); }}>
+        {nonMediaProtocolNotice && <div className="om-provider-notice" role="note"><RemixIcon name="information-line" size={16} /><span>{t('This protocol currently syncs models and saves text defaults only; image, video and audio generation are not executed through it.')}</span></div>}
         {provider.custom && <TextField label={t('Provider name')} value={label} onChange={setLabel} error={validation.errors.label} required />}
         <label className="om-label">{t('API key')}<span className="om-field"><input type={visible ? 'text' : 'password'} aria-label={`${provider.label} API key`} aria-invalid={Boolean(validation.errors.apiKey) || undefined} aria-describedby={validation.errors.apiKey ? keyErrorId : undefined} autoComplete="off" spellCheck={false} value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={t(provider.configured ? 'Key saved · enter to replace' : 'Paste your API key')} /><Tooltip label={t(visible ? 'Hide API key' : 'Show API key')} wrap><IconButton variant="ghost" type="button" className="motion-icon-button" aria-label={t(visible ? 'Hide API key' : 'Show API key')} onClick={() => setVisible(value => !value)} icon={<RemixIcon name={visible ? 'eye-off-line' : 'eye-line'} size={16} />} /></Tooltip></span><small id={keyErrorId} className="om-field-error" role={validation.errors.apiKey ? 'alert' : undefined}>{validation.errors.apiKey ? t(validation.errors.apiKey) : null}</small></label>
         <div className="om-settings-row"><span className="om-muted">{t(provider.credentialSource === 'environment' ? 'Using environment key' : 'Keys stay on this computer and are never returned by the API.')}</span>{provider.website && <a href={provider.website} target="_blank" rel="noreferrer" className="om-text-link">{t('Get API key')}<RemixIcon name="external-link-line" size={13} /></a>}</div>
@@ -215,11 +264,13 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
           {provider.docs && <a className="om-text-link" href={provider.docs} target="_blank" rel="noreferrer">{t('Usage guide')}<RemixIcon name="external-link-line" size={13} /></a>}
         </div>
       </form>}
-    <section className="om-model-section" aria-label={t('Models')}>
-      <div className="om-settings-row"><h2 className="om-subtitle">{t('Models')}{!hasMultipleKinds && <> <span className="om-muted">{models.length}</span></>}</h2><div className="om-settings-actions"><Button variant="ghost" className="om-button h-auto" disabled={busy || !provider.configured || provider.setupRequired} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Models synced')}><RemixIcon name="refresh-line" size={15} />{t(busy ? 'Working…' : 'Sync models')}</Button>
-        {!['agent', 'account'].includes(provider.protocol) && !provider.setupRequired && <Tooltip label={t('Add model')} wrap><IconButton variant="plain" className="om-button" aria-label={t('Add model')} onClick={() => setAddModel(true)} icon={<RemixIcon name="add-line" size={17} />} /></Tooltip>}</div></div>
+    {!provider.setupRequired && <section className="om-model-section" aria-label={t('Models')}>
+      <div className="om-settings-row"><h2 className="om-subtitle">{t('Models')}{!hasMultipleKinds && <> <span className="om-muted">{models.length}</span></>}</h2>
+        {provider.protocol !== 'agent' && <div className="om-settings-actions"><Button variant="ghost" className="om-button h-auto" disabled={busy || !provider.configured} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Models synced')}><RemixIcon name="refresh-line" size={15} />{t(busy ? 'Working…' : 'Sync models')}</Button>
+          {provider.protocol !== 'account' && <Tooltip label={t('Add model')} wrap><IconButton variant="plain" className="om-button" aria-label={t('Add model')} onClick={() => setAddModel(true)} icon={<RemixIcon name="add-line" size={17} />} /></Tooltip>}</div>}
+      </div>
       <ModelCatalog models={models} defaultIds={defaultIds} render={model => <ModelRow key={model.id} model={model} provider={provider} selected={data.defaults[model.kind] === model.id} busy={busy} change={change} edit={() => setEditing(model)} />} />
-    </section>
+    </section>}
     {provider.custom && <div className="om-settings-row om-provider-remove"><span className="om-muted">{t('Remove this provider and its saved models from this workspace.')}</span><Button variant="ghost" className="om-button h-auto" disabled={busy} onClick={() => setRemoving(true)}>{t('Delete provider')}</Button></div>}
     {removing && <SettingsDialog title={t('Delete provider')} onClose={() => setRemoving(false)}><p className="om-muted">{t('This removes the saved key and models. Existing project media is kept.')}</p><div className="om-settings-actions"><Button variant="ghost" className="om-button h-auto" onClick={() => setRemoving(false)}>{t('Cancel')}</Button><Button variant="ghost" className="om-button h-auto" data-primary disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'DELETE'), 'Provider deleted').then(ok => { if (ok) onRemoved(); })}>{t('Delete')}</Button></div></SettingsDialog>}
     {editing && <ModelEditor provider={provider} model={editing} onClose={() => setEditing(null)} save={input => change(() => gatewayRequest('settings/models', 'PATCH', input), 'Model updated')} />}
@@ -230,18 +281,23 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
 function ModelRow({ model, provider, selected, busy, change, edit }: { model: DirectoryModel; provider: ProviderConnection; selected: boolean; busy: boolean; change: Change; edit: () => void }) {
   const { t, locale } = useI18n();
   const executable = !['image', 'video', 'audio'].includes(model.kind) || ['media', 'agent', 'account'].includes(provider.protocol) || provider.protocol === 'openai' && ['image', 'audio'].includes(model.kind);
-  const showModelId = model.modelId.trim() !== '' && model.modelId.trim() !== model.label.trim();
-  const hasMetadata = Boolean(model.capabilities?.length || model.inputs?.length || model.contextWindow);
+  const displayLabel = modelDisplayLabel(model);
+  const showModelId = shouldShowInlineModelId(displayLabel, model.modelId, provider.protocol);
+  const idHint = !showModelId && model.modelId.trim() && model.modelId.trim() !== displayLabel.trim() ? model.modelId : undefined;
+  const capabilityHints = modelMediaCapabilities(model, t);
+  const canEditModel = !['agent', 'account'].includes(provider.protocol);
   return <div className="om-model-row" data-selected={selected || undefined}>
-    <ModelAvatar name={model.label} modelId={model.modelId} provider={provider} />
+    <ModelAvatar name={displayLabel} modelId={model.modelId} provider={provider} />
     <div className="om-model-name">
-      <strong>{model.label}</strong>
-      {showModelId && <small className="om-muted">{model.modelId}</small>}
-      {hasMetadata && <div className="om-settings-tags om-model-metadata">{[...(model.capabilities ?? []), ...(model.inputs ?? [])].map(value => <span className="om-badge" key={value}>{t(capabilityLabels[value])}</span>)}{model.contextWindow && <span className="om-muted">{Intl.NumberFormat().format(model.contextWindow)} {t('context tokens')}</span>}</div>}
+      <div className="om-model-title">
+        <strong title={idHint}>{displayLabel}</strong>
+        {showModelId && <small className="om-muted om-model-id">{model.modelId}</small>}
+      </div>
+      {capabilityHints.length > 0 && <small className="om-muted om-model-capabilities">{capabilityHints.join(' · ')}</small>}
     </div>
     <span className="om-badge om-model-kind-badge">{modelKindLabel(model.kind, t, locale)}</span>
-    <Button variant="ghost" className="om-button h-auto om-model-default-button" data-active={selected || undefined} aria-pressed={selected} disabled={busy || !model.enabled || !provider.available || !executable} aria-label={t('Use {model} as default', { model: model.label })} onClick={() => void change(() => gatewayRequest('settings/default-model', 'PUT', { kind: model.kind, model: selected ? null : model.id }), 'Default model updated')}>{selected ? <><RemixIcon name="check-line" size={14} />{t('Default')}</> : t('Use model')}</Button>
-    <Menu tooltip={t('Model options')} modal={false} trigger={<IconButton variant="ghost" className="motion-icon-button" aria-label={t('Model options')} icon={<RemixIcon name="more-2-line" size={16} />} />}><MenuItem onClick={edit}>{t('Edit model')}</MenuItem>{!['media', 'agent', 'account'].includes(provider.protocol) && <><MenuSeparator /><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: !model.enabled }), 'Model updated')}>{t(model.enabled ? 'Disable model' : 'Enable model')}</MenuItem><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: null }), 'Model removed')}>{t('Remove model')}</MenuItem></>}</Menu>
+    <Button variant="ghost" className="om-button h-auto om-model-default-button" data-active={selected || undefined} aria-pressed={selected} disabled={busy || !model.enabled || !provider.available || !executable} aria-label={t('Use {model} as default', { model: displayLabel })} onClick={() => void change(() => gatewayRequest('settings/default-model', 'PUT', { kind: model.kind, model: selected ? null : model.id }), 'Default model updated')}>{selected ? <><RemixIcon name="check-line" size={14} />{t('Default')}</> : t('Use model')}</Button>
+    {canEditModel && <Menu tooltip={t('Model options')} modal={false} trigger={<IconButton variant="ghost" className="motion-icon-button" aria-label={t('Model options')} icon={<RemixIcon name="more-2-line" size={16} />} />}><MenuItem onClick={edit}>{t('Edit model')}</MenuItem>{provider.protocol !== 'media' && <><MenuSeparator /><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: !model.enabled }), 'Model updated')}>{t(model.enabled ? 'Disable model' : 'Enable model')}</MenuItem><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: null }), 'Model removed')}>{t('Remove model')}</MenuItem></>}</Menu>}
   </div>;
 }
 function TextField({ label, value, onChange, type = 'text', required, placeholder, error }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string; error?: string }) {

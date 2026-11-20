@@ -6,6 +6,7 @@ import { modelKinds, type DirectoryModel } from '../../../shared/provider-direct
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { modelKindLabel } from './ModelEditor';
+import { modelDisplayLabel } from './modelMediaCapabilities';
 
 export function ModelCatalog({ models, defaultIds, render }: { models: DirectoryModel[]; defaultIds?: ReadonlySet<string>; render: (model: DirectoryModel) => ReactNode }) {
   const { t, locale } = useI18n();
@@ -15,7 +16,7 @@ export function ModelCatalog({ models, defaultIds, render }: { models: Directory
   const resolvedKind = activeKind === 'all' || kindCounts.some(item => item.kind === activeKind) ? activeKind : 'all';
   const scopedModels = resolvedKind === 'all' ? models : models.filter(model => model.kind === resolvedKind);
   const trimmedQuery = query.trim().toLowerCase();
-  const filtered = scopedModels.filter(model => !trimmedQuery || `${model.label} ${model.modelId} ${model.group ?? ''}`.toLowerCase().includes(trimmedQuery)).sort((a, b) => {
+  const filtered = scopedModels.filter(model => !trimmedQuery || `${modelDisplayLabel(model)} ${model.label} ${model.modelId} ${model.group ?? ''}`.toLowerCase().includes(trimmedQuery)).sort((a, b) => {
     if (defaultIds?.size) {
       const aDefault = defaultIds.has(a.id) ? 0 : 1;
       const bDefault = defaultIds.has(b.id) ? 0 : 1;
@@ -28,8 +29,9 @@ export function ModelCatalog({ models, defaultIds, render }: { models: Directory
   const groups = Map.groupBy(filtered, model => showGroups ? model.group?.trim() || 'Ungrouped' : '');
   const groupKeys = [...groups.keys()];
   const allCollapsed = groupKeys.length > 0 && groupKeys.every(group => collapsed.includes(group));
+  const showToolbar = showKindTabs || models.length > 1 || hasNamedGroups;
   return <>
-    {models.length > 0 && <>
+    {showToolbar && <>
       <div className="om-model-toolbar">
         {showKindTabs && <div className="om-model-kind-tabs" role="tablist" aria-label={t('Model type')}>
           <Button variant="plain" role="tab" aria-selected={resolvedKind === 'all'} className="om-model-kind-tab" onClick={() => setActiveKind('all')}>
