@@ -27,13 +27,17 @@ const inputs: Record<string, object> = {
   openmotion_list_versions: { projectId },
   openmotion_restore_version: { projectId, requestId: 'restore', versionId: 'v1', expectedRevision: revision, expectedVersionId: 'v2' },
   openmotion_export_cancel: { projectId, requestId: 'cancel', jobId: 'job' },
+  openmotion_design_catalog: { action: 'list_scenarios' },
+  openmotion_design_project: { action: 'list' },
+  openmotion_design_edit: { action: 'list_versions', projectId },
+  openmotion_design_comments: { action: 'list', projectId },
 };
 
-test('all eighteen registered domain names reuse public schemas and forward unchanged inputs and results', async () => {
+test('all twenty-two registered domain names reuse public schemas and forward unchanged inputs and results', async () => {
   const calls: { url: string; init?: RequestInit }[] = [];
   const result = { projectId, previewHandoff: { state: 'pending' }, nested: { value: 42 } };
   const tools = buildOpenMotionWebMcpTools(async (url, init) => { calls.push({ url, init }); return Response.json(result); });
-  assert.equal(tools.length, 18);
+  assert.equal(tools.length, 22);
   assert.deepEqual(tools.map(tool => tool.name).sort(), Object.keys(inputs).sort());
   for (const [i, tool] of tools.entries()) {
     assert.equal(tool.inputSchema, phase1Tools[i].inputSchema);

@@ -96,7 +96,7 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-creator-pane .om-asset-direct > button.om-button', { visible: true });
       await page.evaluate(() => document.fonts.ready);
-      for (const menuLabel of ['Image scenes and models', 'Video scenes and models', 'Audio scenes and models', 'Agent client']) {
+      for (const menuLabel of ['Image · Scenes', 'Video · Scenes', 'Audio · Scenes', 'Generate with Open Design MCP']) {
         const split = '.om-creative-split:has(> [aria-label="' + menuLabel + '"])';
         const popup = '[role="dialog"][aria-label="' + menuLabel + '"]';
         await page.hover(split + ' > .om-nav-row-link');
@@ -123,23 +123,19 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         const scenes = bar.querySelector('nav')!.getBoundingClientRect();
         return back.bottom <= scenes.top;
       }), 'The mobile Studio header keeps its return action above the scenes');
-      const imageNav = '.om-creative-split:has(> [aria-label="Image scenes and models"])';
-      await page.waitForFunction(selector => {
-        const link = document.querySelector<HTMLElement>(selector);
-        if (!link) return false;
-        const bounds = link.getBoundingClientRect();
-        return bounds.left >= 0 && bounds.right <= innerWidth;
-      }, {}, imageNav + ' > .om-nav-row-link');
+      const imageNav = '.om-creative-strip > [data-nav-slot]:not([data-stowed]) .om-creative-split:has(> [aria-label="Image · Scenes"])';
+      await page.waitForSelector('.om-creative-navigation[data-compact-actions]');
       for (const scheme of ['dark', 'light'] as const) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
+        await page.waitForSelector(imageNav + ' > .om-nav-row-link', { visible: true });
         await page.click(imageNav + ' > .om-nav-row-link');
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'design');
         await page.waitForSelector('.om-creative-menu', { hidden: true });
         await page.waitForSelector('.om-generation-pickers [aria-label="Generation model"]', { visible: true });
-        await page.mouse.move(5, 650);
+        await page.mouse.move(5, 675);
         await page.focus(imageNav + ' > .om-nav-row-link');
         await page.keyboard.press('Tab');
-        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image scenes and models');
+        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image · Scenes');
         await page.keyboard.press('Enter');
         const menu = await page.waitForSelector('.om-creative-menu', { visible: true });
         assert.ok(await menu!.evaluate(el => el.getBoundingClientRect().left >= 0 && el.getBoundingClientRect().right <= innerWidth));
@@ -206,7 +202,7 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-feed-group [data-template-id]');
       await page.evaluate(() => document.fonts.ready);
-      for (const [width, expectedCards] of [[1512, 8], [1060, 6], [760, 4], [320, 2]]) {
+      for (const [width, expectedCards] of [[1512, 8], [1280, 8], [1060, 6], [760, 4], [320, 2]]) {
         await page.setViewport({ width, height: 850 });
         const rowsFill = await page.$eval('.om-feed-group', feed => {
           const bounds = feed.getBoundingClientRect();
@@ -222,11 +218,38 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           });
         });
         assert.ok(rowsFill, 'Gallery rows follow reading order and fill the available width at ' + width);
-        const shelf = await page.$eval('.om-explore-shelf .om-explore-preview-grid', grid => {
-          const cards = Array.from(grid.children).filter(card => card.getClientRects().length);
-          return { count: cards.length, rows: new Set(cards.map(card => card.getBoundingClientRect().top)).size };
-        });
-        assert.deepEqual(shelf, { count: expectedCards, rows: 2 }, 'Template previews fit two rows at ' + width);
+        const shelves = await page.$$eval('.om-explore-shelf .om-explore-preview-grid', grids => grids.map(grid => {
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const full = [...rows.values()].every(row => Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { count: cards.length, rows: rows.size, full };
+        }));
+        assert.deepEqual(shelves, [
+          { count: expectedCards, rows: 2, full: true },
+          { count: expectedCards, rows: 2, full: true },
+        ], 'Template and Skill previews fit two complete rows at ' + width);
+        const studios = await page.$$eval('.om-studio-collection', sections => sections.map(section => {
+          const grid = section.querySelector<HTMLElement>('.om-studio-collection-cards')!;
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          if (getComputedStyle(grid).overflowX === 'auto') {
+            return { studio: section.getAttribute('data-studio'), rail: true, full: cards.length > 0 && cards.every(card => Math.abs(card.top - cards[0].top) < 2) };
+          }
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const rowLists = [...rows.values()];
+          const full = rowLists.every(row => row.length === rowLists[0].length && Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { studio: section.getAttribute('data-studio'), count: cards.length, rows: rowLists.length, full };
+        }));
+        assert.ok(studios.length === 8 && studios.every(item => item.full), 'Every Studio collection renders complete rows at ' + width + ': ' + JSON.stringify(studios));
         const toolbarGeometry = await page.$eval('.om-explore-shelf[aria-label="Templates"]', section => {
           const submit = section.querySelector<HTMLAnchorElement>('header a[href*="CONTRIBUTING.md"]');
           const dropdown = section.querySelector<HTMLButtonElement>('.om-shelf-toolbar .om-gallery-dropdown');
@@ -280,14 +303,15 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       const segments = await page.$$('.om-media-segments button');
       for (const segment of segments) {
         await segment.click();
+        await segment.evaluate(element => (element as HTMLButtonElement).blur());
         const start = await page.$eval(artwork, camera => getComputedStyle(camera).transform);
         await page.waitForFunction((selector, start) => getComputedStyle(document.querySelector(selector)!).transform !== start, {}, artwork, start);
         const scene = await page.$eval('.om-feature-carousel', hero => hero.getAttribute('data-scene'));
-        if (scene !== 'shot-image') {
+        if (scene !== 'shot-image' && scene !== 'black-friday' && scene !== 'hub-gemini-4') {
           await page.waitForFunction(selector => (document.querySelector(selector)?.querySelector('video')?.currentTime ?? 0) > 0.1, {}, artwork);
         }
       }
-      await page.click('.om-media-pagination > button:first-child');
+      await page.focus('.om-media-segments [aria-current]');
       assert.equal(await cameraState(), 'paused');
       assert.ok(await page.$eval(artwork + ' video', video => (video as HTMLVideoElement).paused));
     } finally {

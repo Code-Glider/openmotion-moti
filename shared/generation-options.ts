@@ -42,7 +42,66 @@ export function usesInputImageRatio(model: Model, hasInputImage: boolean, parame
     && ['wan-2.7', 'doubao-seedance-2-5-260628'].includes(model.modelId);
 }
 
-/** Resolve defaults without carrying a text-to-video ratio into a first-frame request. */
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const isOpenDesignMedia = (model: Model) => ['opendesign', 'account'].includes(model.provider);
+
+function publishedStrings(raw: unknown): { values: string[]; default?: string } | undefined {
+  const envelope = isRecord(raw) ? raw : undefined;
+  const rawValues = Array.isArray(raw) ? raw : Array.isArray(envelope?.values) ? envelope.values : undefined;
+  if (!rawValues) return undefined;
+  const values = [...new Set(rawValues.filter((value): value is string => typeof value === 'string' && value.trim().length > 0))];
+  if (!values.length) return undefined;
+  const fallback = typeof envelope?.default === 'string' && values.includes(envelope.default) ? envelope.default : undefined;
+  return { values, ...(fallback !== undefined ? { default: fallback } : {}) };
+}
+
+function publishedDurations(raw: unknown): { values: number[]; default?: number } | undefined {
+  const envelope = isRecord(raw) ? raw : undefined;
+  const rawValues = Array.isArray(raw) ? raw : Array.isArray(envelope?.values) ? envelope.values : undefined;
+  if (!rawValues) return undefined;
+  const values = [...new Set(rawValues.filter((value): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0))];
+  if (!values.length) return undefined;
+  const fallback = typeof envelope?.default === 'number' && values.includes(envelope.default) ? envelope.default : undefined;
+  return { values, ...(fallback !== undefined ? { default: fallback } : {}) };
+}
+
+type PublishedImageProfile = { aspect_ratio: string; resolution: string };
+type PublishedImageProfiles = { profiles: PublishedImageProfile[]; default?: PublishedImageProfile };
+
+function parseProfileEnvelope(raw: unknown): PublishedImageProfiles | undefined {
+  if (!isRecord(raw) || !Array.isArray(raw.profiles)) return undefined;
+  const seen = new Set<string>(), profiles: PublishedImageProfile[] = [];
+  for (const item of raw.profiles) {
+    if (!isRecord(item) || typeof item.aspect_ratio !== 'string' || !item.aspect_ratio.trim() || typeof item.resolution !== 'string' || !item.resolution.trim()) continue;
+    const key = `${item.aspect_ratio}\0${item.resolution}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    profiles.push({ aspect_ratio: item.aspect_ratio, resolution: item.resolution });
+  }
+  if (!profiles.length) return undefined;
+  const rawDefault = isRecord(raw.default) ? raw.default : undefined;
+  const def = rawDefault && typeof rawDefault.aspect_ratio === 'string' && typeof rawDefault.resolution === 'string'
+    ? profiles.find(p => p.aspect_ratio === rawDefault.aspect_ratio && p.resolution === rawDefault.resolution)
+    : undefined;
+  return { profiles, ...(def ? { default: def } : {}) };
+}
+
+function publishedImageProfiles(model: Model, isEdit = false): PublishedImageProfiles | undefined {
+  if (!isOpenDesignMedia(model) || model.modality !== 'image' || !isRecord(model.nativeOptions?.profiles)) return undefined;
+  const profiles = model.nativeOptions.profiles;
+  const primary = isEdit ? parseProfileEnvelope(profiles.edits) : parseProfileEnvelope(profiles.generations);
+  return primary ?? parseProfileEnvelope(profiles.generations) ?? parseProfileEnvelope(profiles.edits);
+}
+
+/** Published resolutions valid for a chosen image aspect ratio, when the catalogue publishes profile pairs. */
+export function compatibleImageResolutions(model: Model, aspectRatio: unknown, hasInputImage = false): string[] | undefined {
+  const envelope = publishedImageProfiles(model, hasInputImage);
+  if (!envelope || typeof aspectRatio !== 'string' || !aspectRatio.trim()) return undefined;
+  return [...new Set(envelope.profiles.filter(p => p.aspect_ratio === aspectRatio).map(p => p.resolution))];
+}
+
+/** Resolve defaults without carrying a text-to-video ratio into a first-frame request,
+ * and complete published OpenDesign image (aspect_ratio, resolution) output profile pairs. */
 export function resolveGenerationParameters(model: Model, parameters: Record<string, unknown>, hasInputImage = false): Record<string, unknown> {
   const resolved = { ...modelDefaults(model), ...parameters };
   if (usesInputImageRatio(model, hasInputImage, parameters)) {
@@ -50,12 +109,50 @@ export function resolveGenerationParameters(model: Model, parameters: Record<str
     if (parameters.ratio !== undefined && parameters.ratio !== 'adaptive') throw new Error('First-frame video follows the input image ratio. Remove parameters.ratio or set it to "adaptive".');
     if (resolved.ratio !== 'adaptive') delete resolved.ratio;
   }
+  const isEdit = hasInputImage || (Array.isArray(resolved.images) && resolved.images.length > 0);
+  const imageProfiles = publishedImageProfiles(model, isEdit);
+  if (imageProfiles && (resolved.aspect_ratio !== undefined || resolved.resolution !== undefined)) {
+    if (resolved.size !== undefined) throw new Error('Cannot combine size with aspect_ratio or resolution.');
+    if (resolved.output !== undefined) throw new Error('Cannot combine output with aspect_ratio or resolution.');
+    if (resolved.aspect_ratio !== undefined) {
+      const validRatio = typeof resolved.aspect_ratio === 'string' && imageProfiles.profiles.some(p => p.aspect_ratio === resolved.aspect_ratio);
+      if (!validRatio) {
+        if (parameters.aspect_ratio !== undefined) throw new Error(`Aspect ratio ${String(resolved.aspect_ratio)} is not available for this model.`);
+        delete resolved.aspect_ratio;
+      }
+    }
+    if (resolved.resolution !== undefined) {
+      const validRes = typeof resolved.resolution === 'string' && imageProfiles.profiles.some(p => p.resolution === resolved.resolution);
+      if (!validRes) {
+        if (parameters.resolution !== undefined) throw new Error(`Resolution ${String(resolved.resolution)} is not available for this model.`);
+        delete resolved.resolution;
+      }
+    }
+    const hasRatio = resolved.aspect_ratio !== undefined, hasResolution = resolved.resolution !== undefined;
+    if (hasRatio && hasResolution) {
+      if (!imageProfiles.profiles.some(p => p.aspect_ratio === resolved.aspect_ratio && p.resolution === resolved.resolution)) {
+        if (parameters.aspect_ratio !== undefined || parameters.resolution !== undefined) {
+          throw new Error(`Resolution ${String(resolved.resolution)} is not available for aspect ratio ${String(resolved.aspect_ratio)}.`);
+        }
+        delete resolved.aspect_ratio;
+        delete resolved.resolution;
+      }
+    } else if (hasRatio) {
+      const matching = imageProfiles.profiles.filter(p => p.aspect_ratio === resolved.aspect_ratio);
+      const preferred = matching.find(p => p.resolution === imageProfiles.default?.resolution) ?? matching[0];
+      if (preferred) resolved.resolution = preferred.resolution;
+    } else if (hasResolution) {
+      const matching = imageProfiles.profiles.filter(p => p.resolution === resolved.resolution);
+      const preferred = matching.find(p => p.aspect_ratio === imageProfiles.default?.aspect_ratio) ?? matching[0];
+      if (preferred) resolved.aspect_ratio = preferred.aspect_ratio;
+    }
+  }
   return resolved;
 }
 
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
  * An unknown catalogue model deliberately gets no guessed schema. */
-export function generationOptions(model: Model): GenerationOptions | undefined {
+export function generationOptions(model: Model, hasInputImage = false): GenerationOptions | undefined {
   const endpoint = `${model.provider}:${model.modelId}`;
   if (endpoint === 'codex:image-generation' && model.modality === 'image') return { delivery: 'prompt', fields: [
     choice('aspect_ratio', 'Aspect ratio', ['1:1', '4:3', '3:4', '16:9', '9:16'], undefined, 'ratio'),
@@ -89,6 +186,34 @@ export function generationOptions(model: Model): GenerationOptions | undefined {
     choice('voice', 'Speech voice', ['af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa'], 'af_heart'),
     number('speed', 'Speech speed', 1, undefined, undefined, 0.1),
   ];
+  // Cloud and account image models publish output profile pairs (`profiles`), legacy `sizes`, and optional `quality`.
+  if (isOpenDesignMedia(model) && model.modality === 'image') {
+    const imageFields: GenerationOption[] = [];
+    const profiles = publishedImageProfiles(model, hasInputImage);
+    if (profiles) {
+      const ratios = [...new Set(profiles.profiles.map(p => p.aspect_ratio))];
+      const resolutions = [...new Set(profiles.profiles.map(p => p.resolution))];
+      if (ratios.length) imageFields.push(choice('aspect_ratio', 'Aspect ratio', ratios, profiles.default?.aspect_ratio, 'ratio'));
+      if (resolutions.length) imageFields.push(choice('resolution', 'Resolution', resolutions, profiles.default?.resolution));
+    } else {
+      const sizes = publishedStrings(model.nativeOptions?.sizes);
+      if (sizes) imageFields.push(choice('size', 'Image size', sizes.values, sizes.default));
+    }
+    const quality = publishedStrings(model.nativeOptions?.quality);
+    if (quality) imageFields.push(choice('quality', 'Quality', quality.values, quality.default));
+    if (imageFields.length) fields = imageFields;
+  }
+  // Cloud and account video models publish allowed ratios, resolutions and integer durations via `capabilities`.
+  if (isOpenDesignMedia(model) && model.modality === 'video') {
+    const videoFields: GenerationOption[] = [];
+    const ratios = publishedStrings(model.nativeOptions?.ratios);
+    if (ratios) videoFields.push(choice('ratio', 'Aspect ratio', ratios.values, ratios.default, 'ratio'));
+    const resolutions = publishedStrings(model.nativeOptions?.resolutions);
+    if (resolutions) videoFields.push(choice('resolution', 'Resolution', resolutions.values, resolutions.default));
+    const durations = publishedDurations(model.nativeOptions?.durations);
+    if (durations) videoFields.push(choice('duration', 'Duration (seconds)', durations.values, durations.default));
+    if (videoFields.length) fields = videoFields;
+  }
   // Speech models without checked voices keep a free voice ID: the API publishes no voice list.
   if (cloudSpeech(model)) { const voices = checkedVoices(model); fields = [voices ? { key: 'voice', label: 'Speech voice', kind: 'choice', choices: voices, default: voices[0].value, allowCustom: true } : text('voice', 'Voice ID', true)]; }
   // The connector's `audio music --duration` takes whole seconds; music models publish no duration range.
@@ -97,8 +222,9 @@ export function generationOptions(model: Model): GenerationOptions | undefined {
 }
 
 /** Validate maintained fields; preserve the advanced provider-native escape hatch. */
-export function validateGenerationOptions(model: Model, parameters: Record<string, unknown>) {
-  for (const field of generationOptions(model)?.fields ?? []) {
+export function validateGenerationOptions(model: Model, parameters: Record<string, unknown>, hasInputImage = false) {
+  const isEdit = hasInputImage || (Array.isArray(parameters.images) && parameters.images.length > 0);
+  for (const field of generationOptions(model, isEdit)?.fields ?? []) {
     const value = parameters[field.key];
     if (value === undefined) { if (field.required) throw new Error(`${field.label} is required`); continue; }
     // fal also accepts custom dimensions; the quick picker is only a subset.
@@ -115,6 +241,12 @@ export function validateGenerationOptions(model: Model, parameters: Record<strin
     const requires = field.choices?.find(c => c.value === value)?.requires;
     if (requires) for (const [key, required] of Object.entries(requires)) {
       if (parameters[key] !== required) throw new Error(`${field.label} ${value} requires ${key} ${required}`);
+    }
+  }
+  const imageProfiles = publishedImageProfiles(model, isEdit);
+  if (imageProfiles && typeof parameters.aspect_ratio === 'string' && typeof parameters.resolution === 'string') {
+    if (!imageProfiles.profiles.some(p => p.aspect_ratio === parameters.aspect_ratio && p.resolution === parameters.resolution)) {
+      throw new Error(`Resolution ${parameters.resolution} is not available for aspect ratio ${parameters.aspect_ratio}.`);
     }
   }
 }

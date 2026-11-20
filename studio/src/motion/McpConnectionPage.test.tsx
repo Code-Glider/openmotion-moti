@@ -140,12 +140,21 @@ it('switches client-specific setup, copies exact template instructions and perfo
   expect(document.querySelector('.om-mcp-content [role=status]')).toBeNull();
   await act(async () => button('View all templates').click()); expect(openLibrary).toHaveBeenCalledOnce();
   await act(async () => button('Manage providers').click()); expect(openProviders).toHaveBeenCalledOnce();
-  await act(async () => tab('ChatGPT').click());
+  expect(tab('ChatGPT')).toBeUndefined();
+  expect(document.querySelectorAll('.om-mcp-client-row [role=tab]')).toHaveLength(6);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  for (const [, init] of fetcher.mock.calls as unknown as [string, RequestInit][]) expect(init?.method ?? 'GET').toBe('GET');
+});
+
+it('explains unavailable remote connections for existing ChatGPT links', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [template] } : info)));
+  const previousUrl = location.href;
+  history.replaceState(null, '', '?page=mcp&host=chatgpt');
+  try { await mount(); } finally { history.replaceState(null, '', previousUrl); }
   expect(document.body.textContent).toContain('Remote connection unavailable');
   expect(button('Copy template prompt').disabled).toBe(true);
   expect(document.querySelector('a[download]')).toBeNull();
-  expect(fetcher).toHaveBeenCalledTimes(2);
-  for (const [, init] of fetcher.mock.calls as unknown as [string, RequestInit][]) expect(init?.method ?? 'GET').toBe('GET');
+
 });
 
 it('contains unavailable setup and catalogue independently, retries and reserves failed poster geometry', async () => {

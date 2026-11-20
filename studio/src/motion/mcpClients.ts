@@ -11,3 +11,7 @@ export const mcpClients = [
 ] as const satisfies readonly { id: string; name: string; brand: string; host: IntegrationHost }[];
 
 export type McpClient = typeof mcpClients[number]['id'];
+
+export function supportsLocalConnection(client: typeof mcpClients[number]) {
+  return client.host !== 'chatgpt';
+}

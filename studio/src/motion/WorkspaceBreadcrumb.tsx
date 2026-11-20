@@ -14,6 +14,7 @@ function sourceLabel(href: string): string {
   if (page.settings === 'brand-kit') return 'Brand Kit';
   if (page.settings) return settingsSectionLabel(page.settings);
   if (page.studio) return page.studio.scene.label;
+  if (page.designScene) return 'Design Studio';
   if (page.modelOverview || page.modelHub) return 'Model details';
   if (page.specialty) return page.specialty.title;
   if (page.motion) return 'Motion Studio';

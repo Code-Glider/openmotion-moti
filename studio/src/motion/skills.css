@@ -6,6 +6,8 @@
 .om-skills-main { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; container-type: inline-size; }
 .om-skills-library .om-skills-grid { columns: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--motion-space-16); align-items: stretch; }
 .om-skills-library .om-skills-grid > * { margin-bottom: 0; }
+[data-motion-studio] .om-skills-library .om-studio-skills-heading { display: flex; flex-direction: column; gap: var(--motion-space-8); margin-bottom: var(--motion-space-12); }
+[data-motion-studio] .om-skills-library .om-studio-skills-heading :is(h2, p) { margin: 0; }
 @container (max-width: 1059px) { .om-skills-library .om-skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 679px) { .om-skills-library .om-skills-grid { grid-template-columns: minmax(0, 1fr); } }
 .om-gallery-toolbar.om-skills-toolbar { padding: var(--motion-space-12) 0; column-gap: var(--motion-space-24); }
@@ -154,7 +156,7 @@ a.om-skill-source { color: var(--motion-strong); }
 @container (max-width: 600px) { .om-specialty-intro { margin-block-start: var(--motion-space-16); } }
 .om-specialty-intro > div { display: grid; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; justify-items: start; gap: var(--motion-space-16); padding: var(--motion-space-24); }
 .om-specialty-actions { display: flex; flex-wrap: wrap; gap: var(--motion-space-8); }
-.om-specialty-intro h1 { font-size: var(--motion-text-display); }
+.om-specialty-intro h1 { display: flex; align-items: center; gap: var(--motion-space-8); font-size: var(--motion-text-display); }
 .om-specialty-feature { position: relative; align-self: stretch; min-width: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .om-specialty-feature .om-button { position: absolute; inset-inline-start: var(--motion-space-12); bottom: var(--motion-space-12); max-width: calc(100% - var(--motion-space-24)); }
 .om-specialty-intro img { display: block; width: 100%; height: 100%; object-fit: cover; aspect-ratio: 2; }

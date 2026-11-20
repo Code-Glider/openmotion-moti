@@ -1,3 +1,4 @@
+import { McpClientAvatar } from './McpClientAvatar';
 import { Button } from 'open-design-ui/button';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import type { WorkspaceChrome } from './WorkspaceChromeContext';
@@ -22,7 +23,7 @@ import { useCommunityLink } from './CommunityLink';
 import { findTechniqueStudio } from '../../../shared/studio-catalog';
 import { studioSkillDefaults, skillShotPrompt, localizedSkillPrompt, motionSkills } from './skillCatalog';
 import { mcpCapabilities, mcpScenarios, searchRecoveryExample, platformExportExample, mcpBenefits, mcpReviewGuide, mcpFaq, mcpWorkflowComparison, mcpClientComparison } from './mcpCapabilities';
-import { mcpClients as clients } from './mcpClients';
+import { mcpClients as clients, supportsLocalConnection } from './mcpClients';
 import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import * as tracking from './pageTracking';
 import './McpConnectionPage.css';
@@ -62,7 +63,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
     } else if (!inSettings) heading.current?.focus({ preventScroll: true });
   }, [example, inSettings]);
   const scrollTo = (id: string) => { click('mcp_footer', 'scroll_to_section', { section_id: id }); page.current?.querySelector<HTMLElement>(`#${id}`)?.scrollIntoView({ block: 'start' }); };
-  const supported = client.host !== 'chatgpt';
+  const supported = supportsLocalConnection(client);
   const language = locale === 'zh-CN' ? 'zh-CN' : 'en';
   const prompt = setupPrompt(info, client.host, language).replace('MCP / CLI', client.name);
   const manual = info ? manualConnection(info, client.host, language) : '';
@@ -96,20 +97,28 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
     catch { setManualScenario({ id: item.id, text: instruction }); toast.showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'failed', clientKey, { capability: item.id, includesSetup: item.id !== 'platform-export' && item.id !== 'review-comments' }); }
   };
   const Container = inSettings ? 'section' : 'main';
-  return <Container ref={page} className="om-mcp-page" data-in-settings={inSettings || undefined} aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
+  return <Tabs value={client.id} onValueChange={value => {
+    const selected = clients.find(item => item.id === value);
+    if (!selected) return;
+    setClientId(selected.id);
+    click('mcp_client', 'client_tab', { mcp_client: selected.id });
+  }} render={<Container ref={page} className="om-mcp-page" data-in-settings={inSettings || undefined} aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()} />}>
+    <div className="om-page-back-row om-mcp-client-row">
+      <TabsList className="om-mcp-client-tabs" aria-label={t('Agent client')}>
+        {clients.filter(supportsLocalConnection).map(item => <Tab value={item.id} key={item.id}><McpClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}
+      </TabsList>
+    </div>
     <div className="om-mcp-content">
       {breadcrumb}
       <section className="om-mcp-hero om-mcp-section">
         <div className="om-mcp-art" aria-hidden="true">
           <div className="om-mcp-art-tile om-mcp-art-left"><ProviderAvatar name="ChatGPT" provider={{ id: 'openai', custom: false }} /></div>
           <div className="om-mcp-art-tile om-mcp-art-center"><img src={designSystemAsset(brand.loadingMark)} alt="" /></div>
-          <div className="om-mcp-art-tile om-mcp-art-right"><ClientAvatar client={client} /></div>
+          <div className="om-mcp-art-tile om-mcp-art-right"><McpClientAvatar client={client} /></div>
         </div>
         <p className="om-mcp-eyebrow">OPENMOTION × MCP</p>
         <h1 id="mcp-title" ref={heading} tabIndex={-1}>{t('Create in {agent}', { agent: t(client.name) })}<br /><span>{t('Make it move with OpenMotion.')}</span></h1>
         <p className="om-mcp-lead">{t('Create through MCP in your Agent. Keep projects, assets and versions in OpenMotion, ready to edit and reuse.')}</p>
-        <Tabs value={client.id} onValueChange={value => { setClientId(String(value)); click('mcp_client', 'client_tab', { mcp_client: (clients.find(item => item.id === String(value))?.id ?? 'codex') as tracking.McpClient }); }}>
-          <TabsList className="om-mcp-client-tabs" aria-label={t('Agent client')}>{clients.map(item => <Tab value={item.id} key={item.id}><ClientAvatar client={item} /><span>{t(item.name)}</span></Tab>)}</TabsList>
           {clients.map(item => <TabPanel value={item.id} key={item.id}>
             <div className="om-mcp-setup-tray">
               {!supported ? <div className="om-card om-mcp-unavailable"><RemixIcon name="information-line" size={28} /><h2>{t('Remote connection unavailable')}</h2><p>{t('ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.')}</p><pre className="om-code-block">{manual}</pre><Button variant="ghost" className="om-button h-auto" onClick={() => { click('mcp_setup', 'use_local_agent'); setClientId('codex'); }}>{t('Use a local Agent')}</Button></div> : <div className="om-mcp-setup-grid">
@@ -127,7 +136,6 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
               </div>}
             </div>
           </TabPanel>)}
-        </Tabs>
       </section>
 
       <McpTemplateShowcase scroller={page} enabled={previewsEnabled} canCopy={Boolean(info && supported)} openLibrary={openLibrary('mcp_templates')} onCategory={value => click('mcp_templates', 'category_select', { option: value })} onCopy={template => { if (info) void copy(`${prompt}\n\n${templatePrompt(info, client.host, template, locale)}`, { kind: 'template', template: template.id, includesSetup: true }); }} />
@@ -155,16 +163,10 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
       </footer>
 
     </div><StudioToastViewport {...toast} />
-  </Container>;
+  </Tabs>;
 }
 
 function ComparisonTable({ label, columns, rows, featured = false }: { label: string; columns: readonly string[]; rows: readonly (readonly string[])[]; featured?: boolean }) {
   const { t } = useI18n();
   return <div className="om-mcp-table-wrap" tabIndex={0} role="region" aria-label={t(label)}><table className="om-mcp-table" data-featured={featured}><thead><tr>{columns.map(column => <th key={column} scope="col">{t(column)}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row[0]}>{row.map((cell, i) => i === 0 ? <th scope="row" key={i}>{t(cell)}</th> : <td key={i}>{featured && i === 1 && <RemixIcon name="check-line" size={16} />}{t(cell)}</td>)}</tr>)}</tbody></table></div>;
-}
-
-function ClientAvatar({ client }: { client: typeof clients[number] }) {
-  return client.id === 'mcp'
-    ? <span className="om-avatar" aria-hidden="true"><RemixIcon name="plug-line" size={24} /></span>
-    : <ProviderAvatar name={client.name} provider={{ id: client.brand, custom: false }} />;
 }

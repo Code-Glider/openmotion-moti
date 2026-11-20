@@ -12,9 +12,12 @@
 .om-mcp-art-right { width: 100px; height: 100px; right: 7%; top: 52px; transform: rotate(15deg); }
 [data-motion-studio] .om-mcp-art .om-avatar { width: 68px; height: 68px; }
 .om-mcp-art-center img { width: 80px; height: 80px; }
-.om-mcp-client-tabs { display: flex; justify-content: center; flex-wrap: wrap; margin: var(--motion-space-24) 0; }
-.om-mcp-client-tabs [role=tab] { gap: var(--motion-space-8); }
+.om-mcp-client-row { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, max-content) minmax(80px, 1fr); align-items: center; gap: var(--motion-space-8); }
+.om-mcp-client-tabs { grid-column: 2; grid-row: 1; display: flex; min-width: 0; overflow-x: auto; }
+.om-mcp-setup-tray { margin-top: var(--motion-space-24); }
+.om-mcp-client-tabs [role=tab] { flex: none; gap: var(--motion-space-8); }
 [data-motion-studio] .om-mcp-client-tabs .om-avatar { width: 24px; height: 24px; }
+.om-mcp-client-tabs .om-avatar > svg { width: var(--motion-space-16); height: var(--motion-space-16); }
 .om-mcp-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-16); }
 .om-mcp-setup-grid, .om-mcp-policy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--motion-space-16); }
 .om-mcp-step { min-width: 0; text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: var(--motion-space-20); }
@@ -68,6 +71,7 @@
 .om-mcp-table td > svg { display: inline; margin-right: var(--motion-space-6); vertical-align: middle; }
 
 @container (max-width: 800px) {
+  .om-mcp-client-row { grid-template-columns: auto minmax(0, 1fr); }
   .om-mcp-content { padding-inline: var(--motion-space-20); }
   .om-mcp-setup-grid, .om-mcp-faq, .om-mcp-footer { grid-template-columns: minmax(0, 1fr); }
   .om-mcp-template-grid { columns: 2; }
@@ -80,8 +84,6 @@
   .om-mcp-footer-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .om-mcp-benefit-grid, .om-mcp-capability-grid, .om-mcp-policy-grid, .om-mcp-tool-list { grid-template-columns: 1fr; }
   .om-mcp-benefit-grid .om-mcp-feature[data-featured=true] { grid-column: auto; }
-  .om-mcp-client-tabs { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; }
-  .om-mcp-client-tabs [role=tab] { flex: none; }
   [data-motion-studio] .om-mcp-step { padding: var(--motion-space-16); }
   [data-motion-studio] .om-mcp-footer { padding: var(--motion-space-24); }
   .om-mcp-starters { grid-template-columns: 1fr; }

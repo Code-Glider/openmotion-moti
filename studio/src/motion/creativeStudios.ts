@@ -1,11 +1,13 @@
 import { modelReferenceLimit, type Model, type Modality } from '../../../shared/gateway';
-import { creativeStudios, studioScenes, type MediaStudio, type TechniqueStudio, type StudioScene } from '../../../shared/studio-catalog';
+import { creativeStudios, studioScenes, type CreativeStudio, type MediaStudio, type TechniqueStudio, type StudioScene } from '../../../shared/studio-catalog';
 
 export { creativeStudios, studioScenes, type StudioScene };
 export const motionStudio = creativeStudios.find(studio => studio.surface === 'editor')!;
 type GeneratingStudio = MediaStudio | TechniqueStudio;
 export type StudioDestination = { studio: GeneratingStudio; scene: StudioScene; model: string | null; landing?: true };
 export const mediaLabels: Record<Modality, string> = { image: 'Image', video: 'Video', audio: 'Audio' };
+
+export const studioComingSoon = (studio: CreativeStudio | undefined) => Boolean(studio && 'navBadge' in studio && studio.navBadge === 'Coming soon');
 
 export function studioDraftKey({ studio, scene }: StudioDestination, skill?: string | null) {
   return [studio.id, scene.id, ...(studio.surface === 'techniques' && skill ? [skill] : [])].join('/');
@@ -18,6 +20,10 @@ export function scenesForStudio(studio: GeneratingStudio) {
 export function studioDestination(studio: GeneratingStudio, sceneId?: string | null, model: string | null = null): StudioDestination {
   const scenes = scenesForStudio(studio);
   return { studio, scene: scenes.find(scene => scene.id === sceneId) ?? scenes[0], model };
+}
+
+export function studioIconTone(studio: CreativeStudio): Modality {
+  return studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality;
 }
 
 export function sceneDestination(scene: StudioScene, current?: StudioDestination | null, model: string | null = null): StudioDestination {

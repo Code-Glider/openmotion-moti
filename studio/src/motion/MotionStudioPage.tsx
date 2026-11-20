@@ -1,3 +1,4 @@
+import { WorkspaceBack } from './WorkspaceBack';
 import { Button } from 'open-design-ui/button';
 import { useRef } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -7,13 +8,16 @@ import { reportCreativeClick } from './exploreTracking';
 import { BackToExploreButton } from './BackToExploreButton';
 import motionPoster from './skill-covers/bubble-field.webp?url';
 
-export function MotionStudioPage({ active, onExplore, onOpenEditor }: {
-  active: boolean; onExplore: () => void; onOpenEditor: () => void;
+export function MotionStudioPage({ active, fromExplore, onExplore, onOpenEditor }: {
+  active: boolean; fromExplore: boolean; onExplore: () => void; onOpenEditor: () => void;
 }) {
   const { t, locale } = useI18n();
   const root = useRef<HTMLElement>(null);
-  return <main ref={root} className="om-explore" aria-label={t('Motion Studio')}><div className="om-discovery-page">
-    <div><BackToExploreButton onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', { studio: 'motion' }); onExplore(); }} /></div>
+  const trackBack = () => reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', { studio: 'motion' });
+  return <main ref={root} className="om-explore" aria-label={t('Motion Studio')}>
+    {!fromExplore && <WorkspaceBack onBack={trackBack} fallback={onExplore} />}
+    <div className="om-discovery-page">
+    {fromExplore && <div><BackToExploreButton onClick={() => { trackBack(); onExplore(); }} /></div>}
     <section className="om-discovery-hero"><img src={motionPoster} alt="" />
       <div className="om-discovery-hero-copy"><h1>{t('Motion Studio')}</h1><p>{t('Start with an editable motion template or open your timeline.')}</p>
         <Button variant="ghost" className="om-button h-auto" data-primary onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_editor', { studio: 'motion' }); onOpenEditor(); }}>{t('Open editor')}<RemixIcon name="arrow-right-line" size={16} /></Button>

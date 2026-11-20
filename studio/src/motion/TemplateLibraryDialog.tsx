@@ -792,7 +792,6 @@ export function TemplateLibraryDialog(props: Props) {
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
-            {handoffPreview && !detailOnly && !blackFriday && <Button variant="ghost" className="om-button h-auto" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</Button>}
             <Tooltip withinDialog wrap label={t('Close template preview')}><IconButton variant="plain" className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')} icon={<MotionIcon name="close" size={20} />} /></Tooltip>
             <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${galleryItems.length}` : t('Related templates')}</span>
             <Tooltip withinDialog wrap label={t('Previous template')}><IconButton variant="plain" className={styles.iconButton} disabled={galleryItems.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')} icon={<MotionIcon name="arrow-left" size={18} />} /></Tooltip>

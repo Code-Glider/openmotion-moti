@@ -408,7 +408,7 @@ backend/data directory. Deterministic coverage lives in
 - Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
   one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
   Motion Studio landing and the Design, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
-  `scene_id` and `landing`), the API page (`api`) and a model overview (`model_overview`). Filter and tab
+  `scene_id` and `landing`) and a model overview (`model_overview`). Filter and tab
   changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
   the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
   `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
@@ -579,8 +579,11 @@ for a session; no query parameter is needed for the new flow.
 | Question | Event and trigger | Join and deduplication |
 | --- | --- | --- |
 | Did someone inspect related options? | `surface_view` for `template_related/related` after its first eligible card impression; `template_card/card` for each related card | At least 50% visible for one uninterrupted second in a visible tab; once per source detail and card. Related cards and clicks include `source_template_id`, target `template_id`, source `detail_view_id` and displayed `position`. |
-| Was guidance or help used? | `ui_click`: `view_guide`, `back_to_template`, `view_full_page`, `handoff_help`, `copy_color`, `back_to_project`, `close_detail`; `surface_view` `template_guide/guide` when the same-dialog guide opens | The current template and detail-view UUID; a help opening counts once per opening, not per pointer move. Color clicks never carry a color value. |
+| Was guidance or help used? | `ui_click`: `view_guide`, `back_to_template`, `view_full_page`, `handoff_help`, `copy_color`, `close_detail`; `surface_view` `template_guide/guide` when the same-dialog guide opens | The current template and detail-view UUID; a help opening counts once per opening, not per pointer move. Color clicks never carry a color value. |
 | Did editable handoff resolve and open? | `ui_click/start_use` for `open_edit`, followed by `template_project_result` on observed `create`, `reconcile` or `open` completion | The click and results share the stable `operation_id` for the guarded request; fresh `handoff_attempt_id` per operation attempt; captured initiating detail; confirmed project UUID only. |
+
+Studio no longer emits `back_to_project` after removing the button. The event
+registry still accepts it from older Studio versions.
 
 Create-stage success means the preparation call resolved to an exact project,
 including recovery of the same request; it is not a count of newly created projects.
