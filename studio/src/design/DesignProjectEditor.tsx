@@ -473,45 +473,6 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
         </div>
 
         <div className="om-design-header-group">
-          <div className="om-design-segmented" role="group" aria-label={t('View mode')}>
-            <Button type="button" size="sm" variant={viewMode === 'preview' ? 'secondary' : 'ghost'} icon={<RemixIcon name="eye-line" size={14} />} onClick={() => setViewMode('preview')}>
-              {t('Preview')}
-            </Button>
-            <Button type="button" size="sm" variant={viewMode === 'code' ? 'secondary' : 'ghost'} icon={<RemixIcon name="code-s-slash-line" size={14} />} onClick={() => setViewMode('code')}>
-              {t('Code')}
-            </Button>
-          </div>
-
-          {/* Device selector */}
-          <Popover.Root modal={false} open={deviceOpen} onOpenChange={setDeviceOpen}>
-            <Popover.Trigger render={
-              <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name={currentViewport.icon} size={14} />}>
-                <span>{t(currentViewport.label)}</span>
-                <RemixIcon name="arrow-down-s-line" size={14} />
-              </Button>
-            } />
-            <Popover.Portal>
-              <Popover.Positioner side="bottom" align="center" sideOffset={6} className="z-150">
-                <Popover.Popup className="om-design-popover" style={{ minWidth: 180 }}>
-                  {designViewports.map(vp => (
-                    <Button key={vp.id} type="button" size="sm" variant={viewportId === vp.id ? 'secondary' : 'ghost'}
-                      icon={<RemixIcon name={vp.icon} size={14} />}
-                      onClick={() => { setViewportId(vp.id); setRotated(false); setDeviceOpen(false); }}>
-                      {t(vp.label)}{vp.width ? ` (${vp.width}×${vp.height})` : ''}
-                    </Button>
-                  ))}
-                  {viewportId !== 'desktop' && (
-                    <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="clockwise-line" size={14} />} onClick={() => { setRotated(r => !r); setDeviceOpen(false); }}>
-                      {t('Rotate orientation')}
-                    </Button>
-                  )}
-                </Popover.Popup>
-              </Popover.Positioner>
-            </Popover.Portal>
-          </Popover.Root>
-        </div>
-
-        <div className="om-design-header-group">
           {/* Versions popover */}
           <Popover.Root modal={false} open={versionsOpen} onOpenChange={setVersionsOpen}>
             <Popover.Trigger render={
@@ -632,7 +593,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
         </div>
       </header>
 
-      {/* Secondary tool bar: sidebar toggle, annotation tools, zoom, deck controls */}
+      {/* Secondary tool bar: sidebar toggle, reload, Preview/Code, viewport, deck controls, annotation icons, zoom */}
       <div className="om-design-toolbar">
         <div className="om-design-header-group">
           <Tooltip label={t('Toggle panel')}>
@@ -641,6 +602,44 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
           <Tooltip label={t('Reload preview')}>
             <IconButton aria-label={t('Reload preview')} icon={<RemixIcon name="refresh-line" size={15} />} onClick={() => { setReloadNonce(n => n + 1); void refresh(); }} />
           </Tooltip>
+
+          <div className="om-design-segmented" role="group" aria-label={t('View mode')}>
+            <Button type="button" size="sm" variant={viewMode === 'preview' ? 'secondary' : 'ghost'} icon={<RemixIcon name="eye-line" size={14} />} onClick={() => setViewMode('preview')}>
+              {t('Preview')}
+            </Button>
+            <Button type="button" size="sm" variant={viewMode === 'code' ? 'secondary' : 'ghost'} icon={<RemixIcon name="code-s-slash-line" size={14} />} onClick={() => setViewMode('code')}>
+              {t('Code')}
+            </Button>
+          </div>
+
+          {/* Device selector */}
+          <Popover.Root modal={false} open={deviceOpen} onOpenChange={setDeviceOpen}>
+            <Popover.Trigger render={
+              <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name={currentViewport.icon} size={14} />}>
+                <span>{t(currentViewport.label)}</span>
+                <RemixIcon name="arrow-down-s-line" size={14} />
+              </Button>
+            } />
+            <Popover.Portal>
+              <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
+                <Popover.Popup className="om-design-popover" style={{ minWidth: 180 }}>
+                  {designViewports.map(vp => (
+                    <Button key={vp.id} type="button" size="sm" variant={viewportId === vp.id ? 'secondary' : 'ghost'}
+                      icon={<RemixIcon name={vp.icon} size={14} />}
+                      onClick={() => { setViewportId(vp.id); setRotated(false); setDeviceOpen(false); }}>
+                      {t(vp.label)}{vp.width ? ` (${vp.width}×${vp.height})` : ''}
+                    </Button>
+                  ))}
+                  {viewportId !== 'desktop' && (
+                    <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="clockwise-line" size={14} />} onClick={() => { setRotated(r => !r); setDeviceOpen(false); }}>
+                      {t('Rotate orientation')}
+                    </Button>
+                  )}
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
+
           {project.scenario === 'live-artifact' && (
             <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="refresh-line" size={14} />} onClick={() => setReloadNonce(n => n + 1)}>
               {t('Refresh data')}
@@ -667,28 +666,36 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
         <div className="om-design-header-group">
           <div className="om-design-header-group" role="group" aria-label={t('Annotation tools')} style={{ gap: 2 }}>
             <Tooltip label={t('Comment on element')}>
-              <Button type="button" size="sm" variant={activeTool === 'comment' ? 'primary' : 'ghost'} icon={<RemixIcon name="chat-1-line" size={14} />}
-                onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'comment' ? 'none' : 'comment'); }}>
-                {t('Comment')}
-              </Button>
+              <IconButton
+                aria-label={t('Comment')}
+                variant={activeTool === 'comment' ? 'primary' : 'ghost'}
+                icon={<RemixIcon name="chat-1-line" size={15} />}
+                onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'comment' ? 'none' : 'comment'); }}
+              />
             </Tooltip>
             <Tooltip label={t('Mark region')}>
-              <Button type="button" size="sm" variant={activeTool === 'region' ? 'primary' : 'ghost'} icon={<RemixIcon name="shape-2-line" size={14} />}
-                onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'region' ? 'none' : 'region'); }}>
-                {t('Region')}
-              </Button>
+              <IconButton
+                aria-label={t('Region')}
+                variant={activeTool === 'region' ? 'primary' : 'ghost'}
+                icon={<RemixIcon name="shape-2-line" size={15} />}
+                onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'region' ? 'none' : 'region'); }}
+              />
             </Tooltip>
             <Tooltip label={t('Draw pen annotation')}>
-              <Button type="button" size="sm" variant={activeTool === 'pen' ? 'primary' : 'ghost'} icon={<RemixIcon name="pen-nib-line" size={14} />}
-                onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'pen' ? 'none' : 'pen'); }}>
-                {t('Draw')}
-              </Button>
+              <IconButton
+                aria-label={t('Draw')}
+                variant={activeTool === 'pen' ? 'primary' : 'ghost'}
+                icon={<RemixIcon name="pen-nib-line" size={15} />}
+                onClick={() => { setViewMode('preview'); setActiveTool(t0 => t0 === 'pen' ? 'none' : 'pen'); }}
+              />
             </Tooltip>
           </div>
 
-          <Button type="button" size="sm" variant="ghost" onClick={() => { setSidebarOpen(true); setSidebarTab('comments'); }}>
-            {t('Comments')} ({openComments.length})
-          </Button>
+          <Tooltip label={t('Comments')}>
+            <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="message-2-line" size={14} />} onClick={() => { setSidebarOpen(true); setSidebarTab('comments'); }}>
+              {openComments.length}
+            </Button>
+          </Tooltip>
 
           <div className="om-design-header-group" style={{ gap: 2 }}>
             <IconButton aria-label={t('Zoom out')} icon={<RemixIcon name="zoom-out-line" size={14} />}
