@@ -49,9 +49,9 @@ async function openMcp() {
   await click('MCP');
 }
 const traverse = async (delta: number) => { await act(async () => { history.go(delta); await new Promise(resolve => setTimeout(resolve, 0)); }); };
-const settingsBack = () => container.querySelector<HTMLButtonElement>('.om-settings-heading button[aria-label="Back"]');
+const settingsBack = () => container.querySelector<HTMLButtonElement>('.om-settings-heading > button.om-nav-item');
 const leaveSettings = async () => {
-  expect(settingsBack()).not.toBeNull();
+  expect(settingsBack()?.textContent).toBe('Go back');
   await act(async () => { settingsBack()!.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
 };
 const breadcrumb = () => container.querySelector<HTMLAnchorElement>('.om-workspace-breadcrumb a');

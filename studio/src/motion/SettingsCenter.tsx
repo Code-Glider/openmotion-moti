@@ -1,5 +1,4 @@
 import { Button } from 'open-design-ui/button';
-import { IconButton } from 'open-design-ui/icon-button';
 import * as tracking from './pageTracking';
 import type { McpEntry } from './pageTracking';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -7,7 +6,6 @@ import { modelKinds } from '../../../shared/provider-directory';
 import { RemixIcon } from '../icons/RemixIcons';
 import { languages, useI18n, type Locale } from '../i18n/I18n';
 import { Select } from '../components/ui/Select';
-import { Tooltip } from '../components/ui/Tooltip';
 import { AppearanceSettings } from './AppearanceSettings';
 import { ModelSettings, kindLabels } from './ModelSettings';
 import { AccountSettings } from './AccountSettings';
@@ -51,8 +49,9 @@ export function SettingsCenter({ section, onSection: onSectionRaw, onBack, openC
   return <div className="om-settings-center" onKeyDown={event => event.stopPropagation()}>
     <div className="om-settings-navigation-slot"><div className="om-settings-navigation-clip"><aside className="om-settings-navigation">
       <div className="om-settings-heading">
-        {onBack && <Tooltip label={t('Back')}><IconButton variant="ghost" type="button" className="motion-icon-button" aria-label={t('Back')} onClick={onBack} icon={<RemixIcon name="arrow-left-line" size={16} />} /></Tooltip>}
-        <h1 className="om-navigation-title">{t('Settings')}</h1>
+        {onBack
+          ? <Button variant="plain" type="button" className="om-nav-item" onClick={onBack}><RemixIcon name="arrow-left-line" size={16} />{t('Go back')}</Button>
+          : <h1 className="om-navigation-title">{t('Settings')}</h1>}
         <div className="om-settings-mobile-navigation"><Select label={t('Settings')} value={section} onCommit={value => onSection(value as SettingsSection)} options={sections.map(item => ({ value: item.id, label: t(item.label), icon: <RemixIcon name={item.icon} size={16} /> }))} /></div>
       </div>
       <label className="om-field"><RemixIcon name="search-line" size={16} /><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Search settings…')} aria-label={t('Search settings')} /></label>

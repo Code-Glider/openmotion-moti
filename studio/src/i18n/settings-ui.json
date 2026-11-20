@@ -1,5 +1,6 @@
 {
   "zh-CN": {
+    "Go back": "返回",
     "Account": "账户",
     "Account menu": "账户菜单",
     "Subscription & usage": "订阅与用量",
@@ -349,6 +350,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus、Pro、Max 按年付比按月付省 30%。"
   },
   "ja": {
+    "Go back": "戻る",
     "Local Agents": "ローカル Agent",
     "Default Agent & models": "既定の Agent とモデル",
     "Default Agent": "既定の Agent",
@@ -472,6 +474,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus・Pro・Max は年払いで月払いより 30% お得です。"
   },
   "ko": {
+    "Go back": "뒤로",
     "What's new": "새로운 소식",
     "Feedback": "피드백",
     "Not saved": "저장되지 않음",
@@ -490,6 +493,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro, Max는 연간 결제 시 월간 결제보다 30% 저렴합니다."
   },
   "de": {
+    "Go back": "Zurück",
     "What's new": "Neuigkeiten",
     "Feedback": "Feedback",
     "Not saved": "Nicht gespeichert",
@@ -508,6 +512,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro und Max kosten bei jährlicher Zahlung 30 % weniger."
   },
   "fr": {
+    "Go back": "Retour",
     "What's new": "Nouveautés",
     "Feedback": "Commentaires",
     "Not saved": "Non enregistré",
@@ -526,6 +531,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro et Max coûtent 30 % de moins en paiement annuel."
   },
   "ru": {
+    "Go back": "Назад",
     "What's new": "Что нового",
     "Feedback": "Обратная связь",
     "Not saved": "Не сохранено",
@@ -544,6 +550,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro и Max на 30% дешевле при оплате за год."
   },
   "es": {
+    "Go back": "Volver",
     "What's new": "Novedades",
     "Feedback": "Comentarios",
     "Not saved": "Sin guardar",
@@ -562,6 +569,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro y Max cuestan un 30 % menos con pago anual."
   },
   "pt-BR": {
+    "Go back": "Voltar",
     "What's new": "Novidades",
     "Feedback": "Feedback",
     "Not saved": "Não salvo",
@@ -580,6 +588,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro e Max custam 30% menos no pagamento anual."
   },
   "it": {
+    "Go back": "Indietro",
     "What's new": "Novità",
     "Feedback": "Feedback",
     "Not saved": "Non salvato",
@@ -598,6 +607,7 @@
     "Plus, Pro and Max cost 30% less when billed yearly.": "Plus, Pro e Max costano il 30% in meno con il pagamento annuale."
   },
   "tr": {
+    "Go back": "Geri",
     "What's new": "Yenilikler",
     "Feedback": "Geri bildirim",
     "Not saved": "Kaydedilmedi",

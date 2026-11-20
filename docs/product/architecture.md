@@ -48,7 +48,7 @@ Image, video and audio generators, model overviews and the MCP handbook show a b
 
 Selecting MCP in the Settings navigation displays the connection handbook beside the settings directory at `page=settings&section=mcp`. Setup and client options use the same URL parameters as the standalone handbook at `page=mcp`. Connection actions within Settings keep the settings directory visible and offer a breadcrumb back to the originating section.
 
-The back control beside the Settings title returns to the workspace page that opened Settings. Switching sections keeps that return point. A direct Settings link uses Explore as its return destination.
+The Settings sidebar starts with a Go back button that returns to the workspace page that opened Settings. Switching sections keeps that return point. A direct Settings link uses Explore as its return destination.
 
 The Explore home spotlight links to Motion Studio, the Black Friday collection, the Gemini model hub and the Text to image tab in Design Studio, with the featured prompt prefilled. Each destination uses the same Back to Explore control and restores the original Explore entry. In Design Studio, the control sits to the left of the title. Image generators opened elsewhere within the Explore home feed use that control as well.
 
