@@ -384,7 +384,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     {archives.manager}
     <Dialog.Root open={sidebarOpen && narrow && editorActive} onOpenChange={setSidebarOpen}>
     <div ref={applicationRef} className="om-application" data-embedded={presentation.embedded} data-host-chrome={hostChrome} data-has-bf-banner={bfBannerVisible || undefined} data-navigation-collapsed={navigationCollapsed}>
-      {bfBannerVisible && <BlackFridayTopBanner onClose={() => setBfBannerClosed(true)} />}
+      {bfBannerVisible && <BlackFridayTopBanner trackingPage={navTrackingPage} onClose={() => setBfBannerClosed(true)} />}
       <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
         specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}

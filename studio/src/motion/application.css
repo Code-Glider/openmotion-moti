@@ -37,12 +37,12 @@
 .motion-session-heading-actions { display: flex; align-items: center; gap: var(--motion-space-4); }
 .motion-project-navigation-trigger { display: inline-flex; flex-shrink: 0; }
 .motion-project-navigation-trigger[hidden] { display: none; }
-.om-account-trigger .om-avatar { width: 30px; height: 30px; border-radius: 9px; }
+.om-account-trigger .om-avatar { width: 30px; height: 30px; border-radius: var(--motion-radius-step-9); }
 [data-motion-studio] .om-app-header .motion-github-link {
   height: 30px;
   min-height: 30px;
   border: 1px solid color-mix(in srgb, var(--motion-black-friday-ink-light) 18%, transparent);
-  border-radius: 9px !important;
+  border-radius: var(--motion-radius-step-9) !important;
   background: transparent;
   color: color-mix(in srgb, var(--motion-black-friday-ink-light) 72%, transparent);
   box-sizing: border-box;
@@ -54,13 +54,13 @@
   border-color: color-mix(in srgb, var(--motion-black-friday-ink-light) 34%, transparent);
   color: var(--motion-black-friday-ink-light);
 }
-[data-motion-studio] .om-app-header .om-nav-item.om-account-trigger { min-height: 30px; border-radius: 9px !important; }
+[data-motion-studio] .om-app-header .om-nav-item.om-account-trigger { min-height: 30px; border-radius: var(--motion-radius-step-9) !important; }
 [data-motion-studio] .om-app-header .om-account-trigger .om-avatar {
   position: relative;
   width: 30px;
   height: 30px;
   border: 1px solid color-mix(in srgb, var(--motion-black-friday-ink-light) 18%, transparent);
-  border-radius: 9px !important;
+  border-radius: var(--motion-radius-step-9) !important;
   background: transparent;
   color: color-mix(in srgb, var(--motion-black-friday-ink-light) 72%, transparent);
   box-sizing: border-box;

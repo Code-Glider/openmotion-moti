@@ -1,13 +1,26 @@
-import { useId } from 'react';
+import { useId, useState, type MouseEvent } from 'react';
 import { useI18n } from '../i18n/I18n';
+import { BLACK_FRIDAY_CAMPAIGN, campaignPricingUrl, newCampaignEntryId } from './campaignAttribution';
+import type { CreativePage } from './exploreTracking';
+import { trackMotion } from './tracking';
 import styles from './PricingEntry.module.css';
 
-export function PricingEntry() {
+export function PricingEntry({ trackingPage }: { trackingPage: CreativePage }) {
   const { locale } = useI18n();
   const gradientId = useId();
   const zh = locale.startsWith('zh');
-  const href = zh ? 'https://open-design.ai/zh/pricing/' : 'https://open-design.ai/pricing/';
+  // Each click is its own Pricing entry: its id is on the link and on the click event, then replaced.
+  const [entryId, setEntryId] = useState(newCampaignEntryId);
+  const href = campaignPricingUrl(locale, 'openmotion_header_pricing', entryId);
   const aria = zh ? 'Pricing · 黑五特惠年付低至 5 折' : 'Pricing · Black Friday up to 50% off';
+
+  function open(event: MouseEvent<HTMLAnchorElement>) {
+    void trackMotion('ui_click', { page_name: trackingPage, area: 'header', element: 'open_pricing', campaign_id: BLACK_FRIDAY_CAMPAIGN, entry_id: entryId,
+      interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
+    // Stamp the click time on the address the browser is about to open, then replace the id for the next click.
+    event.currentTarget.href = campaignPricingUrl(locale, 'openmotion_header_pricing', entryId);
+    window.setTimeout(() => setEntryId(newCampaignEntryId()), 0);
+  }
 
   return (
     <a
@@ -16,12 +29,14 @@ export function PricingEntry() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={aria}
+      onClick={open}
+      onAuxClick={event => { if (event.button === 1) open(event); }}
     >
       <svg className={styles.icon} viewBox="0 0 24 24" aria-hidden="true">
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ff781f" />
-            <stop offset="100%" stopColor="#ffb34a" />
+            <stop offset="0%" style={{ stopColor: 'var(--motion-black-friday-flame)' }} />
+            <stop offset="100%" style={{ stopColor: 'var(--motion-black-friday-amber)' }} />
           </linearGradient>
         </defs>
         <path

@@ -57,7 +57,7 @@ export function ApplicationHeader({ settings, atExploreHome, onSkill, openAsset,
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
-      <PricingEntry />
+      <PricingEntry trackingPage={navigation.trackingPage} />
       <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
   </header>;

@@ -1,8 +1,11 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Button } from 'open-design-ui/button';
 import { useI18n } from '../i18n/I18n';
 import flameArtUrl from './bf-dusk-flame.jpg';
 import styles from './BlackFridayTopBanner.module.css';
+import { BLACK_FRIDAY_CAMPAIGN, campaignPricingUrl, newCampaignEntryId } from './campaignAttribution';
+import type { CreativePage } from './exploreTracking';
+import { trackMotion } from './tracking';
 
 const CAMPAIGN_END_AT = Date.parse('2026-12-05T00:00:00+08:00');
 const COUNTDOWN_CYCLE_SECONDS = 259200; // 72h rolling cycle
@@ -23,17 +26,41 @@ function readCountdown(now = Date.now()) {
   };
 }
 
-export function BlackFridayTopBanner({ onClose }: { onClose: () => void }) {
+// One impression per page load: the banner remounts when the workspace frame does, which is not a new view.
+let impressionReported = false;
+/** Test hook: start a fresh page load. */
+export function resetBlackFridayImpression() { impressionReported = false; }
+
+export function BlackFridayTopBanner({ onClose, trackingPage }: { onClose: () => void; trackingPage: CreativePage }) {
   const { locale } = useI18n();
   const zh = locale.startsWith('zh');
   const [time, setTime] = useState(() => readCountdown());
+
+  // The link's entry id is reported with the click and replaced afterwards, so each click is its own Pricing entry.
+  const [entryId, setEntryId] = useState(newCampaignEntryId);
+  useEffect(() => {
+    if (impressionReported) return;
+    impressionReported = true;
+    void trackMotion('surface_view', { page_name: trackingPage, area: 'campaign_banner', element: 'banner', campaign_id: BLACK_FRIDAY_CAMPAIGN });
+  }, [trackingPage]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTime(readCountdown()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const pricingHref = zh ? 'https://open-design.ai/zh/pricing/' : 'https://open-design.ai/pricing/';
+  const pricingHref = campaignPricingUrl(locale, 'openmotion_bf_banner', entryId);
+  const method = (event: MouseEvent) => event.detail === 0 ? 'keyboard' as const : 'pointer' as const;
+  function claimOffer(event: MouseEvent<HTMLAnchorElement>) {
+    void trackMotion('ui_click', { page_name: trackingPage, area: 'campaign_banner', element: 'claim_offer', campaign_id: BLACK_FRIDAY_CAMPAIGN, entry_id: entryId, interaction_method: method(event) });
+    // Stamp the click time on the address the browser is about to open, then replace the id for the next click.
+    event.currentTarget.href = campaignPricingUrl(locale, 'openmotion_bf_banner', entryId);
+    window.setTimeout(() => setEntryId(newCampaignEntryId()), 0);
+  }
+  function close(event: MouseEvent) {
+    void trackMotion('ui_click', { page_name: trackingPage, area: 'campaign_banner', element: 'close_banner', campaign_id: BLACK_FRIDAY_CAMPAIGN, interaction_method: method(event) });
+    onClose();
+  }
   const bannerStyle = {
     '--bf-flame-art': `url("${flameArtUrl}")`,
   } as CSSProperties;
@@ -84,12 +111,12 @@ export function BlackFridayTopBanner({ onClose }: { onClose: () => void }) {
           <b>{copy.offerHighlight}</b>
           {copy.offerAfter}
         </p>
-        <a className={styles.cta} href={pricingHref} target="_blank" rel="noopener noreferrer">
+        <a className={styles.cta} href={pricingHref} target="_blank" rel="noopener noreferrer" onClick={claimOffer} onAuxClick={event => { if (event.button === 1) claimOffer(event); }}>
           {copy.bfCta}
         </a>
       </div>
 
-      <Button variant="plain" className={styles.close} type="button" aria-label={copy.closeLabel} onClick={onClose}>
+      <Button variant="plain" className={styles.close} type="button" aria-label={copy.closeLabel} onClick={close}>
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
