@@ -51,7 +51,10 @@ const discoveryStudios = [motionStudio, ...creativeStudios.filter(studio => stud
 const mediaCollectionNames = { image: 'Image design', video: 'Cinematic shots', audio: 'Music and voiceover' } as const;
 const templatePreviewLimit = 8;
 const skillFilters = [['all', 'All'], ...skillCategories.map(category => [category, category] as const)] as const;
-const featuredSkills = skillCategories.flatMap(category => motionSkills.filter(skill => skill.category === category && skill.cover?.poster).slice(0, 1));
+/** Round-robin covered Skills across categories so the four-column preview fills two complete rows. */
+const coveredByCategory = skillCategories.map(category => motionSkills.filter(skill => skill.category === category && skill.cover?.poster));
+const featuredSkills = Array.from({ length: Math.max(...coveredByCategory.map(list => list.length)) }, (_, round) =>
+  coveredByCategory.flatMap(list => list[round] ?? [])).flat().slice(0, templatePreviewLimit);
 
 type ExploreProps = {
   initialTemplateCollection?: TemplateCollection | null;
@@ -66,7 +69,6 @@ type ExploreProps = {
   onMcp: (client?: 'claude', example?: string) => void;
   active: boolean;
   filters: ExploreFilters;
-  onFilter: (patch: Partial<ExploreFilters>) => void;
 };
 
 function FeedCard({ title, label, description, poster, posterPosition, credit, icon, onClick, sceneId, children, playbackId, onPriority }: {
@@ -162,7 +164,7 @@ function StudioCollection({ studio, medium, onChooseStudio, onSkill, onNavigate,
     if (medium && medium !== 'video') return null;
     title = community?.label ?? studio.title;
     const techniques = studio.surface === 'techniques' ? studio.techniques : community?.source === 'templates' ? community.skills : [];
-    cards = techniques.slice(0, 5).flatMap(id => {
+    cards = techniques.slice(0, templatePreviewLimit).flatMap(id => {
       const skill = motionSkills.find(item => item.id === id);
       return skill ? [<SkillFeedCard key={id} section={studio.id} skill={skill} label={skill.name} icon={studio.icon} onSkill={onSkill} {...playback} />] : [];
     });
@@ -181,8 +183,9 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
   const [skillCategory, setSkillCategory] = useState<SkillCategory | null>(null);
   const [modelsFor, setModelsFor] = useState<StudioScene['modality'] | null>(null);
   const gateway = useMediaCatalog(active && modelsFor !== null);
-  return <section className="om-capability-index" aria-labelledby="om-capability-title">
+  return <footer className="om-capability-index" aria-labelledby="om-capability-title"><div className="om-capability-inner">
     <h2 id="om-capability-title">{t('Capability index')}</h2>
+    <div className="om-capability-body">
     <div className="om-capability-columns">
       {(['image', 'video', 'audio'] as const).map(kind => <div key={kind}><h3>{t(mediaLabels[kind])}</h3>
         {studioScenes.filter(scene => scene.modality === kind).map(scene => <Button variant="plain" className="om-nav-item" key={scene.id} onClick={() => {
@@ -223,7 +226,8 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
           <span><strong>{t(skill.title)}</strong><small className="om-muted">{t(skill.tagline)}</small></span>
         </Button>)}</div>}
     </div>
-  </section>;
+    </div>
+  </div></footer>;
 }
 
 function ExploreCollection({ community, root, ...props }: ExploreProps & { community?: ExploreCommunity; root: RefObject<HTMLElement | null> }) {
@@ -233,7 +237,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
   const [priority, setPriority] = useState<string | null>(null);
   const [templateFilter, setTemplateFilter] = useState<ExploreTemplateFilter>(props.initialTemplateCollection ?? 'all');
   const [skillFilter, setSkillFilter] = useState<SkillCategory | 'all'>('all');
-  const shelfSkills = (skillFilter === 'all' ? featuredSkills : motionSkills.filter(skill => skill.category === skillFilter)).slice(0, 8);
+  const shelfSkills = (skillFilter === 'all' ? featuredSkills : motionSkills.filter(skill => skill.category === skillFilter)).slice(0, templatePreviewLimit);
   const specialty = community?.source === 'techniques' ? findTechniqueStudio(community.studio) : undefined;
   const skillIds = specialty?.techniques ?? (community?.source === 'templates' ? community.skills : undefined);
   const skills = skillIds ? skillIds.flatMap(id => motionSkills.filter(skill => skill.id === id)) : editingPresets;
@@ -261,7 +265,7 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
     return <SceneFeedCard key={scene.id} section="feed" target={sceneDestination(scene)} example={sceneExamples[scene.id][0]}
       onNavigate={onNavigate} playing={playing} onPriority={setPriority} community={community?.id} />;
   });
-  const skillCards = showMotion ? (community ? skills : skills.slice(0, 2)).map(skill => <SkillFeedCard key={skill.id} section="feed" skill={skill} icon={specialty?.icon ?? 'puzzle-line'}
+  const skillCards = showMotion ? (community ? skills : skills.slice(0, 3)).map(skill => <SkillFeedCard key={skill.id} section="feed" skill={skill} icon={specialty?.icon ?? 'puzzle-line'}
     label={t(specialty?.title ?? 'Skills')} onSkill={onSkill} playing={playing} onPriority={setPriority} community={community?.id} />) : [];
   const tryVideoPrompt = (prompt: string) => onNavigate(templateVideoDestination, prompt);
   const templateCard = (item: GalleryTemplate) => <ExploreTemplateCard key={item.id} item={item} active={playing.has('community/' + item.id)} onPriority={setPriority}
@@ -368,29 +372,18 @@ function ExploreCollection({ community, root, ...props }: ExploreProps & { commu
       </ExploreShelf>
     </>}
     {!community && discoveryStudios.filter(studio => !home || studio.id !== 'design').map(studioSection)}
-    <CapabilityIndex {...props} />
   </>;
 }
 
 export function ExploreStudios(props: ExploreProps) {
   const { t, locale } = useI18n();
   const root = useRef<HTMLElement>(null);
-  const { openLibrary, openSkills } = useWorkspaceChrome();
   const community = exploreCommunities.find(item => item.id === props.filters.community);
   return <main ref={root} className="om-explore">
     <div className="om-discovery-page">
-      <header className="om-explore-masthead">
-        <h1 className="om-explore-title">{t(!community && props.filters.medium ? mediaLabels[props.filters.medium] : 'Explore')}</h1>
-        <nav className="om-explore-nav" aria-label={t('Explore')}>
-          <HorizontalRail label="Explore" viewportClassName="om-community-tabs om-choice-tabs">
-            <Button type="button" variant="ghost" className="om-nav-item" aria-pressed={!community} onClick={() => { track('explore_tabs', 'community_tab', { community: 'discover' }); props.onFilter({ community: null, medium: null }); }}>{t('Discover')}</Button>
-            <Button type="button" variant="ghost" className="om-nav-item" onClick={event => { track('explore_tabs', 'template_library'); openLibrary(event.currentTarget); }}>{t('Templates')}</Button>
-            <Button type="button" variant="ghost" className="om-nav-item" onClick={() => { track('explore_tabs', 'open_skills'); openSkills(); }}>{t('Skills')}</Button>
-            <Button type="button" variant="ghost" className="om-nav-item" onClick={event => { track('explore_tabs', 'creators'); props.onCreators(event.currentTarget); }}>{t('Creators')}</Button>
-          </HorizontalRail>
-        </nav>
-      </header>
+      <h1 className="om-explore-title">{t(!community && props.filters.medium ? mediaLabels[props.filters.medium] : 'Explore')}</h1>
       <ExploreCollection key={locale + '/' + (community?.id ?? '')} community={community} root={root} {...props} />
     </div>
+    <CapabilityIndex {...props} />
   </main>;
 }

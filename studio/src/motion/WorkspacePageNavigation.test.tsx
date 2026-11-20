@@ -497,8 +497,6 @@ it('reports Explore once per arrival and its spotlight, index links and top navi
   expect(clicks().at(-1)).toMatchObject({ page_name: 'studio', area: 'creative_nav', element: 'nav_explore', nav_target: 'explore' });
   expect(exploreViews()).toHaveLength(1);
   expect(exploreViews()[0].properties).toMatchObject({ medium: 'all', has_project: true });
-  await act(async () => inside('.om-explore-masthead', 'Discover').click());
-  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'community_tab', explore_community: 'discover' });
   await act(async () => inside('.om-explore-shelf[aria-label="Templates"]', 'Editable templates').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'category_select', collection_id: 'builtin' });
   await act(async () => inside('.om-explore-shelf[aria-label="Skills"]', 'Motion techniques').click());
@@ -511,12 +509,6 @@ it('reports Explore once per arrival and its spotlight, index links and top navi
   await traverse(-1);
   await act(async () => inside('.om-explore-shelf[aria-label="Skills"]', 'View all').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'open_skills', skill_category: 'motion_techniques' });
-  await traverse(-1);
-  await act(async () => inside('.om-explore-masthead', 'Templates').click());
-  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'template_library' });
-  await traverse(-1);
-  await act(async () => inside('.om-explore-masthead', 'Skills').click());
-  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'open_skills' });
   await traverse(-1);
   await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });
@@ -1138,4 +1130,25 @@ it('keeps unlisted model briefs usable and links an Explore workflow to the Clau
   expect(document.activeElement?.id).toBe('mcp-example-anime-opening');
   await mount(1);
   expect(document.activeElement?.id).toBe('mcp-example-anime-opening');
+});
+
+it('keeps only the Explore heading at the top, fills two complete rows across Skills and technique Studios and renders a full-bleed footer', async () => {
+  await mount(); await click('Explore');
+  expect(container.querySelector('.om-explore-title')?.textContent).toBe('Explore');
+  expect(container.querySelector('.om-explore-nav')).toBeNull();
+  const skillsShelf = [...container.querySelectorAll('.om-explore-shelf')].find(section => section.querySelector('h2')?.textContent === 'Skills')!;
+  const cards = [...skillsShelf.querySelectorAll<HTMLButtonElement>('.om-explore-preview-grid .om-scene-tile')];
+  expect(cards).toHaveLength(8);
+  expect(new Set(cards.map(card => card.dataset.playbackId)).size).toBe(8);
+  for (const studio of ['motion', 'shorts', 'marketing', 'explainer', '3d']) {
+    const studioCards = [...container.querySelectorAll<HTMLButtonElement>(`.om-studio-collection[data-studio="${studio}"] .om-studio-collection-cards .om-scene-tile`)];
+    expect(studioCards, studio).toHaveLength(8);
+    expect(new Set(studioCards.map(card => card.dataset.playbackId)).size, studio).toBe(8);
+  }
+  expect(container.querySelectorAll('.om-studio-collection[data-studio="design"] .om-scene-tile')).toHaveLength(4);
+  expect(container.querySelectorAll('.om-studio-collection[data-studio="cinema"] .om-scene-tile')).toHaveLength(3);
+  expect(container.querySelectorAll('.om-studio-collection[data-studio="sound"] .om-scene-tile')).toHaveLength(2);
+  const footer = container.querySelector('main.om-explore > footer.om-capability-index');
+  expect(footer).not.toBeNull();
+  expect(footer?.closest('.om-discovery-page')).toBeNull();
 });

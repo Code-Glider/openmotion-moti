@@ -56,6 +56,13 @@ export async function checkDesign() {
   for (const [name, value] of Object.entries(tokens.studio) as [string, string][]) {
     for (const match of value.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `Studio token ${name}: undefined ${match[1]}`);
   }
+  for (const [ink, surface] of [
+    ['on-signature-band', 'signature-band'], ['on-signature-band', 'signature-band-hover'],
+    ['signature-band-muted', 'signature-band'], ['signature-band-muted', 'signature-band-hover'],
+  ]) {
+    const a = luminance(tokens.shared[ink]), b = luminance(tokens.shared[surface]);
+    assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, `shared: ${ink} on ${surface} needs 4.5:1 contrast.`);
+  }
   for (const [theme, values] of Object.entries(tokens.themes) as [string, Record<string, string>][]) {
     const textPairs = [
       ['text', 'shell'], ['text', 'workspace'], ['text', 'panel'], ['text', 'inset'],

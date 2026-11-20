@@ -206,7 +206,7 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-feed-group [data-template-id]');
       await page.evaluate(() => document.fonts.ready);
-      for (const [width, expectedCards] of [[1512, 8], [1060, 6], [760, 4], [320, 2]]) {
+      for (const [width, expectedCards] of [[1512, 8], [1280, 8], [1060, 6], [760, 4], [320, 2]]) {
         await page.setViewport({ width, height: 850 });
         const rowsFill = await page.$eval('.om-feed-group', feed => {
           const bounds = feed.getBoundingClientRect();
@@ -222,11 +222,38 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           });
         });
         assert.ok(rowsFill, 'Gallery rows follow reading order and fill the available width at ' + width);
-        const shelf = await page.$eval('.om-explore-shelf .om-explore-preview-grid', grid => {
-          const cards = Array.from(grid.children).filter(card => card.getClientRects().length);
-          return { count: cards.length, rows: new Set(cards.map(card => card.getBoundingClientRect().top)).size };
-        });
-        assert.deepEqual(shelf, { count: expectedCards, rows: 2 }, 'Template previews fit two rows at ' + width);
+        const shelves = await page.$$eval('.om-explore-shelf .om-explore-preview-grid', grids => grids.map(grid => {
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const full = [...rows.values()].every(row => Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { count: cards.length, rows: rows.size, full };
+        }));
+        assert.deepEqual(shelves, [
+          { count: expectedCards, rows: 2, full: true },
+          { count: expectedCards, rows: 2, full: true },
+        ], 'Template and Skill previews fit two complete rows at ' + width);
+        const studios = await page.$$eval('.om-studio-collection', sections => sections.map(section => {
+          const grid = section.querySelector<HTMLElement>('.om-studio-collection-cards')!;
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          if (getComputedStyle(grid).overflowX === 'auto') {
+            return { studio: section.getAttribute('data-studio'), rail: true, full: cards.length > 0 && cards.every(card => Math.abs(card.top - cards[0].top) < 2) };
+          }
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const rowLists = [...rows.values()];
+          const full = rowLists.every(row => row.length === rowLists[0].length && Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { studio: section.getAttribute('data-studio'), count: cards.length, rows: rowLists.length, full };
+        }));
+        assert.ok(studios.length === 8 && studios.every(item => item.full), 'Every Studio collection renders complete rows at ' + width + ': ' + JSON.stringify(studios));
         const toolbarGeometry = await page.$eval('.om-explore-shelf[aria-label="Templates"]', section => {
           const submit = section.querySelector<HTMLAnchorElement>('header a[href*="CONTRIBUTING.md"]');
           const dropdown = section.querySelector<HTMLButtonElement>('.om-shelf-toolbar .om-gallery-dropdown');

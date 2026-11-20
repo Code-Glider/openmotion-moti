@@ -310,7 +310,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         <ExploreStudios initialTemplateCollection={page.templateCollection} onModel={openModel} onModelHub={openModelHub} onOpenBlackFriday={trigger => {
           reportBlackFridayEntry();
           value.openLibrary(trigger, undefined, 'black-friday');
-        }} onCreators={trigger => { libraryTrigger.current = trigger; navigatePage({ templates: true, creators: true, creator: null, template: null }); }} onBrandKit={() => openSettings('brand-kit')} onMcp={(client, example) => openPage('mcp', client, example)} filters={lastExplore.current} onFilter={navigatePage} onChooseStudio={chooseStudio} active={page.explore && !connectionsOpen} onNavigate={openStudio} onSkill={openSkill} />
+        }} onCreators={trigger => { libraryTrigger.current = trigger; navigatePage({ templates: true, creators: true, creator: null, template: null }); }} onBrandKit={() => openSettings('brand-kit')} onMcp={(client, example) => openPage('mcp', client, example)} filters={lastExplore.current} onChooseStudio={chooseStudio} active={page.explore && !connectionsOpen} onNavigate={openStudio} onSkill={openSkill} />
       </div>}
       {page.motion && !templatesPage && <div className="om-explore-host"><MotionStudioPage active={!connectionsOpen}
         onExplore={returnToExplore} onOpenEditor={() => openStudio(null)} /></div>}
