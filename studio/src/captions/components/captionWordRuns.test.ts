@@ -153,3 +153,28 @@ it("refreshes boxes for resizing, word reordering and newly editable spans", () 
     expect(sameWordBoxes([original], [{ ...original, ...change }])).toBe(false);
   }
 });
+
+it("maps rendered caption groups by stable ID when an earlier group was omitted", () => {
+  const f = captionFrame("שלום World", ["שלום", "World"]);
+  try {
+    f.group.dataset.captionGroupId = "group-0";
+    f.group.innerHTML = '<span class="word">שלום</span><span class="word">World</span>';
+    // The generator skips empty groups, so groupOrder and DOM indexes differ.
+    f.model.groupOrder.unshift("omitted-empty-group");
+    f.model.groups.set("omitted-empty-group", { segmentIds: [] });
+    const boxes = readWordBoxes(f.iframe, f.model, f.overlay);
+    expect(boxes.map((box) => box.segmentId)).toEqual(["s0", "s1"]);
+    expect(boxes.map((box) => box.groupIndex)).toEqual([1, 1]);
+    expect(boxes.every((box) => box.editable)).toBe(true);
+    expect(getWordEl(f.iframe, 1, 1, f.model)).toBe(f.group.children[1]);
+    expect(getWordEl(f.iframe, 0, 0, f.model)).toBeNull();
+
+    // A second element with the same identity is ambiguous, not editable.
+    const duplicate = f.group.cloneNode(true) as HTMLElement;
+    f.doc.body.append(duplicate);
+    expect(readWordBoxes(f.iframe, f.model, f.overlay)).toEqual([]);
+    expect(getWordEl(f.iframe, 1, 0, f.model)).toBeNull();
+    duplicate.remove();
+  } finally { f.dispose(); }
+});
+

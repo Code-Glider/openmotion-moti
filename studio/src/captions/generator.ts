@@ -344,6 +344,7 @@ function generateJs(model: CaptionModel): string {
       `// Group: ${groupId}`,
       `const ${groupVarName} = document.createElement('div');`,
       `${groupVarName}.className = 'caption-group clip ${className}';`,
+      `${groupVarName}.dataset.captionGroupId = ${JSON.stringify(groupId).replace(/</g, "\\u003c")};`,
       `${groupVarName}.dataset.start = '${groupStart}';`,
       `${groupVarName}.dataset.end = '${groupEnd}';`,
       `container.appendChild(${groupVarName});`,

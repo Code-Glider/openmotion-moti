@@ -12,6 +12,7 @@ Updated 2026-11-20. This is a tracked engineering checklist, not a claim of fini
 - [x] Guard legacy caption fallback: only split when the timed words match exactly and preserve original Unicode, whitespace and line breaks.
 - [x] Replace caption word **measurement** with non-mutating DOM Range geometry; never rewrite text nodes during a layout read (PR #3).
 - [x] Refresh overlay boxes when a caption model changes or clears, editing activates, hit geometry resizes, or selectable/editable identity changes. Coverage: captionWordRuns and CaptionOverlay sender tests.
+- [x] Bind generated caption groups to exact persisted group IDs during overlay lookup; skipped empty groups no longer shift selectable words onto unrelated DOM nodes. Reject ambiguous duplicate IDs; retain positional lookup for legacy unlabelled compositions.
 - [ ] Persist stable authored per-word identities for legacy read-only caption runs where individual transforms are requested.
 - [ ] Cover mixed RTL/LTR punctuation, Arabic vowel marks, Hebrew niqqud, seek, scrub, playback, text wrapping and editable word transforms.
 - [ ] Round-trip SRT/VTT, native history, per-word timing and imported project resources.
@@ -20,6 +21,7 @@ Updated 2026-11-20. This is a tracked engineering checklist, not a claim of fini
 - PR #1: focused RTL run 44763841098 and full standalone run 44763841624 passed.
 - PR #2: independent non-destructive caption patch; standalone CI 44766340464 passed; overlap with stacked PR #3 needs manual consolidation before merge.
 - PR #3: focused RTL CI 44777215170 passed on `b2be5b0`; independent standalone CI 44777215140 failed at Studio regression (2/2), 2 of 5,031 assertions, both sender tests expecting a new RAF while the model-refresh effect had already queued one. The patch retains production coalescing and updates those tests to drain the pending frame; it also adds the sender tests to the dedicated focused RTL gate. Full standalone validation is required again on the new head.
+- PR #3 commit `62bc23ef`: focused RTL run 44785036932 passed, while standalone run 44785036943 failed exclusively because the macOS reliability job was cancelled before running. Requested a retry of failed jobs (attempt 2); outcome pending. The group-ID correction below requires a fresh CI pass.
 - JSDOM Range geometry is mocked; BiDi shaping, line wraps, actual Chromium preview and exported MP4 pixel parity remain **unverified**.
 
 ## Phase 3 — text editing

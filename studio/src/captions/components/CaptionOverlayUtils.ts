@@ -134,6 +134,26 @@ function measureTextRuns(groupEl: HTMLElement, words: string[]): DOMRect[] {
   }
 }
 
+/**
+ * Generated captions carry their exact group ID so an empty/omitted group
+ * cannot shift a later group's word hit targets onto the wrong DOM element.
+ * Unlabelled legacy compositions retain positional lookup. If any IDs are
+ * present, missing or duplicate IDs fail closed instead of guessing.
+ */
+function captionGroupLookup(doc: Document): (groupId: string, index: number) => HTMLElement | null {
+  const groupEls = Array.from(doc.querySelectorAll<HTMLElement>(".caption-group"));
+  const identified = new Map<string, HTMLElement | null>();
+  let hasIdentifiers = false;
+  for (const groupEl of groupEls) {
+    if (!groupEl.hasAttribute("data-caption-group-id")) continue;
+    hasIdentifiers = true;
+    const id = groupEl.dataset.captionGroupId ?? "";
+    identified.set(id, identified.has(id) ? null : groupEl);
+  }
+  return (groupId, index) =>
+    hasIdentifiers ? identified.get(groupId) ?? null : groupEls[index] ?? null;
+}
+
 export function readWordBoxes(
   iframe: HTMLIFrameElement,
   model: CaptionHitModel,
@@ -156,14 +176,14 @@ export function readWordBoxes(
   const offsetX = iframeDisplayRect.left - overlayRect.left;
   const offsetY = iframeDisplayRect.top - overlayRect.top;
 
-  const groupEls = doc.querySelectorAll<HTMLElement>(".caption-group");
+  const captionGroupAt = captionGroupLookup(doc);
   const boxes: WordBox[] = [];
 
   for (let gi = 0; gi < model.groupOrder.length; gi++) {
     const groupId = model.groupOrder[gi];
     const group = model.groups.get(groupId);
     if (!group) continue;
-    const groupEl = groupEls[gi] as HTMLElement | undefined;
+    const groupEl = captionGroupAt(groupId, gi);
     if (!groupEl) continue;
     const computed = win.getComputedStyle(groupEl);
     if (parseFloat(computed.opacity) <= 0.01 || computed.visibility === "hidden") continue;
@@ -211,7 +231,7 @@ export function getWordEl(
   const groupId = model.groupOrder[groupIndex];
   const words = groupId === undefined ? null : groupWords(model, groupId);
   if (!words) return null;
-  const groupEl = doc.querySelectorAll<HTMLElement>(".caption-group")[groupIndex];
+  const groupEl = captionGroupLookup(doc)(groupId, groupIndex);
   if (!groupEl) return null;
   return directWordElements(groupEl, words)[wordIndex] ?? null;
 }
