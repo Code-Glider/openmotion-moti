@@ -12,7 +12,7 @@ import { AssetsPage } from './AssetsPage';
 import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
 import { destinationTarget, reportCreativeClick } from './exploreTracking';
-import { scenesForStudio, studioIconTone, type StudioScene, studioDestination, studioDraftKey, supportsScene, type StudioDestination } from './creativeStudios';
+import { sceneDestination, scenesForStudio, studioIconTone, type StudioScene, studioDestination, studioDraftKey, supportsScene, type StudioDestination } from './creativeStudios';
 import { DesignSceneTabs, type DesignTabId } from '../design/scenes/DesignSceneTabs';
 
 export type StudioCreation = {
@@ -49,7 +49,9 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
   } : undefined;
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
   const openCreate = destination.home ? (prompt?: string, sceneId?: StudioScene['id']) => {
-    const next = studioDestination(studio, sceneId ?? scene.id, destination.model);
+    // Same page as the top-nav media menu: the scene's generation page.
+    const target = scenesForStudio(studio).find(item => item.id === (sceneId ?? scene.id)) ?? scene;
+    const next = sceneDestination(target, null, destination.model);
     if (prompt !== undefined) {
       const key = studioDraftKey(next), previous = drafts.current.get(key);
       drafts.current.set(key, { ...previous, modality: next.scene.modality, prompt, references: previous?.references ?? [] });
