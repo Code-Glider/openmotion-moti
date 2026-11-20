@@ -42,6 +42,7 @@ export function BrandArtworkImage({ src, channel = 'cover', onLoad, onError, ...
     if (!node) return;
     const queue = queues[channel];
     let active = false, started = false;
+    let stop = () => {};
     const release = () => {
       queue.waiting.delete(start);
       if (active) { active = false; queue.inFlight--; drain(channel); }
@@ -54,7 +55,7 @@ export function BrandArtworkImage({ src, channel = 'cover', onLoad, onError, ...
       node.src = src;
     };
     finish.current = release;
-    const stop = observeVisibility(node, visible => {
+    stop = observeVisibility(node, visible => {
       if (started) return;
       if (visible) { queue.waiting.add(start); drain(channel); }
       else queue.waiting.delete(start);

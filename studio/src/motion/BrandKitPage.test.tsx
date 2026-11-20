@@ -3,6 +3,7 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { I18nProvider } from "../i18n/I18n";
+import { BrandArtworkImage } from "./BrandArtworkImage";
 import { BrandKitPage } from "./BrandKitPage";
 import type { BrandKit } from "../../../shared/brand-kit";
 
@@ -501,4 +502,20 @@ it('requests both favicon and cover artwork for every official catalogue card, i
     expect(card.querySelector('.om-gallery-poster-cover')?.getAttribute('data-artwork-src')).toContain(`/brand-kits/catalog/${id}/cover`);
     expect(card.querySelector('.om-gallery-avatar img')?.getAttribute('data-artwork-src')).toContain(`/brand-kits/catalog/${id}/favicon`);
   }
+});
+
+it('starts artwork requests immediately and drains queued slots when IntersectionObserver is unavailable', async () => {
+  vi.stubGlobal('IntersectionObserver', undefined);
+  await act(async () => root.render(<>
+    {Array.from({ length: 7 }, (_, i) => (
+      <BrandArtworkImage key={i} channel="cover" src={`/motion-api/brand-kits/catalog/brand-${i}/cover`} alt="" />
+    ))}
+  </>));
+  const images = [...container.querySelectorAll<HTMLImageElement>('img')];
+  expect(images).toHaveLength(7);
+  for (let i = 0; i < 6; i++) expect(images[i].getAttribute('src')).toBe(`/motion-api/brand-kits/catalog/brand-${i}/cover`);
+  expect(images[6].getAttribute('src')).toBeNull();
+  await act(async () => images[0].dispatchEvent(new Event('load')));
+  expect(images[6].getAttribute('src')).toBe('/motion-api/brand-kits/catalog/brand-6/cover');
+  await act(async () => { for (let i = 1; i < 7; i++) images[i].dispatchEvent(new Event('load')); });
 });
