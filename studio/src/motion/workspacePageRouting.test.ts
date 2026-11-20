@@ -34,6 +34,14 @@ it('round-trips the Black Friday collection and its selected Skill without leaki
   expect(workspacePageHref(collection.href, { templateCollection: null, skill: null })).toBe('/?page=explore&templates=1');
 });
 
+it('opens retired API links in the usual workspace and drops their tool on navigation', () => {
+  const link = 'http://localhost/?page=api&tool=openmotion_media_use';
+  expect(readWorkspacePage(new URL(link).search).explore).toBe(true);
+  const project = new URL(link + '&project=film#project/film');
+  expect(readWorkspacePage(project.search, project.hash)).toEqual(readWorkspacePage('?project=film', project.hash));
+  expect(workspacePageHref(project.href, { motion: true })).toBe('/?project=film&page=motion#project/film');
+});
+
 it('keeps legacy editor and template URLs and safely defaults unknown options', () => {
   expect(readWorkspacePage('?templates=1').templates).toBe(true);
   expect(readWorkspacePage('?project=project').settings).toBeNull();

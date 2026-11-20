@@ -89,7 +89,7 @@ The application shell reads its destination from the URL query. The native edito
 | Destination | Query parameters |
 | --- | --- |
 | Current editor | Project/session URL, project hash or `page=editor` to resume the active project |
-| Motion Studio | `page=motion` opens editable templates and an action to resume the timeline |
+| Motion Studio | `page=motion` opens Motion templates alongside the workspace sidebar; select a project to open its timeline, or Template library to browse the global library |
 | Shorts, Marketing and Explainer Studios | `page=shorts`, `page=marketing` or `page=explainer`. Add a supported `scene` to open the generator. A registered `skill` restores its brief on return. |
 | Model overview | `page=model&model=<provider-qualified-id>` lists compatible scenes and links to its provider and generation setup. |
 | Model hub | `page=model-hub&hub=<hub-id>`, for example `hub=gemini-4`. Opens a model family's landing page from its Explore spotlight slide: community videos with their detail preview, plus sign-in and own-key paths. It is a standalone page, so a session's first artifact does not return the viewer to the editor. An unknown `hub` shows a page-unavailable notice. |
@@ -99,7 +99,6 @@ The application shell reads its destination from the URL query. The native edito
 | Scene landing page | `page=create&scene=image-edit` opens the focused generator. The optional `model` identifies the provider and model. |
 | Creative studio | `page=design`, `page=cinema`, or `page=sound` with a `scene` and optional provider-qualified `model`. For example, `page=cinema&scene=shot-image` opens an image composer inside Cinema. |
 | Asset workspace | `page=assets` opens the shared asset library independently of the retained project |
-| API | `page=api` lists models and registered tools. `tool=openmotion_media_use` opens its input schema. |
 | MCP onboarding | `page=mcp&host=codex`; `setup=manual` opens manual configuration |
 | Settings | `page=settings&section=general` |
 | Provider detail | `page=settings&section=providers&provider=openai` |
