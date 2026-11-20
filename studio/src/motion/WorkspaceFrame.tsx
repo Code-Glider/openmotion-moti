@@ -12,7 +12,7 @@ import { creativeStudios, type CreativeStudio, type TechniqueStudio } from '../.
 import { DesignProjectEditor } from '../design/DesignProjectEditor';
 import { DesignScenePage } from '../design/scenes/DesignScenePage';
 import type { Modality } from '../../../shared/gateway';
-import { motionStudio, scenesForStudio, studioDestination, studioDraftKey, type StudioDestination } from './creativeStudios';
+import { hasStudioHome, motionStudio, scenesForStudio, studioDestination, studioDraftKey, type StudioDestination } from './creativeStudios';
 import { ModelOverview } from './ModelOverview';
 import { ModelHub } from './ModelHub';
 import { CreativeWorkspace } from './CreativeWorkspace';
@@ -289,6 +289,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (entry.surface === 'techniques') navigatePage({ specialty: entry, skill: null, templates: false, ...lastExplore.current });
     else if (entry.surface === 'editor') { if (!narrow) setSidebarOpen(true); navigatePage({ motion: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined); }
     else if (entry.id === 'design' && !kind) navigatePage({ designScene: defaultDesignScene, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
+    else if (!kind && hasStudioHome(entry)) openStudio({ ...studioDestination(entry, page.studio?.studio.id === entry.id ? page.studio.scene.id : null), home: true }, undefined, fromPage);
     else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model), undefined, fromPage);
     } else openStudio(studioDestination(entry, scenesForStudio(entry).find(scene => scene.modality === kind)?.id), undefined, fromPage);

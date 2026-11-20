@@ -8,8 +8,17 @@ import soundtrackCover from './scene-art/ambient-piano.webp';
 import narration from './skill-covers/talking-head-recreation.webp';
 import camera from './skill-covers/babylon-js.webp';
 import welcomeMusic from '../../../template-library/openmotion-welcome/assets/soundtrack.m4a?url';
+import studiesScore from '../../../examples/motion-studies/assets/score.m4a?url';
+import studiesCover from './scene-art/studies-score.webp';
+import wingScore from '../../../examples/wing-construction/assets/score.m4a?url';
+import wingCover from './scene-art/wing-score.webp';
+import revealCues from './scene-art/reveal-cues.m4a?url';
+import revealCover from './scene-art/reveal-cues.webp';
+import flightEffects from './scene-art/flight-effects.m4a?url';
+import flightCover from './scene-art/flight-effects.webp';
 
-export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[] }
+/** Audio templates name the model to reproduce them with; the bundled files are the repository's own scores and effects, not output from that model. */
+export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[]; seconds?: number; model?: string; kind?: 'Music' | 'Sound effect' | 'Narration' }
 
 // Normalized RMS amplitudes sampled across the bundled welcome soundtrack.
 const welcomeWaveform = [
@@ -18,6 +27,13 @@ const welcomeWaveform = [
   85, 40, 13, 14, 9, 10, 15, 84, 85, 67, 73, 83, 87, 61, 77, 88, 86, 63, 81, 80, 89, 57, 80, 87,
   84, 59, 86, 83, 85, 56, 86, 92, 85, 23, 93, 82, 88, 55, 87, 87, 77, 66, 92, 83, 52, 36, 2, 2,
 ];
+
+// Normalized RMS amplitudes of the other bundled audio templates, 96 samples each.
+// Previews in scene-art are compressed copies of the repository's own example scores, cues and effects.
+const studiesWaveform = [64, 89, 87, 78, 69, 61, 53, 46, 41, 36, 60, 70, 53, 70, 94, 93, 86, 78, 70, 63, 56, 51, 45, 40, 36, 33, 81, 92, 90, 82, 73, 65, 59, 52, 47, 42, 37, 34, 74, 75, 64, 51, 41, 86, 91, 87, 79, 70, 62, 55, 48, 43, 38, 34, 77, 81, 73, 62, 52, 44, 44, 87, 86, 80, 70, 60, 51, 45, 38, 51, 82, 71, 58, 47, 55, 87, 81, 72, 62, 52, 43, 38, 72, 69, 57, 45, 81, 71, 59, 47, 60, 81, 73, 61, 50, 23];
+const wingWaveform = [36, 68, 75, 67, 59, 53, 49, 79, 89, 83, 76, 72, 67, 62, 57, 51, 47, 43, 58, 78, 84, 71, 65, 60, 54, 48, 51, 79, 77, 61, 54, 72, 90, 82, 75, 71, 65, 61, 55, 50, 46, 44, 74, 83, 78, 67, 62, 55, 51, 48, 73, 84, 77, 65, 59, 53, 49, 64, 74, 72, 54, 81, 94, 90, 87, 85, 81, 78, 73, 69, 64, 61, 56, 52, 49, 46, 42, 40, 38, 63, 80, 91, 82, 79, 75, 72, 66, 61, 56, 53, 47, 44, 40, 46, 40, 12];
+const cueWaveform = [2, 94, 66, 35, 46, 44, 14, 4, 2, 33, 24, 9, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 47, 77, 48, 30, 18, 43, 19, 7, 3, 43, 20, 7, 2, 2, 2, 2, 94, 87, 62, 43, 31, 22, 15, 11, 8, 5, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 50, 56, 29, 15, 8, 4, 2, 2, 2, 2, 43, 81, 54, 36, 23, 15, 63, 46, 28, 17, 44, 74, 42, 24, 14, 8, 4, 2];
+const flightWaveform = [2, 2, 30, 58, 74, 76, 74, 72, 69, 63, 56, 51, 39, 28, 48, 10, 3, 2, 2, 7, 13, 23, 27, 32, 38, 43, 46, 48, 49, 48, 49, 49, 51, 49, 50, 51, 52, 50, 51, 50, 51, 51, 51, 53, 51, 51, 51, 52, 52, 50, 51, 52, 51, 50, 51, 50, 49, 49, 49, 46, 42, 39, 35, 31, 26, 22, 21, 45, 44, 52, 46, 43, 47, 43, 43, 34, 2, 2, 2, 94, 79, 47, 29, 19, 12, 8, 6, 4, 47, 45, 33, 2, 2, 2, 2, 2];
 
 const splashClip = motionSkills.find(skill => skill.id === 'openmotion-splash-float-product')?.cover?.video;
 const productClip = motionSkills.find(skill => skill.id === 'openmotion-light-shadow-product')?.cover?.video;
@@ -33,8 +49,14 @@ export const sceneExamples: Record<StudioScene['id'], readonly [SceneExample, ..
   'shot-image': [moon, cameraStudy, portrait],
   'text-to-video': [orange],
   'image-to-video': [{ title: 'A cinematic opening', prompt: 'Start on the supplied frame. Push in slowly as a band of sunlight moves across the product.', poster: product, clip: productClip }],
-  music: [{ title: 'Ambient soundtrack', prompt: 'Compose a quiet instrumental with soft piano and airy synths for a sunrise scene.', poster: soundtrackCover, audio: welcomeMusic, waveform: welcomeWaveform }],
-  speech: [{ title: 'Warm narration', prompt: 'Every idea deserves to be seen. This is where our story begins.', poster: narration }],
+  music: [
+    { title: 'Ambient soundtrack', kind: 'Music', prompt: 'Compose a quiet instrumental with soft piano and airy synths for a sunrise scene.', poster: soundtrackCover, audio: welcomeMusic, waveform: welcomeWaveform, seconds: 37, model: 'ElevenLabs Music' },
+    { title: 'Minimal product score', kind: 'Music', prompt: 'Compose a calm, minimal instrumental at about 60 BPM. Let single bell-like notes ring out and fade, with space between phrases for a product film.', poster: studiesCover, audio: studiesScore, waveform: studiesWaveform, seconds: 32, model: 'ElevenLabs Music' },
+    { title: 'Bright launch score', kind: 'Music', prompt: 'Compose a bright, light instrumental of plucked notes at about 66 BPM that builds to a short lift before the logo appears.', poster: wingCover, audio: wingScore, waveform: wingWaveform, seconds: 12, model: 'Suno v4' },
+    { title: 'Interface cues', kind: 'Sound effect', prompt: 'Create a set of short, low pitched interface cues with soft attacks and quick decays, one for each step of a reveal.', poster: revealCover, audio: revealCues, waveform: cueWaveform, seconds: 5, model: 'ElevenLabs Sound Effects' },
+    { title: 'Flight transition', kind: 'Sound effect', prompt: 'Create a jet take-off whoosh that settles into a steady cabin hum, then ends with a landing thud and two light clicks.', poster: flightCover, audio: flightEffects, waveform: flightWaveform, seconds: 6, model: 'ElevenLabs Sound Effects' },
+  ],
+  speech: [{ title: 'Warm narration', kind: 'Narration', prompt: 'Every idea deserves to be seen. This is where our story begins.', poster: narration, model: 'ElevenLabs Voice' }],
 };
 
 export function studioExamples({ studio, scene }: StudioDestination): readonly SceneExample[] {
