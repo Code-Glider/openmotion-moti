@@ -247,6 +247,7 @@ test('Design Studio copies template briefs in place and creates projects separat
       const explore = new URL('/?page=explore', origin).href;
       const card = '.om-design-gallery-card';
       const quickAction = `${card} .om-design-thumb-action > button`;
+      const recent = '.om-design-page-with-dock > section + section';
       const popup = '.om-design-tpl-detail-popup';
       const primary = `${popup} .om-media-detail-action-row > button[data-primary]`;
       const remix = `${popup} button[aria-label="复用为项目"]`;
@@ -262,6 +263,7 @@ test('Design Studio copies template briefs in place and creates projects separat
       await page.setViewport({ width: 1400, height: 900 });
       await page.goto(scene, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(quickAction, { visible: true });
+      assert.equal(await page.$(recent), null);
       await page.hover(card);
       assert.deepEqual(await page.$eval(`${card} .om-design-thumb-action`, actions =>
         [...actions.querySelectorAll('button')].map(button => button.textContent)), ['复刻模版']);
@@ -310,6 +312,12 @@ test('Design Studio copies template briefs in place and creates projects separat
       await page.waitForFunction(() => new URLSearchParams(location.search).has('designProject'));
       assert.equal(creates.length, 1);
       assert.equal(JSON.parse(creates[0]).templateId, 'velar-luxury-real-estate');
+
+      await page.goto(scene, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector(`${recent} .om-design-card`, { visible: true });
+      assert.equal(await page.$eval(`${recent} h2`, heading => heading.textContent), '最近项目');
+      await page.click(`${recent} .om-design-section-head button`);
+      await page.waitForFunction(() => new URLSearchParams(location.search).get('scene') === 'projects');
 
       await page.goto(explore, { waitUntil: 'domcontentloaded' });
       const exploreTemplate = '[data-design-template="velar-luxury-real-estate"] .om-design-card-title';

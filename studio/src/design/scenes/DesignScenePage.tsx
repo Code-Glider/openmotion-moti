@@ -381,14 +381,13 @@ export function DesignScenePage({
                 )}
               </section>
 
-              {/* Recent projects for this scenario */}
-              <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div className="om-design-section-head">
-                  <h2 className="om-design-section-title">{t('Recent projects')}</h2>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => onSelectDesignScene('projects')}>{t('View all')}</Button>
-                </div>
-                <DesignProjectList scenario={scenario.id} compact onOpen={onOpenProject} />
-              </section>
+              <DesignProjectList
+                key={scenario.id}
+                scenario={scenario.id}
+                compact
+                onOpen={onOpenProject}
+                onViewAll={() => onSelectDesignScene('projects')}
+              />
             </div>
           </div>
 

@@ -17,11 +17,13 @@ import './design.css';
 export function DesignProjectList({
   scenario,
   compact = false,
+  onViewAll,
   onOpen,
   onCreate,
 }: {
   scenario?: DesignScenarioId;
   compact?: boolean;
+  onViewAll?: () => void;
   onOpen: (projectId: string) => void;
   onCreate?: (projectId: string) => void;
 }) {
@@ -165,9 +167,17 @@ export function DesignProjectList({
     }).slice(0, compact ? 6 : 200);
   }, [projects, query, filterScenario, scenario, compact]);
 
+  if (compact && filtered.length === 0) return <StudioToastViewport {...toast} />;
+
+  const Container = compact ? 'section' : 'div';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {!compact && (
+    <Container style={{ display: 'flex', flexDirection: 'column', gap: compact ? 14 : 16 }}>
+      {compact ? (
+        <div className="om-design-section-head">
+          <h2 className="om-design-section-title">{t('Recent projects')}</h2>
+          {onViewAll && <Button type="button" size="sm" variant="ghost" onClick={onViewAll}>{t('View all')}</Button>}
+        </div>
+      ) : (
         <div className="om-design-section-head">
           <div className="om-design-header-group">
             <input
@@ -220,7 +230,7 @@ export function DesignProjectList({
         </div>
       )}
 
-      {loading ? (
+      {loading && !compact ? (
         <div className="om-design-muted">{t('Loading design projects…')}</div>
       ) : filtered.length === 0 ? (
         <div className="om-design-item-card" style={{ padding: 28, alignItems: 'center', textAlign: 'center' }}>
@@ -309,6 +319,6 @@ export function DesignProjectList({
         </div>
       )}
       <StudioToastViewport {...toast} />
-    </div>
+    </Container>
   );
 }
