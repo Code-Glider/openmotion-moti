@@ -135,6 +135,16 @@ function failureCode(attempt: AccountAttempt, cancelled: boolean): AccountErrorC
 }
 
 const productionApi = 'https://amr-api.open-design.ai';
+/** The account media catalogue does not list these audio models yet, though `audio speech` and `audio music` accept them. */
+const builtinAccountAudioModels: readonly DirectoryModel[] = [
+  { id: 'account:elevenlabs-v3', provider: 'account', modelId: 'elevenlabs-v3', label: 'ElevenLabs Voice', kind: 'audio', enabled: true, source: 'builtin', mode: 'text-to-speech' },
+  { id: 'account:byteplus-tts-2', provider: 'account', modelId: 'byteplus-tts-2', label: 'BytePlus Voice', kind: 'audio', enabled: true, source: 'builtin', mode: 'text-to-speech' },
+  { id: 'account:elevenlabs-music-v2', provider: 'account', modelId: 'elevenlabs-music-v2', label: 'ElevenLabs Music', kind: 'audio', enabled: true, source: 'builtin', mode: 'text-to-audio' },
+];
+const withBuiltinAudio = (models: DirectoryModel[]): DirectoryModel[] => {
+  const existing = new Set(models.map(model => model.id));
+  return [...models, ...builtinAccountAudioModels.filter(model => !existing.has(model.id)).map(model => ({ ...model }))];
+};
 
 /** OpenDesign's versioned CLI owns device authorization and credentials. */
 export class OpenDesignAccount {
@@ -490,9 +500,12 @@ export class OpenDesignAccount {
     } finally { this.signingOut = false; }
   }
   async models(refresh = false): Promise<DirectoryModel[]> {
-    if (!(await this.profile())?.runtimeKey || !(await this.identity())) return [];
-    if (!refresh) return this.cachedModels.length ? this.cachedModels : readSettings(path.join(this.directory, 'account', 'models.json'), []);
     const generation = this.generation;
+    if (!(await this.profile())?.runtimeKey || !(await this.identity())) return [];
+    if (!refresh) {
+      const stored = this.cachedModels.length ? this.cachedModels : await readSettings<DirectoryModel[]>(path.join(this.directory, 'account', 'models.json'), []);
+      return generation === this.generation ? withBuiltinAudio(stored) : [];
+    }
     const data = JSON.parse(await this.run(['model', 'list', '--all', '--format', 'json']));
     if (data.source !== 'remote' || !Array.isArray(data.data)) throw new Error('OpenDesign model catalogue is unavailable');
     const models: DirectoryModel[] = data.data.filter((row: any) => typeof row.id === 'string' && /^[\w./:-]{1,180}$/.test(row.id)).map((row: any) => ({
@@ -521,7 +534,7 @@ export class OpenDesignAccount {
       this.cachedModels = [...new Map(models.map(model => [model.id, model])).values()];
       await writeSettings(path.join(this.directory, 'account', 'models.json'), this.cachedModels);
     });
-    return this.cachedModels;
+    return generation === this.generation ? withBuiltinAudio(this.cachedModels) : [];
   }
   async identity() { return (await readSettings<{ id?: string }>(path.join(this.directory, 'account', 'session.json'), {})).id; }
   async mediaModels(): Promise<Model[]> {
