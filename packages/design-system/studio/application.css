@@ -223,7 +223,7 @@
 [data-motion-studio] .om-choice-tabs .om-nav-item { flex: 1; justify-content: center; padding: var(--motion-space-6) var(--motion-space-8); font-size: var(--motion-text-sm); color: var(--motion-muted); }
 [data-motion-studio] .om-choice-tabs .om-nav-item[aria-pressed="true"] { background: light-dark(var(--motion-bg), var(--motion-chrome-active)); color: light-dark(var(--motion-strong), var(--motion-accent)); box-shadow: var(--motion-shadow-xs); }
 [data-motion-studio] .om-explore-nav.om-choice-tabs { padding: 0; background: transparent; }
-[data-motion-studio] .om-explore-nav .om-nav-item { flex: none; min-height: var(--motion-control-sm); padding-block: var(--motion-space-4); font-size: var(--motion-text-body); }
+[data-motion-studio] .om-explore-nav .om-nav-item { flex: none; min-height: var(--motion-control-sm); padding-block: var(--motion-space-4); font-size: var(--motion-text-md); }
 [data-motion-studio] .om-selection-footer { border-top: 1px solid var(--motion-border-subtle); padding-top: var(--motion-space-12); }
 [data-motion-studio] .om-app-project-title > svg { color: var(--motion-muted); }
 /* Reusable media previews and split surfaces share the application material roles. */
