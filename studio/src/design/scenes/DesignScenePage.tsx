@@ -277,7 +277,7 @@ export function DesignScenePage({
   };
 
   return (
-    <div className="om-assets-host om-creative-workspace" style={{ overflowY: 'auto' }}>
+    <div className="om-assets-host om-creative-workspace om-design-workspace-shell">
       <header className="om-studio-bar">
         <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="arrow-left-line" size={16} />} onClick={onExplore}>
           {t('Explore')}
@@ -306,9 +306,9 @@ export function DesignScenePage({
         </nav>
       </header>
 
-      <div className="om-design-page">
-        {scene === 'projects' || !scenario ? (
-          <>
+      {scene === 'projects' || !scenario ? (
+        <div className="om-design-scroll-body">
+          <div className="om-design-page">
             <div className="om-design-section-head">
               <div>
                 <h2 className="om-design-hero-title" style={{ fontSize: 28 }}>{t('Design projects')}</h2>
@@ -319,151 +319,38 @@ export function DesignScenePage({
               </Button>
             </div>
             <DesignProjectList onOpen={onOpenProject} />
-          </>
-        ) : (
-          <>
-            {/* Editorial centered Hero + Composer */}
-            <section className="om-design-hero-wrap">
-              <div className="om-design-hero-head">
-                <span className="om-design-badge">
-                  <RemixIcon name={scenario.icon} size={13} />
-                  {t(scenario.label)}
-                </span>
-                <h2 className="om-design-hero-title">{t('What would you like to design?')}</h2>
-                <p className="om-design-hero-sub">{t(scenario.hint)}</p>
-              </div>
-
-              <div className="om-design-composer" style={{ position: 'relative', overflow: 'visible' }}>
-                <textarea
-                  ref={textareaRef}
-                  className="om-design-composer-input"
-                  aria-label={t('Design brief')}
-                  placeholder={`${scenario.examples[placeholderIndex] ?? t(scenario.hint)}  (${t('Type @ to mention templates or skills')})`}
-                  value={brief}
-                  onChange={e => {
-                    setBrief(e.target.value);
-                    syncMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
-                  }}
-                  onKeyDown={e => {
-                    if (!mention || mentionOptions.length === 0) return;
-                    if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionOptions.length); }
-                    else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionOptions.length) % mentionOptions.length); }
-                    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); applyMention(mentionOptions[mentionIndex] ?? mentionOptions[0]); }
-                    else if (e.key === 'Escape') { e.preventDefault(); setMention(null); }
-                  }}
-                />
-
-                {mention && mentionOptions.length > 0 && (
-                  <div className="om-design-popover om-design-mention-menu" role="listbox" aria-label={t('Mention template or skill')}>
-                    {mentionOptions.map((opt, idx) => (
-                      <Button
-                        key={opt.id}
-                        type="button"
-                        size="sm"
-                        variant={idx === mentionIndex ? 'secondary' : 'ghost'}
-                        className="om-design-mention-item"
-                        icon={<RemixIcon name={opt.kind === 'template' ? 'layout-line' : opt.kind === 'skill' ? 'book-open-line' : 'sparkling-line'} size={14} />}
-                        onMouseEnter={() => setMentionIndex(idx)}
-                        onClick={() => applyMention(opt)}
-                      >
-                        <span className="om-design-mention-label">{opt.label}</span>
-                        <span className="om-design-muted" style={{ fontSize: 11 }}>{opt.sub}</span>
-                      </Button>
-                    ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Middle scrollable gallery & templates area (aligned with Image Studio & Manus) */}
+          <div className="om-design-scroll-body">
+            <div className="om-design-page om-design-page-with-dock">
+              <div className="om-design-section-head">
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <h2 className="om-design-section-title" style={{ fontSize: 22 }}>{t(scenario.label)}</h2>
+                    <span className="om-design-muted">{t(scenario.hint)}</span>
                   </div>
-                )}
-
-                {(selectedTemplates.length > 0 || selectedSkills.length > 0) && (
-                  <div className="om-design-attached-chips">
-                    {selectedTemplates.map(tpl => (
-                      <span key={tpl.id} className="om-design-badge">
-                        <RemixIcon name="layout-line" size={12} />
-                        <span>@template:{tpl.id}</span>
-                        <IconButton aria-label={t('Clear template')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedTemplates(prev => prev.filter(x => x.id !== tpl.id))} />
-                      </span>
-                    ))}
-                    {selectedSkills.map(sk => (
-                      <span key={sk.id} className="om-design-badge">
-                        <RemixIcon name="book-open-line" size={12} />
-                        <span>@skill:{sk.id}</span>
-                        <IconButton aria-label={t('Clear design skill')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedSkills(prev => prev.filter(x => x.id !== sk.id))} />
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="om-design-composer-dock">
-                  <div className="om-design-header-group">
-                    <Button type="button" size="sm" variant="ghost" onClick={triggerAtMention} title={t('Type @ to mention templates or skills')}>
-                      @
-                    </Button>
-
-                    {/* Brand Kit picker backed by Motion Brand Kits */}
-                    <BrandKitPicker selected={selectedBrandKit} onSelect={setSelectedBrandKit} />
-
-                    {/* Multi-select Design Skill picker */}
-                    <Popover.Root modal={false} open={skillOpen} onOpenChange={setSkillOpen}>
-                      <Popover.Trigger render={
-                        <Button type="button" size="sm" variant={selectedSkills.length > 0 ? 'secondary' : 'ghost'} icon={<RemixIcon name="book-open-line" size={14} />}>
-                          {selectedSkills.length > 0 ? `${t('Design skill')} (${selectedSkills.length})` : t('Design skill')}
-                        </Button>
-                      } />
-                      <Popover.Portal>
-                        <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
-                          <Popover.Popup className="om-design-popover" style={{ width: 340, maxHeight: 360 }}>
-                            <input
-                              type="search"
-                              className="om-design-input"
-                              placeholder={t('Search design skills…')}
-                              value={skillQuery}
-                              onChange={e => setSkillQuery(e.target.value)}
-                            />
-                            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              {selectedSkills.length > 0 && (
-                                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedSkills([])}>
-                                  {t('Clear design skill')}
-                                </Button>
-                              )}
-                              {filteredSkills.map(sk => {
-                                const active = selectedSkills.some(x => x.id === sk.id);
-                                return (
-                                  <Button
-                                    key={sk.id}
-                                    type="button"
-                                    size="sm"
-                                    variant={active ? 'secondary' : 'ghost'}
-                                    style={{ justifyContent: 'space-between' }}
-                                    onClick={() => toggleSkill(sk)}
-                                  >
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{active ? '✓ ' : ''}{sk.title}</span>
-                                    {sk.scenario && <span className="om-design-badge">{sk.scenario}</span>}
-                                  </Button>
-                                );
-                              })}
-                            </div>
-                          </Popover.Popup>
-                        </Popover.Positioner>
-                      </Popover.Portal>
-                    </Popover.Root>
-                  </div>
-
-                  <div className="om-design-header-group">
-                    <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
-                      {t('Connect an Agent')}
-                    </Button>
-                    <Button type="button" size="sm" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={14} />} onClick={() => void handleCreateBlank()}>
-                      {t('Create blank project')}
-                    </Button>
-                    <Button type="button" size="sm" variant="primary" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={handleCopyBrief}>
-                      {t('Copy to Agent')}
-                    </Button>
-                  </div>
+                </div>
+                <div className="om-design-header-group">
+                  <input
+                    type="search"
+                    className="om-design-input"
+                    placeholder={t('Filter templates…')}
+                    aria-label={t('Filter templates…')}
+                    value={templateQuery}
+                    onChange={e => setTemplateQuery(e.target.value)}
+                  />
+                  <Button type="button" size="sm" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={14} />} onClick={() => void handleCreateBlank()}>
+                    {t('Create blank project')}
+                  </Button>
                 </div>
               </div>
 
-              {/* Quick example prompt chips (appendable so you can combine with @mentions) */}
+              {/* Quick starter prompt chips */}
               {scenario.examples.length > 0 && (
-                <div className="om-design-example-chips">
+                <div className="om-design-example-chips" style={{ justifyContent: 'flex-start', maxWidth: 'none' }}>
                   {scenario.examples.map(example => (
                     <Button
                       key={example}
@@ -481,79 +368,203 @@ export function DesignScenePage({
                 </div>
               )}
 
-              {manualPrompt && (
-                <div style={{ width: '100%', maxWidth: 820, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span className="om-design-muted">{t('Copy this MCP instruction manually')}</span>
-                  <textarea className="om-design-textarea" readOnly value={manualPrompt} onFocus={e => e.currentTarget.select()} />
+              {/* Template gallery */}
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="om-design-section-head">
+                  <h3 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h3>
                 </div>
-              )}
-            </section>
 
-            {/* Template gallery */}
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="om-design-section-head">
-                <h3 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h3>
-                <input
-                  type="search"
-                  className="om-design-input"
-                  placeholder={t('Filter templates…')}
-                  aria-label={t('Filter templates…')}
-                  value={templateQuery}
-                  onChange={e => setTemplateQuery(e.target.value)}
-                />
-              </div>
-
-              {templatesLoading ? (
-                <div className="om-design-muted">{t('Loading templates…')}</div>
-              ) : templates.length === 0 ? (
-                <div className="om-design-muted">{t('No matching templates.')}</div>
-              ) : (
-                <div className="om-design-grid">
-                  {templates.map(tpl => (
-                    <article key={tpl.id} className="om-design-card">
-                      <div style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>
-                        <ScaledPreviewThumb
-                          src={tpl.previewUrl}
-                          title={tpl.title}
-                          badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
-                          topRight={
-                            <IconButton
-                              aria-label={t('Enlarge preview')}
-                              icon={<RemixIcon name="fullscreen-line" size={14} />}
-                              onClick={e => { e.stopPropagation(); setPreviewTemplate(tpl); }}
-                            />
-                          }
-                        />
-                      </div>
-                      <div className="om-design-card-body">
-                        <strong className="om-design-card-title" style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>{tpl.title}</strong>
-                        <p className="om-design-card-desc">{tpl.description}</p>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
-                          <Button type="button" size="sm" variant="primary" onClick={() => handleUseTemplateWithAgent(tpl)}>
-                            {t('Use with Agent')}
-                          </Button>
-                          <Button type="button" size="sm" variant="secondary" loading={remixingId === tpl.id} onClick={() => void handleRemixTemplate(tpl)}>
-                            {t('Remix into project')}
-                          </Button>
+                {templatesLoading ? (
+                  <div className="om-design-muted">{t('Loading templates…')}</div>
+                ) : templates.length === 0 ? (
+                  <div className="om-design-muted">{t('No matching templates.')}</div>
+                ) : (
+                  <div className="om-design-grid">
+                    {templates.map(tpl => (
+                      <article key={tpl.id} className="om-design-card">
+                        <div style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>
+                          <ScaledPreviewThumb
+                            src={tpl.previewUrl}
+                            title={tpl.title}
+                            badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
+                            topRight={
+                              <IconButton
+                                aria-label={t('Enlarge preview')}
+                                icon={<RemixIcon name="fullscreen-line" size={14} />}
+                                onClick={e => { e.stopPropagation(); setPreviewTemplate(tpl); }}
+                              />
+                            }
+                          />
                         </div>
-                      </div>
-                    </article>
+                        <div className="om-design-card-body">
+                          <strong className="om-design-card-title" style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>{tpl.title}</strong>
+                          <p className="om-design-card-desc">{tpl.description}</p>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
+                            <Button type="button" size="sm" variant="primary" onClick={() => handleUseTemplateWithAgent(tpl)}>
+                              {t('Use with Agent')}
+                            </Button>
+                            <Button type="button" size="sm" variant="secondary" loading={remixingId === tpl.id} onClick={() => void handleRemixTemplate(tpl)}>
+                              {t('Remix into project')}
+                            </Button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Recent projects for this scenario */}
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="om-design-section-head">
+                  <h3 className="om-design-section-title">{t('Recent projects')}</h3>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => onSelectDesignScene('projects')}>{t('View all')}</Button>
+                </div>
+                <DesignProjectList scenario={scenario.id} compact onOpen={onOpenProject} />
+              </section>
+            </div>
+          </div>
+
+          {/* Bottom floating composer dock (aligned with Image Studio & Manus) */}
+          <div className="om-design-bottom-dock-wrap">
+            <div className="om-design-composer om-design-bottom-composer" style={{ position: 'relative', overflow: 'visible' }}>
+              {mention && mentionOptions.length > 0 && (
+                <div className="om-design-popover om-design-mention-menu om-design-mention-up" role="listbox" aria-label={t('Mention template or skill')}>
+                  {mentionOptions.map((opt, idx) => (
+                    <Button
+                      key={opt.id}
+                      type="button"
+                      size="sm"
+                      variant={idx === mentionIndex ? 'secondary' : 'ghost'}
+                      className="om-design-mention-item"
+                      icon={<RemixIcon name={opt.kind === 'template' ? 'layout-line' : opt.kind === 'skill' ? 'book-open-line' : 'sparkling-line'} size={14} />}
+                      onMouseEnter={() => setMentionIndex(idx)}
+                      onClick={() => applyMention(opt)}
+                    >
+                      <span className="om-design-mention-label">{opt.label}</span>
+                      <span className="om-design-muted" style={{ fontSize: 11 }}>{opt.sub}</span>
+                    </Button>
                   ))}
                 </div>
               )}
-            </section>
 
-            {/* Recent projects for this scenario */}
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="om-design-section-head">
-                <h3 className="om-design-section-title">{t('Recent projects')}</h3>
-                <Button type="button" size="sm" variant="ghost" onClick={() => onSelectDesignScene('projects')}>{t('View all')}</Button>
+              {(selectedTemplates.length > 0 || selectedSkills.length > 0) && (
+                <div className="om-design-attached-chips" style={{ paddingTop: 10 }}>
+                  {selectedTemplates.map(tpl => (
+                    <span key={tpl.id} className="om-design-badge">
+                      <RemixIcon name="layout-line" size={12} />
+                      <span>@template:{tpl.id}</span>
+                      <IconButton aria-label={t('Clear template')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedTemplates(prev => prev.filter(x => x.id !== tpl.id))} />
+                    </span>
+                  ))}
+                  {selectedSkills.map(sk => (
+                    <span key={sk.id} className="om-design-badge">
+                      <RemixIcon name="book-open-line" size={12} />
+                      <span>@skill:{sk.id}</span>
+                      <IconButton aria-label={t('Clear design skill')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedSkills(prev => prev.filter(x => x.id !== sk.id))} />
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <textarea
+                ref={textareaRef}
+                className="om-design-composer-input om-design-bottom-input"
+                aria-label={t('Design brief')}
+                placeholder={`${scenario.examples[placeholderIndex] ?? t(scenario.hint)}  (${t('Type @ to mention templates or skills')})`}
+                value={brief}
+                onChange={e => {
+                  setBrief(e.target.value);
+                  syncMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+                }}
+                onKeyDown={e => {
+                  if (!mention || mentionOptions.length === 0) return;
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionOptions.length); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionOptions.length) % mentionOptions.length); }
+                  else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); applyMention(mentionOptions[mentionIndex] ?? mentionOptions[0]); }
+                  else if (e.key === 'Escape') { e.preventDefault(); setMention(null); }
+                }}
+              />
+
+              <div className="om-design-composer-dock">
+                <div className="om-design-header-group">
+                  <Button type="button" size="sm" variant="ghost" onClick={triggerAtMention} title={t('Type @ to mention templates or skills')}>
+                    @
+                  </Button>
+
+                  <span className="om-design-badge">
+                    <RemixIcon name={scenario.icon} size={12} />
+                    {t(scenario.label)}
+                  </span>
+
+                  {/* Brand Kit picker backed by Motion Brand Kits */}
+                  <BrandKitPicker selected={selectedBrandKit} onSelect={setSelectedBrandKit} />
+
+                  {/* Multi-select Design Skill picker */}
+                  <Popover.Root modal={false} open={skillOpen} onOpenChange={setSkillOpen}>
+                    <Popover.Trigger render={
+                      <Button type="button" size="sm" variant={selectedSkills.length > 0 ? 'secondary' : 'ghost'} icon={<RemixIcon name="book-open-line" size={14} />}>
+                        {selectedSkills.length > 0 ? `${t('Design skill')} (${selectedSkills.length})` : t('Design skill')}
+                      </Button>
+                    } />
+                    <Popover.Portal>
+                      <Popover.Positioner side="top" align="start" sideOffset={6} className="z-150">
+                        <Popover.Popup className="om-design-popover" style={{ width: 340, maxHeight: 340 }}>
+                          <input
+                            type="search"
+                            className="om-design-input"
+                            placeholder={t('Search design skills…')}
+                            value={skillQuery}
+                            onChange={e => setSkillQuery(e.target.value)}
+                          />
+                          <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {selectedSkills.length > 0 && (
+                              <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedSkills([])}>
+                                {t('Clear design skill')}
+                              </Button>
+                            )}
+                            {filteredSkills.map(sk => {
+                              const active = selectedSkills.some(x => x.id === sk.id);
+                              return (
+                                <Button
+                                  key={sk.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={active ? 'secondary' : 'ghost'}
+                                  style={{ justifyContent: 'space-between' }}
+                                  onClick={() => toggleSkill(sk)}
+                                >
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{active ? '✓ ' : ''}{sk.title}</span>
+                                  {sk.scenario && <span className="om-design-badge">{sk.scenario}</span>}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </Popover.Popup>
+                      </Popover.Positioner>
+                    </Popover.Portal>
+                  </Popover.Root>
+                </div>
+
+                <div className="om-design-header-group">
+                  <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
+                    {t('Connect an Agent')}
+                  </Button>
+                  <Button type="button" size="sm" variant="primary" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={handleCopyBrief}>
+                    {t('Copy to Agent')}
+                  </Button>
+                </div>
               </div>
-              <DesignProjectList scenario={scenario.id} compact onOpen={onOpenProject} />
-            </section>
-          </>
-        )}
-      </div>
+            </div>
+
+            {manualPrompt && (
+              <div style={{ width: '100%', maxWidth: 820, marginTop: 8 }}>
+                <textarea className="om-design-textarea" readOnly value={manualPrompt} onFocus={e => e.currentTarget.select()} />
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Motion-aligned full template detail view */}
       {previewTemplate && (

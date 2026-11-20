@@ -134,7 +134,7 @@ export function BrandKitPicker({
           </Button>
         } />
         <Popover.Portal>
-          <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-150">
+          <Popover.Positioner side="top" align="start" sideOffset={8} className="z-150">
             <Popover.Popup className="om-design-popover om-design-bk-popover">
               <div className="om-design-bk-split">
                 <div className="om-design-bk-list-col">
