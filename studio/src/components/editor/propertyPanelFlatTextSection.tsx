@@ -403,8 +403,6 @@ export function FlatTextSection({
         onSetText={onSetText}
         onSetTextFieldStyle={onSetTextFieldStyle}
         onPreviewTextFieldStyle={onPreviewTextFieldStyle}
-        // The existing HTML-attribute writer targets the selected element.
-        // Only expose this for a single self-owned field, never a text child.
         onSetHtmlAttribute={activeField.source === "self" ? onSetHtmlAttribute : undefined}
       />
       {!mvp && <Button variant="plain"
