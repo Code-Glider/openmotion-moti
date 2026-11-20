@@ -839,21 +839,29 @@
 /* --- Brand Kit Picker (Hover Preview + Detail Modal) --- */
 .om-design-bk-popover {
   width: min(640px, 92vw);
-  padding: var(--motion-space-10);
+  max-width: min(640px, 92vw);
+  padding: var(--motion-space-12);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .om-design-bk-split {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(240px, 1.15fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: var(--motion-space-12);
-  max-height: 380px;
+  height: 380px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .om-design-bk-list-col {
   display: flex;
   flex-direction: column;
   gap: var(--motion-space-8);
+  height: 100%;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .om-design-bk-list {
@@ -863,18 +871,21 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding-right: 2px;
 }
 
 .om-design-bk-row {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .om-design-bk-row-btn {
   flex: 1;
   min-width: 0;
   justify-content: space-between !important;
+  overflow: hidden;
 }
 
 .om-design-bk-row-name {
@@ -889,7 +900,10 @@
   gap: var(--motion-space-10);
   padding-left: var(--motion-space-12);
   border-left: 1px solid var(--motion-border-subtle);
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow-y: auto;
 }
 
 .om-design-bk-preview-cover {
