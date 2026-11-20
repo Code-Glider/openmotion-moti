@@ -235,7 +235,7 @@ it('signs in in place even before the account summary loads', async () => {
   expect(openAccount).not.toHaveBeenCalled();
 });
 
-it('separates provider status from inline capabilities, compacts configured account banner, deduplicates model IDs and prioritizes configured providers', async () => {
+it('merges configured account identity into the header, exposes modality tabs, pins defaults and prioritizes configured providers', async () => {
   const configuredAccount = {
     ...account,
     kinds: ['text', 'image', 'video', 'audio'],
@@ -254,31 +254,36 @@ it('separates provider status from inline capabilities, compacts configured acco
     { id: 'account:flux-pro', provider: 'account', modelId: 'flux-pro-1.1', label: 'FLUX Pro', kind: 'image', enabled: true, source: 'live' },
   ];
   vi.stubGlobal('fetch', vi.fn(async (url: string) => /\/settings\/account(\?|$)/.test(String(url))
-    ? Response.json({ consoleUrl: 'https://console.example', state: 'signed-in', plan: 'Plus', user: { email: 'creator@example.com' } })
-    : Response.json({ providers, models, defaults: { text: 'account:claude-fable-5' } })));
+    ? Response.json({ consoleUrl: 'https://console.example', state: 'signed-in', plan: 'plus', user: { email: 'creator@example.com' } })
+    : Response.json({ providers, models, defaults: { image: 'account:flux-pro' } })));
   await mount('account');
 
   // Configured providers float right beneath OpenDesign.
   const sidebarNames = [...document.querySelectorAll('.om-provider-item-name')].map(node => node.firstChild?.textContent);
   expect(sidebarNames).toEqual(['OpenDesign', 'OpenDesign Cloud', 'fal.ai']);
 
-  // Status badge sits beside the heading; capabilities stay inline metadata without pill clutter.
-  expect(document.querySelector('.om-provider-title-row .om-provider-status-badge')?.textContent).toBe('Configured');
-  expect(document.querySelector('.om-provider-meta')?.textContent).toBe('Your account · Language · Image · Video · Audio');
+  // Paid configured account folds plan, status, identity and Manage account into the header without an extra callout card.
+  const header = document.querySelector('.om-provider-header')!;
+  expect(header.querySelector('.om-provider-plan-badge')?.textContent).toBe('Plus');
+  expect(header.querySelector('.om-provider-status-badge')?.textContent).toBe('Configured');
+  expect(header.querySelector('.om-provider-meta')?.textContent).toBe('creator@example.com · Your account');
+  const manageBtn = [...header.querySelectorAll('button')].find(btn => btn.textContent?.includes('Manage account'))!;
+  expect(manageBtn.hasAttribute('data-primary')).toBe(false);
+  expect(document.querySelector('.om-account-callout')).toBeNull();
   expect(document.querySelector('.om-provider-detail-inner > .om-settings-tags')).toBeNull();
 
-  // Configured account callout surfaces account identity + plan, omits redundant reason, and demotes Manage account to secondary.
-  const callout = document.querySelector('.om-account-callout')!;
-  expect(callout.textContent).toContain('Plus');
-  expect(callout.textContent).toContain('creator@example.com');
-  expect(callout.textContent).not.toContain('Included with your account');
-  const manageBtn = [...callout.querySelectorAll('button')].find(btn => btn.textContent?.includes('Manage account'))!;
-  expect(manageBtn.hasAttribute('data-primary')).toBe(false);
-
-  // Model rows deduplicate identical label/modelId and highlight the active default button.
+  // Active default model pins to the top of default order and highlights; identical label/modelId is deduplicated.
   const rows = [...document.querySelectorAll('.om-model-row')];
-  expect(rows[0].querySelector('.om-model-name small')).toBeNull();
+  expect(rows[0].querySelector('.om-model-name strong')?.textContent).toBe('FLUX Pro');
+  expect(rows[0].querySelector('.om-model-name small')?.textContent).toBe('flux-pro-1.1');
   expect(rows[0].querySelector('.om-model-default-button')?.getAttribute('data-active')).toBe('true');
-  expect(rows[1].querySelector('.om-model-name small')?.textContent).toBe('flux-pro-1.1');
+  expect(rows[1].querySelector('.om-model-name strong')?.textContent).toBe('claude-fable-5');
+  expect(rows[1].querySelector('.om-model-name small')).toBeNull();
   expect(rows[1].querySelector('.om-model-default-button')?.getAttribute('data-active')).toBeNull();
+
+  // Modality tabs switch directly between All, Language and Image.
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  expect(tabs.map(tab => tab.textContent)).toEqual(['All2', 'Language1', 'Image1']);
+  await act(async () => tabs[1].click());
+  expect([...document.querySelectorAll('.om-model-row .om-model-name strong')].map(el => el.textContent)).toEqual(['claude-fable-5']);
 });

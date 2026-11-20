@@ -37,27 +37,38 @@ it('combines independent model filters, removes chips and retains group expansio
   await act(async () => button('Expand all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(3);
 });
 
-it('hides redundant group headers, group toggles and filter counts for ungrouped catalogues while labeling sort order', async () => {
+it('exposes modality tabs, merges sorting into the filter menu, pins defaults and hides redundant ungrouped controls', async () => {
   const models = [
     { id: 'b', modelId: 'b', label: 'Beta model', kind: 'text', enabled: true, source: 'live' },
     { id: 'a', modelId: 'a', label: 'Alpha model', kind: 'image', enabled: true, source: 'live' },
+    { id: 'c', modelId: 'c', label: 'Gamma model', kind: 'text', enabled: true, source: 'live' },
   ] as DirectoryModel[];
-  await mount(<ModelCatalog models={models} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />);
+  await mount(<ModelCatalog models={models} defaultIds={new Set(['c'])} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />);
 
   expect(document.querySelector('.om-model-group')).toBeNull();
   expect(document.querySelector('[aria-label="Group models"]')).toBeNull();
   expect(document.querySelector('[aria-label="Collapse all groups"]')).toBeNull();
   expect(document.querySelector('.om-model-active-filters')).toBeNull();
+  // Active default model pins first in Default order.
+  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['c', 'b', 'a']);
 
-  const sortBtn = button('Sort models');
-  expect(sortBtn.textContent).toContain('Catalogue order');
-  await act(async () => sortBtn.click());
-  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(el => el.textContent === 'Name')!.click());
-  expect(button('Sort models').textContent).toContain('Name');
-  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a', 'b']);
+  // Modality tabs switch directly with counts.
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  expect(tabs.map(tab => tab.textContent)).toEqual(['All3', 'Language2', 'Image1']);
+  await act(async () => tabs[2].click());
+  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
+  await act(async () => tabs[0].click());
+
+  // Sort lives inside the single Filter menu with human-readable "Default" / "Name" options.
+  await act(async () => button('Filter models').click());
+  const radios = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
+  expect(radios.map(el => el.textContent)).toEqual(['Default', 'Name', 'Context window']);
+  await act(async () => radios.find(el => el.textContent === 'Name')!.click());
+  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a', 'b', 'c']);
+  expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('Sort: Name');
 
   await fill('Search models', 'Alpha');
-  expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('1 / 2');
+  expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('1 / 3');
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
 });
 

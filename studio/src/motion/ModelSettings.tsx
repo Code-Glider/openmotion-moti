@@ -110,40 +110,58 @@ function useProviderValidation(label: string | undefined, baseUrl: string | unde
   } };
 }
 
+function formatPlanLabel(plan?: string | null) {
+  const value = plan?.trim();
+  if (!value) return undefined;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 /**
  * The OpenDesign provider shows the account page's guides and signs in in place: signed-out people see the
  * multimodal sign-in guide, sign-in progress stays on this page, Free and Go accounts see the upgrade guide.
- * Other signed-in plans keep the account callout. Models below are unchanged.
+ * Configured paid accounts fold account identity, plan and management directly into the provider header.
  */
-function AccountProviderGuide({ provider, openAccount, showToast }: { provider: ProviderConnection; openAccount?: () => void; showToast: ReturnType<typeof useToast>['showToast'] }) {
+function AccountProviderHeader({ provider, openAccount, showToast }: { provider: ProviderConnection; openAccount?: () => void; showToast: ReturnType<typeof useToast>['showToast'] }) {
   // Until the summary loads (or if it fails), the callout below still signs in here rather than leaving the page.
   const { t } = useI18n(), { state: { account }, busy, action } = useAccountSignIn('provider_detail', showToast, provider);
   const plan = upgradePlan(account);
-  if (account && ['signed-out', 'unavailable', 'authorizing', 'reauth-required'].includes(account.state)) return <AccountStatus account={account} busy={busy} action={action} showToast={showToast} />;
-  if (plan && account) return <UpgradeGuide plan={plan} area="provider_detail" showToast={showToast} />;
+  const showStatusGuide = Boolean(account && ['signed-out', 'unavailable', 'authorizing', 'reauth-required'].includes(account.state));
+  const showUpgradeGuide = Boolean(plan && account);
+  const showSignInFallback = !showStatusGuide && !showUpgradeGuide && !provider.configured;
+  const advisoryReason = !showStatusGuide && !showUpgradeGuide && provider.configured && provider.reason && provider.reason !== 'Included with your account' ? provider.reason : undefined;
   const identity = account?.user?.email?.trim() || account?.user?.name?.trim();
-  const planBadge = account?.plan?.trim();
-  const advisoryReason = provider.configured && provider.reason && provider.reason !== 'Included with your account' ? provider.reason : undefined;
-  const description = advisoryReason
-    ? t(advisoryReason)
-    : provider.configured
-      ? (identity ? `${identity} · ${t('Account models and your own providers can be selected side by side.')}` : t('Account models and your own providers can be selected side by side.'))
-      : t('Sign in with OpenDesign to sync your models, subscription and usage.');
-  return <div className="om-card om-account-callout">
-    <span className="om-account-callout-icon" aria-hidden="true"><RemixIcon name="account-circle-line" size={22} /></span>
-    <div className="om-account-callout-body">
-      <div className="om-account-callout-head">
-        <h2 className="om-subtitle">{t(provider.configured ? 'Your OpenDesign models, in OpenMotion' : 'One account. Your models, together.')}</h2>
-        {provider.configured && planBadge && <span className="om-badge">{planBadge}</span>}
+  const planBadge = !showStatusGuide && !showUpgradeGuide && provider.configured ? formatPlanLabel(account?.plan) : undefined;
+  const meta = identity ? `${identity} · ${t('Your account')}` : t('Your account');
+  return <>
+    <header className="om-settings-row om-provider-header">
+      <div className="om-provider-heading">
+        <ProviderAvatar name={provider.label} provider={provider} />
+        <div className="om-provider-heading-copy">
+          <div className="om-provider-title-row">
+            <h1 className="om-title">{provider.label}</h1>
+            {planBadge && <span className="om-badge om-provider-plan-badge">{planBadge}</span>}
+            <span className="om-badge om-provider-status-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span>
+          </div>
+          <p className="om-muted om-provider-meta">{meta}</p>
+        </div>
       </div>
-      <p className="om-muted">{description}</p>
-    </div>
-    <div className="om-account-callout-action">
-      {provider.configured
-        ? openAccount && <Button variant="ghost" className="om-button h-auto" onClick={openAccount}>{t('Manage account')}<RemixIcon name="arrow-right-line" size={14} /></Button>
-        : <Button variant="ghost" className="om-button h-auto" data-primary disabled={busy} onClick={() => void action('login')}>{t('Sign in with OpenDesign')}</Button>}
-    </div>
-  </div>;
+      {provider.configured && openAccount && !showStatusGuide && !showUpgradeGuide && <Button variant="ghost" className="om-button h-auto" onClick={openAccount}>{t('Manage account')}<RemixIcon name="arrow-right-line" size={14} /></Button>}
+    </header>
+    {showStatusGuide ? <AccountStatus account={account!} busy={busy} action={action} showToast={showToast} />
+      : showUpgradeGuide ? <UpgradeGuide plan={plan!} area="provider_detail" showToast={showToast} />
+      : showSignInFallback ? <div className="om-card om-account-callout">
+        <span className="om-account-callout-icon" aria-hidden="true"><RemixIcon name="account-circle-line" size={22} /></span>
+        <div className="om-account-callout-body">
+          <h2 className="om-subtitle">{t('One account. Your models, together.')}</h2>
+          <p className="om-muted">{t('Sign in with OpenDesign to sync your models, subscription and usage.')}</p>
+        </div>
+        <div className="om-account-callout-action">
+          <Button variant="ghost" className="om-button h-auto" data-primary disabled={busy} onClick={() => void action('login')}>{t('Sign in with OpenDesign')}</Button>
+        </div>
+      </div>
+      : advisoryReason ? <div className="om-provider-notice" role="note"><RemixIcon name="information-line" size={16} /><span>{t(advisoryReason)}</span></div>
+      : null}
+  </>;
 }
 
 function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: { provider: ProviderConnection; data: ProviderDirectory; openAccount?: () => void; showToast: ReturnType<typeof useToast>['showToast']; onRemoved: () => void }) {
@@ -164,10 +182,11 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     catch (error) { if (reported) tracking.reportProviderSetting(provider, reported, 'failure'); showToast(error instanceof Error ? error.message : t('Could not save settings'), 'error'); return false; }
     finally { setBusy(false); }
   };
-  const kindSummary = provider.kinds.map(kind => t(kindLabels[kind])).join(' · ');
-  const providerRole = t(provider.category === 'account' ? 'Your account' : provider.custom ? 'Custom provider' : 'Built-in provider');
+  const providerRole = t(provider.custom ? 'Custom provider' : 'Built-in provider');
+  const emptyKindSummary = !models.length && provider.kinds.length ? provider.kinds.map(kind => t(kindLabels[kind])).join(' / ') : '';
+  const defaultIds = new Set(Object.values(data.defaults).filter((value): value is string => Boolean(value)));
   return <div className="om-provider-detail-inner">
-    <header className="om-settings-row om-provider-header">
+    {provider.protocol === 'account' ? <AccountProviderHeader provider={provider} openAccount={openAccount} showToast={showToast} /> : <header className="om-settings-row om-provider-header">
       <div className="om-provider-heading">
         <ProviderAvatar name={provider.label} provider={provider} />
         <div className="om-provider-heading-copy">
@@ -175,12 +194,11 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
             <h1 className="om-title">{provider.label}</h1>
             <span className="om-badge om-provider-status-badge" data-active={provider.configured}>{t(provider.configured ? 'Configured' : 'Not configured')}</span>
           </div>
-          <p className="om-muted om-provider-meta">{kindSummary ? `${providerRole} · ${kindSummary}` : providerRole}</p>
+          <p className="om-muted om-provider-meta">{emptyKindSummary ? `${providerRole} · ${emptyKindSummary}` : providerRole}</p>
         </div>
       </div>
-      {provider.protocol !== 'account' && !provider.setupRequired && <Toggle label={t('Enable provider')} checked={provider.enabled} disabled={busy || !provider.configured && provider.protocol !== 'agent'} onChange={enabled => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { enabled }), 'Provider updated')} />}
-    </header>
-    {provider.protocol === 'account' ? <AccountProviderGuide provider={provider} openAccount={openAccount} showToast={showToast} /> : null}
+      {!provider.setupRequired && <Toggle label={t('Enable provider')} checked={provider.enabled} disabled={busy || !provider.configured && provider.protocol !== 'agent'} onChange={enabled => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { enabled }), 'Provider updated')} />}
+    </header>}
     {provider.protocol === 'account' ? null
       : provider.protocol === 'agent' ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Local Agent')}</h2><p className="om-muted">{t(provider.reason)}</p><p className="om-muted">{t('Uses your installed Agent and its own sign-in. No API key is copied.')}</p><Button variant="ghost" className="om-button h-auto" disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Agent status refreshed')}>{t('Refresh status')}</Button></div>
       : provider.setupRequired ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Dedicated integration required')}</h2><p className="om-muted">{t(provider.reason)}</p>{provider.website && <a className="om-button" href={provider.website} target="_blank" rel="noreferrer">{t('Provider website')}<RemixIcon name="external-link-line" size={14} /></a>}</div>
@@ -199,7 +217,7 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     <section className="om-model-section" aria-label={t('Models')}>
       <div className="om-settings-row"><h2 className="om-subtitle">{t('Models')} <span className="om-muted">{models.length}</span></h2><div className="om-settings-actions"><Button variant="ghost" className="om-button h-auto" disabled={busy || !provider.configured || provider.setupRequired} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Models synced')}><RemixIcon name="refresh-line" size={15} />{t(busy ? 'Working…' : 'Sync models')}</Button>
         {!['agent', 'account'].includes(provider.protocol) && !provider.setupRequired && <Tooltip label={t('Add model')} wrap><IconButton variant="plain" className="om-button" aria-label={t('Add model')} onClick={() => setAddModel(true)} icon={<RemixIcon name="add-line" size={17} />} /></Tooltip>}</div></div>
-      <ModelCatalog models={models} render={model => <ModelRow key={model.id} model={model} provider={provider} selected={data.defaults[model.kind] === model.id} busy={busy} change={change} edit={() => setEditing(model)} />} />
+      <ModelCatalog models={models} defaultIds={defaultIds} render={model => <ModelRow key={model.id} model={model} provider={provider} selected={data.defaults[model.kind] === model.id} busy={busy} change={change} edit={() => setEditing(model)} />} />
     </section>
     {provider.custom && <div className="om-settings-row om-provider-remove"><span className="om-muted">{t('Remove this provider and its saved models from this workspace.')}</span><Button variant="ghost" className="om-button h-auto" disabled={busy} onClick={() => setRemoving(true)}>{t('Delete provider')}</Button></div>}
     {removing && <SettingsDialog title={t('Delete provider')} onClose={() => setRemoving(false)}><p className="om-muted">{t('This removes the saved key and models. Existing project media is kept.')}</p><div className="om-settings-actions"><Button variant="ghost" className="om-button h-auto" onClick={() => setRemoving(false)}>{t('Cancel')}</Button><Button variant="ghost" className="om-button h-auto" data-primary disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'DELETE'), 'Provider deleted').then(ok => { if (ok) onRemoved(); })}>{t('Delete')}</Button></div></SettingsDialog>}
