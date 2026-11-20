@@ -8,6 +8,10 @@ const actionSets = {
   openmotion_export_request: ['request', 'record_review'],
   openmotion_project_archive: ['export', 'import'],
   openmotion_manage_project: ['comments', 'info', 'rename', 'duplicate', 'reveal', 'trash', 'restore', 'delete'],
+  openmotion_design_catalog: ['list_scenarios', 'list_templates', 'get_template', 'list_skills', 'get_skill', 'list_design_systems', 'get_design_system', 'get_craft'],
+  openmotion_design_project: ['create', 'list', 'get', 'rename', 'duplicate', 'trash', 'restore', 'delete', 'open', 'open_in', 'export', 'import'],
+  openmotion_design_edit: ['read_file', 'write', 'list_versions', 'restore_version'],
+  openmotion_design_comments: ['list', 'create', 'update', 'delete'],
 } as const;
 const targets = ['project', 'templates', 'providers'] as const;
 export const toolDimensions = { action: [...new Set(Object.values(actionSets).flat())], target: targets } as const;
@@ -68,9 +72,14 @@ const invalidFields = [
   'transcript.sourcePath', 'transcript.sourceStart', 'transcript.subtitles', 'transcript.textKind',
   'transcript.timelineStart', 'transcript.transcriptId', 'trash', 'trashed', 'unknown_field', 'versionId',
   'workId',
+  'id', 'scenario', 'category', 'q', 'referencePath', 'designSystemId', 'editorId', 'format', 'filePath',
+  'outputPath', 'path', 'deletes', 'deletes[]', 'anchor.filePath', 'anchor.viewport', 'anchor.viewport.id',
+  'anchor.viewport.width', 'anchor.viewport.height', 'anchor.slideIndex', 'anchor.element.elementId',
+  'anchor.element.htmlHint', 'anchor.region', 'anchor.region.x', 'anchor.region.y', 'anchor.region.width',
+  'anchor.region.height',
 ] as const;
 export const toolErrorCodes = [
-  'COMMENT_TARGET_NOT_FOUND', 'COMMENT_NOT_FOUND', 'COMMENT_CONFLICT', 'COMMENT_LIMIT',
+  'COMMENT_TARGET_NOT_FOUND', 'COMMENT_NOT_FOUND', 'COMMENT_CONFLICT', 'COMMENT_LIMIT', 'NOT_FOUND', 'UNSUPPORTED',
   'INVALID_ARGUMENT', 'VERSION_CONFLICT', 'PROJECT_NOT_BOUND', 'PROJECT_NOT_FOUND', 'PROJECT_SESSION_MISMATCH',
   'REQUEST_ID_CONFLICT', 'REQUEST_STATE_UNKNOWN', 'MCP_TOOL_NOT_EXPOSED', 'EXPORT_BUSY', 'EXPORT_NOT_FOUND',
   'EXPORT_NOT_COMPLETED', 'TEMPLATE_NOT_FOUND', 'TEMPLATE_NOT_EDITABLE', 'SOURCE_BATCH_TOO_LARGE',
