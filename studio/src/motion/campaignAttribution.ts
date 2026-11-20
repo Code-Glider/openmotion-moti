@@ -58,6 +58,13 @@ export const shouldShowBlackFridayBanner = () => blackFridayActive() && !bannerD
 
 /** Where the click happened: the top campaign banner or the header Pricing entry. */
 export type CampaignEntrySource = 'openmotion_bf_banner' | 'openmotion_header_pricing';
+/**
+ * The `od_entry_source` sent for both entries. AMR keeps an attribution only for registered sources, and
+ * `openmotion_manage_subscription` is the OpenMotion source it already accepts; an unregistered value would drop the
+ * whole attribution, entry id included. The two entries are told apart by `utm_medium` and by the OpenMotion click
+ * event that carries the same `entry_id`.
+ */
+const REGISTERED_ENTRY_SOURCE = 'openmotion_manage_subscription';
 const utmMedium: Record<CampaignEntrySource, string> = { openmotion_bf_banner: 'banner', openmotion_header_pricing: 'header' };
 
 export function newCampaignEntryId() {
@@ -67,7 +74,7 @@ export function newCampaignEntryId() {
 export function campaignPricingUrl(locale: string, source: CampaignEntrySource, entryId: string, at = new Date(), campaign = blackFridayActive(at.getTime())) {
   const url = new URL(locale.startsWith('zh') ? 'https://open-design.ai/zh/pricing/' : 'https://open-design.ai/pricing/');
   url.search = new URLSearchParams({
-    od_origin: 'openmotion', od_entry_source: source, od_entry_id: entryId, od_entry_at: at.toISOString(),
+    od_origin: 'openmotion', od_entry_source: REGISTERED_ENTRY_SOURCE, od_entry_id: entryId, od_entry_at: at.toISOString(),
     utm_source: 'openmotion', utm_medium: utmMedium[source], ...(campaign ? { utm_campaign: BLACK_FRIDAY_CAMPAIGN } : {}),
   }).toString();
   return url.toString();

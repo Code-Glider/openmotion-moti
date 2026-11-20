@@ -33,7 +33,7 @@ it('builds a Pricing link that carries the OpenMotion entry the website keeps th
   const url = new URL(campaignPricingUrl('zh-CN', 'openmotion_bf_banner', '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', new Date('2026-11-21T00:00:00Z')));
   expect(url.origin + url.pathname).toBe('https://open-design.ai/zh/pricing/');
   expect(Object.fromEntries(url.searchParams)).toEqual({
-    od_origin: 'openmotion', od_entry_source: 'openmotion_bf_banner', od_entry_id: '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', od_entry_at: '2026-11-21T00:00:00.000Z',
+    od_origin: 'openmotion', od_entry_source: 'openmotion_manage_subscription', od_entry_id: '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', od_entry_at: '2026-11-21T00:00:00.000Z',
     utm_source: 'openmotion', utm_medium: 'banner', utm_campaign: 'black_friday_2026',
   });
   expect(new URL(campaignPricingUrl('en', 'openmotion_header_pricing', 'x')).pathname).toBe('/pricing/');
@@ -51,7 +51,8 @@ it('reports one banner impression per page load and joins each claim click to it
   const cta = container.querySelector<HTMLAnchorElement>('a[href*="pricing"]')!;
   cta.addEventListener('click', event => event.preventDefault());
   const firstEntry = params(cta.href).get('od_entry_id');
-  expect(params(cta.href).get('od_entry_source')).toBe('openmotion_bf_banner');
+  expect(params(cta.href).get('od_entry_source')).toBe('openmotion_manage_subscription');
+  expect(params(cta.href).get('utm_medium')).toBe('banner');
   await act(async () => { cta.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
   const click = tracked().find(row => row.event === 'ui_click')!.properties;
   expect(click).toMatchObject({ page_name: 'explore', area: 'campaign_banner', element: 'claim_offer', campaign_id: 'black_friday_2026', entry_id: firstEntry });
@@ -67,7 +68,7 @@ it('reports the header Pricing click with the entry id on its link', async () =>
   const link = container.querySelector<HTMLAnchorElement>('a')!;
   link.addEventListener('click', event => event.preventDefault());
   const entry = params(link.href).get('od_entry_id');
-  expect(params(link.href).get('od_entry_source')).toBe('openmotion_header_pricing');
+  expect(params(link.href).get('od_entry_source')).toBe('openmotion_manage_subscription');
   await act(async () => { link.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
   expect(tracked()).toEqual([{ event: 'ui_click', properties: expect.objectContaining({ page_name: 'studio', area: 'header', element: 'open_pricing', campaign_id: 'black_friday_2026', entry_id: entry }) }]);
 });
@@ -99,7 +100,7 @@ it('shows the campaign only inside its window and drops campaign fields afterwar
   expect(link.getAttribute('aria-label')).toBe('Pricing');
   await act(async () => { link.click(); });
   expect(tracked().at(-1)?.properties).not.toHaveProperty('campaign_id');
-  expect(params(link.href).get('od_entry_source')).toBe('openmotion_header_pricing');
+  expect(params(link.href).get('od_entry_source')).toBe('openmotion_manage_subscription');
 });
 
 it('keeps a dismissed banner hidden for the rest of the local day only', () => {
