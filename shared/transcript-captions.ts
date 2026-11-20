@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { placeTranscriptSegments, timedSegment, parseTranscriptSubtitles, type TranscriptDocument, type TranscriptPlacement, type TranscriptSegment } from './transcript.ts';
 import { exportCaptionSource } from './caption-export.ts';
 import { captionArtwork, captionSettings, type CaptionSettings } from './caption-style.ts';
-import { textFlowAttributes } from './text-flow.ts';
+import { canonicalTextLanguage, textFlowAttributes } from './text-flow.ts';
 
 export type CaptionPlacement = TranscriptPlacement;
 export type CaptionTrack = { id: string; kind: 'text' | 'caption'; track: number; label: string; cueCount: number; settings: CaptionSettings; locked: boolean };
@@ -78,8 +78,15 @@ export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtm
   /** Original native caption authoring. Visual values describe video artwork, never application UI. */
   function transcriptCaptionSource(html: string, doc: TranscriptDocument, placement: CaptionPlacement, options?: Partial<CaptionSettings>) {
     const mapped = placeTranscriptSegments(doc, placement);
-    const language = doc.language && doc.language !== 'auto' ? doc.language : undefined;
-    return timedTextSource(html, doc.id, language || doc.source.path.split('/').pop() || 'Captions', mapped, { ...(language ? { language } : {}), ...options });
+    // Providers and legacy projects may use human-readable labels such as "English & Chinese".
+    // Infer language only from tag-shaped metadata; a label must not block existing captions.
+    const label = doc.language && doc.language !== 'auto' ? doc.language : undefined;
+    let language: string | undefined;
+    if (label && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(label)) {
+      try { language = canonicalTextLanguage(label); }
+      catch { /* Unrecognized source metadata remains a display label, not authored HTML. */ }
+    }
+    return timedTextSource(html, doc.id, label || doc.source.path.split('/').pop() || 'Captions', mapped, { ...(language ? { language } : {}), ...options });
   }
 
   /** Manual text and imported subtitles are timeline-native; no media or ASR is required. */

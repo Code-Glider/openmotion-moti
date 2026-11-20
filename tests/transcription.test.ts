@@ -183,6 +183,22 @@ test('edited-video sidecars reuse the caption clock for trim, placement and spee
   assert.throws(() => exportTranscript(doc, 'srt', { ...placement, sourceEnd: undefined as any }), /Invalid caption placement/);
 });
 
+test('native caption language accepts BCP47 tags without treating legacy display labels as locales', () => {
+  const base = '<div data-composition-id="main" data-duration="9" data-width="640" data-height="360"></div>';
+  const placement = { sourceStart: 0, sourceEnd: 3, timelineStart: 4, playbackRate: 1 };
+  const hebrew = document(); hebrew.language = 'he-IL';
+  const native = transcriptCaptionSource(base, hebrew, placement).content;
+  assert.match(native, /lang="he-IL" dir="rtl"/);
+  assert.equal(captionTracks(native)[0].settings.language, 'he-IL');
+  const explicit = transcriptCaptionSource(base, hebrew, placement, { language: 'ar', direction: 'ltr' }).content;
+  assert.match(explicit, /lang="ar" dir="ltr"/);
+  const legacy = document(); legacy.language = 'English & Chinese';
+  const unchanged = transcriptCaptionSource(base, legacy, placement).content;
+  assert.equal(captionTracks(unchanged)[0].label, 'English & Chinese');
+  assert.doesNotMatch(unchanged, / lang="/);
+  assert.doesNotMatch(unchanged, / dir="/);
+});
+
 test('caption styles and visibility preserve edited timing, content and track identity', async () => {
   const base = '<div data-composition-id="main" data-duration="9" data-width="640" data-height="360"><audio data-track-index="2"></audio></div>';
   const doc = document(); doc.language = 'English & Chinese';
