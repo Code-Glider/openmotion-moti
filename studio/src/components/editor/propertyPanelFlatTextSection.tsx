@@ -1,4 +1,4 @@
-import { physicalTextAlignment } from "../../../../shared/text-flow.ts";
+import { canonicalTextLanguage, physicalTextAlignment } from "../../../../shared/text-flow.ts";
 import { Button } from "open-design-ui/button";
 import { IconButton } from "open-design-ui/icon-button";
 import { NativeSelect } from "../ui/FormField";
@@ -56,6 +56,7 @@ function FlatTextFieldEditor({
   onSetText,
   onSetTextFieldStyle,
   onPreviewTextFieldStyle,
+  onSetHtmlAttribute,
   autoFocus = false,
 }: {
   field: DomEditSelection["textFields"][number];
@@ -65,6 +66,8 @@ function FlatTextFieldEditor({
   onSetText: (value: string, fieldKey?: string) => void;
   onSetTextFieldStyle: (fieldKey: string, property: string, value: string) => void;
   onPreviewTextFieldStyle?: (fieldKey: string, property: string, value: string) => void;
+  /** Only supplied for the sole text field authored on the selected HTML element. */
+  onSetHtmlAttribute?: PropertyPanelProps["onSetHtmlAttribute"];
   autoFocus?: boolean;
 }) {
   const { t } = useI18n();
@@ -79,6 +82,10 @@ function FlatTextFieldEditor({
   const physicalAlign = physicalTextAlignment(align, direction);
   const textTransform = getTextStyleValue(field, styles, "text-transform", "none");
   const fontStyle = getTextStyleValue(field, styles, "font-style", "normal");
+  const htmlDir = field.attributes.find((attr) => attr.name === "dir")?.value ?? "";
+  const htmlLanguage = field.attributes.find((attr) => attr.name === "lang")?.value ?? "";
+  const [languageError, setLanguageError] = useState(false);
+  useEffect(() => setLanguageError(false), [field.key, htmlLanguage]);
 
   return (
     <>
@@ -219,6 +226,45 @@ function FlatTextFieldEditor({
           }}
         />
       )}
+      {!mvp && onSetHtmlAttribute && (
+        <>
+          <FlatSegmentedRow
+            label={t("HTML dir")}
+            options={[
+              { key: "", node: "—", label: "Inherit direction", active: htmlDir === "" },
+              { key: "auto", node: "Auto", label: "Automatic direction", active: htmlDir === "auto" },
+              { key: "ltr", node: "LTR", label: "HTML left to right", active: htmlDir === "ltr" },
+              { key: "rtl", node: "RTL", label: "HTML right to left", active: htmlDir === "rtl" },
+            ]}
+            onChange={(next) => {
+              if (next !== htmlDir) void onSetHtmlAttribute("dir", next || null);
+            }}
+          />
+          <FlatRow
+            label={t("Language tag")}
+            value={htmlLanguage}
+            tier={resolveValueTier(htmlLanguage, "")}
+            onCommit={(next) => {
+              const trimmed = next.trim();
+              let canonical: string | undefined;
+              try {
+                canonical = trimmed ? canonicalTextLanguage(trimmed) : undefined;
+              } catch {
+                setLanguageError(true);
+                throw new Error("INVALID_TEXT_LANGUAGE");
+              }
+              setLanguageError(false);
+              if ((canonical ?? "") !== htmlLanguage) return onSetHtmlAttribute("lang", canonical ?? null);
+            }}
+            onReset={() => void onSetHtmlAttribute("lang", null)}
+          />
+          {languageError && (
+            <span role="alert" className="text-[11px] text-red-400">
+              {t("Invalid BCP-47 language tag")}
+            </span>
+          )}
+        </>
+      )}
       {!mvp && (
         <FlatSegmentedRow
           label={t("Case · Style")}
@@ -267,6 +313,7 @@ export function FlatTextSection({
   onSetText,
   onSetTextFieldStyle,
   onPreviewTextFieldStyle,
+  onSetHtmlAttribute,
   onAddTextField,
   onRemoveTextField,
 }: {
@@ -281,7 +328,7 @@ export function FlatTextSection({
   | "onPreviewTextFieldStyle"
   | "onAddTextField"
   | "onRemoveTextField"
->) {
+> & { onSetHtmlAttribute?: PropertyPanelProps["onSetHtmlAttribute"] }) {
   const { t } = useI18n();
   const mvp = useMvpEditor();
   const track = useTrackDesignInput();
@@ -356,6 +403,9 @@ export function FlatTextSection({
         onSetText={onSetText}
         onSetTextFieldStyle={onSetTextFieldStyle}
         onPreviewTextFieldStyle={onPreviewTextFieldStyle}
+        // The existing HTML-attribute writer targets the selected element.
+        // Only expose this for a single self-owned field, never a text child.
+        onSetHtmlAttribute={activeField.source === "self" ? onSetHtmlAttribute : undefined}
       />
       {!mvp && <Button variant="plain"
         type="button"
