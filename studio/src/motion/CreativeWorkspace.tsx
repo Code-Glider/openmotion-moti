@@ -50,7 +50,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
         const next = { studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null };
         reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
         onNavigate(next);
-      }}>{t(item.label)}</button>)}{studio.id === 'design' && onSelectDesignScene && onChooseStudio && <DesignSceneTabs activeTab={null} onSelectDesignScene={onSelectDesignScene} onChooseStudio={onChooseStudio} />}</nav>}
+      }}>{t(item.label)}</button>)}{studio.id === 'design' && onSelectDesignScene && <DesignSceneTabs activeTab={null} onSelectDesignScene={onSelectDesignScene} />}</nav>}
       {onOpenAssets && <button className="om-nav-item om-studio-library-link" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_assets', destinationTarget(destination)); onOpenAssets(); }} aria-label={t('Workspace assets')}><RemixIcon name="folder-open-line" size={16} /><span>{t('Workspace assets')}</span></button>}
     </header>
     <AssetsPage key={draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),

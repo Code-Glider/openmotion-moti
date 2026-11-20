@@ -199,8 +199,6 @@ export function DesignScenePage({
           <DesignSceneTabs
             activeTab={scene}
             onSelectDesignScene={onSelectDesignScene}
-            onChooseStudio={onChooseStudio}
-            onSelectImageScene={onSelectImageScene}
           />
         </nav>
       </header>
