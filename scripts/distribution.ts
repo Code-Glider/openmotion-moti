@@ -683,7 +683,7 @@ export const distributionDocuments = [
   'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'CONTRIBUTING.zh-CN.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'repository-media.json',
   'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md', 'docs/product/platform-export.md',
   'tracking/README.md', 'tracking/INTEGRATION.md', 'tracking/posthog-geoip.hog',
-  'docs/agent-adapters.md', 'docs/browser-runtime.md', 'docs/design-system.md', 'docs/editor-fork.md',
+  'docs/agent-adapters.md', 'docs/browser-runtime.md', 'docs/design-system.md', 'docs/design-studio.md', 'docs/editor-fork.md',
   'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/assets.md', 'docs/project-archives.md', 'docs/generation-options.md', 'docs/provider-settings.md', 'docs/local-agents.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
   'docs/motion-extension-scope.md', 'docs/npm-installation.md', 'docs/install-attribution.md', 'docs/install.md', 'docs/install-onboarding.md', 'docs/release-guide.md', 'docs/release-workflows.md', 'docs/templates/release-record.md', 'docs/project-workspace.md',
   'docs/repository-migration.md', 'docs/session-architecture.md', 'docs/shared-editor.md',
@@ -743,7 +743,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'package.json', 'package-lock.json',
     'skills/openmotion-recreate/assets/reconstruction.js',
     'server.ts', 'browser.ts', 'workspace.ts', 'mcp.ts', 'mcp-tools.ts', 'editor-runtime.ts',
-    'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'review-comments.ts', 'project-asset-names.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
+    'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'design-projects.ts', 'review-comments.ts', 'project-asset-names.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
     'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts',
     'scripts/runtime-assets.mjs', 'scripts/vision-runtime.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/install-public-skill.ts', 'scripts/recover-workspace-lock.ts', 'scripts/cleanup-harness-bundles.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
@@ -797,6 +797,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     if (!/^[a-z][a-z0-9-]*$/.test(entry.id)) throw new Error('Invalid packaged Brand Kit ID');
     files.push(...['manifest.json', 'DESIGN.md', 'tokens.css'].map(file => `${brandRoot}/sources/${entry.id}/${file}`));
   }
+  await walk('library/design', /\.(?:html|css|js|mjs|ts|json|md|txt|ya?ml|py|png|svg)$|^(?:LICENSE|LICENSE-open-design)$/);
   await walk('web', /\.(?:ts|js|json|html|css|svg|jpg|png|webp|ttf|woff2?|txt)$/);
   for (const directory of ['templates', 'template-library']) await walk(directory, /\.(?:html|js|json|css|svg|jpg|png|webp|md|txt|ttf|woff2?)$/);
   files.push('template-library/openmotion-welcome/assets/soundtrack.m4a');

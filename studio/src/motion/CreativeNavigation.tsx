@@ -6,7 +6,6 @@ import type { Modality } from '../../../shared/gateway';
 import { Popover } from '../components/ui/Popover';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { workspacePageHref } from './workspacePageRouting';
 import { creativeStudios, studioIconTone, mediaLabels, sceneDestination, studioScenes, supportsScene, type StudioDestination } from './creativeStudios';
 import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
@@ -22,9 +21,10 @@ export type CreativeNavigationProps = {
   specialty: TechniqueStudio | null;
   destination: StudioDestination | null;
   motionActive: boolean;
+  designActive?: boolean;
   onNavigate: (destination: StudioDestination | null) => void;
-  currentPage: 'explore' | 'api' | 'mcp' | null;
-  onOpenPage: (page: 'explore' | 'api' | 'mcp', client?: McpClient) => void;
+  currentPage: 'explore' | 'mcp' | null;
+  onOpenPage: (page: 'explore' | 'mcp', client?: McpClient) => void;
   /** The page this navigation is shown on, so its clicks segment by where the user was. */
   trackingPage: CreativePage;
 };
@@ -85,7 +85,7 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
   </>;
 }
 
-export function CreativeNavigation({ specialty, onChooseStudio, destination, motionActive, onNavigate, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
+export function CreativeNavigation({ specialty, onChooseStudio, destination, motionActive, designActive, onNavigate, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = useState<Modality | 'mcp' | null>(null);
   const [popupHost, setPopupHost] = useState<HTMLElement>();
@@ -151,8 +151,7 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
       menuLabel: 'Generate with Open Design MCP', onActivate: () => onOpenPage('mcp') },
   ];
   const splitStart = 1;
-  const apiIndex = splitStart + menuDestinations.length;
-  const studioStart = apiIndex + 1;
+  const studioStart = splitStart + menuDestinations.length;
   const count = studioStart + creativeStudios.length;
   const hasMore = visibleCount < count || Boolean(overflowActions);
 
@@ -188,14 +187,10 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
       aria-current={currentPage === 'explore' ? 'page' : undefined} onClick={() => { track('nav_explore', { navTarget: 'explore', inOverflow: inPanel }); choose(() => onOpenPage('explore')); }}>
       <RemixIcon name="global-line" size={17} /><span>{t('Explore')}</span>
     </Button>;
-    if (index < apiIndex) return splitItem(index, inPanel);
-    if (index === apiIndex) return (
-      <a className="om-nav-item" href={workspacePageHref(location.href, { api: true, tool: null, templates: false })} aria-current={currentPage === 'api' ? 'page' : undefined}
-        onClick={event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); track('nav_api', { navTarget: 'api', inOverflow: inPanel }); choose(() => onOpenPage('api')); }}>API</a>
-    );
+    if (index < studioStart) return splitItem(index, inPanel);
     const studio = creativeStudios[index - studioStart];
     const isCurrent = studio.surface === 'editor' ? motionActive
-      : (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
+      : (studio.id === 'design' && Boolean(designActive)) || (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
     const badge = 'navBadge' in studio ? studio.navBadge : undefined;
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
     return <Button variant="plain" className="om-nav-item" data-coming-soon={badge === 'Coming soon' || undefined} aria-current={isCurrent ? 'page' : undefined}

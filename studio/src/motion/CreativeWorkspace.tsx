@@ -12,6 +12,7 @@ import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
 import { destinationTarget, reportCreativeClick } from './exploreTracking';
 import { scenesForStudio, studioIconTone, studioDestination, studioDraftKey, supportsScene, type StudioDestination } from './creativeStudios';
+import { DesignSceneTabs, type DesignTabId } from '../design/scenes/DesignSceneTabs';
 
 export type StudioCreation = {
   destination: StudioDestination;
@@ -22,8 +23,9 @@ export type StudioCreation = {
   chooseModel: (model: string) => void;
 };
 
-export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenBrandKit, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, hasProject, active, drafts }: {
   onOpenBrandKit?: () => void;
+  onSelectDesignScene?: (scene: DesignTabId) => void;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
@@ -54,7 +56,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
         const next = { studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null };
         reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
         onNavigate(next);
-      }}>{t(item.label)}</Button>)}</nav>}
+      }}>{t(item.label)}</Button>)}{studio.id === 'design' && onSelectDesignScene && <DesignSceneTabs activeTab={null} onSelectDesignScene={onSelectDesignScene} />}</nav>}
       {onOpenBrandKit && <div className="om-control-row om-studio-library-link"><WorkspaceResourceActions onBrandKit={onOpenBrandKit} /></div>}
     </header>
     <AssetsPage key={draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),

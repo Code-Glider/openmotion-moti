@@ -18,6 +18,7 @@ import { loadCanvasSourceOperations } from './shared/composition-canvas-source.t
 import { loadCaptionSourceOperations } from './shared/transcript-captions.ts';
 import { brandKitOperation } from './gateway/brand-kit-operation.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
+import { dispatchDesignTool } from './design-projects.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from './shared/asset-limits.ts';
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -372,6 +373,9 @@ export class Phase1Service {
     return { projectId: args.projectId, review: record, changed: false };
   }
   async dispatch(name: string, args: any, host?: HostContext): Promise<any> {
+    if (name === 'motion_design_catalog' || name === 'motion_design_project' || name === 'motion_design_edit' || name === 'motion_design_comments') {
+      return dispatchDesignTool(name, args, this.store.directory, this.context.origin());
+    }
     if (name === 'motion_manage_project') return manageProject(this.store, args, this.runtimeRoot);
     if (name === 'motion_project_archive') {
       const result = await projectArchive(this.store, args, this.runtimeRoot);

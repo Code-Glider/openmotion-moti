@@ -408,7 +408,7 @@ backend/data directory. Deterministic coverage lives in
 - Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
   one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
   Motion Studio landing and the Design, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
-  `scene_id` and `landing`), the API page (`api`) and a model overview (`model_overview`). Filter and tab
+  `scene_id` and `landing`) and a model overview (`model_overview`). Filter and tab
   changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
   the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
   `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
