@@ -45,7 +45,6 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { changesWorkspaceDestination, readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
 import { WORKSPACE_LOCATION_CHANGED, restoreWorkspaceSource, workspaceHistoryIndex, workspaceHistorySource, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { WorkspaceBreadcrumb } from './WorkspaceBreadcrumb';
-import { BackToExploreButton } from './BackToExploreButton';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { BrandKitPage } from './BrandKitPage';
@@ -308,11 +307,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     return prepareTemplateProject(template, projectId, requestId);
   }} onOpenProject={id => workspace.open('projects', id)} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />;
   const visibleSettings = templatesPage || standaloneMcp ? null : settings;
-  const studioReturn = source && page.studio && (
-    page.studio.scene.modality === 'image' && fromExplore && !sourcePage.community && !sourcePage.medium
-      ? <div className="om-studio-return"><BackToExploreButton onClick={returnToExplore} /></div>
-      : <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />
-  );
+  const showStudioBackToExplore = page.studio?.scene.modality === 'image' && fromExplore && !sourcePage.community && !sourcePage.medium;
   const mcpPage = settings === 'mcp' && <McpConnectionPage entry={connectionEntry.current} projectId={projectId}
     hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings}
     route={page} onRouteChange={navigatePage} inSettings={page.mcpInSettings}
@@ -365,7 +360,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} source={source} onExplore={hostChrome ? returnToExplore : undefined}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudioFromPage} /></div>}
       <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })}
-        returnNavigation={studioReturn}
+        breadcrumb={source && page.studio && !showStudioBackToExplore && <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />}
+        onBackToExplore={showStudioBackToExplore ? returnToExplore : undefined}
         onExplore={hostChrome ? returnToExplore : undefined} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)}
         onOpenStudio={studio => navigatePage({ studio, templates: false }, false, 'from-page')}
         onNavigate={studio => navigatePage({ studio, templates: false }, false, 'keep')} /></div>

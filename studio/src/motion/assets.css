@@ -279,11 +279,11 @@
 .om-creative-workspace { flex-direction: column; }
 .om-studio-bar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8) var(--motion-space-24); padding: var(--motion-space-12) var(--motion-space-24); border-bottom: 1px solid var(--motion-border-subtle); }
 .om-studio-bar h1 { display: inline-flex; align-items: center; gap: var(--motion-space-8); }
-.om-creative-workspace > :is(.om-workspace-breadcrumb, .om-studio-return) { flex: none; padding: var(--motion-space-4) var(--motion-space-24) 0; }
+.om-creative-workspace > .om-workspace-breadcrumb { flex: none; padding: var(--motion-space-4) var(--motion-space-24) 0; }
 .om-studio-library-link { margin-inline-start: auto; }
 @container asset-workspace (max-width: 680px) {
   .om-studio-bar { padding: var(--motion-space-8) var(--motion-space-16); }
-  .om-creative-workspace > :is(.om-workspace-breadcrumb, .om-studio-return) { padding-inline: var(--motion-space-16); }
+  .om-creative-workspace > .om-workspace-breadcrumb { padding-inline: var(--motion-space-16); }
 }
 @container asset-workspace (max-width: 480px) {
   .om-studio-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--motion-space-8); }

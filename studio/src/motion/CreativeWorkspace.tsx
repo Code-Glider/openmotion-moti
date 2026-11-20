@@ -4,6 +4,7 @@ import type { ReactNode, RefObject } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { WorkspaceResourceActions } from './WorkspaceResourceActions';
+import { BackToExploreButton } from './BackToExploreButton';
 import { AssetsPage } from './AssetsPage';
 import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
@@ -19,9 +20,9 @@ export type StudioCreation = {
   chooseModel: (model: string) => void;
 };
 
-export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpenStudio, returnNavigation, onExplore, onCollection, onOpenBrandKit, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpenStudio, breadcrumb, onBackToExplore, onExplore, onCollection, onOpenBrandKit, hasProject, active, drafts }: {
   onOpenBrandKit?: () => void;
-  onOpenStudio: (next: StudioDestination) => void; returnNavigation?: ReactNode;
+  onOpenStudio: (next: StudioDestination) => void; breadcrumb?: ReactNode; onBackToExplore?: () => void;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore?: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
@@ -39,9 +40,9 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
   } : undefined;
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
   return <div className="om-assets-host om-creative-workspace">
-    {returnNavigation}
+    {breadcrumb}
     <header className="om-studio-bar">
-      {!returnNavigation && (studio.surface === 'techniques'
+      {onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && (studio.surface === 'techniques'
         ? <Button variant="plain" className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination)); onCollection(studio); }} aria-label={t('Back to {studio}', { studio: t(studio.title) })}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Skills')}</span></Button>
         : onExplore && <Button variant="plain" className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', destinationTarget(destination)); onExplore(); }} aria-label={t('Back to Explore')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Explore')}</span></Button>)}
       <h1 className="om-subtitle"><span className="om-creation-icon" data-tone={scene.modality}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>

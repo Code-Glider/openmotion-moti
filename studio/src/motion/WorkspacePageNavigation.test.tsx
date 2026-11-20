@@ -667,7 +667,7 @@ it.each([
   ['motion', 'motion'],
   ['black-friday', 'explore'],
   ['hub-gemini-4', 'model-hub'],
-  ['text-to-image', 'create'],
+  ['text-to-image', 'design'],
 ])('uses the same Back to Explore control for the %s spotlight destination', async (slide, destination) => {
   await mount();
   await click('Explore');
@@ -683,6 +683,16 @@ it.each([
   expect(breadcrumb()).toBeNull();
   const returnControl = container.querySelector<HTMLButtonElement>('.om-back-to-explore');
   expect(returnControl?.textContent).toBe('Back to Explore');
+  if (slide === 'text-to-image') {
+    const header = container.querySelector('.om-studio-bar')!;
+    expect(returnControl?.nextElementSibling).toBe(header.querySelector('h1'));
+    expect(header.querySelector('h1')?.textContent).toBe('Design Studio');
+    expect(header.querySelector('[aria-current="page"]')?.textContent).toBe('Text to image');
+    expect(container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value).toContain('Photograph an amber glass bottle');
+    const editTab = [...header.querySelectorAll<HTMLButtonElement>('nav button')].find(tab => tab.textContent === 'Image editing')!;
+    await act(async () => editTab.click());
+    expect(page().studio?.scene.id).toBe('image-edit');
+  }
   await act(async () => { returnControl!.click(); await new Promise(resolve => setTimeout(resolve, 0)); });
   expect(location.href).toBe(origin);
   expect(carousel.getAttribute('data-scene')).toBe(slide);
