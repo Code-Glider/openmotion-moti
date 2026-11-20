@@ -18,6 +18,6 @@ export function WorkspaceResourceActions({ onBrandKit, brandKitOpen = false, clo
       aria-current={active ? 'page' : undefined} onClick={() => { closeMenu?.(); open(); }}>
       <RemixIcon name={icon} size={17} />{closeMenu && label}
     </Button>;
-    return closeMenu ? button : <Tooltip key={label} label={label}>{button}</Tooltip>;
+    return closeMenu ? button : <Tooltip key={label} label={label} side="bottom">{button}</Tooltip>;
   });
 }

@@ -22,14 +22,17 @@ For published motion guidance source and locale metadata, use the [catalog contr
 
 ## Media in the default npm package
 
-A Skill card can ship a small static WebP poster. For optional animation, add
-`studio/src/motion/skill-covers/<name>.mp4` (or WebM/GIF) to the same PR and
-use `skillCover('<name>')` in `skillCatalog.ts` (pass the format for WebM/GIF).
+Skill card covers — both static WebP posters and optional animations — are hosted
+rather than bundled into the default npm package. Add
+`studio/src/motion/skill-covers/<name>.webp` and/or
+`studio/src/motion/skill-covers/<name>.mp4` (or WebM/GIF) to the same PR and use
+`skillCover('<name>')` in `skillCatalog.ts` (pass the format for WebM/GIF).
 Vite development can preview the draft media. The existing
 [Prepare and merge PR workflow](docs/repository-storage.md#prepare-final-pr-media-before-merging)
-uploads the clip and records its immutable URL. The storage check names any clip
-awaiting preparation. If replacing a previously prepared clip, stage the new bytes
-with `git add -f`. Include media attribution with the source.
+uploads the cover media and records its immutable URLs in `repository-media.json`.
+The storage check names any Skill cover media awaiting preparation. If replacing
+previously prepared media, stage the new bytes with `git add -f`. Include media
+attribution with the source.
 
 The distribution job reports the actual compressed default npm package and the
 largest file and directory changes. Growth of 1 MiB raises a warning. The default

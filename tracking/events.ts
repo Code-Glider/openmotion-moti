@@ -54,6 +54,9 @@ const creative = { studio_id: 'slug', scene_id: 'slug', model_provider: 'slug', 
   nav_target: 'slug', slide_id: 'slug', collection_id: 'slug', in_overflow: 'boolean', landing: 'boolean' } as const;
 // A model hub (page=model-hub) and one of its community videos, by catalogue id; whether the viewer is signed in to OpenDesign.
 const modelHub = { hub_id: 'slug', hub_video_id: 'slug', signed_in: 'boolean' } as const;
+// A site campaign shown in the application chrome. entry_id is the od_entry_id placed on the Pricing link of that click,
+// so the click joins the Pricing visit and payment the website attributes to it.
+const campaign = { campaign_id: ['black_friday_2026'], entry_id: 'uuid' } as const;
 // Workspace assets: which shelf the library shows and what kind of media an action is about.
 const assetKind = ['all', 'image', 'video', 'audio', 'trash'] as const;
 const modality = ['image', 'video', 'audio'] as const;
@@ -156,7 +159,7 @@ export const omEvents = {
       'settings_nav', 'provider_list', 'provider_detail', 'default_agent', 'local_agents', 'account', 'diagnostics', 'help_resources',
       'project_manager', 'version_history',
       'creative_nav', 'explore_tabs', 'explore_spotlight', 'explore_featured', 'explore_feed', 'explore_collection', 'capability_index', 'studio_bar', 'model_overview',
-      'hub_header', 'hub_hero', 'hub_videos', 'hub_video_detail', 'hub_availability'],
+      'hub_header', 'hub_hero', 'hub_videos', 'hub_video_detail', 'hub_availability', 'campaign_banner'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'select_work', 'select_chapter', 'browse_timeline', 'expand_learning', 'compare_brands',
       'open_detail', 'start_use', 'expand_instruction', 'open_collection', 'category_select', 'filter_open', 'filter_clear',
@@ -185,7 +188,8 @@ export const omEvents = {
       'nav_explore', 'nav_media', 'nav_mcp', 'nav_api', 'nav_studio', 'nav_more', 'nav_menu', 'select_scene', 'select_model', 'select_skill', 'select_client', 'filter_scene_models',
       'community_tab', 'creators', 'media_filter', 'open_scene', 'open_skill', 'open_template', 'try_prompt', 'open_studio', 'slide_select', 'slide_toggle', 'slide_action',
       'load_more', 'view_all_templates', 'models_toggle', 'skill_category', 'open_brand_kit', 'open_assets', 'open_providers', 'open_mcp', 'open_skills',
-      'back_to_explore', 'open_editor', 'scene_tab', 'open_in_studio', 'connect_key', 'manage_connection', 'view_plans'],
+      'back_to_explore', 'open_editor', 'scene_tab', 'open_in_studio', 'connect_key', 'manage_connection', 'view_plans',
+      'claim_offer', 'close_banner', 'open_pricing'],
     // The chosen value of a control with a small fixed set of choices; never free text.
     option: ['on', 'off', 'light', 'dark', 'en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr',
       'all', 'images', 'video', 'audio', 'fonts',
@@ -198,7 +202,7 @@ export const omEvents = {
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
     ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom, ...referenceEntry, ...referenceSource,
-    doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages, ...creative, ...modelHub },
+    doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages, ...creative, ...modelHub, ...campaign },
     required: ['page_name', 'area', 'element'] },
   // Studio UI exports run in the editor's own render pipeline, not the worker that owns export_result.
   studio_export_request_result: { producers: ['studio'], fields: { export_id: 'uuid', outcome: ['accepted', 'rejected', 'unknown'], ...exportSettings,
@@ -226,8 +230,8 @@ export const omEvents = {
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.
   // A card counts once it is at least half visible for a second, once per result set.
-  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'template_related', 'template_guide', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work'],
-    element: ['library', 'card', 'detail', 'instruction', 'search_recovery', 'reference', 'related', 'guide'], placement, position: 'integer', source_template_id: 'slug', ...templateList, ...templateDetail, ...template, ...templateSeries,
+  surface_view: { producers: ['studio'], fields: { page_name: pages, area: ['template_library', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'template_related', 'template_guide', 'skill_detail', 'brand_detail', 'template_series_card', 'template_series_detail', 'template_series_work', 'campaign_banner'],
+    element: ['library', 'card', 'detail', 'instruction', 'search_recovery', 'reference', 'related', 'guide', 'banner'], ...campaign, placement, position: 'integer', source_template_id: 'slug', ...templateList, ...templateDetail, ...template, ...templateSeries,
     ...skill, ...brand, ...referenceEntry, brand_state: brandState, recovery_reason: ['no_results', 'unsuitable', 'catalog_empty'] },
     required: ['page_name', 'area', 'element'] },
   // One per settled query, never per keystroke. `search_keyword` is the only free-text field in this registry.

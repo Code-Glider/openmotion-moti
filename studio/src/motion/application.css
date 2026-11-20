@@ -1,6 +1,7 @@
 /* Application geometry; all presentation primitives come from the design system. */
-.om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
-.om-app-header { container-type: inline-size; grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
+.om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 46px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
+.om-application[data-has-bf-banner="true"] { grid-template-rows: auto 46px minmax(0, 1fr); }
+.om-app-header { position: relative; z-index: 30; container-type: inline-size; grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
 .om-application > .motion-workspace { grid-column: 1; width: auto; height: auto; margin: 0 var(--motion-space-4) var(--motion-space-4); }
 .om-app-brand { display: flex; align-items: center; gap: var(--motion-space-8); flex: 0 0 auto; }
 .om-app-brand .motion-brand-lockup { height: var(--motion-space-16); }
@@ -36,7 +37,47 @@
 .motion-session-heading-actions { display: flex; align-items: center; gap: var(--motion-space-4); }
 .motion-project-navigation-trigger { display: inline-flex; flex-shrink: 0; }
 .motion-project-navigation-trigger[hidden] { display: none; }
-.om-account-trigger .om-avatar { width: 28px; height: 28px; border-radius: var(--motion-radius-full); }
+.om-account-trigger .om-avatar { width: 30px; height: 30px; border-radius: var(--motion-radius-step-9); }
+[data-motion-studio] .om-app-header .motion-github-link {
+  height: 30px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--motion-black-friday-ink-light) 18%, transparent);
+  border-radius: var(--motion-radius-step-9) !important;
+  background: transparent;
+  color: color-mix(in srgb, var(--motion-black-friday-ink-light) 72%, transparent);
+  box-sizing: border-box;
+  transition: background var(--motion-duration-fast) var(--motion-ease-out), border-color var(--motion-duration-fast) var(--motion-ease-out), color var(--motion-duration-fast) var(--motion-ease-out);
+}
+[data-motion-studio] .om-app-header .motion-github-link > svg { color: currentColor; transition: color var(--motion-duration-fast) var(--motion-ease-out); }
+[data-motion-studio] .om-app-header .motion-github-link:is(:hover, :focus-visible) {
+  background: var(--motion-header-pill-hover-bg);
+  border-color: color-mix(in srgb, var(--motion-black-friday-ink-light) 34%, transparent);
+  color: var(--motion-black-friday-ink-light);
+}
+[data-motion-studio] .om-app-header .om-nav-item.om-account-trigger { min-height: 30px; border-radius: var(--motion-radius-step-9) !important; }
+[data-motion-studio] .om-app-header .om-account-trigger .om-avatar {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--motion-black-friday-ink-light) 18%, transparent);
+  border-radius: var(--motion-radius-step-9) !important;
+  background: transparent;
+  color: color-mix(in srgb, var(--motion-black-friday-ink-light) 72%, transparent);
+  box-sizing: border-box;
+  transition: background var(--motion-duration-fast) var(--motion-ease-out), border-color var(--motion-duration-fast) var(--motion-ease-out), color var(--motion-duration-fast) var(--motion-ease-out);
+}
+[data-motion-studio] .om-app-header .om-account-trigger .om-default-avatar-icon { color: currentColor; }
+[data-motion-studio] .om-app-header .om-account-trigger .om-default-avatar-icon-solid { display: none; }
+[data-motion-studio] .om-app-header .om-account-trigger:is(:hover, :focus-visible, [aria-expanded="true"]) .om-avatar {
+  background: var(--motion-header-pill-hover-bg);
+  border-color: color-mix(in srgb, var(--motion-black-friday-ink-light) 34%, transparent);
+  color: var(--motion-black-friday-ink-light);
+}
+[data-motion-studio] .om-app-header .om-account-trigger:is(:hover, :focus-visible, [aria-expanded="true"]) .om-default-avatar-icon-outline { display: none; }
+[data-motion-studio] .om-app-header .om-account-trigger:is(:hover, :focus-visible, [aria-expanded="true"]) .om-default-avatar-icon-solid { display: block; }
+[data-motion-studio][data-theme="paper"] .om-app-header :is(.motion-github-link, .om-account-trigger .om-avatar) { border-color: var(--color-border-input); color: var(--motion-dim); }
+[data-motion-studio][data-theme="paper"] .om-app-header .motion-github-link:is(:hover, :focus-visible),
+[data-motion-studio][data-theme="paper"] .om-app-header .om-account-trigger:is(:hover, :focus-visible, [aria-expanded="true"]) .om-avatar { background: var(--color-hover); border-color: var(--motion-border-strong); color: var(--motion-strong); }
 .om-account-menu { width: 258px; max-width: calc(100vw - 24px); }
 .om-application .motion-workspace { min-width: 0; }
 .om-project-navigation { flex: 0 0 var(--om-project-navigation-width); min-width: 0; overflow: hidden; }
