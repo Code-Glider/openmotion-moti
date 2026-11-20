@@ -84,6 +84,7 @@ jobs:
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
             studio/src/captions/components/captionWordRuns.test.ts \
+            studio/src/captions/components/CaptionOverlay.sender.test.tsx \
             studio/src/captions/parser.test.ts \
             studio/src/captions/parser.dom.test.ts \
             studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \

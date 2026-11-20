@@ -19,7 +19,7 @@ Updated 2026-11-20. This is a tracked engineering checklist, not a claim of fini
 ## CI evidence and remaining acceptance risk
 - PR #1: focused RTL run 44763841098 and full standalone run 44763841624 passed.
 - PR #2: independent non-destructive caption patch; standalone CI 44766340464 passed; overlap with stacked PR #3 needs manual consolidation before merge.
-- PR #3: focused RTL CI 44767708065 and full standalone CI 44767707929 passed on prior head `8120fd43`. The latest overlay-refresh patch requires fresh checks; its test success must not be assumed.
+- PR #3: focused RTL CI 44777215170 passed on `b2be5b0`; independent standalone CI 44777215140 failed at Studio regression (2/2), 2 of 5,031 assertions, both sender tests expecting a new RAF while the model-refresh effect had already queued one. The patch retains production coalescing and updates those tests to drain the pending frame; it also adds the sender tests to the dedicated focused RTL gate. Full standalone validation is required again on the new head.
 - JSDOM Range geometry is mocked; BiDi shaping, line wraps, actual Chromium preview and exported MP4 pixel parity remain **unverified**.
 
 ## Phase 3 — text editing
