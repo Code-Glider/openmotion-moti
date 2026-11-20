@@ -63,7 +63,9 @@
     "Could not delete project": "无法删除项目",
     "Trash is empty.": "回收站为空。",
     "Project actions": "项目操作",
-    "Move to Trash": "移至回收站"
+    "Move to Trash": "移至回收站",
+    "Mobile App": "移动应用",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "在 390×844 手机画框中预览的移动端 App 界面原型。"
   },
   "ja": {
     "Projects": "プロジェクト",
@@ -129,7 +131,9 @@
     "Could not delete project": "プロジェクトを削除できませんでした",
     "Trash is empty.": "ゴミ箱は空です。",
     "Project actions": "プロジェクト操作",
-    "Move to Trash": "ゴミ箱へ移動"
+    "Move to Trash": "ゴミ箱へ移動",
+    "Mobile App": "モバイルアプリ",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844のスマートフォン枠でプレビューするモバイルアプリUI。"
   },
   "ko": {
     "Projects": "프로젝트",
@@ -195,7 +199,9 @@
     "Could not delete project": "프로젝트를 삭제할 수 없습니다",
     "Trash is empty.": "휴지통이 비어 있습니다.",
     "Project actions": "프로젝트 작업",
-    "Move to Trash": "휴지통으로 이동"
+    "Move to Trash": "휴지통으로 이동",
+    "Mobile App": "모바일 앱",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844 모바일 프레임에서 미리 보는 모바일 앱 인터페이스."
   },
   "de": {
     "Projects": "Projekte",
@@ -261,7 +267,9 @@
     "Could not delete project": "Projekt konnte nicht gelöscht werden",
     "Trash is empty.": "Der Papierkorb ist leer.",
     "Project actions": "Projektaktionen",
-    "Move to Trash": "In den Papierkorb"
+    "Move to Trash": "In den Papierkorb",
+    "Mobile App": "Mobile App",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Mobile-App-Oberflächen in einem 390×844-Smartphone-Rahmen."
   },
   "fr": {
     "Projects": "Projets",
@@ -327,7 +335,9 @@
     "Could not delete project": "Impossible de supprimer le projet",
     "Trash is empty.": "La corbeille est vide.",
     "Project actions": "Actions du projet",
-    "Move to Trash": "Mettre à la corbeille"
+    "Move to Trash": "Mettre à la corbeille",
+    "Mobile App": "Application mobile",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces d’application mobile prévisualisées dans un cadre 390×844."
   },
   "ru": {
     "Projects": "Проекты",
@@ -393,7 +403,9 @@
     "Could not delete project": "Не удалось удалить проект",
     "Trash is empty.": "Корзина пуста.",
     "Project actions": "Действия с проектом",
-    "Move to Trash": "В корзину"
+    "Move to Trash": "В корзину",
+    "Mobile App": "Мобильное приложение",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Интерфейсы мобильных приложений в рамке 390×844."
   },
   "es": {
     "Projects": "Proyectos",
@@ -459,7 +471,9 @@
     "Could not delete project": "No se pudo eliminar el proyecto",
     "Trash is empty.": "La papelera está vacía.",
     "Project actions": "Acciones del proyecto",
-    "Move to Trash": "Mover a la papelera"
+    "Move to Trash": "Mover a la papelera",
+    "Mobile App": "App móvil",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces de apps móviles en un marco de teléfono de 390×844."
   },
   "pt-BR": {
     "Projects": "Projetos",
@@ -525,7 +539,9 @@
     "Could not delete project": "Não foi possível excluir o projeto",
     "Trash is empty.": "A lixeira está vazia.",
     "Project actions": "Ações do projeto",
-    "Move to Trash": "Mover para a lixeira"
+    "Move to Trash": "Mover para a lixeira",
+    "Mobile App": "App mobile",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfaces de aplicativos móveis em um quadro de 390×844."
   },
   "it": {
     "Projects": "Progetti",
@@ -591,7 +607,9 @@
     "Could not delete project": "Impossibile eliminare il progetto",
     "Trash is empty.": "Il cestino è vuoto.",
     "Project actions": "Azioni progetto",
-    "Move to Trash": "Sposta nel cestino"
+    "Move to Trash": "Sposta nel cestino",
+    "Mobile App": "App mobile",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "Interfacce di app mobile in anteprima in una cornice 390×844."
   },
   "tr": {
     "Projects": "Projeler",
@@ -657,6 +675,8 @@
     "Could not delete project": "Proje silinemedi",
     "Trash is empty.": "Çöp kutusu boş.",
     "Project actions": "Proje işlemleri",
-    "Move to Trash": "Çöp kutusuna taşı"
+    "Move to Trash": "Çöp kutusuna taşı",
+    "Mobile App": "Mobil uygulama",
+    "Mobile app interfaces previewed in a 390×844 phone frame.": "390×844 telefon çerçevesinde önizlenen mobil uygulama arayüzleri."
   }
 }

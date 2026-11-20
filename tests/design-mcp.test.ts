@@ -45,7 +45,7 @@ test('Phase1Service dispatches all 4 openmotion_design_* tools end-to-end', asyn
     });
 
     const cat = await service.call('openmotion_design_catalog', { action: 'list_scenarios' });
-    assert.equal(cat.scenarios.length, 6);
+    assert.equal(cat.scenarios.length, 7);
 
     const created = await service.call('openmotion_design_project', {
       action: 'create', requestId: 'mcp-1', scenario: 'prototype', title: 'MCP Prototype', designSystemId: 'apple',

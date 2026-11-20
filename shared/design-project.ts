@@ -24,7 +24,9 @@ type LinkedScenario = { id: string; label: string; icon: string; hint: string; s
 /** HTML scenarios are design projects. Linked scenarios route to the studio that already owns them. */
 export const designScenarios = [
   { id: 'prototype', label: 'Prototype', icon: 'layout-line', hint: 'Interactive web and app mockups.', mode: 'html', entry: 'index.html', openDesign: { kind: 'prototype' },
-    examples: ['Design a high-converting website for an AI CRM with a clear hero, feature story, proof points and trial CTA.', 'Prototype a mobile fitness coaching app covering goal setup, weekly plans, workout check-ins and progress review.', 'Build an analytics dashboard for a subscription business with revenue, churn and cohort views.'] },
+    examples: ['Design a high-converting website for an AI CRM with a clear hero, feature story, proof points and trial CTA.', 'Build an analytics dashboard for a subscription business with revenue, churn and cohort views.'] },
+  { id: 'mobile-app', label: 'Mobile App', icon: 'smartphone-line', hint: 'Mobile app interfaces previewed in a 390×844 phone frame.', mode: 'html', entry: 'index.html', openDesign: { kind: 'prototype', intent: 'mobile-app' },
+    examples: ['Prototype a mobile fitness coaching app covering goal setup, weekly plans, workout check-ins and progress review.', 'Design an iOS personal finance app with account balance, recent transactions, budget rings and quick transfer.', 'Create a mobile travel companion app with itinerary timeline, boarding pass card and offline city tips.'] },
   { id: 'deck', label: 'Slide deck', icon: 'slideshow-line', hint: 'Presentations with speaker notes, exportable to PDF and PPTX.', mode: 'deck', entry: 'index.html', openDesign: { kind: 'deck' },
     examples: ['Design an investor pitch with market sizing, growth model, product advantage and three-year forecast data.', 'Create a 10-slide weekly product review with metrics, shipped work, risks and next steps.'] },
   { id: 'document', label: 'Document', icon: 'file-text-line', hint: 'Resumes, reports and print-ready PDFs.', mode: 'document', entry: 'index.html', openDesign: { kind: 'other', intent: 'document' },

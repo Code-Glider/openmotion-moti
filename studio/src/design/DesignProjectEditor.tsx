@@ -101,12 +101,13 @@ export function DesignProjectEditor({
   const overlayRef = useRef<HTMLDivElement>(null);
   const bridgeToken = useMemo(() => makeRequestId('bridge'), []);
 
-  // Sync title & active file when project loads
+  // Sync title, active file, and default viewport when project loads
   useEffect(() => {
     if (!project) return;
     setTitleDraft(project.title);
     setActiveFile(prev => (prev && project.files.some(f => f.path === prev) ? prev : project.entry));
-  }, [project]);
+    if (project.scenario === 'mobile-app') setViewportId('mobile');
+  }, [project?.id]);
 
   // Load text content for active file (needed for code view, deck parsing, and srcdoc bridge)
   useEffect(() => {

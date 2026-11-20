@@ -430,7 +430,7 @@ function starterFiles(scenario: DesignScenarioId, title: string, hasTokensCss: b
 </head>
 <body>
   <main>
-    <span class="badge">${scenario === 'web-clone' ? 'Website Clone' : 'Prototype'}</span>
+    <span class="badge">${scenario === 'web-clone' ? 'Website Clone' : scenario === 'mobile-app' ? 'Mobile App' : 'Prototype'}</span>
     <h1>${safeTitle}</h1>
     <p>This design project is ready for your coding Agent. Use Copy to Agent in Design Studio so Codex or Claude Code can author and iterate on this page through OpenMotion MCP.</p>
   </main>

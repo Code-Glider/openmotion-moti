@@ -121,7 +121,7 @@ try{
  const queued=await tool('openmotion_export_request',{projectId:p.projectId,requestId:'cancel-export',expectedRevision:current.revision,versionId:current.currentVersionId,audio:'required'});
  await tool('openmotion_export_cancel',{projectId:p.projectId,requestId:'cancel',jobId:queued.job.id});assert.equal((await waitJob(p.projectId,queued.job.id,j=>j.state==='cancelled')).state,'cancelled');
  assert.equal((await tool('openmotion_get_project',{projectId:p.projectId,exportJobId:completed.id})).exportJob.state,'completed');
- const designScenarios=await tool('openmotion_design_catalog',{action:'list_scenarios'});assert.equal(designScenarios.scenarios.length,6);
+ const designScenarios=await tool('openmotion_design_catalog',{action:'list_scenarios'});assert.equal(designScenarios.scenarios.length,7);
  const designCreated=await tool('openmotion_design_project',{action:'create',requestId:'design-smoke',scenario:'prototype',title:'Design smoke'});
  const designEdited=await tool('openmotion_design_edit',{action:'write',projectId:designCreated.project.id,requestId:'design-edit-1',expectedRevision:designCreated.project.revision,files:[{path:'index.html',content:'<!doctype html><html><body><h1>Packaged Design</h1></body></html>'}],summary:'Smoke edit'});
  assert.equal(designEdited.version.label,'v2');

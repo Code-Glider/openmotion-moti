@@ -42,7 +42,7 @@ test('design catalog resolves all scenarios, templates, systems, skills and craf
     assert(resolved && existsSync(resolved), `templateFile failed for ${summary.id}/${summary.entry}`);
   }
   for (const scenario of designScenarios) {
-    assert((byScenario.get(scenario.id) ?? 0) >= 1, `expected at least 1 template for scenario ${scenario.id}`);
+    assert(catalog.templates({ scenario: scenario.id, limit: 1 }).items.length >= 1, `expected at least 1 template for scenario ${scenario.id}`);
   }
   assert.equal(catalog.templateFile(allTemplates.items[0].id, '../catalog.json'), null);
 
