@@ -14,6 +14,7 @@ import { useToast } from '../hooks/useToast';
 import { useI18n } from '../i18n/I18n';
 import { ResizablePane } from '../motion/ResizablePane';
 import { ReviewAnnotationGraphic } from '../motion/ReviewAnnotationGraphic';
+import { useIntegrationInfo } from '../motion/useIntegrationInfo';
 import { CodeViewer } from './CodeViewer';
 import { DesignApiError, designClient, makeRequestId } from './designClient';
 import { buildBridgeSrcDoc, looksLikeDeck, parseDeckSlides, parseSpeakerNotes, type PickedElement } from './previewBridge';
@@ -49,7 +50,9 @@ export function DesignProjectEditor({
   onBack: () => void;
   onOpenMcp?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const { info: integrationInfo } = useIntegrationInfo();
+  const promptOptions = { integration: integrationInfo, language: locale !== 'en' ? locale : null };
   const toast = useToast();
   const { project, versions, currentVersionId, comments, editors, loading, error, refresh, setProject, setComments } = useDesignProject(projectId);
 
@@ -574,11 +577,11 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                   />
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {openComments.length > 0 && (
-                      <Button type="button" size="sm" variant="primary" onClick={() => { void copyPrompt(designCommentsPrompt(project, openComments, agentNote)); setAgentOpen(false); }}>
+                      <Button type="button" size="sm" variant="primary" onClick={() => { void copyPrompt(designCommentsPrompt(project, openComments, agentNote, promptOptions)); setAgentOpen(false); }}>
                         {t('Copy {count} open annotations', { count: openComments.length })}
                       </Button>
                     )}
-                    <Button type="button" size="sm" variant={openComments.length > 0 ? 'secondary' : 'primary'} onClick={() => { void copyPrompt(designProjectPrompt(project, agentNote)); setAgentOpen(false); }}>
+                    <Button type="button" size="sm" variant={openComments.length > 0 ? 'secondary' : 'primary'} onClick={() => { void copyPrompt(designProjectPrompt(project, agentNote, promptOptions)); setAgentOpen(false); }}>
                       {t('Copy project brief')}
                     </Button>
                     {onOpenMcp && (
@@ -759,7 +762,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                     </div>
                     {openComments.length > 0 && (
                       <Button type="button" size="sm" variant="primary" icon={<RemixIcon name="plug-line" size={13} />}
-                        onClick={() => void copyPrompt(designCommentsPrompt(project, openComments))}>
+                        onClick={() => void copyPrompt(designCommentsPrompt(project, openComments, undefined, promptOptions))}>
                         {t('Copy for Agent')}
                       </Button>
                     )}
@@ -786,7 +789,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                         <Button type="button" size="sm" variant="ghost" onClick={() => void toggleCommentStatus(comment)}>
                           {comment.status === 'open' ? t('Resolve') : t('Reopen')}
                         </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => void copyPrompt(designCommentsPrompt(project, [comment]))}>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => void copyPrompt(designCommentsPrompt(project, [comment], undefined, promptOptions))}>
                           {t('Copy')}
                         </Button>
                         <IconButton aria-label={t('Delete annotation')} icon={<RemixIcon name="delete-bin-line" size={14} />} onClick={() => void removeComment(comment.id)} />

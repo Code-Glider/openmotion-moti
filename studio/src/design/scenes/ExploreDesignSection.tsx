@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
-import { designScenarios, findDesignScenario, type DesignScenarioId, type DesignTemplateSummary } from '../../../../shared/design-project';
+import { designBriefPrompt, designScenarios, findDesignScenario, type DesignScenarioId, type DesignTemplateSummary } from '../../../../shared/design-project';
+import { StudioToastViewport } from '../../components/StudioToastViewport';
+import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';
+import { useIntegrationInfo } from '../../motion/useIntegrationInfo';
 import { designClient } from '../designClient';
 import { DesignTemplateDetailModal } from '../DesignTemplateDetailModal';
 import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
@@ -19,7 +22,9 @@ export function ExploreDesignSection({
   onSelectDesignScene: (scene: DesignTabId) => void;
   onOpenProject: (projectId: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const { info: integrationInfo } = useIntegrationInfo();
+  const toast = useToast();
   const [templates, setTemplates] = useState<DesignTemplateSummary[]>([]);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
@@ -38,6 +43,23 @@ export function ExploreDesignSection({
     } catch {
       onSelectDesignScene(tpl.scenario);
     }
+  };
+
+  const useWithAgent = async (tpl: DesignTemplateSummary) => {
+    const prompt = designBriefPrompt({
+      scenario: tpl.scenario,
+      brief: tpl.examplePrompt || `Adapt the "${tpl.title}" template for my project.`,
+      templateIds: [tpl.id],
+      language: locale !== 'en' ? locale : null,
+      integration: integrationInfo,
+    });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      toast.showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback');
+    } catch {
+      onSelectDesignScene(tpl.scenario);
+    }
+    setPreviewIdx(null);
   };
 
   return (
@@ -110,9 +132,11 @@ export function ExploreDesignSection({
           onNavigate={setPreviewIdx}
           onClose={() => setPreviewIdx(null)}
           onRemix={tpl => { void remix(tpl); setPreviewIdx(null); }}
-          onUseWithAgent={tpl => { onSelectDesignScene(tpl.scenario); setPreviewIdx(null); }}
+          onUseWithAgent={tpl => { void useWithAgent(tpl); }}
         />
       )}
+
+      <StudioToastViewport toasts={toast.toasts} dismissToast={toast.dismissToast} />
     </div>
   );
 }

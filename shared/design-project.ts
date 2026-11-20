@@ -5,6 +5,7 @@
  * annotates, versions, exports and hands briefs to those Agents.
  */
 import type { ReviewAnnotation } from './review-comments.ts';
+import { guideUrl, setupGuideUrl, setupReadmeUrl, setupSkillUrl, type IntegrationInfo } from './integration.ts';
 
 export const DESIGN_API = '/motion-api/design';
 export const DESIGN_TOOL_NAMES = ['openmotion_design_catalog', 'openmotion_design_project', 'openmotion_design_edit', 'openmotion_design_comments'] as const;
@@ -135,6 +136,49 @@ export const designEditorHref = (projectId: string) => `/?page=design&scene=proj
 
 const fence = (value: string) => value.replace(/```/g, '`\u200b``');
 
+export type DesignPromptIntegration = Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'> & Partial<Pick<IntegrationInfo, 'deployment' | 'templateSource' | 'templateEnvironment' | 'transport'>>;
+
+/**
+ * Self-contained MCP install/connect bootstrap block included in every Design Studio Agent
+ * hand-off prompt so users who have never installed OpenMotion MCP can paste one single
+ * instruction and have their Agent install/connect and continue seamlessly.
+ */
+function designMcpSetupLines(integration?: DesignPromptIntegration | null, locale?: string | null): string[] {
+  const fullInfo = integration && 'transport' in integration && integration.transport ? (integration as IntegrationInfo) : null;
+  const installGuide = setupGuideUrl(fullInfo);
+  let origin: string | null = null;
+  if (integration?.previewUrl) {
+    try { origin = new URL(integration.previewUrl).origin; } catch { origin = integration.previewUrl; }
+  }
+  const connectionGuide = origin ? guideUrl({ previewUrl: origin }, 'mcp') : null;
+  const isDocker = integration?.deployment?.type === 'docker';
+  const zh = locale === 'zh-CN';
+
+  if (zh) {
+    return [
+      'MCP 安装与接入（如果当前 Agent 尚未安装或连接 OpenMotion MCP，请先完成以下步骤再继续）：',
+      '1. 先检查当前 Agent 是否已连接 openmotion MCP 服务并可见 openmotion_design_* 工具；如已连接，直接跳过安装并执行下方创作流程。',
+      `2. 未连接时，先阅读 OpenMotion 主 Skill（${setupSkillUrl}）、快速开始 README（${setupReadmeUrl}）和安装指南（${installGuide}）。`,
+      '3. 优先检查并复用本机已有的 OpenMotion 安装与工作区（保留已有工程、凭据及其他 MCP 配置）；仅在未安装时安装。配置并接入本机 stdio openmotion MCP 服务，重新加载工具后调用 openmotion_design_catalog（action=list_scenarios）验证连接成功后再继续。仅写入配置不代表连接成功；遇到阻碍请直接说明。',
+      origin ? `- 当前 Studio 地址：${origin}` : null,
+      integration?.dataDirectory ? `- 当前工作区：${integration.dataDirectory}` : null,
+      connectionGuide ? `- 本机 MCP 接入指引与配置：${connectionGuide}` : null,
+      isDocker && origin ? `- 容器接入配置：${origin}/connect/config?host=mcp（通过 docker exec 进入现有容器，保留当前容器和工作区，不另装宿主运行时）` : null,
+    ].filter((line): line is string => line !== null);
+  }
+
+  return [
+    'MCP setup (complete first if OpenMotion MCP is not yet installed or connected in this Agent):',
+    '1. Check whether the `openmotion` MCP server is already connected and `openmotion_design_*` tools are available. If already connected, skip setup and continue with Workflow below.',
+    `2. Otherwise, read the OpenMotion Skill (${setupSkillUrl}), Quick Start README (${setupReadmeUrl}), and installation guide (${installGuide}).`,
+    '3. Reuse any existing local OpenMotion installation and workspace first (preserve existing projects, credentials and other MCP settings). Install only if missing, add/connect the local stdio `openmotion` MCP server, reload tools, and verify connection with `openmotion_design_catalog` (action=list_scenarios) before authoring. Writing config alone does not prove connection; report any blocker if tools do not load.',
+    origin ? `- Studio URL: ${origin}` : null,
+    integration?.dataDirectory ? `- Workspace: ${integration.dataDirectory}` : null,
+    connectionGuide ? `- Live MCP connection guide & config: ${connectionGuide}` : null,
+    isDocker && origin ? `- Container config: ${origin}/connect/config?host=mcp (uses docker exec in the existing container; preserve this container and do not install a second host runtime.)` : null,
+  ].filter((line): line is string => line !== null);
+}
+
 /** Brief from a Design Studio scene composer, copied to an external Agent. */
 export function designBriefPrompt(input: {
   scenario: DesignScenarioId;
@@ -146,6 +190,7 @@ export function designBriefPrompt(input: {
   skillIds?: string[];
   projectId?: string | null;
   language?: string | null;
+  integration?: DesignPromptIntegration | null;
 }) {
   const scenario = findDesignScenario(input.scenario)!;
   const templates = [...new Set([...(input.templateIds ?? []), ...(input.templateId ? [input.templateId] : [])])];
@@ -153,6 +198,8 @@ export function designBriefPrompt(input: {
   const primaryTemplate = templates[0] ?? null;
   return [
     `Use the OpenMotion MCP design tools to ${input.projectId ? 'update' : 'create'} a ${scenario.label.toLowerCase()} design.`,
+    '',
+    ...designMcpSetupLines(input.integration, input.language),
     '',
     `Scenario: ${scenario.id}`,
     input.projectId ? `Project: ${input.projectId}` : null,
@@ -175,7 +222,12 @@ export function designBriefPrompt(input: {
 }
 
 /** Iteration hand-off: open annotations become a hard-scoped edit request for the Agent. */
-export function designCommentsPrompt(project: Pick<DesignProject, 'id' | 'title' | 'revision'>, comments: DesignComment[], note?: string) {
+export function designCommentsPrompt(
+  project: Pick<DesignProject, 'id' | 'title' | 'revision'>,
+  comments: DesignComment[],
+  note?: string,
+  options?: { integration?: DesignPromptIntegration | null; language?: string | null },
+) {
   const open = comments.filter(comment => comment.status === 'open');
   const lines = open.map((comment, index) => {
     const anchor = comment.anchor, element = anchor.element;
@@ -191,6 +243,8 @@ export function designCommentsPrompt(project: Pick<DesignProject, 'id' | 'title'
   return [
     `Use the OpenMotion MCP design tools to revise the design project "${project.title}" (${project.id}).`,
     `Current revision: ${project.revision}`,
+    '',
+    ...designMcpSetupLines(options?.integration, options?.language),
     note?.trim() ? `\nRequest: ${note.trim()}` : null,
     '',
     '<attached-preview-comments>',
@@ -207,10 +261,16 @@ export function designCommentsPrompt(project: Pick<DesignProject, 'id' | 'title'
 }
 
 /** Generic "continue this project" hand-off from the editor header. */
-export function designProjectPrompt(project: Pick<DesignProject, 'id' | 'title' | 'revision' | 'scenario'>, request?: string) {
+export function designProjectPrompt(
+  project: Pick<DesignProject, 'id' | 'title' | 'revision' | 'scenario'>,
+  request?: string,
+  options?: { integration?: DesignPromptIntegration | null; language?: string | null },
+) {
   return [
     `Continue the OpenMotion design project "${project.title}" (${project.id}, scenario ${project.scenario}) with the OpenMotion MCP design tools.`,
     `Current revision: ${project.revision}`,
+    '',
+    ...designMcpSetupLines(options?.integration, options?.language),
     request?.trim() ? `\nRequest: ${request.trim()}` : '\nAsk me what to change, then edit it.',
     '',
     `Read it with openmotion_design_project action=get, edit with openmotion_design_edit action=write (expectedRevision), then call openmotion_design_project action=open.`,

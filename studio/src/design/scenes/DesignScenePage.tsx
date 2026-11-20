@@ -12,6 +12,7 @@ import { StudioToastViewport } from '../../components/StudioToastViewport';
 import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';
 import { scenesForStudio } from '../../motion/creativeStudios';
+import { useIntegrationInfo } from '../../motion/useIntegrationInfo';
 import { BrandKitPicker, type SelectedBrandKit } from '../BrandKitPicker';
 import { designClient } from '../designClient';
 import { DesignProjectList } from '../DesignProjectList';
@@ -38,6 +39,7 @@ export function DesignScenePage({
   onOpenMcp: () => void;
 }) {
   const { t, locale } = useI18n();
+  const { info: integrationInfo } = useIntegrationInfo();
   const toast = useToast();
   const showToast = toast.showToast;
   const designMediaStudio = findMediaStudio('design')!;
@@ -219,6 +221,7 @@ export function DesignScenePage({
       skillIds: selectedSkills.map(s => s.id),
       templateIds: selectedTemplates.map(tpl => tpl.id),
       language: locale !== 'en' ? locale : null,
+      integration: integrationInfo,
     });
     void copyInstruction(prompt);
   };
@@ -272,6 +275,7 @@ export function DesignScenePage({
       skillIds: selectedSkills.map(s => s.id),
       templateIds: nextTemplates.map(tpl => tpl.id),
       language: locale !== 'en' ? locale : null,
+      integration: integrationInfo,
     });
     void copyInstruction(prompt);
   };
@@ -542,9 +546,6 @@ export function DesignScenePage({
                 </div>
 
                 <div className="om-design-header-group">
-                  <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
-                    {t('Connect an Agent')}
-                  </Button>
                   <Button type="button" size="sm" variant="primary" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={handleCopyBrief}>
                     {t('Copy to Agent')}
                   </Button>

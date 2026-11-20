@@ -13,7 +13,8 @@ import { startServer } from '../server.ts';
 import { WorkspaceStore } from '../workspace.ts';
 import { phase1McpCapabilities, phase1Tools } from '../shared/phase1-tools.ts';
 import { createToolRegistry } from '../shared/mcp-registry.ts';
-import { DESIGN_TOOL_NAMES } from '../shared/design-project.ts';
+import { DESIGN_TOOL_NAMES, designBriefPrompt, designCommentsPrompt, designProjectPrompt } from '../shared/design-project.ts';
+import { setupReadmeUrl, setupSkillUrl } from '../shared/integration.ts';
 import { readWorkflowResource, workflowResources } from '../shared/workflow.ts';
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -220,4 +221,45 @@ test('stdio MCP subprocess runs all 4 openmotion_design_* tools and openmotion-d
     if (running) await running.close();
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('Design Studio hand-off prompts include self-contained MCP setup and live workspace guidance', () => {
+  const integration = {
+    previewUrl: 'http://127.0.0.1:4197',
+    dataDirectory: '/tmp/openmotion-data',
+  };
+  const briefEn = designBriefPrompt({
+    scenario: 'prototype',
+    brief: 'Build a landing page',
+    templateIds: ['saas-landing'],
+    skillIds: ['frontend-design'],
+    integration,
+  });
+  for (const needle of [setupSkillUrl, setupReadmeUrl, 'docs/install.md', 'http://127.0.0.1:4197/connect/guide?host=mcp', '/tmp/openmotion-data', 'openmotion_design_catalog', 'openmotion_design_project', 'openmotion_design_edit']) {
+    assert.ok(briefEn.includes(needle), `briefEn missing ${needle}`);
+  }
+
+  const briefZh = designBriefPrompt({
+    scenario: 'document',
+    brief: '制作一页产品简历',
+    language: 'zh-CN',
+    integration,
+  });
+  assert.ok(briefZh.includes('MCP 安装与接入'));
+  assert.ok(briefZh.includes(setupSkillUrl));
+  assert.ok(briefZh.includes('http://127.0.0.1:4197/connect/guide?host=mcp'));
+
+  const projectPrompt = designProjectPrompt({ id: 'dp-1', title: 'Pitch', revision: 3, scenario: 'deck' }, 'Refine slide 2', { integration });
+  assert.ok(projectPrompt.includes(setupSkillUrl));
+  assert.ok(projectPrompt.includes('http://127.0.0.1:4197/connect/guide?host=mcp'));
+  assert.ok(projectPrompt.includes('Current revision: 3'));
+
+  const commentsPrompt = designCommentsPrompt(
+    { id: 'dp-1', title: 'Pitch', revision: 3 },
+    [{ id: 'c-1', projectId: 'dp-1', status: 'open', text: 'Tighten hero spacing', createdAt: 1, updatedAt: 1, commentRevision: 1, anchor: { filePath: 'index.html', viewport: { id: 'desktop', width: 1440, height: 900 } } }],
+    undefined,
+    { integration },
+  );
+  assert.ok(commentsPrompt.includes(setupSkillUrl));
+  assert.ok(commentsPrompt.includes('openmotion_design_comments'));
 });
