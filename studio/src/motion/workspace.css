@@ -21,7 +21,7 @@
 .motion-sidebar-nav button:hover, .motion-session:hover { background: var(--motion-hover); color: var(--motion-strong); }
 .motion-sidebar [aria-current="page"] { background: var(--motion-accent-soft); color: var(--motion-accent); }
 .motion-sidebar button:disabled { cursor: default; opacity: .5; }
-.motion-session-heading { display: flex; align-items: center; justify-content: space-between; color: var(--motion-dim); font-size: var(--motion-text-xs); }
+.motion-session-heading { display: flex; align-items: center; justify-content: space-between; padding-inline: var(--motion-space-4); color: var(--motion-dim); font-size: var(--motion-text-xs); }
 .motion-session-search, .motion-template-search { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--motion-border); border-radius: var(--motion-radius-step-7); color: var(--motion-dim); }
 .motion-session-search { margin: 12px 0 8px; }
 .motion-session-search input, .motion-template-search input { background: transparent; border: 0; color: var(--motion-text); width: 100%; min-width: 0; font-size: var(--motion-text-sm); outline-offset: 4px; }
@@ -226,5 +226,5 @@
 }
 
 @media(max-width: 1100px) {
-  .motion-sidebar-brand { padding-inline: 0; }
+  .motion-sidebar-brand, .motion-session-heading { padding-inline: 0; }
 }
