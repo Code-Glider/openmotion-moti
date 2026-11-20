@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from 'open-design-ui/button';
 import { IconButton } from 'open-design-ui/icon-button';
@@ -18,9 +18,9 @@ const groups = [
 function HighlightPanel() {
   const { t } = useI18n();
   const [selected, setSelected] = useState<string[]>([]);
-  const count = () => groups.map(group => document.querySelectorAll(group.selector).length);
-  const [counts, setCounts] = useState(count);
-  useEffect(() => {
+  const [counts, setCounts] = useState<number[]>([]);
+  useLayoutEffect(() => {
+    const count = () => groups.map(group => document.querySelectorAll(group.selector).length);
     let frame = 0;
     const observer = new MutationObserver(records => {
       if (frame || records.every(record => (record.target instanceof Element ? record.target : record.target.parentElement)?.closest('.odui-inspector'))) return;
@@ -31,6 +31,7 @@ function HighlightPanel() {
       });
     });
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-odui-component', 'type'] });
+    setCounts(count());
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, []);
   return <section id="odui-inspector-panel" className="odui-inspector-panel">

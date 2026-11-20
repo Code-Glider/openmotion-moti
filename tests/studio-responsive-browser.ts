@@ -358,8 +358,9 @@ test('the opt-in UI inspector outlines component roots, excludes its own control
       const row = '.odui-inspector-row';
       await page.click(row);
       assert.equal(await page.$eval('[data-odui-component="button"]:not(.odui-inspector *)', el => getComputedStyle(el).outlineStyle), 'solid');
-      assert.equal(await page.$eval(row + ' .odui-count', el => Number(el.textContent)),
-        await page.$$eval('button[data-odui-component="button"]:not(.odui-inspector *)', els => els.length));
+      await page.waitForFunction(() =>
+        Number(document.querySelector('.odui-inspector-row .odui-count')?.textContent) ===
+        document.querySelectorAll('button[data-odui-component="button"]:not(.odui-inspector *)').length);
       await page.evaluate(() => {
         const dialog = document.createElement('dialog');
         dialog.id = 'inspector-test';
