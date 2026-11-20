@@ -196,8 +196,8 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
   const [skillCategory, setSkillCategory] = useState<SkillCategory | null>(null);
   const [modelsFor, setModelsFor] = useState<StudioScene['modality'] | null>(null);
   const gateway = useMediaCatalog(active && modelsFor !== null);
-  return <footer className="om-capability-index" aria-labelledby="om-capability-title"><div className="om-capability-inner">
-    <h2 id="om-capability-title">{t('Capability index')}</h2>
+  return <footer className="om-capability-index" aria-label={t('Capability index')}><div className="om-capability-inner">
+    <h2 lang="en">Open Design</h2>
     <div className="om-capability-body">
     <div className="om-capability-columns">
       {(['image', 'video', 'audio'] as const).map(kind => <div key={kind}><h3>{t(mediaLabels[kind])}</h3>

@@ -1147,5 +1147,6 @@ it('keeps only the Explore heading at the top, fills two complete rows across Sk
   expect(container.querySelectorAll('.om-studio-collection[data-studio="sound"] .om-scene-tile')).toHaveLength(2);
   const footer = container.querySelector('main.om-explore > footer.om-capability-index');
   expect(footer).not.toBeNull();
+  expect(footer?.querySelector('h2')?.textContent).toBe('Open Design');
   expect(footer?.closest('.om-discovery-page')).toBeNull();
 });
