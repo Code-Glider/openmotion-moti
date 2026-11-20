@@ -432,7 +432,7 @@ it('switches studios and restores a scene through history while retaining the ed
   await click('Motion Studio');
   expect(page().motion).toBe(true);
   expect(container.querySelector('main[aria-label="Motion templates"]')).toBeTruthy();
-  expect(container.querySelector('.motion-sidebar-templates[aria-current="page"]')).toBeTruthy();
+  expect(container.querySelector('.motion-sidebar-footer [aria-current="page"]')).toBeTruthy();
   expect(container.querySelector('.motion-session-list [aria-current="page"]')).toBeNull();
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(true);
   await click('First project');
@@ -457,7 +457,7 @@ it('opens Motion templates inside the workspace and returns from the full librar
   expect(container.querySelector('.motion-project-navigation-trigger')?.hasAttribute('hidden')).toBe(false);
   await click('Open project list');
   expect(container.querySelector('#om-project-navigation')?.getAttribute('aria-hidden')).toBe('false');
-  await click('All templates');
+  await click('Template library');
   expect(page()).toMatchObject({ templates: true, templateCollection: null });
   await traverse(-1);
   expect(page()).toMatchObject({ motion: true, templates: false });
@@ -475,7 +475,7 @@ it('restores Motion templates on reload and opens a project from its narrow work
   expect(container.querySelector('h1')?.textContent).toBe('Motion templates');
   expect(container.querySelector('[aria-label="Editor draft"]')).toBeNull();
   await click('Open project list');
-  expect(document.querySelector('[role="dialog"] .motion-sidebar-templates[aria-current="page"]')).toBeTruthy();
+  expect(document.querySelector('[role="dialog"] .motion-sidebar-footer [aria-current="page"]')).toBeTruthy();
   await click('First project');
   expect(page().motion).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).not.toBeNull();

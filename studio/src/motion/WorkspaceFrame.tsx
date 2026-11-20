@@ -380,7 +380,6 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
       {/* Collapsing the docked navigation toggles it back with the workspace menu button, so this icon-only control keeps a state-aware tooltip in both states. */}
       <Tooltip label={t(expand ? 'Open project list' : 'Close project list')} wrap><IconButton variant="ghost" type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')} icon={<MotionIcon name="sidebar" size={16} />} /></Tooltip>
     </div>
-    <Button variant="plain" type="button" className="om-nav-item motion-sidebar-templates" aria-current={templatesOpen ? 'page' : undefined} onClick={() => { openTemplates(); onNavigate?.(); }}><RemixIcon name="movie-line" size={18} />{t('Motion templates')}</Button>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
       <div className="motion-session-heading-actions">
@@ -416,6 +415,7 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
       </DisclosureRow>)}
     </nav>
     <div className="motion-sidebar-footer">
+      <Button variant="plain" type="button" className="om-nav-item" aria-current={templatesOpen ? 'page' : undefined} onClick={() => { openTemplates(); onNavigate?.(); }}><RemixIcon name="movie-line" size={18} />{t('Motion templates')}</Button>
       <Button variant="plain" className="om-nav-item" type="button" onClick={archives.showManager}><RemixIcon name="folder-open-line" size={18} />{t('All projects')}</Button>
       <WorkspaceUtilityActions openSettings={section => { close(); openSettings(section); }} />
     </div>
