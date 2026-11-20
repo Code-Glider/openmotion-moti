@@ -46,7 +46,7 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
   function workspaceActions(closeMenu?: () => void) {
     return <>
       <WorkspaceSearch onChoose={closeMenu} onSkill={navigation.onSkill} destination={navigation.destination} onLibrary={openAssets} onAccount={() => openSettings('account')} onAsset={openAsset} onScene={navigation.onNavigate} onStudio={navigation.onChooseStudio} onCommunity={onCommunity} />
-      <WorkspaceResourceActions closeMenu={closeMenu} />
+      <WorkspaceResourceActions onBrandKit={() => openSettings('brand-kit')} brandKitOpen={settings === 'brand-kit'} closeMenu={closeMenu} />
     </>;
   }
 

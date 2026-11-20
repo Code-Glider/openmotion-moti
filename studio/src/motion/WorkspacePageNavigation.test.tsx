@@ -379,7 +379,9 @@ it('keeps Assets and editor drafts mounted across page history and restores the 
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   draft.value = 'Keep editor draft';
   const folder = container.querySelector<HTMLButtonElement>('.om-app-header-actions [aria-label="Workspace assets"]')!;
-  expect(container.querySelector('.om-app-header [aria-label="Brand Kit"]')).toBeNull();
+  const brandKit = container.querySelector<HTMLButtonElement>('.om-app-header-actions [aria-label="Brand Kit"]')!;
+  const actions = [...container.querySelectorAll('.om-app-header-actions button')];
+  expect(actions[actions.indexOf(brandKit) + 1]).toBe(folder);
   expect(container.querySelector('.om-app-rail :is([aria-label="Brand Kit"], [aria-label="Skills"], [aria-label="Template library"])')).toBeNull();
   expect(container.querySelector('.om-app-rail :is([aria-label="Workspace assets"], [aria-label="MCP · Connect Agent"])')).toBeNull();
   await act(async () => folder.click());
@@ -387,10 +389,8 @@ it('keeps Assets and editor drafts mounted across page history and restores the 
   expect(page().assets).toBe(true);
   const assetDraft = container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')!;
   assetDraft.value = 'Keep asset prompt';
-  await click('OpenDesign · Back to Explore');
-  const exploreLinks = [...container.querySelectorAll<HTMLButtonElement>('.om-explore-nav .om-community-tabs > button')];
-  expect(exploreLinks.map(link => link.textContent)).toEqual(['Discover', 'Templates', 'Skills', 'Brand Kit', 'Creators']);
-  await act(async () => exploreLinks.find(link => link.textContent === 'Brand Kit')!.click());
+  await act(async () => brandKit.click());
+  expect(brandKit.getAttribute('aria-current')).toBe('page');
   expect(page()).toMatchObject({ assets: false, settings: 'brand-kit' });
   expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
   await click('New Brand Kit');
@@ -519,9 +519,6 @@ it('reports Explore once per arrival and its spotlight, index links and top navi
   await traverse(-1);
   await act(async () => inside('.om-explore-masthead', 'Skills').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'open_skills' });
-  await traverse(-1);
-  await act(async () => inside('.om-explore-masthead', 'Brand Kit').click());
-  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'open_brand_kit' });
   await traverse(-1);
   await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });

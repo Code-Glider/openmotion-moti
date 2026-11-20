@@ -386,7 +386,6 @@ export function ExploreStudios(props: ExploreProps) {
             <Button type="button" variant="ghost" className="om-nav-item" aria-pressed={!community} onClick={() => { track('explore_tabs', 'community_tab', { community: 'discover' }); props.onFilter({ community: null, medium: null }); }}>{t('Discover')}</Button>
             <Button type="button" variant="ghost" className="om-nav-item" onClick={event => { track('explore_tabs', 'template_library'); openLibrary(event.currentTarget); }}>{t('Templates')}</Button>
             <Button type="button" variant="ghost" className="om-nav-item" onClick={() => { track('explore_tabs', 'open_skills'); openSkills(); }}>{t('Skills')}</Button>
-            <Button type="button" variant="ghost" className="om-nav-item" onClick={() => { track('explore_tabs', 'open_brand_kit'); props.onBrandKit(); }}>{t('Brand Kit')}</Button>
             <Button type="button" variant="ghost" className="om-nav-item" onClick={event => { track('explore_tabs', 'creators'); props.onCreators(event.currentTarget); }}>{t('Creators')}</Button>
           </HorizontalRail>
         </nav>
