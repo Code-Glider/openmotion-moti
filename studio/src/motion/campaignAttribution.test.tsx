@@ -7,7 +7,7 @@ import { studioEvents } from '../../../tracking/events.ts';
 import { validProperties } from '../../../tracking/core.ts';
 import { BlackFridayTopBanner, resetBlackFridayImpression } from './BlackFridayTopBanner';
 import campaignUi from '../i18n/campaign-ui.json';
-import { BLACK_FRIDAY_ENDS_AT, bannerDismissedToday, blackFridayActive, campaignPricingUrl, dismissBannerToday, resetBannerDismissal } from './campaignAttribution';
+import { BLACK_FRIDAY_ENDS_AT, BLACK_FRIDAY_STARTS_AT, bannerDismissedToday, blackFridayActive, campaignPricingUrl, dismissBannerToday, resetBannerDismissal } from './campaignAttribution';
 import { PricingEntry } from './PricingEntry';
 import { trackMotion } from './tracking';
 
@@ -18,6 +18,9 @@ const tracked = () => vi.mocked(trackMotion).mock.calls.map(([event, properties]
 let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
+  // Inside the campaign window unless a test moves the clock.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(Date.parse('2026-11-25T12:00:00+08:00'));
   vi.mocked(trackMotion).mockClear();
   resetBlackFridayImpression();
   container = document.createElement('div');
@@ -30,10 +33,10 @@ const render = (node: React.ReactNode) => act(() => root.render(<I18nProvider in
 const params = (href: string) => new URL(href).searchParams;
 
 it('builds a Pricing link that carries the OpenMotion entry the website keeps through checkout', () => {
-  const url = new URL(campaignPricingUrl('zh-CN', 'openmotion_bf_banner', '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', new Date('2026-11-21T00:00:00Z')));
+  const url = new URL(campaignPricingUrl('zh-CN', 'openmotion_bf_banner', '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', new Date('2026-11-22T00:00:00Z')));
   expect(url.origin + url.pathname).toBe('https://open-design.ai/zh/pricing/');
   expect(Object.fromEntries(url.searchParams)).toEqual({
-    od_origin: 'openmotion', od_entry_source: 'openmotion_manage_subscription', od_entry_id: '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', od_entry_at: '2026-11-21T00:00:00.000Z',
+    od_origin: 'openmotion', od_entry_source: 'openmotion_manage_subscription', od_entry_id: '7d1c6f4e-6a1f-4c55-9a43-0c7a4a0a8f11', od_entry_at: '2026-11-22T00:00:00.000Z',
     utm_source: 'openmotion', utm_medium: 'banner', utm_campaign: 'black_friday_2026',
   });
   expect(new URL(campaignPricingUrl('en', 'openmotion_header_pricing', 'x')).pathname).toBe('/pricing/');
@@ -85,7 +88,9 @@ it('registers every reported campaign event in the closed schema', () => {
 });
 
 it('shows the campaign only inside its window and drops campaign fields afterwards', async () => {
-  expect(blackFridayActive(Date.parse('2026-11-19T23:59:59+08:00'))).toBe(false);
+  expect(BLACK_FRIDAY_STARTS_AT).toBe(Date.parse('2026-11-21T18:00:00+08:00'));
+  expect(blackFridayActive(BLACK_FRIDAY_STARTS_AT - 1)).toBe(false);
+  expect(blackFridayActive(BLACK_FRIDAY_STARTS_AT)).toBe(true);
   expect(blackFridayActive(Date.parse('2026-11-25T12:00:00+08:00'))).toBe(true);
   expect(blackFridayActive(BLACK_FRIDAY_ENDS_AT - 1)).toBe(true);
   expect(blackFridayActive(BLACK_FRIDAY_ENDS_AT)).toBe(false);
@@ -142,4 +147,11 @@ it('keeps a dismissal for the day in the page when storage is unavailable', () =
   expect(bannerDismissedToday(noon)).toBe(true);
   expect(bannerDismissedToday(new Date(2026, 10, 26, 9))).toBe(false);
   setItem.mockRestore();
+});
+
+it('keeps the Pricing entry plain before the campaign starts', () => {
+  vi.setSystemTime(BLACK_FRIDAY_STARTS_AT - 60_000);
+  render(<PricingEntry trackingPage="studio" />);
+  expect(container.textContent).not.toContain('50% OFF');
+  expect(params(container.querySelector<HTMLAnchorElement>('a')!.href).has('utm_campaign')).toBe(false);
 });

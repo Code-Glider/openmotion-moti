@@ -11,10 +11,10 @@ import { useEffect, useState } from 'react';
 export const BLACK_FRIDAY_CAMPAIGN = 'black_friday_2026';
 
 /**
- * When the campaign shows: the banner, the Pricing badge and the campaign fields on links and events. It starts as soon
- * as this build ships and ends with the countdown, at 2026-12-05 00:00 Beijing time.
+ * When the campaign shows: the banner, the Pricing badge and the campaign fields on links and events. It runs from
+ * 2026-11-21 18:00 to 2026-12-05 00:00 Beijing time; the end is also the countdown's end.
  */
-export const BLACK_FRIDAY_STARTS_AT = Date.parse('2026-11-20T00:00:00+08:00');
+export const BLACK_FRIDAY_STARTS_AT = Date.parse('2026-11-21T18:00:00+08:00');
 export const BLACK_FRIDAY_ENDS_AT = Date.parse('2026-12-05T00:00:00+08:00');
 export function blackFridayActive(now = Date.now()) {
   return now >= BLACK_FRIDAY_STARTS_AT && now < BLACK_FRIDAY_ENDS_AT;

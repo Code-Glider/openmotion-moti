@@ -157,7 +157,7 @@ banner is shown, and `ui_click` for `claim_offer` and `close_banner` (`area=camp
 `entry_id`, equal to that click's `od_entry_id`, so a click joins the Pricing visit and payment. `utm_medium`
 and the click's `element` tell the banner and the header entry apart; dedicated entry sources need AMR to register
 them first.
-The campaign shows from release until 2026-12-05 00:00 Beijing time. Outside that window the banner is hidden,
+The campaign shows from 2026-11-21 18:00 until 2026-12-05 00:00 Beijing time. Outside that window the banner is hidden,
 the Pricing entry has no badge, links omit `utm_campaign` and clicks omit `campaign_id`. A dismissed banner stays
 hidden for the rest of the visitor's local day and returns the next day.
 
