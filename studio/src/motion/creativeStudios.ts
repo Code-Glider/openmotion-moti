@@ -42,6 +42,18 @@ export function supportsScene(model: Model, scene: StudioScene) {
   return needsImage(scene) ? modelReferenceLimit(model) > 0 : !/^(image|video)-to-/.test(model.mode);
 }
 
+export function modelsForScenes(
+  catalog: { models: readonly Model[]; status: { providers: readonly { id: string; available: boolean }[] } } | undefined,
+  modality: Modality,
+  scenes: readonly StudioScene[] = studioScenes.filter(scene => scene.modality === modality),
+): Model[] {
+  if (!catalog) return [];
+  const available = new Set(catalog.status.providers.filter(provider => provider.available).map(provider => provider.id));
+  return catalog.models
+    .filter(model => model.modality === modality && scenes.some(scene => supportsScene(model, scene)))
+    .sort((a, b) => Number(available.has(b.provider)) - Number(available.has(a.provider)));
+}
+
 export function modelDestination(model: Model, current?: StudioDestination | null): StudioDestination {
   if (current && supportsScene(model, current.scene)) return { ...current, model: model.id };
   const compatible = (scene: StudioScene) => supportsScene(model, scene);

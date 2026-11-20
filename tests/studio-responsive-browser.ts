@@ -152,8 +152,17 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.waitForSelector(active, { visible: true });
       assert.equal(await page.$eval(active, button => button.textContent), 'Image editing');
       const imageHeadingIcon = await headingIconStyle();
+      await page.locator('.om-creative-navigation ::-p-aria([name="Image"][role="button"])').click();
+      await page.waitForFunction(() => {
+        const route = new URLSearchParams(location.search);
+        return route.get('page') === 'create' && route.get('scene') === 'image-edit';
+      });
+      await page.waitForSelector('.om-studio-bar ::-p-text(Open in Design Studio)', { visible: true });
+      assert.equal(await page.$(track), null);
+      assert.equal(await page.$('#om-design-project-navigation'), null);
       await page.click('.om-creative-navigation [data-nav-slot]:not([data-stowed]) > button[aria-label="Design Studio"]');
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Text to image', {}, active);
+      assert.equal(new URL(page.url()).searchParams.get('page'), 'design');
       assert.deepEqual(await headingIconStyle(), imageHeadingIcon);
       assert.deepEqual(await page.$$eval(`${track} > button`, buttons =>
         [...new Set(buttons.map(button => getComputedStyle(button).fontSize))]), ['12px']);

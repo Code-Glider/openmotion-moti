@@ -170,8 +170,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (page.templateCollection === 'black-friday') collectionSkillTrigger.current?.focus({ preventScroll: true });
     collectionSkillTrigger.current = null;
   }, [page.templateCollection, page.skill]);
-  const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [projectQuery, setProjectQuery] = useState('');
   const [designSidebarOpen, setDesignSidebarOpen] = useState(!narrow);
   const [designProjectListVersion, setDesignProjectListVersion] = useState(0);
@@ -209,6 +209,15 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const editorRoute = !settings && !pageOpen;
   const editorActive = editorRoute && !connectionsOpen;
   const motionTemplatesOpen = page.motion && !templatesPage && !settings;
+  const previousOperationError = useRef('');
+  useEffect(() => {
+    const currentError = workspace.errorSource === 'operation' ? workspace.error : '';
+    const previousError = previousOperationError.current;
+    previousOperationError.current = currentError;
+    if (!currentError || currentError === previousError || !motionTemplatesOpen) return;
+    navigationToast.showToast(currentError, 'error', 'feedback');
+    workspace.clearError();
+  }, [motionTemplatesOpen, workspace.errorSource, workspace.error, workspace.clearError, navigationToast.showToast]);
   const workspaceRoute = editorRoute || motionTemplatesOpen;
   const workspaceActive = workspaceRoute && !connectionsOpen;
   useEffect(() => setSidebarOpen(workspaceRoute && !narrow), [workspaceRoute, narrow]);
@@ -243,7 +252,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     return () => window.removeEventListener('motion:agents-open', open);
   }, [openSettings]);
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 999px)');
+    const query = window.matchMedia('(max-width: 767px)');
     const update = () => {
       // Close the desktop list in the same render that enables the modal drawer.
       if (query.matches) setSidebarOpen(false);
@@ -315,7 +324,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const openStudioFromPage = (studio: StudioDestination, seed?: string | AssetDraft) => openStudio(studio, seed, true);
   const chooseStudio = (entry: CreativeStudio, kind?: Modality, fromPage = false) => {
     if (entry.surface === 'techniques') navigatePage({ specialty: entry, skill: null, templates: false, ...lastExplore.current });
-    else if (entry.surface === 'editor') navigatePage({ motion: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
+    else if (entry.surface === 'editor') { if (!narrow) setSidebarOpen(true); navigatePage({ motion: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined); }
     else if (entry.id === 'design' && !kind && page.studio?.scene.id !== entry.scenes[0]) openStudio(studioDestination(entry), undefined, fromPage);
     else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model), undefined, fromPage);
