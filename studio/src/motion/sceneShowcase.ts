@@ -32,11 +32,9 @@ import riserAudio from './scene-art/sfx-riser.m4a?url';
 import riserCover from './scene-art/sfx-riser.webp';
 import typingAudio from './scene-art/sfx-typing.m4a?url';
 import typingCover from './scene-art/sfx-typing.webp';
-import launchVoice from './skill-covers/website-launch.webp';
-import tutorialVoice from './skill-covers/step-by-step-tutorial.webp';
 
 /** Audio templates name the model to reproduce them with; the bundled files are the repository's own scores and effects, not output from that model. */
-export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[]; seconds?: number; model?: string; kind?: 'Music' | 'Sound effect' | 'Narration' }
+export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[]; seconds?: number; model?: string; kind?: 'Music' | 'Sound effect' }
 
 // Normalized RMS amplitudes sampled across the bundled welcome soundtrack.
 const welcomeWaveform = [
@@ -83,11 +81,7 @@ export const sceneExamples: Record<StudioScene['id'], readonly [SceneExample, ..
     { title: 'Tension riser', kind: 'Sound effect', prompt: 'Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.', poster: riserCover, audio: riserAudio, seconds: 4, model: 'ElevenLabs Sound Effects' },
     { title: 'Keyboard typing', kind: 'Sound effect', prompt: 'Create a few seconds of soft, irregular keyboard typing, close and dry.', poster: typingCover, audio: typingAudio, seconds: 4, model: 'ElevenLabs Sound Effects' },
   ],
-  speech: [
-    { title: 'Warm narration', kind: 'Narration', prompt: 'Every idea deserves to be seen. This is where our story begins.', poster: narration, model: 'ElevenLabs Voice' },
-    { title: 'Launch voiceover', kind: 'Narration', prompt: 'Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.', poster: launchVoice, model: 'ElevenLabs Voice' },
-    { title: 'Tutorial voice', kind: 'Narration', prompt: 'First, open your project. Next, pick a template. Then press Generate and watch your video take shape.', poster: tutorialVoice, model: 'ElevenLabs Voice' },
-  ],
+  speech: [{ title: 'Warm narration', prompt: 'Every idea deserves to be seen. This is where our story begins.', poster: narration }],
 };
 
 export function studioExamples({ studio, scene }: StudioDestination): readonly SceneExample[] {

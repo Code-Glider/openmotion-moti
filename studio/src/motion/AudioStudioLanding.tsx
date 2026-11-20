@@ -13,8 +13,8 @@ export function AudioStudioLanding({ destination, active, onPrompt, onCreate }: 
 }) {
   const { t } = useI18n();
   const { studio } = destination;
-  // The home has no scene tabs, so it lists the templates of every scene in the studio.
-  const templates = scenesForStudio(studio).flatMap(scene => studioExamples({ ...destination, scene }).map(example => ({ ...example, scene })));
+  // The home has no scene tabs: it lists every template in the studio that has an audio preview.
+  const templates = scenesForStudio(studio).flatMap(scene => studioExamples({ ...destination, scene }).filter(example => example.audio).map(example => ({ ...example, scene })));
   const [selected, setSelected] = useState(0), [playing, setPlaying] = useState(false);
   const audio = useRef<HTMLAudioElement>(null);
   const featured = templates[selected] ?? templates[0];
@@ -22,10 +22,9 @@ export function AudioStudioLanding({ destination, active, onPrompt, onCreate }: 
   const play = (index: number) => {
     const element = audio.current, item = templates[index];
     if (!element) return;
-    // A template without a preview, such as narration, opens its scene with the text instead.
-    if (!item.audio) { onPrompt(t(item.prompt), item.scene.id); return; }
     if (index === selected && !element.paused) { element.pause(); return; }
     setSelected(index);
+    if (!item.audio) return;
     if (element.getAttribute('src') !== item.audio) element.src = item.audio;
     void element.play().catch(() => setPlaying(false));
   };
@@ -53,12 +52,12 @@ export function AudioStudioLanding({ destination, active, onPrompt, onCreate }: 
               <span className="om-gallery-card-top">{item.kind && <span>{t(item.kind)}</span>}{item.seconds && <span>{t('{value}s', { value: item.seconds })}</span>}</span>
               <span className="om-gallery-card-bottom">
                 <span className="om-gallery-card-caption"><strong>{t(item.title)}</strong>{item.model && <small>{t('Recommended model')} · {item.model}</small>}</span>
-                <span className="om-gallery-card-arrow"><RemixIcon name={!item.audio ? 'voiceprint-line' : index === selected && playing ? 'pause-fill' : 'play-fill'} size={18} /></span>
+                <span className="om-gallery-card-arrow"><RemixIcon name={index === selected && playing ? 'pause-fill' : 'play-fill'} size={18} /></span>
               </span>
             </Button>
           </div>
           <div className="om-audio-card-prompt">
-            <p className="om-muted"><span>{t(item.scene.id === 'speech' ? 'Speech text' : 'Audio prompt')}</span>{t(item.prompt)}</p>
+            <p className="om-muted"><span>{t('Audio prompt')}</span>{t(item.prompt)}</p>
             <Button variant="ghost" className="om-button h-auto" onClick={() => onPrompt(t(item.prompt), item.scene.id)}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</Button>
           </div>
         </article>)}

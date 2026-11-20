@@ -147,7 +147,6 @@
     "Audio prompt": "提示词",
     "Audio templates": "音频模板",
     "Sound effect": "音效",
-    "Narration": "旁白",
     "Ambient pad": "氛围铺底",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "创作一段 A 大调的缓慢温暖合成器铺底，持续 12 秒轻轻起伏，适合做安静的背景。",
     "Notification chime": "通知提示音",
@@ -163,11 +162,7 @@
     "Tension riser": "紧张上升音",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "生成一段四秒的上升音，音高和亮度逐渐攀升，在最高点戛然而止。",
     "Keyboard typing": "键盘打字",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "生成几秒钟轻柔、节奏不规则的键盘打字声，近距离、干声。",
-    "Launch voiceover": "发布会旁白",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "认识全新的动效创作方式。说出一个想法，几秒钟就能看到它动起来。",
-    "Tutorial voice": "教程旁白",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "首先，打开你的项目。接着，选一个模板。然后点击生成，看视频一点点成形。"
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "生成几秒钟轻柔、节奏不规则的键盘打字声，近距离、干声。"
   },
   "ja": {
     "Start with an editable motion template or open your timeline.": "編集可能なモーションテンプレートから始めるか、タイムラインを開きましょう。",
@@ -317,7 +312,6 @@
     "Audio prompt": "プロンプト",
     "Audio templates": "オーディオテンプレート",
     "Sound effect": "効果音",
-    "Narration": "ナレーション",
     "Ambient pad": "アンビエントパッド",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "12秒間ゆっくりと揺らぐ、イ長調の温かいシンセパッドを作り、落ち着いた背景にする。",
     "Notification chime": "通知音",
@@ -333,11 +327,7 @@
     "Tension riser": "緊張感のライザー",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "音程と明るさが上がり続け、頂点で途切れる4秒のライザーを作る。",
     "Keyboard typing": "キーボード入力音",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "近くで鳴る乾いた、柔らかく不規則なキーボード入力音を数秒作る。",
-    "Launch voiceover": "ローンチのナレーション",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "モーション制作の新しい形をご紹介します。アイデアを伝えれば、数秒で動き出します。",
-    "Tutorial voice": "チュートリアルのナレーション",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "まずプロジェクトを開きます。次にテンプレートを選びます。そして「生成」を押すと、動画が形になっていきます。"
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "近くで鳴る乾いた、柔らかく不規則なキーボード入力音を数秒作る。"
   },
   "ko": {
     "Start with an editable motion template or open your timeline.": "편집 가능한 모션 템플릿으로 시작하거나 타임라인을 여세요.",
@@ -487,7 +477,6 @@
     "Audio prompt": "프롬프트",
     "Audio templates": "오디오 템플릿",
     "Sound effect": "효과음",
-    "Narration": "내레이션",
     "Ambient pad": "앰비언트 패드",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "12초 동안 부드럽게 부풀었다 가라앉는 A장조의 따뜻한 신스 패드를 만들어 차분한 배경으로 써 주세요.",
     "Notification chime": "알림음",
@@ -503,11 +492,7 @@
     "Tension riser": "긴장감 라이저",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "음정과 밝기가 계속 올라가다 정점에서 끊기는 4초짜리 라이저를 만들어 주세요.",
     "Keyboard typing": "키보드 타이핑",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "가까이서 들리는 건조하고 부드러운 불규칙한 키보드 타이핑 소리를 몇 초간 만들어 주세요.",
-    "Launch voiceover": "런칭 내레이션",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "모션을 만드는 새로운 방법을 만나 보세요. 아이디어를 말하면 몇 초 만에 움직이기 시작합니다.",
-    "Tutorial voice": "튜토리얼 내레이션",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "먼저 프로젝트를 엽니다. 다음으로 템플릿을 고릅니다. 그리고 생성을 누르면 영상이 모습을 갖춰 갑니다."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "가까이서 들리는 건조하고 부드러운 불규칙한 키보드 타이핑 소리를 몇 초간 만들어 주세요."
   },
   "de": {
     "Start with an editable motion template or open your timeline.": "Starte mit einer editierbaren Motion-Vorlage oder öffne deine Zeitleiste.",
@@ -657,7 +642,6 @@
     "Audio prompt": "Prompt",
     "Audio templates": "Audiovorlagen",
     "Sound effect": "Soundeffekt",
-    "Narration": "Sprecher",
     "Ambient pad": "Ambient-Pad",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Komponiere ein langsames, warmes Synth-Pad in A-Dur, das zwölf Sekunden sanft an- und abschwillt, als ruhigen Hintergrund.",
     "Notification chime": "Benachrichtigungston",
@@ -673,11 +657,7 @@
     "Tension riser": "Spannungs-Riser",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Erzeuge einen vier Sekunden langen Riser, der in Tonhöhe und Helligkeit steigt und auf dem Höhepunkt abbricht.",
     "Keyboard typing": "Tastaturtippen",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Erzeuge einige Sekunden leises, unregelmäßiges Tastaturtippen, nah und trocken.",
-    "Launch voiceover": "Launch-Sprechertext",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Entdecke die neue Art, Motion zu gestalten. Beschreibe eine Idee und sieh zu, wie sie in Sekunden lebendig wird.",
-    "Tutorial voice": "Tutorial-Sprechertext",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Öffne zuerst dein Projekt. Wähle dann eine Vorlage. Klicke anschließend auf Generieren und sieh zu, wie dein Video entsteht."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Erzeuge einige Sekunden leises, unregelmäßiges Tastaturtippen, nah und trocken."
   },
   "fr": {
     "Start with an editable motion template or open your timeline.": "Partez d’un modèle d’animation modifiable ou ouvrez votre timeline.",
@@ -827,7 +807,6 @@
     "Audio prompt": "Prompt",
     "Audio templates": "Modèles audio",
     "Sound effect": "Effet sonore",
-    "Narration": "Narration",
     "Ambient pad": "Nappe ambiante",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Compose une nappe de synthé lente et chaleureuse en la majeur qui gonfle doucement pendant douze secondes, pour un fond calme.",
     "Notification chime": "Son de notification",
@@ -843,11 +822,7 @@
     "Tension riser": "Montée de tension",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Crée une montée de quatre secondes qui gagne en hauteur et en brillance puis s’arrête net à son sommet.",
     "Keyboard typing": "Frappe au clavier",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crée quelques secondes de frappe au clavier douce et irrégulière, proche et sèche.",
-    "Launch voiceover": "Voix off de lancement",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Découvrez une nouvelle façon de créer du motion. Décrivez une idée et regardez-la prendre vie en quelques secondes.",
-    "Tutorial voice": "Voix off de tutoriel",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Ouvrez d’abord votre projet. Choisissez ensuite un modèle. Puis cliquez sur Générer et regardez votre vidéo prendre forme."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crée quelques secondes de frappe au clavier douce et irrégulière, proche et sèche."
   },
   "ru": {
     "Start with an editable motion template or open your timeline.": "Начните с редактируемого шаблона анимации или откройте монтажную шкалу.",
@@ -997,7 +972,6 @@
     "Audio prompt": "Промпт",
     "Audio templates": "Аудиошаблоны",
     "Sound effect": "Звуковой эффект",
-    "Narration": "Озвучка",
     "Ambient pad": "Эмбиент-пэд",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Создай медленный тёплый синтезаторный пэд в ля мажоре, который мягко нарастает и стихает двенадцать секунд, для спокойного фона.",
     "Notification chime": "Звук уведомления",
@@ -1013,11 +987,7 @@
     "Tension riser": "Нарастание напряжения",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Создай четырёхсекундное нарастание, которое поднимается по высоте и яркости и обрывается на пике.",
     "Keyboard typing": "Набор на клавиатуре",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Создай несколько секунд мягкого неравномерного набора на клавиатуре, близко и сухо.",
-    "Launch voiceover": "Озвучка запуска",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Познакомьтесь с новым способом создавать моушн. Опишите идею — и она оживёт за секунды.",
-    "Tutorial voice": "Озвучка урока",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Сначала откройте проект. Затем выберите шаблон. После этого нажмите «Создать» и наблюдайте, как появляется видео."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Создай несколько секунд мягкого неравномерного набора на клавиатуре, близко и сухо."
   },
   "es": {
     "Start with an editable motion template or open your timeline.": "Empieza con una plantilla de animación editable o abre tu línea de tiempo.",
@@ -1167,7 +1137,6 @@
     "Audio prompt": "Prompt",
     "Audio templates": "Plantillas de audio",
     "Sound effect": "Efecto de sonido",
-    "Narration": "Narración",
     "Ambient pad": "Colchón ambiental",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Compón un pad de sintetizador lento y cálido en la mayor que crece suavemente durante doce segundos, para un fondo tranquilo.",
     "Notification chime": "Sonido de notificación",
@@ -1183,11 +1152,7 @@
     "Tension riser": "Subida de tensión",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Crea una subida de cuatro segundos que gana tono y brillo y se corta en su punto más alto.",
     "Keyboard typing": "Tecleo",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crea unos segundos de tecleo suave e irregular, cercano y seco.",
-    "Launch voiceover": "Voz en off de lanzamiento",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Conoce la nueva forma de crear motion. Describe una idea y mírala cobrar vida en segundos.",
-    "Tutorial voice": "Voz en off de tutorial",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Primero, abre tu proyecto. Después, elige una plantilla. Luego pulsa Generar y mira cómo toma forma tu vídeo."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crea unos segundos de tecleo suave e irregular, cercano y seco."
   },
   "pt-BR": {
     "Start with an editable motion template or open your timeline.": "Comece com um modelo de animação editável ou abra sua linha do tempo.",
@@ -1337,7 +1302,6 @@
     "Audio prompt": "Prompt",
     "Audio templates": "Modelos de áudio",
     "Sound effect": "Efeito sonoro",
-    "Narration": "Narração",
     "Ambient pad": "Pad ambiente",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Componha um pad de sintetizador lento e quente em lá maior que cresce suavemente por doze segundos, para um fundo calmo.",
     "Notification chime": "Som de notificação",
@@ -1353,11 +1317,7 @@
     "Tension riser": "Subida de tensão",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Crie uma subida de quatro segundos que ganha altura e brilho e corta no ponto mais alto.",
     "Keyboard typing": "Digitação",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crie alguns segundos de digitação suave e irregular, próxima e seca.",
-    "Launch voiceover": "Narração de lançamento",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Conheça o novo jeito de criar motion. Descreva uma ideia e veja ela ganhar vida em segundos.",
-    "Tutorial voice": "Narração de tutorial",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Primeiro, abra seu projeto. Depois, escolha um modelo. Em seguida, clique em Gerar e veja seu vídeo tomar forma."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crie alguns segundos de digitação suave e irregular, próxima e seca."
   },
   "it": {
     "Start with an editable motion template or open your timeline.": "Inizia da un modello di animazione modificabile o apri la timeline.",
@@ -1507,7 +1467,6 @@
     "Audio prompt": "Prompt",
     "Audio templates": "Modelli audio",
     "Sound effect": "Effetto sonoro",
-    "Narration": "Narrazione",
     "Ambient pad": "Pad ambientale",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Componi un pad di synth lento e caldo in La maggiore che cresce dolcemente per dodici secondi, come sottofondo calmo.",
     "Notification chime": "Suono di notifica",
@@ -1523,11 +1482,7 @@
     "Tension riser": "Salita di tensione",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Crea una salita di quattro secondi che cresce in altezza e luminosità e si interrompe al culmine.",
     "Keyboard typing": "Digitazione",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crea qualche secondo di digitazione morbida e irregolare, vicina e asciutta.",
-    "Launch voiceover": "Voce di lancio",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Scopri il nuovo modo di creare motion. Descrivi un’idea e guardala prendere vita in pochi secondi.",
-    "Tutorial voice": "Voce del tutorial",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Per prima cosa apri il progetto. Poi scegli un modello. Quindi premi Genera e guarda il video prendere forma."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crea qualche secondo di digitazione morbida e irregolare, vicina e asciutta."
   },
   "tr": {
     "Start with an editable motion template or open your timeline.": "Düzenlenebilir bir hareketli grafik şablonuyla başlayın veya zaman çizelgenizi açın.",
@@ -1677,7 +1632,6 @@
     "Audio prompt": "İstem",
     "Audio templates": "Ses şablonları",
     "Sound effect": "Ses efekti",
-    "Narration": "Seslendirme",
     "Ambient pad": "Ambiyans pad",
     "Compose a slow, warm synth pad in A major that swells gently for twelve seconds, for a calm background.": "Sakin bir arka plan için on iki saniye boyunca yavaşça kabarıp inen, La majör, sıcak ve yavaş bir synth pad besteleyin.",
     "Notification chime": "Bildirim sesi",
@@ -1693,10 +1647,6 @@
     "Tension riser": "Gerilim yükselişi",
     "Create a four-second riser that climbs in pitch and brightness and cuts off at its peak.": "Perdesi ve parlaklığı artarak tırmanan ve zirvede kesilen dört saniyelik bir yükseliş oluşturun.",
     "Keyboard typing": "Klavye sesi",
-    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Yakından ve kuru, birkaç saniyelik yumuşak ve düzensiz klavye sesi oluşturun.",
-    "Launch voiceover": "Lansman seslendirmesi",
-    "Meet the new way to make motion. Describe an idea, and watch it come to life in seconds.": "Hareket tasarlamanın yeni yolunu keşfedin. Bir fikri anlatın ve saniyeler içinde canlandığını izleyin.",
-    "Tutorial voice": "Eğitim seslendirmesi",
-    "First, open your project. Next, pick a template. Then press Generate and watch your video take shape.": "Önce projenizi açın. Ardından bir şablon seçin. Sonra Oluştur’a basın ve videonuzun şekillendiğini izleyin."
+    "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Yakından ve kuru, birkaç saniyelik yumuşak ve düzensiz klavye sesi oluşturun."
   }
 }
