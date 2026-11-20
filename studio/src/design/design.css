@@ -1316,3 +1316,53 @@
   padding: var(--motion-space-10) var(--motion-space-12);
   gap: 4px;
 }
+
+/* Design Studio shares the discovery banner and template grid. */
+.om-design-studio-hero > img {
+  object-position: center;
+  mask-image: linear-gradient(90deg, transparent, currentColor 28%);
+}
+
+.om-design-studio-hero .om-discovery-hero-copy {
+  padding-block: var(--motion-space-24);
+}
+
+.om-design-template-section {
+  display: grid;
+  gap: var(--motion-space-12);
+  min-width: 0;
+}
+
+.om-design-template-section > nav .om-design-scene-tabs {
+  flex-wrap: wrap;
+}
+
+.om-design-template-search {
+  width: min(100%, 248px);
+}
+
+.om-design-template-placeholder {
+  aspect-ratio: 16 / 11;
+}
+
+.om-design-template-page .om-design-bottom-dock-wrap {
+  position: static;
+  align-items: flex-start;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.om-design-template-page .om-design-example-chips {
+  justify-content: flex-start;
+  max-width: none;
+}
+
+.om-design-card-open {
+  min-width: 0;
+  align-self: stretch;
+  text-align: start;
+}
+
+.om-design-card-open .om-design-card-title {
+  display: block;
+}

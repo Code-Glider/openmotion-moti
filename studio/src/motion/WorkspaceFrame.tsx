@@ -8,7 +8,7 @@ import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpClient } from './mcpClients';
 import { CreativeNavigation } from './CreativeNavigation';
 import { ExploreStudios } from './ExploreStudios';
-import { creativeStudios, findMediaStudio, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
+import { creativeStudios, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
 import { DesignProjectEditor } from '../design/DesignProjectEditor';
 import { DesignScenePage } from '../design/scenes/DesignScenePage';
 import type { Modality } from '../../../shared/gateway';
@@ -43,7 +43,7 @@ import { McpConnectionPage } from './McpConnectionPage';
 import type { McpEntry } from './pageTracking';
 import { WorkspaceProjectsButton } from './WorkspaceProjectsButton';
 import { Skeleton } from '../components/ui/Skeleton';
-import { changesWorkspaceDestination, readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
+import { changesWorkspaceDestination, defaultDesignScene, readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
 import { WORKSPACE_LOCATION_CHANGED, initializeWorkspaceHistory, restoreWorkspaceSource, workspaceHistoryIndex, workspaceHistorySource, workspaceSettingsSource, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { WorkspaceBreadcrumb } from './WorkspaceBreadcrumb';
 import { useToast } from '../hooks/useToast';
@@ -279,6 +279,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const chooseStudio = (entry: CreativeStudio, kind?: Modality, fromPage = false) => {
     if (entry.surface === 'techniques') navigatePage({ specialty: entry, skill: null, templates: false, ...lastExplore.current });
     else if (entry.surface === 'editor') navigatePage({ motion: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
+    else if (entry.id === 'design' && !kind) navigatePage({ designScene: defaultDesignScene, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
     else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model), undefined, fromPage);
     } else openStudio(studioDestination(entry, scenesForStudio(entry).find(scene => scene.modality === kind)?.id), undefined, fromPage);
@@ -288,14 +289,15 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const openModelFromPage = (id: string) => openModel(id, true);
   const openModelHub = (modelHub: string) => navigatePage({ modelHub, templates: false, ...lastExplore.current }, false, 'from-page');
   const currentPage = templatesPage || page.explore || skillsOpen ? 'explore' : standaloneMcp ? 'mcp' : null;
-  // One page view per arrival on Explore, the Motion Studio landing, or a model overview.
-  // Design, Cinema and Sound report from their own Studio form (AssetsPage), which knows the scene shown.
-  const routeView = templatesPage ? null : page.explore ? 'explore' : page.motion ? 'motion' : page.modelOverview ? 'model:' + page.modelOverview : null;
+  // Count arrivals to template and discovery pages. Media forms report their own scene views.
+  const routeView = templatesPage ? null : page.explore ? 'explore' : page.motion ? 'motion'
+    : page.designScene && page.designScene !== 'projects' && !page.designProject ? 'design'
+    : page.modelOverview ? 'model:' + page.modelOverview : null;
   useEffect(() => {
     if (!routeView) return;
     const hasProject = Boolean(projectId);
     if (routeView === 'explore') reportCreativePageView('explore', hasProject, { community: page.community, medium: page.medium ?? 'all' });
-    else if (routeView === 'motion') reportCreativePageView('creative_studio', hasProject, { studio: 'motion', landing: true });
+    else if (routeView === 'motion' || routeView === 'design') reportCreativePageView('creative_studio', hasProject, { studio: routeView, landing: true });
     else reportCreativePageView('model_overview', hasProject, { model: page.modelOverview });
     // Only an arrival counts; filter changes within Explore are reported as clicks.
   }, [routeView]);
@@ -411,8 +413,6 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
             : <DesignScenePage
                 scene={page.designScene}
                 onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false })}
-                onSelectImageScene={sceneId => openStudioFromPage(studioDestination(findMediaStudio('design')!, sceneId))}
-                onChooseStudio={studio => chooseStudio(studio, undefined, true)}
                 onOpenProject={id => navigatePage({ designScene: page.designScene ?? 'projects', designProject: id, templates: false })}
                 onExplore={returnToExplore}
                 onOpenMcp={() => openMcp(undefined, undefined, true)}

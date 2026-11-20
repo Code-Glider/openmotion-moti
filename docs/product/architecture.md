@@ -335,7 +335,7 @@ The Studio page also registers the twenty-two public `openmotion_*` domain names
 
 ## Design Studio (HTML design projects)
 
-Design Studio extends `?page=design` alongside the existing `text-to-image` and `image-edit` scenes with seven HTML design scenarios (`prototype`, `mobile-app`, `deck`, `document`, `web-clone`, `live-artifact`, `webgl`), a project manager (`scene=projects`) and a responsive HTML preview editor (`&designProject=<uuid>`). Motion design and HyperFrames link directly to Motion Studio; Video and Audio link to Cinema and Sound Studio.
+The Design Studio entry opens `?page=design` with a banner and the HTML template gallery, defaulting to `prototype`. A category is shareable via `scene`: `prototype`, `mobile-app`, `deck`, `document`, `web-clone`, `live-artifact` or `webgl`. Template cards open the Design template detail. The image workflows remain available from Image and explicit `text-to-image` or `image-edit` links. Existing `scene=projects` and `designProject=<uuid>` links still open the project manager and editor. Motion design and HyperFrames link directly to Motion Studio; Video and Audio link to Cinema and Sound Studio.
 
 OpenMotion runs no built-in design agent. External coding Agents (Codex, Claude Code or any MCP client) discover scenarios, templates, design systems, Skills and craft rules under `library/design/` via `openmotion_design_catalog` and create, edit, version, annotate, import and export projects through `openmotion_design_project`, `openmotion_design_edit` and `openmotion_design_comments` (guided by `skills/openmotion-design` at `openmotion://workflow/design/start`).
 

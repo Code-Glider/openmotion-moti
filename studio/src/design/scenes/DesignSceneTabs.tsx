@@ -8,16 +8,18 @@ export type DesignTabId = DesignScenarioId | 'projects';
 
 export function DesignSceneTabs({
   activeTab,
+  showProjects = true,
   onSelectDesignScene,
 }: {
   activeTab: DesignTabId | null;
+  showProjects?: boolean;
   onSelectDesignScene: (scene: DesignTabId) => void;
 }) {
   const { t } = useI18n();
 
   return (
     <span className="om-design-scene-tabs">
-      <Button
+      {showProjects && <Button
         type="button"
         size="sm"
         variant={activeTab === 'projects' ? 'secondary' : 'ghost'}
@@ -26,7 +28,7 @@ export function DesignSceneTabs({
         onClick={() => onSelectDesignScene('projects')}
       >
         {t('Projects')}
-      </Button>
+      </Button>}
       {designScenarios.map(scenario => (
         <Button
           key={scenario.id}

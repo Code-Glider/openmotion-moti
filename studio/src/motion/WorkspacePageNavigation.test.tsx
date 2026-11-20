@@ -78,6 +78,10 @@ beforeEach(() => {
     if (url.pathname.endsWith('/integration')) return Response.json(info);
     if (url.pathname.endsWith('/brand-kits')) return Response.json({ kits: [] });
     if (url.pathname.endsWith('/brand-kits/catalog')) return Response.json({ schemaVersion: 1, entries: [] });
+    if (url.pathname.endsWith('/design/catalog/templates')) {
+      const scenario = url.searchParams.get('scenario') ?? 'prototype';
+      return Response.json({ items: [{ id: `fixture-${scenario}`, title: `Design ${scenario} fixture`, description: 'Starter design.', scenario, category: scenario, tags: [], previewUrl: 'data:text/html,Design%20template' }], nextCursor: null });
+    }
     if (url.pathname.endsWith('/template-catalog')) return Response.json({ items: [{ id: 'product-promo', title: 'Product Promo', description: 'A slow product reveal.', kind: 'builtin', tags: [] }], next: null, catalogVersion: 'test' });
     return Response.json({ projectId, revision: 'r', version: '1.2.3', agents: [], defaults: {}, state: 'signed-out' });
   });
@@ -439,13 +443,22 @@ it('switches studios and restores a scene through history while retaining the ed
   await mount();
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   await click('Design Studio');
-  expect(page().studio?.scene.id).toBe('text-to-image');
-  await click('Image editing');
-  expect(page().studio?.scene.id).toBe('image-edit');
+  expect(page().designScene).toBe('prototype');
+  const designPage = container.querySelector('.om-design-template-page')!;
+  expect(designPage.querySelector('.om-design-studio-hero + section h2')?.textContent).toBe('Design templates');
+  const categories = [...designPage.querySelectorAll('nav button')].map(node => node.textContent);
+  expect(categories).toEqual(['Prototype', 'Mobile App', 'Slide deck', 'Document', 'Website clone', 'Live artifact', 'WebGL']);
+  await click('Design prototype fixture');
+  expect(document.querySelector('[role="dialog"][aria-label="Design prototype fixture"]')?.classList.contains('om-design-tpl-detail-popup')).toBe(true);
+  await click('Close');
+  expect(document.querySelector('.om-design-tpl-detail-popup')).toBeNull();
+  await click('Slide deck');
+  expect(page().designScene).toBe('deck');
+  expect(button('Design deck fixture')).toBeTruthy();
   await click('Cinema Studio');
   expect(page().studio?.scene.id).toBe('text-to-video');
   await traverse(-1);
-  expect(page().studio?.scene.id).toBe('image-edit');
+  expect(page().designScene).toBe('deck');
   await click('Motion Studio');
   expect(page().motion).toBe(true);
   expect(container.querySelector('main[aria-label="Motion templates"]')).toBeTruthy();
