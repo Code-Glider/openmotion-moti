@@ -277,6 +277,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const chooseStudio = (entry: CreativeStudio, kind?: Modality) => {
     if (entry.surface === 'techniques') navigatePage({ specialty: entry, skill: null, templates: false, ...lastExplore.current });
     else if (entry.surface === 'editor') navigatePage({ motion: true, templates: false, ...lastExplore.current });
+    else if (entry.id === 'design' && !kind && page.studio?.scene.id !== entry.scenes[0]) openStudio(studioDestination(entry));
     else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model));
     } else openStudio(studioDestination(entry, scenesForStudio(entry).find(scene => scene.modality === kind)?.id));

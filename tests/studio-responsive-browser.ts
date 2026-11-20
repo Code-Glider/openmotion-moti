@@ -117,7 +117,7 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-reduced-motion', value: 'reduce' }]);
       await page.setViewport({ width: 1800, height: 900 });
       const origin = (await running.info()).previewUrl;
-      await page.goto(new URL('/?page=design&scene=text-to-image', origin).href, { waitUntil: 'domcontentloaded' });
+      await page.goto(new URL('/?page=design&scene=image-edit', origin).href, { waitUntil: 'domcontentloaded' });
 
       const track = '.om-design-scene-tabs-track';
       const viewport = '.om-design-scene-tabs-viewport';
@@ -138,6 +138,9 @@ test('Design Studio uses the same navigation styles and overflow controls across
       const transparentArrow = ['rgba(0, 0, 0, 0)', '0px', 'none'];
 
       await page.waitForSelector(active, { visible: true });
+      assert.equal(await page.$eval(active, button => button.textContent), 'Image editing');
+      await page.click('.om-creative-navigation [data-nav-slot]:not([data-stowed]) > button[aria-label="Design Studio"]');
+      await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Text to image', {}, active);
       assert.deepEqual(await page.$$eval(`${track} > button`, buttons =>
         [...new Set(buttons.map(button => getComputedStyle(button).fontSize))]), ['12px']);
       assert.equal(await page.$(next), null);
@@ -178,15 +181,20 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }, { name: 'prefers-reduced-motion', value: 'reduce' }]);
       await page.setViewport({ width: 390, height: 800 });
       await page.goto(new URL('/?page=design&scene=webgl', origin).href, { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector(previous, { visible: true });
+      await page.waitForSelector(next, { visible: true });
       assert.equal(await page.$eval(`${galleryHeader} h2`, title => title.textContent), 'WebGL templates');
-      assert.deepEqual(await arrowSurface(previous), transparentArrow);
       assert.equal(await page.$eval(active, button => button.textContent), 'WebGL');
-      assert.ok(await page.$eval(active, button => {
+      assert.equal(await page.$eval(viewport, rail => rail.scrollLeft), 0);
+      assert.equal(await page.$(previous), null);
+      assert.ok(await page.$eval(`${track} > button:first-child`, button => {
         const tab = button.getBoundingClientRect();
         const strip = button.closest('.om-design-scene-tabs-viewport')!.getBoundingClientRect();
-        return tab.left >= strip.left && tab.right <= strip.right;
+        return button.textContent === 'Text to image' && tab.left >= strip.left && tab.right <= strip.right;
       }));
+      await page.goto(new URL('/?page=design', origin).href, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector(next, { visible: true });
+      assert.equal(await page.$eval(active, button => button.textContent), 'Text to image');
+      assert.equal(await page.$eval(viewport, rail => rail.scrollLeft), 0);
     } finally { await browser.close(); await running.close(); }
   });
 });
@@ -249,7 +257,7 @@ test('Design Studio copies template briefs in place and creates projects separat
       const scene = new URL('/?page=design&scene=prototype', origin).href;
       const explore = new URL('/?page=explore', origin).href;
       const card = '.om-design-gallery-card';
-      const quickAction = `${card} .om-design-thumb-action > button`;
+      const quickAction = `${card} .om-design-gallery-body > .om-design-gallery-action`;
       const recent = '.om-design-page-with-dock > section + section';
       const popup = '.om-design-tpl-detail-popup';
       const primary = `${popup} .om-media-detail-action-row > button[data-primary]`;
@@ -268,8 +276,16 @@ test('Design Studio copies template briefs in place and creates projects separat
       await page.waitForSelector(quickAction, { visible: true });
       assert.equal(await page.$(recent), null);
       await page.hover(card);
-      assert.deepEqual(await page.$eval(`${card} .om-design-thumb-action`, actions =>
+      assert.deepEqual(await page.$eval(`${card} .om-design-gallery-body`, actions =>
         [...actions.querySelectorAll('button')].map(button => button.textContent)), ['复刻模版']);
+      assert.ok(await page.$eval(card, template => {
+        const thumb = template.querySelector('.om-design-card-thumb')!.getBoundingClientRect();
+        const description = template.querySelector('.om-design-card-desc')!;
+        const action = template.querySelector('.om-design-gallery-action')!.getBoundingClientRect();
+        const style = getComputedStyle(description);
+        return style.whiteSpace === 'nowrap' && style.textOverflow === 'ellipsis'
+          && action.top >= thumb.bottom && action.left >= description.getBoundingClientRect().right;
+      }));
       await page.click(quickAction);
       await page.waitForFunction(() => document.documentElement.dataset.copiedBrief?.includes('velar-luxury-real-estate'));
       assert.equal(await page.$(popup), null);

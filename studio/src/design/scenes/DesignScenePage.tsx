@@ -374,18 +374,19 @@ export function DesignScenePage({
                           src={tpl.previewUrl}
                           title={tpl.title}
                           badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
-                          topRight={
-                            <Button type="button" size="sm" variant="primary" onClick={event => {
-                              event.stopPropagation();
-                              handleUseTemplateWithAgent(tpl);
-                            }}>
-                              {t('Recreate this template')}
-                            </Button>
-                          }
                         />
                         <div className="om-design-card-body om-design-gallery-body">
-                          <strong className="om-design-card-title">{tpl.title}</strong>
-                          <p className="om-design-card-desc">{tpl.description}</p>
+                          <div className="om-design-gallery-copy">
+                            <strong className="om-design-card-title">{tpl.title}</strong>
+                            <p className="om-design-card-desc">{tpl.description}</p>
+                          </div>
+                          <Button type="button" size="sm" variant="primary" className="om-design-gallery-action rounded-full" onClick={event => {
+                            event.stopPropagation();
+                            handleUseTemplateWithAgent(tpl);
+                          }}>
+                            {t('Recreate this template')}
+                            <RemixIcon name="file-copy-line" size={14} />
+                          </Button>
                         </div>
                       </article>
                     ))}

@@ -8,15 +8,17 @@ type Props = {
   className?: string;
   viewportClassName: string;
   selection?: string | null;
+  revealSelectionOnMount?: boolean;
   plainArrows?: boolean;
   children: ReactNode;
 };
 
-export function HorizontalRail({ label, className = '', viewportClassName, selection, plainArrows, children }: Props) {
+export function HorizontalRail({ label, className = '', viewportClassName, selection, revealSelectionOnMount = true, plainArrows, children }: Props) {
   const { t } = useI18n();
   const id = useId();
   const count = Children.count(children);
   const viewport = useRef<HTMLDivElement>(null);
+  const previousSelection = useRef(selection);
   const [edges, setEdges] = useState({ left: false, right: false });
   useLayoutEffect(() => {
     const list = viewport.current!;
@@ -40,7 +42,9 @@ export function HorizontalRail({ label, className = '', viewportClassName, selec
   }, [id, count]);
 
   useLayoutEffect(() => {
-    if (selection === undefined) return;
+    const shouldReveal = revealSelectionOnMount || previousSelection.current !== selection;
+    previousSelection.current = selection;
+    if (!shouldReveal || selection === undefined) return;
     const list = viewport.current!;
     const choice = list.querySelector('[aria-pressed="true"], [aria-current="page"]');
     if (!choice || !list.clientWidth) return;
@@ -50,7 +54,7 @@ export function HorizontalRail({ label, className = '', viewportClassName, selec
     const right = bounds.right - (parseFloat(padding.scrollPaddingRight) || 0);
     if (target.left < left) list.scrollLeft += target.left - left;
     else if (target.right > right) list.scrollLeft += target.right - right;
-  }, [selection]);
+  }, [selection, revealSelectionOnMount]);
 
   function scroll(direction: number) {
     const list = viewport.current!;
