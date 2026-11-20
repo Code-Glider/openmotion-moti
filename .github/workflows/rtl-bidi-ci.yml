@@ -1,8 +1,10 @@
 name: RTL and BiDi feature validation
 
 on:
+  push:
+    branches: [feat/rtl-bidi-phase2-caption-word-runs]
   pull_request:
-    branches: [main]
+    branches: [main, feat/rtl-bidi-phase1]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -81,6 +83,7 @@ jobs:
         run: |
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
+            studio/src/captions/components/captionWordRuns.test.ts \
             studio/src/captions/parser.test.ts \
             studio/src/captions/parser.dom.test.ts \
             studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \

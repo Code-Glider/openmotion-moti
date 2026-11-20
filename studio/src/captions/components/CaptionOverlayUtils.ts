@@ -1,3 +1,4 @@
+import { splitCaptionWordRuns } from "./captionWordRuns";
 // DOM helpers for CaptionOverlay — word box reading, transform I/O, wrapper management
 
 export interface WordBox {
@@ -16,6 +17,7 @@ export function readWordBoxes(
   model: {
     groupOrder: string[];
     groups: Map<string, { segmentIds: string[] }>;
+    segments: Map<string, { text: string }>;
   },
   overlayEl: HTMLElement,
 ): WordBox[] {
@@ -57,32 +59,25 @@ export function readWordBoxes(
         resolvedWordEls.push(c);
       }
     }
-    if (resolvedWordEls.length === 0 && groupEl.textContent?.trim()) {
-      const textNode = groupEl.childNodes[0];
-      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-        const words = (textNode.textContent || "").split(/\s+/).filter(Boolean);
-        const frag = doc.createDocumentFragment();
-        for (const word of words) {
-          const span = doc.createElement("span");
-          span.textContent = word + " ";
-          span.style.display = "inline";
-          frag.appendChild(span);
-          resolvedWordEls.push(span);
-        }
-        groupEl.replaceChild(frag, textNode);
-      } else {
-        const singleSpan = groupEl.querySelector<HTMLElement>(":scope > span");
-        if (singleSpan && singleSpan.textContent?.trim()) {
-          const words = singleSpan.textContent.split(/\s+/).filter(Boolean);
-          const frag = doc.createDocumentFragment();
-          for (const word of words) {
+    // Only pair legacy plain text with a timed segment when every Unicode
+    // token matches. Never silently collapse spaces, tabs or line breaks.
+    if (resolvedWordEls.length === 0 && groupEl.childNodes.length === 1) {
+      const textNode = groupEl.firstChild;
+      if (textNode?.nodeType === Node.TEXT_NODE) {
+        const expectedWords = group.segmentIds.map((id) => model.segments.get(id)?.text);
+        const runs = expectedWords.every((word): word is string => typeof word === "string")
+          ? splitCaptionWordRuns(textNode.textContent ?? "", expectedWords)
+          : null;
+        if (runs) {
+          const fragment = doc.createDocumentFragment();
+          for (const run of runs) {
             const span = doc.createElement("span");
-            span.textContent = word + " ";
+            span.textContent = run;
             span.style.display = "inline";
-            frag.appendChild(span);
+            fragment.appendChild(span);
             resolvedWordEls.push(span);
           }
-          singleSpan.replaceWith(frag);
+          groupEl.replaceChild(fragment, textNode);
         }
       }
     }
