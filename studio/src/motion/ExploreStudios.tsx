@@ -126,14 +126,24 @@ function SceneFeedCard({ target, example, section, onNavigate, playing, onPriori
   </FeedCard>;
 }
 
+const threeDCardDescriptions: Partial<Record<string, string>> = {
+  'three-js': 'Rotate a globe or product and show it from different camera angles.',
+  'babylon-js': 'Light a product turntable and move the camera smoothly.',
+  lume: 'Float cards or objects in 3D with lighting and camera movement.',
+  blender: 'Animate a character with anticipation and follow-through.',
+  'openmotion-isometric-card-flight': 'Fly in tilted UI cards, then straighten and enlarge the main screen.',
+  'openmotion-surreal-3d-poster': 'Reveal a product among drifting clay shapes with oversized type behind it.',
+};
+
 function SkillFeedCard({ skill, section, icon, onSkill, playing, onPriority, community }: FeedPlayback & {
   skill: MotionSkill; section: string; icon: string; onSkill: ExploreProps['onSkill']; community?: string;
 }) {
   const { t } = useI18n();
   const id = section + '/' + skill.id;
   const onSkillsShelf = section === 'skills';
-  const showOutput = !onSkillsShelf && !['shorts', 'marketing', 'explainer', 'motion'].includes(section);
-  return <FeedCard title={t(skill.title)} badge={onSkillsShelf ? undefined : "Skill"} detail={showOutput ? t(skill.output) : undefined} description={t(skill.tagline)} icon={icon}
+  const showOutput = !onSkillsShelf && !['shorts', 'marketing', 'explainer', '3d', 'motion'].includes(section);
+  const description = section === '3d' ? threeDCardDescriptions[skill.id] ?? skill.tagline : skill.tagline;
+  return <FeedCard title={t(skill.title)} badge={onSkillsShelf ? undefined : "Skill"} detail={showOutput ? t(skill.output) : undefined} description={t(description)} icon={icon}
     playbackId={id} onPriority={onPriority} onClick={() => {
       const { area, collection } = cardArea(section);
       track(area, 'open_skill', { skill: skill.id, collection, community });

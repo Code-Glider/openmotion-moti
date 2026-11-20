@@ -960,11 +960,14 @@ it('shows every Studio in Explore and opens the selected example or technique', 
   await mount(); await click('Explore');
   const collections = () => [...container.querySelectorAll<HTMLElement>('.om-studio-collection')].map(section => section.dataset.studio);
   expect(collections()).toEqual(['design', 'motion', 'cinema', 'sound', 'shorts', 'marketing', 'explainer', '3d']);
-  for (const studio of ['shorts', 'marketing', 'explainer', 'motion']) {
+  for (const studio of ['shorts', 'marketing', 'explainer', 'motion', '3d']) {
     const collection = container.querySelector(`.om-studio-collection[data-studio="${studio}"]`)!;
     expect(collection.querySelector('.om-feed-card-description')).not.toBeNull();
     expect(collection.querySelector('.om-feed-card-detail')).toBeNull();
   }
+  const threeDDescriptions = container.querySelectorAll('.om-studio-collection[data-studio="3d"] .om-feed-card-description');
+  expect(threeDDescriptions).toHaveLength(6);
+  expect(threeDDescriptions[0].textContent).toBe('Rotate a globe or product and show it from different camera angles.');
   const select = async (selector: string) => {
     const item = container.querySelector<HTMLButtonElement>(selector);
     expect(item, selector).toBeTruthy();
