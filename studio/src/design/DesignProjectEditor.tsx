@@ -518,6 +518,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
           <input
             className="om-design-title-input"
             aria-label={t('Project title')}
+            size={Math.max(6, Math.min(32, (titleDraft || project.title).length))}
             value={titleDraft}
             onChange={e => setTitleDraft(e.target.value)}
             onBlur={commitTitle}

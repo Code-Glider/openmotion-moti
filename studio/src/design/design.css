@@ -34,7 +34,12 @@
   flex-wrap: wrap;
 }
 
-.om-design-title-input {
+.om-design-title-input,
+.motion-media-surface .om-design-header input.om-design-title-input {
+  width: auto;
+  min-width: 64px;
+  max-width: 280px;
+  field-sizing: content;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--motion-radius-md);
@@ -43,17 +48,18 @@
   font-weight: var(--motion-weight-semibold);
   letter-spacing: -0.01em;
   padding: var(--motion-space-4) var(--motion-space-8);
-  max-width: 240px;
   transition: border-color var(--motion-duration-fast) var(--motion-ease-out),
     background-color var(--motion-duration-fast) var(--motion-ease-out);
 }
 
-.om-design-title-input:hover {
+.om-design-title-input:hover,
+.motion-media-surface .om-design-header input.om-design-title-input:hover {
   border-color: var(--motion-border);
   background: var(--motion-inset);
 }
 
-.om-design-title-input:focus {
+.om-design-title-input:focus,
+.motion-media-surface .om-design-header input.om-design-title-input:focus {
   outline: 1px solid var(--motion-focus);
   border-color: var(--motion-focus);
   background: var(--motion-inset);
