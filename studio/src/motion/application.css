@@ -332,21 +332,15 @@
   initial-value: 100%;
 }
 .om-edit-demo .om-media-demo-frame img { object-fit: cover; }
-.om-shot-brief {
+.om-shot-sketch {
   position: absolute;
   inset: 0;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 2cqw;
-  padding-inline: 8%;
+  width: 100%;
+  height: 100%;
   color: var(--motion-overlay-ink);
-  text-align: center;
-  font-size: clamp(9px, 8cqw, 13px);
-  line-height: 1.2;
+  stroke-width: 1.1;
   opacity: 0;
 }
-.om-shot-brief small { font-size: .8em; color: var(--motion-neutral-n3); }
 .om-shot-viewfinder {
   position: absolute;
   inset: 8%;
@@ -372,7 +366,7 @@
   }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo { --shot-timing: 3s ease-in-out both; }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo img { animation: om-shot-photo var(--shot-timing); }
-  .om-scene-tile:is(:hover, :focus-visible) .om-shot-brief { animation: om-shot-brief var(--shot-timing); }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-sketch { animation: om-shot-sketch var(--shot-timing); }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-viewfinder { animation: om-shot-frame var(--shot-timing); }
 }
 @keyframes om-edit-sweep {
@@ -383,7 +377,7 @@
   0%, 78%, 100% { opacity: 1; }
   8%, 46% { opacity: 0; }
 }
-@keyframes om-shot-brief {
+@keyframes om-shot-sketch {
   0%, 5%, 58%, 100% { opacity: 0; }
   14%, 45% { opacity: 1; }
 }
