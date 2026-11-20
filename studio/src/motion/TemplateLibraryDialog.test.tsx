@@ -125,7 +125,7 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   expect(onClose).toHaveBeenCalledOnce();
 });
 
-it('hides the project return only when the same template is opened from Black Friday', async () => {
+it('omits the project return in both the template library and Black Friday details', async () => {
   sessionStorage.setItem('motion.template-handoff.preview', '1');
   const template = { ...items[1], id: 'black-friday-a5238e113514', title: 'Black Friday | 3D Type and Product Reveal' };
   fetchItems([template]);
@@ -136,7 +136,7 @@ it('hides the project return only when the same template is opened from Black Fr
     const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
     expect(detail.open).toBe(true);
     expect(current()).toBe(template.title);
-    expect(Boolean(button('Back to current project', detail))).toBe(!blackFriday);
+    expect(button('Back to current project', detail)).toBeUndefined();
     await act(async () => button('Close template preview', detail).click());
   }
 });
