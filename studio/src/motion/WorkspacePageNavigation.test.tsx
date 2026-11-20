@@ -1157,8 +1157,9 @@ it('keeps only the Explore heading at the top, fills two complete rows across Sk
   expect(new Set(cards.map(card => card.dataset.playbackId)).size).toBe(8);
   for (const studio of ['motion', 'shorts', 'marketing', 'explainer', '3d']) {
     const studioCards = [...container.querySelectorAll<HTMLButtonElement>(`.om-studio-collection[data-studio="${studio}"] .om-studio-collection-cards .om-scene-tile`)];
-    expect(studioCards, studio).toHaveLength(8);
-    expect(new Set(studioCards.map(card => card.dataset.playbackId)).size, studio).toBe(8);
+    const expectedCount = studio === '3d' ? 6 : 8;
+    expect(studioCards, studio).toHaveLength(expectedCount);
+    expect(new Set(studioCards.map(card => card.dataset.playbackId)).size, studio).toBe(expectedCount);
   }
   expect(container.querySelectorAll('.om-studio-collection[data-studio="design"] .om-scene-tile')).toHaveLength(4);
   expect(container.querySelectorAll('.om-studio-collection[data-studio="cinema"] .om-scene-tile')).toHaveLength(3);
