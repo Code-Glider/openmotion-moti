@@ -1075,3 +1075,16 @@
   gap: var(--motion-space-6);
   padding: 0 var(--motion-space-14) var(--motion-space-8);
 }
+
+/* --- Uniform Studio Bar Tab Heights (prevent vertical jitter between Image & Design scenes) --- */
+.om-studio-bar {
+  min-height: 61px;
+}
+
+.om-studio-bar .om-asset-tabs button,
+.om-design-scene-tabs button {
+  height: 36px;
+  min-height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
