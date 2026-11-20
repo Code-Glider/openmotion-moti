@@ -429,10 +429,10 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               selectSegment(box.segmentId, e.shiftKey);
             }}
             onPointerDown={(e) => {
-              if (isSelected) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
+              if (isSelected && box.editable) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
             }}
           >
-            {isSelected && (
+            {isSelected && box.editable && (
               <>
                 {/* Rotation handle — 24px hit area around an 8px dot */}
                 <div
