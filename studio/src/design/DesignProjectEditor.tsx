@@ -879,16 +879,52 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                     onPointerDown={onOverlayPointerDown}
                     onPointerMove={onOverlayPointerMove}
                     onPointerUp={onOverlayPointerUp}
+                    onPointerCancel={() => { setDragStart(null); setDragCurrent(null); setPenPoints([]); }}
                   >
                     {/* Live region drag preview */}
-                    {dragStart && dragCurrent && (
-                      <div className="om-design-region-box" style={{
-                        left: Math.min(dragStart.x, dragCurrent.x),
-                        top: Math.min(dragStart.y, dragCurrent.y),
-                        width: Math.abs(dragCurrent.x - dragStart.x),
-                        height: Math.abs(dragCurrent.y - dragStart.y),
-                      }} />
+                    {dragStart && dragCurrent && (() => {
+                      const rx = Math.min(dragStart.x, dragCurrent.x);
+                      const ry = Math.min(dragStart.y, dragCurrent.y);
+                      const rw = Math.abs(dragCurrent.x - dragStart.x);
+                      const rh = Math.abs(dragCurrent.y - dragStart.y);
+                      return (
+                        <div className="om-design-region-box" style={{ left: rx, top: ry, width: rw, height: rh }}>
+                          {rw >= 48 && rh >= 28 && (
+                            <span className="om-design-region-size">{Math.round(rw)} × {Math.round(rh)}</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Pending region outline while composing comment */}
+                    {pendingDraft?.region && (
+                      <div
+                        className="om-design-region-box"
+                        data-selected="true"
+                        style={{
+                          left: pendingDraft.region.x,
+                          top: pendingDraft.region.y,
+                          width: pendingDraft.region.width,
+                          height: pendingDraft.region.height,
+                        }}
+                      />
                     )}
+
+                    {/* Saved region outlines */}
+                    {pinComments.map(c => c.anchor.region ? (
+                      <div
+                        key={`region-${c.id}`}
+                        className="om-design-region-box"
+                        data-saved="true"
+                        data-selected={selectedCommentId === c.id}
+                        style={{
+                          left: c.anchor.region.x,
+                          top: c.anchor.region.y,
+                          width: c.anchor.region.width,
+                          height: c.anchor.region.height,
+                        }}
+                      />
+                    ) : null)}
 
                     {/* Live pen stroke & saved vector annotations */}
                     <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -902,8 +938,8 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
 
                     {/* Saved pins */}
                     {pinComments.map((c, idx) => {
-                      const x = c.anchor.region ? c.anchor.region.x + c.anchor.region.width / 2 : c.anchor.element ? c.anchor.element.box.x + c.anchor.element.box.width / 2 : 32 + idx * 28;
-                      const y = c.anchor.region ? c.anchor.region.y + c.anchor.region.height / 2 : c.anchor.element ? c.anchor.element.box.y + 12 : 32;
+                      const x = c.anchor.region ? c.anchor.region.x : c.anchor.element ? c.anchor.element.box.x + c.anchor.element.box.width / 2 : 32 + idx * 28;
+                      const y = c.anchor.region ? c.anchor.region.y : c.anchor.element ? c.anchor.element.box.y + 12 : 32;
                       return (
                         <div
                           key={c.id}
@@ -918,29 +954,45 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                       );
                     })}
 
-                    {/* Pending comment composer */}
-                    {pendingDraft && (
-                      <div className="om-design-popover" style={{ position: 'absolute', left: Math.min(Math.max(12, pendingDraft.pinX), 420), top: Math.min(Math.max(12, pendingDraft.pinY + 12), 420), pointerEvents: 'auto', zIndex: 25 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <strong>{pendingDraft.element ? `<${pendingDraft.element.tagName}> ${pendingDraft.element.label}` : pendingDraft.region ? t('Region annotation') : t('Pen annotation')}</strong>
-                          <IconButton aria-label={t('Cancel')} icon={<RemixIcon name="close-line" size={14} />} onClick={() => setPendingDraft(null)} />
+                    {/* Pending comment composer anchored cleanly outside the marked region */}
+                    {pendingDraft && (() => {
+                      const ow = overlayRef.current?.clientWidth ?? 960;
+                      const oh = overlayRef.current?.clientHeight ?? 640;
+                      const popW = 300;
+                      const popH = 176;
+                      const preferredX = pendingDraft.region ? pendingDraft.region.x : pendingDraft.pinX;
+                      const preferredY = pendingDraft.region
+                        ? (pendingDraft.region.y + pendingDraft.region.height + 12 + popH <= oh
+                          ? pendingDraft.region.y + pendingDraft.region.height + 12
+                          : Math.max(12, pendingDraft.region.y - popH - 12))
+                        : (pendingDraft.pinY + 14 + popH <= oh
+                          ? pendingDraft.pinY + 14
+                          : Math.max(12, pendingDraft.pinY - popH - 14));
+                      const left = Math.min(Math.max(12, preferredX), Math.max(12, ow - popW - 12));
+                      const top = Math.min(Math.max(12, preferredY), Math.max(12, oh - popH - 12));
+                      return (
+                        <div className="om-design-popover" style={{ position: 'absolute', left, top, width: popW, pointerEvents: 'auto', zIndex: 25 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <strong>{pendingDraft.element ? `<${pendingDraft.element.tagName}> ${pendingDraft.element.label}` : pendingDraft.region ? t('Region annotation') : t('Pen annotation')}</strong>
+                            <IconButton aria-label={t('Cancel')} icon={<RemixIcon name="close-line" size={14} />} onClick={() => setPendingDraft(null)} />
+                          </div>
+                          <textarea
+                            className="om-design-textarea"
+                            autoFocus
+                            placeholder={t('Describe the change for your Agent…')}
+                            value={commentText}
+                            onChange={e => setCommentText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submitDraftComment(); }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => setPendingDraft(null)}>{t('Cancel')}</Button>
+                            <Button type="button" size="sm" variant="primary" loading={submittingComment} disabled={!commentText.trim()} onClick={() => void submitDraftComment()}>
+                              {t('Save annotation')}
+                            </Button>
+                          </div>
                         </div>
-                        <textarea
-                          className="om-design-textarea"
-                          autoFocus
-                          placeholder={t('Describe the change for your Agent…')}
-                          value={commentText}
-                          onChange={e => setCommentText(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submitDraftComment(); }}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => setPendingDraft(null)}>{t('Cancel')}</Button>
-                          <Button type="button" size="sm" variant="primary" loading={submittingComment} disabled={!commentText.trim()} onClick={() => void submitDraftComment()}>
-                            {t('Save annotation')}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

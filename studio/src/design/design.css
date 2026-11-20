@@ -279,10 +279,38 @@
 
 .om-design-region-box {
   position: absolute;
-  border: 2px dashed var(--motion-accent);
-  background: var(--motion-accent-soft);
-  border-radius: var(--motion-radius-xs);
+  border: 1.5px solid var(--motion-accent);
+  background: color-mix(in srgb, var(--motion-accent) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--motion-bg) 55%, transparent);
+  border-radius: var(--motion-radius-md);
   pointer-events: none;
+}
+
+.om-design-region-box[data-saved="true"] {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--motion-accent) 6%, transparent);
+}
+
+.om-design-region-box[data-selected="true"] {
+  border-style: solid;
+  border-width: 2px;
+  background: color-mix(in srgb, var(--motion-accent) 12%, transparent);
+}
+
+.om-design-region-size {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: var(--motion-radius-xs);
+  background: var(--motion-raised);
+  color: var(--motion-text);
+  border: 1px solid var(--motion-border);
+  font-family: var(--motion-font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--motion-shadow-xs);
 }
 
 /* --- Syntax-highlighted Code Viewer --- */
