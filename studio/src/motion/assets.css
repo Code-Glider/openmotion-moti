@@ -142,6 +142,11 @@
 .om-param-card > svg { color: var(--motion-dim); flex-shrink: 0; }
 [data-motion-studio] .om-param-audio[aria-checked="true"] > svg { color: var(--motion-accent); }
 [data-motion-studio] .om-param-audio[aria-checked="true"] .om-param-card-value { color: var(--motion-accent); }
+[data-motion-studio] .om-param-card-static { cursor: default; }
+[data-motion-studio] .om-param-card-static:hover { background: var(--motion-panel); border-color: var(--motion-border-subtle); }
+[data-motion-studio] .om-param-card-static > svg { color: var(--motion-accent); }
+[data-motion-studio] .om-param-card-static .om-param-card-value { color: var(--motion-accent); }
+[data-motion-studio] .om-generation-settings:has(> .om-param-cards) > .om-generation-summary-row[data-compact="true"] { background: transparent; border: 0; padding: 0; }
 .om-duration-popover { width: 280px; max-width: calc(100vw - 32px); display: grid; gap: var(--motion-space-10); }
 .om-choice-popover { width: 260px; max-width: calc(100vw - 32px); display: grid; gap: var(--motion-space-10); }
 .om-ratio-popover { width: 320px; max-width: calc(100vw - 32px); display: grid; gap: var(--motion-space-10); }

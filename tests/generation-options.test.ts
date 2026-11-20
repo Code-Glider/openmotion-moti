@@ -164,6 +164,15 @@ test('OpenDesign Cloud and account video models derive options from published ca
       modality: 'video', mode: 'text-to-video', source: 'live',
       nativeOptions: { durations: { values: [5, 10], default: 5 } },
     };
+    const rawArraySeedance: Model = {
+      id: `${provider}:doubao-seedance-2-5-260628`, provider, modelId: 'doubao-seedance-2-5-260628', label: 'doubao-seedance-2-5-260628',
+      modality: 'video', mode: 'text-to-video', source: 'live',
+      nativeOptions: {
+        durations: seedanceDurations,
+        ratios: ['16:9', '9:16', 'adaptive'],
+        resolutions: ['720p', '480p', '1080p'],
+      },
+    };
 
     const seedanceFields = generationOptions(seedance)!.fields;
     assert.deepEqual(seedanceFields.map(f => f.key), ['ratio', 'resolution', 'duration', 'generate_audio']);
@@ -188,6 +197,12 @@ test('OpenDesign Cloud and account video models derive options from published ca
     const [seedance20Duration] = generationOptions(seedance20)!.fields;
     assert.equal(seedance20Duration.kind, 'choice');
     assert.deepEqual(seedance20Duration.choices!.map(c => c.value), [5, 10]);
+
+    const rawFields = generationOptions(rawArraySeedance)!.fields;
+    assert.equal(rawFields.find(f => f.key === 'ratio')!.default, '16:9');
+    assert.equal(rawFields.find(f => f.key === 'resolution')!.default, '720p');
+    assert.deepEqual(rawFields.find(f => f.key === 'resolution')!.choices!.map(c => c.value), ['480p', '720p', '1080p']);
+    assert.equal(rawFields.find(f => f.key === 'duration')!.default, 5);
 
     validateGenerationOptions(seedance, { duration: 15, generate_audio: false });
     validateGenerationOptions(seedance, { duration: 30, resolution: '1080p', ratio: '16:9' });
@@ -270,13 +285,14 @@ test('account catalogue preserves capabilities and forwards explicit duration an
     assert.equal(silentArgs[silentArgs.indexOf('--duration') + 1], '15');
     assert.ok(silentArgs.includes('--generate-audio=false'));
 
-    // 3. wan-2.7 omits --generate-audio flags so AMR keeps native audio enabled without 400.
+    // 3. wan-2.7 passes `--generate-audio` so @powerformer/vela-cli@0.1.10 does not default to generate_audio=false (rejected by AMR with HTTP 400).
     await account.generate(
-      { id: 'job-wan-10s', model: wan, modality: 'video', prompt: 'Ocean cliff', providerOrigin: 'fixture-session', parameters: { duration: 10 } } as GenerationJob,
+      { id: 'job-wan-3s', model: wan, modality: 'video', prompt: 'Ocean cliff', providerOrigin: 'fixture-session', parameters: { duration: 3 } } as GenerationJob,
       store.directory, new AbortController().signal, async () => {},
     );
     const wanArgs = calls.filter(args => args[0] === 'video' && args[1] === 'gen').at(-1)!;
-    assert.equal(wanArgs[wanArgs.indexOf('--duration') + 1], '10');
-    assert.ok(!wanArgs.includes('--generate-audio') && !wanArgs.includes('--generate-audio=false'));
+    assert.equal(wanArgs[wanArgs.indexOf('--duration') + 1], '3');
+    assert.ok(wanArgs.includes('--generate-audio'));
+    assert.ok(!wanArgs.includes('--generate-audio=false'));
   } finally { account.close(); }
 }));

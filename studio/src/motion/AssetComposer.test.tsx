@@ -374,13 +374,15 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
     return [...scope.querySelectorAll<HTMLElement>('[role="option"]')];
   };
 
-  // Seedance 2.5 renders quick parameter cards including Duration, Resolution, Aspect ratio, and Generate audio (On by default).
+  // Seedance 2.5 renders quick parameter cards including Duration, Resolution, Aspect ratio, and Generate audio (On by default),
+  // and keeps the summary row compact as "Advanced parameters" rather than repeating values.
   const durationCard = () => container.querySelector<HTMLButtonElement>('.om-param-card[aria-label="Duration"]')!;
   const resolutionCard = () => container.querySelector<HTMLButtonElement>('.om-param-card[aria-label="Resolution"]')!;
   const audioCard = () => container.querySelector<HTMLButtonElement>('.om-param-audio[aria-label="Generate audio"]')!;
   expect(durationCard().textContent).toContain('5s');
   expect(resolutionCard().textContent).toContain('720p');
   expect(audioCard().getAttribute('aria-checked')).toBe('true');
+  expect(container.querySelector('.om-generation-summary')?.textContent).toBe('Advanced parameters');
 
   // Clicking Duration card opens slider + tick buttons [4, 10, 15, 20, 30] instead of a 27-item dropdown.
   await act(async () => durationCard().click());
@@ -399,10 +401,13 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
     action: 'generate', model: seedance.id, parameters: { duration: 15, generate_audio: false },
   }));
 
-  // Switch model to wan-2.7: audio toggle disappears, resolution has [720p, 1080p], duration ticks update to [2, 5, 10, 15].
+  // Switch model to wan-2.7: audio renders as a static always-on card (no switch), resolution has [720p, 1080p], duration ticks update to [2, 5, 10, 15].
   await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
   await act(async () => optionsOf('Generation model').find(node => node.textContent?.includes('wan-2.7'))!.click());
-  expect(container.querySelector('.om-param-audio')).toBeNull();
+  expect(container.querySelector('.om-param-audio[role="switch"]')).toBeNull();
+  const staticAudio = container.querySelector('.om-param-card-static[aria-label="Generate audio"]')!;
+  expect(staticAudio.textContent).toContain('Generate audio');
+  expect(staticAudio.textContent).toContain('On');
   await act(async () => durationCard().click());
   expect([...document.querySelectorAll<HTMLButtonElement>('.om-duration-tick')].map(node => node.textContent?.trim())).toEqual(['2', '5', '10', '15']);
   await act(async () => resolutionCard().click());
@@ -414,4 +419,28 @@ it('renders quick parameter cards, slider duration ticks, resolution pills, and 
   await act(async () => durationCard().click());
   expect(document.querySelector('.om-duration-track')).toBeNull();
   expect([...document.querySelectorAll<HTMLButtonElement>('.om-option-pill')].map(node => node.textContent?.trim())).toEqual(['5s', '10s']);
+});
+
+it('hides reference controls when unsupported and clears image references when switching to audio', async () => {
+  const imageModel = model;
+  const audioModel: Model = { id: 'codex:audio', provider: 'codex', modelId: 'audio', label: 'Audio', modality: 'audio', source: 'builtin', mode: 'text-to-audio' };
+  loadGateway.mockResolvedValue({ models: [imageModel, audioModel], status: { providers: [{ id: 'codex', available: true }], routes: {} } });
+  let latest!: AssetDraft, update!: ComponentProps<typeof AssetComposer>['setDraft'];
+  function Harness() {
+    const [draft, setDraft] = useState<AssetDraft>({ modality: 'image', model: imageModel.id, prompt: 'Keep going', references: [{ name: 'Still', reference: { assetId: 'a', versionId: 'v1' } }] });
+    latest = draft; update = setDraft;
+    return <AssetComposer {...props} draft={draft} setDraft={setDraft} />;
+  }
+  await act(async () => root.render(<Harness />));
+  // Reference control is visible while a reference is attached even if the image model does not support references.
+  expect(container.querySelector('.om-creation-reference')).not.toBeNull();
+  await act(async () => update(current => ({ ...current, references: [] })));
+  expect(container.querySelector('.om-creation-reference')).toBeNull();
+
+  // Re-attach an image reference and switch media type to audio: references are cleared.
+  await act(async () => update(current => ({ ...current, references: [{ name: 'Still', reference: { assetId: 'a', versionId: 'v1' } }] })));
+  await act(async () => container.querySelectorAll<HTMLButtonElement>('.om-creation-types button')[2].click());
+  expect(latest.modality).toBe('audio');
+  expect(latest.references).toEqual([]);
+  expect(container.querySelector('.om-creation-reference')).toBeNull();
 });

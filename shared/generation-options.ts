@@ -61,7 +61,9 @@ function publishedDurations(nativeOptions: Record<string, unknown> | undefined):
   const unique = [...new Set(rawValues.filter((value): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0))];
   if (!unique.length) return undefined;
   // Extract default before sorting since AMR places the default duration first (e.g. [5, 4, 6, ...]).
-  const fallback = typeof envelope?.default === 'number' && unique.includes(envelope.default) ? envelope.default : undefined;
+  const fallback = typeof envelope?.default === 'number' && unique.includes(envelope.default)
+    ? envelope.default
+    : Array.isArray(raw) ? unique[0] : undefined;
   const values = unique.sort((a, b) => a - b);
   const contiguous = values.length > 4 && values.every((v, i) => v === values[0] + i);
   return { values, ...(fallback !== undefined ? { default: fallback } : {}), contiguous };
@@ -75,7 +77,9 @@ function publishedStrings(nativeOptions: Record<string, unknown> | undefined, ke
   const values = [...new Set(rawValues.filter((value): value is string => typeof value === 'string').map(value => value.trim()).filter(Boolean))];
   if (!values.length) return undefined;
   const rawDefault = typeof envelope?.default === 'string' ? envelope.default.trim() : undefined;
-  const fallback = rawDefault && values.includes(rawDefault) ? rawDefault : undefined;
+  const fallback = rawDefault && values.includes(rawDefault)
+    ? rawDefault
+    : Array.isArray(raw) ? values[0] : undefined;
   return { values, ...(fallback !== undefined ? { default: fallback } : {}) };
 }
 
@@ -90,6 +94,7 @@ function sortResolutions(values: string[]): string[] {
 }
 
 const seedance25Models = new Set(['doubao-seedance-2-5-260628', 'doubao-seedance-2-5-flash-261115']);
+const alwaysOnVideoAudioModels = new Set(['wan-2.7']);
 
 function parseAudioBoolean(value: string): boolean | undefined {
   const normalized = value.trim().toLowerCase();
@@ -111,9 +116,15 @@ function publishedAudioToggle(model: Model): { default: boolean } | undefined {
   return undefined;
 }
 
+/** Whether an OpenDesign Cloud/account video model permanently generates native audio with no toggle. */
+export function videoAudioAlwaysOn(model: Model): boolean {
+  return ['opendesign', 'account'].includes(model.provider) && model.modality === 'video' && alwaysOnVideoAudioModels.has(model.modelId);
+}
+
 /** Whether an OpenDesign Cloud/account video model enables native audio when `generate_audio` is omitted. */
 export function defaultVideoAudioEnabled(model: Model): boolean {
-  return ['opendesign', 'account'].includes(model.provider) && model.modality === 'video' && publishedAudioToggle(model)?.default === true;
+  return ['opendesign', 'account'].includes(model.provider) && model.modality === 'video'
+    && (publishedAudioToggle(model)?.default === true || alwaysOnVideoAudioModels.has(model.modelId));
 }
 
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
