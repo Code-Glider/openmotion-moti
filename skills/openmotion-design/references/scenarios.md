@@ -8,6 +8,10 @@ Deliver an interactive, responsive HTML web or app prototype rooted at `index.ht
 - Keep layout usable at Desktop (fluid), Tablet (`820×1180`) and Mobile (`390×844`).
 - Render charts as real SVG/Canvas graphics, design real interactive states (hover, active, empty, loading, form feedback), and keep dynamic data separate from markup.
 
+## Mobile app
+
+Deliver a mobile-first interactive HTML prototype rooted at `index.html` designed for a `390×844` phone viewport with touch-friendly hit targets, bottom tab/navigation bars, safe-area spacing and realistic interactive screen flows.
+
 ## Slide deck
 
 Deliver a single-file 1920×1080 (`16:9`) HTML presentation that speaks the Open Design / Design Studio deck host protocol:

@@ -360,7 +360,7 @@ Comments remain local workspace metadata, survive video edits/restores and proje
 
 ## Design Studio HTML tools (`openmotion_design_*`)
 
-Four tools back HTML Design Studio projects (`prototype`, `deck`, `document`, `web-clone`, `live-artifact`, `webgl`) through the shared `design-projects.ts` service and `/motion-api/design/*` HTTP adapter. Guidance is exposed at `openmotion://workflow/design/start` (`scenarios`, `iterate`, `export`, `systems`). See [Design Studio](design-studio.md).
+Four tools back HTML Design Studio projects (`prototype`, `mobile-app`, `deck`, `document`, `web-clone`, `live-artifact`, `webgl`) through the shared `design-projects.ts` service and `/motion-api/design/*` HTTP adapter. Guidance is exposed at `openmotion://workflow/design/start` (`scenarios`, `iterate`, `export`, `systems`). See [Design Studio](design-studio.md).
 
 - `openmotion_design_catalog` (read-only): `list_scenarios`, `list_templates`, `get_template`, `list_skills`, `get_skill`, `list_design_systems`, `get_design_system`, `get_craft`.
 - `openmotion_design_project`: `create` (blank or from template/design system), `list`, `get`, `rename`, `duplicate`, `trash`, `restore`, `delete` (trashed only), `open` (returns `previewUrl` and Studio `editorUrl`), `open_in` (local editors), `export` (`zip`, `open-design`, `html`, `pdf`, `png`, `pptx`), `import` (ZIP or folder, Open Design compatible).

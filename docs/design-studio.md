@@ -7,6 +7,7 @@ Design Studio lets you create, preview, annotate, version, import and export HTM
 | Scenario | Route | Output | Editor mode |
 | --- | --- | --- | --- |
 | `prototype` | `?page=design&scene=prototype` | Responsive interactive HTML (`index.html`) | Desktop / Tablet (`820×1180`) / Mobile (`390×844`) |
+| `mobile-app` | `?page=design&scene=mobile-app` | Mobile-first interactive HTML app (`index.html`) | Defaults to Mobile (`390×844`) with Tablet / Desktop toggle |
 | `deck` | `?page=design&scene=deck` | 1920×1080 single-file HTML presentation | Slide thumbnail rail, `od:slide` protocol, speaker notes, Present + Presenter popup |
 | `document` | `?page=design&scene=document` | Print-ready semantic HTML (`@media print`) | Page/print preview, PDF export |
 | `web-clone` | `?page=design&scene=web-clone` | Functional HTML rebuild from reference | Responsive HTML |
