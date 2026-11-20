@@ -56,7 +56,7 @@ export function ApplicationHeader({ settings, atExploreHome, openAsset, onCommun
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
-      {settings && settings !== 'brand-kit' && settings !== 'mcp' && <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome} icon={<RemixIcon name="close-line" size={20} />} />}
+      {settings && settings !== 'brand-kit' && <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Close settings')} onClick={openHome} icon={<RemixIcon name="close-line" size={20} />} />}
       <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
   </header>;

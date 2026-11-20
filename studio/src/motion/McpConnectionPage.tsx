@@ -27,7 +27,7 @@ import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import * as tracking from './pageTracking';
 import './McpConnectionPage.css';
 
-export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId, breadcrumb }: { openLibrary: WorkspaceChrome['openLibrary']; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string; breadcrumb?: ReactNode }) {
+export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId, breadcrumb, inSettings = false }: { openLibrary: WorkspaceChrome['openLibrary']; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string; breadcrumb?: ReactNode; inSettings?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast();
   const community = useCommunityLink();
   const { info, failed, retry } = useIntegrationInfo();
@@ -59,8 +59,8 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
     if (card && page.current?.contains(card)) {
       card.focus({ preventScroll: true });
       card.scrollIntoView({ block: 'center' });
-    } else heading.current?.focus({ preventScroll: true });
-  }, [example]);
+    } else if (!inSettings) heading.current?.focus({ preventScroll: true });
+  }, [example, inSettings]);
   const scrollTo = (id: string) => { click('mcp_footer', 'scroll_to_section', { section_id: id }); page.current?.querySelector<HTMLElement>(`#${id}`)?.scrollIntoView({ block: 'start' }); };
   const supported = client.host !== 'chatgpt';
   const language = locale === 'zh-CN' ? 'zh-CN' : 'en';
@@ -95,7 +95,8 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
     try { await navigator.clipboard.writeText(instruction); toast.showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'clipboard_written', clientKey, { capability: item.id, includesSetup: item.id !== 'platform-export' && item.id !== 'review-comments' }); }
     catch { setManualScenario({ id: item.id, text: instruction }); toast.showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'failed', clientKey, { capability: item.id, includesSetup: item.id !== 'platform-export' && item.id !== 'review-comments' }); }
   };
-  return <main ref={page} className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
+  const Container = inSettings ? 'section' : 'main';
+  return <Container ref={page} className="om-mcp-page" data-in-settings={inSettings || undefined} aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
     <div className="om-mcp-content">
       {breadcrumb}
       <section className="om-mcp-hero om-mcp-section">
@@ -154,7 +155,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
       </footer>
 
     </div><StudioToastViewport {...toast} />
-  </main>;
+  </Container>;
 }
 
 function ComparisonTable({ label, columns, rows, featured = false }: { label: string; columns: readonly string[]; rows: readonly (readonly string[])[]; featured?: boolean }) {

@@ -24,6 +24,19 @@ it('retains the library return page and selected detail, and clears page-specifi
   expect(workspacePageHref(providers.href, { settings: 'general' })).toBe('/?page=settings&section=general');
 });
 
+it('keeps MCP setup inside settings until a standalone destination is explicitly selected', () => {
+  const source = 'http://localhost/?page=settings&section=local&entry_from=agent_media_signed_out';
+  const mcp = new URL(workspacePageHref(source, { settings: 'mcp', mcpInSettings: true }), source);
+  const setup = new URL(workspacePageHref(mcp.href, { client: 'claude', setup: 'manual' }), source);
+  expect(setup.searchParams.get('page')).toBe('settings');
+  expect(setup.searchParams.get('section')).toBe('mcp');
+  expect(setup.searchParams.get('entry_from')).toBe('agent_media_signed_out');
+  expect(readWorkspacePage(setup.search)).toMatchObject({ settings: 'mcp', mcpInSettings: true, client: 'claude', setup: 'manual' });
+  const standalone = new URL(workspacePageHref(setup.href, { settings: 'mcp' }), source);
+  expect(standalone.search).toBe('?page=mcp&host=claude&setup=manual');
+  expect(readWorkspacePage(standalone.search).mcpInSettings).toBe(false);
+});
+
 it('round-trips the Black Friday collection and its selected Skill without leaking either into the regular library', () => {
   const origin = 'http://localhost/?page=explore';
   const collection = new URL(workspacePageHref(origin, { templates: true, templateCollection: 'black-friday', skill: 'openmotion-sale-promo' }), origin);

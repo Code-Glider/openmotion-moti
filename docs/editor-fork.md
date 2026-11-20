@@ -102,6 +102,7 @@ The application shell reads its destination from the URL query. The native edito
 | API | `page=api` lists models and registered tools. `tool=openmotion_media_use` opens its input schema. |
 | MCP onboarding | `page=mcp&host=codex`; `setup=manual` opens manual configuration |
 | Settings | `page=settings&section=general` |
+| MCP setup in Settings | `page=settings&section=mcp&host=codex`; `setup=manual` opens manual configuration in the settings content pane |
 | Provider detail | `page=settings&section=providers&provider=openai` |
 | Template library | `templates=1` |
 | Creators and credited works | `templates=1&view=creators`, optionally with `creator=<credit-id>` and `template=<catalog-id>`. The underlying workspace survives closing the gallery. |

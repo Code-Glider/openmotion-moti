@@ -64,6 +64,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const [page, setPage] = useState(() => readWorkspacePage(location.search, location.hash));
   const [source, setSource] = useState(workspaceHistorySource);
   const { settings, assets: assetsOpen, skills: skillsOpen, templates: libraryRequested } = page;
+  const standaloneMcp = settings === 'mcp' && !page.mcpInSettings;
   const detailOnly = Boolean(page.template) && !libraryRequested;
   const connectionsOpen = libraryRequested || detailOnly;
   const hostChrome = window.parent !== window && new URLSearchParams(location.search).get('hostChrome') === '1';
@@ -156,8 +157,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   useEffect(() => { if (assetsOpen) setAssetsVisited(true); }, [assetsOpen]);
   const openAssets = useCallback(() => { navigatePage({ assets: true, assetId: null, assetVersion: null, templates: false }); }, [navigatePage]);
   const openSkills = useCallback((skillCategory: SkillCategory | null = null) => { navigatePage({ skills: true, skill: null, skillCategory, templates: false }); }, [navigatePage]);
-  const openSettings = useCallback((section: SettingsSection) => {
-    navigatePage({ settings: section, assets: false, skills: false, templates: false }, false, section === 'mcp' ? 'from-page' : undefined);
+  const openSettings = useCallback((section: SettingsSection, entry?: McpEntry) => {
+    if (entry) connectionEntry.current = entry;
+    navigatePage({ settings: section, mcpInSettings: section === 'mcp', assets: false, skills: false, templates: false },
+      false, entry ? 'from-page' : undefined);
   }, [navigatePage]);
   const applicationRef = useRef<HTMLDivElement>(null);
   const openHome = useCallback(() => {
@@ -205,7 +208,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       cardPreview.current = !openCollection && template ? { template, locale } : null;
       navigatePage({ templates: openCollection, template: template?.id ?? null, templateCollection: openCollection ? (collection ?? null) : null, creators: false, creator: null, ...(page.templateCollection === 'black-friday' && { skill: null }) });
     },
-    openConnections: entry => { connectionEntry.current = entry; openSettings('mcp'); },
+    openConnections: entry => {
+      connectionEntry.current = entry;
+      navigatePage({ settings: 'mcp', templates: false }, false, 'from-page');
+    },
     openModelSettings: () => openSettings('providers'),
     openHome, openAssets, assetsOpen: assetsOpen && !settings && !templatesPage, openSkills, skillsOpen: skillsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
     settingsOpen: Boolean(settings) || pageOpen };
@@ -224,7 +230,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       setStudioVisit(number => number + 1);
     }
     navigatePage({ studio, skill, settings: null, assets: false, skills: false, templates: false, ...lastExplore.current },
-      false, fromPage && studio?.scene.modality === 'image' ? 'from-page' : undefined);
+      false, fromPage ? 'from-page' : undefined);
   };
   const openStudioFromPage = (studio: StudioDestination, seed?: string | AssetDraft) => openStudio(studio, seed, true);
   const chooseStudio = (entry: CreativeStudio, kind?: Modality, fromPage = false) => {
@@ -238,7 +244,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     navigatePage({ modelOverview, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
   const openModelFromPage = (id: string) => openModel(id, true);
   const openModelHub = (modelHub: string) => navigatePage({ modelHub, templates: false, ...lastExplore.current });
-  const currentPage = templatesPage || page.explore || skillsOpen ? 'explore' : page.api ? 'api' : settings === 'mcp' ? 'mcp' : null;
+  const currentPage = templatesPage || page.explore || skillsOpen ? 'explore' : page.api ? 'api' : standaloneMcp ? 'mcp' : null;
   // One page view per arrival on Explore, the Motion Studio landing, the API page or a model overview.
   // Design, Cinema and Sound report from their own Studio form (AssetsPage), which knows the scene shown.
   const routeView = templatesPage ? null : page.explore ? 'explore' : page.motion ? 'motion' : page.api ? 'api' : page.modelOverview ? 'model:' + page.modelOverview : null;
@@ -252,7 +258,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     // Only an arrival counts; filter changes within Explore are reported as clicks.
   }, [routeView]);
   // Where the top navigation is shown, so its clicks segment by the page the user was on.
-  const navTrackingPage: CreativePage = templatesPage ? 'studio' : page.api ? 'api' : page.explore ? 'explore' : settings === 'mcp' ? 'mcp'
+  const navTrackingPage: CreativePage = templatesPage ? 'studio' : page.api ? 'api' : page.explore ? 'explore' : standaloneMcp ? 'mcp'
     : settings === 'brand-kit' ? 'brand_kit' : settings ? 'settings'
     : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio';
   const returnToExplore = () => {
@@ -295,8 +301,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     catch (error) { throw new TemplatePreparationBlockedError(error instanceof Error ? error.message : t('Working…')); }
     return prepareTemplateProject(template, projectId, requestId);
   }} onOpenProject={id => workspace.open('projects', id)} onOpen={id => { if (!switchingDisabled) void (sessionId ? workspace.createArtifact(sessionId, id) : workspace.startSession(undefined, id)); }} />;
-  const visibleSettings = templatesPage ? null : settings;
-  const imageStudio = page.studio?.scene.modality === 'image' ? page.studio : null;
+  const visibleSettings = templatesPage || standaloneMcp ? null : settings;
+  const mcpPage = settings === 'mcp' && <McpConnectionPage entry={connectionEntry.current} projectId={projectId}
+    hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings}
+    route={page} onRouteChange={navigatePage} inSettings={page.mcpInSettings}
+    breadcrumb={source && <WorkspaceBreadcrumb source={source} destination="MCP" />} />;
   return <WorkspaceChromeContext.Provider value={value}>
     <StudioToastViewport {...navigationToast} />
     <StudioConnectionToast reconnecting={reconnecting} />
@@ -342,19 +351,21 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       {page.modelHub && !templatesPage && <div className="om-explore-host"><ModelHub id={page.modelHub} hasProject={Boolean(projectId)} onExplore={returnToExplore} onModel={openModelFromPage} onSettings={openSettings}
         onProvider={provider => navigatePage({ settings: 'providers', provider, templates: false })}
         onUse={() => chooseStudio(motionStudio)} /></div>}
-      {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} source={source} hostChrome={hostChrome} onExplore={returnToExplore}
+      {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} source={source} onExplore={hostChrome ? returnToExplore : undefined}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudioFromPage} /></div>}
       <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })}
-        breadcrumb={source && imageStudio && <WorkspaceBreadcrumb source={source} destination={t(imageStudio.landing ? imageStudio.scene.label : imageStudio.studio.title)} />}
-        onExplore={hostChrome || (!imageStudio && page.studio?.landing) ? returnToExplore : undefined} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)}
-        onOpenStudio={studio => navigatePage({ studio, templates: false }, false, studio.scene.modality === 'image' ? 'from-page' : undefined)}
+        breadcrumb={source && page.studio && <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />}
+        onExplore={hostChrome ? returnToExplore : undefined} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)}
+        onOpenStudio={studio => navigatePage({ studio, templates: false }, false, 'from-page')}
         onNavigate={studio => navigatePage({ studio, templates: false }, false, 'keep')} /></div>
       {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings) || templatesPage} inert={!assetsOpen || Boolean(settings) || templatesPage}><AssetsPage hasProject={Boolean(projectId)} active={assetsOpen && !settings && !templatesPage} routeId={page.assetId} routeVersion={page.assetVersion} onAssetRoute={selectAssetRoute} /></div>}
       {(skillsOpen || page.specialty) && !settings && !templatesPage && <div className="om-skills-host"><SkillsPage previewsEnabled={!connectionsOpen} briefs={skillBriefs.current} onCreate={openStudioFromPage} key={page.specialty?.id ?? 'skills'} studio={page.specialty ?? undefined} onExplore={returnToExplore} skillId={page.skill} routeCategory={page.skills ? page.skillCategory : undefined} onCategoryChange={skillCategory => navigatePage({ skillCategory }, true)} onSkillChange={skill => navigatePage({ skill })} hasProject={Boolean(projectId)} /></div>}
-      {settings && !templatesPage && <SettingsSurfaceBoundary key={settings}>{settings === 'brand-kit'
-        ? <BrandKitPage inWorkspace={!hostChrome} onClose={openHome} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} hasProject={Boolean(projectId)} /> : settings === 'mcp'
-        ? <McpConnectionPage entry={connectionEntry.current} projectId={projectId ?? undefined} hasProject={Boolean(projectId)} previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} breadcrumb={source && <WorkspaceBreadcrumb source={source} destination="MCP" />} />
-        : <SettingsCenter hasProject={Boolean(projectId)} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
+      {standaloneMcp && !templatesPage && <SettingsSurfaceBoundary>{mcpPage}</SettingsSurfaceBoundary>}
+      {visibleSettings === 'brand-kit'
+        ? <SettingsSurfaceBoundary key="brand-kit"><BrandKitPage inWorkspace={!hostChrome} onClose={openHome} selectedId={page.brandKit} onSelect={brandKit => navigatePage({ brandKit })} previewsEnabled={!connectionsOpen} hasProject={Boolean(projectId)} /></SettingsSurfaceBoundary>
+        : visibleSettings && <SettingsSurfaceBoundary key="settings"><SettingsCenter hasProject={Boolean(projectId)} section={visibleSettings}
+          onSection={openSettings} openConnections={entry => openSettings('mcp', entry)} mcp={mcpPage}
+          providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} /></SettingsSurfaceBoundary>}
       {(templatesPage || detailOnly) && library}
       {templatesPage && page.templateCollection === 'black-friday' && page.skill && <SkillsPage detailOnly skillId={page.skill}
         onSkillChange={skill => navigatePage({ skill })} />}

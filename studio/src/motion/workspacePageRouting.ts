@@ -11,7 +11,7 @@ export const settingsSections = ['account', 'subscription', 'providers', 'models
 export type SettingsSection = typeof settingsSections[number];
 export type ExploreFilters = { community: ExploreCommunity['id'] | null; medium: StudioScene['modality'] | null };
 export { findTemplateCollection, type TemplateCollection } from './templateCollections';
-export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; mcpExample?: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
+export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; mcpInSettings: boolean; mcpExample?: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
 
 export function changesWorkspaceDestination(patch: Partial<WorkspacePage>): boolean {
   return ['explore', 'motion', 'api', 'studio', 'modelOverview', 'modelHub', 'specialty', 'assets', 'skills', 'settings'].some(key => key in patch);
@@ -37,6 +37,7 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
     : page === 'skills' || collection?.techniques.some(id => id === skill) ? skill : null;
   return { motion: page === 'motion', api: page === 'api', tool: page === 'api' ? query.get('tool') : null, modelOverview: page === 'model' ? model : null, modelHub: page === 'model-hub' ? query.get('hub') || null : null, creators, creator: creators ? query.get('creator')?.trim() || null : null, specialty, community, medium, assetId: page === 'assets' ? query.get('asset') || null : null,
     assetVersion: page === 'assets' && query.get('asset') ? query.get('version') || null : null, explore: page === 'explore', studio, settings, brandKit: settings === 'brand-kit' ? query.get('kit') || null : null, assets: page === 'assets', skills: page === 'skills', skillCategory: page === 'skills' ? skillCategories.find(value => value === query.get('skillCategory')) ?? null : null, skill: selectedSkill, templates, templateCollection,
+    mcpInSettings: page === 'settings' && settings === 'mcp',
     mcpExample: settings === 'mcp' ? query.get('example') : null,
     client: mcpClients.find(value => value.id === query.get('host'))?.id ?? 'codex',
     setup: query.get('setup') === 'manual' ? 'manual' : 'agent',
@@ -68,8 +69,9 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
     page.assets = Boolean(patch.assets);
     page.skills = Boolean(patch.skills);
     page.settings = patch.settings ?? null;
+    page.mcpInSettings = page.settings === 'mcp' && Boolean(patch.mcpInSettings);
   }
-  const inSettings = Boolean(page.settings) && !page.assets && !page.skills && page.settings !== 'brand-kit' && page.settings !== 'mcp';
+  const inSettings = Boolean(page.settings) && page.settings !== 'brand-kit' && (page.settings !== 'mcp' || page.mcpInSettings);
   if (!inSettings) url.searchParams.delete('entry_from');
   if (page.explore) {
     url.searchParams.set('page', 'explore');
@@ -106,7 +108,8 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
     url.searchParams.set('page', 'brand-kit');
     if (page.brandKit) url.searchParams.set('kit', page.brandKit);
   } else if (page.settings === 'mcp') {
-    url.searchParams.set('page', 'mcp');
+    url.searchParams.set('page', page.mcpInSettings ? 'settings' : 'mcp');
+    if (page.mcpInSettings) url.searchParams.set('section', 'mcp');
     url.searchParams.set('host', page.client);
     if (page.mcpExample) url.searchParams.set('example', page.mcpExample);
     if (page.setup === 'manual') url.searchParams.set('setup', 'manual');

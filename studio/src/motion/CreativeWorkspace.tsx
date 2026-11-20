@@ -35,7 +35,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
     const key = studioDraftKey(next, skill);
     const previous = drafts.current.get(key);
     drafts.current.set(key, { ...previous, modality: 'video', prompt: previous?.prompt ?? '', references: [reference] });
-    onNavigate(next);
+    onOpenStudio(next);
   } : undefined;
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
   return <div className="om-assets-host om-creative-workspace">
