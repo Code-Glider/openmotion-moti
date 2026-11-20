@@ -662,27 +662,6 @@
   flex-wrap: wrap;
 }
 
-.om-design-example-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--motion-space-8);
-  max-width: 820px;
-}
-
-.om-design-example-chip {
-  max-width: 260px;
-  border-radius: var(--motion-radius-pill) !important;
-  justify-content: flex-start !important;
-}
-
-.om-design-example-chip-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .om-design-section-head {
   display: flex;
   align-items: center;

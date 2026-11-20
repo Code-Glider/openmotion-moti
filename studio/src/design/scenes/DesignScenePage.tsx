@@ -213,16 +213,6 @@ export function DesignScenePage({
     });
   };
 
-  const appendExample = (example: string) => {
-    setBrief(prev => {
-      const trimmed = prev.trim();
-      if (!trimmed) return example;
-      if (trimmed.includes(example)) return prev;
-      return `${trimmed}\n${example}`;
-    });
-    textareaRef.current?.focus();
-  };
-
   const copyInstruction = useCallback(async (text: string, fromDetail = false) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -341,52 +331,23 @@ export function DesignScenePage({
           {/* Middle scrollable gallery & templates area (aligned with Image Studio & Manus) */}
           <div className="om-design-scroll-body">
             <div className="om-design-page om-design-page-with-dock">
-              <div className="om-design-section-head">
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <h2 className="om-design-section-title" style={{ fontSize: 22 }}>{t(scenario.label)}</h2>
-                    <span className="om-design-muted">{t(scenario.hint)}</span>
-                  </div>
-                </div>
-                <div className="om-design-header-group">
-                  <input
-                    type="search"
-                    className="om-design-input"
-                    placeholder={t('Filter templates…')}
-                    aria-label={t('Filter templates…')}
-                    value={templateQuery}
-                    onChange={e => setTemplateQuery(e.target.value)}
-                  />
-                  <Button type="button" size="md" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={15} />} onClick={() => void handleCreateBlank()}>
-                    {t('Create blank project')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Quick starter prompt chips */}
-              {examples.length > 0 && (
-                <div className="om-design-example-chips" style={{ justifyContent: 'flex-start', maxWidth: 'none' }}>
-                  {examples.map(example => (
-                    <Button
-                      key={example}
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="om-design-example-chip"
-                      title={example}
-                      icon={<RemixIcon name="sparkling-line" size={13} />}
-                      onClick={() => appendExample(example)}
-                    >
-                      <span className="om-design-example-chip-label">{example}</span>
-                    </Button>
-                  ))}
-                </div>
-              )}
-
               {/* Template gallery */}
               <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="om-design-section-head">
-                  <h3 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h3>
+                  <h2 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h2>
+                  <div className="om-design-header-group">
+                    <input
+                      type="search"
+                      className="om-design-input"
+                      placeholder={t('Filter templates…')}
+                      aria-label={t('Filter templates…')}
+                      value={templateQuery}
+                      onChange={e => setTemplateQuery(e.target.value)}
+                    />
+                    <Button type="button" size="md" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={15} />} onClick={() => void handleCreateBlank()}>
+                      {t('Create blank project')}
+                    </Button>
+                  </div>
                 </div>
 
                 {templatesLoading ? (
@@ -423,7 +384,7 @@ export function DesignScenePage({
               {/* Recent projects for this scenario */}
               <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="om-design-section-head">
-                  <h3 className="om-design-section-title">{t('Recent projects')}</h3>
+                  <h2 className="om-design-section-title">{t('Recent projects')}</h2>
                   <Button type="button" size="sm" variant="ghost" onClick={() => onSelectDesignScene('projects')}>{t('View all')}</Button>
                 </div>
                 <DesignProjectList scenario={scenario.id} compact onOpen={onOpenProject} />

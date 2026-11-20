@@ -281,7 +281,7 @@ it('uses OpenMotion in copied project-check instructions', async () => {
   expect(writeText).toHaveBeenCalledWith('Fix these OpenMotion project check issues for project "demo":\n\n[error] Missing composition');
 });
 
-it('localizes design examples across all scenes and uses them in the design brief', async () => {
+it('starts each design scene with its localized template gallery and keeps examples in the brief', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ kits: [], entries: [], projects: [], items: [], skills: [] }));
   const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
   const renderScene = (scene: DesignScenarioId, locale: 'zh-CN' | 'en') => act(async () => {
@@ -290,28 +290,30 @@ it('localizes design examples across all scenes and uses them in the design brie
         onChooseStudio={vi.fn()} onOpenProject={vi.fn()} onExplore={vi.fn()} onOpenMcp={vi.fn()} />
     </I18nProvider>);
   });
-  const chips = () => Array.from(host.querySelectorAll<HTMLButtonElement>('.om-design-example-chip'));
+  const brief = () => host.querySelector<HTMLTextAreaElement>('.om-design-bottom-input')!;
 
   for (const scenario of designScenarios) {
     await renderScene(scenario.id, 'zh-CN');
-    expect(chips()).toHaveLength(scenario.examples.length);
-    for (const chip of chips()) expect(chip.textContent).toMatch(/\p{Script=Han}/u);
+    const gallery = host.querySelector('.om-design-page-with-dock')!;
+    expect(gallery.querySelector('h2')?.textContent).toBe(`${translate('zh-CN', scenario.label)} 模板`);
+    expect(gallery.textContent).not.toContain(translate('zh-CN', scenario.hint));
+    for (const example of scenario.examples) {
+      const localized = translate('zh-CN', example);
+      expect(localized).toMatch(/\p{Script=Han}/u);
+      expect(gallery.textContent).not.toContain(localized);
+    }
+    expect(brief().placeholder).toContain(translate('zh-CN', scenario.examples[0]));
   }
 
   await renderScene('mobile-app', 'zh-CN');
-  const brief = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="设计简报"]')!;
-  const [fitness, finance] = chips();
-  expect(brief.placeholder).toContain(fitness.innerText);
+  const mobile = designScenarios.find(scenario => scenario.id === 'mobile-app')!;
+  const fitness = translate('zh-CN', mobile.examples[0]);
   const copy = Array.from(host.querySelectorAll('button')).find(button => button.textContent === '复制给 Agent')!;
   await act(async () => { copy.click(); });
-  expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining(fitness.innerText));
-  await act(async () => { finance.click(); });
-  expect(brief.value).toBe(finance.innerText);
-  await act(async () => { copy.click(); });
-  expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining(finance.innerText));
+  expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining(fitness));
 
   await renderScene('mobile-app', 'en');
-  expect(chips().map(chip => chip.textContent)).toEqual(designScenarios.find(scenario => scenario.id === 'mobile-app')?.examples);
+  expect(brief().placeholder).toContain(mobile.examples[0]);
 });
 
 it('localizes Design Studio mention names and types while preserving reference IDs', async () => {

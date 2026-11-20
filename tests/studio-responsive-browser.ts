@@ -150,6 +150,17 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.click(`${track} ::-p-text(Prototype)`);
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Prototype', {}, active);
       assert.deepEqual(await style(active), imageSelected);
+      const galleryHeader = '.om-design-page-with-dock > section:first-child > .om-design-section-head';
+      await page.waitForSelector(galleryHeader, { visible: true });
+      assert.equal(await page.$eval(`${galleryHeader} h2`, title => title.textContent), 'Prototype templates');
+      assert.ok(await page.$eval(galleryHeader, header => {
+        const { top, bottom } = header.querySelector('h2')!.getBoundingClientRect();
+        return Array.from(header.querySelectorAll('input, button')).every(control => {
+          const { y, height } = control.getBoundingClientRect();
+          const center = y + height / 2;
+          return center >= top && center <= bottom;
+        });
+      }));
 
       await page.setViewport({ width: 860, height: 900 });
       const nextArrow = await page.waitForSelector(next, { visible: true });
@@ -165,6 +176,7 @@ test('Design Studio uses the same navigation styles and overflow controls across
       await page.setViewport({ width: 390, height: 800 });
       await page.goto(new URL('/?page=design&scene=webgl', origin).href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(previous, { visible: true });
+      assert.equal(await page.$eval(`${galleryHeader} h2`, title => title.textContent), 'WebGL templates');
       assert.deepEqual(await arrowSurface(previous), transparentArrow);
       assert.equal(await page.$eval(active, button => button.textContent), 'WebGL');
       assert.ok(await page.$eval(active, button => {
