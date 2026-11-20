@@ -206,6 +206,21 @@ function FlatTextFieldEditor({
       />
       {!mvp && (
         <FlatSegmentedRow
+          label={t("Direction")}
+          options={[
+            { key: "ltr", node: "LTR", label: "Left to right", active: direction === "ltr" },
+            { key: "rtl", node: "RTL", label: "Right to left", active: direction === "rtl" },
+          ]}
+          onChange={(next) => {
+            // Use the existing source-backed per-field CSS style commit. A direction
+            // change must not rewrite the copy, change logical text alignment, or
+            // fabricate a semantic HTML dir/lang attribute.
+            if (next !== direction) onSetTextFieldStyle(field.key, "direction", next);
+          }}
+        />
+      )}
+      {!mvp && (
+        <FlatSegmentedRow
           label={t("Case · Style")}
           options={[
             ...CASE_OPTIONS.map((option) => ({

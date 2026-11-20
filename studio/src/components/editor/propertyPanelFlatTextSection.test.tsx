@@ -190,6 +190,65 @@ function segmentedRowButtons(host: HTMLElement, label: string): HTMLButtonElemen
 }
 
 describe("FlatTextFieldEditor controls", () => {
+  it("commits RTL/LTR CSS direction without rewriting logical alignment or Hebrew copy", () => {
+    const onSetTextFieldStyle = vi.fn();
+    const element = makeSingleFieldElement({
+      value: "שלום (2026) world",
+      computedStyles: { direction: "rtl", "text-align": "start" },
+    });
+    const unchanged = JSON.stringify(element.textFields);
+    const { host, root } = renderInto(
+      <FlatTextSection
+        element={element}
+        styles={{}}
+        fontAssets={[]}
+        onSetText={vi.fn()}
+        onSetTextFieldStyle={onSetTextFieldStyle}
+        onAddTextField={vi.fn()}
+        onRemoveTextField={vi.fn()}
+      />,
+    );
+    const direction = segmentedRowButtons(host, "Direction");
+    expect(direction.map((button) => button.textContent)).toEqual(["LTR", "RTL"]);
+    const ltr = direction.find((button) => button.getAttribute("aria-label") === "Left to right");
+    const rtl = direction.find((button) => button.getAttribute("aria-label") === "Right to left");
+    expect(rtl?.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      segmentedRowButtons(host, "Align").find((button) => button.textContent === "R")?.getAttribute("aria-pressed"),
+    ).toBe("true");
+    act(() => rtl?.click());
+    expect(onSetTextFieldStyle).not.toHaveBeenCalled();
+    act(() => ltr?.click());
+    expect(onSetTextFieldStyle).toHaveBeenCalledExactlyOnceWith("a", "direction", "ltr");
+    expect(JSON.stringify(element.textFields)).toBe(unchanged);
+    act(() => root.unmount());
+  });
+
+  it("targets only the selected text layer when setting RTL direction", () => {
+    const onSetTextFieldStyle = vi.fn();
+    const element = makeMultiFieldElement();
+    element.textFields[0].computedStyles = { direction: "rtl" };
+    element.textFields[1].computedStyles = { direction: "ltr" };
+    const { host, root } = renderInto(
+      <FlatTextSection
+        element={element}
+        styles={{}}
+        fontAssets={[]}
+        onSetText={vi.fn()}
+        onSetTextFieldStyle={onSetTextFieldStyle}
+        onAddTextField={vi.fn()}
+        onRemoveTextField={vi.fn()}
+      />,
+    );
+    const rows = host.querySelectorAll('[data-flat-text-layer-row="true"]');
+    act(() => rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    const rtl = segmentedRowButtons(host, "Direction").find((button) => button.textContent === "RTL");
+    expect(rtl?.getAttribute("aria-pressed")).toBe("false");
+    act(() => rtl?.click());
+    expect(onSetTextFieldStyle).toHaveBeenCalledExactlyOnceWith("b", "direction", "rtl");
+    act(() => root.unmount());
+  });
+
   it("commits text-transform: capitalize when the new 'Ag' case button is clicked", () => {
     const onSetTextFieldStyle = vi.fn();
     const { host, root } = renderInto(
