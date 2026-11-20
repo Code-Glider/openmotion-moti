@@ -201,7 +201,7 @@ const unscheduledSuites = [
   'legacy.test.ts', 'library-skill-catalog.test.ts', 'lint.test.ts', 'mcp-client.test.ts', 'mcp-config.test.ts', 'mcp.test.ts', 'media-save.test.ts',
   'onboarding-recovery.test.ts', 'page-metadata.test.ts', 'phase1-runtime.test.ts', 'phase1-shared.test.ts',
   'recreate-rendering.test.ts', 'registry-material-compat.test.ts', 'registry.test.ts', 'shared-editor.test.ts',
-  'source-build-state.test.ts', 'source-native-runtime.test.ts', 'studio-history-availability.test.ts',
+  'source-native-runtime.test.ts', 'studio-history-availability.test.ts',
   'template-metadata.test.ts', 'template-playback.test.ts', 'templates.test.ts', 'tracking-task-ledger.test.ts',
   'verify-export.test.ts', 'video-compare.test.ts', 'vision-runtime-native.test.mjs', 'vision-runtime.test.mjs',
   'welcome-template.test.ts', 'work-generation.test.ts', 'workflow-layering.test.ts',

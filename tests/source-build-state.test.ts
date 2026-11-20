@@ -31,6 +31,23 @@ test('an existing index alone is not proof of a current source build', async t =
   assert.equal(await sourceBuildCurrent(root), false);
 });
 
+test('Studio rebuilds for component library source edits and reuses the build after packing the library', async t => {
+  const root = await fixture(t);
+  const library = path.join(root, 'packages/open-design-ui');
+  const button = path.join(library, 'button.tsx');
+  await mkdir(library, { recursive: true });
+  await writeFile(button, 'original button');
+  await recordSourceBuild(root);
+  assert.equal(await sourceBuildCurrent(root), true);
+
+  await writeFile(button, 'updated button');
+  assert.equal(await sourceBuildCurrent(root), false);
+  await recordSourceBuild(root);
+  await mkdir(path.join(library, 'dist'));
+  await writeFile(path.join(library, 'dist/button.js'), 'packed button');
+  assert.equal(await sourceBuildCurrent(root), true);
+});
+
 test('source-only rebuilds reuse dependencies; changed locks or missing installs do not', async t => {
   const root = await fixture(t);
   assert.equal(await dependenciesCurrent(root), false);
