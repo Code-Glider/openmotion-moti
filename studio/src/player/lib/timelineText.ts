@@ -19,8 +19,16 @@ export function readTimelineText(el: Element): TimelineText | undefined {
   const style = getCuratedComputedStyles(el);
   if ((style["background-image"] ?? "none") !== "none") return undefined;
   const background = style["background-color"];
+  const computed = el.ownerDocument.defaultView?.getComputedStyle(el);
+  const authoredDirection = el.getAttribute('dir');
+  const direction = authoredDirection === 'rtl' || authoredDirection === 'ltr' || authoredDirection === 'auto'
+    ? authoredDirection : computed?.direction === 'rtl' ? 'rtl' : computed?.direction === 'ltr' ? 'ltr' : undefined;
+  const language = el.closest('[lang]')?.getAttribute('lang') || undefined;
   return {
     value,
+    direction,
+    language,
+    textAlign: computed?.textAlign,
     fontFamily: style["font-family"],
     fontWeight: style["font-weight"],
     color: style.color,
@@ -32,6 +40,9 @@ export function sameTimelineText(a?: TimelineText, b?: TimelineText): boolean {
   if (!a || !b) return a === b;
   return (
     a.value === b.value &&
+    a.direction === b.direction &&
+    a.language === b.language &&
+    a.textAlign === b.textAlign &&
     a.fontFamily === b.fontFamily &&
     a.fontWeight === b.fontWeight &&
     a.color === b.color &&

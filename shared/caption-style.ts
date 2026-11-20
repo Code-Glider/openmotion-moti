@@ -1,3 +1,5 @@
+import { canonicalTextLanguage, resolveTextDirection, type TextDirection } from './text-flow.ts';
+
 /** Authored video styles. These values never theme the editor interface. */
 export const CAPTION_STYLES = [
   { id: 'bar', label: 'Subtitle bar', description: 'A dark backing for clear, readable speech.', color: '#ffffff', background: 'rgba(0,0,0,0.72)', weight: 600, shadow: 'none', highlight: '#ffe066' },
@@ -7,12 +9,14 @@ export const CAPTION_STYLES = [
   { id: 'card', label: 'Paper card', description: 'Dark text on a light backing.', color: '#151515', background: 'rgba(255,255,255,0.94)', weight: 600, shadow: 'none', highlight: '#7540c9' },
   { id: 'cinema', label: 'Cinema', description: 'Quiet serif captions for longer stories.', color: '#ffffff', background: 'transparent', weight: 400, shadow: '0 2px 5px #111111', highlight: '#ffe066' },
 ] as const;
-export type CaptionSettings = { preset: typeof CAPTION_STYLES[number]['id']; position: 'bottom' | 'center' | 'top'; scale: number; pacing: 'sentence' | 'word'; visible: boolean };
+export type CaptionSettings = { preset: typeof CAPTION_STYLES[number]['id']; position: 'bottom' | 'center' | 'top'; scale: number; pacing: 'sentence' | 'word'; visible: boolean; language?: string; direction?: TextDirection };
 export const DEFAULT_CAPTION_SETTINGS: CaptionSettings = { preset: 'bar', position: 'bottom', scale: 1, pacing: 'sentence', visible: true };
 export function captionSettings(input: Partial<CaptionSettings> = {}): CaptionSettings {
   const value = { ...DEFAULT_CAPTION_SETTINGS, ...input };
   if (!CAPTION_STYLES.some(style => style.id === value.preset) || !['bottom', 'center', 'top'].includes(value.position) || !['sentence', 'word'].includes(value.pacing) || !Number.isFinite(value.scale) || value.scale < 0.5 || value.scale > 2 || typeof value.visible !== 'boolean') throw new Error('Invalid caption settings');
-  return value;
+  const language = canonicalTextLanguage(value.language);
+  resolveTextDirection({ language, direction: value.direction });
+  return { ...value, ...(language === undefined ? {} : { language }) };
 }
 export function captionArtwork(settings: CaptionSettings, fontSize: number): Record<string, string> {
   const preset = CAPTION_STYLES.find(style => style.id === settings.preset)!;

@@ -1,3 +1,4 @@
+import { physicalTextAlignment } from "../../../../shared/text-flow.ts";
 import { Button } from "open-design-ui/button";
 import { IconButton } from "open-design-ui/icon-button";
 import { NativeSelect } from "../ui/FormField";
@@ -74,6 +75,8 @@ function FlatTextFieldEditor({
     field.computedStyles["font-family"] || styles["font-family"] || "",
   );
   const align = getTextStyleValue(field, styles, "text-align", "start");
+  const direction = (field.computedStyles["direction"] || styles["direction"]) === "rtl" ? "rtl" : "ltr";
+  const physicalAlign = physicalTextAlignment(align, direction);
   const textTransform = getTextStyleValue(field, styles, "text-transform", "none");
   const fontStyle = getTextStyleValue(field, styles, "font-style", "normal");
 
@@ -187,9 +190,7 @@ function FlatTextFieldEditor({
           ) : option.node,
           label: mvp ? `Align ${option.key}` : option.label,
           active:
-            align === option.key ||
-            (option.key === "left" && align === "start") ||
-            (option.key === "right" && align === "end"),
+            physicalAlign === option.key,
         }))}
         onChange={(next) => {
           // Re-clicking the option that's already visually active for a
@@ -197,7 +198,7 @@ function FlatTextFieldEditor({
           // the physical "left"/"right" — that destroys the logical
           // semantics and is wrong for RTL content. Only write when the
           // user actually picked a different alignment.
-          if ((next === "left" && align === "start") || (next === "right" && align === "end")) {
+          if (next === physicalAlign) {
             return;
           }
           onSetTextFieldStyle(field.key, "text-align", next);

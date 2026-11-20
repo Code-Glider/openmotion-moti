@@ -135,6 +135,8 @@ export interface CaptionGroup {
 // ---------------------------------------------------------------------------
 
 export interface CaptionModel {
+  language?: string; // BCP47; kept independent of Studio UI locale
+  direction?: 'auto' | 'ltr' | 'rtl'; // native composition text flow
   width: number; // composition width in px
   height: number; // composition height in px
   duration: number; // composition duration in seconds

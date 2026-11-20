@@ -1,0 +1,91 @@
+name: RTL and BiDi feature validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/rtl-bidi-ci.yml'
+      - 'shared/caption-style.ts'
+      - 'shared/text-flow.ts'
+      - 'shared/transcript-captions.ts'
+      - 'shared/transcript-tool.ts'
+      - 'studio/src/captions/**'
+      - 'studio/src/components/editor/**'
+      - 'studio/src/player/**'
+      - 'scripts/rtl-font-audit.ts'
+      - 'tests/text-flow.test.ts'
+      - 'tests/rtl-font-audit.test.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rtl-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Source, type, build and regression gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out feature branch without Git LFS media
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+          lfs: false
+          persist-credentials: false
+      - name: Use upstream-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          package-manager-cache: false
+      - name: Install exact locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Focused text-flow and font-audit tests
+        run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts
+      - name: Repository source checks
+        run: npm run check
+      - name: Backend typecheck
+        run: npm run typecheck:backend
+      - name: Studio typecheck
+        run: npm run typecheck:studio
+      - name: Studio production build
+        run: npm run build:studio
+      - name: Install FFmpeg for native caption integration tests
+        timeout-minutes: 12
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
+              sudo apt-get "${apt_options[@]}" update
+              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+            fi
+          fi
+          ffmpeg -hide_banner -version | head -n 1
+      # The upstream standalone workflow already runs broad regression suites
+      # in bounded lanes on this PR. Running every backend test in one process
+      # duplicated that work and hit this job's 45-minute timeout.
+      - name: Native captions and font regression
+        timeout-minutes: 12
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/transcription.test.ts \
+            tests/caption-export.test.ts \
+            tests/studio-fonts.test.ts \
+            tests/font-import.test.ts
+      - name: Focused Studio RTL editor regression
+        timeout-minutes: 12
+        run: |
+          npm run test:studio -- --maxWorkers=2 \
+            studio/src/captions/generator.test.ts \
+            studio/src/captions/parser.test.ts \
+            studio/src/captions/parser.dom.test.ts \
+            studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \
+            studio/src/components/editor/InlineTextCaret.test.tsx \
+            studio/src/components/editor/inlineTextStyleRange.test.ts \
+            studio/src/components/editor/fontAssets.test.ts \
+            studio/src/components/editor/fontImport.test.ts \
+            studio/src/player/components/TextClipContent.test.ts

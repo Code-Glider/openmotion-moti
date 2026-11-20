@@ -4,7 +4,7 @@ const time = { type: 'number', minimum: 0, maximum: 86400 };
 const revision = { type: 'integer', minimum: 1 };
 const word = object({ text: string, start: time, end: time }, ['text', 'start', 'end']);
 const segment = object({ id: { type: 'string', pattern: '^[\\w-]{1,100}$' }, text: { type: 'string', minLength: 1, maxLength: 20000 }, start: time, end: time, speaker: { type: 'string', maxLength: 100 }, words: { type: 'array', items: word, maxItems: 5000 } }, ['id', 'text']);
-const captionSettings = object({ preset: { enum: ['bar', 'clean', 'outline', 'yellow', 'card', 'cinema'] }, position: { enum: ['bottom', 'center', 'top'] }, scale: { type: 'number', minimum: 0.5, maximum: 2 }, pacing: { enum: ['sentence', 'word'] }, visible: { type: 'boolean' } });
+const captionSettings = object({ preset: { enum: ['bar', 'clean', 'outline', 'yellow', 'card', 'cinema'] }, position: { enum: ['bottom', 'center', 'top'] }, scale: { type: 'number', minimum: 0.5, maximum: 2 }, pacing: { enum: ['sentence', 'word'] }, visible: { type: 'boolean' }, language: { type: 'string', minLength: 2, maxLength: 63, pattern: '^[A-Za-z0-9-]+$' }, direction: { enum: ['auto', 'ltr', 'rtl'] } });
 export const transcriptToolArguments = {
   ...object({
     command: { enum: ['models', 'sources', 'list', 'get', 'submit', 'status', 'cancel', 'import', 'update', 'export', 'captions', 'caption_tracks', 'caption_export', 'caption_update', 'caption_add', 'caption_toggle'] },

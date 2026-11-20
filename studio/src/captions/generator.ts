@@ -1,6 +1,7 @@
 // Caption HTML Generator
 // Serializes a CaptionModel into a complete captions.html HyperFrames composition.
 
+import { textFlowAttributes } from '../../../shared/text-flow.ts';
 import type {
   CaptionModel,
   CaptionSegment,
@@ -36,7 +37,7 @@ export function generateCaptionHtml(model: CaptionModel): string {
 
   return [
     `<template id="captions-template">`,
-    `  <div data-composition-id="captions" data-width="${model.width}" data-height="${model.height}" data-duration="${durationStr}">`,
+    `  <div data-composition-id="captions" data-width="${model.width}" data-height="${model.height}" data-duration="${durationStr}"${textFlowAttributes(model)}>`,
     `    <div id="captions-container"></div>`,
     `    <style>`,
     indent(css, 6),

@@ -22,6 +22,7 @@ export const CURATED_STYLE_PROPERTIES = [
   "line-height",
   "letter-spacing",
   "text-align",
+  "direction",
   "text-transform",
   "color",
   "background-color",
