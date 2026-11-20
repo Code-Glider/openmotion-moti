@@ -6,7 +6,7 @@ import { SkillSubmissionLink } from './SkillSubmissionLink';
 import { templateContributionUrl } from './templateContribution';
 import { MotionIcon } from './icons';
 import { useRef, useState, type ReactNode, type RefObject } from 'react';
-import { exploreCommunities, findMediaStudio, findTechniqueStudio, type CreativeStudio, type ExploreCommunity } from '../../../shared/studio-catalog';
+import { exploreCommunities, findMediaStudio, findTechniqueStudio, type CreativeStudio, type ExploreCommunity, type MediaStudio } from '../../../shared/studio-catalog';
 import type { GalleryTemplate, TemplatePage } from '../../../shared/catalog';
 import type { ExploreFilters, TemplateCollection } from './workspacePageRouting';
 import { useI18n } from '../i18n/I18n';
@@ -210,8 +210,10 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
     <h2 lang="en">Open Design</h2>
     <div className="om-capability-body">
     <div className="om-capability-columns">
-      {(['image', 'video', 'audio'] as const).map(kind => <div key={kind}><h3>{t(mediaLabels[kind])}</h3>
-        {studioScenes.filter(scene => scene.modality === kind).map(scene => <Button variant="plain" className="om-nav-item" key={scene.id} onClick={() => {
+      {creativeStudios.filter((studio): studio is MediaStudio => studio.surface === 'media').map(studio => {
+        const kind = studio.primaryModality;
+        return <div key={kind}><h3>{t(mediaLabels[kind])}</h3>
+        {scenesForStudio(studio).map(scene => <Button variant="plain" className="om-nav-item" key={scene.id} onClick={() => {
           const target = sceneDestination(scene);
           track('capability_index', 'select_scene', destinationTarget(target));
           onNavigate(target);
@@ -225,7 +227,8 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
             onNavigate={target => { track('capability_index', 'select_model', { medium: kind, ...destinationTarget(target) }); onNavigate(target); }}
             openProviders={() => { track('capability_index', 'open_providers', { medium: kind }); openModelSettings(); }} />
         </div>}
-      </div>)}
+      </div>;
+      })}
       <div><h3>{t('Studios')}</h3>{creativeStudios.map(studio => <Button variant="plain" className="om-nav-item" key={studio.id} onClick={() => { track('capability_index', 'open_studio', { studio: studio.id }); onChooseStudio(studio); }}>{t(studio.title)}</Button>)}</div>
       <div><h3>{t('Workspace')}</h3>
         <Button variant="plain" className="om-nav-item" onClick={event => { track('capability_index', 'template_library'); openLibrary(event.currentTarget); }}>{t('Template library')}</Button>
