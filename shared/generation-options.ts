@@ -2,7 +2,7 @@ import type { Model } from './gateway.ts';
 
 export type GenerationOption = {
   key: string; label: string; kind: 'choice' | 'number' | 'boolean' | 'text';
-  choices?: { value: string | number; label: string; requires?: Record<string, string | number> }[];
+  choices?: { value: string | number; label: string; requires?: Record<string, string | number>; previewUrl?: string }[];
   default?: string | number | boolean; min?: number; max?: number; step?: number;
   presentation?: 'ratio' | 'count'; required?: boolean;
   /** The choices are suggestions: any other non-empty string is also accepted. */
@@ -17,12 +17,16 @@ const text = (key: string, label: string, required = false): GenerationOption =>
 /** OpenDesign speech voices that produced audio through the media API on 2026-11-16; the first is the default.
  * Other voice IDs pass through unchecked: the media API publishes no voice list. Seed TTS 2.0 accepts only its
  * 2.0 (`*_uranus_bigtts`) speakers; 1.0 speakers fail upstream with a resource mismatch. */
-const cloudSpeechVoices: Record<string, { value: string; label: string }[]> = {
+const cloudSpeechVoices: Record<string, { value: string; label: string; previewUrl?: string }[]> = {
   'byteplus-tts-2': [{ value: 'zh_female_vv_uranus_bigtts', label: 'Vivi · Chinese female' }],
   'elevenlabs-v3': [
-    ['21m00Tcm4TlvDq8ikWAM', 'Rachel · Female'], ['JBFqnCBsd6RMkjVDRZzb', 'George · Male'], ['EXAVITQu4vr4xnSDxMaL', 'Sarah · Female'],
-    ['pNInz6obpgDQGcFmaJgB', 'Adam · Male'], ['nPczCjzI2devNBz1zQrb', 'Brian · Male'], ['pFZP5JQG7iQjIQuC4Bku', 'Lily · Female'],
-  ].map(([value, label]) => ({ value, label })),
+    ['21m00Tcm4TlvDq8ikWAM', 'Rachel · Female', 'https://storage.googleapis.com/eleven-public-prod/premade/voices/21m00Tcm4TlvDq8ikWAM/df6788f9-5c96-470d-8312-aab3b3d8f50a.mp3'],
+    ['JBFqnCBsd6RMkjVDRZzb', 'George · Male', 'https://storage.googleapis.com/eleven-public-prod/premade/voices/JBFqnCBsd6RMkjVDRZzb/e6206d1a-0721-4787-aafb-06a6e705cac5.mp3'],
+    ['EXAVITQu4vr4xnSDxMaL', 'Sarah · Female', 'https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3'],
+    ['pNInz6obpgDQGcFmaJgB', 'Adam · Male', 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pNInz6obpgDQGcFmaJgB/d6905d7a-dd26-4187-bfff-1bd3a5ea7cac.mp3'],
+    ['nPczCjzI2devNBz1zQrb', 'Brian · Male', 'https://storage.googleapis.com/eleven-public-prod/premade/voices/nPczCjzI2devNBz1zQrb/2dd3e72c-4fd3-42f1-93ea-abc5d4e5aa1d.mp3'],
+    ['pFZP5JQG7iQjIQuC4Bku', 'Lily · Female', 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84a-a3c13a3c2b30.mp3'],
+  ].map(([value, label, previewUrl]) => ({ value, label, previewUrl })),
 };
 const cloudSpeech = (model: Model) => ['opendesign', 'account'].includes(model.provider) && model.mode === 'text-to-speech';
 // Own keys only: a model ID such as `constructor` must not resolve to an Object prototype member.
@@ -248,6 +252,10 @@ export function generationOptions(model: Model, hasInputImage = false): Generati
   if (endpoint === 'fal:fal-ai/kokoro/american-english' && model.modality === 'audio') fields = [
     choice('voice', 'Speech voice', ['af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa'], 'af_heart'),
     number('speed', 'Speech speed', 1, undefined, undefined, 0.1),
+  ];
+  if (endpoint === 'fal:fal-ai/elevenlabs/sound-effects/v2' && model.modality === 'audio') fields = [
+    number('duration_seconds', 'Duration (seconds)', undefined, 0.5, 22, 0.5),
+    toggle('loop', 'Seamless loop'),
   ];
   // Cloud and account image models publish output profile pairs (`profiles`), legacy `sizes`, and optional `quality`.
   if (isOpenDesignMedia(model) && model.modality === 'image') {

@@ -124,11 +124,25 @@ test('Kokoro sends spoken text in prompt alongside native voice and speed, witho
   assert.deepEqual(urls, ['https://cdn.example/voice.wav']);
 });
 
+test('ElevenLabs Sound Effects v2 exposes bounded duration_seconds and seamless loop options', () => {
+  const sfx = builtinModels.find(m => m.modelId === 'fal-ai/elevenlabs/sound-effects/v2')!;
+  const schema = generationOptions(sfx)!;
+  assert.deepEqual(schema.fields.map(f => [f.key, f.kind, f.min, f.max]), [
+    ['duration_seconds', 'number', 0.5, 22],
+    ['loop', 'boolean', undefined, undefined],
+  ]);
+  assert.doesNotThrow(() => validateGenerationOptions(sfx, { duration_seconds: 2.5, loop: true }));
+  assert.throws(() => validateGenerationOptions(sfx, { duration_seconds: 0.1 }), /Invalid Duration/);
+  assert.throws(() => validateGenerationOptions(sfx, { duration_seconds: 30 }), /Invalid Duration/);
+  assert.throws(() => validateGenerationOptions(sfx, { loop: 'yes' }), /Invalid Seamless loop/);
+});
+
 test('OpenDesign speech offers checked voices with a default, accepts other voice IDs, and keeps a free voice ID for other models', () => fixture(async store => {
   const byteplus = builtinModels.find(m => m.id === 'opendesign:byteplus-tts-2')!, eleven = builtinModels.find(m => m.id === 'opendesign:elevenlabs-v3')!;
   const [voice] = generationOptions(byteplus)!.fields;
   assert.deepEqual([voice.key, voice.kind, voice.default, voice.required, voice.allowCustom], ['voice', 'choice', 'zh_female_vv_uranus_bigtts', undefined, true]);
   assert.equal(generationOptions(eleven)!.fields[0].choices!.length, 6);
+  assert.ok(generationOptions(eleven)!.fields[0].choices!.every(c => typeof c.previewUrl === 'string' && c.previewUrl.startsWith('https://')));
   // The list is a checked subset: an unlisted voice ID still reaches the provider, but a blank or non-string one does not.
   assert.doesNotThrow(() => validateGenerationOptions(byteplus, { voice: 'zh_female_xiaohe_uranus_bigtts' }));
   assert.throws(() => validateGenerationOptions(byteplus, { voice: ' ' }), /Invalid Speech voice/);

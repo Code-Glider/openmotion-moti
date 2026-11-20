@@ -5,7 +5,7 @@ export { creativeStudios, studioScenes, type StudioScene };
 export const motionStudio = creativeStudios.find(studio => studio.surface === 'editor')!;
 type GeneratingStudio = MediaStudio | TechniqueStudio;
 /** home: the Sound Studio home (banner and templates) rather than its generation page. */
-export type StudioDestination = { studio: GeneratingStudio; scene: StudioScene; model: string | null; landing?: true; home?: true };
+export type StudioDestination = { studio: GeneratingStudio; scene: StudioScene; model: string | null; landing?: true; home?: true; mediaTab?: true };
 export const mediaLabels: Record<Modality, string> = { image: 'Image', video: 'Video', audio: 'Audio' };
 
 export const studioComingSoon = (studio: CreativeStudio | undefined) => Boolean(studio && 'navBadge' in studio && studio.navBadge === 'Coming soon');
