@@ -756,7 +756,21 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
           </div>
 
           <Tooltip label={t('Comments')}>
-            <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="message-2-line" size={14} />} onClick={() => { setSidebarOpen(true); setSidebarTab('comments'); }}>
+            <Button
+              type="button"
+              size="sm"
+              variant={sidebarOpen && sidebarTab === 'comments' ? 'secondary' : 'ghost'}
+              aria-pressed={sidebarOpen && sidebarTab === 'comments'}
+              icon={<RemixIcon name="message-2-line" size={14} />}
+              onClick={() => {
+                if (sidebarOpen && sidebarTab === 'comments') {
+                  setSidebarOpen(false);
+                } else {
+                  setSidebarOpen(true);
+                  setSidebarTab('comments');
+                }
+              }}
+            >
               {openComments.length}
             </Button>
           </Tooltip>
