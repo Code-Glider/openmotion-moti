@@ -15,15 +15,19 @@ import { imageScene, menuFamilies, withOpenDesignModels } from './imageMenuModel
 import { ImageMegaMenu, ModelMenuColumn, type ImageParameterSeed } from './ImageMegaMenu';
 import { sceneExamples } from './sceneShowcase';
 import { destinationTarget, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
+import { AudioNavMenu } from './AudioNavMenu';
+import type { SoundTabId } from './soundTabs';
 
 export type CreativeNavigationProps = {
   onChooseStudio: (studio: CreativeStudio, kind?: Modality) => void;
   specialty: TechniqueStudio | null;
   destination: StudioDestination | null;
+  soundTab?: SoundTabId | null;
   motionActive: boolean;
   designActive?: boolean;
   cinemaActive?: boolean;
   onNavigate: (destination: StudioDestination | null, seed?: ImageParameterSeed) => void;
+  onNavigateSound?: (destination: StudioDestination, soundTab?: SoundTabId | null) => void;
   currentPage: 'explore' | 'mcp' | null;
   onOpenPage: (page: 'explore' | 'mcp', client?: McpClient) => void;
   /** The page this navigation is shown on, so its clicks segment by where the user was. */
@@ -83,7 +87,7 @@ function MediaChoices({ studio, destination, onNavigate, onSelectModel, catalog 
   </div>;
 }
 
-export function CreativeNavigation({ specialty, onChooseStudio, destination, motionActive, designActive, cinemaActive, onNavigate, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
+export function CreativeNavigation({ specialty, onChooseStudio, destination, soundTab, motionActive, designActive, cinemaActive, onNavigate, onNavigateSound, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = useState<Modality | 'mcp' | null>(null);
   const [popupHost, setPopupHost] = useState<HTMLElement>();
@@ -145,8 +149,15 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
       const kind = studio.primaryModality;
       const label = t(mediaLabels[kind]);
       const studioSceneList = scenesForStudio(studio);
-      return { id: kind, studio, label, current: destination?.landing && destination.studio.id === studio.id ? 'location' as const : undefined,
+      const isCurrent = kind === 'audio'
+        ? destination?.scene.modality === 'audio' && Boolean(destination.mediaTab || destination.landing)
+        : Boolean(destination?.landing && destination.studio.id === studio.id);
+      return { id: kind, studio, label, current: isCurrent ? 'location' as const : undefined,
         menuLabel: label + ' · ' + t('Scenes'), onActivate: () => {
+          if (kind === 'audio') {
+            onChooseStudio(studio, kind);
+            return;
+          }
           const sameModality = destination?.studio.id === studio.id && destination.scene.modality === kind;
           const scene = sameModality ? destination.scene : studioSceneList.find(item => item.modality === kind) ?? studioSceneList[0];
           const model = sameModality ? destination.model : null;
@@ -190,10 +201,16 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
                   <McpClientAvatar client={client} /><span>{t(client.name)}</span>
                 </Button>)}
               </div>
-            </> : expanded && studio && (id === 'image'
-              ? <ImageMegaMenu catalog={catalog.catalog} destination={destination} onNavigate={selectScene} />
-              : <MediaChoices catalog={catalog.catalog} studio={studio} destination={destination} onNavigate={selectScene}
-                onSelectModel={next => { track('select_model', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />)}
+            </> : expanded && studio && (id === 'audio'
+              ? <AudioNavMenu destination={destination} activeSoundTab={soundTab} catalog={catalog.catalog} failed={catalog.failed}
+                  onSelect={(next, nextSoundTab, source) => {
+                    track(source === 'model' ? 'select_model' : 'select_scene', { ...where, ...destinationTarget(next) });
+                    choose(() => (onNavigateSound ? onNavigateSound(next, nextSoundTab) : onNavigate(next)));
+                  }} />
+              : id === 'image'
+                ? <ImageMegaMenu catalog={catalog.catalog} destination={destination} onNavigate={selectScene} />
+                : <MediaChoices catalog={catalog.catalog} studio={studio} destination={destination} onNavigate={selectScene}
+                  onSelectModel={next => { track('select_model', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />)}
           </Popover>
         </div>;
   }
@@ -206,7 +223,8 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
     if (index < studioStart) return splitItem(index, inPanel);
     const studio = creativeStudios[index - studioStart];
     const isCurrent = studio.surface === 'editor' ? motionActive
-      : (studio.id === 'design' && Boolean(designActive)) || (studio.id === 'cinema' && Boolean(cinemaActive)) || (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
+      : (studio.id === 'design' && Boolean(designActive)) || (studio.id === 'cinema' && Boolean(cinemaActive))
+        || (studio.id === destination?.studio.id && !destination?.landing && !destination?.mediaTab) || studio.id === specialty?.id;
     const badge = 'navBadge' in studio ? studio.navBadge : undefined;
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
     return <Button variant="plain" className="om-nav-item" data-coming-soon={badge === 'Coming soon' || undefined} aria-current={isCurrent ? 'page' : undefined}

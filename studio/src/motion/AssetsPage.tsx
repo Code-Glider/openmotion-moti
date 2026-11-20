@@ -23,6 +23,7 @@ import type { StudioCreation } from './CreativeWorkspace';
 import { sceneLayout } from './sceneShowcase';
 import { StudioIdeas } from './StudioIdeas';
 import { AudioStudioLanding } from './AudioStudioLanding';
+import { SoundStudioWorkspace } from './SoundStudioWorkspace';
 import { creationModels } from './creationModels';
 import { imageModelLabel } from './imageMenuModels';
 import './assets.css';
@@ -30,6 +31,11 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
   const { t } = useI18n(), toast = useToast();
   const [kind, setKind] = useState<AssetKind>(studio?.destination.scene.modality ?? 'all'), [revision, setRevision] = useState(0), [creating, setCreating] = useState(Boolean(studio) && !studio?.openCreate), [picking, setPicking] = useState(false), [uploading, setUploading] = useState(false), [selected, setSelected] = useState<LibraryAsset>(), [versionId, setVersionId] = useState(''), [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [draft, setDraft] = useState<AssetDraft>(() => studio?.initialDraft ?? { modality: studio?.destination.scene.modality ?? 'image', prompt: '', references: [] });
+  const [draftKeyState, setDraftKeyState] = useState(studio?.draftKey);
+  if (studio?.draftKey && studio.draftKey !== draftKeyState) {
+    setDraftKeyState(studio.draftKey);
+    setDraft(studio.initialDraft ?? { modality: studio.destination.scene.modality, prompt: '', references: [] });
+  }
   const layout = studio && sceneLayout(studio.destination.scene);
   const [studioTab, setStudioTab] = useState<'guide' | 'library'>();
   const [mobileView, setMobileView] = useState<'library' | 'create'>('create');
@@ -39,11 +45,11 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
   const studioForm = studio && !selected ? studio : undefined;
   const scoped = Boolean(studio), lastStudioDraft = useRef(draft);
   useLayoutEffect(() => {
-    if (studioForm && !draft.target && draft.modality === studioForm.destination.scene.modality) {
+    if (studioForm && (!studioForm.draftKey || studioForm.draftKey === draftKeyState) && !draft.target && draft.modality === studioForm.destination.scene.modality) {
       lastStudioDraft.current = draft;
       studioForm.remember(draft);
     }
-  }, [studioForm, draft]);
+  }, [studioForm, draft, draftKeyState]);
   const selectionRequest = useRef(0);
   const selectedAsset = useRef<LibraryAsset | undefined>(undefined), assetReadRequest = useRef(0);
   const pendingWrites = useRef(new Set<string>()), [updatingAssets, setUpdatingAssets] = useState<Set<string>>(new Set());
@@ -289,6 +295,7 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
       knownJobs.current = mergeAssetJobs(knownJobs.current, [job]); setJobs(knownJobs.current); setTaskIds(current => ({ ...current, direct: job.id }));
       refresh(); toast.showToast(t('Generation started. Track it in Tasks.'), 'info');
     }} onError={onError} onClose={() => { selectionRequest.current++; setSelectingTask(false); setCreating(false); }} />;
+  const soundWorkbench = studio?.destination.scene.modality === 'audio' && !audioStudio;
   return <div className="om-assets-page" data-scene-layout={layout} data-creating={creating} data-previewing={Boolean(selected)} data-mobile-view={mobileView}>
     {selected ? <AssetDetailWorkspace asset={selected} versionId={versionId} active={active} uploading={uploading} saving={updatingAssets.has(selected.id)} editor={creating ? composer : undefined} taskControls={taskMenu}
       navigation={<AssetBrowserContent browser={browser} onOpen={open} compact selectedId={selected.id} />}
@@ -296,7 +303,33 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
       onReference={selected.modality === 'image' ? () => { tracking.reportAssetsClick('asset_detail', 'use_as_reference', { modality: selected.modality }); startDraft({ modality: selected.modality, prompt: '', references: [{ reference: { assetId: selected.id, versionId }, name: selected.name }] }); } : undefined}
       onFirstFrame={studio?.useAsFirstFrame && selected.modality === 'image' && version ? () => studio.useAsFirstFrame?.({ reference: { assetId: selected.id, versionId: version.id }, name: selected.name }) : undefined}
       onOpenReference={reference => { void openReference(reference); }}
-      onUpload={() => { tracking.reportAssetsClick('asset_detail', 'upload', { modality: selected.modality }); replace.current?.click(); }} onDownload={() => { tracking.reportAssetsClick('asset_detail', 'download_asset', { modality: selected.modality }); toast.showToast(t('Download started'), 'info'); }} /> : <>
+      onUpload={() => { tracking.reportAssetsClick('asset_detail', 'upload', { modality: selected.modality }); replace.current?.click(); }} onDownload={() => { tracking.reportAssetsClick('asset_detail', 'download_asset', { modality: selected.modality }); toast.showToast(t('Download started'), 'info'); }} /> : soundWorkbench && studio ? <SoundStudioWorkspace
+        active={active}
+        studio={studio}
+        draft={draft}
+        setDraft={setDraft}
+        browser={browser}
+        jobs={jobs}
+        uploading={uploading}
+        updatingAssets={updatingAssets}
+        mobileView={mobileView}
+        setMobileView={setMobileView}
+        onUploadClick={() => { tracking.reportAssetsClick('assets_library', 'upload'); upload.current?.click(); }}
+        onDropFiles={files => { void importFiles(files, false, 'library_drop'); }}
+        onOpenAsset={asset => { tracking.reportAssetsClick('assets_library', 'open_asset', { modality: asset.modality }); open(asset); }}
+        onTrashAsset={assetId => update(assetId, { trashed: true })}
+        onCancelJob={cancelJob}
+        onRetrySave={retrySave}
+        onResumeJob={resumeJob}
+        onViewJob={viewJob}
+        onCreated={job => {
+          knownJobs.current = mergeAssetJobs(knownJobs.current, [job]); setJobs(knownJobs.current); setTaskIds(current => ({ ...current, direct: job.id }));
+          refresh();
+        }}
+        onError={onError}
+        onNotify={message => toast.showToast(message, 'info')}
+        onDownload={() => { tracking.reportAssetsClick('assets_library', 'download_asset', { modality: 'audio' }); toast.showToast(t('Download started'), 'info'); }}
+      /> : <>
     {creating && <div className="om-assets-view-switch" role="group" aria-label={t('Workspace assets')}><div className="om-choice-tabs">
       <Button variant="plain" className="om-nav-item" aria-pressed={mobileView === 'library'} onClick={() => setMobileView('library')}>{t(hasGuide ? 'Guide & assets' : 'Asset library')}</Button>
       <Button variant="plain" className="om-nav-item" aria-pressed={mobileView === 'create'} onClick={() => setMobileView('create')}>{t('AI Create')}</Button>

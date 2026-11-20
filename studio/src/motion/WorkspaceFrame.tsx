@@ -49,6 +49,7 @@ import type { McpEntry } from './pageTracking';
 import { WorkspaceProjectsButton } from './WorkspaceProjectsButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { changesWorkspaceDestination, defaultDesignScene, readWorkspacePage, workspacePageHref, type WorkspacePage } from './workspacePageRouting';
+import type { SoundTabId } from './soundTabs';
 import { WORKSPACE_LOCATION_CHANGED, initializeWorkspaceHistory, restoreWorkspaceSource, workspaceHistoryIndex, workspaceHistorySource, workspaceSettingsSource, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { WorkspaceBreadcrumb } from './WorkspaceBreadcrumb';
 import { useToast } from '../hooks/useToast';
@@ -318,9 +319,20 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     else if (entry.id === 'design' && !kind) navigatePage({ designScene: defaultDesignScene, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
     else if (entry.id === 'cinema' && !kind) navigatePage({ cinemaLanding: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
     else if (!kind && hasStudioHome(entry)) openStudio({ ...studioDestination(entry, page.studio?.studio.id === entry.id ? page.studio.scene.id : null), home: true }, undefined, fromPage);
-    else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
+    else if (kind === 'audio') {
+      const keepCurrent = page.studio?.studio.id === entry.id && page.studio.scene.modality === 'audio';
+      const target = {
+        ...studioDestination(entry, keepCurrent ? page.studio!.scene.id : scenesForStudio(entry).find(scene => scene.modality === 'audio')?.id, keepCurrent ? page.studio!.model : null),
+        mediaTab: true as const,
+      };
+      navigatePage({ studio: target, soundTab: keepCurrent ? page.soundTab ?? null : null, skill: null, settings: null, assets: false, skills: false, templates: false, ...lastExplore.current },
+        false, fromPage ? 'from-page' : undefined);
+    } else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model), undefined, fromPage);
     } else openStudio(studioDestination(entry, scenesForStudio(entry).find(scene => scene.modality === kind)?.id), undefined, fromPage);
+  };
+  const openAudioNav = (studio: StudioDestination, soundTab?: SoundTabId | null) => {
+    navigatePage({ studio, soundTab: soundTab ?? null, skill: null, settings: null, assets: false, skills: false, templates: false, ...lastExplore.current });
   };
   const openModel = (modelOverview: string, fromPage = false) =>
     navigatePage({ modelOverview, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
@@ -362,7 +374,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (target === 'explore') { openHome(); return; }
     openMcp(client, example);
   };
-  const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" specialty={page.specialty} onChooseStudio={chooseStudio} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} />;
+  const galleryNavigation = !hostChrome && <CreativeNavigation trackingPage="studio" specialty={page.specialty} onChooseStudio={chooseStudio} currentPage={null} onOpenPage={openPage} destination={null} motionActive={false} onNavigate={openStudio} onNavigateSound={openAudioNav} />;
   const library = connectionsOpen && <ConnectionDialog collection={page.templateCollection} onCollectionChange={templateCollection => navigatePage({ templateCollection }, true)}
     collectionSkillOpen={page.templateCollection === 'black-friday' && Boolean(page.skill)} detailOnly={detailOnly}
     initialTemplate={detailOnly && cardPreview.current?.locale === locale ? cardPreview.current.template : undefined}
@@ -403,7 +415,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
         specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
-        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} cinemaActive={!templatesPage && page.cinemaLanding} designActive={!templatesPage && Boolean(page.designScene)} onNavigate={openStudio} />
+        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} soundTab={templatesPage ? null : page.soundTab ?? null} motionActive={!templatesPage && (page.motion || editorActive)}
+        designActive={!templatesPage && Boolean(page.designScene)} cinemaActive={!templatesPage && page.cinemaLanding} onNavigate={openStudio} onNavigateSound={openAudioNav} />
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
@@ -443,13 +456,13 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         onUse={() => chooseStudio(motionStudio)} /></div>}
       {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} source={source} onExplore={hostChrome ? returnToExplore : undefined}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudioFromPage} /></div>}
-      <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })}
+      <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} soundTab={page.soundTab ?? null} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })}
         onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false, ...lastExplore.current })}
         breadcrumb={source && page.studio && !showStudioBackToExplore && <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />}
         onBackToExplore={showStudioBackToExplore || (hostChrome && !source) ? returnToExplore : undefined}
         onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} cinemaTemplate={selectedCinemaTemplate}
         onOpenStudio={studio => navigatePage({ studio, templates: false }, false, 'from-page')}
-        onNavigate={studio => navigatePage({ studio, templates: false,
+        onNavigate={(studio, soundTab) => navigatePage({ studio, soundTab: soundTab ?? null, templates: false,
           cinemaTemplate: studio.studio.id === 'cinema' && studio.scene.id === page.studio?.scene.id ? page.cinemaTemplate : null,
         }, false, 'keep')} /></div>
       {page.designScene && !templatesPage && (

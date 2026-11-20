@@ -25,6 +25,8 @@ import transcriptUi from './transcript-ui.json';
 import modelHubUi from './model-hub-ui.json';
 import designUi from './design-ui.json';
 import designEditorUi from './design-editor-ui.json';
+import soundStudioUi from './sound-studio-ui.json';
+import audioNavMenuUi from './audio-nav-menu-ui.json';
 import campaignUi from './campaign-ui.json';
 import ja from './ja.json';
 import ko from './ko.json';
@@ -56,7 +58,7 @@ export const isLocale = (value: unknown): value is Locale => languages.some(lang
 // supported language. Retained, unexposed advanced-editor strings still fall back.
 export const mvpMessages: Partial<Record<Locale, Record<string, Message>>> = { 'zh-CN': mvpZhCN, ...mvpUi };
 const uiMessages: Partial<Record<Locale, Record<string, Message>>>[] = [
-  componentInspectorUi, studioNavigationUi, reviewUi, assetNameUi, mvpMessages, errorUi, templateUi, templateSearchUi, settingsUi, mcpUi, assetsUi, skillsUi, skillLibraryUi, brandKitUi, projectUi, transcriptUi, exportRecoveryUi, importRecoveryUi, platformExportUi, canvasUi, fullscreenUi, timelineHoverUi, modelHubUi, designUi, designEditorUi, campaignUi,
+  componentInspectorUi, studioNavigationUi, reviewUi, assetNameUi, mvpMessages, errorUi, templateUi, templateSearchUi, settingsUi, mcpUi, assetsUi, skillsUi, skillLibraryUi, brandKitUi, projectUi, transcriptUi, exportRecoveryUi, importRecoveryUi, platformExportUi, canvasUi, fullscreenUi, timelineHoverUi, modelHubUi, designUi, designEditorUi, soundStudioUi, audioNavMenuUi, campaignUi,
 ];
 const effectiveDictionaries: Record<string, Record<string, Message>> = Object.fromEntries(Object.entries(dictionaries).map(([locale, messages]) => {
   const localized = { ...messages };
@@ -74,7 +76,7 @@ const singular: Record<string, string> = {
   ' and its {count} slides': ' and its {count} slide', '{count} lint findings': '{count} lint finding',
   '{description} ({count} effects)': '{description} ({count} effect)', '{count} files': '{count} file',
   '{count} tools': '{count} tool', '{count} elements selected': '{count} element selected',
-  '{count} active effects': '{count} active effect',
+  '{count} active effects': '{count} active effect', '{count} tracks': '{count} track',
 };
 const pluralRules = Object.fromEntries(languages.map(({ locale }) => [locale, new Intl.PluralRules(locale)]));
 

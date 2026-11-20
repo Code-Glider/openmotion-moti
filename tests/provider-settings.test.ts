@@ -318,6 +318,53 @@ test('account music, default-voice speech and one-image editing run the matching
   assert.deepEqual((await submissions()).at(-1)?.slice(-2), ['--voice', '21m00Tcm4TlvDq8ikWAM']);
 }));
 
+test('signed-in accounts expose built-in audio fallbacks when omitted by the remote catalogue without overriding live entries', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1, ...imageTransport(store.directory) });
+  t.after(() => gateway.close());
+  assert.deepEqual(await account.models(), []);
+  assert.deepEqual((await gateway.listModels({ provider: 'account', modality: 'audio' })).models, []);
+
+  await signIn(account); await account.models(true);
+  await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
+  const directory = await providerDirectory(gateway);
+  // Fixture returns elevenlabs-v3 live, while omitting byteplus-tts-2 and elevenlabs-music-v2.
+  assert.equal(directory.models.find(m => m.id === 'account:elevenlabs-v3')?.source, 'live');
+  assert.equal(directory.models.find(m => m.id === 'account:byteplus-tts-2')?.source, 'builtin');
+  assert.equal(directory.models.find(m => m.id === 'account:byteplus-tts-2')?.mode, 'text-to-speech');
+  assert.equal(directory.models.find(m => m.id === 'account:elevenlabs-music-v2')?.source, 'builtin');
+  assert.equal(directory.models.find(m => m.id === 'account:elevenlabs-music-v2')?.mode, 'text-to-audio');
+
+  const listed = (await gateway.listModels({ provider: 'account', modality: 'audio' })).models;
+  const musicModel = listed.find(m => m.id === 'account:elevenlabs-music-v2');
+  const byteplusModel = listed.find(m => m.id === 'account:byteplus-tts-2');
+  assert.equal(musicModel?.generationOptions?.fields[0]?.key, 'duration');
+  assert.equal(byteplusModel?.generationOptions?.fields[0]?.default, 'zh_female_vv_uranus_bigtts');
+
+  const queuedMusic = await mediaUse(store, { action: 'generate', provider: 'account', model: 'elevenlabs-music-v2', projectId: store.projectId, modality: 'audio', mode: 'text-to-audio', prompt: 'soft piano', parameters: { duration: 15 }, requestId: 'account-builtin-music' });
+  assert.equal((await finish(store, queuedMusic.job.id)).state, 'completed');
+  const submissions = JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')) as string[][];
+  assert.deepEqual(submissions.at(-1)?.slice(0, 4), ['audio', 'music', '--model', 'elevenlabs-music-v2']);
+  assert.deepEqual(submissions.at(-1)?.slice(-2), ['--duration', '15']);
+
+  // A live catalogue entry with enabled=false must suppress the built-in fallback.
+  const disabled = new OpenDesignAccount(store.directory, {
+    run: async args => args[0] === 'model'
+      ? JSON.stringify({ source: 'remote', data: [] })
+      : JSON.stringify({ models: [{ model: 'elevenlabs-music-v2', kind: 'audio_music', enabled: false }] }),
+  });
+  t.after(() => disabled.close());
+  const refreshed = await disabled.models(true);
+  assert.equal(refreshed.find(m => m.id === 'account:elevenlabs-music-v2')?.enabled, false);
+  assert.equal(refreshed.find(m => m.id === 'account:elevenlabs-music-v2')?.source, 'live');
+  assert.equal((await disabled.mediaModels()).some(m => m.id === 'account:elevenlabs-music-v2'), false);
+  assert.equal((await disabled.mediaModels()).some(m => m.id === 'account:byteplus-tts-2'), true);
+
+  await account.logout();
+  assert.deepEqual(await account.models(), []);
+}));
+
 test('account media failures report the service reason without connector output', t => fixture(async store => {
   await chmod(binary, 0o755);
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];

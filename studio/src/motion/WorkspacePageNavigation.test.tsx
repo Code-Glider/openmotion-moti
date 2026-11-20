@@ -582,7 +582,7 @@ it('surfaces a visible error toast when creating a blank project from Motion tem
   expect(document.querySelectorAll('[role="alert"] .hf-toast-surface')).toHaveLength(1);
 });
 
-it('lists the fixed OpenDesign audio models separately from scenes and opens speech from either', async () => {
+it('shows audio feature cards, selectable models and spotlight in the Audio hover menu without mutating defaults', async () => {
   const speech = { id: 'voice:read/v2', provider: 'voice', modelId: 'read/v2', label: 'Narrator', modality: 'audio', mode: 'text-to-speech' };
   const fallback = fetcher.getMockImplementation()!;
   fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
@@ -593,18 +593,13 @@ it('lists the fixed OpenDesign audio models separately from scenes and opens spe
   });
   await mount();
   await click('Audio · Scenes');
-  const menu = document.querySelector('.om-creative-menu')!;
-  expect([...menu.querySelectorAll('.om-media-mega-columns h2')].map(node => node.textContent)).toEqual(['Models']);
-  const rows = [...menu.querySelectorAll('.om-media-mega-row')].map(row => row.textContent);
-  expect(rows).toEqual(['Eleven v3', 'BytePlus TTS 2.0', 'Eleven Music v2']);
-  expect(rows.some(row => row?.includes('Narrator'))).toBe(false);
-  const scene = [...menu.querySelectorAll<HTMLButtonElement>('.om-scene-tile')].find(card => card.textContent === 'Text to speech')!;
+  const menu = document.querySelector('.om-creative-menu.om-creative-menu-audio')!;
+  expect(menu).toBeTruthy();
+  expect(menu.querySelector('[role="img"][aria-label="Narrator"]')).toBeTruthy();
+  expect(menu.querySelector('[data-audio-spotlight="voice:read/v2"]')).toBeTruthy();
+  const scene = [...menu.querySelectorAll<HTMLButtonElement>('.om-scene-tile')].find(card => card.querySelector('strong')?.textContent === 'Text to speech')!;
   await act(async () => scene.click());
-  expect(page().studio).toMatchObject({ scene: { id: 'speech', modality: 'audio' }, model: null });
-  await click('Audio · Scenes');
-  const model = [...document.querySelectorAll<HTMLButtonElement>('.om-creative-menu .om-media-mega-row')].find(row => row.textContent?.includes('Eleven v3'))!;
-  await act(async () => model.click());
-  expect(page().studio).toMatchObject({ scene: { id: 'speech' }, model: 'opendesign:elevenlabs-v3' });
+  expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech', modality: 'audio' }, mediaTab: true });
   expect(fetcher.mock.calls.some(([path]) => String(path).includes('default-model'))).toBe(false);
   expect(document.querySelector('.om-creative-menu')).toBeNull();
 });
@@ -1297,7 +1292,11 @@ it.each([
 ])('opens the %s focused generator without double-highlighting its Studio and restores history', async (label, studio, studioTitle, scene) => {
   await mount(); await click('Explore');
   await click(label);
-  expect(page().studio).toMatchObject({ studio: { id: studio }, scene: { id: scene }, landing: true });
+  expect(page().studio).toMatchObject({
+    studio: { id: studio },
+    scene: { id: scene },
+    ...(studio === 'sound' ? { mediaTab: true } : { landing: true }),
+  });
   expect(breadcrumb()).toBeNull();
   expect(container.querySelector('.om-studio-bar [aria-label="Back to Explore"]')).toBeNull();
   expect(document.querySelector('.om-creative-menu')).toBeNull();
@@ -1329,7 +1328,10 @@ it.each([
   const shortcut = [...document.querySelectorAll<HTMLButtonElement>('.om-creative-menu button')]
     .find(node => node.querySelector('strong')?.textContent === sceneLabel)!;
   await act(async () => shortcut.click());
-  expect(page().studio).toMatchObject({ landing: true, scene: { id: scene } });
+  expect(page().studio).toMatchObject({
+    ...(label === 'Audio' ? { mediaTab: true } : { landing: true }),
+    scene: { id: scene },
+  });
   expect(button('Back to Explore')).toBeUndefined();
   expect(breadcrumb()).toBeNull();
 });
@@ -1418,6 +1420,22 @@ it('keeps the settings sidebar mounted across MCP, agent and provider sections',
   expect(settingsBack()).toBeNull();
   expect(button('Close settings')).toBeUndefined();
   expect(breadcrumb()).toBeNull();
+});
+
+it('keeps the top-level Audio tab and Sound Studio home as independent navigation entries', async () => {
+  await mount(); await click('Explore');
+  await click('Audio');
+  expect(new URLSearchParams(location.search).get('page')).toBe('audio');
+  expect(button('Audio').getAttribute('aria-current')).toBe('location');
+  expect(button('Sound Studio').getAttribute('aria-current')).toBeNull();
+  expect(container.querySelector('.om-studio-bar h1')?.textContent).toBe('Audio');
+  expect(container.querySelector('.om-studio-bar .om-workspace-back')).toBeNull();
+
+  await click('Sound Studio');
+  expect(new URLSearchParams(location.search).get('page')).toBe('sound');
+  expect(new URLSearchParams(location.search).get('home')).toBe('1');
+  expect(button('Sound Studio').getAttribute('aria-current')).toBe('page');
+  expect(button('Audio').getAttribute('aria-current')).toBeNull();
 });
 
 it('retains the active model and scene on same-modality entry and switches a Cinema still to video', async () => {

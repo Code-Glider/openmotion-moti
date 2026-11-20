@@ -115,6 +115,25 @@ it('round-trips studio scenes and provider-qualified models while preserving the
   expect(workspacePageHref(base, { studio: null })).toBe('/?embed=1#project/film?t=8');
   expect(workspacePageHref(base, { assets: true })).toBe('/?embed=1&page=assets#project/film?t=8');
   expect(readWorkspacePage('?page=sound&scene=image-edit').studio?.scene.id).toBe('music');
+  for (const [tab, backing] of [['sfx', 'music'], ['voice-clone', 'speech'], ['voice-changer', 'speech'], ['dubbing', 'speech'], ['stems', 'music']] as const) {
+    const parsed = readWorkspacePage(`?page=sound&scene=${tab}`);
+    expect(parsed.soundTab).toBe(tab);
+    expect(parsed.studio?.scene.id).toBe(backing);
+    expect(parsed.studio?.mediaTab).toBeUndefined();
+    const roundTrip = workspacePageHref('http://localhost/?page=explore', { studio: parsed.studio, soundTab: tab });
+    expect(roundTrip).toBe(`/?page=sound&scene=${tab}`);
+
+    const audioParsed = readWorkspacePage(`?page=audio&scene=${tab}`);
+    expect(isWorkspaceSettingsPage(`?page=audio&scene=${tab}`)).toBe(true);
+    expect(audioParsed.soundTab).toBe(tab);
+    expect(audioParsed.studio?.scene.id).toBe(backing);
+    expect(audioParsed.studio?.mediaTab).toBe(true);
+    const audioRoundTrip = workspacePageHref('http://localhost/?page=explore', { studio: audioParsed.studio, soundTab: tab });
+    expect(audioRoundTrip).toBe(`/?page=audio&scene=${tab}`);
+  }
+  const audioMusic = readWorkspacePage('?page=audio&scene=music');
+  expect(audioMusic.studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'music' }, mediaTab: true });
+  expect(workspacePageHref('http://localhost/?page=explore', { studio: audioMusic.studio })).toBe('/?page=audio&scene=music');
 });
 
 it('round-trips every registered studio scene and resolves models in the current studio', () => {
