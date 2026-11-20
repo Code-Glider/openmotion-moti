@@ -1,13 +1,19 @@
 import { Button } from 'open-design-ui/button';
 import { useEffect, useId, useRef, useState } from 'react';
 import { inputModalities, modelCapabilities, modelKinds, type DirectoryModel, type ModelKind, type ProviderConnection } from '../../../shared/provider-directory';
-import { useI18n } from '../i18n/I18n';
+import { useI18n, type Locale } from '../i18n/I18n';
+import type { Translate } from '../i18n/messages';
 import { RemixIcon } from '../icons/RemixIcons';
 import { SettingsDialog } from './settingsPrimitives';
 import { defaultParameters, modelIdError } from './settingsValidation';
 import { Select } from '../components/ui/Select';
 
-export const kindLabels: Record<ModelKind, string> = { text: 'Language', image: 'Image', video: 'Video', audio: 'Audio', transcription: 'Transcription', embedding: 'Embedding', reranker: 'Reranker' };
+export const kindLabels: Record<ModelKind, string> = { text: 'Text', image: 'Image', video: 'Video', audio: 'Audio', transcription: 'Transcription', embedding: 'Embedding', reranker: 'Reranker' };
+/** Model modality label: distinguishes Chinese "文本" (text modality) from editor "文字" (text layers). */
+export function modelKindLabel(kind: ModelKind, t: Translate, locale?: Locale) {
+  if (kind === 'text' && locale === 'zh-CN') return '文本';
+  return t(kindLabels[kind]);
+}
 export const typeIcons: Record<ModelKind, string> = { text: 'text', image: 'image-line', video: 'film-line', audio: 'music-2-line', transcription: 'text', embedding: 'stack-line', reranker: 'equalizer-line' };
 const capabilityIcons = { reasoning: 'flashlight-line', tools: 'plug-line', vision: 'eye-line', audio: 'music-2-line', video: 'film-line' };
 export const capabilityLabels = { reasoning: 'Reasoning', tools: 'Tools', vision: 'Vision', audio: 'Audio', video: 'Video' };
@@ -38,7 +44,7 @@ function validateTokenLimits(values: Record<TokenKey, string>): Partial<Record<T
 }
 
 export function ModelEditor({ provider, model, onClose, save }: { provider: ProviderConnection; model?: DirectoryModel; onClose: () => void; save: (input: unknown) => Promise<boolean> }) {
-  const { t, formatNumber } = useI18n();
+  const { t, locale, formatNumber } = useI18n();
   const [id, setId] = useState(model?.modelId ?? ''), [label, setLabel] = useState(model?.label ?? ''), [group, setGroup] = useState(model?.group ?? '');
   const [kind, setKind] = useState<ModelKind>(model?.kind ?? (provider.protocol === 'media' ? 'image' : 'text'));
   const [capabilities, setCapabilities] = useState(model?.capabilities ?? []), [inputs, setInputs] = useState(model?.inputs ?? []);
@@ -92,7 +98,7 @@ export function ModelEditor({ provider, model, onClose, save }: { provider: Prov
     <Button variant="plain" className="om-button om-disclosure" type="button" aria-expanded={advanced} onClick={() => setAdvanced(value => !value)}>{t('More settings')}<RemixIcon name={advanced ? 'arrow-up-line' : 'arrow-down-s-line'} size={15} /></Button>
     {advanced && <div className="om-card-stack">
       <div className="om-card om-card-stack">
-        <div className="om-label">{t('Model type')}<div className="om-settings-tags">{modelKinds.filter(value => (value !== 'transcription' || provider.protocol === 'openai') && (provider.protocol !== 'media' || ['image', 'video', 'audio'].includes(value))).map(value => <Button variant="ghost" type="button" className="om-button h-auto" key={value} aria-pressed={kind === value} disabled={Boolean(model) && ['media', 'agent', 'account'].includes(provider.protocol) && kind !== value} onClick={() => setKind(value)}><RemixIcon name={typeIcons[value]} size={14} />{t(kindLabels[value])}</Button>)}</div></div>
+        <div className="om-label">{t('Model type')}<div className="om-settings-tags">{modelKinds.filter(value => (value !== 'transcription' || provider.protocol === 'openai') && (provider.protocol !== 'media' || ['image', 'video', 'audio'].includes(value))).map(value => <Button variant="ghost" type="button" className="om-button h-auto" key={value} aria-pressed={kind === value} disabled={Boolean(model) && ['media', 'agent', 'account'].includes(provider.protocol) && kind !== value} onClick={() => setKind(value)}><RemixIcon name={typeIcons[value]} size={14} />{modelKindLabel(value, t, locale)}</Button>)}</div></div>
         <div className="om-label">{t('Model capabilities')}<div className="om-settings-tags">{modelCapabilities.map(value => <Button variant="ghost" type="button" className="om-button h-auto" key={value} aria-pressed={capabilities.includes(value)} onClick={() => setCapabilities(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}><RemixIcon name={capabilityIcons[value]} size={14} />{t(capabilityLabels[value])}</Button>)}</div></div>
         <div className="om-label">{t('Input modalities')}<div className="om-settings-tags">{inputModalities.map(value => <Button variant="ghost" type="button" className="om-button h-auto" key={value} aria-pressed={inputs.includes(value)} onClick={() => setInputs(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}><RemixIcon name={capabilityIcons[value]} size={14} />{t(capabilityLabels[value])}</Button>)}</div></div>
       </div>

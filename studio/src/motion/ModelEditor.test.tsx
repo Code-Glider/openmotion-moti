@@ -23,51 +23,45 @@ it('saves grouping, classification, exact token limits and default parameters th
   await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(save).toHaveBeenCalledWith(expect.objectContaining({ modelId: 'test-model', label: 'My model', group: 'Research', capabilities: ['reasoning'], inputs: ['vision'], contextWindow: 200000, maxOutputTokens: 65536, defaults: {} })); expect(close).toHaveBeenCalledOnce();
 });
-it('combines independent model filters, removes chips and retains group expansion', async () => {
+it('switches modalities, searches models and retains group expansion for grouped catalogues', async () => {
   const models = [{ id: 'a', modelId: 'a', label: 'Reasoning model', kind: 'text', group: 'Research', capabilities: ['reasoning'], enabled: true, source: 'live' }, { id: 'b', modelId: 'b', label: 'Image model', kind: 'image', group: 'Creative', enabled: true, source: 'custom' }, { id: 'c', modelId: 'c', label: 'Disabled model', kind: 'text', group: 'Research', enabled: false, source: 'live' }] as DirectoryModel[];
   await mount(<ModelCatalog models={models} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />);
-  await act(async () => button('Filter models').click());
-  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find(el => el.textContent === 'Language')!.click());
-  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find(el => el.textContent === 'Enabled')!.click());
+  expect(document.querySelector('[aria-label="Filter models"]')).toBeNull();
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  expect(tabs.map(tab => tab.textContent)).toEqual(['All3', 'Text2', 'Image1']);
+  await act(async () => tabs[1].click());
+  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a', 'c']);
+  await fill('Search models', 'Reasoning');
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
-  await act(async () => button('Remove Language filter').click());
-  expect(document.querySelectorAll('[data-model]')).toHaveLength(2);
   await act(async () => button('Clear filters').click());
+  await act(async () => tabs[0].click());
   await act(async () => button('Collapse all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(0);
   await act(async () => button('Expand all groups').click()); expect(document.querySelectorAll('[data-model]')).toHaveLength(3);
 });
 
-it('exposes modality tabs, merges sorting into the filter menu, pins defaults and hides redundant ungrouped controls', async () => {
+it('exposes modality tabs in Chinese as 文本, pins defaults, and hides redundant ungrouped controls', async () => {
   const models = [
     { id: 'b', modelId: 'b', label: 'Beta model', kind: 'text', enabled: true, source: 'live' },
     { id: 'a', modelId: 'a', label: 'Alpha model', kind: 'image', enabled: true, source: 'live' },
     { id: 'c', modelId: 'c', label: 'Gamma model', kind: 'text', enabled: true, source: 'live' },
   ] as DirectoryModel[];
-  await mount(<ModelCatalog models={models} defaultIds={new Set(['c'])} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />);
+  await mount(<ModelCatalog models={models} defaultIds={new Set(['c'])} render={model => <p key={model.id} data-model={model.id}>{model.label}</p>} />, 'zh-CN');
 
   expect(document.querySelector('.om-model-group')).toBeNull();
-  expect(document.querySelector('[aria-label="Group models"]')).toBeNull();
-  expect(document.querySelector('[aria-label="Collapse all groups"]')).toBeNull();
+  expect(document.querySelector('[aria-label="模型分组"]')).toBeNull();
+  expect(document.querySelector('[aria-label="筛选模型"]')).toBeNull();
   expect(document.querySelector('.om-model-active-filters')).toBeNull();
-  // Active default model pins first in Default order.
+  // Active default model pins first in default order.
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['c', 'b', 'a']);
 
-  // Modality tabs switch directly with counts.
+  // Modality tabs use 文本 instead of 语言 in Simplified Chinese.
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-  expect(tabs.map(tab => tab.textContent)).toEqual(['All3', 'Language2', 'Image1']);
+  expect(tabs.map(tab => tab.textContent)).toEqual(['全部3', '文本2', '图片1']);
   await act(async () => tabs[2].click());
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
   await act(async () => tabs[0].click());
 
-  // Sort lives inside the single Filter menu with human-readable "Default" / "Name" options.
-  await act(async () => button('Filter models').click());
-  const radios = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
-  expect(radios.map(el => el.textContent)).toEqual(['Default', 'Name', 'Context window']);
-  await act(async () => radios.find(el => el.textContent === 'Name')!.click());
-  expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a', 'b', 'c']);
-  expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('Sort: Name');
-
-  await fill('Search models', 'Alpha');
+  await fill('搜索模型', 'Alpha');
   expect(document.querySelector('.om-model-active-filters')?.textContent).toContain('1 / 3');
   expect([...document.querySelectorAll('[data-model]')].map(el => el.getAttribute('data-model'))).toEqual(['a']);
 });

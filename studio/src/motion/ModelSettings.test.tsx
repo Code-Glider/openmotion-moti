@@ -281,9 +281,10 @@ it('merges configured account identity into the header, exposes modality tabs, p
   expect(rows[1].querySelector('.om-model-name small')).toBeNull();
   expect(rows[1].querySelector('.om-model-default-button')?.getAttribute('data-active')).toBeNull();
 
-  // Modality tabs switch directly between All, Language and Image.
+  // Modality tabs switch directly between All, Text and Image, and heading avoids duplicating total count.
+  expect(document.querySelector('.om-model-section h2')?.textContent).toBe('Models');
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-  expect(tabs.map(tab => tab.textContent)).toEqual(['All2', 'Language1', 'Image1']);
+  expect(tabs.map(tab => tab.textContent)).toEqual(['All2', 'Text1', 'Image1']);
   await act(async () => tabs[1].click());
   expect([...document.querySelectorAll('.om-model-row .om-model-name strong')].map(el => el.textContent)).toEqual(['claude-fable-5']);
 });
