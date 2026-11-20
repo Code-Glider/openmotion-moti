@@ -342,7 +342,7 @@ export function DesignScenePage({
                     value={templateQuery}
                     onChange={e => setTemplateQuery(e.target.value)}
                   />
-                  <Button type="button" size="sm" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={14} />} onClick={() => void handleCreateBlank()}>
+                  <Button type="button" size="md" variant="secondary" loading={creating} icon={<RemixIcon name="add-line" size={15} />} onClick={() => void handleCreateBlank()}>
                     {t('Create blank project')}
                   </Button>
                 </div>

@@ -470,7 +470,9 @@
 
 .om-design-input {
   min-width: 220px;
-  padding: var(--motion-space-6) var(--motion-space-10);
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 var(--motion-space-12);
   border-radius: var(--motion-radius-md);
   border: 1px solid var(--motion-border);
   background: var(--motion-bg);
@@ -1125,10 +1127,18 @@
 .om-design-scene-tabs button {
   height: 36px;
   min-height: 36px;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0 var(--motion-space-12);
   flex-shrink: 0;
   white-space: nowrap;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.om-design-scene-tabs button[aria-current="page"] {
+  background: var(--motion-inset);
+  border-color: transparent;
+  color: var(--motion-text);
+  font-weight: var(--motion-weight-medium);
 }
 
 /* --- Bottom Floating Composer Layout (aligned with Image Studio & Manus) --- */
