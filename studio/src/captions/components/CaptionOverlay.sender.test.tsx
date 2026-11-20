@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { CaptionOverlay } from "./CaptionOverlay";
 import { useCaptionStore } from "../store";
+import { DEFAULT_ANIMATION_SET } from "../types";
 import { usePreviewIframeStore } from "../../player/store/previewIframeStore";
 
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
@@ -94,6 +95,63 @@ it("observes and accepts messages from the promoted iframe, not the old one", ()
     host.remove();
     a.remove();
     b.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+
+it("begins observing its iframe when caption editing is enabled after mount", () => {
+  const host = document.createElement("div");
+  const preview = document.createElement("iframe");
+  document.body.append(host, preview);
+  const root = createRoot(host);
+  const schedule = vi.fn(() => 1);
+  vi.stubGlobal("requestAnimationFrame", schedule);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  useCaptionStore.getState().setEditMode(false);
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    act(() => useCaptionStore.getState().setEditMode(true));
+    schedule.mockClear();
+    act(() => window.dispatchEvent(new MessageEvent("message", {
+      source: preview.contentWindow, data: { source: "hf-preview" },
+    })));
+    expect(schedule).toHaveBeenCalledOnce();
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    preview.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("requests caption hit remeasurement on model changes without a player event", () => {
+  const host = document.createElement("div");
+  const preview = document.createElement("iframe");
+  document.body.append(host, preview);
+  const root = createRoot(host);
+  const schedule = vi.fn(() => 1);
+  vi.stubGlobal("requestAnimationFrame", schedule);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  useCaptionStore.getState().reset();
+  useCaptionStore.getState().setEditMode(true);
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    schedule.mockClear();
+    act(() => useCaptionStore.getState().setModel({
+      width: 640, height: 360, duration: 3,
+      segments: new Map(), groups: new Map(), groupOrder: [],
+      defaultAnimation: DEFAULT_ANIMATION_SET,
+    }));
+    expect(schedule).toHaveBeenCalledOnce();
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    preview.remove();
     vi.unstubAllGlobals();
   }
 });

@@ -14,6 +14,26 @@ export interface WordBox {
   editable: boolean;
 }
 
+/** A caption hit box must be refreshed when its geometry or word identity changes.
+ * Subpixel jitter below half a CSS pixel is ignored, but a resized word or
+ * a newly editable authored span must not leave stale overlay handles behind.
+ */
+export function sameWordBoxes(previous: readonly WordBox[], next: readonly WordBox[]): boolean {
+  if (previous.length !== next.length) return false;
+  return next.every((box, index) => {
+    const before = previous[index];
+    return before.segmentId === box.segmentId
+      && before.groupId === box.groupId
+      && before.groupIndex === box.groupIndex
+      && before.wordIndex === box.wordIndex
+      && before.editable === box.editable
+      && Math.abs(before.x - box.x) < 0.5
+      && Math.abs(before.y - box.y) < 0.5
+      && Math.abs(before.width - box.width) < 0.5
+      && Math.abs(before.height - box.height) < 0.5;
+  });
+}
+
 interface CaptionHitModel {
   groupOrder: string[];
   groups: Map<string, { segmentIds: string[] }>;

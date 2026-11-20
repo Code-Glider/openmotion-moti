@@ -7,6 +7,7 @@ import { resolveCaptionNudge, isEditableEventTarget } from "../keyboard";
 import { matchesKey } from "../../player/components/studioShortcuts";
 import {
   readWordBoxes,
+  sameWordBoxes,
   getWordEl,
   readGsapTransform,
   getOrCreateWrapper,
@@ -45,6 +46,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const overlayRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef(model);
   modelRef.current = model;
+  const scheduleLayoutRef = useRef<(() => void) | null>(null);
   // Set by the mount effect; lets Escape handling cancel an in-flight drag.
   const cancelDragRef = useRef<(() => boolean) | null>(null);
 
@@ -102,13 +104,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const overlay = overlayRef.current;
       if (!iframe || !m || !overlay) return;
       const next = readWordBoxes(iframe, m, overlay);
-      if (
-        next.length === prevBoxes.length &&
-        next.every(
-          (b, i) => Math.abs(b.x - prevBoxes[i].x) < 0.5 && Math.abs(b.y - prevBoxes[i].y) < 0.5,
-        )
-      )
-        return;
+      if (sameWordBoxes(prevBoxes, next)) return;
       prevBoxes = next;
       setWordBoxes(next);
     };
@@ -117,6 +113,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     const scheduleTick = () => {
       if (rafId === null) rafId = requestAnimationFrame(tick);
     };
+    scheduleLayoutRef.current = scheduleTick;
 
     // Event sources: player state changes (seek/scrub/select), preview
     // messages, element resize, window resize.
@@ -237,9 +234,16 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       window.removeEventListener("resize", scheduleTick);
       window.removeEventListener("keydown", handleKeyDown);
       cancelDragRef.current = null;
+      if (scheduleLayoutRef.current === scheduleTick) scheduleLayoutRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [livePreviewIframe]);
+  }, [livePreviewIframe, isEditMode]);
+
+  // Caption edits and history restores do not necessarily move the playhead,
+  // resize the iframe or generate a preview message. Re-measure their hit boxes.
+  useEffect(() => {
+    if (isEditMode && model) scheduleLayoutRef.current?.();
+  }, [isEditMode, model]);
 
   const getCssScale = useCallback(() => {
     const iframe = iframeRef.current;

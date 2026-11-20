@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { splitCaptionWordRuns } from "./captionWordRuns";
-import { readWordBoxes, getWordEl } from "./CaptionOverlayUtils";
+import { readWordBoxes, getWordEl, sameWordBoxes, type WordBox } from "./CaptionOverlayUtils";
 
 it("retains exact Hebrew whitespace and logical word order", () => {
   const text = "  שלום\t  עולם!\n";
@@ -133,4 +133,23 @@ it("rejects mismatched segment text instead of corrupting or transforming markup
     expect(f.group.innerHTML).toBe(markup);
     expect(f.group.childNodes).toHaveLength(1);
   } finally { f.dispose(); }
+});
+
+
+it("refreshes boxes for resizing, word reordering and newly editable spans", () => {
+  const original: WordBox = {
+    segmentId: "hebrew", groupId: "group", groupIndex: 0, wordIndex: 0,
+    x: 20, y: 30, width: 65, height: 24, editable: false,
+  };
+  const sibling: WordBox = { ...original, segmentId: "latin", wordIndex: 1, x: 100 };
+  expect(sameWordBoxes([original, sibling], [{ ...original, x: 20.2, width: 65.2 }, sibling])).toBe(true);
+  expect(sameWordBoxes([original, sibling], [sibling, original])).toBe(false);
+  expect(sameWordBoxes([original, sibling], [original])).toBe(false);
+  for (const change of [
+    { width: 78 }, { height: 31 }, { x: 24 }, { y: 34 },
+    { editable: true }, { segmentId: "arabic" }, { groupId: "other" },
+    { groupIndex: 1 }, { wordIndex: 1 },
+  ]) {
+    expect(sameWordBoxes([original], [{ ...original, ...change }])).toBe(false);
+  }
 });
