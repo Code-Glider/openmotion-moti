@@ -1,13 +1,14 @@
 import type { StudioDestination, StudioScene } from './creativeStudios';
-import { motionSkills } from './skillCatalog';
+import { archivedSkillPoster, motionSkills } from './skillCatalog';
 import lunar from './scene-art/apollo-11.jpg';
-import product from './skill-covers/light-shadow-product.webp';
 import speakerRoom from './scene-art/speaker-room.webp';
-import splash from './skill-covers/splash-float-product.webp';
 import soundtrackCover from './scene-art/ambient-piano.webp';
-import narration from './skill-covers/talking-head-recreation.webp';
-import camera from './skill-covers/babylon-js.webp';
 import welcomeMusic from '../../../template-library/openmotion-welcome/assets/soundtrack.m4a?url';
+
+const product = archivedSkillPoster('light-shadow-product');
+const splash = archivedSkillPoster('splash-float-product');
+const narration = archivedSkillPoster('talking-head-recreation');
+const camera = archivedSkillPoster('babylon-js');
 
 export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[] }
 

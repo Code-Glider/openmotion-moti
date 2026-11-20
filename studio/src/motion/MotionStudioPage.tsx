@@ -5,7 +5,9 @@ import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { StudioTemplateShelf } from './StudioTemplateShelf';
 import { reportCreativeClick } from './exploreTracking';
-import motionPoster from './skill-covers/bubble-field.webp?url';
+import { archivedSkillPoster } from './skillCatalog';
+
+const motionPoster = archivedSkillPoster('bubble-field');
 
 export function MotionStudioPage({ active, onExplore, onOpenEditor }: {
   active: boolean; onExplore: () => void; onOpenEditor: () => void;
