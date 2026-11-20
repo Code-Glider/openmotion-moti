@@ -54,6 +54,17 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
+      - name: Install FFmpeg for native caption integration tests
+        timeout-minutes: 12
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
+              sudo apt-get "${apt_options[@]}" update
+              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+            fi
+          fi
+          ffmpeg -hide_banner -version | head -n 1
       # The upstream standalone workflow already runs broad regression suites
       # in bounded lanes on this PR. Running every backend test in one process
       # duplicated that work and hit this job's 45-minute timeout.
