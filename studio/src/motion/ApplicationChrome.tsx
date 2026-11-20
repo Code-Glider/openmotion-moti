@@ -18,6 +18,7 @@ import type { SettingsSection } from './SettingsCenter';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { CreativeNavigation, type CreativeNavigationProps } from './CreativeNavigation';
+import { PricingEntry } from './PricingEntry';
 import { WorkspaceResourceActions } from './WorkspaceResourceActions';
 import { WorkspaceSearch } from './WorkspaceSearch';
 
@@ -51,11 +52,12 @@ export function ApplicationHeader({ settings, atExploreHome, onSkill, openAsset,
   }
 
   return <header ref={header} className="om-app-header">
-    <Tooltip label={homeHint}><Button variant="plain" type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></Button></Tooltip>
+    <Tooltip label={homeHint} side="bottom"><Button variant="plain" type="button" className="om-nav-item om-app-brand" onClick={openHome} aria-label={homeHint ? `${brand.editorName} · ${homeHint}` : brand.editorName}><BrandLogo variant="editor" compact /></Button></Tooltip>
     <CreativeNavigation {...navigation} overflowActions={compactActions ? workspaceActions : undefined} />
     <div className="om-app-header-actions">
       {!compactActions && workspaceActions()}
       <div className="om-app-header-links"><CommunityLink /><GitHubLink /></div>
+      <PricingEntry trackingPage={navigation.trackingPage} />
       <ApplicationAccountMenu settings={settings} openSettings={openSettings} />
     </div>
   </header>;
@@ -80,7 +82,7 @@ export function ApplicationAccountMenu({ settings, openSettings }: { settings: S
   const theme = useStudioThemePreference();
   const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
   const avatarInitial = avatarSegmenter.segment(userName)[Symbol.iterator]().next().value?.segment;
-  return <Menu tooltip={t('Account menu')} modal={false} side="bottom" align="end" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<Button variant="plain" type="button" className="om-nav-item om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <RemixIcon className="om-default-avatar-icon" name="user-3-line" size={14} />}</span></Button>}>
+  return <Menu tooltip={t('Account menu')} modal={false} side="bottom" align="end" aria-label={t('Account menu')} className="om-account-menu om-selection-panel om-menu-panel" trigger={<Button variant="plain" type="button" className="om-nav-item om-account-trigger" aria-current={settings === 'account' || settings === 'subscription' ? 'page' : undefined} aria-label={t('Account menu')}><span className="om-avatar" aria-hidden="true">{account?.state === 'signed-in' ? avatarInitial : <><RemixIcon className="om-default-avatar-icon om-default-avatar-icon-outline" name="user-3-line" size={14} /><svg className="om-default-avatar-icon om-default-avatar-icon-solid" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 22H4V20C4 17.2386 6.23858 15 9 15H15C17.7614 15 20 17.2386 20 20V22ZM12 13C8.68629 13 6 10.3137 6 7C6 3.68629 8.68629 1 12 1C15.3137 1 18 3.68629 18 7C18 10.3137 15.3137 13 12 13Z" /></svg></>}</span></Button>}>
       <MenuItem onClick={() => openSettings('account')}><span className="om-menu-label"><RemixIcon name="user-3-line" size={16} /><strong>{userName}</strong></span></MenuItem><MenuSeparator />
       <MenuItem onClick={() => openSettings('subscription')}><span className="om-menu-label"><RemixIcon name="bank-card-line" size={16} />{t('Subscription & usage')}</span></MenuItem>
       <MenuSeparator />

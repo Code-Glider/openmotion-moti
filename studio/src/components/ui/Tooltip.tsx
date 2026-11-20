@@ -43,7 +43,7 @@ export function Tooltip({
   description,
   children,
   delay = 200,
-  side = "top",
+  side,
   disabled = false,
   lines,
   wrap = false,
@@ -53,6 +53,7 @@ export function Tooltip({
   const boxRef = useRef<HTMLSpanElement>(null);
   const tooltipId = useId();
   const unavailable = disabled || !label;
+  const resolvedSide = side ?? (boxRef.current?.closest(".om-app-header") ? "bottom" : "top");
   useEffect(() => { if (unavailable) setOpen(false); }, [unavailable]);
 
   return (
@@ -68,7 +69,7 @@ export function Tooltip({
       <BaseTooltip.Portal container={(withinDialog ? boxRef.current?.closest("dialog") : null) ?? (document.fullscreenElement?.contains(boxRef.current) ? document.fullscreenElement as HTMLElement : undefined)}>
         <BaseTooltip.Positioner
           anchor={() => boxRef.current?.firstElementChild ?? null}
-          side={side}
+          side={resolvedSide}
           sideOffset={SIDE_OFFSET}
           collisionPadding={VIEWPORT_MARGIN}
           className={cn(POPUP_LAYER, "pointer-events-none")}

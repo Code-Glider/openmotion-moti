@@ -11,12 +11,14 @@ import type { useMediaCatalog } from './useMediaCatalog';
 import { floatingCity, seedanceStory, gptImageStory, storyModels, type ModelStory } from './exploreModelStories';
 import { animeOpeningScenario, mcpCapabilities } from './mcpCapabilities';
 import { supportsScene, type StudioDestination } from './creativeStudios';
-import sale from './skill-covers/sale-countdown.webp';
-import shorts from './skill-covers/multi-clips-to-reels.webp';
-import paintedFilm from './skill-covers/footage-to-handpainted.webp';
-import printCover from './skill-covers/color-pop-poster.webp';
-import blueprint from './skill-covers/chalk-blueprint.webp';
-import launch from './skill-covers/premium-halo.webp';
+import { archivedSkillPoster } from './skillCatalog';
+
+const sale = archivedSkillPoster('sale-countdown');
+const shorts = archivedSkillPoster('multi-clips-to-reels');
+const paintedFilm = archivedSkillPoster('footage-to-handpainted');
+const printCover = archivedSkillPoster('color-pop-poster');
+const blueprint = archivedSkillPoster('chalk-blueprint');
+const launch = archivedSkillPoster('premium-halo');
 
 type StoryActions = {
   onNavigate: (target: StudioDestination, prompt: string) => void;

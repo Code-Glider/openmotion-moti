@@ -3,9 +3,11 @@ import { findMediaStudio, findTechniqueStudio } from '../../../shared/studio-cat
 import { studioDestination, type StudioDestination } from './creativeStudios';
 import { sceneExamples, type SceneExample } from './sceneShowcase';
 import type { loadGateway } from './gatewayClient';
+import { archivedSkillPoster } from './skillCatalog';
 import sunset from './scene-art/komona-sunset.webp';
 import character from './scene-art/pepper.webp';
-import poster from './skill-covers/retro-print-poster.webp';
+
+const poster = archivedSkillPoster('retro-print-poster');
 
 const cinema = findMediaStudio('cinema')!, design = findMediaStudio('design')!, marketing = findTechniqueStudio('marketing')!;
 const artCredit = 'David Revoy · CC BY 4.0';
