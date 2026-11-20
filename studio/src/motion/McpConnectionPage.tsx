@@ -5,7 +5,7 @@ import { reviewCommentsPrompt } from '../../../shared/review-comments';
 import { canvasPresets } from '../../../shared/composition-canvas';
 import { PlatformIcon } from '../../../packages/design-system/react/PlatformIcon';
 import { platformExportTargets } from '../../../shared/platform-export';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { brand, designSystemAsset } from '../../../packages/design-system/index.js';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
 import { manualConnection, setupPrompt, setupGuideUrl, templatePrompt, transcriptExamplePrompt } from '../../../shared/integration';
@@ -27,7 +27,7 @@ import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import * as tracking from './pageTracking';
 import './McpConnectionPage.css';
 
-export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId }: { openLibrary: WorkspaceChrome['openLibrary']; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string }) {
+export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: openProvidersRaw, previewsEnabled = true, route, onRouteChange, entry = 'direct_link', hasProject = false, projectId, breadcrumb }: { openLibrary: WorkspaceChrome['openLibrary']; openProviders: () => void; previewsEnabled?: boolean; route?: WorkspacePage; onRouteChange?: (patch: Partial<WorkspacePage>) => void; entry?: tracking.McpEntry; hasProject?: boolean; projectId?: string; breadcrumb?: ReactNode }) {
   const { t, locale } = useI18n(), toast = useToast();
   const community = useCommunityLink();
   const { info, failed, retry } = useIntegrationInfo();
@@ -97,6 +97,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
   };
   return <main ref={page} className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
     <div className="om-mcp-content">
+      {breadcrumb}
       <section className="om-mcp-hero om-mcp-section">
         <div className="om-mcp-art" aria-hidden="true">
           <div className="om-mcp-art-tile om-mcp-art-left"><ProviderAvatar name="ChatGPT" provider={{ id: 'openai', custom: false }} /></div>

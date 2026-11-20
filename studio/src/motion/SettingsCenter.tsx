@@ -34,6 +34,10 @@ const sections: { id: SettingsSection; label: string; icon: string; group: strin
   { id: 'help', label: 'Help', icon: 'question-line', group: 'Resources' },
   { id: 'about', label: 'About OpenMotion', icon: 'information-line', group: 'Resources' },
 ];
+export function settingsSectionLabel(section: SettingsSection) {
+  return sections.find(item => item.id === section)?.label ?? 'Settings';
+}
+
 export function SettingsCenter({ section, onSection: onSectionRaw, openConnections, providerId, onProviderChange, hasProject = false }: { hasProject?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: (entry: McpEntry) => void; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t } = useI18n();
   const [search, setSearch] = useState('');
@@ -45,7 +49,7 @@ export function SettingsCenter({ section, onSection: onSectionRaw, openConnectio
     <div className="om-settings-navigation-slot"><div className="om-settings-navigation-clip"><aside className="om-settings-navigation"><h1 className="om-navigation-title">{t('Settings')}</h1><label className="om-field"><RemixIcon name="search-line" size={16} /><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Search settings…')} aria-label={t('Search settings')} /></label>
       <div className="om-settings-mobile-navigation"><Select label={t('Settings')} value={section} onCommit={value => onSection(value as SettingsSection)} options={sections.map(item => ({ value: item.id, label: t(item.label), icon: <RemixIcon name={item.icon} size={16} /> }))} /></div><nav aria-label={t('Settings')} className="om-settings-sections">{filtered.map((item, index) => <div key={item.id}>{filtered[index - 1]?.group !== item.group && <p className="om-eyebrow">{t(item.group)}</p>}<Button variant="plain" className="om-nav-item" aria-current={section === item.id ? 'page' : undefined} onClick={event => { if (item.id === 'privacy' && section !== 'privacy') trackStudioClick('settings', 'privacy_settings', undefined, clickMethod(event)); onSection(item.id); }}><RemixIcon name={item.icon} size={16} /><span>{t(item.label)}</span></Button></div>)}{!filtered.length && <p className="om-muted">{t('No matching settings')}</p>}</nav>
     </aside></div></div>
-    <main className="om-settings-main" aria-label={t(sections.find(item => item.id === section)?.label || 'Settings')}>
+    <main className="om-settings-main" aria-label={t(settingsSectionLabel(section))}>
       {section === 'local' ? <AgentSettings /> : section === 'providers' ? <ModelSettings key={section} openAccount={() => onSection('account')} providerId={providerId} onProviderChange={onProviderChange} />
         : section === 'account' || section === 'subscription' ? <AccountSettings key={section} subscription={section === 'subscription'} openProviders={() => onSection('providers')} />
         : section === 'models' ? <DefaultModels openProviders={() => onSection('providers')} />

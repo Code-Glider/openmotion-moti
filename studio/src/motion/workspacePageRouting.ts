@@ -13,6 +13,10 @@ export type ExploreFilters = { community: ExploreCommunity['id'] | null; medium:
 export { findTemplateCollection, type TemplateCollection } from './templateCollections';
 export type WorkspacePage = ExploreFilters & { motion: boolean; api: boolean; tool: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; mcpExample?: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
 
+export function changesWorkspaceDestination(patch: Partial<WorkspacePage>): boolean {
+  return ['explore', 'motion', 'api', 'studio', 'modelOverview', 'modelHub', 'specialty', 'assets', 'skills', 'settings'].some(key => key in patch);
+}
+
 export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
   const query = new URLSearchParams(search), page = workspacePageName(query, hash), section = query.get('section');
   const settings = page === 'brand-kit' ? 'brand-kit' : page === 'mcp' ? 'mcp' : page === 'settings'
@@ -53,7 +57,7 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
     url.searchParams.delete('model');
   }
   // A primary destination replaces its peers. Overlay and detail patches retain their parent.
-  if (['explore', 'motion', 'api', 'studio', 'modelOverview', 'modelHub', 'specialty', 'assets', 'skills', 'settings'].some(key => key in patch)) {
+  if (changesWorkspaceDestination(patch)) {
     page.motion = Boolean(patch.motion);
     page.explore = Boolean(patch.explore);
     page.api = Boolean(patch.api);

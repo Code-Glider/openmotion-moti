@@ -101,6 +101,8 @@
 .om-provider-form .om-settings-row > .om-muted { max-width: 65%; font-size: var(--motion-text-sm); }
 .om-text-link { display: inline-flex; align-items: center; gap: var(--motion-space-4); color: var(--motion-accent); font-size: var(--motion-text-md); text-decoration: none; }
 .om-text-link:hover { text-decoration: underline; }
+.om-workspace-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-4); min-height: var(--motion-control-sm); font-size: var(--motion-text-md); }
+.om-workspace-breadcrumb > svg { flex: none; }
 .om-model-section { display: grid; gap: var(--motion-space-16); border-top: 1px solid var(--motion-border-subtle); padding-top: var(--motion-space-24); }
 .om-model-filters { display: flex; align-items: center; gap: var(--motion-space-8); }
 .om-model-filters .om-field { flex: 1; min-width: 0; }
