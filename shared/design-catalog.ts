@@ -111,16 +111,8 @@ function createCatalog(root: string) {
     },
 
     templates(opts: DesignTemplateQuery = {}): { items: DesignTemplateSummary[]; nextCursor: string | null } {
-      const filtered = loadTemplates().filter(item => {
-        const scenarioMatch = !opts.scenario
-          || item.scenario === opts.scenario
-          || (opts.scenario === 'mobile-app' && item.scenario === 'prototype');
-        return scenarioMatch && matches(opts.q, [item.id, item.title, item.description, item.category, item.tags, item.scenario]);
-      });
-      if (opts.scenario === 'mobile-app') {
-        const mobileRe = /mobile|ios|android|phone|app|widget|card|fitness|chat|wallet/i;
-        filtered.sort((a, b) => Number(mobileRe.test(b.id + ' ' + b.title)) - Number(mobileRe.test(a.id + ' ' + a.title)));
-      }
+      const filtered = loadTemplates().filter(item => (!opts.scenario || item.scenario === opts.scenario)
+        && matches(opts.q, [item.id, item.title, item.description, item.category, item.tags, item.scenario]));
       const limit = Math.max(1, Math.min(MAX_LIMIT, Math.floor(Number(opts.limit) || DEFAULT_LIMIT)));
       const start = /^\d+$/.test(opts.cursor ?? '') ? Number(opts.cursor) : 0;
       const items = filtered.slice(start, start + limit).map(templateSummary);
