@@ -28,7 +28,7 @@ jobs:
   checks:
     name: Source, type, build and regression gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 25
     steps:
       - name: Check out feature branch without Git LFS media
         uses: actions/checkout@v6.0.2
@@ -54,7 +54,27 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
-      - name: Backend regression tests
-        run: npm test
-      - name: Studio regression tests
-        run: npm run test:studio
+      # The upstream standalone workflow already runs broad regression suites
+      # in bounded lanes on this PR. Running every backend test in one process
+      # duplicated that work and hit this job's 45-minute timeout.
+      - name: Native captions and font regression
+        timeout-minutes: 12
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/transcription.test.ts \
+            tests/caption-export.test.ts \
+            tests/studio-fonts.test.ts \
+            tests/font-import.test.ts
+      - name: Focused Studio RTL editor regression
+        timeout-minutes: 12
+        run: |
+          npm run test:studio -- --maxWorkers=2 \
+            studio/src/captions/generator.test.ts \
+            studio/src/captions/parser.test.ts \
+            studio/src/captions/parser.dom.test.ts \
+            studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \
+            studio/src/components/editor/InlineTextCaret.test.tsx \
+            studio/src/components/editor/inlineTextStyleRange.test.ts \
+            studio/src/components/editor/fontAssets.test.ts \
+            studio/src/components/editor/fontImport.test.ts \
+            studio/src/player/components/TextClipContent.test.ts
