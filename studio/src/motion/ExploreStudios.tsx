@@ -408,12 +408,12 @@ export function ExploreStudios(props: ExploreProps) {
     <div className="om-discovery-page">
       <header className="om-discovery-heading">
         <h1 className="om-explore-title">{t(!community && props.filters.medium ? mediaLabels[props.filters.medium] : 'Explore')}</h1>
-        {!community && !props.filters.medium && <nav className="om-explore-nav" aria-label={t('Explore')}>
-          <Button type="button" variant="ghost" className="om-button" onClick={event => {
+        {!community && !props.filters.medium && <nav className="om-explore-nav om-choice-tabs" aria-label={t('Explore')}>
+          <Button type="button" variant="ghost" className="om-nav-item" onClick={event => {
             track('explore_tabs', 'template_library');
             openLibrary(event.currentTarget);
           }}>{t('Templates')}</Button>
-          <Button type="button" variant="ghost" className="om-button" onClick={event => {
+          <Button type="button" variant="ghost" className="om-nav-item" onClick={event => {
             track('explore_tabs', 'open_skills');
             openSkills(null, event.currentTarget);
           }}>{t('Skills')}</Button>

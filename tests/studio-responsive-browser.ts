@@ -55,16 +55,23 @@ test('Explore is home and only the editor shows the project navigation', { timeo
         assert.ok(bounds.y >= anchor.y + anchor.height - 1 && bounds.x >= 0 && bounds.x + bounds.width <= width + 1);
         await page.keyboard.press('Escape');
         await page.waitForSelector('.om-account-menu', { hidden: true });
-        for (const [name, closeSelector] of [
-          ['Templates', '[data-workspace-gallery] button[aria-label="Close template library"]'],
-          ['Skills', '.om-skills-heading-actions button[aria-label="Close"]'],
+        const galleryTitleStyles = [];
+        for (const [name, closeSelector, titleSelector] of [
+          ['Templates', '[data-workspace-gallery] button[aria-label="Close template library"]', '[data-workspace-gallery] .om-gallery-page-label'],
+          ['Skills', '.om-skills-heading-actions button[aria-label="Close"]', '.om-skills-intro h1'],
         ]) {
           const shortcut = await page.waitForSelector(`.om-explore-nav ::-p-text(${name})`, { visible: true });
           const shortcutBounds = (await shortcut!.boundingBox())!;
           assert.ok(shortcutBounds.x >= 0 && shortcutBounds.x + shortcutBounds.width <= width);
+          assert.equal(await shortcut!.evaluate(element => getComputedStyle(element).borderTopWidth), '0px');
           await shortcut!.focus();
           await page.keyboard.press('Enter');
           const close = await page.waitForSelector(closeSelector, { visible: true });
+          if (name === 'Templates') assert.equal(await page.$('[data-workspace-gallery] .om-gallery-header-actions a[href*="github.com"]'), null);
+          galleryTitleStyles.push(await page.$eval(titleSelector, element => {
+            const { color, fontFamily, fontSize, fontWeight, letterSpacing, lineHeight } = getComputedStyle(element);
+            return { color, fontFamily, fontSize, fontWeight, letterSpacing, lineHeight };
+          }));
           const closeBounds = (await close!.boundingBox())!;
           assert.ok(closeBounds.x >= 0 && closeBounds.x + closeBounds.width <= width);
           await close!.focus();
@@ -72,6 +79,7 @@ test('Explore is home and only the editor shows the project navigation', { timeo
           await page.waitForSelector('.om-explore-nav', { visible: true });
           assert.ok(await shortcut!.evaluate(element => element === document.activeElement));
         }
+        assert.deepEqual(galleryTitleStyles[0], galleryTitleStyles[1]);
       }
       await page.setViewport({ width: 1440, height: 800 });
       await page.click('.om-app-header [aria-label="Motion Studio"]');
