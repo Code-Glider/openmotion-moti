@@ -341,7 +341,7 @@ it('keeps project rows in place while switching, updating selection and reloadin
 });
 
 it('restores a rejected project history entry without losing the later Forward destination', async () => {
-  await mount(); await openMcp(); await click('Motion Studio'); await click('Open editor');
+  await mount(); await openMcp(); await click('Motion Studio'); await click('First project');
   await click('Second project');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(second);
   editor.fail = true;
@@ -365,7 +365,7 @@ it('opens settings without starting the retained project and resolves it only on
   expect(page().explore).toBe(true);
   expect(container.querySelector('.om-app-brand')?.getAttribute('aria-label')).toBe('OpenDesign');
   expect(container.querySelector('.om-app-rail, [data-project]')).toBeNull();
-  await click('Motion Studio'); await click('Open editor');
+  await click('Motion Studio'); await click('First project');
   expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(first);
   expect(fetcher.mock.calls.some(([url]) => url.includes('/preview/open'))).toBe(true);
 });
@@ -448,12 +448,55 @@ it('switches studios and restores a scene through history while retaining the ed
   expect(page().studio?.scene.id).toBe('image-edit');
   await click('Motion Studio');
   expect(page().motion).toBe(true);
-  expect(container.querySelector('main[aria-label="Motion Studio"]')).toBeTruthy();
+  expect(container.querySelector('main[aria-label="Motion templates"]')).toBeTruthy();
+  expect(container.querySelector('.motion-sidebar-footer [aria-current="page"]')).toBeTruthy();
+  expect(container.querySelector('.motion-session-list [aria-current="page"]')).toBeNull();
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(true);
-  await click('Open editor');
+  await click('First project');
   expect(page().motion).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   expect(location.hash).toContain('t=12');
+});
+
+it('opens Motion templates inside the workspace and returns from the full library without losing the editor', async () => {
+  await mount();
+  const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
+  draft.value = 'Keep this edit';
+  await click('Motion templates');
+  expect(page()).toMatchObject({ motion: true, templates: false });
+  expect(container.querySelector('#om-project-navigation')?.getAttribute('aria-hidden')).toBe('false');
+  expect(container.querySelector('main[aria-label="Motion templates"] .om-discovery-hero')).toBeNull();
+  expect(fetcher.mock.calls.some(([input]) => {
+    const url = new URL(input, location.origin);
+    return url.pathname.endsWith('/template-catalog') && url.searchParams.get('category') === 'builtin';
+  })).toBe(true);
+  await click('Close project list');
+  expect(container.querySelector('.motion-project-navigation-trigger')?.hasAttribute('hidden')).toBe(false);
+  await click('Open project list');
+  expect(container.querySelector('#om-project-navigation')?.getAttribute('aria-hidden')).toBe('false');
+  await click('Template library');
+  expect(page()).toMatchObject({ templates: true, templateCollection: null });
+  await traverse(-1);
+  expect(page()).toMatchObject({ motion: true, templates: false });
+  await click('First project');
+  expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
+  expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
+  expect(draft.value).toBe('Keep this edit');
+  expect(location.hash).toContain('t=12');
+});
+
+it('restores Motion templates on reload and opens a project from its narrow workspace drawer', async () => {
+  vi.stubGlobal('innerWidth', 800);
+  history.replaceState(null, '', firstUrl.replace('#', '&page=motion#'));
+  await mount();
+  expect(container.querySelector('h1')?.textContent).toBe('Motion templates');
+  expect(container.querySelector('[aria-label="Editor draft"]')).toBeNull();
+  await click('Open project list');
+  expect(document.querySelector('[role="dialog"] .motion-sidebar-footer [aria-current="page"]')).toBeTruthy();
+  await click('First project');
+  expect(page().motion).toBe(false);
+  expect(container.querySelector('[aria-label="Editor draft"]')).not.toBeNull();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
 
 it('shows read-only audio model artwork and enters speech through the type card', async () => {
@@ -738,7 +781,7 @@ it('opens the Gemini 4 hub from the third Explore slide and returns with browser
   expect(page().explore).toBe(true);
 });
 
-it('opens Motion Studio from the Explore spotlight and resumes the timeline on request', async () => {
+it('opens Motion templates from the Explore spotlight and resumes the retained project from the sidebar', async () => {
   await mount();
   const draft = container.querySelector('[aria-label="Editor draft"]');
   await click('Explore');
@@ -749,7 +792,7 @@ it('opens Motion Studio from the Explore spotlight and resumes the timeline on r
   await act(async () => template.click());
   expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
   await traverse(-1);
-  await click('Open editor');
+  await click('First project');
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   await traverse(-1);
@@ -1027,12 +1070,12 @@ it('localizes every top navigation Studio label in Chinese while keeping English
   await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><MotionApp /></I18nProvider>));
   const nav = container.querySelector('.om-app-header nav.om-creative-navigation')!;
   const destinations = [...nav.querySelectorAll('button:not([aria-expanded]),a')].map(node => node.getAttribute('aria-label') ?? node.textContent?.trim());
-  expect(destinations).toEqual(['探索', '图片', '视频', '音频', 'MCP', '设计工作室', '动效工作室', '影视工作室', '音频工作室', '短视频工作室', '营销工作室', '讲解视频工作室', '3D 工作室']);
+  expect(destinations).toEqual(['探索', '图片', '视频', '音频', 'MCP', '设计工作室', 'Motion 工作室', '影视工作室', '音频工作室', '短视频工作室', '营销工作室', '讲解视频工作室', '3D 工作室']);
   const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node => {
     const badge = document.getElementById(node.getAttribute('aria-describedby')!);
     return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
   });
-  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['动效工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en'], ['3D 工作室', 'Coming soon', 'en']]);
+  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['Motion 工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en'], ['3D 工作室', 'Coming soon', 'en']]);
 });
 
 it.each([
