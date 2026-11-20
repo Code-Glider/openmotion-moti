@@ -508,6 +508,7 @@ it('browses the complete Motion catalog in batches and filters by its existing t
   const entries = Array.from({ length: 19 }, (_, index) => ({
     id: 'motion-fixture-' + index, title: 'Motion fixture ' + index, kind: index === 18 ? 'builtin' : 'reference',
     tags: [], uses: [index === 18 ? 'Product demo' : 'Product launch'], styles: ['UI motion'],
+    brand: index < 2 ? 'Acme' : 'Studio ' + index,
     industries: index === 18 ? ['Design & creative tools'] : ['Business software'],
   }));
   fetcher.mockImplementation((input: string, options?: RequestInit) => {
@@ -526,6 +527,13 @@ it('browses the complete Motion catalog in batches and filters by its existing t
   await click('More templates');
   expect(cards()).toHaveLength(19);
   expect(button('More templates')).toBeUndefined();
+  await click('By industry');
+  const industry = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(item => item.textContent === 'Business software')!;
+  await act(async () => industry.click());
+  expect(shelf.querySelector('[role="status"]')?.textContent).toBe('18 templates');
+  expect(cards().slice(0, 2).map(card => card.getAttribute('data-template-id'))).toEqual(['motion-fixture-0', 'motion-fixture-2']);
+  await click('More templates');
+  expect(cards().at(-1)?.getAttribute('data-template-id')).toBe('motion-fixture-1');
   await click('Product demos & explainers');
   expect(cards().map(card => card.getAttribute('data-template-id'))).toEqual(['motion-fixture-18']);
   await click('Editable templates');

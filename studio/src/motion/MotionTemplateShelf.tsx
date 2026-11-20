@@ -1,14 +1,13 @@
 import { Button } from 'open-design-ui/button';
-import { useState, type RefObject } from 'react';
-import { isEditableTemplate } from '../../../shared/catalog';
+import { useMemo, useState, type RefObject } from 'react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { ExploreShelf } from './ExploreShelf';
 import { reportCreativeClick } from './exploreTracking';
 import { optionId, send } from './reporting';
-import { collectionFacet, industryCollection, type TemplateCollection } from './templateCollections';
-import { discoveryIndustries, discoveryPurposes, orderedPurposes } from './templateDiscoveryTaxonomy';
+import { collectionFacet, industryCollection, templateCollectionFacets, templatesInCollection, type TemplateCollection } from './templateCollections';
+import { discoveryPurposes } from './templateDiscoveryTaxonomy';
 import { TemplateGalleryCard } from './TemplateGalleryCard';
 import { TemplateIndustryMenu } from './TemplateIndustryMenu';
 import { useCoveredTemplates } from './useCoveredTemplates';
@@ -26,16 +25,11 @@ export function MotionTemplateShelf({ root, active }: { root: RefObject<HTMLElem
   const [limit, setLimit] = useState(batchSize);
   const [priority, setPriority] = useState<string | null>(null);
   const facet = collectionFacet(collection);
-  const purposes = catalog ? orderedPurposes(catalog.flatMap(discoveryPurposes)) : [];
-  const industries = catalog ? [...new Set(catalog.flatMap(discoveryIndustries))] : [];
+  const { purposes, industries } = useMemo(() => templateCollectionFacets(catalog ?? []), [catalog]);
   const categories: readonly (readonly [TemplateCollection | 'all', string])[] = catalog
     ? [['all', 'All'], ...purposes.map(purpose => [`purpose:${purpose}`, purpose] as const), ['builtin', 'Editable templates']]
     : [['all', 'All']];
-  const matches = (catalog ?? firstPage?.items ?? []).filter(item => {
-    if (collection === 'builtin') return isEditableTemplate(item);
-    if (!facet) return true;
-    return (facet.key === 'uses' ? discoveryPurposes(item) : discoveryIndustries(item)).includes(facet.value);
-  });
+  const matches = useMemo(() => templatesInCollection(catalog ?? firstPage?.items ?? [], collection), [catalog, firstPage, collection]);
   const count = catalog ? matches.length : firstPage?.total;
   const visible = matches.slice(0, limit);
   const playing = useTemplatePlayback(root, visible.map(item => item.id).join('|'), active, true, priority, true);
