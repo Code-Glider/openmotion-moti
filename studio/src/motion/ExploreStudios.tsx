@@ -229,7 +229,10 @@ function CapabilityIndex({ active, onModel, onNavigate, onChooseStudio, onBrandK
       </div>
     </div>
     <div className="om-index-skills">
-      <h3 className="om-subtitle"><Button variant="plain" className="om-nav-item" onClick={() => { track('capability_index', 'open_skills'); openSkills(); }}>{t('Skills')}<RemixIcon name="arrow-right-line" size={16} /></Button></h3>
+      <h3 className="om-subtitle"><Button variant="plain" className="om-nav-item" onClick={event => {
+        track('capability_index', 'open_skills');
+        openSkills(null, event.currentTarget);
+      }}>{t('Skills')}<RemixIcon name="arrow-right-line" size={16} /></Button></h3>
       <div className="om-index-skill-categories" role="group" aria-label={t('Skill category')}>{skillCategories.map(category =>
         <Button variant="plain" className="om-nav-item" key={category} aria-expanded={skillCategory === category} onClick={() => {
           send('ui_click', { page_name: 'explore', area: 'capability_index', element: 'skill_category', skill_category: skillCategoryId(category), expanded: category !== skillCategory });

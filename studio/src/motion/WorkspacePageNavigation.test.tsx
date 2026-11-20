@@ -1147,7 +1147,7 @@ it('keeps unlisted model briefs usable and links an Explore workflow to the Clau
   expect(document.activeElement?.id).toBe('mcp-example-anime-opening');
 });
 
-it('opens the same libraries from the Explore header and the shelf actions', async () => {
+it('opens the same libraries from the Explore header, shelf actions and Skills footer', async () => {
   await mount(); await click('Explore');
   const [templates, skills] = container.querySelectorAll<HTMLButtonElement>('.om-explore-nav button');
   const shelfAction = (name: string) => container.querySelector<HTMLButtonElement>(`.om-explore-shelf[aria-label="${name}"] header button`)!;
@@ -1161,7 +1161,8 @@ it('opens the same libraries from the Explore header and the shelf actions', asy
   expect(location.href).toBe(templatesUrl);
   await click('Close template library');
 
-  for (const trigger of [skills, shelfAction('Skills')]) {
+  const footerSkills = container.querySelector<HTMLButtonElement>('.om-index-skills .om-subtitle button')!;
+  for (const trigger of [skills, shelfAction('Skills'), footerSkills]) {
     await act(async () => trigger.click());
     expect(page()).toMatchObject({ skills: true, skillCategory: null, skill: null });
     expect(container.querySelector('.om-skills-intro h1')?.textContent).toBe('Teach your Agent new moves.');
@@ -1170,6 +1171,19 @@ it('opens the same libraries from the Explore header and the shelf actions', asy
     expect(page()).toMatchObject({ explore: true, skills: false });
     expect(document.activeElement).toBe(trigger);
   }
+});
+
+it('does not restore the Skills trigger when navigating home via the wordmark', async () => {
+  await mount(); await click('Explore');
+  const skills = container.querySelectorAll<HTMLButtonElement>('.om-explore-nav button')[1];
+  await act(async () => skills.click());
+  expect(page().skills).toBe(true);
+
+  const restoreFocus = vi.spyOn(skills, 'focus');
+  const wordmark = container.querySelector<HTMLButtonElement>('.om-app-brand')!;
+  await act(async () => wordmark.click());
+  expect(page()).toMatchObject({ explore: true, skills: false });
+  expect(restoreFocus).not.toHaveBeenCalled();
 });
 
 it('shows the Explore shortcuts, fills two complete rows across Skills and technique Studios and renders a full-bleed footer', async () => {
