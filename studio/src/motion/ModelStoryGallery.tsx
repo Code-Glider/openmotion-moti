@@ -20,7 +20,7 @@ export function StoryCard({ title, label, description, poster, position, credit,
     <strong>{t(title)}<RemixIcon name="arrow-right-up-line" size={16} /></strong>
     {description && <span className="om-feed-card-description">{t(description)}</span>}
   </Button>
-    {credit && <small className="om-story-credit">{creditUrl ? <a className="om-text-link" href={creditUrl} target="_blank" rel="noreferrer">{credit}</a> : credit}</small>}
+    {credit && <small className="om-story-credit">{creditUrl ? <a className="om-text-link" data-quiet href={creditUrl} target="_blank" rel="noreferrer">{credit}</a> : credit}</small>}
   </article>;
 }
 

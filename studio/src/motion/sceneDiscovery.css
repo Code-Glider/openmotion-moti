@@ -299,7 +299,7 @@
 .om-stories-rail > article { scroll-snap-align: start; }
 .om-story-item { min-width: 0; }
 .om-story-credit { display: block; padding-inline: var(--motion-space-4); margin-top: var(--motion-space-4); color: var(--motion-muted); font-size: var(--motion-text-xs); }
-.om-story-credit .om-text-link { font-size: inherit; }
+.om-story-credit .om-text-link { color: var(--motion-attribution-link); font-size: inherit; font-weight: var(--motion-weight-regular); }
 .om-story-card { align-content: start; }
 .om-story-card .om-scene-tile-art { aspect-ratio: 16 / 9; }
 .om-story-card .om-gallery-poster, .om-story-card .om-gallery-poster img { object-position: inherit; }

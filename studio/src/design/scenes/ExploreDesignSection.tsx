@@ -136,9 +136,11 @@ export function ExploreDesignSection({
                     />
                     <Button
                       type="button"
-                      size="sm"
-                      variant="primary"
-                      className="om-design-gallery-action om-design-explore-use"
+                      size="md"
+                      variant="ghost"
+                      className="om-button om-design-gallery-action om-design-explore-use"
+                      data-primary="media"
+                      data-blurred=""
                       disabled={remixing}
                       onClick={() => void remix(tpl)}
                     >

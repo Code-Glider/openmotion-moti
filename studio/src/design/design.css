@@ -1314,6 +1314,7 @@
 
 .om-design-explore-use {
   position: absolute;
+  min-inline-size: var(--motion-space-56);
   inset-inline-end: var(--motion-space-12);
   inset-block-end: var(--motion-space-12);
 }
