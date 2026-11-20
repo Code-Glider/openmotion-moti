@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useState, type RefObject } from 'react';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -29,15 +30,15 @@ export function StudioTemplateShelf({ studio, root, active }: {
   const title = t(studio === 'motion' ? 'Editable templates' : 'Templates');
   return <section className="om-studio-template-shelf" aria-label={title}>
     <header><h2 className="om-title">{title}</h2>
-      <button className="om-button" onClick={event => openLibrary(event.currentTarget)}>{t('Template library')}<RemixIcon name="arrow-right-line" size={16} /></button>
+      <Button variant="ghost" className="om-button h-auto" onClick={event => openLibrary(event.currentTarget)}>{t('Template library')}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </header>
     <div className="om-studio-template-grid">
       {items.map(item => <TemplateGalleryCard key={item.id} template={item} active={playing.has(item.id)} onPriority={setPriority}
-        onSelect={(template, trigger) => openLibrary(trigger, template.id)} />)}
+        onSelect={(template, trigger) => openLibrary(trigger, template)} />)}
     </div>
     {templates.loading && <div className="om-studio-template-grid" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <Skeleton key={n} />)}</div>}
-    {templates.error ? <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><button className="om-button" onClick={templates.retry}>{t('Retry')}</button></div>
-      : !templates.loading && (templates.hasMore ? <button className="om-button om-shelf-more" onClick={templates.loadMore}>{t('More templates')}<RemixIcon name="arrow-down-line" size={16} /></button>
+    {templates.error ? <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><Button variant="ghost" className="om-button h-auto" onClick={templates.retry}>{t('Retry')}</Button></div>
+      : !templates.loading && (templates.hasMore ? <Button variant="plain" className="om-button om-shelf-more" onClick={templates.loadMore}>{t('More templates')}<RemixIcon name="arrow-down-line" size={16} /></Button>
       : !items.length && <p className="om-muted">{t('No templates available. Open the library or try again later.')}</p>)}
   </section>;
 }

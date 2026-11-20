@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import { blackFridaySkillIds, blackFridayStages, type BlackFridayStageId } from '../../../shared/black-friday-collection';
@@ -50,7 +51,7 @@ export function BlackFridayCollection({ templates, featuredPreviewsEnabled, sele
         <div className={styles.bannerArtwork}>BLACK</div>
       </div>
       <div className={styles.bannerNav}>
-        <button type="button" className="om-button" data-primary="media" onClick={onBack}><MotionIcon name="arrow-left" size={16} />{t('Back to Explore')}</button>
+        <Button variant="ghost" type="button" className="om-button h-auto" data-primary="media" onClick={onBack}><MotionIcon name="arrow-left" size={16} />{t('Back to Explore')}</Button>
       </div>
       <div className={styles.bannerCopy}>
         <h1 id={prefix + 'title'} ref={title} tabIndex={-1}>{t('Black Friday')}</h1>
@@ -63,9 +64,9 @@ export function BlackFridayCollection({ templates, featuredPreviewsEnabled, sele
       <div className={styles.toolbar}>
         <h2 className={styles.filterTitle}>{t('Black Friday templates')}</h2>
         <nav className={styles.filters} aria-label={t('Black Friday collection')}>
-          <button type="button" className="om-button om-filter-pill" aria-pressed={selectedFilter === null} onClick={() => chooseFilter(null)}>{t('All')}</button>
-          {blackFridayStages.map(stage => <button key={stage.id} type="button" className="om-button om-filter-pill"
-            aria-pressed={selectedFilter === stage.id} onClick={() => chooseFilter(stage.id)}>{t(stage.title)}</button>)}
+          <Button variant="plain" type="button" className="om-button om-filter-pill" aria-pressed={selectedFilter === null} onClick={() => chooseFilter(null)}>{t('All')}</Button>
+          {blackFridayStages.map(stage => <Button variant="plain" key={stage.id} type="button" className="om-button om-filter-pill"
+            aria-pressed={selectedFilter === stage.id} onClick={() => chooseFilter(stage.id)}>{t(stage.title)}</Button>)}
         </nav>
         <div className={`om-control-row om-gallery-header-actions ${styles.searchRow}`}>{searchField}</div>
       </div>

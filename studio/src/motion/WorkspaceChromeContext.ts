@@ -1,19 +1,22 @@
+import type { SkillCategory } from './skillCategories';
+import type { TemplateCollection } from './workspacePageRouting';
 import { createContext, useContext } from 'react';
 import type { useWorkspace } from './useWorkspace';
+import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpEntry } from './pageTracking';
 
 export type WorkspaceChrome = {
   workspace: ReturnType<typeof useWorkspace>;
   switchingDisabled: boolean;
   saveState: string;
-  openLibrary: (trigger?: HTMLElement, templateId?: string) => void;
+  openLibrary: (trigger?: HTMLElement, template?: GalleryTemplate, collection?: TemplateCollection) => void;
   /** Opens the MCP connection page; `entry` records which control opened it. */
   openConnections: (entry: McpEntry) => void;
   openModelSettings: () => void;
   openHome: () => void;
   openAssets: () => void;
   assetsOpen: boolean;
-  openSkills: () => void;
+  openSkills: (category?: SkillCategory | null) => void;
   skillsOpen: boolean;
   toggleSidebar: () => void;
   sidebarOpen: boolean;

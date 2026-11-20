@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { IconContext } from "@phosphor-icons/react";
 import { MotionApp } from "./motion/MotionApp";
@@ -20,6 +20,10 @@ import "./motion/application.css";
 import { MotionStudioHost } from "./motion/MotionStudioHost";
 import { initializeDiagnostics, recordBrowserDiagnostic } from './motion/diagnostics';
 import { bindEmbeddedStudioTheme } from './utils/studioTheme';
+
+const ComponentInspector = new URLSearchParams(location.search).get('debug') === 'ui'
+  ? lazy(() => import('./components/ComponentInspector'))
+  : null;
 
 const unbindHostTheme = bindEmbeddedStudioTheme();
 import.meta.hot?.dispose(unbindHostTheme);
@@ -130,7 +134,10 @@ createRoot(document.getElementById("root")!).render(
         Icons that pass their own size or weight still win. */}
     <IconContext.Provider value={readIconTokens()}>
       <ShowThemeToggle.Provider value>
-        <MotionStudioHost><MotionApp /></MotionStudioHost>
+        <MotionStudioHost>
+          <MotionApp />
+          {ComponentInspector && <Suspense fallback={null}><ComponentInspector /></Suspense>}
+        </MotionStudioHost>
       </ShowThemeToggle.Provider>
     </IconContext.Provider>
   </StrictMode>,

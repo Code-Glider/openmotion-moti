@@ -14,13 +14,14 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "plain";
 export type ButtonSize = "sm" | "md" | "lg";
 
 /** Forces one interactive look for a gallery shot. CSS-only; see the header. */
 export type PreviewState = "hover" | "active" | "focus";
 
 export interface ButtonBaseProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Use plain when the surrounding control supplies its own layout and surface. */
   variant?: ButtonVariant;
   size?: ButtonSize;
   "data-preview-state"?: PreviewState;
@@ -31,6 +32,11 @@ interface ButtonProps extends ButtonBaseProps {
   icon?: ReactNode;
 }
 
+const buttonFocus = cn(
+  "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent",
+  "data-[preview-state=focus]:outline-solid data-[preview-state=focus]:outline-2 data-[preview-state=focus]:outline-offset-1 data-[preview-state=focus]:outline-accent",
+);
+
 /**
  * Shared by Button and IconButton. `disabled:` keeps pointer events alive so a
  * wrapping Tooltip can still explain why the control is disabled.
@@ -40,8 +46,7 @@ export const buttonBase = cn(
   "transition-[background-color,border-color,color,filter,transform] ease-out-quint duration-press",
   "disabled:opacity-40 disabled:cursor-not-allowed",
   "outline-hidden",
-  "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent",
-  "data-[preview-state=focus]:outline-solid data-[preview-state=focus]:outline-2 data-[preview-state=focus]:outline-offset-1 data-[preview-state=focus]:outline-accent",
+  buttonFocus,
 );
 
 /**
@@ -49,6 +54,7 @@ export const buttonBase = cn(
  * repeats the `hover:` and `active:` half exactly; the test pairs them.
  */
 export const buttonVariants: Record<ButtonVariant, string> = {
+  plain: buttonFocus,
   primary: cn(
     "hf-od-primary bg-accent text-on-accent font-semibold",
     "enabled:hover:bg-accent-hover data-[preview-state=hover]:bg-accent-hover",
@@ -81,6 +87,12 @@ export const buttonSizes: Record<ButtonSize, string> = {
   lg: "h-ctl-lg px-4 gap-2 rounded-md text-step-13",
 };
 
+export function buttonClasses(variant: ButtonVariant, sizeClasses: string, className?: string) {
+  return variant === "plain"
+    ? cn(buttonVariants.plain, className)
+    : cn(buttonBase, buttonVariants[variant], sizeClasses, className);
+}
+
 function Spinner() {
   return (
     <svg className="animate-spin size-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -103,6 +115,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     let leading: ReactNode = null;
     if (loading) leading = <Spinner />;
     else if (icon) leading = <span className="shrink-0">{icon}</span>;
+    const classes = buttonClasses(variant, buttonSizes[size], className);
     return (
       <button
         ref={ref}
@@ -110,8 +123,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         // `aria-disabled` as well as `disabled`: assistive tech announces the
         // state even where the native attribute is filtered out of the tree.
         aria-disabled={isDisabled || undefined}
-        className={cn(buttonBase, buttonVariants[variant], buttonSizes[size], className)}
+        className={classes}
         {...props}
+        data-odui-component="button"
       >
         {leading}
         {children}

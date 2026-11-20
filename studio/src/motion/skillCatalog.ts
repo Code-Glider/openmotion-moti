@@ -9,6 +9,8 @@ import type { AssetReference } from '../../../shared/asset-library';
  */
 import skillPrompts from './skill-prompts.json';
 import repositoryMedia from '../../../repository-media.json';
+import type { SkillCategory } from './skillCategories';
+export { skillCategories, type SkillCategory } from './skillCategories';
 
 const previewDirectory = 'studio/src/motion/skill-covers/';
 const previewPosters = import.meta.glob<string>('./skill-covers/*.webp', { eager: true, query: '?url', import: 'default' });
@@ -30,7 +32,6 @@ const archivedSkillCover = (name: string, format?: 'gif') => skillCover(name, fo
 export type SkillMotif = 'agent' | 'scene' | 'layout' | 'curve' | 'stagger' | 'math' | 'vector' | 'playback' | 'depth' | 'frames' | 'canvas' | 'particles'
   | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit' | 'promo'
   | 'photo' | 'polish' | 'listing' | 'narration' | 'brand' | 'thumbnail';
-export type SkillCategory = 'Talking-head & editing' | 'Product promos' | 'Explainers' | 'Product ads' | 'Brand & covers' | 'Motion techniques';
 
 export type MotionSkill = {
   id: string;
@@ -62,7 +63,6 @@ export type MotionSkill = {
   example: string;
 };
 
-export const skillCategories: SkillCategory[] = ['Talking-head & editing', 'Explainers', 'Product promos', 'Brand & covers', 'Product ads', 'Motion techniques'];
 
 export const motionSkills: MotionSkill[] = [
   { id: 'motionmaxxing', title: 'Remove the AI look from motion', useWhen: 'When a motion video looks templated or AI-made and you want it to feel designer-made', name: 'motionmaxxing', output: 'A motion film that reads as designer-made: no slide layouts, color wipes, fake glow or invented numbers', tagline: 'Make AI motion look designer-made.', category: 'Motion techniques', motif: 'polish', repository: 'https://github.com/Tejashmakwana/motionmaxxing', license: 'Apache-2.0', cover: { ...archivedSkillCover('motionmaxxing'), aspect: 1.78, compare: true, source: 'https://github.com/Tejashmakwana/motionmaxxing#readme' },

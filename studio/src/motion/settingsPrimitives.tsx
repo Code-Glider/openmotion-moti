@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { Tooltip } from "../components/ui/Tooltip";
 import { useState, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
@@ -18,7 +19,7 @@ export function SettingsLoading() {
 }
 export function SettingsError({ retry }: { retry: () => void }) {
   const { t } = useI18n();
-  return <div className="om-empty" role="alert"><RemixIcon name="error-warning-line" size={28} /><h2 className="om-subtitle">{t('Could not load settings')}</h2><p className="om-muted">{t('Check your connection and try again.')}</p><button className="om-button" onClick={retry}>{t('Retry')}</button></div>;
+  return <div className="om-empty" role="alert"><RemixIcon name="error-warning-line" size={28} /><h2 className="om-subtitle">{t('Could not load settings')}</h2><p className="om-muted">{t('Check your connection and try again.')}</p><Button variant="ghost" className="om-button h-auto" onClick={retry}>{t('Retry')}</Button></div>;
 }
 export function SettingsDialog({ title, onClose, children, returnFocus, className = '' }: { title: string; onClose: () => void; children: ReactNode; returnFocus?: HTMLElement | null; className?: string }) {
   const { t } = useI18n();

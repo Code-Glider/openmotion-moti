@@ -6,7 +6,7 @@
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn";
-import type { PreviewState } from "./Button";
+import type { PreviewState } from "./button";
 
 export interface SliderProps {
   /** Accessible name for the thumb. The inspector's row label is the usual one. */
@@ -106,6 +106,7 @@ export function Slider({
       }}
       className={cn("flex min-w-0 items-center", className)}
       data-preview-state={previewState}
+      data-odui-component="slider"
     >
       <BaseSlider.Control
         // A stable hook for the drag tests and for the screenshot script. Base

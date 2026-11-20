@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { toastErrorMessage } from "./ui/toastErrorMessage";
 import { RemixIcon } from "../icons/RemixIcons";
 import { useI18n } from "../i18n/I18n";
@@ -20,8 +22,8 @@ export function StudioToast({ message, tone, presentation, leaving, onDismiss, s
   const { t } = useI18n();
   const isError = tone === "error";
   const actions = action && <>
-    <button type="button" className="hf-toast-action" disabled={pending || leaving} aria-busy={pending} onClick={() => void action.onClick()}><RemixIcon name="arrow-go-back-line" size={14} />{action.label}</button>
-    {onDismiss && <button type="button" className="hf-toast-action" disabled={pending || leaving} aria-label={t('Dismiss notification')} onClick={onDismiss}><RemixIcon name="close-line" size={14} /></button>}
+    <Button variant="plain" type="button" className="hf-toast-action" disabled={pending || leaving} aria-busy={pending} onClick={() => void action.onClick()}><RemixIcon name="arrow-go-back-line" size={14} />{action.label}</Button>
+    {onDismiss && <IconButton variant="plain" type="button" className="hf-toast-action" disabled={pending || leaving} aria-label={t('Dismiss notification')} onClick={onDismiss} icon={<RemixIcon name="close-line" size={14} />} />}
   </>;
   return (
     <div
@@ -30,7 +32,7 @@ export function StudioToast({ message, tone, presentation, leaving, onDismiss, s
     >
       {isError && presentation !== "feedback" ? <div className="hf-toast-surface flex max-w-[min(420px,calc(100vw-48px))] items-center gap-3">
         <span className="min-w-0 leading-5 [overflow-wrap:anywhere]">{systemMessage(toastErrorMessage(message), t)}</span>
-        {actions || (onDismiss && <button type="button" className="hf-toast-action" aria-label={t('Dismiss error')} onClick={onDismiss}><RemixIcon name="close-line" size={14} /></button>)}
+        {actions || (onDismiss && <IconButton variant="plain" type="button" className="hf-toast-action" aria-label={t('Dismiss error')} onClick={onDismiss} icon={<RemixIcon name="close-line" size={14} />} />)}
       </div> : <div className="hf-toast-surface max-w-[min(420px,calc(100vw-48px))] overflow-hidden">
         <div className={status || action ? "flex min-w-0 items-center gap-3" : undefined}>
           <span className={singleLine ? "block min-w-0 truncate leading-5" : "line-clamp-3 leading-5 [overflow-wrap:anywhere]"} title={systemMessage(message, t)}>{systemMessage(message, t)}</span>

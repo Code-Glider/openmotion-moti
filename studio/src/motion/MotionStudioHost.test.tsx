@@ -17,7 +17,13 @@ import { readFileSync } from 'node:fs';
 vi.mock('./assetClient', () => ({ assetRequest: vi.fn(async () => ({ assets: [], total: 0, nextOffset: null })) }));
 vi.mock('./tracking', () => ({ trackMotion: vi.fn(async () => 'queued') }));
 vi.mock('./AccountSettings', () => ({ useAccountSummary: () => ({ account: null }) }));
-vi.mock('./ExploreStudios', () => ({ ExploreStudios: () => <main>Explore</main> }));
+vi.mock('./ExploreStudios', async () => {
+  const { useWorkspaceChrome } = await import('./WorkspaceChromeContext');
+  return { ExploreStudios: () => {
+    const { openLibrary } = useWorkspaceChrome();
+    return <button onClick={event => openLibrary(event.currentTarget)}>Browse templates</button>;
+  } };
+});
 vi.mock('./SettingsCenter', () => ({ SettingsCenter: () => <section data-testid="settings-center">Settings</section> }));
 
 const state = vi.hoisted(() => ({
@@ -89,7 +95,6 @@ function render(historyBusy = false, children?: React.ReactNode) {
 function openSidebar() {
   act(() => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="项目"]')!.click());
 }
-const templates = () => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="模板库"]')!;
 const button = (text: string) => [...container.querySelectorAll('button')].find(el => el.textContent === text)!;
 
 it('shows a restore failure once in its own project through the shared toast', () => {
@@ -122,7 +127,7 @@ it('keeps project switching, templates, history actions and native export in the
   expect(document.querySelector('.motion-session[aria-current="page"]')?.textContent).toContain('Demo');
   expect(header.contains(button('导出'))).toBe(true);
   expect(header.querySelector('[aria-label="模板库"]')).toBeNull();
-  expect(templates()).not.toBeNull();
+  expect(container.querySelector('.om-app-rail [aria-label="模板库"]')).toBeNull();
   expect(header.querySelector('.motion-header-project input')).not.toBeNull();
   expect(header.querySelector('.motion-header-leading [role="status"]')?.textContent).toBe('自动保存已开启');
   expect(container.querySelector('.motion-workspace-topbar')).toBeNull();
@@ -152,7 +157,8 @@ it('keeps project switching, templates, history actions and native export in the
   act(() => project.click());
   expect(state.open).toHaveBeenCalledWith('projects', 'second');
   expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ page_name: 'studio', area: 'workspace', element: 'open_project' }));
-  act(() => templates().click());
+  act(() => container.querySelector<HTMLButtonElement>('.om-app-brand')!.click());
+  act(() => button('Browse templates').click());
   expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
   expect(container.querySelector('[role="dialog"]')!.getAttribute('data-section')).toBe('templates');
   act(() => button('Open Product Promo').click());
@@ -174,7 +180,6 @@ it('prevents project replacement during a native render', () => {
   openSidebar();
   expect(document.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
-  expect(templates().disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[data-testid="header-export"]')!.disabled).toBe(false);
   act(() => container.querySelector<HTMLButtonElement>('[data-testid="header-export"]')!.click());
   expect(document.querySelector('[data-testid="export-dialog"]')?.textContent).toContain('Export settings and jobs');
@@ -187,7 +192,6 @@ it('prevents switching projects or issuing competing header undo while a version
   openSidebar();
   expect(document.querySelector<HTMLButtonElement>('.motion-session')!.disabled).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('[aria-label="新建项目"]')!.disabled).toBe(true);
-  expect(templates().disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')!.disabled).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('[aria-label="重做"]')!.disabled).toBe(true);
   expect(container.textContent).toContain('正在处理版本…');

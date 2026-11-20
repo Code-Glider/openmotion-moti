@@ -128,20 +128,22 @@ export function groupTemplates(items: GalleryTemplate[]) {
     return items.length === 1 ? primary : { ...primary, variants: [primary, ...items.filter(item => item !== primary)] };
   });
 }
+export function matchesTemplateCategory(item: GalleryTemplate, category: string) {
+  const spoken = item.tags.includes('口播') || item.role === 'a-roll';
+  return category === 'builtin' ? isEditableTemplate(item)
+    : category === 'clone' ? item.kind === 'reference'
+    : category === 'script' ? spoken
+    : category === 'short-form' ? isShortFormTemplate(item)
+    : category === 'motion' ? !spoken
+    : category === 'ads' ? item.kind === 'reference' || item.tags.some(tag => /ad|product|social|showcase|marketing|品牌|宣传|发布/i.test(tag))
+    : true;
+}
 export function templatePage(items: GalleryTemplate[], options: { category?: string; query?: string; offset?: number; limit?: number; grouped?: boolean } = {}): TemplatePage {
   const { category = 'featured', query = '', offset = 0, limit = 12, grouped = false } = options;
   if (!['all', 'builtin', ...templateCategories.map(option => option.id)].includes(category) || query.length > 200 || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 60) throw new Error('模板分页参数无效');
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const matches = items.filter(item => {
-    const spoken = item.tags.includes('口播') || item.role === 'a-roll';
-    const categoryMatch = category === 'builtin' ? isEditableTemplate(item)
-      : category === 'clone' ? item.kind === 'reference'
-      : category === 'script' ? spoken
-      : category === 'short-form' ? isShortFormTemplate(item)
-      : category === 'motion' ? !spoken
-      : category === 'ads' ? item.kind === 'reference' || item.tags.some(tag => /ad|product|social|showcase|marketing|品牌|宣传|发布/i.test(tag))
-      : true;
-    return categoryMatch && terms.every(term => `${item.id} ${item.title} ${item.description} ${item.subtitle} ${item.authorName || ''} ${item.tags.join(' ')} ${collectionNames[item.collection]} ${templateCategoryLabel(item)} ${socialPlatform(item.sourceUrl) || ''}`.toLowerCase().includes(term));
+    return matchesTemplateCategory(item, category) && terms.every(term => `${item.id} ${item.title} ${item.description} ${item.subtitle} ${item.authorName || ''} ${item.tags.join(' ')} ${collectionNames[item.collection]} ${templateCategoryLabel(item)} ${socialPlatform(item.sourceUrl) || ''}`.toLowerCase().includes(term));
   });
   if (category === 'featured' || category === 'all') {
     const rank = (item: GalleryTemplate) => { const index = item.kind === 'prism' ? -1 : featuredTemplateIds.indexOf(item.id); return index < 0 ? featuredTemplateIds.length : index; };

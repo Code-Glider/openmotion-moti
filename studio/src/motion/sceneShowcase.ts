@@ -9,7 +9,7 @@ import narration from './skill-covers/talking-head-recreation.webp';
 import camera from './skill-covers/babylon-js.webp';
 import welcomeMusic from '../../../template-library/openmotion-welcome/assets/soundtrack.m4a?url';
 
-export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; clip?: string; audio?: string; waveform?: readonly number[] }
+export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[] }
 
 // Normalized RMS amplitudes sampled across the bundled welcome soundtrack.
 const welcomeWaveform = [

@@ -3,7 +3,7 @@ import { canvasPresets, canvasRatio, type CanvasRatio, type CanvasFit } from '..
 import { useStudioShellContext } from '../contexts/StudioContext';
 import { useLivePreviewIframe } from '../player/store/previewIframeStore';
 import { useI18n } from '../i18n/I18n';
-import { Button } from '../components/ui/Button';
+import { Button } from 'open-design-ui/button';
 import { Menu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../components/ui/Menu';
 import { CaretDown } from '../icons/RemixIcons';
 import { gatewayRequest } from './gatewayClient';

@@ -1,5 +1,6 @@
+import { Button } from 'open-design-ui/button';
 import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
-import { IconButton } from '../components/ui/IconButton';
+import { IconButton } from 'open-design-ui/icon-button';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -16,14 +17,14 @@ export function AssetGalleryToolbar({ browser, onKindChange }: {
   return <div className="om-asset-gallery-toolbar">
     <div className="om-asset-gallery-browse">
       <nav className="om-asset-tabs" aria-label={t('Asset types')}>
-        {assetKinds.map(item => <button key={item.id} className="om-nav-item" aria-current={kind === item.id ? 'page' : undefined} onClick={() => onKindChange(item.id)}>{t(item.id === 'all' ? 'All' : item.label)}</button>)}
+        {assetKinds.map(item => <Button variant="plain" key={item.id} className="om-nav-item" aria-current={kind === item.id ? 'page' : undefined} onClick={() => onKindChange(item.id)}>{t(item.id === 'all' ? 'All' : item.label)}</Button>)}
       </nav>
       <span className="om-divider om-asset-toolbar-divider" aria-hidden="true" />
       <div className="om-asset-gallery-options">
-        <Menu modal={false} aria-label={t('Source')} trigger={<button className="om-nav-item" data-compact aria-label={t('Source')}>{sources.find(item => item.value === source)?.label}<RemixIcon name="arrow-down-s-line" size={14} /></button>}>
+        <Menu modal={false} aria-label={t('Source')} trigger={<Button variant="plain" className="om-nav-item" data-compact aria-label={t('Source')}>{sources.find(item => item.value === source)?.label}<RemixIcon name="arrow-down-s-line" size={14} /></Button>}>
           <MenuRadioGroup value={source} onValueChange={value => setSource(String(value))}>{sources.map(item => <MenuRadioItem key={item.value} value={item.value} closeOnClick>{item.label}</MenuRadioItem>)}</MenuRadioGroup>
         </Menu>
-        <Menu modal={false} aria-label={t('Sort')} trigger={<button className="om-nav-item" data-compact aria-label={t('Sort')}>{sorts.find(item => item.value === sort)?.label}<RemixIcon name="arrow-down-s-line" size={14} /></button>}>
+        <Menu modal={false} aria-label={t('Sort')} trigger={<Button variant="plain" className="om-nav-item" data-compact aria-label={t('Sort')}>{sorts.find(item => item.value === sort)?.label}<RemixIcon name="arrow-down-s-line" size={14} /></Button>}>
           <MenuRadioGroup value={sort} onValueChange={value => setSort(String(value))}>{sorts.map(item => <MenuRadioItem key={item.value} value={item.value} closeOnClick>{item.label}</MenuRadioItem>)}</MenuRadioGroup>
         </Menu>
       </div>
@@ -32,6 +33,6 @@ export function AssetGalleryToolbar({ browser, onKindChange }: {
       <label className="om-field om-asset-search"><RemixIcon name="search-line" size={16} /><input type="search" aria-label={t('Search library assets')} placeholder={t('Search library assets')} value={query} onChange={event => setQuery(event.target.value)} maxLength={200} /></label>
       <Tooltip label={t('Trash')}><IconButton size="lg" variant={kind === 'trash' ? 'secondary' : 'ghost'} aria-label={t('Trash')} aria-pressed={kind === 'trash'} icon={<RemixIcon name="delete-bin-line" size={16} />} onClick={() => onKindChange('trash')} /></Tooltip>
     </div>
-    {(query || source !== 'all') && <div className="om-asset-gallery-clear"><button className="om-nav-item" onClick={() => { setQuery(''); setSource('all'); }}>{t('Clear filters')}</button></div>}
+    {(query || source !== 'all') && <div className="om-asset-gallery-clear"><Button variant="plain" className="om-nav-item" onClick={() => { setQuery(''); setSource('all'); }}>{t('Clear filters')}</Button></div>}
   </div>;
 }

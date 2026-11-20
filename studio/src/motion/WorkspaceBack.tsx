@@ -1,4 +1,4 @@
-import { IconButton } from '../components/ui/IconButton';
+import { IconButton } from 'open-design-ui/icon-button';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { workspaceHistoryIndex } from '../utils/workspaceHistory';

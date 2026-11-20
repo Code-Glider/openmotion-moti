@@ -283,7 +283,6 @@
 .om-studio-bar h1 { display: inline-flex; align-items: center; gap: var(--motion-space-8); }
 .om-studio-library-link { margin-inline-start: auto; }
 @container asset-workspace (max-width: 680px) {
-  .om-studio-library-link > span { display: none; }
   .om-studio-bar { padding: var(--motion-space-8) var(--motion-space-16); }
 }
 @container asset-workspace (max-width: 480px) {

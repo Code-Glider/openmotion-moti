@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '../components/ui/Button';
-import { IconButton } from '../components/ui/IconButton';
+import { Button } from 'open-design-ui/button';
+import { IconButton } from 'open-design-ui/icon-button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Popover } from '../components/ui/Popover';
 import { RemixIcon } from '../icons/RemixIcons';

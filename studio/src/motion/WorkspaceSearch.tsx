@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LibraryAsset } from '../../../shared/asset-library';
 import type { Modality } from '../../../shared/gateway';
@@ -76,24 +77,24 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
   const choose = (action: () => void) => { setOpen(false); onChoose?.(); action(); };
   const loading = query && ((!catalog.catalog && !catalog.failed) || !assets.result);
   return <Popover tooltip={onChoose ? undefined : t('Search workspace')} modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Search workspace')} className="om-selection-panel om-workspace-search"
-    trigger={<button className={onChoose ? 'om-nav-item om-workspace-search-trigger' : 'om-nav-item om-workspace-search-trigger om-header-icon'} aria-label={t('Search workspace')}><RemixIcon name="search-line" size={17} />{onChoose && t('Search workspace')}</button>}>
+    trigger={<Button variant="plain" className={onChoose ? 'om-nav-item om-workspace-search-trigger' : 'om-nav-item om-workspace-search-trigger om-header-icon'} aria-label={t('Search workspace')}><RemixIcon name="search-line" size={17} />{onChoose && t('Search workspace')}</Button>}>
     {open && <>
       <label className="om-field"><RemixIcon name="search-line" size={16} /><input autoFocus type="search" maxLength={180} value={input} onChange={event => { setInput(event.target.value); setOffset(0); }} placeholder={t('Search workspace')} aria-label={t('Search workspace')} /></label>
-      <div className="om-search-shortcuts"><button className="om-nav-item" onClick={() => choose(onLibrary)}>{searchIcon('folder-open-line', 'audio')}{t('Workspace assets')}</button><button className="om-nav-item" onClick={() => choose(onAccount)}>{searchIcon('user-3-line', 'agent')}{t('Account')}</button></div>
+      <div className="om-search-shortcuts"><Button variant="plain" className="om-nav-item" onClick={() => choose(onLibrary)}>{searchIcon('folder-open-line', 'audio')}{t('Workspace assets')}</Button><Button variant="plain" className="om-nav-item" onClick={() => choose(onAccount)}>{searchIcon('user-3-line', 'agent')}{t('Account')}</Button></div>
       <div className="om-search-results">{groups.map(([title, rows]) => rows.length > 0 && <section key={title} aria-label={t(title)}><h2 className="om-eyebrow">{t(title)}</h2>
-        {rows.map(row => <button className="om-nav-item" key={row.id} aria-label={[row.label, row.detail, row.modality && t(mediaLabels[row.modality])].filter(Boolean).join(', ')} onClick={() => choose(row.open)}>
+        {rows.map(row => <Button variant="plain" className="om-nav-item" key={row.id} aria-label={[row.label, row.detail, row.modality && t(mediaLabels[row.modality])].filter(Boolean).join(', ')} onClick={() => choose(row.open)}>
           {row.icon}
           <span className="om-search-result-copy"><strong>{highlight(row.label, pattern)}</strong>{row.detail && <small className="om-muted">{highlight(row.detail, pattern)}</small>}</span>
           {row.modality && <span className="om-badge" data-tone={row.modality}>{t(mediaLabels[row.modality])}</span>}
-        </button>)}
+        </Button>)}
       </section>)}
         {loading && <Skeleton className="om-creative-model-skeleton" />}
-        {query && catalog.failed && <button className="om-button" onClick={catalog.retry}>{t('Retry loading models')}</button>}
-        {query && assets.result && !assets.result.assets && <button className="om-button" onClick={assets.retry}>{t('Retry loading assets')}</button>}
+        {query && catalog.failed && <Button type="button" variant="ghost" className="om-button" onClick={catalog.retry}>{t('Retry loading models')}</Button>}
+        {query && assets.result && !assets.result.assets && <Button type="button" variant="ghost" className="om-button" onClick={assets.retry}>{t('Retry loading assets')}</Button>}
         {query && (offset > 0 || assets.result?.nextOffset != null) && <div className="om-asset-pagination">
-          <button className="om-button" disabled={!offset} onClick={() => setOffset(Math.max(0, offset - assetPageSize))}>{t('Previous')}</button>
+          <Button variant="ghost" className="om-button h-auto" disabled={!offset} onClick={() => setOffset(Math.max(0, offset - assetPageSize))}>{t('Previous')}</Button>
           <span className="om-muted">{Math.floor(offset / assetPageSize) + 1}</span>
-          <button className="om-button" disabled={assets.result?.nextOffset == null} onClick={() => { if (assets.result?.nextOffset != null) setOffset(assets.result.nextOffset); }}>{t('Next')}</button>
+          <Button variant="ghost" className="om-button h-auto" disabled={assets.result?.nextOffset == null} onClick={() => { if (assets.result?.nextOffset != null) setOffset(assets.result.nextOffset); }}>{t('Next')}</Button>
         </div>}
         {query && !loading && !catalog.failed && assets.result?.assets && groups.every(([, rows]) => rows.length === 0) && <p className="om-muted">{t('No matches')}</p>}
       </div>

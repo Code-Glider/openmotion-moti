@@ -1,4 +1,7 @@
 // @vitest-environment happy-dom
+import { skillCategories } from './skillCategories';
+import { skillSubmissionUrl } from './SkillSubmissionLink';
+import { templateContributionUrl } from './templateContribution';
 import { act, useEffect } from 'react';
 import { gemini4Videos } from './gemini4Videos';
 import { createRoot, type Root } from 'react-dom/client';
@@ -218,7 +221,7 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   await mount(); await openMcp(); await click('Claude Code');
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]');
   await click('Preview template Product Promo');
-  expect(page()).toMatchObject({ templates: true, template: 'product-promo', settings: 'mcp', client: 'claude' });
+  expect(page()).toMatchObject({ templates: false, template: 'product-promo', settings: 'mcp', client: 'claude' });
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await traverse(-1);
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
@@ -229,8 +232,55 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await mount(1);
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
-  await click('Close template preview'); await click('Close template library');
+  await click('Close template preview');
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
+});
+
+it.each(['motion', 'marketing'])('opens a card over %s while the full catalogue is pending and restores the trigger', async studio => {
+  history.replaceState(null, '', firstUrl.replace('#', `&page=${studio}#`));
+  const fallback = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation((input: string, options?: RequestInit) =>
+    input.includes('limit=60') ? new Promise<Response>(() => {}) : fallback(input, options));
+  await mount();
+  const shelf = container.querySelector('.om-studio-template-shelf')!;
+  const card = shelf.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!;
+  await act(async () => card.click());
+  const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  expect(detail.open).toBe(true);
+  expect(detail.querySelector('h2')?.textContent).toBe('Product Promo');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
+  expect(shelf.isConnected).toBe(true);
+  await act(async () => {
+    detail.dispatchEvent(new Event('cancel', { cancelable: true }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+  expect(page().template).toBeNull();
+  expect(document.activeElement).toBe(card);
+  expect(new URLSearchParams(location.search).get('page')).toBe(studio);
+  expect(location.hash).toContain('t=12');
+});
+
+it('keeps loading, retry and missing-link recovery inside a standalone preview', async () => {
+  history.replaceState(null, '', '/?page=motion&template=missing');
+  const fallback = fetcher.getMockImplementation()!;
+  let finish!: (response: Response) => void;
+  fetcher.mockImplementation((input: string, options?: RequestInit) =>
+    input.includes('limit=60') ? new Promise<Response>(resolve => { finish = resolve; }) : fallback(input, options));
+  await mount();
+  const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  expect(detail.open).toBe(true);
+  expect(detail.querySelector('[role=status]')?.textContent).toBe('Loading preview…');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
+  await act(async () => finish(Response.json({ error: 'Offline' }, { status: 503 })));
+  expect(detail.querySelector('[role=alert]')?.textContent).toContain('Offline');
+  await act(async () => [...detail.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+  await act(async () => finish(Response.json({ items: [], next: null })));
+  expect(detail.querySelector('[role=alert]')?.textContent).toBe('This template is no longer available.');
+  await click('Close template preview');
+  expect(location.search).toBe('?page=motion');
+  expect(container.querySelector('[data-motion-template-library]')).toBeNull();
 });
 
 it('keeps project rows in place while switching, updating selection and reloading', async () => {
@@ -330,14 +380,18 @@ it('keeps Assets and editor drafts mounted across page history and restores the 
   const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   draft.value = 'Keep editor draft';
   const folder = container.querySelector<HTMLButtonElement>('.om-app-header-actions [aria-label="Workspace assets"]')!;
-  expect(folder).toBeTruthy();
+  const brandKit = container.querySelector<HTMLButtonElement>('.om-app-header-actions [aria-label="Brand Kit"]')!;
+  const actions = [...container.querySelectorAll('.om-app-header-actions button')];
+  expect(actions[actions.indexOf(brandKit) + 1]).toBe(folder);
+  expect(container.querySelector('.om-app-rail :is([aria-label="Brand Kit"], [aria-label="Skills"], [aria-label="Template library"])')).toBeNull();
   expect(container.querySelector('.om-app-rail :is([aria-label="Workspace assets"], [aria-label="MCP · Connect Agent"])')).toBeNull();
   await act(async () => folder.click());
   expect(folder.getAttribute('aria-current')).toBe('page');
   expect(page().assets).toBe(true);
   const assetDraft = container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')!;
   assetDraft.value = 'Keep asset prompt';
-  await click('Explore'); await click('Brand Kit');
+  await act(async () => brandKit.click());
+  expect(brandKit.getAttribute('aria-current')).toBe('page');
   expect(page()).toMatchObject({ assets: false, settings: 'brand-kit' });
   expect(container.querySelector<HTMLElement>('.om-assets-host')?.hidden).toBe(true);
   await click('New Brand Kit');
@@ -433,7 +487,7 @@ it('opens a Cinema still from Explore and restores its studio when changing hist
   expect(container.querySelector('.om-code-block')?.textContent).toContain('modality');
 });
 
-it('reports Explore once per arrival and its tabs, filters, index links and top navigation as catalogue ids', async () => {
+it('reports Explore once per arrival and its spotlight, index links and top navigation as catalogue ids', async () => {
   const { trackMotion } = await import('./tracking') as unknown as { trackMotion: ReturnType<typeof vi.fn> };
   // Load the (mocked) transport first so every report below is delivered before it is read.
   await (await import('./reporting')).loadReportingTransport();
@@ -447,14 +501,27 @@ it('reports Explore once per arrival and its tabs, filters, index links and top 
   expect(clicks().at(-1)).toMatchObject({ page_name: 'studio', area: 'creative_nav', element: 'nav_explore', nav_target: 'explore' });
   expect(exploreViews()).toHaveLength(1);
   expect(exploreViews()[0].properties).toMatchObject({ medium: 'all', has_project: true });
-  await act(async () => inside('.om-explore-masthead', 'Product films').click());
-  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'community_tab', explore_community: 'product-films' });
   await act(async () => inside('.om-explore-masthead', 'Discover').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'community_tab', explore_community: 'discover' });
+  await act(async () => inside('.om-explore-shelf[aria-label="Templates"]', 'Editable templates').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'category_select', collection_id: 'builtin' });
+  await act(async () => inside('.om-explore-shelf[aria-label="Skills"]', 'Motion techniques').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'skill_category', skill_category: 'motion_techniques' });
   await click('Featured · Black Friday collection');
   expect(clicks().at(-1)).toMatchObject({ area: 'explore_spotlight', element: 'slide_select', slide_id: 'black-friday' });
-  await act(async () => inside('.om-explore-feed', 'Video').click());
-  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'media_filter', medium: 'video' });
   expect(exploreViews()).toHaveLength(1);
+  await act(async () => inside('.om-explore-shelf[aria-label="Templates"]', 'View collection').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'view_all_templates', collection_id: 'builtin' });
+  await traverse(-1);
+  await act(async () => inside('.om-explore-shelf[aria-label="Skills"]', 'View all').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'open_skills', skill_category: 'motion_techniques' });
+  await traverse(-1);
+  await act(async () => inside('.om-explore-masthead', 'Templates').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'template_library' });
+  await traverse(-1);
+  await act(async () => inside('.om-explore-masthead', 'Skills').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'open_skills' });
+  await traverse(-1);
   await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });
   await act(async () => inside('.om-studio-bar', 'Image to video').click());
@@ -467,21 +534,126 @@ it('reports Explore once per arrival and its tabs, filters, index links and top 
   for (const row of rows()) expect(validProperties(studioEvents, row.event as keyof typeof studioEvents, row.properties), JSON.stringify(row)).toBe(true);
 });
 
-it('filters Explore by media and opens a reusable editing preset or template detail', async () => {
+it('shows mixed media in one Explore feed and opens templates and editing presets', async () => {
   await mount(); await click('Explore');
-  const filter = container.querySelectorAll<HTMLButtonElement>('.om-explore-feed .om-choice-tabs button');
-  await act(async () => filter[3].click());
-  const scenes = container.querySelectorAll<HTMLButtonElement>('.om-feed-group [data-scene]');
-  expect([...scenes].map(button => button.dataset.scene)).toEqual(['music', 'speech']);
-  await act(async () => filter[0].click());
+  const explore = container.querySelector('.om-explore')!;
+  expect(explore.querySelector('nav[aria-label="Communities"], [aria-label="Media type"]')).toBeNull();
+  const sections = [...explore.querySelector('.om-explore-sections')!.children];
+  expect(sections[0].classList.contains('om-explore-features')).toBe(true);
+  expect(sections[0].querySelector('.om-featured-caption strong')?.textContent).toBe('Product Promo');
+  expect(sections[1].getAttribute('aria-labelledby')).toBe('explore-highlights');
+  const scenes = [...explore.querySelectorAll<HTMLElement>('.om-feed-group [data-scene]')];
+  expect(scenes.map(card => card.dataset.scene)).toEqual(expect.arrayContaining(['image-edit', 'image-to-video', 'music', 'speech']));
   await click('Featured · Gemini 4 Neon');
   expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('hub-gemini-4');
   await click('Preview template Product Promo');
-  expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ explore: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   const preset = [...container.querySelectorAll<HTMLButtonElement>('.om-scene-tile')].find(button => button.textContent?.includes('Scored shortlist before shorts'));
   await act(async () => preset!.click());
   expect(page()).toMatchObject({ specialty: { id: 'shorts' }, skill: 'openmotion-shortlist-shorts' });
+});
+
+it('opens curated Explore collections with the matching library filters and template details', async () => {
+  const fallback = fetcher.getMockImplementation()!;
+  const item = (id: string, brand?: string) => ({ id, title: id, brand, author: 'Studio', tags: [], kind: 'reference' });
+  const entries = [
+    item('Unbranded'), { ...item('First launch', 'Figma'), uses: ['Product launch'] },
+    { ...item('Second launch', 'Figma'), uses: ['Partnership announcement'] },
+    { ...item('AI release', 'OpenAI'), uses: ['Community stories'] },
+  ];
+  fetcher.mockImplementation((input: string, options?: RequestInit) => {
+    const url = new URL(input, location.origin);
+    if (!url.pathname.endsWith('/template-catalog')) return fallback(input, options);
+    const firstPage = url.searchParams.get('limit') === '60' && url.searchParams.get('offset') === '0';
+    return Promise.resolve(Response.json({ items: firstPage ? entries.slice(0, 2) : entries.slice(2), next: firstPage ? 2 : null, catalogVersion: 'test' }));
+  });
+  await mount(); await click('Explore');
+  const shelf = container.querySelector<HTMLElement>('.om-explore-shelf[aria-label="Templates"]')!;
+  const pick = async (label: string) => {
+    const target = [...shelf.querySelectorAll('button')].find(node => node.getAttribute('aria-label') === label || node.textContent === label)!;
+    await act(async () => target.click());
+  };
+  const works = (root: Element) => [...root.querySelectorAll<HTMLElement>('[data-template-id]')].map(work => work.dataset.templateId);
+  const library = () => container.querySelector<HTMLElement>('[data-motion-template-library]')!;
+  await pick('Partnership announcements');
+  expect(works(shelf)).toEqual(['Second launch']);
+  await pick('View collection');
+  expect(page().templateCollection).toBe('purpose:Partnership announcements');
+  expect(library().querySelector('[aria-label="Video purpose"] [aria-pressed="true"]')?.textContent).toBe('Partnership announcements');
+  expect(works(library())).toEqual(['Second launch']);
+  await traverse(-1);
+  await pick('Community stories');
+  expect(works(shelf)).toEqual(['AI release']);
+  await pick('TOP 100 brands');
+  expect(works(shelf)).toEqual(['First launch', 'AI release']);
+  await pick('View collection');
+  expect(page().templateCollection).toBe('top-100-brands');
+  expect(library().querySelector('[aria-label="TOP 100 brands"]')?.getAttribute('aria-pressed')).toBe('true');
+  expect(works(library())).toEqual(['First launch', 'Second launch', 'AI release']);
+  const all = library().querySelector<HTMLButtonElement>('[aria-label="Video purpose"] button')!;
+  await act(async () => all.click());
+  expect(page().templateCollection).toBeNull();
+  expect(works(library())).toContain('Unbranded');
+  await traverse(-1);
+  expect(shelf.querySelector('[aria-label="TOP 100 brands"]')?.getAttribute('aria-pressed')).toBe('true');
+  await pick('AI & technology');
+  expect(works(shelf)).toEqual(['AI release']);
+  await pick('Preview template AI release');
+  expect(page()).toMatchObject({ templateCollection: 'ai-technology', template: 'AI release' });
+  await mount(1);
+  expect(works(library())).toEqual(['AI release']);
+  expect(container.querySelector('dialog[open] h2')?.textContent).toContain('AI release');
+  await traverse(-1);
+  expect(container.querySelector('.om-explore-shelf [aria-label="AI & technology"]')?.getAttribute('aria-pressed')).toBe('true');
+  const campaign = container.querySelector<HTMLButtonElement>('.om-explore-shelf [aria-label="Black Friday collection"]')!;
+  await act(async () => campaign.click());
+  const first = container.querySelector<HTMLElement>('.om-explore-shelf [data-template-id]')!;
+  await act(async () => first.querySelector('button')!.click());
+  expect(page()).toMatchObject({ templateCollection: 'black-friday', template: first.dataset.templateId });
+});
+
+it('browses both Explore shelves, opens exact details and restores the selected categories', async () => {
+  const fallback = fetcher.getMockImplementation()!;
+  let finish!: (value: Response) => void;
+  fetcher.mockImplementation((input: string, options?: RequestInit) => {
+    const url = new URL(input, location.origin);
+    if (url.pathname.endsWith('/template-catalog') && url.searchParams.get('category') === 'ads') {
+      return new Promise<Response>(resolve => { finish = resolve; });
+    }
+    return fallback(input, options);
+  });
+  await mount(); await click('Explore');
+  const shelf = (name: string) => container.querySelector<HTMLElement>(`.om-explore-shelf[aria-label="${name}"]`)!;
+  const choose = async (section: HTMLElement, label: string) => {
+    const trigger = [...section.querySelectorAll('button')].find(node => node.textContent?.trim() === label)!;
+    await act(async () => trigger.click());
+  };
+  const templates = shelf('Templates'), skills = shelf('Skills');
+  expect(templates.querySelector('header a')?.getAttribute('href')).toBe(templateContributionUrl);
+  expect(skills.querySelector('header a')?.getAttribute('href')).toBe(skillSubmissionUrl);
+  expect([...skills.querySelectorAll('[aria-label="Skill category"] button')].map(button => button.textContent)).toEqual(['All', ...skillCategories]);
+  await choose(templates, 'Product promos');
+  expect(templates.querySelector('[aria-busy="true"]')).not.toBeNull();
+  await choose(templates, 'Editable templates');
+  await act(async () => finish(Response.json({ items: [{ id: 'late-result' }] })));
+  expect(templates.querySelector('[data-template-id="late-result"]')).toBeNull();
+  await act(async () => templates.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
+  expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
+  await traverse(-1);
+  expect(templates.querySelector('[aria-pressed="true"]')?.textContent).toBe('Editable templates');
+  await choose(skills, 'Motion techniques');
+  const card = skills.querySelector<HTMLButtonElement>('[data-playback-id]')!;
+  await act(async () => card.click());
+  expect(page().skill).toBe(card.dataset.playbackId!.split('/')[1]);
+  await traverse(-1);
+  expect(skills.querySelector('[aria-pressed="true"]')?.textContent).toBe('Motion techniques');
+  await choose(skills, 'View all');
+  expect(page()).toMatchObject({ skills: true, skill: null, skillCategory: 'Motion techniques' });
+  expect(container.querySelector('.om-skills-library [aria-label="Skill category"] [aria-pressed="true"]')?.textContent).toBe('Motion techniques');
+  await traverse(-1);
+  await choose(templates, 'View collection');
+  expect(page()).toMatchObject({ explore: true, templates: true, template: null, templateCollection: 'builtin' });
 });
 
 it('opens the Gemini 4 hub from the third Explore slide and returns with browser Back', async () => {
@@ -526,7 +698,6 @@ it('opens the Gemini 4 hub from the third Explore slide and returns with browser
   expect(page().explore).toBe(true);
 });
 
-
 it('opens Motion Studio from the Explore spotlight and resumes the timeline on request', async () => {
   await mount();
   const draft = container.querySelector('[aria-label="Editor draft"]');
@@ -536,7 +707,7 @@ it('opens Motion Studio from the Explore spotlight and resumes the timeline on r
   expect(page()).toMatchObject({ explore: false, motion: true });
   const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
   await act(async () => template.click());
-  expect(page()).toMatchObject({ motion: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   await click('Open editor');
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
@@ -547,10 +718,10 @@ it('opens Motion Studio from the Explore spotlight and resumes the timeline on r
   expect(page().explore).toBe(true);
 });
 
-it('shows every Studio in Discover and opens the selected example or technique', async () => {
+it('shows every Studio in Explore and opens the selected example or technique', async () => {
   await mount(); await click('Explore');
   const collections = () => [...container.querySelectorAll<HTMLElement>('.om-studio-collection')].map(section => section.dataset.studio);
-  expect(collections()).toEqual(['motion', 'design', 'cinema', 'sound', 'shorts', 'marketing', 'explainer', '3d']);
+  expect(collections()).toEqual(['design', 'motion', 'cinema', 'sound', 'shorts', 'marketing', 'explainer', '3d']);
   const select = async (selector: string) => {
     const item = container.querySelector<HTMLButtonElement>(selector);
     expect(item, selector).toBeTruthy();
@@ -566,12 +737,22 @@ it('shows every Studio in Discover and opens the selected example or technique',
   await select('.om-studio-collection[data-studio="marketing"] .om-scene-tile');
   expect(page()).toMatchObject({ specialty: { id: 'marketing' }, skill: 'openmotion-flat-lay-product' });
   await traverse(-1);
-  await select('.om-explore-feed .om-choice-tabs button:last-child');
-  expect(collections()).toEqual(['sound']);
   await select('.om-studio-collection[data-studio="sound"] [data-scene="speech"]');
   expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech' } });
   await traverse(-1);
-  expect(collections()).toEqual(['sound']);
+  expect(collections()).toHaveLength(8);
+  await click('Creators');
+  expect(page()).toMatchObject({ explore: true, templates: true, creators: true });
+});
+
+it('opens a saved media collection and returns to the full feed from the global Explore entry', async () => {
+  history.replaceState(null, '', firstUrl.replace('#', '&page=explore&medium=audio#'));
+  await mount();
+  expect(container.querySelector('.om-explore h1')?.textContent).toBe('Audio');
+  expect([...container.querySelectorAll<HTMLElement>('.om-studio-collection')].map(section => section.dataset.studio)).toEqual(['sound']);
+  await click('Explore');
+  expect(page()).toMatchObject({ explore: true, community: null, medium: null });
+  expect(container.querySelectorAll('.om-studio-collection')).toHaveLength(8);
 });
 
 it('rotates the visible Explore spotlight and plays visible Skill previews without hovering', async () => {
@@ -624,7 +805,7 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   expect(segments[1].getAttribute('aria-label')).toBe('Featured · Black Friday collection');
   await act(async () => segments[1].click());
   await click('View collection');
-  expect(page()).toMatchObject({ explore: true, templates: true, blackFriday: true });
+  expect(page()).toMatchObject({ explore: true, templates: true, templateCollection: 'black-friday' });
   expect(container.querySelector('[aria-label="Video purpose"]')).toBeNull();
   const collection = container.querySelector<HTMLElement>('[data-black-friday]')!;
   const getCarousel = () => collection.querySelector('section[aria-label="Black Friday Skills"]');
@@ -702,7 +883,7 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   expect(collection.querySelector('.om-skill-gallery-card')).toBeNull();
   expect(getCarousel()?.querySelectorAll('[data-carousel-position]')).toHaveLength(3);
   await click('Back to Explore');
-  expect(page()).toMatchObject({ explore: true, templates: false, blackFriday: false });
+  expect(page()).toMatchObject({ explore: true, templates: false, templateCollection: null });
   expect(hero.dataset.scene).toBe('black-friday');
   await click('Template library');
   expect(container.querySelector('[aria-label="Video purpose"]')).toBeTruthy();
@@ -710,15 +891,17 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
 });
 
 it('carries a community template brief and an audio example into the matching studio without submitting generation', async () => {
-  await mount(); await click('Explore'); await click('Product films');
+  await mount(); await click('Search workspace'); await click('Product films');
   expect(page().community).toBe('product-films');
-  await click('Try as a video prompt');
+  await click('Use this prompt');
   expect(page().studio?.scene.id).toBe('text-to-video');
   expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toBe('A slow product reveal.');
   await traverse(-1);
   expect(page().community).toBe('product-films');
-  await click('Discover');
-  await act(async () => container.querySelector<HTMLButtonElement>('.om-feed-group [data-scene="speech"]')!.click());
+  await click('Explore');
+  const speechCard = container.querySelector<HTMLButtonElement>('.om-feed-group [data-scene="speech"]')!;
+  expect(speechCard.querySelector('.om-feed-card-detail')?.textContent).toBe('Use this prompt');
+  await act(async () => speechCard.click());
   expect(page().studio?.scene.id).toBe('speech');
   expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('Every idea deserves');
   expect(fetcher.mock.calls.some(([, options]) => options?.body && String(options.body).includes('"action":"generate"'))).toBe(false);
@@ -731,24 +914,32 @@ it('recovers template discovery and appends only new cards without replacing ear
   fetcher.mockImplementation(async (input: string, options?: RequestInit) => {
     const url = new URL(input, location.origin);
     if (!url.pathname.endsWith('/template-catalog')) return fallback(input, options);
+    if (url.searchParams.get('limit') === '60') return fallback(input, options);
     if (failures++ === 0) return new Response(null, { status: 503 });
     const offset = Number(url.searchParams.get('offset'));
     return Response.json({ offset, items: (offset ? ['second', 'third', 'third'] : ['first', 'second']).map(template), next: offset ? null : 2 });
   });
   await mount(); await click('Explore');
-  expect(container.querySelector('.om-explore-features')?.textContent).toContain('Templates could not be loaded.');
+  const spotlight = container.querySelector('.om-explore-features')!;
+  expect(spotlight.textContent).toContain('Templates could not be loaded.');
   expect(container.querySelector('.om-feed-group [data-scene="music"]')).not.toBeNull();
   await click('Retry');
-  const card = container.querySelector('[data-template-id="second"]');
+  expect(spotlight.querySelector('.om-featured-caption strong')?.textContent).toBe('first');
+  const sections = [...container.querySelector('.om-explore-sections')!.children].slice(0, 7);
+  expect(sections.map(section => section.getAttribute('aria-labelledby') ?? section.getAttribute('data-studio') ?? section.className))
+    .toEqual(['om-explore-features', 'explore-highlights', 'explore-claude', 'explore-community', 'explore-seedance', 'design', 'explore-gpt-image']);
+  const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
+  const card = picks.querySelector('[data-template-id="second"]');
   expect(card).not.toBeNull();
   await click('More community templates');
   expect(container.querySelector('[data-template-id="second"]')).toBe(card);
-  expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second', 'third']);
+  expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second']);
+  expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['third']);
   expect(button('More community templates')).toBeUndefined();
 });
 
 it('returns from a 3D technique to the same community feed and keeps its scroll position', async () => {
-  await mount(); await click('Explore'); await click('3D motion');
+  await mount(); await click('Search workspace'); await click('3D motion');
   const feed = container.querySelector<HTMLElement>('.om-explore')!;
   feed.scrollTop = 326;
   await act(async () => feed.querySelector<HTMLButtonElement>('.om-scene-tile')!.click());
@@ -786,6 +977,18 @@ it('lists each primary destination once in order, with only three scene choices 
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
 });
 
+it('localizes every top navigation Studio label in Chinese while keeping English badges', async () => {
+  await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><MotionApp /></I18nProvider>));
+  const nav = container.querySelector('.om-app-header nav.om-creative-navigation')!;
+  const destinations = [...nav.querySelectorAll('button:not([aria-expanded]),a')].map(node => node.getAttribute('aria-label') ?? node.textContent?.trim());
+  expect(destinations).toEqual(['探索', '图片', '视频', '音频', 'MCP', 'API', '设计工作室', '动效工作室', '影视工作室', '音频工作室', '短视频工作室', '营销工作室', '讲解视频工作室', '3D 工作室']);
+  const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node => {
+    const badge = document.getElementById(node.getAttribute('aria-describedby')!);
+    return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
+  });
+  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['动效工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en']]);
+});
+
 it.each([
   ['Image', 'design', 'text-to-image'],
   ['Video', 'cinema', 'text-to-video'],
@@ -812,7 +1015,7 @@ it('retains the active model and scene on same-modality entry and switches a Cin
 });
 
 it('opens image editing from its scene shortcut and returns to the same Explore collection', async () => {
-  await mount(); await click('Explore'); await click('Product films');
+  await mount(); await click('Search workspace'); await click('Product films');
   await click('Image · Scenes');
   const edit = [...document.querySelectorAll<HTMLButtonElement>('.om-creative-menu button')].find(node => node.querySelector('strong')?.textContent === 'Image editing')!;
   await act(async () => edit.click());
@@ -855,4 +1058,81 @@ it.each([
   expect(page()).toMatchObject({ studio: { studio: { id }, scene: { id: scene } }, specialty: null, skill: null });
   await clickWorkspaceBack();
   expect(page()).toMatchObject({ specialty: { id }, studio: null, skill: null });
+});
+
+it('opens model cases with a compatible provider and the same prompt from both discovery entries', async () => {
+  const baseFetch = fetcher.getMockImplementation()!;
+  const image = { id: 'cloud:gpt-image-2.6-flare', provider: 'cloud', modelId: 'gpt-image-2.6-flare', label: 'GPT Image 2.6', modality: 'image', mode: 'text-to-image', source: 'live' };
+  const edit = { ...image, id: 'cloud:gpt-image-2.6/edit', modelId: 'gpt-image-2.6/edit', supportsImageReference: true, mode: 'image-to-image' };
+  const other = { ...image, id: 'other:gpt-image-2.6-flare', provider: 'other' };
+  fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+    const path = new URL(input, location.origin).pathname;
+    if (path === '/motion-api/models') return Response.json({ models: [other, edit, image], nextOffset: null });
+    if (path === '/motion-api/models/capabilities') return Response.json({ providers: [{ id: 'cloud', available: true }], routes: {} });
+    return baseFetch(input, init);
+  });
+  await mount(); await click('Explore');
+  const section = () => container.querySelector('section[aria-labelledby="explore-gpt-image"]')!;
+  const choose = async (scope: Element, selector: string) => {
+    const target = scope.querySelector<HTMLButtonElement>(selector)!;
+    expect(target).toBeTruthy();
+    await act(async () => target.click());
+  };
+  await choose(section(), '.om-story-card');
+  expect(page().studio).toMatchObject({ model: image.id, studio: { id: 'design' }, scene: { id: 'text-to-image' } });
+  const draft = () => container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value;
+  const prompt = draft();
+  expect(prompt).toContain('young witch');
+  await traverse(-1);
+  await choose(section(), '.om-story-item:last-child button');
+  expect(page().studio).toMatchObject({ model: edit.id, studio: { id: 'marketing' }, scene: { id: 'image-edit' } });
+  await traverse(-1);
+  await choose(section(), 'header button');
+  expect(page().modelOverview).toBe(image.id);
+  const overview = container.querySelectorAll('.om-explore-host:not([hidden]) .om-story-gallery .om-story-card');
+  expect(overview).toHaveLength(2);
+  await act(async () => (overview[0] as HTMLButtonElement).click());
+  expect(page().studio?.model).toBe(image.id);
+  expect(draft()).toBe(prompt);
+  expect(fetcher.mock.calls.some(([url, init]) => String(url).endsWith('/generations') && init?.method === 'POST')).toBe(false);
+});
+
+it.each([
+  ['image', 'gpt-image-2.6', 'image-to-image', 'Image editing'],
+  ['video', 'seedance-2.5', 'image-to-video', 'Image to video'],
+])('offers the same reference-only %s scene in the model overview and its cases', async (modality, family, mode, label) => {
+  const model = { id: 'cloud:' + family, provider: 'cloud', modelId: family, label: family, modality, mode, supportsImageReference: true, maxInputImages: 1, source: 'live' };
+  const baseFetch = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+    const path = new URL(input, location.origin).pathname;
+    if (path === '/motion-api/models') return Response.json({ models: [model], nextOffset: null });
+    if (path === '/motion-api/models/capabilities') return Response.json({ providers: [{ id: 'cloud', available: true }], routes: {} });
+    return baseFetch(input, init);
+  });
+  history.replaceState(null, '', firstUrl.replace('#', '&page=model&model=' + encodeURIComponent(model.id) + '#'));
+  await mount();
+  const overview = container.querySelector('.om-explore-host:not([hidden])')!;
+  expect([...overview.querySelectorAll('.om-studio-collection-cards strong')].map(node => node.textContent)).toEqual([label]);
+  const cases = overview.querySelectorAll<HTMLButtonElement>('.om-story-card');
+  expect(cases).toHaveLength(1);
+  expect(cases[0].textContent).toContain(label);
+  await act(async () => cases[0].click());
+  expect(page().studio?.model).toBe(model.id);
+  expect(page().studio?.scene.label).toBe(label);
+});
+
+it('keeps unlisted model briefs usable and links an Explore workflow to the Claude handbook example', async () => {
+  await mount(); await click('Explore');
+  const fallback = container.querySelector<HTMLButtonElement>('[aria-labelledby="explore-seedance"] .om-story-card')!;
+  expect(fallback.textContent).toContain('Choose a model');
+  await act(async () => fallback.click());
+  expect(page().studio).toMatchObject({ model: null, studio: { id: 'cinema' }, scene: { id: 'text-to-video' } });
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value).toContain('floating city');
+  await traverse(-1);
+  const workflow = container.querySelector<HTMLButtonElement>('[aria-labelledby="explore-claude"] .om-story-card')!;
+  await act(async () => workflow.click());
+  expect(page()).toMatchObject({ settings: 'mcp', client: 'claude', mcpExample: 'anime-opening' });
+  expect(document.activeElement?.id).toBe('mcp-example-anime-opening');
+  await mount(1);
+  expect(document.activeElement?.id).toBe('mcp-example-anime-opening');
 });

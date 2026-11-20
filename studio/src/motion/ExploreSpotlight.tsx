@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -119,23 +120,23 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion, onOpenBlack
         <div className="om-discovery-hero-copy">
           <span><RemixIcon name={slide.icon} size={16} />{t(slide.subtitle)}</span>
           <h2>{t(slide.title)}</h2><p>{t(slide.hint)}</p>
-          {slide.hub ? <button className="om-button" data-primary="media" onClick={() => { track('slide_action', { slide: slide.id, position: i }); onModelHub(slide.hub!); }}>
+          {slide.hub ? <Button variant="ghost" className="om-button h-auto" data-primary="media" onClick={() => { track('slide_action', { slide: slide.id, position: i }); onModelHub(slide.hub!); }}>
             {t('Try {model} now', { model: slide.title })}<RemixIcon name="arrow-right-line" size={16} />
-          </button> : blackFriday ? <button className="om-button" data-primary="media" onClick={event => { track('slide_action', { slide: slide.id, position: i }); onOpenBlackFriday(event.currentTarget); }}>
+          </Button> : blackFriday ? <Button variant="ghost" className="om-button h-auto" data-primary="media" onClick={event => { track('slide_action', { slide: slide.id, position: i }); onOpenBlackFriday(event.currentTarget); }}>
             {t('View collection')}<RemixIcon name="arrow-right-line" size={16} />
-          </button> : <button className="om-button" data-primary="media" onClick={() => {
+          </Button> : <Button variant="ghost" className="om-button h-auto" data-primary="media" onClick={() => {
             track('slide_action', { slide: slide.id, position: i, ...(scene ? destinationTarget(scene.target) : { studio: motionStudio.id }) });
             if (scene) onNavigate(scene.target, t(scene.prompt)); else onOpenMotion();
           }}>
             {scene ? t(scene.target.scene.label) : t('Open in {studio}', { studio: t(motionStudio.title) })}<RemixIcon name="arrow-right-line" size={16} />
-          </button>}
+          </Button>}
         </div>
       </div>;
     })}
     <div className="om-feature-controls om-media-pagination om-media-segments" role="group" aria-label={t('Featured')}>
-      {slides.map((slide, i) => <button type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => { track('slide_select', { slide: slide.id, position: i }); setIndex(i); }}>
+      {slides.map((slide, i) => <Button variant="plain" type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => { track('slide_select', { slide: slide.id, position: i }); setIndex(i); }}>
         <span className="om-media-track" />
-      </button>)}
+      </Button>)}
     </div>
   </section>;
 }

@@ -31,7 +31,14 @@ export const searchRecoveryExample = (t: (message: string) => string) => templat
 const exploreTemplateWorkflow = 'Open a template in Explore to inspect its project or recreation guide. Try as a video prompt copies its description into Cinema Studio. Edit the draft, choose an available model and generate when ready.';
 
 /** Scenarios compose existing tools; keep atomic tool discovery unique above. */
-export const mcpScenarios = [{
+export const animeOpeningScenario = {
+  id: 'anime-opening', icon: 'clapperboard-line', title: 'From a keyframe to an anime opening',
+  description: 'Plan the shots in Claude Code. Create a keyframe with GPT Image 2.6 and animate the approved frame with Seedance 2.5. Model access depends on your media providers.',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_create_project', 'openmotion_open_preview'],
+  prompt: 'Plan an anime opening over a floating city at sunset. Check my providers for GPT Image 2.6 and a Seedance 2.5 model with first-frame input. If either is missing, help me configure it or ask which model to use. Generate a keyframe and let me choose the saved version. Animate that version, track each original job, then assemble the clip in a new editable project and open its preview. Discover models with openmotion_media_use, track assets and jobs with openmotion_assets_use, assemble with openmotion_create_project and preview with openmotion_open_preview.',
+};
+
+export const mcpScenarios = [animeOpeningScenario, {
   id: 'search-recovery', icon: 'search-line', title: 'Create without a matching template',
   description: 'In Template library, add a video link, choose a local video, or describe what you want. Copy the request and send it in your connected Agent. Local videos are saved to Assets and open in the same OpenMotion workspace.',
   tools: ['openmotion_create_project', 'openmotion_edit_project', 'openmotion_open_preview'],
