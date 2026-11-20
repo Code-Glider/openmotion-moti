@@ -125,7 +125,7 @@ try{
  const designCreated=await tool('openmotion_design_project',{action:'create',requestId:'design-smoke',scenario:'prototype',title:'Design smoke'});
  const designEdited=await tool('openmotion_design_edit',{action:'write',projectId:designCreated.project.id,requestId:'design-edit-1',expectedRevision:designCreated.project.revision,files:[{path:'index.html',content:'<!doctype html><html><body><h1>Packaged Design</h1></body></html>'}],summary:'Smoke edit'});
  assert.equal(designEdited.version.label,'v2');
- const designComment=await tool('openmotion_design_comments',{action:'create',projectId:designCreated.project.id,requestId:'design-comment-1',expectedRevision:designEdited.project.revision,text:'Check contrast'});
+ const designComment=await tool('openmotion_design_comments',{action:'create',projectId:designCreated.project.id,requestId:'design-comment-1',expectedRevision:designEdited.project.revision,text:'Check contrast',anchor:{file:'index.html',viewport:{id:'desktop',width:1280,height:800},element:{selector:'h1',tagName:'h1',label:'Packaged Design',box:{x:10,y:10,width:200,height:40}}}});
  assert.equal(designComment.comment.status,'open');
  assert.deepEqual([...calledTools].sort(),[...expected].sort(),'E2E must successfully call every public Tool');
  await copyFile(completed.path,path.join(evidence,'export.mp4'));
