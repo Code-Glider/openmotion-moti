@@ -48,6 +48,53 @@ function annotationBounds(annotation: ReviewAnnotation) {
   return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function escapeInlineJson(value: unknown) {
+  return JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
+/** Build isolated Presenter popup HTML with sandboxed deck iframe and escaped title/notes. */
+export function buildPresenterPopupHtml(title: string, rawUrl: string, speakerNotes: string[], total: number): string {
+  const safeTotal = Math.max(1, Math.floor(total));
+  const safeTitle = escapeHtml(title);
+  const safeUrl = escapeHtml(rawUrl);
+  const safeNotesJson = escapeInlineJson(speakerNotes);
+  return `<!doctype html><html><head><title>${safeTitle} — Presenter</title>
+<link rel="stylesheet" href="/design-system/ui.css" />
+<style>body{margin:0;background:var(--motion-bg);color:var(--motion-text);font-family:var(--motion-font-sans);display:grid;grid-template-columns:2fr 1fr;height:100vh}
+iframe{width:100%;height:100%;border:0;background:var(--motion-canvas)}aside{display:flex;flex-direction:column;gap:12px;padding:18px;background:var(--motion-panel);border-left:1px solid var(--motion-border-subtle)}
+.row{display:flex;gap:8px;align-items:center}button{padding:8px 14px;border-radius:8px;border:1px solid var(--motion-border);background:var(--motion-raised);color:var(--motion-text);cursor:pointer}
+.notes{flex:1;overflow:auto;line-height:1.6;color:var(--motion-muted);white-space:pre-wrap;font-size:15px}</style></head>
+<body data-motion-ui><iframe id="deck" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads" src="${safeUrl}"></iframe>
+<aside><div class="row"><strong id="counter">1 / ${safeTotal}</strong><span id="timer" style="margin-left:auto;font-variant-numeric:tabular-nums">00:00</span></div>
+<div class="row"><button onclick="go(cur-1)">Prev</button><button onclick="go(cur+1)">Next</button><button onclick="reset()">Reset timer</button></div>
+<div class="notes" id="notes"></div></aside>
+<script id="om-presenter-notes" type="application/json">${safeNotesJson}</script>
+<script>const notes=JSON.parse(document.getElementById('om-presenter-notes').textContent||'[]');let cur=0,sec=0;const f=document.getElementById('deck');
+function render(){document.getElementById('counter').textContent=(cur+1)+' / ${safeTotal}';document.getElementById('notes').textContent=notes[cur]||'No speaker notes for this slide.';}
+function go(i){cur=Math.max(0,Math.min(${safeTotal - 1},i));f.contentWindow.postMessage({type:'od:slide',action:'go',index:cur},'*');render();}
+function reset(){sec=0;}setInterval(()=>{sec++;document.getElementById('timer').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');},1000);
+window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cur+1);if(e.key==='ArrowLeft')go(cur-1);});render();</script></body></html>`;
+}
+
+/** Convert pointer client coordinates into the overlay's unscaled local layout coordinate space. */
+export function overlayLocalPoint(el: Pick<HTMLElement, 'getBoundingClientRect' | 'clientWidth' | 'clientHeight'>, clientX: number, clientY: number) {
+  const rect = el.getBoundingClientRect();
+  const width = el.clientWidth > 0 ? el.clientWidth : Math.max(1, Math.round(rect.width));
+  const height = el.clientHeight > 0 ? el.clientHeight : Math.max(1, Math.round(rect.height));
+  const scaleX = width > 0 && rect.width > 0 ? rect.width / width : 1;
+  const scaleY = height > 0 && rect.height > 0 ? rect.height / height : 1;
+  return {
+    x: (clientX - rect.left) / scaleX,
+    y: (clientY - rect.top) / scaleY,
+    width,
+    height,
+  };
+}
+
 function AnnotationVisualPreview({
   element,
   region,
@@ -137,6 +184,7 @@ export function DesignProjectEditor({
   const [fileContent, setFileContent] = useState<string>('');
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeEditing, setCodeEditing] = useState(false);
+  const [codeEditBaseRevision, setCodeEditBaseRevision] = useState<string | null>(null);
   const [codeDraft, setCodeDraft] = useState('');
   const [savingCode, setSavingCode] = useState(false);
 
@@ -171,6 +219,12 @@ export function DesignProjectEditor({
     setActiveFile(prev => (prev && project.files.some(f => f.path === prev) ? prev : project.entry));
     if (project.scenario === 'mobile-app') setViewportId('mobile');
   }, [project?.id]);
+
+  // Reset edit session when switching project or active file
+  useEffect(() => {
+    setCodeEditing(false);
+    setCodeEditBaseRevision(null);
+  }, [project?.id, activeFile]);
 
   // Load text content for active file (needed for code view, deck parsing, and srcdoc bridge)
   useEffect(() => {
@@ -281,13 +335,14 @@ export function DesignProjectEditor({
     setSavingCode(true);
     try {
       const { project: updated } = await designClient.writeFiles(project.id, {
-        expectedRevision: project.revision,
+        expectedRevision: codeEditBaseRevision ?? project.revision,
         files: [{ path: activeFile, content: codeDraft }],
         summary: `Manual edit to ${activeFile}`,
         source: 'manual',
       });
       setProject(updated);
       setFileContent(codeDraft);
+      setCodeEditBaseRevision(null);
       setCodeEditing(false);
       await refresh();
       toast.showToast(t('Saved new version'), 'info', 'feedback');
@@ -345,23 +400,8 @@ export function DesignProjectEditor({
     const popup = window.open('', 'om-design-presenter', 'width=1200,height=760');
     if (!popup) { toast.showToast(t('Pop-up blocked by browser'), 'error', 'feedback'); return; }
     const rawUrl = new URL(designRoutes.raw(project.id, activeFile || project.entry), window.location.origin).href;
-    const notesJson = JSON.stringify(speakerNotes);
     const total = Math.max(1, slideCount || deckSlides.length);
-    popup.document.write(`<!doctype html><html><head><title>${project.title} — Presenter</title>
-<link rel="stylesheet" href="/design-system/ui.css" />
-<style>body{margin:0;background:var(--motion-bg);color:var(--motion-text);font-family:var(--motion-font-sans);display:grid;grid-template-columns:2fr 1fr;height:100vh}
-iframe{width:100%;height:100%;border:0;background:var(--motion-canvas)}aside{display:flex;flex-direction:column;gap:12px;padding:18px;background:var(--motion-panel);border-left:1px solid var(--motion-border-subtle)}
-.row{display:flex;gap:8px;align-items:center}button{padding:8px 14px;border-radius:8px;border:1px solid var(--motion-border);background:var(--motion-raised);color:var(--motion-text);cursor:pointer}
-.notes{flex:1;overflow:auto;line-height:1.6;color:var(--motion-muted);white-space:pre-wrap;font-size:15px}</style></head>
-<body data-motion-ui><iframe id="deck" src="${rawUrl}"></iframe>
-<aside><div class="row"><strong id="counter">1 / ${total}</strong><span id="timer" style="margin-left:auto;font-variant-numeric:tabular-nums">00:00</span></div>
-<div class="row"><button onclick="go(cur-1)">Prev</button><button onclick="go(cur+1)">Next</button><button onclick="reset()">Reset timer</button></div>
-<div class="notes" id="notes"></div></aside>
-<script>const notes=${notesJson};let cur=0,sec=0;const f=document.getElementById('deck');
-function render(){document.getElementById('counter').textContent=(cur+1)+' / ${total}';document.getElementById('notes').textContent=notes[cur]||'No speaker notes for this slide.';}
-function go(i){cur=Math.max(0,Math.min(${total - 1},i));f.contentWindow.postMessage({type:'od:slide',action:'go',index:cur},'*');render();}
-function reset(){sec=0;}setInterval(()=>{sec++;document.getElementById('timer').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');},1000);
-window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cur+1);if(e.key==='ArrowLeft')go(cur-1);});render();</script></body></html>`);
+    popup.document.write(buildPresenterPopupHtml(project.title, rawUrl, speakerNotes, total));
     popup.document.close();
   };
 
@@ -373,9 +413,10 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
     if (!project || !pendingDraft || !commentText.trim()) return;
     setSubmittingComment(true);
     try {
-      const rect = overlayRef.current?.getBoundingClientRect();
-      const vw = frameWidth ?? Math.max(320, Math.round(rect?.width ?? 1280));
-      const vh = frameHeight ?? Math.max(240, Math.round(rect?.height ?? 800));
+      const el = overlayRef.current;
+      const rect = el?.getBoundingClientRect();
+      const vw = frameWidth ?? Math.max(320, Math.round(el?.clientWidth || rect?.width || 1280));
+      const vh = frameHeight ?? Math.max(240, Math.round(el?.clientHeight || rect?.height || 800));
       const anchor: DesignCommentAnchor = {
         filePath: activeFile || project.entry,
         viewport: { id: viewportId, width: vw, height: vh },
@@ -424,41 +465,37 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
     }
   };
 
-  // Pointer handlers for region box & pen drawing overlay
+  // Pointer handlers for region box & pen drawing overlay (always in unscaled overlay coordinates)
   const onOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (activeTool !== 'region' && activeTool !== 'pen') return;
     if (event.target !== event.currentTarget) return;
     setPendingDraft(null);
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const { x, y, width, height } = overlayLocalPoint(event.currentTarget, event.clientX, event.clientY);
     event.currentTarget.setPointerCapture(event.pointerId);
     if (activeTool === 'region') {
       setDragStart({ x, y });
       setDragCurrent({ x, y });
     } else if (activeTool === 'pen') {
-      setPenPoints([{ x: Math.max(0, Math.min(1, x / rect.width)), y: Math.max(0, Math.min(1, y / rect.height)) }]);
+      setPenPoints([{ x: Math.max(0, Math.min(1, x / width)), y: Math.max(0, Math.min(1, y / height)) }]);
     }
   };
 
   const onOverlayPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const { x, y, width, height } = overlayLocalPoint(event.currentTarget, event.clientX, event.clientY);
     if (activeTool === 'region' && dragStart) {
       setDragCurrent({ x, y });
     } else if (activeTool === 'pen' && penPoints.length > 0 && event.buttons > 0) {
-      setPenPoints(prev => prev.length < 900 ? [...prev, { x: Math.max(0, Math.min(1, x / rect.width)), y: Math.max(0, Math.min(1, y / rect.height)) }] : prev);
+      setPenPoints(prev => prev.length < 900 ? [...prev, { x: Math.max(0, Math.min(1, x / width)), y: Math.max(0, Math.min(1, y / height)) }] : prev);
     }
   };
 
   const onOverlayPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
+    const { width: w, height: h } = overlayLocalPoint(event.currentTarget, event.clientX, event.clientY);
     if (activeTool === 'region' && dragStart && dragCurrent) {
-      const x = Math.min(dragStart.x, dragCurrent.x);
-      const y = Math.min(dragStart.y, dragCurrent.y);
-      const width = Math.abs(dragCurrent.x - dragStart.x);
-      const height = Math.abs(dragCurrent.y - dragStart.y);
+      const x = Math.round(Math.min(dragStart.x, dragCurrent.x));
+      const y = Math.round(Math.min(dragStart.y, dragCurrent.y));
+      const width = Math.round(Math.abs(dragCurrent.x - dragStart.x));
+      const height = Math.round(Math.abs(dragCurrent.y - dragStart.y));
       setDragStart(null);
       setDragCurrent(null);
       if (width > 8 && height > 8) {
@@ -466,7 +503,6 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
         setCommentText('');
       }
     } else if (activeTool === 'pen' && penPoints.length >= 2) {
-      const w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
       const annotation: ReviewAnnotation = { version: 1, coordinateSpace: 'normalized', width: w, height: h, marks: [{ kind: 'pen', points: penPoints }] };
       const bounds = annotationBounds(annotation);
       setPenPoints([]);
@@ -762,7 +798,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
               size="sm"
               variant={sidebarOpen && sidebarTab === 'comments' ? 'secondary' : 'ghost'}
               aria-pressed={sidebarOpen && sidebarTab === 'comments'}
-              icon={<RemixIcon name="message-2-line" size={14} />}
+              icon={<RemixIcon name="chat-1-line" size={14} />}
               onClick={() => {
                 if (sidebarOpen && sidebarTab === 'comments') {
                   setSidebarOpen(false);
@@ -1152,7 +1188,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                 <div style={{ display: 'flex', gap: 6 }}>
                   {codeEditing ? (
                     <>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => { setCodeDraft(fileContent); setCodeEditing(false); }}>{t('Cancel')}</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(null); setCodeEditing(false); }}>{t('Cancel')}</Button>
                       <Button type="button" size="sm" variant="primary" loading={savingCode} icon={<RemixIcon name="save-line" size={14} />} onClick={() => void saveCode()}>
                         {t('Save version')}
                       </Button>
@@ -1162,7 +1198,7 @@ window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(cu
                       <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={() => void copyPrompt(fileContent)}>
                         {t('Copy code')}
                       </Button>
-                      <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="edit-line" size={14} />} onClick={() => { setCodeDraft(fileContent); setCodeEditing(true); }}>
+                      <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="edit-line" size={14} />} onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(project.revision); setCodeEditing(true); }}>
                         {t('Edit source')}
                       </Button>
                     </div>

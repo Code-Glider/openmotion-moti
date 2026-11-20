@@ -99,7 +99,7 @@ export function buildBridgeSrcDoc(rawHtml: string, baseHref: string, token: stri
       label,
       text: text || undefined,
       htmlHint: (el.outerHTML || '').slice(0, 320),
-      box: { x: Math.round(rect.left + scrollX), y: Math.round(rect.top + scrollY), width: Math.round(rect.width), height: Math.round(rect.height) }
+      box: { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }
     };
   }
 

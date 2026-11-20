@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { DesignError, DesignProjects } from '../design-projects.ts';
+import { DesignError, DesignProjects, designHttp } from '../design-projects.ts';
 import { readProjectZip } from '../shared/project-zip.ts';
 import { browserExecutable } from '../browser.ts';
 
@@ -163,7 +164,7 @@ test('export zip, open-design round-trip zip, standalone html, and import round-
     assert.notEqual(imported[0].id, w.project.id);
 
     // Optional visual export check when Chrome is present on this machine.
-    const chrome = await browserExecutable();
+    const chrome = await browserExecutable().catch(() => undefined);
     if (chrome) {
       const pdf = await service.exportProject(deck.id, { format: 'pdf' });
       assert(pdf.data.subarray(0, 4).toString('utf8') === '%PDF');
@@ -171,4 +172,73 @@ test('export zip, open-design round-trip zip, standalone html, and import round-
       assert(pptx.data.subarray(0, 2).toString('utf8') === 'PK', 'pptx should be a valid zip container');
     }
   } finally { await cleanup(); }
+});
+
+test('version restore restores project entry invariant and write rejects deleting sole entry', async () => {
+  const { service, cleanup } = await tempService();
+  try {
+    const created = await service.create({ requestId: 'req-entry-1', scenario: 'prototype', title: 'Entry Invariant' });
+    const v1 = created.versionId!;
+    assert.equal(created.entry, 'index.html');
+
+    // Reject deleting the sole HTML entry without leaving another HTML file.
+    await assert.rejects(
+      () => service.write(created.id, { requestId: 'req-del-sole', expectedRevision: created.revision, deletes: ['index.html'] }),
+      (error: unknown) => error instanceof DesignError && error.code === 'INVALID_ARGUMENT',
+    );
+    const stillIntact = await service.get(created.id);
+    assert(stillIntact.files.some(f => f.path === 'index.html'));
+
+    // Add page2.html and switch entry to page2.html (v2).
+    const w2 = await service.write(created.id, {
+      requestId: 'req-entry-2',
+      expectedRevision: created.revision,
+      files: [{ path: 'page2.html', content: '<!doctype html><html><body><h1>Page Two</h1></body></html>' }],
+      entry: 'page2.html',
+      summary: 'Switch entry to page2.html',
+    });
+    assert.equal(w2.project.entry, 'page2.html');
+
+    // Exporting historical v1 still succeeds even while current entry is page2.html.
+    const v1Html = await service.exportProject(created.id, { format: 'html', versionId: v1 });
+    assert(/<!doctype html>/i.test(v1Html.data.toString('utf8')));
+
+    // Restoring v1 removes page2.html and restores stored.entry back to index.html.
+    const restored = await service.restoreVersion(created.id, v1, { requestId: 'req-entry-restore', expectedRevision: w2.project.revision });
+    assert.equal(restored.project.entry, 'index.html');
+    assert(restored.project.previewUrl.endsWith('/index.html'));
+    const restoredHtml = await service.exportProject(created.id, { format: 'html' });
+    assert(/<!doctype html>/i.test(restoredHtml.data.toString('utf8')));
+  } finally { await cleanup(); }
+});
+
+test('raw HTML previews are served with CSP sandbox header while sub-resources remain un-sandboxed', async () => {
+  const { dir, service, cleanup } = await tempService();
+  const created = await service.create({ requestId: 'req-csp-1', scenario: 'prototype', title: 'CSP Isolation' });
+  await service.write(created.id, {
+    requestId: 'req-csp-2',
+    expectedRevision: created.revision,
+    files: [{ path: 'styles.css', content: 'body { color: #111; }' }],
+  });
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url || '/', 'http://127.0.0.1');
+    const handled = await designHttp(req, res, url, dir, 'http://127.0.0.1', async () => ({}));
+    if (!handled) { res.writeHead(404); res.end(); }
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
+  const { port } = server.address() as { port: number };
+  try {
+    const htmlRes = await fetch(`http://127.0.0.1:${port}/api/design/raw/${created.id}/index.html`);
+    assert.equal(htmlRes.status, 200);
+    const csp = htmlRes.headers.get('content-security-policy') ?? '';
+    assert(csp.includes('sandbox'), `Expected CSP sandbox on raw HTML, got: ${csp}`);
+    assert(!csp.includes('allow-same-origin'), 'Raw HTML must not grant allow-same-origin');
+
+    const cssRes = await fetch(`http://127.0.0.1:${port}/api/design/raw/${created.id}/styles.css`);
+    assert.equal(cssRes.status, 200);
+    assert.equal(cssRes.headers.get('content-security-policy'), null);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    await cleanup();
+  }
 });

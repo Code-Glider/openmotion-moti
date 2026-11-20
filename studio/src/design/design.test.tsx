@@ -6,7 +6,7 @@ import { I18nProvider } from '../i18n/I18n';
 import { readWorkspacePage, workspacePageHref } from '../motion/workspacePageRouting';
 import { CodeViewer } from './CodeViewer';
 import { DesignApiError, designClient } from './designClient';
-import { DesignProjectEditor } from './DesignProjectEditor';
+import { DesignProjectEditor, buildPresenterPopupHtml, overlayLocalPoint } from './DesignProjectEditor';
 import { DesignProjectList } from './DesignProjectList';
 import { buildBridgeSrcDoc, looksLikeDeck, parseDeckSlides, parseSpeakerNotes } from './previewBridge';
 
@@ -211,5 +211,91 @@ describe('DesignProjectEditor', () => {
     expect(openBtn).toBeTruthy();
     await act(async () => { openBtn!.click(); });
     expect(opened).toEqual([projectId]);
+  });
+
+  it('sandboxes Presenter popup iframe and escapes title and speaker notes', () => {
+    const html = buildPresenterPopupHtml(
+      'Deck </title><script>alert(1)</script>',
+      'http://127.0.0.1:4197/motion-api/design/raw/id/index.html',
+      ['Note </script><script>alert(2)</script>'],
+      2,
+    );
+    expect(html).toContain('sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"');
+    expect(html).not.toContain('sandbox="allow-same-origin');
+    expect(html).not.toContain('</title><script>alert(1)');
+    expect(html).toContain('&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(html).not.toContain('</script><script>alert(2)');
+    expect(html).toContain('\\u003c/script\\u003e');
+  });
+
+  it('normalizes annotation coordinates for scrolled viewport picks and zoomed overlays', () => {
+    const srcdoc = buildBridgeSrcDoc('<html><body><h1 id="hero">Hi</h1></body></html>', 'http://127.0.0.1/raw/', 'tok-scroll', true);
+    expect(srcdoc).toContain('box: { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }');
+    expect(srcdoc).not.toContain('rect.top + scrollY');
+
+    // At 50% zoom, an overlay with clientWidth=1000 renders at rect.width=500.
+    const fakeOverlay = {
+      clientWidth: 1000,
+      clientHeight: 600,
+      getBoundingClientRect: () => ({ left: 100, top: 50, width: 500, height: 300, right: 600, bottom: 350, x: 100, y: 50, toJSON: () => ({}) }),
+    };
+    const start = overlayLocalPoint(fakeOverlay, 200, 110);
+    const end = overlayLocalPoint(fakeOverlay, 350, 210);
+    expect(start.x).toBe(200);
+    expect(start.y).toBe(120);
+    expect(end.x - start.x).toBe(300);
+    expect(end.y - start.y).toBe(200);
+    expect(start.width).toBe(1000);
+    expect(start.height).toBe(600);
+  });
+
+  it('submits edit-start expectedRevision on manual save and preserves draft on VERSION_CONFLICT', async () => {
+    const newRevision = 'c'.repeat(64);
+    let currentRevision = revision;
+    let submittedRevision: string | null = null;
+    vi.spyOn(designClient, 'getProject').mockImplementation(async () => ({ project: { ...mockProject, revision: currentRevision } }));
+    vi.spyOn(designClient, 'listVersions').mockResolvedValue({ versions: [], currentVersionId: 'v-1', nextCursor: null });
+    vi.spyOn(designClient, 'listComments').mockResolvedValue({ comments: [], sourceRevision: revision });
+    vi.spyOn(designClient, 'detectEditors').mockResolvedValue({ editors: [] });
+    vi.spyOn(designClient, 'readFile').mockResolvedValue({ path: 'index.html', content: '<h1>v1</h1>', offset: 0, limit: 100, totalBytes: 11, hasMore: false, nextOffset: null });
+    vi.spyOn(designClient, 'writeFiles').mockImplementation(async (_id, payload) => {
+      submittedRevision = payload.expectedRevision;
+      throw new DesignApiError(409, 'VERSION_CONFLICT', 'Expected revision mismatch');
+    });
+
+    await act(async () => {
+      root.render(
+        <I18nProvider>
+          <DesignProjectEditor projectId={projectId} onBack={() => {}} />
+        </I18nProvider>,
+      );
+    });
+
+    const codeBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Code'));
+    await act(async () => { codeBtn!.click(); });
+
+    const editBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Edit source'));
+    await act(async () => { editBtn!.click(); });
+
+    const editor = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]')!;
+    expect(editor).toBeTruthy();
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
+      setter.call(editor, '<h1>Unsaved manual draft</h1>');
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    // Simulate external Agent write advancing revision before the user clicks Save.
+    currentRevision = newRevision;
+    const reloadBtn = container.querySelector<HTMLButtonElement>('button[aria-label="Reload preview"]');
+    if (reloadBtn) await act(async () => { reloadBtn.click(); });
+
+    const saveBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Save version'));
+    await act(async () => { saveBtn!.click(); });
+
+    expect(submittedRevision).toBe(revision);
+    // Draft stays open in the editor so user edits are not lost on conflict.
+    const stillEditing = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]');
+    expect(stillEditing?.value).toBe('<h1>Unsaved manual draft</h1>');
   });
 });

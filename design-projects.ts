@@ -619,7 +619,15 @@ export class DesignProjects {
     }
   }
 
-  private async appendVersion(id: string, files: DesignFile[], opts: { source: DesignVersion['source']; summary?: string | null; prompt?: string | null; restoredFrom?: string | null }): Promise<DesignVersion> {
+  private resolveEntryPath(preferred: string | undefined | null, paths: Iterable<string>): string | null {
+    const list = [...paths];
+    if (preferred && list.includes(preferred)) return preferred;
+    if (list.includes('index.html')) return 'index.html';
+    const html = list.find(p => fileKind(p) === 'html');
+    return html ?? null;
+  }
+
+  private async appendVersion(id: string, files: DesignFile[], opts: { source: DesignVersion['source']; summary?: string | null; prompt?: string | null; restoredFrom?: string | null; entry?: string }): Promise<DesignVersion> {
     const dir = this.projectDir(id);
     await this.retainBlobs(dir, files);
     const vf = await this.readVersionFile(id);
@@ -633,6 +641,7 @@ export class DesignProjects {
       summary: opts.summary?.trim() || null,
       prompt: opts.prompt?.trim() || null,
       restoredFrom: opts.restoredFrom ?? null,
+      ...(opts.entry ? { entry: opts.entry } : {}),
       files: files.map(f => ({ path: f.path, sha256: f.sha256, size: f.size })),
     };
     vf.versions.push(version);
@@ -740,7 +749,7 @@ export class DesignProjects {
       catalog.projects.push(stored);
       await this.saveCatalog(catalog);
       const files = await this.scanFiles(dir);
-      await this.appendVersion(id, files, { source: 'create', summary: template ? `Created from template ${template.id}` : `Created blank ${scenario}` });
+      await this.appendVersion(id, files, { source: 'create', summary: template ? `Created from template ${template.id}` : `Created blank ${scenario}`, entry });
       return this.hydrate(stored, origin);
     }));
   }
@@ -788,7 +797,7 @@ export class DesignProjects {
       };
       catalog.projects.push(stored);
       await this.saveCatalog(catalog);
-      await this.appendVersion(newId, files, { source: 'create', summary: `Duplicated from ${source.title}` });
+      await this.appendVersion(newId, files, { source: 'create', summary: `Duplicated from ${source.title}`, entry: stored.entry });
       return this.hydrate(stored, origin);
     }));
   }
@@ -905,6 +914,17 @@ export class DesignProjects {
         prepared.push({ path: safe, bytes });
       }
       const cleanDeletes = deletes.map(cleanDesignPath);
+      const requestedEntry = input.entry ? cleanDesignPath(input.entry) : null;
+      const projectedPaths = new Set(currentFiles.map(f => f.path));
+      for (const rel of cleanDeletes) projectedPaths.delete(rel);
+      for (const item of prepared) projectedPaths.add(item.path);
+      if (requestedEntry && !projectedPaths.has(requestedEntry)) {
+        throw new DesignError('INVALID_ARGUMENT', `Entry file ${requestedEntry} does not exist in project after write`);
+      }
+      const nextEntry = requestedEntry ?? this.resolveEntryPath(stored.entry, projectedPaths);
+      if (!nextEntry) {
+        throw new DesignError('INVALID_ARGUMENT', 'Write would remove project entry without leaving a valid HTML entry file');
+      }
 
       for (const item of prepared) {
         const full = path.join(dir, item.path);
@@ -916,18 +936,15 @@ export class DesignProjects {
       for (const rel of cleanDeletes) {
         await rm(path.join(dir, rel), { force: true });
       }
-      if (input.entry) stored.entry = cleanDesignPath(input.entry);
+      stored.entry = nextEntry;
       const nextFiles = await this.scanFiles(dir);
-      if (!nextFiles.some(f => f.path === stored.entry)) {
-        const fallbackHtml = nextFiles.find(f => f.kind === 'html')?.path;
-        if (fallbackHtml) stored.entry = fallbackHtml;
-      }
       stored.updatedAt = Date.now();
       await this.saveCatalog(catalog);
       const version = await this.appendVersion(pid, nextFiles, {
         source: input.source ?? 'agent',
         summary: input.summary ?? `Updated ${writes.length} file(s)`,
         prompt: input.prompt ?? null,
+        entry: stored.entry,
       });
       return { project: await this.hydrate(stored, origin), version };
     }));
@@ -960,7 +977,12 @@ export class DesignProjects {
       const vf = await this.readVersionFile(pid);
       const target = vf.versions.find(v => v.id === versionId);
       if (!target) throw new DesignError('NOT_FOUND', `Version ${versionId} not found`);
-      // Verify every historical blob exists before mutating disk.
+      // Verify every historical blob exists and snapshot has a valid entry before mutating disk.
+      const snapshotPaths = target.files.map(f => cleanDesignPath(f.path));
+      const restoredEntry = this.resolveEntryPath(target.entry ?? stored.entry, snapshotPaths) ?? snapshotPaths[0] ?? null;
+      if (!restoredEntry) {
+        throw new DesignError('INVALID_ARGUMENT', `Snapshot ${target.label} contains no files to restore`);
+      }
       for (const file of target.files) {
         if (!existsSync(path.join(this.blobsDir, file.sha256))) {
           throw new DesignError('UNSUPPORTED', `Historical blob missing for ${file.path} in ${target.label}`);
@@ -973,6 +995,7 @@ export class DesignProjects {
         await mkdir(path.dirname(dest), { recursive: true });
         await copyFile(path.join(this.blobsDir, file.sha256), dest);
       }
+      stored.entry = restoredEntry;
       stored.updatedAt = Date.now();
       await this.saveCatalog(catalog);
       const restoredFiles = await this.scanFiles(dir);
@@ -980,6 +1003,7 @@ export class DesignProjects {
         source: 'restore',
         summary: `Restored from ${target.label}`,
         restoredFrom: target.id,
+        entry: restoredEntry,
       });
       return { project: await this.hydrate(stored, origin), version };
     }));
@@ -1068,16 +1092,18 @@ export class DesignProjects {
     });
   }
 
-  private async snapshotMap(id: string, versionId?: string | null): Promise<{ stored: StoredProject; files: Map<string, Buffer> }> {
+  private async snapshotMap(id: string, versionId?: string | null): Promise<{ stored: StoredProject; files: Map<string, Buffer>; entry: string }> {
     const pid = validateId(id);
     const catalog = await this.readCatalog();
     const stored = catalog.projects.find(p => p.id === pid);
     if (!stored) throw new DesignError('NOT_FOUND', `Design project ${pid} not found`);
     const map = new Map<string, Buffer>();
+    let snapshotEntry: string | undefined;
     if (versionId) {
       const vf = await this.readVersionFile(pid);
       const ver = vf.versions.find(v => v.id === versionId);
       if (!ver) throw new DesignError('NOT_FOUND', `Version ${versionId} not found`);
+      snapshotEntry = ver.entry;
       for (const file of ver.files) {
         map.set(file.path, await readFile(path.join(this.blobsDir, file.sha256)));
       }
@@ -1086,7 +1112,8 @@ export class DesignProjects {
       const scanned = await this.scanFiles(dir);
       for (const file of scanned) map.set(file.path, await readFile(path.join(dir, file.path)));
     }
-    return { stored, files: map };
+    const entry = this.resolveEntryPath(snapshotEntry ?? stored.entry, map.keys()) ?? stored.entry;
+    return { stored, files: map, entry };
   }
 
   private inlineHtml(entry: string, files: Map<string, Buffer>): string {
@@ -1145,9 +1172,9 @@ export class DesignProjects {
 
   async exportProject(id: string, input: { format: DesignExportFormat; versionId?: string | null; filePath?: string | null }): Promise<{ filename: string; mime: string; data: Buffer }> {
     if (!designExportFormats.includes(input.format)) throw new DesignError('INVALID_ARGUMENT', `Unsupported export format: ${input.format}`);
-    const { stored, files } = await this.snapshotMap(id, input.versionId);
+    const { stored, files, entry: snapshotEntry } = await this.snapshotMap(id, input.versionId);
     const slug = stored.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'design-project';
-    const entry = input.filePath ? cleanDesignPath(input.filePath) : stored.entry;
+    const entry = input.filePath ? cleanDesignPath(input.filePath) : snapshotEntry;
 
     if (input.format === 'zip' || input.format === 'open-design') {
       const entries = [...files.entries()].map(([name, data]) => ({ name, data }));
@@ -1298,7 +1325,7 @@ export class DesignProjects {
     catalog.projects.push(stored);
     await this.saveCatalog(catalog);
     const scanned = await this.scanFiles(dir);
-    await this.appendVersion(id, scanned, { source: 'import', summary: `Imported ${scanned.length} file(s)` });
+    await this.appendVersion(id, scanned, { source: 'import', summary: `Imported ${scanned.length} file(s)`, entry });
     return this.hydrate(stored, origin);
   }
 
@@ -1480,7 +1507,9 @@ export async function designHttp(
       const mime = mimeFor(file);
       let data: Buffer = await readFile(file);
       if (url.searchParams.get('thumb') === '1' && mime.startsWith('text/html')) data = injectThumbPerfGuard(data);
-      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
+      const headers: Record<string, string> = { 'Content-Type': mime, 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' };
+      if (mime.startsWith('text/html')) headers['Content-Security-Policy'] = 'sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads';
+      res.writeHead(200, headers);
       res.end(data);
       return true;
     }
@@ -1522,7 +1551,9 @@ export async function designHttp(
     if (rawMatch && req.method === 'GET') {
       const { body, mime } = await service.readRawFile(rawMatch[1], decodeURIComponent(rawMatch[2]), url.searchParams.get('version'));
       const out = url.searchParams.get('thumb') === '1' && mime.startsWith('text/html') ? injectThumbPerfGuard(body) : body;
-      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      const headers: Record<string, string> = { 'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+      if (mime.startsWith('text/html')) headers['Content-Security-Policy'] = 'sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads';
+      res.writeHead(200, headers);
       res.end(out);
       return true;
     }

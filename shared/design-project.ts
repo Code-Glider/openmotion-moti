@@ -79,6 +79,7 @@ export type DesignVersion = {
   id: string; label: string; number: number; createdAt: number;
   source: 'agent' | 'manual' | 'restore' | 'import' | 'create';
   summary: string | null; prompt: string | null; restoredFrom: string | null;
+  entry?: string;
   files: { path: string; sha256: string; size: number }[];
 };
 
