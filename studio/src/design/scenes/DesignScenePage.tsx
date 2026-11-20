@@ -66,7 +66,7 @@ export function DesignScenePage({
   const [templateQuery, setTemplateQuery] = useState('');
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [remixingId, setRemixingId] = useState<string | null>(null);
+  const [remixing, setRemixing] = useState(false);
   const [manualPrompt, setManualPrompt] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DesignTemplateSummary | null>(null);
 
@@ -267,18 +267,19 @@ export function DesignScenePage({
   };
 
   const handleRemixTemplate = async (template: DesignTemplateSummary) => {
-    setRemixingId(template.id);
+    setRemixing(true);
     try {
       const { project } = await designClient.createProject({
         scenario: template.scenario,
         templateId: template.id,
         designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
       });
+      setPreviewTemplate(null);
       onOpenProject(project.id);
     } catch (err) {
       showToast(err instanceof Error ? err.message : t('Could not remix template'), 'error', 'feedback');
     } finally {
-      setRemixingId(null);
+      setRemixing(false);
     }
   };
 
@@ -401,16 +402,12 @@ export function DesignScenePage({
                           title={tpl.title}
                           badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
                           topRight={
-                            <div className="om-design-card-hover-actions" onClick={e => e.stopPropagation()}>
-                              <Button type="button" size="sm" variant="primary" loading={remixingId === tpl.id} onClick={() => void handleRemixTemplate(tpl)}>
-                                {t('Remix')}
-                              </Button>
-                              <IconButton
-                                aria-label={t('Use with Agent')}
-                                icon={<RemixIcon name="plug-line" size={14} />}
-                                onClick={() => handleUseTemplateWithAgent(tpl)}
-                              />
-                            </div>
+                            <Button type="button" size="sm" variant="primary" onClick={event => {
+                              event.stopPropagation();
+                              handleUseTemplateWithAgent(tpl);
+                            }}>
+                              {t('Recreate this template')}
+                            </Button>
                           }
                         />
                         <div className="om-design-card-body om-design-gallery-body">
@@ -578,10 +575,10 @@ export function DesignScenePage({
         <DesignTemplateDetailModal
           templates={templates}
           index={Math.max(0, templates.findIndex(tItem => tItem.id === previewTemplate.id))}
-          remixing={remixingId === previewTemplate.id}
+          remixing={remixing}
           onNavigate={nextIdx => { const next = templates[nextIdx]; if (next) setPreviewTemplate(next); }}
           onClose={() => setPreviewTemplate(null)}
-          onRemix={tpl => { void handleRemixTemplate(tpl); setPreviewTemplate(null); }}
+          onRemix={tpl => void handleRemixTemplate(tpl)}
           onUseWithAgent={tpl => { handleUseTemplateWithAgent(tpl); setPreviewTemplate(null); }}
         />
       )}

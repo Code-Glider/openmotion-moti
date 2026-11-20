@@ -219,6 +219,84 @@ test('Design Studio dismisses mention suggestions on an outside press', { timeou
   });
 });
 
+test('Design Studio template actions copy an Agent brief or create a project', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.evaluateOnNewDocument(() => {
+        localStorage.setItem('motion.studio.locale', 'zh-CN');
+        localStorage.setItem('hf-studio-ui-preferences', JSON.stringify({ theme: 'system' }));
+        navigator.clipboard.writeText = async text => { document.documentElement.dataset.copiedBrief = text; };
+      });
+      const origin = (await running.info()).previewUrl;
+      const scene = new URL('/?page=design&scene=prototype', origin).href;
+      const card = '.om-design-gallery-card';
+      const quickAction = `${card} .om-design-thumb-action > button`;
+      const popup = '.om-design-tpl-detail-popup';
+      const primary = `${popup} .om-media-detail-action-row > button[data-primary]`;
+      const remix = `${popup} button[aria-label="复用为项目"]`;
+      const creates: string[] = [];
+      page.on('request', request => {
+        if (request.method() === 'POST' && new URL(request.url()).pathname === '/motion-api/design/projects') {
+          creates.push(request.postData() ?? '');
+        }
+      });
+
+      await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+      await page.setViewport({ width: 1400, height: 900 });
+      await page.goto(scene, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector(quickAction, { visible: true });
+      await page.hover(card);
+      assert.deepEqual(await page.$eval(`${card} .om-design-thumb-action`, actions =>
+        [...actions.querySelectorAll('button')].map(button => button.textContent)), ['复刻模版']);
+      await page.click(quickAction);
+      await page.waitForFunction(() => document.documentElement.dataset.copiedBrief?.includes('velar-luxury-real-estate'));
+      assert.equal(await page.$(popup), null);
+      assert.equal(creates.length, 0);
+
+      for (const [theme, width] of [['dark', 1400], ['light', 600]] as const) {
+        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }]);
+        await page.setViewport({ width, height: 900 });
+        await page.goto(scene, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector(`${card} .om-design-card-title`, { visible: true });
+        await page.click(`${card} .om-design-card-title`);
+        await page.waitForSelector(primary, { visible: true });
+        assert.equal(await page.$eval(primary, button => button.textContent), '复刻模版');
+        assert.ok(await page.$(`${primary} .motion-icon path`));
+        assert.ok(await page.$(`${remix} [data-remix-icon="folder-add-line"] path`));
+        const { primaryRect, remixRect, remixWidth } = await page.$eval(popup, (dialog, primarySelector, remixSelector) => {
+          const primaryButton = dialog.querySelector(primarySelector)!;
+          const remixButton = dialog.querySelector(remixSelector)!;
+          return {
+            primaryRect: primaryButton.getBoundingClientRect().toJSON(),
+            remixRect: remixButton.getBoundingClientRect().toJSON(),
+            remixWidth: getComputedStyle(remixButton).width,
+          };
+        }, primary, remix);
+        assert.equal(remixRect.top, primaryRect.top);
+        assert.equal(remixRect.height, primaryRect.height);
+        assert.equal(remixWidth, '40px');
+        assert.ok(remixRect.left > primaryRect.right);
+
+        await page.focus(primary);
+        await page.keyboard.press('Enter');
+        await page.waitForFunction(() => document.documentElement.dataset.copiedBrief?.includes('velar-luxury-real-estate'));
+        await page.waitForSelector(popup, { hidden: true });
+        assert.equal(creates.length, 0);
+      }
+
+      await page.click(`${card} .om-design-card-title`);
+      await page.waitForSelector(remix, { visible: true });
+      await page.click(remix);
+      await page.waitForFunction(() => new URLSearchParams(location.search).has('designProject'));
+      assert.equal(creates.length, 1);
+      assert.equal(JSON.parse(creates[0]).templateId, 'velar-luxury-real-estate');
+    } finally { await browser.close(); await running.close(); }
+  });
+});
+
 test('Studio controls fit their resizable generator and timeline panes', { timeout: 60_000 }, async () => {
   await fixture(async store => {
     const gateway = gatewayFor(store);

@@ -1083,6 +1083,21 @@
   border: 0;
 }
 
+@media (min-width: 700px) {
+  .om-design-tpl-detail-popup .om-media-detail-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .om-design-tpl-detail-popup .om-media-detail-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 .om-design-tpl-stage {
   display: flex;
   flex-direction: column;
@@ -1311,19 +1326,6 @@
 /* --- Gallery-first Minimal Template Cards --- */
 .om-design-gallery-card {
   cursor: pointer;
-}
-
-.om-design-card-hover-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity var(--motion-duration-control) var(--motion-ease-out);
-}
-
-.om-design-gallery-card:hover .om-design-card-hover-actions,
-.om-design-gallery-card:focus-within .om-design-card-hover-actions {
-  opacity: 1;
 }
 
 .om-design-gallery-body {
