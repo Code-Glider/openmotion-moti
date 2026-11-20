@@ -1076,9 +1076,35 @@
   padding: 0 var(--motion-space-14) var(--motion-space-8);
 }
 
-/* --- Uniform Studio Bar Tab Heights (prevent vertical jitter between Image & Design scenes) --- */
+/* --- Uniform Studio Bar Tab Heights & Single-Row Responsive Scroll --- */
 .om-studio-bar {
   min-height: 61px;
+  flex-wrap: nowrap;
+  gap: var(--motion-space-14);
+}
+
+.om-studio-bar > button,
+.om-studio-bar > h1 {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.om-studio-bar .om-asset-tabs {
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: var(--motion-space-4);
+}
+
+.om-studio-bar .om-asset-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.om-design-scene-tabs {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .om-studio-bar .om-asset-tabs button,
@@ -1087,4 +1113,6 @@
   min-height: 36px;
   padding-top: 0;
   padding-bottom: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
