@@ -183,9 +183,22 @@ function caretRange(element: HTMLElement, view: Window): Range | null {
 function endOfCharBefore({ startContainer: at, startOffset: offset }: Range) {
   if (at.nodeType !== Node.TEXT_NODE || offset === 0) return null;
   const char = at.ownerDocument!.createRange();
-  // An emoji's second half alone has no box: take the whole pair.
-  const low = /[\uDC00-\uDFFF]/.test((at as Text).data[offset - 1] ?? "");
-  char.setStart(at, offset - (low && offset > 1 ? 2 : 1));
+  // DOM selection offsets count UTF-16 code units, not visible graphemes.
+  // Measuring just the final code unit cuts through Hebrew niqqud, Arabic
+  // vowel marks, emoji ZWJ sequences and other multi-code-point clusters.
+  // Only use the previous *complete* cluster at a boundary; a selection
+  // inside a cluster defers to the browser's collapsed caret geometry.
+  let graphemeStart: number | null = null;
+  for (const { index, segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment((at as Text).data)) {
+    const end = index + segment.length;
+    if (end === offset) {
+      graphemeStart = index;
+      break;
+    }
+    if (end > offset) break;
+  }
+  if (graphemeStart === null) return null;
+  char.setStart(at, graphemeStart);
   char.setEnd(at, offset);
   // A trailing space at a wrap has a box on each line; the earlier line's comes first.
   const rect = [...char.getClientRects()].find((each) => each.height > 0);
