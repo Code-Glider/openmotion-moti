@@ -1,5 +1,7 @@
 {
   "zh-CN": {
+    "Open Motion Editor": "打开 Motion 编辑器",
+    "Open in Motion Editor": "在 Motion 编辑器里打开",
     "Start with an editable motion template or open your timeline.": "从可编辑的动效模板开始，或打开时间线继续创作。",
     "Editable templates": "可编辑模板",
     "Motion templates": "Motion 模板",
@@ -165,6 +167,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "生成几秒钟轻柔、节奏不规则的键盘打字声，近距离、干声。"
   },
   "ja": {
+    "Open Motion Editor": "Motion エディターを開く",
+    "Open in Motion Editor": "Motion エディターで開く",
     "Start with an editable motion template or open your timeline.": "編集可能なモーションテンプレートから始めるか、タイムラインを開きましょう。",
     "Editable templates": "編集可能なテンプレート",
     "Motion templates": "Motion テンプレート",
@@ -330,6 +334,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "近くで鳴る乾いた、柔らかく不規則なキーボード入力音を数秒作る。"
   },
   "ko": {
+    "Open Motion Editor": "Motion 편집기 열기",
+    "Open in Motion Editor": "Motion 편집기에서 열기",
     "Start with an editable motion template or open your timeline.": "편집 가능한 모션 템플릿으로 시작하거나 타임라인을 여세요.",
     "Editable templates": "편집 가능한 템플릿",
     "Motion templates": "Motion 템플릿",
@@ -495,6 +501,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "가까이서 들리는 건조하고 부드러운 불규칙한 키보드 타이핑 소리를 몇 초간 만들어 주세요."
   },
   "de": {
+    "Open Motion Editor": "Motion-Editor öffnen",
+    "Open in Motion Editor": "Im Motion-Editor öffnen",
     "Start with an editable motion template or open your timeline.": "Starte mit einer editierbaren Motion-Vorlage oder öffne deine Zeitleiste.",
     "Editable templates": "Editierbare Vorlagen",
     "Motion templates": "Motion-Vorlagen",
@@ -660,6 +668,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Erzeuge einige Sekunden leises, unregelmäßiges Tastaturtippen, nah und trocken."
   },
   "fr": {
+    "Open Motion Editor": "Ouvrir l’éditeur Motion",
+    "Open in Motion Editor": "Ouvrir dans l’éditeur Motion",
     "Start with an editable motion template or open your timeline.": "Partez d’un modèle d’animation modifiable ou ouvrez votre timeline.",
     "Editable templates": "Modèles modifiables",
     "Motion templates": "Modèles Motion",
@@ -825,6 +835,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crée quelques secondes de frappe au clavier douce et irrégulière, proche et sèche."
   },
   "ru": {
+    "Open Motion Editor": "Открыть редактор Motion",
+    "Open in Motion Editor": "Открыть в редакторе Motion",
     "Start with an editable motion template or open your timeline.": "Начните с редактируемого шаблона анимации или откройте монтажную шкалу.",
     "Editable templates": "Редактируемые шаблоны",
     "Motion templates": "Шаблоны Motion",
@@ -990,6 +1002,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Создай несколько секунд мягкого неравномерного набора на клавиатуре, близко и сухо."
   },
   "es": {
+    "Open Motion Editor": "Abrir el editor de Motion",
+    "Open in Motion Editor": "Abrir en el editor de Motion",
     "Start with an editable motion template or open your timeline.": "Empieza con una plantilla de animación editable o abre tu línea de tiempo.",
     "Editable templates": "Plantillas editables",
     "Motion templates": "Plantillas Motion",
@@ -1155,6 +1169,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crea unos segundos de tecleo suave e irregular, cercano y seco."
   },
   "pt-BR": {
+    "Open Motion Editor": "Abrir o editor do Motion",
+    "Open in Motion Editor": "Abrir no editor do Motion",
     "Start with an editable motion template or open your timeline.": "Comece com um modelo de animação editável ou abra sua linha do tempo.",
     "Editable templates": "Modelos editáveis",
     "Motion templates": "Modelos Motion",
@@ -1320,6 +1336,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crie alguns segundos de digitação suave e irregular, próxima e seca."
   },
   "it": {
+    "Open Motion Editor": "Apri l’editor di Motion",
+    "Open in Motion Editor": "Apri nell’editor di Motion",
     "Start with an editable motion template or open your timeline.": "Inizia da un modello di animazione modificabile o apri la timeline.",
     "Editable templates": "Modelli modificabili",
     "Motion templates": "Modelli Motion",
@@ -1485,6 +1503,8 @@
     "Create a few seconds of soft, irregular keyboard typing, close and dry.": "Crea qualche secondo di digitazione morbida e irregolare, vicina e asciutta."
   },
   "tr": {
+    "Open Motion Editor": "Motion düzenleyicisini aç",
+    "Open in Motion Editor": "Motion düzenleyicisinde aç",
     "Start with an editable motion template or open your timeline.": "Düzenlenebilir bir hareketli grafik şablonuyla başlayın veya zaman çizelgenizi açın.",
     "Editable templates": "Düzenlenebilir şablonlar",
     "Motion templates": "Motion şablonları",
