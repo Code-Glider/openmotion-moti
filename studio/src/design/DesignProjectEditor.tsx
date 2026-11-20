@@ -7,7 +7,8 @@ import {
   type DesignComment, type DesignCommentAnchor, type DesignExportFormat, type DesignViewportId,
 } from '../../../shared/design-project';
 import type { ReviewAnnotation, ReviewPoint } from '../../../shared/review-comments';
-import { IconButton, Tooltip } from '../components/ui';
+import { IconButton } from 'open-design-ui/icon-button';
+import { Tooltip } from '../components/ui';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
 import { useI18n } from '../i18n/I18n';

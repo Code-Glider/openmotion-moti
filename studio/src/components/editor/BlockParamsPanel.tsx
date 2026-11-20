@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { OverflowText } from "../ui/OverflowText";
 import { ColorField } from "./propertyPanelColor";
 import { FieldInput, NativeSelect } from "../ui/FormField";
@@ -147,14 +148,13 @@ export const BlockParamsPanel = memo(function BlockParamsPanel({
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
         <div className="text-[11px] font-semibold text-neutral-200 truncate">{blockTitle}</div>
-        <button
+        <IconButton variant="plain"
           type="button"
           onClick={onClose}
           aria-label={t("Close block parameters")}
           className="p-1.5 -m-1 text-neutral-500 hover:text-neutral-300 active:scale-[0.97] transition-colors"
-        >
-          <RemixIcon name="close-line" size={14} />
-        </button>
+          icon={<RemixIcon name="close-line" size={14} />}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">

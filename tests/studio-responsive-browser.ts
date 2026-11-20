@@ -96,7 +96,7 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-creator-pane .om-asset-direct > button.om-button', { visible: true });
       await page.evaluate(() => document.fonts.ready);
-      for (const menuLabel of ['Image scenes and models', 'Video scenes and models', 'Audio scenes and models', 'Agent client']) {
+      for (const menuLabel of ['Image · Scenes', 'Video · Scenes', 'Audio · Scenes', 'Generate with Open Design MCP']) {
         const split = '.om-creative-split:has(> [aria-label="' + menuLabel + '"])';
         const popup = '[role="dialog"][aria-label="' + menuLabel + '"]';
         await page.hover(split + ' > .om-nav-row-link');
@@ -123,22 +123,19 @@ test('Studio controls fit their resizable generator and timeline panes', { timeo
         const scenes = bar.querySelector('nav')!.getBoundingClientRect();
         return back.bottom <= scenes.top;
       }), 'The mobile Studio header keeps its return action above the scenes');
-      const imageNav = '.om-creative-split:has(> [aria-label="Image scenes and models"])';
-      await page.waitForFunction(selector => {
-        const link = document.querySelector<HTMLElement>(selector);
-        if (!link) return false;
-        const bounds = link.getBoundingClientRect();
-        return bounds.left >= 0 && bounds.right <= innerWidth;
-      }, {}, imageNav + ' > .om-nav-row-link');
+      const imageNav = '.om-creative-strip > [data-nav-slot]:not([data-stowed]) .om-creative-split:has(> [aria-label="Image · Scenes"])';
+      await page.waitForSelector('.om-creative-navigation[data-compact-actions]');
       for (const scheme of ['dark', 'light'] as const) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
+        await page.waitForSelector(imageNav + ' > .om-nav-row-link', { visible: true });
         await page.click(imageNav + ' > .om-nav-row-link');
         await page.waitForFunction(() => new URL(location.href).searchParams.get('page') === 'design');
         await page.waitForSelector('.om-creative-menu', { hidden: true });
         await page.waitForSelector('.om-generation-pickers [aria-label="Generation model"]', { visible: true });
+        await page.mouse.move(5, 675);
         await page.focus(imageNav + ' > .om-nav-row-link');
         await page.keyboard.press('Tab');
-        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image scenes and models');
+        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Image · Scenes');
         await page.keyboard.press('Enter');
         const menu = await page.waitForSelector('.om-creative-menu', { visible: true });
         assert.ok(await menu!.evaluate(el => el.getBoundingClientRect().left >= 0 && el.getBoundingClientRect().right <= innerWidth));
@@ -191,7 +188,8 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
     const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
     try {
       const page = await browser.newPage();
-      const items = Array.from({ length: 8 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [] }));
+      await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
+      const items = Array.from({ length: 10 }, (_, i) => ({ id: 'work-' + i, title: 'Work ' + i, description: 'A product reveal.', kind: 'builtin', tags: [], uses: ['Product launch', 'Partnership announcement'], industries: ['AI & technology', 'Design tools'] }));
       await page.setRequestInterception(true);
       page.on('request', request => {
         if (new URL(request.url()).pathname.endsWith('/template-catalog')) {
@@ -204,11 +202,14 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       await page.goto(url.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.om-feed-group [data-template-id]');
       await page.evaluate(() => document.fonts.ready);
-      for (const width of [1512, 1060, 760, 320]) {
+      for (const [width, expectedCards] of [[1512, 8], [1280, 8], [1060, 6], [760, 4], [320, 2]]) {
         await page.setViewport({ width, height: 850 });
         const rowsFill = await page.$eval('.om-feed-group', feed => {
           const bounds = feed.getBoundingClientRect();
           const cards = Array.from(feed.children, card => card.getBoundingClientRect());
+          if (getComputedStyle(feed).overflowX === 'auto') {
+            return feed.scrollWidth > feed.clientWidth && cards.every(card => card.top === cards[0].top);
+          }
           return cards.every((card, index) => {
             const previous = cards[index - 1], next = cards[index + 1];
             const startsRow = !previous || previous.top !== card.top;
@@ -217,6 +218,65 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
           });
         });
         assert.ok(rowsFill, 'Gallery rows follow reading order and fill the available width at ' + width);
+        const shelves = await page.$$eval('.om-explore-shelf .om-explore-preview-grid', grids => grids.map(grid => {
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const full = [...rows.values()].every(row => Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { count: cards.length, rows: rows.size, full };
+        }));
+        assert.deepEqual(shelves, [
+          { count: expectedCards, rows: 2, full: true },
+          { count: expectedCards, rows: 2, full: true },
+        ], 'Template and Skill previews fit two complete rows at ' + width);
+        const studios = await page.$$eval('.om-studio-collection', sections => sections.map(section => {
+          const grid = section.querySelector<HTMLElement>('.om-studio-collection-cards')!;
+          const bounds = grid.getBoundingClientRect();
+          const cards = Array.from(grid.children).filter(card => card.getClientRects().length).map(card => card.getBoundingClientRect());
+          if (getComputedStyle(grid).overflowX === 'auto') {
+            return { studio: section.getAttribute('data-studio'), rail: true, full: cards.length > 0 && cards.every(card => Math.abs(card.top - cards[0].top) < 2) };
+          }
+          const rows = new Map<number, DOMRect[]>();
+          for (const card of cards) {
+            const key = [...rows.keys()].find(top => Math.abs(top - card.top) < 2) ?? card.top;
+            rows.set(key, [...(rows.get(key) ?? []), card]);
+          }
+          const rowLists = [...rows.values()];
+          const full = rowLists.every(row => row.length === rowLists[0].length && Math.abs(row[0].left - bounds.left) < 2 && Math.abs(row.at(-1)!.right - bounds.right) < 2);
+          return { studio: section.getAttribute('data-studio'), count: cards.length, rows: rowLists.length, full };
+        }));
+        assert.ok(studios.length === 8 && studios.every(item => item.full), 'Every Studio collection renders complete rows at ' + width + ': ' + JSON.stringify(studios));
+        const toolbarGeometry = await page.$eval('.om-explore-shelf[aria-label="Templates"]', section => {
+          const submit = section.querySelector<HTMLAnchorElement>('header a[href*="CONTRIBUTING.md"]');
+          const dropdown = section.querySelector<HTMLButtonElement>('.om-shelf-toolbar .om-gallery-dropdown');
+          const strip = section.querySelector<HTMLElement>('.om-shelf-toolbar .om-category-strip');
+          const dr = dropdown?.getBoundingClientRect();
+          const sr = strip?.getBoundingClientRect();
+          return {
+            hasSubmit: Boolean(submit),
+            dropdownSingleLine: Boolean(dr && dr.height <= 40 && dr.right <= innerWidth + 1 && dropdown!.scrollWidth <= dropdown!.clientWidth + 1),
+            noHorizontalOverflow: document.querySelector('.om-explore')!.scrollWidth <= document.querySelector('.om-explore')!.clientWidth + 1,
+            stripFits: Boolean(sr && sr.left >= 0 && sr.right <= innerWidth + 1),
+          };
+        });
+        assert.deepEqual(toolbarGeometry, { hasSubmit: true, dropdownSingleLine: true, noHorizontalOverflow: true, stripFits: true }, 'Template shelf controls fit on one line at ' + width);
+        if (width === 320) {
+          const strip = '.om-explore-shelf[aria-label="Templates"] .om-category-strip';
+          await page.waitForSelector(strip + ' button[aria-label^="Next"]:enabled');
+          assert.equal(await page.$(strip + ' [data-edge="left"]'), null);
+          assert.equal(await page.$eval(strip + '-viewport', list => getComputedStyle(list).scrollbarWidth), 'none');
+          await page.click(strip + ' button[aria-label^="Next"]');
+          await page.waitForFunction(selector => document.querySelector(selector)!.scrollLeft > 0, {}, strip + '-viewport');
+          await page.waitForSelector(strip + ' button[aria-label^="Previous"]:enabled');
+          await page.$eval(strip + '-viewport', list => { list.scrollLeft = list.scrollWidth; });
+          await page.waitForSelector(strip + ' [data-edge="right"]', { hidden: true });
+          await page.click(strip + ' [data-edge="left"]');
+          await page.waitForSelector(strip + ' [data-edge="right"]');
+        }
         const hero = (await page.$('.om-feature-carousel'))!;
         const initialHeight = await hero.evaluate(element => element.getBoundingClientRect().height);
         for (const indicator of await hero.$$('.om-media-segments button')) {
@@ -243,14 +303,15 @@ test('Explore fills every gallery row and plays the featured artwork in place', 
       const segments = await page.$$('.om-media-segments button');
       for (const segment of segments) {
         await segment.click();
+        await segment.evaluate(element => (element as HTMLButtonElement).blur());
         const start = await page.$eval(artwork, camera => getComputedStyle(camera).transform);
         await page.waitForFunction((selector, start) => getComputedStyle(document.querySelector(selector)!).transform !== start, {}, artwork, start);
         const scene = await page.$eval('.om-feature-carousel', hero => hero.getAttribute('data-scene'));
-        if (scene !== 'shot-image') {
+        if (scene !== 'shot-image' && scene !== 'black-friday' && scene !== 'hub-gemini-4') {
           await page.waitForFunction(selector => (document.querySelector(selector)?.querySelector('video')?.currentTime ?? 0) > 0.1, {}, artwork);
         }
       }
-      await page.click('.om-media-pagination > button:first-child');
+      await page.focus('.om-media-segments [aria-current]');
       assert.equal(await cameraState(), 'paused');
       assert.ok(await page.$eval(artwork + ' video', video => (video as HTMLVideoElement).paused));
     } finally {
@@ -301,5 +362,44 @@ test('Sound Studio previews and seeks the welcome track in both wide and compact
       await running.close();
       await gateway.close();
     }
+  });
+});
+
+test('the opt-in UI inspector outlines component roots, excludes its own controls and follows a modal', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      const url = new URL('/', (await running.info()).previewUrl);
+      await page.goto(url.href);
+      await page.waitForSelector('[data-odui-component="button"]');
+      assert.equal(await page.$('.odui-inspector'), null);
+      url.searchParams.set('debug', 'ui');
+      await page.goto(url.href);
+      await page.waitForSelector('.odui-inspector-launcher', { visible: true });
+      await page.click('.odui-inspector-launcher');
+      const row = '.odui-inspector-row';
+      await page.click(row);
+      assert.equal(await page.$eval('[data-odui-component="button"]:not(.odui-inspector *)', el => getComputedStyle(el).outlineStyle), 'solid');
+      await page.waitForFunction(() =>
+        Number(document.querySelector('.odui-inspector-row .odui-count')?.textContent) ===
+        document.querySelectorAll('button[data-odui-component="button"]:not(.odui-inspector *)').length);
+      await page.evaluate(() => {
+        const dialog = document.createElement('dialog');
+        dialog.id = 'inspector-test';
+        dialog.innerHTML = '<button>Native</button><div data-odui-component="slider"><input type="range"></div>';
+        document.body.append(dialog);
+        dialog.showModal();
+      });
+      await page.waitForSelector('#inspector-test .odui-inspector:popover-open');
+      await page.click(row + ':has(.native)');
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('#inspector-test > button')!).outlineStyle === 'dashed');
+      await page.click(row + ':last-child');
+      assert.notEqual(await page.$eval('#inspector-test input', el => getComputedStyle(el).outlineStyle), 'dashed');
+      await page.click('.odui-inspector-bar button:last-child');
+      assert.equal(await page.$('.odui-inspector'), null);
+      assert.notEqual(await page.$eval('#inspector-test > button', el => getComputedStyle(el).outlineStyle), 'dashed');
+    } finally { await browser.close(); await running.close(); }
   });
 });

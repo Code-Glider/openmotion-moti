@@ -77,7 +77,7 @@ const confirmSearch = () => act(async () => searchInput().dispatchEvent(new Keyb
 const clearKeyword = () => act(async () => button(`Remove filter ${searchInput().value}`).click());
 it('shows all Black Friday templates in one masonry gallery and previews them in order', async () => {
   const onClose = vi.fn();
-  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog blackFriday open busy={false} error="" onClose={onClose} onOpen={vi.fn()} /></I18nProvider>));
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog collection="black-friday" open busy={false} error="" onClose={onClose} onOpen={vi.fn()} /></I18nProvider>));
   expect(host.querySelector('[aria-label="Video purpose"]')).toBeNull();
   const banner = host.querySelector('[data-black-friday] header')!;
   expect(banner.querySelector('h1')?.textContent).toBe('Black Friday');
@@ -125,18 +125,18 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   expect(onClose).toHaveBeenCalledOnce();
 });
 
-it('hides the project return only when the same template is opened from Black Friday', async () => {
+it('omits the project return in both the template library and Black Friday details', async () => {
   sessionStorage.setItem('motion.template-handoff.preview', '1');
   const template = { ...items[1], id: 'black-friday-a5238e113514', title: 'Black Friday | 3D Type and Product Reveal' };
   fetchItems([template]);
 
   for (const blackFriday of [true, false]) {
-    await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog key={String(blackFriday)} blackFriday={blackFriday} open inWorkspace busy={false} error="" onClose={vi.fn()} onOpen={vi.fn()} /></I18nProvider>));
+    await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog key={String(blackFriday)} collection={blackFriday ? 'black-friday' : null} open inWorkspace busy={false} error="" onClose={vi.fn()} onOpen={vi.fn()} /></I18nProvider>));
     await act(async () => preview(template.title));
     const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
     expect(detail.open).toBe(true);
     expect(current()).toBe(template.title);
-    expect(Boolean(button('Back to current project', detail))).toBe(!blackFriday);
+    expect(button('Back to current project', detail)).toBeUndefined();
     await act(async () => button('Close template preview', detail).click());
   }
 });
@@ -473,7 +473,7 @@ it('filters brand templates directly and preserves category, search and reset be
   ]);
   await mount();
   const categories = host.querySelector('[role=group][aria-label="Video purpose"]')!;
-  expect(categories.children[1]).toBe(button('TOP 100 brands'));
+  expect(categories.querySelectorAll('button')[1]).toBe(button('TOP 100 brands'));
   expect(cards()).toHaveLength(5);
 
   await act(async () => button('TOP 100 brands').click());

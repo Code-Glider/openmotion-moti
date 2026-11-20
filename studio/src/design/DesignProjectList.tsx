@@ -6,7 +6,7 @@ import {
   designRoutes, designScenarios, findDesignScenario,
   type DesignEditorApp, type DesignProject, type DesignScenarioId,
 } from '../../../shared/design-project';
-import { IconButton } from '../components/ui';
+import { IconButton } from 'open-design-ui/icon-button';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
 import { useI18n } from '../i18n/I18n';

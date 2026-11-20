@@ -7,6 +7,7 @@ import templateUi from './template-ui.json';
 import mcpUi from './mcp-ui.json';
 import studioNavigationUi from './studio-navigation-ui.json';
 import { mcpFaq } from '../motion/mcpCapabilities';
+import { creativeStudios } from '../../../shared/studio-catalog';
 import { errorNoticeMessage } from '../components/ui/errorNoticeMessage';
 import { historyEntryLabel } from './historyMessages';
 
@@ -20,6 +21,11 @@ describe('editor language resources', () => {
       for (const [message, translation] of Object.entries(entries)) {
         expect(translation.trim(), `${locale}: ${message}`).not.toBe('');
         expect(translation.match(/openmotion_\w+/g) ?? []).toEqual(message.match(/openmotion_\w+/g) ?? []);
+      }
+      for (const label of [...creativeStudios.map(studio => studio.title), 'More Studio']) {
+        const translated = translate(locale, label);
+        expect(translated.trim(), `${locale}: ${label}`).not.toBe('');
+        expect(translated, `${locale}: ${label}`).not.toBe(label);
       }
     }
   });

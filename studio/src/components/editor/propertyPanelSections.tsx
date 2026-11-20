@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { OverflowText } from "../ui/OverflowText";
 import { FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
@@ -328,7 +329,7 @@ function TextFieldEditor({
           <div className="text-[10px] text-neutral-500">{field.tagName}</div>
         </div>
         {showRemove && (
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => {
               track("button", "Remove text field");
@@ -336,7 +337,7 @@ function TextFieldEditor({
             }}
             className="inline-flex h-7 shrink-0 items-center rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 text-[11px] font-medium text-neutral-300 transition-colors hover:border-neutral-600 hover:text-text-0"
           >
-            {t("Remove")}</button>
+            {t("Remove")}</Button>
         )}
       </div>
       <PromotableControl channel={{ kind: "text" }} enabled={field.source === "self"}>
@@ -477,7 +478,7 @@ export function TextSection({
       <div className="grid gap-1.5">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
           <span className={LABEL}>{t("Text layers")}</span>
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => {
               track("button", "Add text field");
@@ -489,13 +490,13 @@ export function TextSection({
           >
             <Plus size={12} className="shrink-0" />
             <span className="truncate">{t("Add text")}</span>
-          </button>
+          </Button>
         </div>
         <div className="grid gap-2">
           {textFields.map((field, index) => {
             const active = field.key === activeField.key;
             return (
-              <button
+              <Button variant="plain"
                 key={field.key}
                 type="button"
                 onClick={() => setActiveTextFieldKey(field.key)}
@@ -519,7 +520,7 @@ export function TextSection({
                     {field.tagName}
                   </span>
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>

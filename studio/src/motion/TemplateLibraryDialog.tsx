@@ -1,3 +1,8 @@
+import { IconButton } from 'open-design-ui/icon-button';
+import { CategoryStrip } from './CategoryStrip';
+import { TemplateIndustryMenu } from './TemplateIndustryMenu';
+import { collectionFacet, formatCategories, type TemplateCollection } from './templateCollections';
+import { loadCoveredTemplates } from './useCoveredTemplates';
 import { Button } from 'open-design-ui/button';
 import { blackFridayReference, blackFridayTemplates } from '../../../shared/black-friday-collection';
 import { BlackFridayCollection, type BlackFridayFilter } from './BlackFridayCollection';
@@ -13,25 +18,24 @@ import { BrandSeriesCard, BrandStoriesDialog } from './BrandStories';
 import { discoveryInsertions, groupBrandSeries, type BrandSeries } from './brandStoryData';
 import { seriesId, seriesContext, reportSeriesCard, openSeriesView, type SeriesView } from './brandStoryTracking';
 import storyStyles from './BrandStories.module.css';
-import { isEditableTemplate, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
+import { isEditableTemplate, matchesTemplateCategory, type GalleryTemplate, type TemplatePage } from '../../../shared/catalog';
 import { templatePrompt, type IntegrationInfo } from '../../../shared/integration';
 import { useI18n } from '../i18n/I18n';
 import { motionApi } from './useWorkspace';
 import { MotionIcon } from './icons';
-import { Menu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
 import { GalleryFilterPopover, GallerySortMenu, matchesGalleryFilters } from './GalleryFilters';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Popover } from '../components/ui/Popover';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
-import { purposeOrder } from './templateDiscoveryTaxonomy';
+import { orderedPurposes } from './templateDiscoveryTaxonomy';
 import { templateContributionUrl, templateSubmissionPrompt } from './templateContribution';
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
 import { RelatedTemplatePreviews } from './RelatedTemplatePreviews';
 import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, relatedTemplatesByTags, randomTemplate, type Facet } from './templateDiscovery';
-import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
+import { TemplateGalleryCard as TemplateCard, TopBrandsLabel, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
 import { useTemplateImpressions } from './useTemplateImpressions';
 import { matchesTemplateSearch, normalizedTemplateQuery } from './templateSearch';
@@ -62,7 +66,7 @@ function MetadataTag({ label, onClick }: { label: string; onClick: () => void })
     document.fonts?.addEventListener('loadingdone', measure);
     return () => { observer.disconnect(); document.fonts?.removeEventListener('loadingdone', measure); };
   }, [label]);
-  return <Tooltip withinDialog label={label} disabled={!overflow} wrap><button ref={ref} onClick={onClick}>{label}</button></Tooltip>;
+  return <Tooltip withinDialog label={label} disabled={!overflow} wrap><Button variant="plain" ref={ref} onClick={onClick}>{label}</Button></Tooltip>;
 }
 
 function DetailMedia({ template }: { template: GalleryTemplate }) {
@@ -74,12 +78,12 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
     {template.previewUrl && !failed && <video key={attempt} src={template.previewUrl} controls autoPlay muted playsInline loop preload="metadata"
       style={{ opacity: ready ? 1 : 0 }} onLoadedData={() => { setReady(true); setWaiting(false); }} onPlaying={() => setWaiting(false)} onCanPlay={() => setWaiting(false)} onWaiting={() => setWaiting(true)} onStalled={() => setWaiting(true)} onPause={() => setWaiting(false)} onError={() => { setFailed(true); setWaiting(false); }} />}
     {template.previewUrl && waiting && !failed && <div className={styles.mediaLoading} role="status"><span>{t('Loading preview…')}</span><Skeleton className={styles.mediaProgress} /></div>}
-    {failed && <div className={styles.mediaFailure} role="status"><span>{t('Preview unavailable. Try again.')}</span><button onClick={() => { setReady(false); setWaiting(true); setFailed(false); retry(value => value + 1); }}>{t('Retry')}</button></div>}
+    {failed && <div className={styles.mediaFailure} role="status"><span>{t('Preview unavailable. Try again.')}</span><Button variant="plain" onClick={() => { setReady(false); setWaiting(true); setFailed(false); retry(value => value + 1); }}>{t('Retry')}</Button></div>}
   </div>;
 }
 
 
-type Props = { detailOnly?: boolean; initialTemplate?: GalleryTemplate; blackFriday?: boolean; collectionSkillOpen?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { detailOnly?: boolean; initialTemplate?: GalleryTemplate; collection?: TemplateCollection | null; onCollectionChange?: (value: TemplateCollection | null) => void; collectionSkillOpen?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
@@ -103,18 +107,40 @@ export function TemplateLibraryDialog(props: Props) {
   const [catalog, setCatalog] = useState<GalleryTemplate[]>([]);
   const [warning, setWarning] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(false);
   const [attempt, retry] = useState(0), [libraryQuery, setLibraryQuery] = useState(''), [sort, setSort] = useState<Sort>('recommended');
-  const [selected, setSelected] = useState<Filters>({});
+  const [facetsSelected, setFacetsSelected] = useState<Filters>({});
+  const preset = useMemo(() => collectionFacet(props.collection), [props.collection]);
+  const selected = useMemo<Filters>(() => preset ? { ...facetsSelected, [preset.key]: [preset.value] } : facetsSelected, [preset, facetsSelected]);
+  function setSelected(next: Filters) {
+    if (preset && next[preset.key]?.length === 1 && next[preset.key]?.[0] === preset.value) {
+      const { [preset.key]: _preset, ...otherFacets } = next;
+      setFacetsSelected(otherFacets);
+    } else {
+      setFacetsSelected(next);
+      if (preset) props.onCollectionChange?.(null);
+    }
+  }
   const [preview, setPreview] = useState<GalleryTemplate | null>(null), [prompt, setPrompt] = useState('');
   const [manualCopy, setManualCopy] = useState('');
   const [promptError, setPromptError] = useState(false), [promptAttempt, retryPrompt] = useState(0);
   const [priority, setPriority] = useState<string | null>(null), [filtersOpen, setFiltersOpen] = useState(false);
-  const [editableOnly, setEditableOnly] = useState(false);
+  const [editableFilter, setEditableFilter] = useState(false);
+  const editableOnly = props.collection === 'builtin' || editableFilter;
+  function setEditableOnly(next: boolean) {
+    setEditableFilter(next && props.collection !== 'builtin');
+    if (!next && props.collection === 'builtin') props.onCollectionChange?.(null);
+  }
+  const format = props.collection === 'ads' || props.collection === 'short-form' ? props.collection : null;
   const [draftFilters, setDraftFilters] = useState<Filters>({});
   const [draftEditable, setDraftEditable] = useState(false);
   const [filterTab, setFilterTab] = useState<Facet>('uses');
   const [facetQuery, setFacetQuery] = useState('');
-  const [brandsOnly, setBrandsOnly] = useState(false);
-  const blackFriday = Boolean(props.blackFriday);
+  const [brandFilter, setBrandFilter] = useState(false);
+  const brandsOnly = props.collection === 'top-100-brands' || brandFilter;
+  function setBrandsOnly(next: boolean) {
+    setBrandFilter(next && props.collection !== 'top-100-brands');
+    if (!next && props.collection === 'top-100-brands') props.onCollectionChange?.(null);
+  }
+  const blackFriday = props.collection === 'black-friday';
   const [campaignSearch, setCampaignSearch] = useState(emptyCampaignSearch);
   const [selectedCampaignFilter, setSelectedCampaignFilter] = useState<BlackFridayFilter>(null);
   const campaignQuery = campaignSearch.query;
@@ -276,7 +302,7 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, props.returnFocus, props.inWorkspace, detailOnly]);
   useEffect(() => {
     if (!props.open) return;
-    setCatalog([]); setBrandStory(null); setSelected({}); setBrandsOnly(false); setCompareWithout(''); setLibraryQuery(''); setCampaignSearch(emptyCampaignSearch); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null);
+    setCatalog([]); setBrandStory(null); setFacetsSelected({}); setBrandFilter(false); setCompareWithout(''); setLibraryQuery(''); setCampaignSearch(emptyCampaignSearch); setSettledKeyword(''); setRecoveryExpanded(false); setPreview(null);
     if (dialog.current) detail.current?.close();
     shown.current = false; searchId.current = undefined; reportedQuery.current = ''; pendingResult.current = undefined; shownCards.current.clear(); seriesLists.current.clear(); shownSeries.current.clear();
     const controller = new AbortController();
@@ -284,12 +310,11 @@ export function TemplateLibraryDialog(props: Props) {
     async function load() {
       pending = true; setLoading(true); setError('');
       try {
-        const items: GalleryTemplate[] = []; let offset: number | null = 0;
-        while (offset !== null) {
-          const page: TemplatePage = await motionApi(`/template-catalog?category=all&covered=true&limit=60&offset=${offset}&locale=${encodeURIComponent(locale)}`, { signal: controller.signal });
-          items.push(...page.items); offset = page.next; version = page.catalogVersion; setWarning(page.warning ?? '');
+        const result = await loadCoveredTemplates(locale, controller.signal);
+        if (!controller.signal.aborted) {
+          version = result.catalogVersion;
+          setWarning(result.warning ?? ''); setCatalog(result.items); setCatalogVersion(version ?? ''); shown.current = true;
         }
-        if (!controller.signal.aborted) { setCatalog(items); setCatalogVersion(version ?? ''); shown.current = true; }
       } catch (err) { if (!controller.signal.aborted) setError((err as Error).message); }
       finally { pending = false; if (!controller.signal.aborted) setLoading(false); }
     }
@@ -309,14 +334,11 @@ export function TemplateLibraryDialog(props: Props) {
   }, [props.open, attempt, locale]);
   const available = useMemo(() => facets.map(([key, label]) => ({ key, label, values: [...new Set(catalog.flatMap(item => values(item, key)))] })).filter(facet => facet.values.length), [catalog]);
   const missingTemplate = Boolean(props.templateId && shown.current && !loading && !error && !catalog.some(item => item.id === props.templateId) && !blackFridayReference(props.templateId, locale));
-  const categories = [...(available.find(facet => facet.key === 'uses')?.values ?? [])].sort((a, b) => {
-    const rank = (value: string) => purposeOrder.includes(value) ? purposeOrder.indexOf(value) : purposeOrder.length;
-    return rank(a) - rank(b);
-  });
+  const categories = orderedPurposes(available.find(facet => facet.key === 'uses')?.values ?? []);
   const industries = available.find(facet => facet.key === 'industries')?.values ?? [];
   const sortOptions = [['recommended', 'Recommended order'], ['name', 'Name A–Z'], ['reverse', 'Name Z–A'], ['duration', 'Duration']] as const;
-  const hasFilters = Boolean(libraryQuery || editableOnly || brandsOnly || compareWithout || Object.values(selected).some(items => items?.length));
-  const searchable = useMemo(() => catalog.filter(item => (props.creators || ((!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout))) && matchesTemplateSearch(item, libraryQuery, t)), [catalog, libraryQuery, brandsOnly, compareWithout, props.creators, t]);
+  const hasFilters = Boolean(format || libraryQuery || editableOnly || brandsOnly || compareWithout || Object.values(selected).some(items => items?.length));
+  const searchable = useMemo(() => catalog.filter(item => (props.creators || ((!format || matchesTemplateCategory(item, format)) && (!brandsOnly || Boolean(item.brand?.trim())) && (!compareWithout || item.brand !== compareWithout))) && matchesTemplateSearch(item, libraryQuery, t)), [catalog, libraryQuery, format, brandsOnly, compareWithout, props.creators, t]);
   const draftCount = useMemo(() => filtersOpen ? searchable.filter(item => matchesFilters(item, draftFilters, draftEditable)).length : 0, [filtersOpen, searchable, draftFilters, draftEditable]);
   const hasDraftFilters = draftEditable || Object.values(draftFilters).some(items => items?.length);
   const visible = useMemo(() => {
@@ -324,11 +346,11 @@ export function TemplateLibraryDialog(props: Props) {
     return searchable.filter(item => matchesFilters(item, selected, editableOnly)).sort((a, b) => sort === 'recommended' ? (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) : sort === 'duration' ? (a.duration ?? Infinity) - (b.duration ?? Infinity) : a.title.localeCompare(b.title, locale) * (sort === 'reverse' ? -1 : 1));
   }, [searchable, selected, sort, locale, editableOnly, props.creators, props.creator]);
   useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [libraryQuery, selected, sort, editableOnly, brandsOnly, compareWithout, blackFriday]);
-  const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
+  const filterCount = Number(Boolean(format)) + Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
   const hasAppliedFilters = filterCount > 0;
   const campaignSelection = blackFriday ? activeCampaignFilter ?? 'all' : null;
   const galleryFilterCount = blackFriday ? Number(activeCampaignFilter !== null) : filterCount;
-  const searchContextKey = JSON.stringify([campaignSelection, normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
+  const searchContextKey = JSON.stringify([campaignSelection, format, normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
   const searchContext = useTemplateSearchContext(props.open && !detailOnly, !loading && shown.current && !error && !searchComposing, searchContextKey, Boolean(query.trim() || galleryFilterCount));
   const currentSearchContext = useRef(searchContext); currentSearchContext.current = searchContext;
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
@@ -366,7 +388,7 @@ export function TemplateLibraryDialog(props: Props) {
   const showEmptyRecovery = !loading && !error && !visible.length;
   const suggestedRemoval = useMemo(() => {
     if (!showEmptyRecovery || !stableSearch || !hasAppliedFilters || !catalog.length) return;
-    const matches = catalog.filter(item => (!compareWithout || item.brand !== compareWithout) && matchesTemplateSearch(item, libraryQuery, t));
+    const matches = catalog.filter(item => (!format || matchesTemplateCategory(item, format)) && (!compareWithout || item.brand !== compareWithout) && matchesTemplateSearch(item, libraryQuery, t));
     const count = (filters: Filters, editable: boolean, brands: boolean) => matches.filter(item =>
       (!brands || Boolean(item.brand?.trim())) && matchesFilters(item, filters, editable)).length;
     const options = facets.flatMap(([key]) => (selected[key] ?? []).map(value => ({
@@ -378,7 +400,7 @@ export function TemplateLibraryDialog(props: Props) {
       ...(brandsOnly ? [{ key: 'top' as const, value: '', label: t('TOP 100 brands'), count: count(selected, editableOnly, false) }] : []),
     ];
     return [...options, ...special].filter(option => option.count > 0).sort((a, b) => b.count - a.count)[0];
-  }, [showEmptyRecovery, stableSearch, hasAppliedFilters, catalog, libraryQuery, t, selected, editableOnly, brandsOnly, compareWithout]);
+  }, [showEmptyRecovery, stableSearch, hasAppliedFilters, format, catalog, libraryQuery, t, selected, editableOnly, brandsOnly, compareWithout]);
   // A filter, category or sort result is reported after the changed list has rendered, with the count the user now sees.
   useEffect(() => {
     const action = pendingResult.current; pendingResult.current = undefined;
@@ -386,7 +408,7 @@ export function TemplateLibraryDialog(props: Props) {
   }, [selected, sort, libraryQuery, editableOnly, brandsOnly]);
   // One result set per search, filter and sort combination: a card is reported again only when that combination changes.
   // Empty groups are dropped and groups and values sorted, so the same choices always make the same key.
-  const resultSet = JSON.stringify([campaignSelection, query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
+  const resultSet = JSON.stringify([campaignSelection, format, query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
   const seriesLists = useRef(new Map<string, string>()), shownSeries = useRef(new Set<string>());
   if (!seriesLists.current.has(resultSet)) seriesLists.current.set(resultSet, tracking.newTrackingId());
   const seriesListId = seriesLists.current.get(resultSet)!;
@@ -443,7 +465,7 @@ export function TemplateLibraryDialog(props: Props) {
   const related = useMemo(() => preview ? (campaignStage ? campaignStage.items.filter(item => item.id !== preview.id)
     : handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview, campaignStage]);
   const previewIndex = galleryItems.findIndex(item => item.id === preview?.id);
-  const clear = () => { setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
+  const clear = () => { if (format) props.onCollectionChange?.(null); setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
   const reset = () => {
     setCompareWithout('');
     if (hasFilters) { tracking.reportDiscoveryClick('filter_clear', listContext()); pendingResult.current = 'filter_clear'; }
@@ -457,20 +479,23 @@ export function TemplateLibraryDialog(props: Props) {
   };
   const toggle = (key: Facet, value: string) => {
     picked('filter_option', key, value, !selected[key]?.includes(value));
-    setSelected(previous => ({ ...previous, [key]: previous[key]?.includes(value) ? previous[key]!.filter(item => item !== value) : [...(previous[key] ?? []), value] }));
+    setSelected(toggleValue(selected, key, value));
   };
   const chooseCategory = (key: 'uses' | 'industries', value: string | undefined) => {
     setCompareWithout('');
     const next = value === undefined || (key === 'uses' && selected.uses?.includes(value)) ? [] : [value];
     picked('category_select', key, value, next.length > 0);
-    if (key === 'uses') setBrandsOnly(false);
-    setSelected(previous => ({ ...previous, [key]: next }));
+    if (key === 'uses') {
+      setBrandsOnly(false);
+      if (format) props.onCollectionChange?.(null);
+    }
+    setSelected({ ...selected, [key]: next });
   };
   const chooseBrands = (next: boolean) => {
     setCompareWithout('');
     picked(next ? 'category_select' : 'filter_option', 'brand', 'top-100-brands', next);
     setBrandsOnly(next);
-    if (next) setSelected(previous => ({ ...previous, uses: [] }));
+    if (next) setSelected({ ...selected, uses: [] });
   };
   const toggleEditable = (next: boolean) => { picked('filter_option', 'editable', undefined, next); setEditableOnly(next); };
   const changeSort = (value: string) => {
@@ -670,23 +695,17 @@ export function TemplateLibraryDialog(props: Props) {
         {!blackFriday && <div className="om-control-row om-gallery-header-actions">
           {searchField}
           <GitHubLink className="om-button" />
-          <Tooltip label={t('Close template library')}><button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button></Tooltip>
+          <Tooltip label={t('Close template library')}><IconButton variant="ghost" ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')} icon={<MotionIcon name="close" size={16} />} /></Tooltip>
         </div>}
       </header>
       {!props.creators && !blackFriday && <div className={styles.toolbar}>
-        <div className={`om-control-row ${styles.categories}`} role="group" aria-label={t('Video purpose')}>
-          <button className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
-          <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
-          {categories.map(value => <button className="om-button om-filter-pill" key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</button>)}
-        </div>
+        <CategoryStrip label="Video purpose" selection={brandsOnly ? 'top-100-brands' : selected.uses?.join('|')}>
+          <Button type="button" variant="ghost" className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</Button>
+          <Button type="button" variant="ghost" className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><TopBrandsLabel /></Button>
+          {categories.map(value => <Button type="button" variant="ghost" className="om-button om-filter-pill" key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</Button>)}
+        </CategoryStrip>
         <div className={styles.controls}>
-          {industries.length > 0 && <Menu modal={false} container={null} align="start" aria-label={t('By industry')} className={styles.discoveryMenu}
-            trigger={<button className={styles.dropdownButton}><span>{selected.industries?.length === 1 ? t(selected.industries[0]) : t('By industry')}</span>{(selected.industries?.length ?? 0) > 1 && <span className={styles.filterCount}>{selected.industries!.length}</span>}<MotionIcon name="chevron-down" size={16} /></button>}>
-            <MenuRadioGroup value={selected.industries?.length === 1 ? selected.industries[0] : selected.industries?.length ? '' : 'all'} onValueChange={value => chooseCategory('industries', value === 'all' ? undefined : value)}>
-              <MenuRadioItem value="all">{t('All industries')}</MenuRadioItem>
-              {industries.map(value => <MenuRadioItem key={value} value={value}>{t(value)}</MenuRadioItem>)}
-            </MenuRadioGroup>
-          </Menu>}
+          <TemplateIndustryMenu industries={industries} selected={selected.industries} onSelect={value => chooseCategory('industries', value)} />
           <GalleryFilterPopover groups={available.map(group => ({ ...group, values: group.key === 'uses' ? categories : group.values }))}
             open={filtersOpen} onOpenChange={openFilters} draft={draftFilters} onChange={setDraftFilters}
             tab={filterTab} onTabChange={value => setFilterTab(value as Facet)} query={facetQuery} onQueryChange={setFacetQuery}
@@ -697,7 +716,7 @@ export function TemplateLibraryDialog(props: Props) {
           <GallerySortMenu value={sort} options={sortOptions} onChange={changeSort} />
         </div>
       </div>}
-      {!props.creators && !blackFriday && hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}{hasAppliedFilters && <button onClick={reset}>{t('Clear filters')}</button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
+      {!props.creators && !blackFriday && hasFilters && <div className={styles.chips}>{format && <Button variant="plain" onClick={() => props.onCollectionChange?.(null)} aria-label={t('Remove filter {value}', { value: t(formatCategories[format]) })}>{t(formatCategories[format])}<MotionIcon name="close" size={12} /></Button>}{brandsOnly && <Button variant="plain" onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></Button>}{query && <Button variant="plain" onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></Button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <Button variant="plain" key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></Button>))}{compareWithout && <Button variant="plain" onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></Button>}{editableOnly && <Button variant="plain" onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></Button>}{hasAppliedFilters && <Button variant="plain" onClick={reset}>{t('Clear filters')}</Button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>}
     {blackFriday && !props.creators ? <BlackFridayCollection templates={campaignItems}
       featuredPreviewsEnabled={props.open && !preview && !props.collectionSkillOpen} onBack={props.onClose}
@@ -710,35 +729,35 @@ export function TemplateLibraryDialog(props: Props) {
     : props.creators ? <TemplateCreators catalog={catalog} creator={props.creator ?? null} query={query} works={visible} loading={loading}
       error={error} retry={() => retry(value => value + 1)} choose={chooseCreator} open={openCard} active={active} onPriority={setPriority} /> :
     <main className={styles.results} aria-busy={loading}>
-      {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
+      {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><Button variant="plain" onClick={closeDetail}>{t('View all templates')}</Button></div>}
       <div className={storiesPreview && brandsOnly ? storyStyles.brandGrid : styles.grid}>
         {!showEmptyRecovery && <GalleryIntro eyebrow={storiesPreview && brandsOnly ? t('TOP 100 / Brand series') : t('Made to move.')} title={storiesPreview && brandsOnly ? t('Find ideas for your next launch.') : t('Find your next motion.')} description={storiesPreview && brandsOnly ? t('Browse by brand and follow their launches over time. Pick a video and make it your own.') : t('Explore the details. Find a direction. Make it your own.')} count={loading && !catalog.length ? t('Loading templates…') : storiesPreview && brandsOnly ? t('{brands} brands · {works} works', { brands: visibleBrandGroups.length, works: visible.length }) : t('{count} templates', { count: visible.length })} disabled={!visible.length || loading} onSurprise={surprise} submitLabel={t('Submit video')} submitUrl={templateContributionUrl} onSubmit={() => tracking.reportDiscoveryClick('submit_video', listContext())}
           afterActions={!query.trim() && <div className={`om-media-detail-actions ${styles.referenceEntry}`}>
             <span className={styles.referenceEntryLabel}>{t('Nothing suitable?')}</span>
-            <button type="button" className="om-button" data-reference-entry="library_home" aria-haspopup="dialog" aria-label={t('Paste a video link to make your own')} onClick={event => {
+            <Button variant="ghost" type="button" className="om-button h-auto" data-reference-entry="library_home" aria-haspopup="dialog" aria-label={t('Paste a video link to make your own')} onClick={event => {
               const context = listContext();
               referenceSeen(context);
               tracking.reportRecoveryAction('reference', context, 'library_home');
               setReferenceTrigger(event.currentTarget);
             }}>
               <span>{t('Paste a video link to make your own')}</span><MotionIcon name="arrow-right" size={16} />
-            </button>
+            </Button>
           </div>} />}
         {loading && !catalog.length && Array.from({ length: 12 }, (_, index) => <div key={index} className={styles.skeletonCard} aria-hidden="true"><Skeleton style={{ aspectRatio: [1.35, 1.78, 1, 1.78][index % 4] }} /><div><Skeleton style={{ width: 28, height: 28, borderRadius: '50%' }} /><Skeleton style={{ width: '55%', height: 9 }} /></div></div>)}
         {storiesPreview && brandsOnly ? visibleBrandGroups.map(series => <BrandSeriesCard key={series.name} series={series} onOpen={(group, element) => openBrand(group, element, 'top100')} />) : visible.map((item, index) => <Fragment key={item.id}>{insertions.get(index) && <BrandSeriesCard series={insertions.get(index)!} discovery onOpen={(group, element) => openBrand(group, element, 'discovery')} />}<TemplateCard template={item} onSelect={openCard} active={active.has(item.id)} onPriority={setPriority} /></Fragment>)}
       </div>
       {loading && !catalog.length && <span className={styles.visuallyHidden} role="status">{t('Loading templates…')}</span>}
-      {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><button onClick={() => retry(value => value + 1)}>{t('Retry')}</button></div>}
+      {error && <div className={styles.empty} role="alert"><p>{t(error)}</p><Button variant="plain" onClick={() => retry(value => value + 1)}>{t('Retry')}</Button></div>}
       {props.open && <div data-search-recovery="" hidden={!showRecovery}>
         <TemplateSearchRecovery visible={showRecovery} query={query} context={listContext()} reason={!catalog.length ? 'catalog_empty' : showEmptyRecovery ? 'no_results' : 'unsuitable'} expanded={showEmptyRecovery || recoveryExpanded}
-          searchAction={showEmptyRecovery && (!catalog.length ? <button className="om-button" onClick={() => retry(value => value + 1)}>{t('Reload')}</button>
-            : suggestedRemoval ? <button className="om-button" onClick={() => {
+          searchAction={showEmptyRecovery && (!catalog.length ? <Button variant="ghost" className="om-button h-auto" onClick={() => retry(value => value + 1)}>{t('Reload')}</Button>
+            : suggestedRemoval ? <Button variant="ghost" className="om-button h-auto" onClick={() => {
               if (suggestedRemoval.key === 'editable') toggleEditable(false);
               else if (suggestedRemoval.key === 'top') chooseBrands(false);
               else toggle(suggestedRemoval.key, suggestedRemoval.value);
-            }}>{t('Remove {condition} · Show {results}', { condition: suggestedRemoval.label, results: suggestedRemoval.count === 1 ? t('1 template') : t('{count} templates', { count: suggestedRemoval.count }) })}</button>
-              : query.trim() ? <button className="om-button" onClick={() => search.current?.focus()}>{t('Edit search')}</button>
-                : hasAppliedFilters ? <button className="om-button" onClick={reset}>{t('Clear filters')}</button> : null)}
+            }}>{t('Remove {condition} · Show {results}', { condition: suggestedRemoval.label, results: suggestedRemoval.count === 1 ? t('1 template') : t('{count} templates', { count: suggestedRemoval.count }) })}</Button>
+              : query.trim() ? <Button variant="ghost" className="om-button h-auto" onClick={() => search.current?.focus()}>{t('Edit search')}</Button>
+                : hasAppliedFilters ? <Button variant="ghost" className="om-button h-auto" onClick={reset}>{t('Clear filters')}</Button> : null)}
           onExpand={expandSearchRecovery} onActivity={searchRecoveryActivity} showToast={(message, kind) => showToast(message, kind, 'feedback')} />
       </div>}
     </main>}
@@ -766,18 +785,17 @@ export function TemplateLibraryDialog(props: Props) {
           <div className={styles.stageGlass} />
           <DetailMedia key={preview.id} template={preview} />
           {handoffPreview && <nav className={styles.stageNavigation} aria-label={t('Browse videos')}>
-            <button className="om-button" disabled={galleryItems.length < 2} onClick={() => navigate(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</button>
+            <Button variant="ghost" className="om-button h-auto" disabled={galleryItems.length < 2} onClick={() => navigate(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</Button>
             <span>{previewIndex >= 0 ? `${previewIndex + 1} / ${galleryItems.length}` : t('Related templates')}</span>
-            <button className="om-button" disabled={galleryItems.length < 2} onClick={() => navigate(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></button>
+            <Button variant="ghost" className="om-button h-auto" disabled={galleryItems.length < 2} onClick={() => navigate(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></Button>
           </nav>}
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
-            {handoffPreview && !detailOnly && !blackFriday && <button className="om-button" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</button>}
-            <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
+            <Tooltip withinDialog wrap label={t('Close template preview')}><IconButton variant="plain" className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')} icon={<MotionIcon name="close" size={20} />} /></Tooltip>
             <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${galleryItems.length}` : t('Related templates')}</span>
-            <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={galleryItems.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
-            <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={galleryItems.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
+            <Tooltip withinDialog wrap label={t('Previous template')}><IconButton variant="plain" className={styles.iconButton} disabled={galleryItems.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')} icon={<MotionIcon name="arrow-left" size={18} />} /></Tooltip>
+            <Tooltip withinDialog wrap label={t('Next template')}><IconButton variant="plain" className={styles.iconButton} disabled={galleryItems.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')} icon={<MotionIcon name="arrow-right" size={18} />} /></Tooltip>
           </div>
           <div ref={reviewBody} className={styles.detailBody}>
             <h2 ref={detailTitle} tabIndex={handoffPreview ? -1 : undefined} className="om-media-detail-title">{preview.title}</h2>
@@ -785,14 +803,14 @@ export function TemplateLibraryDialog(props: Props) {
             {handoffPreview && <TemplateReviewSpecs template={preview} />}
             <div className={styles.creator}>
               <Identity template={preview} />
-              <div>{credit && props.onCreatorChange ? <button className="om-text-link" onClick={() => chooseCreator(credit.id)}>{credit.name}</button> : <strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>}{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>
+              <div>{credit && props.onCreatorChange ? <Button variant="plain" className="om-text-link" onClick={() => chooseCreator(credit.id)}>{credit.name}</Button> : <strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>}{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>
               {preview.sourceUrl && <Tooltip withinDialog wrap label={t('Source')}><a className={styles.sourceLink} href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>}
             </div>
             {handoffPreview && <section className={styles.reviewResources} aria-label={t('Template resources')}>
               <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}</a>
               <div className={styles.reviewResourceActions}>
                 {preview.motionDocumentUrl && <Tooltip withinDialog wrap label="motion.md" description={t('Download the shot and motion notes.')}>
-                  <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={17} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>
+                  <Button variant="plain" className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={17} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</Button>
                 </Tooltip>}
               </div>
             </section>}
@@ -802,20 +820,20 @@ export function TemplateLibraryDialog(props: Props) {
             </>}
             <section ref={instructionText} className={`${styles.instruction} ${handoffPreview ? styles.reviewCreation : ''}`} aria-label={t(handoffPreview ? 'Template recreation instruction' : 'Template instruction')}><header><h3>{t(handoffPreview ? 'Template recreation instruction' : 'Template instruction')}</h3>
               {handoffPreview && <Popover key={preview.id} container={detail} align="end" openOnHover aria-label={t('After copying')} className={styles.handoffPopover} initialFocus={false} onOpenChange={open => { if (open) tracking.reportDetailAction(preview, 'handoff_help', detailView.current); }}
-                trigger={<button className={`om-text-link ${styles.handoffHelp}`} data-quiet>{t('Next steps')}<MotionIcon name="info" size={14} /></button>}>
+                trigger={<Button variant="plain" className={`om-text-link ${styles.handoffHelp}`} data-quiet>{t('Next steps')}<MotionIcon name="info" size={14} /></Button>}>
                 <div onKeyDown={event => event.stopPropagation()}><TemplateHandoffSteps template={preview} /></div>
               </Popover>}
-            </header>{(manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>)}<button disabled={!prompt} className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
+            </header>{(manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<Button variant="plain" onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</Button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>)}<Button variant="plain" disabled={!prompt} className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></Button></section>
             {!handoffPreview && <div className={styles.actions}>
-              {isEditableTemplate(preview) && <button className="om-button" data-primary disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}
+              {isEditableTemplate(preview) && <Button variant="ghost" className="om-button h-auto" data-primary disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></Button>}
               <div className={styles.recreateActions}>
-                <button className="om-button" data-primary disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button>
-                <Tooltip withinDialog wrap label={t('Recreate and submit')}><button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></Tooltip>
+                <Button variant="ghost" className="om-button h-auto" data-primary disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></Button>
+                <Tooltip withinDialog wrap label={t('Recreate and submit')}><IconButton variant="plain" className={`om-button ${styles.submitTemplate}`} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')} icon={<MotionIcon name="git-branch" size={17} />} /></Tooltip>
               </div>
             </div>}
             {!handoffPreview && <div className={styles.resourceLinks}>
               {!handoffPreview && <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={templateRepositoryUrl(preview)} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_repository', detailView.current)}><GithubLogo size={16} weight="fill" aria-hidden="true" />{t('View on GitHub')}</a>}
-              {preview.motionDocumentUrl && <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={15} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>}
+              {preview.motionDocumentUrl && <Button variant="plain" className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={15} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</Button>}
             </div>}
             <dl className={styles.metadata} hidden={handoffPreview}>
               {preview.duration != null && <div><dt>{t('Duration')}</dt><dd>{t('{value}s', { value: Number(preview.duration.toFixed(1)) })}</dd></div>}
@@ -833,11 +851,11 @@ export function TemplateLibraryDialog(props: Props) {
           </div>
           {handoffPreview && <div ref={reviewFooter} className={styles.reviewFooter} role="group" aria-label={t('Template actions')}>
               <div className={styles.handoffActions}>
-                {isEditableTemplate(preview) && <><p>{t('A separate project keeps your current work intact. Replace the sample content after opening.')}</p><button className="om-button" data-primary disabled={props.busy || props.openingDisabled || ['creating', 'opening', 'unknown'].includes(projectProgress[preview.id]?.state)} onClick={() => void prepareProject(preview)}>{t(projectProgress[preview.id]?.state === 'creating' ? 'Creating project…' : projectProgress[preview.id]?.state === 'opening' ? 'Opening project…' : projectProgress[preview.id]?.result ? 'Continue editing this project' : 'Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button></>}
+                {isEditableTemplate(preview) && <><p>{t('A separate project keeps your current work intact. Replace the sample content after opening.')}</p><Button variant="ghost" className="om-button h-auto" data-primary disabled={props.busy || props.openingDisabled || ['creating', 'opening', 'unknown'].includes(projectProgress[preview.id]?.state)} onClick={() => void prepareProject(preview)}>{t(projectProgress[preview.id]?.state === 'creating' ? 'Creating project…' : projectProgress[preview.id]?.state === 'opening' ? 'Opening project…' : projectProgress[preview.id]?.result ? 'Continue editing this project' : 'Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></Button></>}
                 <div className={styles.recreateActions}>
-                  <button className="om-button" data-primary={!isEditableTemplate(preview) || undefined} disabled={!prompt} onClick={() => void copy()}>{t('Recreate this template')}<MotionIcon name="sparkles" size={16} /></button>
+                  <Button variant="ghost" className="om-button h-auto" data-primary={!isEditableTemplate(preview) || undefined} disabled={!prompt} onClick={() => void copy()}>{t('Recreate this template')}<MotionIcon name="sparkles" size={16} /></Button>
                   <Tooltip withinDialog wrap label={t('Contribute a template')} description={t('Copy contribution instructions for source, a preview and credits.')}>
-                    <button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} aria-label={t('Copy contribution brief')} onClick={() => void copy(true)}><MotionIcon name="git-branch" size={17} /></button>
+                    <IconButton variant="plain" className={`om-button ${styles.submitTemplate}`} disabled={!prompt} aria-label={t('Copy contribution brief')} onClick={() => void copy(true)} icon={<MotionIcon name="git-branch" size={17} />} />
                   </Tooltip>
                 </div>
               </div>

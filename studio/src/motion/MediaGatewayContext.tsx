@@ -1,3 +1,4 @@
+import { IconButton } from 'open-design-ui/icon-button';
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ModelSettings } from './ModelSettings';
@@ -42,7 +43,7 @@ export function MediaGatewayProvider({ children }: { children: ReactNode }) {
     }} />
     {active && settings && <ModelSettings onClose={() => setSettings(false)} />}
     {createPortal(<div hidden={!active} inert={!active}>
-      {importError && <div className="motion-media-notice" role="alert">{importError}<button aria-label={t('Dismiss error')} onClick={() => setImportError('')}>×</button></div>}
+      {importError && <div className="motion-media-notice" role="alert">{importError}<IconButton variant="plain" aria-label={t('Dismiss error')} onClick={() => setImportError('')} icon="×" /></div>}
       {request && <MediaGenerator key={request.id} request={request} onClose={() => setRequest(null)} onSettings={openSettings} />}
     </div>, document.body)}
   </MediaGatewayContext.Provider>;

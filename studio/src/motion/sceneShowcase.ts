@@ -2,7 +2,7 @@ import type { StudioDestination, StudioScene } from './creativeStudios';
 import { motionSkills } from './skillCatalog';
 import lunar from './scene-art/apollo-11.jpg';
 import product from './skill-covers/light-shadow-product.webp';
-import relight from './skill-covers/relight-reveal.webp';
+import speakerRoom from './scene-art/speaker-room.webp';
 import splash from './skill-covers/splash-float-product.webp';
 import soundtrackCover from './scene-art/ambient-piano.webp';
 import narration from './skill-covers/talking-head-recreation.webp';
@@ -29,7 +29,7 @@ const orange = { title: 'Slow motion detail', prompt: 'Film a slow-motion close-
 
 export const sceneExamples: Record<StudioScene['id'], readonly [SceneExample, ...SceneExample[]]> = {
   'text-to-image': [portrait, moon, cameraStudy],
-  'image-edit': [{ title: 'Product relighting', prompt: 'Keep the product and its lettering. Light it from the side against a warm amber background.', poster: relight }],
+  'image-edit': [{ title: 'From studio to living room', prompt: 'Keep the speaker in place. Put it on a wooden side table in a sunlit living room.', poster: speakerRoom }],
   'shot-image': [moon, cameraStudy, portrait],
   'text-to-video': [orange],
   'image-to-video': [{ title: 'A cinematic opening', prompt: 'Start on the supplied frame. Push in slowly as a band of sunlight moves across the product.', poster: product, clip: productClip }],

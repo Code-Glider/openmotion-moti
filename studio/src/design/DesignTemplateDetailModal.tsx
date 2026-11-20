@@ -6,7 +6,7 @@ import {
   designViewports, findDesignScenario,
   type DesignTemplateSummary, type DesignViewportId,
 } from '../../../shared/design-project';
-import { IconButton } from '../components/ui';
+import { IconButton } from 'open-design-ui/icon-button';
 import { useI18n } from '../i18n/I18n';
 import './design.css';
 

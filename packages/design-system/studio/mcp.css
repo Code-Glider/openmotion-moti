@@ -14,8 +14,16 @@
 [data-motion-studio] .om-mcp-art-tile .om-avatar { border: 0; background: transparent; }
 .om-mcp-art-center { color: var(--motion-strong); background: var(--motion-panel); }
 [data-motion-studio] .om-mcp-client-tabs { background: transparent; padding: var(--motion-space-8); gap: var(--motion-space-8); }
-[data-motion-studio] .om-mcp-client-tabs [role=tab] { height: auto; padding: var(--motion-space-10) var(--motion-space-12); border: 1px solid transparent; border-radius: var(--motion-radius-lg); font-size: var(--motion-text-body); }
-[data-motion-studio] .om-mcp-client-tabs [aria-selected=true] { border-color: var(--motion-border); background: var(--motion-hover); }
+[data-motion-studio] .om-mcp-client-tabs [role=tab] { position: relative; height: auto; padding: var(--motion-space-10) var(--motion-space-12); background: transparent; font-size: var(--motion-text-body); }
+[data-motion-studio] .om-mcp-client-tabs [aria-selected=true]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inline-size: var(--motion-space-32);
+  margin-inline: auto;
+  bottom: 0;
+  border-bottom: 2px solid var(--motion-accent);
+}
 .om-mcp-setup-tray { padding: var(--motion-space-12); background: var(--motion-panel); border-radius: var(--motion-radius-xl); }
 [data-motion-studio] .om-mcp-step { padding: var(--motion-space-24); border: 1px solid var(--motion-border-subtle); border-radius: var(--motion-radius-lg); }
 .om-mcp-step h2 { font-size: var(--motion-text-heading); }

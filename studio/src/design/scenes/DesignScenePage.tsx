@@ -7,7 +7,7 @@ import {
   type DesignSkillSummary, type DesignTemplateSummary,
 } from '../../../../shared/design-project';
 import { findMediaStudio, type CreativeStudio } from '../../../../shared/studio-catalog';
-import { IconButton } from '../../components/ui';
+import { IconButton } from 'open-design-ui/icon-button';
 import { StudioToastViewport } from '../../components/StudioToastViewport';
 import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';

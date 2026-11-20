@@ -14,6 +14,8 @@ Open the local URL printed in the terminal. Find the control in the component in
 
 For a new component, add a registry entry and a preview, examples and API notes in [site/examples.tsx](site/examples.tsx). `npm run components:build` generates a static build in `packages/design-system/components/dist`.
 
+To build the installable package candidate, run `npm run build:open-design-ui`. It writes `open-design-ui@0.0.1` to `dist/open-design-ui` without publishing it. Run `npm pack --dry-run` or `npm stage publish --dry-run` from that directory before any separately authorized registry write.
+
 Component details use paths such as `/components/slider`. Vite handles direct links during development and preview. For static hosting, serve the build at the origin root and fall back to `index.html` for catalogue page routes.
 
 ## Use from an Agent
@@ -26,12 +28,14 @@ Read [registry.json](registry.json) to discover each control's source path, impo
 
 ```tsx
 import { Button } from 'open-design-ui/button';
+import { IconButton } from 'open-design-ui/icon-button';
 import { Slider } from 'open-design-ui/slider';
 ```
 
 Studio already loads the two shared styles in the registry. Keep the app's Tailwind source scan pointed at the shared controls. The alias resolves to source in this checkout through TypeScript and Vite. Agents can use it with their normal repo tools.
 
-- `Button` supports native button props, `primary`, `secondary`, `ghost` and `danger` variants, three sizes, an optional icon and a loading state. Set the native `type` deliberately. Use Studio's existing `IconButton` for icon-only actions.
+- `Button` supports native button props, `primary`, `secondary`, `ghost` and `danger` variants, three sizes, an optional icon and a loading state. Set the native `type` deliberately. Both button components accept `variant="plain"` for controls with their own layout and surface. It keeps the keyboard focus style and leaves sizing to the caller.
+- `IconButton` requires an icon and an accessible name (`aria-label`). It defaults to a medium, square ghost button and accepts the same variants and native button props.
 - `Slider` takes a named, bounded numeric value. Use `onPreview` for temporary feedback and `onCommit` to store a change. Keep provider defaults and validation in the feature.
 
 In Studio application code, use these shared controls for new actions and ranges. `npm run design:check` rejects native JSX `<button>` (including `om-button`) and `<input type="range">` that exceed the [per-file legacy baseline](../../../scripts/studio-native-controls.json). When migrating a legacy control, lower its count and remove zero-count entries. CI runs the same rule through `npm run check`.
@@ -39,7 +43,7 @@ In Studio application code, use these shared controls for new actions and ranges
 ## Contribute a control
 
 1. In the design or brief, show the actual use, states, keyboard behavior and token choices. Use the [shared design system](../README.md) for color, typography, spacing and motion.
-2. Add the shared source, the registry entry and an interactive example in [site/examples.tsx](site/examples.tsx). Connect one real Studio use case in the same PR. Set `consumer` to the production JSX file that renders the registered export through its alias. Preserve that call site's events, labels, focus and layout.
+2. Set `data-odui-component` on the component root to its registry name for the Studio UI inspector. Add the shared source, the registry entry and an interactive example in [site/examples.tsx](site/examples.tsx). Connect one real Studio use case in the same PR. Set `consumer` to the production JSX file that renders the registered export through its alias. Preserve that call site's events, labels, focus and layout.
 3. Start with `"adoption": { "mode": "opt-in", "review": "..." }`. In `review`, name a representative remaining use case or the behavior that must be verified before enforcing reuse. If the control should stay optional, write the reason. Include the verified Studio use case and this decision in the PR.
 4. Run `npm run design:check`, `npm run typecheck:studio`, `npm run components:build` and relevant Studio tests. Check the example and the real consumer with a keyboard and in both themes.
 

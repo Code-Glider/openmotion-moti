@@ -1,7 +1,7 @@
 export const studioScenes = [
   { id: 'text-to-image', entry: 'landing', modality: 'image', label: 'Text to image', icon: 'image-line', hint: 'Describe a subject, a mood, a world.' },
   { id: 'image-edit', entry: 'landing', modality: 'image', requiresImage: true, label: 'Image editing', icon: 'edit-line', hint: 'Choose an image and describe your changes.' },
-  { id: 'shot-image', entry: 'studio', modality: 'image', label: 'Shot still', icon: 'camera-line', hint: 'Describe the framing, subject and light for your shot.' },
+  { id: 'shot-image', entry: 'studio', modality: 'image', label: 'Generate a shot reference', icon: 'camera-line', hint: 'Describe the framing, subject and light for your shot.' },
   { id: 'text-to-video', entry: 'landing', modality: 'video', label: 'Text to video', icon: 'film-line', hint: 'Describe the scene, movement and atmosphere.' },
   { id: 'image-to-video', entry: 'studio', modality: 'video', requiresImage: true, label: 'Image to video', icon: 'movie-line', hint: 'Choose a first frame and describe the motion.' },
   { id: 'music', entry: 'landing', modality: 'audio', modelMode: 'text-to-audio', label: 'Music & sound', icon: 'music-2-line', hint: 'Describe the mood, instruments and tempo.' },
@@ -57,7 +57,7 @@ type Community = { id: string; label: string; description: string; studios: read
   { source: 'templates'; category: 'motion' | 'ads' | 'clone' | 'short-form'; scenes: readonly StudioScene['id'][]; skills: readonly string[] } | { source: 'techniques'; studio: TechniqueStudio['id'] }
 );
 export const exploreCommunities = [
-  { id: 'motion-design', label: 'Motion design', description: 'Explore editable motion, storyboards and cuts from the template library.', source: 'templates', category: 'motion', scenes: ['shot-image', 'image-to-video'], skills: ['openmotion-storyboard-to-motion', 'openmotion-liquid-glass-logo', 'openmotion-neon-outline-type', 'openmotion-edit-to-script'], studios: ['motion', 'cinema', 'design'] },
+  { id: 'motion-design', label: 'Motion design', description: 'Explore editable motion, storyboards and cuts from the template library.', source: 'templates', category: 'motion', scenes: ['shot-image', 'image-to-video'], skills: ['openmotion-storyboard-to-motion', 'openmotion-liquid-glass-logo', 'openmotion-neon-outline-type', 'openmotion-edit-to-script', 'openmotion-shutter-bands', 'openmotion-ring-mask-reveal', 'openmotion-smooth-wipes', 'openmotion-bubble-field'], studios: ['motion', 'cinema', 'design'] },
   { id: 'product-films', label: 'Product films', description: 'Stage a product photo, animate a reveal or adapt a launch film.', source: 'templates', category: 'ads', scenes: ['text-to-image', 'image-edit', 'text-to-video'], skills: ['openmotion-flat-lay-product', 'openmotion-in-hand-product'], studios: ['marketing', 'design', 'cinema', 'motion'] },
   { id: 'short-form', label: 'Short-form video', description: 'Browse vertical videos and turn longer footage into captioned clips.', source: 'templates', category: 'short-form', scenes: ['speech', 'text-to-video'], skills: ['openmotion-shortlist-shorts', 'openmotion-multi-clips-to-reels'], studios: ['shorts', 'sound'] },
   { id: 'explainers', label: 'Explainers', description: 'See how an idea becomes a visual story through data, paper animation or a narrated tutorial.', source: 'techniques', studio: 'explainer', studios: ['explainer', 'motion'] },

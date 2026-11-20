@@ -60,7 +60,7 @@ export function HorizontalRail({ label, className = '', viewportClassName, selec
     <RemixIcon name="arrow-right-s-line" mirrored={edge === 'left'} size={22} />
   </Button>;
   return <div className={'om-horizontal-rail ' + className}>
-    <div id={id} ref={viewport} className={'om-rail-viewport ' + viewportClassName} tabIndex={-1} role="group" aria-label={t(label)}>{children}</div>
+    <div id={id} ref={viewport} className={'om-rail-viewport om-overflow-fade ' + viewportClassName} data-fade-start={edges.left || undefined} data-fade-end={edges.right || undefined} tabIndex={-1} role="group" aria-label={t(label)}>{children}</div>
     {edges.left && arrow('left')}
     {edges.right && arrow('right')}
   </div>;

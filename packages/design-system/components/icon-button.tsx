@@ -5,8 +5,7 @@
 
 import { forwardRef } from "react";
 import type { ReactNode } from "react";
-import { buttonBase, buttonVariants, type ButtonBaseProps, type ButtonSize } from "open-design-ui/button";
-import { cn } from "./cn";
+import { buttonClasses, type ButtonBaseProps, type ButtonSize } from "./button";
 
 interface IconButtonProps extends ButtonBaseProps {
   icon: ReactNode;
@@ -22,13 +21,15 @@ const iconSizeStyles: Record<ButtonSize, string> = {
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ icon, size = "md", variant = "ghost", className, disabled, ...props }, ref) => {
+    const classes = buttonClasses(variant, iconSizeStyles[size], className);
     return (
       <button
         ref={ref}
         disabled={disabled}
         aria-disabled={disabled || undefined}
-        className={cn(buttonBase, buttonVariants[variant], iconSizeStyles[size], className)}
+        className={classes}
         {...props}
+        data-odui-component="icon-button"
       >
         {icon}
       </button>

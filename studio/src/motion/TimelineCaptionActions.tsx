@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from 'open-design-ui/button';
 import { Popover } from '../components/ui/Popover';
-import { IconButton } from '../components/ui/IconButton';
+import { IconButton } from 'open-design-ui/icon-button';
 import { Tooltip } from '../components/ui/Tooltip';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';

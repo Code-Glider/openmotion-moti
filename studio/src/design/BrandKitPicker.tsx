@@ -4,7 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../packages/design-system/react/RemixIcons';
 import { brandCatalogFile, type BrandCatalog, type BrandCatalogEntry } from '../../../shared/brand-catalog';
-import { IconButton } from '../components/ui';
+import { IconButton } from 'open-design-ui/icon-button';
 import { useI18n } from '../i18n/I18n';
 import { BrandKitLivePreview } from '../motion/BrandKitLivePreview';
 import { brandFile, brandRequest, loadBrandKits, type BrandKit } from '../motion/brandKitClient';

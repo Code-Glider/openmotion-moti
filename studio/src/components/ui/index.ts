@@ -1,6 +1,6 @@
 // Studio-local control exports.
 export { cn } from "./cn";
-export { IconButton } from "./IconButton";
+export { IconButton } from "open-design-ui/icon-button";
 export { Tab, TabPanel, Tabs, TabsList } from "./Tabs";
 export { HyperframesLoader, StatusFrame } from "./HyperframesLoader";
 export type { HyperframesLoaderProps } from "./HyperframesLoader";

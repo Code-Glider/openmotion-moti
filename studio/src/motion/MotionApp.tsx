@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { WorkspaceFrame, WorkspaceMenuButton, useWorkspaceChrome } from './WorkspaceFrame';
@@ -90,7 +91,7 @@ export function MotionApp() {
     sessionId={libraryOnly ? undefined : ready?.sessionId ?? sessionId ?? undefined} onNavigate={onNavigate}
     blocked={!ready && !error && !libraryOnly && !settingsPage} onLibraryClose={libraryOnly ? closeLibrary : undefined}>
     <div ref={surface} className="motion-project-surface">
-    {error ? <RecoveryScreen title={t('Could not open project')} message={error}><button className="om-button" data-primary onClick={() => retry(value => value + 1)}>{t('Retry')}</button><a className="om-button" href="/?page=editor">{t('Open active project')}</a></RecoveryScreen>
+    {error ? <RecoveryScreen title={t('Could not open project')} message={error}><Button variant="ghost" className="om-button h-auto" data-primary onClick={() => retry(value => value + 1)}>{t('Retry')}</Button><a className="om-button" href="/?page=editor">{t('Open active project')}</a></RecoveryScreen>
       : ready ? ready.artifact ? <ArtifactViewer key={ready.artifact.projectId} artifact={ready.artifact} loadingLayout={loadingLayout} /> : <div className="motion-route-state"><WorkspaceMenuButton />{t('Create a project with your Agent to start editing.')}</div>
       : libraryOnly ? <TemplateLibraryLanding /> : <EditorLoading layout={loadingLayout} />}
     </div>
@@ -101,6 +102,6 @@ function TemplateLibraryLanding() {
   const { t } = useI18n();
   const { openLibrary } = useWorkspaceChrome();
   return <div className="motion-route-state"><WorkspaceMenuButton /><h1>{t('Template library')}</h1>
-    <button className="motion-button" onClick={event => openLibrary(event.currentTarget)}>{t('View all templates')}</button>
+    <Button variant="plain" className="motion-button" onClick={event => openLibrary(event.currentTarget)}>{t('View all templates')}</Button>
   </div>;
 }
