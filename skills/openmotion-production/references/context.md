@@ -74,7 +74,7 @@ Hyperframes 指引只在 [原生引擎边界](native.md#engine-guidance-boundary
 
 ## 在聊天中展示静态创作预览
 
-本轮需要让用户比较创作方向或看分镜时，支持聊天内 HTML 的 Codex 可以沿用 onboarding 的可放大卡片。从当前 OpenMotion 运行时执行 `node scripts/inline-storyboard.mjs --manifest /absolute/preview.json --output /absolute/chat-visualization/preview-v1.html`。把输出路径放在当前聊天可访问的可视化目录，并在展示预览的回复里原样放入返回的 `contentReference`。宿主不支持或渲染失败时，按同一顺序显示单张图片和标签。
+本轮需要让用户比较创作方向或看分镜时，支持聊天内 HTML 的 Codex 可以沿用 onboarding 的可放大卡片。从当前 OpenMotion 运行时执行 `node scripts/inline-storyboard.mjs --manifest /absolute/preview.json --output /absolute/chat-visualization/preview-v1.html`。输出目录须可供当前聊天访问。脚本会创建缺失的目录，同名时另存新文件，保留此前的预览。在回复里原样放入本次返回的 `contentReference`。宿主不支持或渲染失败时，按同一顺序显示单张图片和标签。
 
 - 清单共用本地化的 `title`、`openLabel`、`backLabel`。卡片提供 `title`、`alt` 及清单同目录的 PNG、JPEG 或 WebP 文件名 `image`。文档超过大小预算时，压缩源图重试。
 - 比较方向时用 `previewType: "creative_directions"` 和 `directions` 提供两到三个候选。每项写稳定的 `id` 和说明表现手法的 `note`。展示按返回的 `candidates` 顺序对应 A–C。收到明确回复后再沿用所选候选。

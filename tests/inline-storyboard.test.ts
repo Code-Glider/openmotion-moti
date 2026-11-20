@@ -36,7 +36,36 @@ test('renders the six supplied stills in playback order as a self-contained inli
   assert.equal(html.match(/<img src="data:image\/png;base64,/g).length, 6);
   assert.match(html, /Prototype &lt;preview&gt;/);
   assert.doesNotMatch(html, /<script>alert|file:\/\/|<!doctype|fetch\(/i);
-  await assert.rejects(renderInlineStoryboard({ manifestPath, output }), { code: 'EEXIST' });
+});
+
+test('creates the requested chat visualization directory on first render', async t => {
+  const { directory, manifestPath } = await storyboard(t);
+  const output = path.join(directory, 'chat', 'visualizations', 'preview-v1.html');
+  const result = await renderInlineStoryboard({ manifestPath, output });
+  assert.equal(result.path, output);
+  assert.match(await readFile(output, 'utf8'), /Scene 1/);
+});
+
+test('rerendering a direction preview preserves the previous file and returns the new path', async t => {
+  const { directory, manifestPath, output, frames, writeManifest } = await storyboard(t);
+  const directions = [
+    { ...frames[0], id: 'walkthrough', note: 'Lead with the product.' },
+    { ...frames[1], id: 'editorial', note: 'Lead with typography.' },
+  ];
+  await writeManifest({ previewType: 'creative_directions', directions });
+  const first = await renderInlineStoryboard({ manifestPath, output });
+  const original = await readFile(first.path, 'utf8');
+  directions[1].title = 'Updated editorial';
+  await writeManifest({ previewType: 'creative_directions', directions });
+
+  const revised = await renderInlineStoryboard({ manifestPath, output });
+  assert.equal(first.path, output);
+  assert.notEqual(revised.path, first.path);
+  assert.equal(path.dirname(revised.path), directory);
+  assert.equal(await readFile(first.path, 'utf8'), original);
+  assert.match(await readFile(revised.path, 'utf8'), /Updated editorial/);
+  assert.equal(revised.contentReference, 'visualize' + JSON.stringify({ path: revised.path }) + '');
+  assert.deepEqual(revised.candidates?.[1].evidence, [{ path: path.join(directory, 'still.png') }, { path: revised.path }]);
 });
 
 test('direction letters match the returned candidate order for the chat reply', async t => {

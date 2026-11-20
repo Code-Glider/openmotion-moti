@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
-import { lstat, readFile, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -108,12 +108,21 @@ ${script}
 `;
   const bytes = Buffer.byteLength(fragment);
   assert(bytes < documentLimit, 'Preview exceeds the inline document budget. Compress the source images and retry');
-  await writeFile(output, fragment, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+  const outputDirectory = path.dirname(output);
+  await mkdir(outputDirectory, { recursive: true });
+  const writeOptions = { encoding: 'utf8', flag: 'wx', mode: 0o600 };
+  let previewPath = output;
+  try { await writeFile(previewPath, fragment, writeOptions); }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    previewPath = path.join(outputDirectory, root + '.html');
+    await writeFile(previewPath, fragment, writeOptions);
+  }
   const preview = isDirections
-    ? { candidates: entries.map(({ id, image }) => ({ id, evidence: [{ path: path.join(directory, image) }, { path: output }] })) }
+    ? { candidates: entries.map(({ id, image }) => ({ id, evidence: [{ path: path.join(directory, image) }, { path: previewPath }] })) }
     : { frameCount: cards.length };
-  return { path: output, bytes, ...preview,
-    contentReference: 'visualize' + JSON.stringify({ path: output }) + '' };
+  return { path: previewPath, bytes, ...preview,
+    contentReference: 'visualize' + JSON.stringify({ path: previewPath }) + '' };
 }
 
 function isMain() {
