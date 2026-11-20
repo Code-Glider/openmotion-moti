@@ -21,7 +21,7 @@ export type StudioCreation = {
 
 export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenBrandKit, hasProject, active, drafts }: {
   onOpenBrandKit?: () => void;
-  skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
+  skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore?: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
   const catalog = useMediaCatalog(active && Boolean(destination));
@@ -39,7 +39,9 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
   return <div className="om-assets-host om-creative-workspace">
     <header className="om-studio-bar">
-      {studio.surface === 'techniques' ? <Button variant="plain" className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination)); onCollection(studio); }} aria-label={t('Back to {studio}', { studio: t(studio.title) })}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Skills')}</span></Button> : <Button variant="plain" className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', destinationTarget(destination)); onExplore(); }} aria-label={t('Back to Explore')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Explore')}</span></Button>}
+      {studio.surface === 'techniques'
+        ? <Button variant="plain" className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination)); onCollection(studio); }} aria-label={t('Back to {studio}', { studio: t(studio.title) })}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Skills')}</span></Button>
+        : onExplore && <Button variant="plain" className="om-nav-item om-studio-back" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'back_to_explore', destinationTarget(destination)); onExplore(); }} aria-label={t('Back to Explore')}><RemixIcon name="arrow-left-line" size={16} /><span>{t('Explore')}</span></Button>}
       <h1 className="om-subtitle"><span className="om-creation-icon" data-tone={scene.modality}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
       {destination.landing ? <Button variant="ghost" className="om-button h-auto" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onNavigate(studioDestination(studio, scene.id, destination.model)); }}>
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />

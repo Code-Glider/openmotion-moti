@@ -108,6 +108,7 @@ it('navigates settings, MCP tabs and history without remounting or flushing the 
   await mount(); const draft = container.querySelector<HTMLInputElement>('[aria-label="Editor draft"]')!;
   draft.value = 'Keep this edit'; const wait = vi.fn(async () => {}); editor.wait = wait;
   await accountAction('Settings'); expect(page().settings).toBe('general');
+  expect(button('Close settings')).toBeTruthy();
   await click('Appearance'); expect(page().settings).toBe('appearance');
   await openMcp(); expect(page().settings).toBe('mcp');
   await click('Claude Code'); await click('Manual setup');
@@ -117,7 +118,8 @@ it('navigates settings, MCP tabs and history without remounting or flushing the 
   await traverse(-1); expect(page().client).toBe('codex');
   await traverse(-1); expect(page().settings).toBe('appearance');
   await traverse(1); expect(page().settings).toBe('mcp');
-  await click('Close settings'); expect(page().settings).toBeNull();
+  expect(button('Close settings')).toBeUndefined();
+  await click('Explore'); expect(page()).toMatchObject({ explore: true, settings: null });
   expect(container.querySelector('input[aria-label="Editor draft"]')).toBe(draft);
   expect(draft.value).toBe('Keep this edit'); expect(editor.mounts).toBe(1); expect(wait).not.toHaveBeenCalled();
   expect(location.search).toContain('embed=1'); expect(location.hash).toContain('t=12');
@@ -993,10 +995,27 @@ it.each([
   await click(label);
   expect(page().studio).toMatchObject({ studio: { id: studio }, scene: { id: scene } });
   expect(page().studio?.landing).toBeUndefined();
+  expect(container.querySelector('.om-studio-bar [aria-label="Back to Explore"]')).toBeNull();
   expect(document.querySelector('.om-creative-menu')).toBeNull();
   expect(button(label).getAttribute('aria-current')).toBe('location');
   expect(button(label + ' scenes and models').getAttribute('aria-expanded')).toBe('false');
   await traverse(-1);
+  expect(page().explore).toBe(true);
+});
+
+it('switches from the API directory to MCP with the shared navigation available', async () => {
+  await mount();
+  const api = container.querySelector<HTMLAnchorElement>('.om-creative-navigation a[href*="page=api"]')!;
+  await act(async () => api.click());
+  expect(page().api).toBe(true);
+  expect(container.querySelector('.om-discovery-heading h1')?.textContent).toBe('OpenMotion API');
+  expect(button('Back to Explore')).toBeUndefined();
+  await click('MCP · Connect Agent');
+  expect(page().settings).toBe('mcp');
+  expect(button('Close settings')).toBeUndefined();
+  await traverse(-1);
+  expect(page().api).toBe(true);
+  await click('Explore');
   expect(page().explore).toBe(true);
 });
 
