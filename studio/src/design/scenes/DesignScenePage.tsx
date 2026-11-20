@@ -6,46 +6,34 @@ import {
   designBriefPrompt, findDesignScenario,
   type DesignSkillSummary, type DesignTemplateSummary,
 } from '../../../../shared/design-project';
-import { findMediaStudio, type CreativeStudio } from '../../../../shared/studio-catalog';
 import { IconButton } from 'open-design-ui/icon-button';
 import { StudioToastViewport } from '../../components/StudioToastViewport';
 import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';
-import { scenesForStudio, studioIconTone } from '../../motion/creativeStudios';
 import { useIntegrationInfo } from '../../motion/useIntegrationInfo';
-import { WorkspaceBack } from '../../motion/WorkspaceBack';
 import { BrandKitPicker, type SelectedBrandKit } from '../BrandKitPicker';
 import { designClient } from '../designClient';
 import { DesignProjectList } from '../DesignProjectList';
 import { DesignTemplateDetailModal } from '../DesignTemplateDetailModal';
 import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
-import { DesignSceneTabs, type DesignTabId } from './DesignSceneTabs';
+import type { DesignTabId } from './DesignSceneTabs';
 import '../design.css';
 
 export function DesignScenePage({
-  embedded = false,
   scene,
   onSelectDesignScene,
-  onSelectImageScene,
   onOpenProject,
-  onExplore,
   onOpenMcp,
 }: {
-  embedded?: boolean;
   scene: DesignTabId;
   onSelectDesignScene: (scene: DesignTabId) => void;
-  onSelectImageScene: (sceneId: 'text-to-image' | 'image-edit') => void;
-  onChooseStudio?: (studio: CreativeStudio) => void;
   onOpenProject: (projectId: string) => void;
-  onExplore: () => void;
   onOpenMcp: () => void;
 }) {
   const { t, locale } = useI18n();
   const { info: integrationInfo } = useIntegrationInfo();
   const toast = useToast();
   const showToast = toast.showToast;
-  const designMediaStudio = findMediaStudio('design')!;
-  const imageScenes = scenesForStudio(designMediaStudio);
   const scenario = scene === 'projects' ? null : findDesignScenario(scene) ?? null;
 
   const [brief, setBrief] = useState('');
@@ -283,35 +271,7 @@ export function DesignScenePage({
   };
 
   return (
-    <div className={embedded ? 'om-design-workspace-shell' : 'om-assets-host om-creative-workspace om-design-workspace-shell'}>
-      {!embedded && (
-        <header className="om-studio-bar">
-          <WorkspaceBack inline fallback={onExplore} />
-          <h1 className="om-subtitle">
-            <span className="om-studio-heading-icon" data-tone={studioIconTone(designMediaStudio)}>
-              <RemixIcon name={designMediaStudio.icon} size={18} />
-            </span>
-            {t(designMediaStudio.title)}
-          </h1>
-          <nav className="om-asset-tabs" aria-label={t('Scenes')}>
-            {imageScenes.map(item => (
-              <Button
-                key={item.id}
-                type="button"
-                variant="plain"
-                className="om-nav-item"
-                onClick={() => onSelectImageScene(item.id as 'text-to-image' | 'image-edit')}
-              >
-                {t(item.label)}
-              </Button>
-            ))}
-            <DesignSceneTabs
-              activeTab={scene}
-              onSelectDesignScene={onSelectDesignScene}
-            />
-          </nav>
-        </header>
-      )}
+    <div className="om-design-workspace-shell">
 
       {scene === 'projects' || !scenario ? (
         <div className="om-design-scroll-body">

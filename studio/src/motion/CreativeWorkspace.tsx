@@ -76,12 +76,9 @@ export function CreativeWorkspace({ destination, designScene, skill, visit, onNa
     </header>
     {designScene && onSelectDesignScene && onOpenDesignProject && onOpenMcp
       ? <DesignScenePage
-          embedded
           scene={designScene}
           onSelectDesignScene={onSelectDesignScene}
-          onSelectImageScene={sceneId => onNavigate(studioDestination(designMediaStudio, sceneId))}
           onOpenProject={onOpenDesignProject}
-          onExplore={onExplore}
           onOpenMcp={onOpenMcp}
         />
       : destination && <AssetsPage key={draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),
