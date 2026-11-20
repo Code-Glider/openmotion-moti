@@ -189,15 +189,31 @@ test('version restore restores project entry invariant and write rejects deletin
     const stillIntact = await service.get(created.id);
     assert(stillIntact.files.some(f => f.path === 'index.html'));
 
-    // Add page2.html and switch entry to page2.html (v2).
+    // Reject overlapping path in both files and deletes before mutating disk.
+    await assert.rejects(
+      () => service.write(created.id, {
+        requestId: 'req-overlap-entry',
+        expectedRevision: created.revision,
+        files: [{ path: 'index.html', content: '<!doctype html><html><body><h1>Replaced</h1></body></html>' }],
+        deletes: ['index.html'],
+      }),
+      (error: unknown) => error instanceof DesignError && error.code === 'INVALID_ARGUMENT',
+    );
+    const afterOverlap = await service.get(created.id);
+    assert.equal(afterOverlap.revision, created.revision);
+    assert(afterOverlap.files.some(f => f.path === 'index.html'));
+
+    // Replace-style write: add page2.html, delete index.html, and switch entry to page2.html (v2).
     const w2 = await service.write(created.id, {
       requestId: 'req-entry-2',
       expectedRevision: created.revision,
       files: [{ path: 'page2.html', content: '<!doctype html><html><body><h1>Page Two</h1></body></html>' }],
+      deletes: ['index.html'],
       entry: 'page2.html',
-      summary: 'Switch entry to page2.html',
+      summary: 'Replace index.html with page2.html',
     });
     assert.equal(w2.project.entry, 'page2.html');
+    assert(!w2.project.files.some(f => f.path === 'index.html'));
 
     // Exporting historical v1 still succeeds even while current entry is page2.html.
     const v1Html = await service.exportProject(created.id, { format: 'html', versionId: v1 });

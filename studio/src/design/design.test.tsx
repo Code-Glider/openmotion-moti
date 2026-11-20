@@ -249,18 +249,28 @@ describe('DesignProjectEditor', () => {
     expect(start.height).toBe(600);
   });
 
-  it('submits edit-start expectedRevision on manual save and preserves draft on VERSION_CONFLICT', async () => {
+  it('submits edit-start expectedRevision on manual save, preserves draft on VERSION_CONFLICT, and allows conflict overwrite retry', async () => {
     const newRevision = 'c'.repeat(64);
+    const savedRevision = 'd'.repeat(64);
     let currentRevision = revision;
-    let submittedRevision: string | null = null;
+    let storedContent = '<h1>v1</h1>';
+    const submittedRevisions: string[] = [];
     vi.spyOn(designClient, 'getProject').mockImplementation(async () => ({ project: { ...mockProject, revision: currentRevision } }));
     vi.spyOn(designClient, 'listVersions').mockResolvedValue({ versions: [], currentVersionId: 'v-1', nextCursor: null });
     vi.spyOn(designClient, 'listComments').mockResolvedValue({ comments: [], sourceRevision: revision });
     vi.spyOn(designClient, 'detectEditors').mockResolvedValue({ editors: [] });
-    vi.spyOn(designClient, 'readFile').mockResolvedValue({ path: 'index.html', content: '<h1>v1</h1>', offset: 0, limit: 100, totalBytes: 11, hasMore: false, nextOffset: null });
+    vi.spyOn(designClient, 'readFile').mockImplementation(async () => ({ path: 'index.html', content: storedContent, offset: 0, limit: 100, totalBytes: storedContent.length, hasMore: false, nextOffset: null }));
     vi.spyOn(designClient, 'writeFiles').mockImplementation(async (_id, payload) => {
-      submittedRevision = payload.expectedRevision;
-      throw new DesignApiError(409, 'VERSION_CONFLICT', 'Expected revision mismatch');
+      submittedRevisions.push(payload.expectedRevision);
+      if (payload.expectedRevision !== currentRevision) {
+        throw new DesignApiError('VERSION_CONFLICT', 'Expected revision mismatch', 409);
+      }
+      currentRevision = savedRevision;
+      storedContent = payload.files?.[0]?.content ?? storedContent;
+      return {
+        project: { ...mockProject, revision: savedRevision, versionLabel: 'v3' },
+        version: { id: 'v-3', label: 'v3', number: 3, createdAt: 1700000002000, source: 'manual', summary: 'Manual edit', prompt: null, restoredFrom: null, files: [] },
+      };
     });
 
     await act(async () => {
@@ -293,9 +303,19 @@ describe('DesignProjectEditor', () => {
     const saveBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Save version'));
     await act(async () => { saveBtn!.click(); });
 
-    expect(submittedRevision).toBe(revision);
+    expect(submittedRevisions).toEqual([revision]);
     // Draft stays open in the editor so user edits are not lost on conflict.
     const stillEditing = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Source editor"]');
     expect(stillEditing?.value).toBe('<h1>Unsaved manual draft</h1>');
+
+    // User explicitly clicks "Overwrite with my draft" to rebase onto the latest revision and retry save.
+    const overwriteBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Overwrite with my draft'));
+    expect(overwriteBtn).toBeTruthy();
+    await act(async () => { overwriteBtn!.click(); });
+
+    expect(submittedRevisions).toEqual([revision, newRevision]);
+    // After successful retry, editing exits cleanly and the saved draft is displayed.
+    expect(container.querySelector('textarea[aria-label="Source editor"]')).toBeNull();
+    expect(container.textContent).toContain('Unsaved manual draft');
   });
 });

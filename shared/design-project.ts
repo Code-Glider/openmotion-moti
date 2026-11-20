@@ -231,19 +231,19 @@ export function designCommentsPrompt(
 ) {
   const open = comments.filter(comment => comment.status === 'open');
   const lines = open.map((comment, index) => {
-    const anchor = comment.anchor, element = anchor.element;
+    const anchor = comment.anchor, element = anchor.element, annotation = anchor.annotation;
     return [
       `${index + 1}. [${comment.id}] file=${anchor.filePath} viewport=${anchor.viewport.id} ${anchor.viewport.width}×${anchor.viewport.height}${anchor.slideIndex !== undefined ? ` slide=${anchor.slideIndex + 1}` : ''}`,
       element ? `   target: ${element.label} <${element.tagName}> selector=${element.selector}${element.text ? ` text="${element.text.slice(0, 160)}"` : ''}` : null,
       element?.htmlHint ? `   html: ${element.htmlHint.slice(0, 240)}` : null,
       anchor.region ? `   region: x=${Math.round(anchor.region.x)} y=${Math.round(anchor.region.y)} w=${Math.round(anchor.region.width)} h=${Math.round(anchor.region.height)}` : null,
-      anchor.annotation ? (() => {
-        const pts = anchor.annotation.marks.flatMap(mark => mark.points);
-        if (!pts.length) return `   drawing: ${anchor.annotation.marks.map(mark => mark.kind).join(', ')}`;
+      annotation ? (() => {
+        const pts = annotation.marks.flatMap(mark => mark.points);
+        if (!pts.length) return `   drawing: ${annotation.marks.map(mark => mark.kind).join(', ')}`;
         const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
         const x1 = Math.round(Math.min(...xs) * 100), y1 = Math.round(Math.min(...ys) * 100);
         const x2 = Math.round(Math.max(...xs) * 100), y2 = Math.round(Math.max(...ys) * 100);
-        return `   drawing: ${anchor.annotation.marks.map(mark => mark.kind).join(', ')} bounds=${x1}%..${x2}%, ${y1}%..${y2}% (${anchor.annotation.width}×${anchor.annotation.height})`;
+        return `   drawing: ${annotation.marks.map(mark => mark.kind).join(', ')} bounds=${x1}%..${x2}%, ${y1}%..${y2}% (${annotation.width}×${annotation.height})`;
       })() : null,
       `   comment: ${comment.text}`,
     ].filter(Boolean).join('\n');

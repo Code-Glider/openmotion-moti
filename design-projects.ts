@@ -914,6 +914,11 @@ export class DesignProjects {
         prepared.push({ path: safe, bytes });
       }
       const cleanDeletes = deletes.map(cleanDesignPath);
+      const writtenSet = new Set(prepared.map(item => item.path));
+      const overlap = cleanDeletes.find(rel => writtenSet.has(rel));
+      if (overlap) {
+        throw new DesignError('INVALID_ARGUMENT', `Cannot write and delete the same path in one request: ${overlap}`);
+      }
       const requestedEntry = input.entry ? cleanDesignPath(input.entry) : null;
       const projectedPaths = new Set(currentFiles.map(f => f.path));
       for (const rel of cleanDeletes) projectedPaths.delete(rel);
@@ -921,8 +926,8 @@ export class DesignProjects {
       if (requestedEntry && !projectedPaths.has(requestedEntry)) {
         throw new DesignError('INVALID_ARGUMENT', `Entry file ${requestedEntry} does not exist in project after write`);
       }
-      const nextEntry = requestedEntry ?? this.resolveEntryPath(stored.entry, projectedPaths);
-      if (!nextEntry) {
+      const projectedEntry = requestedEntry ?? this.resolveEntryPath(stored.entry, projectedPaths);
+      if (!projectedEntry) {
         throw new DesignError('INVALID_ARGUMENT', 'Write would remove project entry without leaving a valid HTML entry file');
       }
 
@@ -936,8 +941,12 @@ export class DesignProjects {
       for (const rel of cleanDeletes) {
         await rm(path.join(dir, rel), { force: true });
       }
-      stored.entry = nextEntry;
       const nextFiles = await this.scanFiles(dir);
+      const verifiedEntry = this.resolveEntryPath(projectedEntry, nextFiles.map(f => f.path));
+      if (!verifiedEntry) {
+        throw new DesignError('INVALID_ARGUMENT', 'Write left no valid HTML entry file on disk');
+      }
+      stored.entry = verifiedEntry;
       stored.updatedAt = Date.now();
       await this.saveCatalog(catalog);
       const version = await this.appendVersion(pid, nextFiles, {

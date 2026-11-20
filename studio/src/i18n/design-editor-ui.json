@@ -70,7 +70,9 @@
     "Could not delete annotation": "无法删除标注",
     "Project title": "项目名称",
     "Copy code": "复制代码",
-    "Loading file…": "正在加载文件…"
+    "Loading file…": "正在加载文件…",
+    "Overwrite with my draft": "用我的草稿覆盖保存",
+    "Discard draft & reload latest": "放弃草稿并加载最新版"
   },
   "ja": {
     "Loading design project…": "デザインプロジェクトを読み込み中…",
@@ -143,7 +145,9 @@
     "Could not delete annotation": "注釈を削除できませんでした",
     "Project title": "プロジェクト名",
     "Copy code": "コードをコピー",
-    "Loading file…": "ファイルを読み込み中…"
+    "Loading file…": "ファイルを読み込み中…",
+    "Overwrite with my draft": "下書きで上書き保存",
+    "Discard draft & reload latest": "下書きを破棄して最新を読み込む"
   },
   "ko": {
     "Loading design project…": "디자인 프로젝트 불러오는 중…",
@@ -216,7 +220,9 @@
     "Could not delete annotation": "주석을 삭제할 수 없습니다",
     "Project title": "프로젝트 제목",
     "Copy code": "코드 복사",
-    "Loading file…": "파일 불러오는 중…"
+    "Loading file…": "파일 불러오는 중…",
+    "Overwrite with my draft": "내 초안으로 덮어쓰기",
+    "Discard draft & reload latest": "초안 버리고 최신 불러오기"
   },
   "de": {
     "Loading design project…": "Design-Projekt wird geladen…",
@@ -289,7 +295,9 @@
     "Could not delete annotation": "Annotation konnte nicht gelöscht werden",
     "Project title": "Projekttitel",
     "Copy code": "Code kopieren",
-    "Loading file…": "Datei wird geladen…"
+    "Loading file…": "Datei wird geladen…",
+    "Overwrite with my draft": "Mit meinem Entwurf überschreiben",
+    "Discard draft & reload latest": "Entwurf verwerfen & neueste Version laden"
   },
   "fr": {
     "Loading design project…": "Chargement du projet…",
@@ -362,7 +370,9 @@
     "Could not delete annotation": "Impossible de supprimer l’annotation",
     "Project title": "Titre du projet",
     "Copy code": "Copier le code",
-    "Loading file…": "Chargement du fichier…"
+    "Loading file…": "Chargement du fichier…",
+    "Overwrite with my draft": "Écraser avec mon brouillon",
+    "Discard draft & reload latest": "Abandonner le brouillon et recharger"
   },
   "ru": {
     "Loading design project…": "Загрузка дизайн-проекта…",
@@ -435,7 +445,9 @@
     "Could not delete annotation": "Не удалось удалить аннотацию",
     "Project title": "Название проекта",
     "Copy code": "Копировать код",
-    "Loading file…": "Загрузка файла…"
+    "Loading file…": "Загрузка файла…",
+    "Overwrite with my draft": "Перезаписать моим черновиком",
+    "Discard draft & reload latest": "Отменить черновик и загрузить последнюю версию"
   },
   "es": {
     "Loading design project…": "Cargando proyecto de diseño…",
@@ -508,7 +520,9 @@
     "Could not delete annotation": "No se pudo eliminar la anotación",
     "Project title": "Título del proyecto",
     "Copy code": "Copiar código",
-    "Loading file…": "Cargando archivo…"
+    "Loading file…": "Cargando archivo…",
+    "Overwrite with my draft": "Sobrescribir con mi borrador",
+    "Discard draft & reload latest": "Descartar borrador y cargar la última versión"
   },
   "pt-BR": {
     "Loading design project…": "Carregando projeto de design…",
@@ -581,7 +595,9 @@
     "Could not delete annotation": "Não foi possível excluir a anotação",
     "Project title": "Título do projeto",
     "Copy code": "Copiar código",
-    "Loading file…": "Carregando arquivo…"
+    "Loading file…": "Carregando arquivo…",
+    "Overwrite with my draft": "Sobrescrever com meu rascunho",
+    "Discard draft & reload latest": "Descartar rascunho e carregar última versão"
   },
   "it": {
     "Loading design project…": "Caricamento progetto di design…",
@@ -654,7 +670,9 @@
     "Could not delete annotation": "Impossibile eliminare l’annotazione",
     "Project title": "Titolo del progetto",
     "Copy code": "Copia codice",
-    "Loading file…": "Caricamento file…"
+    "Loading file…": "Caricamento file…",
+    "Overwrite with my draft": "Sovrascrivi con la mia bozza",
+    "Discard draft & reload latest": "Scarta bozza e carica l’ultima versione"
   },
   "tr": {
     "Loading design project…": "Tasarım projesi yükleniyor…",
@@ -727,6 +745,8 @@
     "Could not delete annotation": "Not silinemedi",
     "Project title": "Proje başlığı",
     "Copy code": "Kodu kopyala",
-    "Loading file…": "Dosya yükleniyor…"
+    "Loading file…": "Dosya yükleniyor…",
+    "Overwrite with my draft": "Taslağımla üzerine yaz",
+    "Discard draft & reload latest": "Taslağı at ve en son sürümü yükle"
   }
 }

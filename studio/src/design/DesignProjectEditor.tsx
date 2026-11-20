@@ -185,6 +185,7 @@ export function DesignProjectEditor({
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeEditing, setCodeEditing] = useState(false);
   const [codeEditBaseRevision, setCodeEditBaseRevision] = useState<string | null>(null);
+  const [codeConflict, setCodeConflict] = useState(false);
   const [codeDraft, setCodeDraft] = useState('');
   const [savingCode, setSavingCode] = useState(false);
 
@@ -224,6 +225,7 @@ export function DesignProjectEditor({
   useEffect(() => {
     setCodeEditing(false);
     setCodeEditBaseRevision(null);
+    setCodeConflict(false);
   }, [project?.id, activeFile]);
 
   // Load text content for active file (needed for code view, deck parsing, and srcdoc bridge)
@@ -330,12 +332,12 @@ export function DesignProjectEditor({
     }
   };
 
-  const saveCode = async () => {
+  const saveCode = async (overrideRevision?: string) => {
     if (!project || !activeFile) return;
     setSavingCode(true);
     try {
       const { project: updated } = await designClient.writeFiles(project.id, {
-        expectedRevision: codeEditBaseRevision ?? project.revision,
+        expectedRevision: overrideRevision ?? codeEditBaseRevision ?? project.revision,
         files: [{ path: activeFile, content: codeDraft }],
         summary: `Manual edit to ${activeFile}`,
         source: 'manual',
@@ -343,11 +345,14 @@ export function DesignProjectEditor({
       setProject(updated);
       setFileContent(codeDraft);
       setCodeEditBaseRevision(null);
+      setCodeConflict(false);
       setCodeEditing(false);
       await refresh();
       toast.showToast(t('Saved new version'), 'info', 'feedback');
     } catch (err) {
       if (err instanceof DesignApiError && err.code === 'VERSION_CONFLICT') {
+        setCodeConflict(true);
+        await refresh();
         toast.showToast(t('Project changed externally. Reload to get the latest revision.'), 'error', 'feedback');
       } else {
         toast.showToast(err instanceof Error ? err.message : t('Could not save file'), 'error', 'feedback');
@@ -1113,8 +1118,9 @@ export function DesignProjectEditor({
                       const oh = overlayRef.current?.clientHeight ?? 640;
                       const popW = 300;
                       const popH = pendingDraft.annotation || pendingDraft.region ? 290 : 196;
-                      const drawBox = pendingDraft.annotation ? (() => {
-                        const b = annotationBounds(pendingDraft.annotation);
+                      const pendingAnnotation = pendingDraft.annotation;
+                      const drawBox = pendingAnnotation ? (() => {
+                        const b = annotationBounds(pendingAnnotation);
                         return { x: b.minX * ow, y: b.minY * oh, width: (b.maxX - b.minX) * ow, height: (b.maxY - b.minY) * oh };
                       })() : null;
                       const anchorBox = pendingDraft.region ?? drawBox;
@@ -1188,7 +1194,7 @@ export function DesignProjectEditor({
                 <div style={{ display: 'flex', gap: 6 }}>
                   {codeEditing ? (
                     <>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(null); setCodeEditing(false); }}>{t('Cancel')}</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(null); setCodeConflict(false); setCodeEditing(false); }}>{t('Cancel')}</Button>
                       <Button type="button" size="sm" variant="primary" loading={savingCode} icon={<RemixIcon name="save-line" size={14} />} onClick={() => void saveCode()}>
                         {t('Save version')}
                       </Button>
@@ -1198,13 +1204,44 @@ export function DesignProjectEditor({
                       <Button type="button" size="sm" variant="ghost" icon={<RemixIcon name="file-copy-line" size={14} />} onClick={() => void copyPrompt(fileContent)}>
                         {t('Copy code')}
                       </Button>
-                      <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="edit-line" size={14} />} onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(project.revision); setCodeEditing(true); }}>
+                      <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="edit-line" size={14} />} onClick={() => { setCodeDraft(fileContent); setCodeEditBaseRevision(project.revision); setCodeConflict(false); setCodeEditing(true); }}>
                         {t('Edit source')}
                       </Button>
                     </div>
                   )}
                 </div>
               </div>
+              {codeEditing && codeConflict && (
+                <div className="om-design-banner" role="alert">
+                  <span>{t('Project changed externally. Reload to get the latest revision.')}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="primary"
+                      loading={savingCode}
+                      onClick={() => {
+                        setCodeEditBaseRevision(project.revision);
+                        void saveCode(project.revision);
+                      }}
+                    >
+                      {t('Overwrite with my draft')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setCodeDraft(fileContent);
+                        setCodeEditBaseRevision(project.revision);
+                        setCodeConflict(false);
+                      }}
+                    >
+                      {t('Discard draft & reload latest')}
+                    </Button>
+                  </div>
+                </div>
+              )}
               {codeLoading ? (
                 <div style={{ padding: 16 }} className="om-design-muted">{t('Loading file…')}</div>
               ) : codeEditing ? (
