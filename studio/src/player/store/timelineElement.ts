@@ -105,6 +105,9 @@ export interface TimelineElement {
 
 export interface TimelineText {
   value: string;
+  direction?: 'auto' | 'ltr' | 'rtl';
+  language?: string;
+  textAlign?: string;
   fontFamily?: string;
   fontWeight?: string;
   color?: string;

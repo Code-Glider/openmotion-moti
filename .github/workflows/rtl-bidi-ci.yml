@@ -1,0 +1,60 @@
+name: RTL and BiDi feature validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/rtl-bidi-ci.yml'
+      - 'shared/caption-style.ts'
+      - 'shared/text-flow.ts'
+      - 'shared/transcript-captions.ts'
+      - 'shared/transcript-tool.ts'
+      - 'studio/src/captions/**'
+      - 'studio/src/components/editor/**'
+      - 'studio/src/player/**'
+      - 'scripts/rtl-font-audit.ts'
+      - 'tests/text-flow.test.ts'
+      - 'tests/rtl-font-audit.test.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rtl-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Source, type, build and regression gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out feature branch without Git LFS media
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+          lfs: false
+          persist-credentials: false
+      - name: Use upstream-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          package-manager-cache: false
+      - name: Install exact locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Focused text-flow and font-audit tests
+        run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts
+      - name: Repository source checks
+        run: npm run check
+      - name: Backend typecheck
+        run: npm run typecheck:backend
+      - name: Studio typecheck
+        run: npm run typecheck:studio
+      - name: Studio production build
+        run: npm run build:studio
+      - name: Backend regression tests
+        run: npm test
+      - name: Studio regression tests
+        run: npm run test:studio

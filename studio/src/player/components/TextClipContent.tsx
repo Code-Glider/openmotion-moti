@@ -14,6 +14,8 @@ export function TextClipContent({ text }: { text: TimelineText }) {
   return (
     <div
       className="absolute inset-0 flex items-center overflow-hidden px-2"
+      dir={text.direction}
+      lang={text.language}
       style={{ background: textClipBackground(text) }}
     >
       <span

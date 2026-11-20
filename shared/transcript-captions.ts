@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { placeTranscriptSegments, timedSegment, parseTranscriptSubtitles, type TranscriptDocument, type TranscriptPlacement, type TranscriptSegment } from './transcript.ts';
 import { exportCaptionSource } from './caption-export.ts';
 import { captionArtwork, captionSettings, type CaptionSettings } from './caption-style.ts';
+import { textFlowAttributes } from './text-flow.ts';
 
 export type CaptionPlacement = TranscriptPlacement;
 export type CaptionTrack = { id: string; kind: 'text' | 'caption'; track: number; label: string; cueCount: number; settings: CaptionSettings; locked: boolean };
@@ -33,9 +34,11 @@ export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtm
   const baseSize = (tags: Tag[]) => { const root = tags.find(tag => value(tag, 'data-composition-id')); return Math.round(Math.min((Number(root && value(root, 'data-width')) || 1920) * 0.055, (Number(root && value(root, 'data-height')) || 1080) * 0.045)); };
   function settingsFor(tag: Tag): CaptionSettings {
     const text = trackKind(tag) === 'text';
-    return captionSettings({ preset: (value(tag, 'data-caption-preset') || (text ? 'clean' : 'bar')) as CaptionSettings['preset'], position: (value(tag, 'data-caption-position') || (text ? 'center' : 'bottom')) as CaptionSettings['position'], scale: Number(value(tag, 'data-caption-scale') || 1), pacing: (value(tag, 'data-caption-pacing') || 'sentence') as CaptionSettings['pacing'], visible: !tag.attributes.some(a => a.name === 'data-hidden') });
+    return captionSettings({ preset: (value(tag, 'data-caption-preset') || (text ? 'clean' : 'bar')) as CaptionSettings['preset'], position: (value(tag, 'data-caption-position') || (text ? 'center' : 'bottom')) as CaptionSettings['position'], scale: Number(value(tag, 'data-caption-scale') || 1), pacing: (value(tag, 'data-caption-pacing') || 'sentence') as CaptionSettings['pacing'], visible: !tag.attributes.some(a => a.name === 'data-hidden'),
+      ...(value(tag, 'lang') ? { language: value(tag, 'lang')! } : {}),
+      ...(value(tag, 'dir') ? { direction: value(tag, 'dir') as CaptionSettings['direction'] } : {}) });
   }
-  function settingsAttributes(settings: CaptionSettings) { return `data-caption-preset="${settings.preset}" data-caption-position="${settings.position}" data-caption-scale="${settings.scale}" data-caption-pacing="${settings.pacing}"${settings.visible ? '' : ' data-hidden'}`; }
+  function settingsAttributes(settings: CaptionSettings) { return `data-caption-preset="${settings.preset}" data-caption-position="${settings.position}" data-caption-scale="${settings.scale}" data-caption-pacing="${settings.pacing}"${textFlowAttributes(settings)}${settings.visible ? '' : ' data-hidden'}`; }
   function captionTracks(html: string): CaptionTrack[] {
     const found = new Map<string, CaptionTrack>();
     for (const tag of scanHtmlOpeningTags(html)) {
@@ -64,7 +67,7 @@ export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtm
       let opening = html.slice(tag.start, tag.end);
       const properties = Object.fromEntries((value(tag, 'style') || '').split(';').filter(Boolean).map(entry => { const i = entry.indexOf(':'); return [entry.slice(0, i).trim(), entry.slice(i + 1).trim()]; }));
       if (patch.preset !== undefined || patch.scale !== undefined || patch.position !== undefined) Object.assign(properties, captionArtwork(settings, baseSize(tags)));
-      const names = new Set(['style', 'data-caption-preset', 'data-caption-position', 'data-caption-scale', 'data-caption-pacing', 'data-hidden']);
+      const names = new Set(['style', 'data-caption-preset', 'data-caption-position', 'data-caption-scale', 'data-caption-pacing', 'data-hidden', 'lang', 'dir']);
       for (const attr of [...tag.attributes].reverse()) if (names.has(attr.name)) opening = opening.slice(0, attr.start - tag.start) + opening.slice(attr.end - tag.start);
       opening = opening.replace(/\s*>$/, ` style="${escape(styleText(properties))}" ${settingsAttributes(settings)}>`);
       html = html.slice(0, tag.start) + opening + html.slice(tag.end);
@@ -75,7 +78,8 @@ export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtm
   /** Original native caption authoring. Visual values describe video artwork, never application UI. */
   function transcriptCaptionSource(html: string, doc: TranscriptDocument, placement: CaptionPlacement, options?: Partial<CaptionSettings>) {
     const mapped = placeTranscriptSegments(doc, placement);
-    return timedTextSource(html, doc.id, (doc.language && doc.language !== 'auto' ? doc.language : undefined) || doc.source.path.split('/').pop() || 'Captions', mapped, options);
+    const language = doc.language && doc.language !== 'auto' ? doc.language : undefined;
+    return timedTextSource(html, doc.id, language || doc.source.path.split('/').pop() || 'Captions', mapped, { ...(language ? { language } : {}), ...options });
   }
 
   /** Manual text and imported subtitles are timeline-native; no media or ASR is required. */

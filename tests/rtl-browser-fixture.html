@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenMotion RTL/BiDi browser reference</title>
+<style>
+  body { font: 22px/1.65 system-ui,sans-serif; color: #161616; background: #f5f5f5; margin:24px; }
+  article { max-width:740px; padding:20px; margin:12px 0; background:white; border:1px solid #ddd; }
+  .sample { width:640px; max-width:100%; white-space:pre-wrap; }
+  .he {font-family:'Noto Sans Hebrew','DejaVu Sans',sans-serif}
+  .ar {font-family:'Noto Naskh Arabic',Amiri,serif}
+  h1 {font-size:25px} h2 {font-size:16px} output {font:12px/1.4 monospace;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>RTL/BiDi reference — browser layout only</h1>
+<article><h2>Simple Hebrew</h2><div class="sample he" id="he-basic" lang="he" dir="rtl">שלום</div></article>
+<article><h2>Hebrew niqqud + English brand</h2><div class="sample he" id="he-mixed" lang="he" dir="rtl">בְּרֵאשִׁית — מבצע 25% על <bdi id="ltr-brand" lang="en" dir="ltr">OpenMotion Pro 2.0</bdi>!</div></article>
+<article><h2>Simple Arabic</h2><div class="sample ar" id="ar-basic" lang="ar" dir="rtl">سلام</div></article>
+<article><h2>Arabic diacritics and numbers</h2><div class="sample ar" id="ar-mixed" lang="ar" dir="auto">السَّلَامُ عَلَيْكُمْ — الخصم 25% على <bdi lang="en" dir="ltr">OpenMotion 2.0</bdi>!</div></article>
+<article><h2>LTR control</h2><div class="sample" id="ltr-control" dir="ltr" lang="en">Render ABC-123 at 10:30</div></article>
+<article><h2>Automated DOM result</h2><output id="rtl-audit"></output></article>
+<script>
+function charRect(el, offset) {
+  const text = el.firstChild;
+  const range = document.createRange();
+  range.setStart(text, offset); range.setEnd(text, offset+1);
+  return range.getBoundingClientRect();
+}
+const he=document.getElementById('he-basic'),ar=document.getElementById('ar-basic');
+const result = {
+  heDir: getComputedStyle(he).direction,
+  arDir: getComputedStyle(ar).direction,
+  arAutoDir: getComputedStyle(document.getElementById('ar-mixed')).direction,
+  ltrDir: getComputedStyle(document.getElementById('ltr-control')).direction,
+  englishIsolateDir: getComputedStyle(document.getElementById('ltr-brand')).direction,
+  heFirstGlyphRightmost: charRect(he,0).left > charRect(he,3).left,
+  arFirstGlyphRightmost: charRect(ar,0).left > charRect(ar,3).left,
+  savedHebrewIsLogical: he.textContent === 'שלום',
+  savedArabicIsLogical: ar.textContent === 'سلام',
+};
+const output=document.getElementById('rtl-audit');
+output.textContent=JSON.stringify(result);
+output.setAttribute('data-pass',Object.values(result).every(Boolean)?'yes':'no');
+</script>
+</body>
+</html>

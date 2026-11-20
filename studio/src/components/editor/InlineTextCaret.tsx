@@ -161,7 +161,9 @@ function caretRect(range: Range, element: HTMLElement, view: Window) {
   const fontSize = Number.parseFloat(style.fontSize) || 16;
   const line = Number.parseFloat(style.lineHeight) || fontSize * 1.2;
   return {
-    left: box.left + (Number.parseFloat(style.paddingLeft) || 0),
+    left: style.direction === 'rtl'
+      ? box.right - (Number.parseFloat(style.paddingRight) || 0)
+      : box.left + (Number.parseFloat(style.paddingLeft) || 0),
     top: box.top + (Number.parseFloat(style.paddingTop) || 0),
     height: line,
   };
