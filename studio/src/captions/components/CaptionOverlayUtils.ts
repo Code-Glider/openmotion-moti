@@ -9,6 +9,36 @@ export interface WordBox {
   y: number;
   width: number;
   height: number;
+  /** True only when a word has an authored element safe to transform. */
+  canTransform: boolean;
+}
+
+/**
+ * Measure legacy plain-text captions without touching their DOM. Browser text
+ * ranges retain logical UTF-16 offsets for mixed bidi, punctuation and marks;
+ * neither segmentation nor measurement rewrites the rendered characters.
+ * Ambiguous word-to-segment mappings intentionally produce no boxes.
+ */
+export function readLegacyWordRects(groupEl: HTMLElement, expectedWords: number): DOMRect[] {
+  const child = groupEl.childNodes.length === 1 ? groupEl.firstChild : null;
+  const textNode =
+    child?.nodeType === 3 ? child
+      : child?.nodeType === 1 &&
+        (child as Element).tagName === "SPAN" &&
+        child.childNodes.length === 1 &&
+        child.firstChild?.nodeType === 3 ? child.firstChild : null;
+  if (!textNode || expectedWords < 1) return [];
+
+  const words = Array.from((textNode.textContent ?? "").matchAll(/\S+/gu));
+  if (words.length !== expectedWords) return [];
+
+  const range = groupEl.ownerDocument.createRange();
+  return words.map((word) => {
+    const start = word.index!;
+    range.setStart(textNode, start);
+    range.setEnd(textNode, start + word[0].length);
+    return range.getBoundingClientRect();
+  });
 }
 
 export function readWordBoxes(
@@ -57,42 +87,18 @@ export function readWordBoxes(
         resolvedWordEls.push(c);
       }
     }
-    if (resolvedWordEls.length === 0 && groupEl.textContent?.trim()) {
-      const textNode = groupEl.childNodes[0];
-      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-        const words = (textNode.textContent || "").split(/\s+/).filter(Boolean);
-        const frag = doc.createDocumentFragment();
-        for (const word of words) {
-          const span = doc.createElement("span");
-          span.textContent = word + " ";
-          span.style.display = "inline";
-          frag.appendChild(span);
-          resolvedWordEls.push(span);
-        }
-        groupEl.replaceChild(frag, textNode);
-      } else {
-        const singleSpan = groupEl.querySelector<HTMLElement>(":scope > span");
-        if (singleSpan && singleSpan.textContent?.trim()) {
-          const words = singleSpan.textContent.split(/\s+/).filter(Boolean);
-          const frag = doc.createDocumentFragment();
-          for (const word of words) {
-            const span = doc.createElement("span");
-            span.textContent = word + " ";
-            span.style.display = "inline";
-            frag.appendChild(span);
-            resolvedWordEls.push(span);
-          }
-          singleSpan.replaceWith(frag);
-        }
-      }
-    }
+    // Never split or replace live preview text just to draw selection boxes.
+    // Inline text may contain bidi controls, grapheme clusters, or authored
+    // spacing that DOM rewrites would silently destroy.
+    const canTransform = resolvedWordEls.length === group.segmentIds.length;
+    const rects = canTransform
+      ? resolvedWordEls.map((wordEl) => wordEl.getBoundingClientRect())
+      : readLegacyWordRects(groupEl, group.segmentIds.length);
+    if (rects.length !== group.segmentIds.length) continue;
     for (let wi = 0; wi < group.segmentIds.length; wi++) {
-      const segId = group.segmentIds[wi];
-      const wordEl = resolvedWordEls[wi] as HTMLElement | undefined;
-      if (!wordEl) continue;
-      const rect = wordEl.getBoundingClientRect();
+      const rect = rects[wi];
       boxes.push({
-        segmentId: segId,
+        segmentId: group.segmentIds[wi],
         groupId,
         groupIndex: gi,
         wordIndex: wi,
@@ -100,6 +106,7 @@ export function readWordBoxes(
         y: rect.top * cssScale + offsetY,
         width: rect.width * cssScale,
         height: rect.height * cssScale,
+        canTransform,
       });
     }
   }
@@ -110,6 +117,7 @@ export function getWordEl(
   iframe: HTMLIFrameElement,
   groupIndex: number,
   wordIndex: number,
+  expectedWords?: number,
 ): HTMLElement | null {
   let doc: Document | null = null;
   try {
@@ -130,6 +138,8 @@ export function getWordEl(
       wordEls.push(el);
     }
   }
+  // A single legacy span can wrap a sentence rather than an editable word.
+  if (expectedWords !== undefined && wordEls.length !== expectedWords) return null;
   return wordEls[wordIndex] ?? null;
 }
 
@@ -250,7 +260,7 @@ export function applyCaptionModelToIframe(model: {
     for (let wi = 0; wi < group.segmentIds.length; wi++) {
       const seg = model.segments.get(group.segmentIds[wi]);
       if (!seg) continue;
-      const wordEl = getWordEl(iframe, gi, wi);
+      const wordEl = getWordEl(iframe, gi, wi, group.segmentIds.length);
       if (!wordEl) continue;
       const s = seg.style;
       writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0);
