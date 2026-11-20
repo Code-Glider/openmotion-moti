@@ -28,8 +28,21 @@ function inputImages(row: any): Partial<Model> {
   return { nativeOptions: capabilities, ...(row.kind === 'image' && capabilities.edits === false ? { supportsImageReference: false } : {}) };
 }
 
+/** Cloud image requests carry ratio and resolution together as one `output` object. */
+export function cloudImageParameters(parameters: Record<string, unknown>): Record<string, unknown> {
+  const hasRatio = parameters.aspect_ratio !== undefined, hasResolution = parameters.resolution !== undefined;
+  if (!hasRatio && !hasResolution) return parameters;
+  if (parameters.size !== undefined) throw new Error('Cannot combine size with aspect_ratio or resolution.');
+  if (parameters.output !== undefined) throw new Error('Cannot combine output with aspect_ratio or resolution.');
+  if (typeof parameters.aspect_ratio !== 'string' || !parameters.aspect_ratio.trim() || typeof parameters.resolution !== 'string' || !parameters.resolution.trim()) {
+    throw new Error('OpenDesign Cloud image requests require both aspect_ratio and resolution together, or an explicit output object.');
+  }
+  const { aspect_ratio, resolution, ...rest } = parameters;
+  return { ...rest, output: { aspect_ratio, resolution } };
+}
+
 /** Three-step Cloud upload: create, PUT the bytes without credentials, then commit. */
-async function uploadInputs(fetcher: Fetcher, api: string, headers: Record<string, string>, jobId: string, ctx: ProviderContext): Promise<string[]> {
+export async function uploadInputs(fetcher: Fetcher, api: string, headers: Record<string, string>, jobId: string, ctx: Pick<ProviderContext, 'references' | 'progress' | 'signal'>): Promise<string[]> {
   const ids: string[] = [];
   for (const [index, input] of (ctx.references ?? []).entries()) {
     const bytes = await readFile(input.file);
@@ -61,18 +74,7 @@ export const opendesign: ProviderAdapter = {
       const parameters = resolveGenerationParameters(job.model, job.parameters, !!ctx.references?.length);
       const { voice, ...speechOptions } = parameters;
       if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
-      const wireParameters = (() => {
-        if (job.modality !== 'image') return parameters;
-        const hasRatio = parameters.aspect_ratio !== undefined, hasResolution = parameters.resolution !== undefined;
-        if (!hasRatio && !hasResolution) return parameters;
-        if (parameters.size !== undefined) throw new Error('Cannot combine size with aspect_ratio or resolution.');
-        if (parameters.output !== undefined) throw new Error('Cannot combine output with aspect_ratio or resolution.');
-        if (typeof parameters.aspect_ratio !== 'string' || !parameters.aspect_ratio.trim() || typeof parameters.resolution !== 'string' || !parameters.resolution.trim()) {
-          throw new Error('OpenDesign Cloud image requests require both aspect_ratio and resolution together, or an explicit output object.');
-        }
-        const { aspect_ratio, resolution, ...rest } = parameters;
-        return { ...rest, output: { aspect_ratio, resolution } };
-      })();
+      const wireParameters = job.modality === 'image' ? cloudImageParameters(parameters) : parameters;
       const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };
       const inputs = audio ? [] : await uploadInputs(fetcher, api, headers, job.id, ctx);
       const images = inputs.length ? { images: job.modality === 'video' ? [{ asset_id: inputs[0], role: 'first_frame' }] : inputs } : {};

@@ -1,5 +1,10 @@
 # 公开变更记录
 
+## 2026-11-20: Host Skill cover WebP posters on demand
+
+- Host Skill cover WebP posters alongside preview animations via `repository-media.json` (`Prepare and merge PR`), with existing posters resolved from a pinned public source snapshot (`008e46e8`) instead of being bundled into `studio/build/editor-assets/`.
+- Reduces the default compressed npm install package by ~3.64 MiB (from 21.20 MiB to 17.56 MiB). When offline or when a remote poster cannot load, Studio falls back to the Skill card's built-in motif illustration.
+
 ## 2026-11-19: Load Skill card animation on demand
 
 - Bundle static WebP posters for Skills. Load preview videos when viewport autoplay, hover, keyboard focus or opening the Skill triggers playback. Keep the poster available when the network is unavailable.

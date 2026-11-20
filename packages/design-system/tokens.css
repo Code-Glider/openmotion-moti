@@ -5,6 +5,17 @@
   --motion-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --motion-font-display: "Albert Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --motion-black-friday-artwork: #821833;
+  --motion-black-friday-night: #0b0605;
+  --motion-black-friday-ember: #120703;
+  --motion-black-friday-orange: #ff8d00;
+  --motion-black-friday-flame: #ff781f;
+  --motion-black-friday-peach: #ff8a2e;
+  --motion-black-friday-amber: #ffb86b;
+  --motion-black-friday-glow: #ff7a1f;
+  --motion-black-friday-focus: #F97316;
+  --motion-black-friday-cream: #ffd9bd;
+  --motion-black-friday-ink-light: #ffffff;
+  --motion-header-pill-hover-bg: #28282b;
   --motion-media-action-bg: color-mix(in srgb, var(--motion-neutral-n11) 95%, transparent);
   --motion-tooltip-bg: var(--motion-neutral-n11);
   --motion-tooltip-fg: var(--motion-neutral-n0);
@@ -208,6 +219,15 @@
   --motion-editor-menu-muted: var(--motion-neutral-n8);
   --motion-editor-menu-hover: var(--motion-neutral-n3);
   --motion-editor-card: var(--motion-neutral-n0);
+  --motion-badge-new-bg: #edf9c7;
+  --motion-badge-new-fg: #3c5200;
+  --motion-badge-new-border: #b9dc53;
+  --motion-badge-top-bg: #fde8f1;
+  --motion-badge-top-fg: #9c1b53;
+  --motion-badge-top-border: #f0b6cf;
+  --motion-badge-soon-bg: #efefef;
+  --motion-badge-soon-fg: #575757;
+  --motion-badge-soon-border: #d6d6d6;
 }
 :where([data-motion-ui][data-theme="dark"], [data-motion-ui][data-motion-studio]:not([data-theme="paper"])) {
   color-scheme: dark;
@@ -300,6 +320,15 @@
   --motion-editor-menu-muted: var(--motion-neutral-n5);
   --motion-editor-menu-hover: var(--motion-neutral-n9);
   --motion-editor-card: var(--motion-dark-card-bg);
+  --motion-badge-new-bg: #243310;
+  --motion-badge-new-fg: #d6ff4d;
+  --motion-badge-new-border: #6d8f1c;
+  --motion-badge-top-bg: #3f1c2e;
+  --motion-badge-top-fg: #ff7eb6;
+  --motion-badge-top-border: #7d3054;
+  --motion-badge-soon-bg: #2b2d30;
+  --motion-badge-soon-fg: #b3b8b2;
+  --motion-badge-soon-border: #45484c;
 }
 @media (prefers-color-scheme: dark) {
   :where([data-motion-ui]:not([data-theme]):not([data-motion-studio])) {
@@ -393,5 +422,14 @@
     --motion-editor-menu-muted: var(--motion-neutral-n5);
     --motion-editor-menu-hover: var(--motion-neutral-n9);
     --motion-editor-card: var(--motion-dark-card-bg);
+    --motion-badge-new-bg: #243310;
+    --motion-badge-new-fg: #d6ff4d;
+    --motion-badge-new-border: #6d8f1c;
+    --motion-badge-top-bg: #3f1c2e;
+    --motion-badge-top-fg: #ff7eb6;
+    --motion-badge-top-border: #7d3054;
+    --motion-badge-soon-bg: #2b2d30;
+    --motion-badge-soon-fg: #b3b8b2;
+    --motion-badge-soon-border: #45484c;
   }
 }

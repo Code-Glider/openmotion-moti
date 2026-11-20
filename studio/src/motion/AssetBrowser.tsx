@@ -25,9 +25,11 @@ function AssetPreviewContent({ asset, version, controls, previewing, autoPlay }:
   const src = assetMediaUrl(asset.id, version.id);
   useEffect(() => { const element = video.current; return () => element?.pause(); }, [src, controls, failed]);
   useLayoutEffect(() => { if (image.current?.complete && image.current.naturalWidth > 0) setLoaded(true); }, [src]);
-  return <div className="om-asset-preview om-media-surface" data-kind={asset.modality}>
+  // Transparent results sit on a checkerboard so their cut-out edges stay visible.
+  const transparent = asset.modality === 'image' && version.parameters?.background === 'transparent';
+  return <div className="om-asset-preview om-media-surface" data-kind={asset.modality} data-transparent={transparent || undefined}>
     {failed ? <div className="om-empty"><RemixIcon name="error-warning-line" size={24} /><span>{t('Preview unavailable')}</span>{controls && <Button variant="ghost" className="om-button h-auto" onClick={e => { e.stopPropagation(); setFailed(false); }}>{t('Retry')}</Button>}</div>
-      : asset.modality === 'image' ? <>{!loaded && <Skeleton className="om-asset-poster-skeleton" />}<img ref={image} src={src} alt={asset.name} width={version.width} height={version.height} loading={controls ? 'eager' : 'lazy'} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} /></>
+      : asset.modality === 'image' ? <>{!loaded && <Skeleton className="om-asset-poster-skeleton" />}<img ref={image} className={transparent ? 'motion-color-checkerboard' : undefined} src={src} alt={asset.name} width={version.width} height={version.height} loading={controls ? 'eager' : 'lazy'} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} /></>
       : controls ? asset.modality === 'video' ? <video ref={video} src={src} controls autoPlay={autoPlay} playsInline preload="metadata" onError={() => setFailed(true)} /> : <AssetAudioPreview src={src} autoPlay={autoPlay} onError={() => setFailed(true)} />
       : <>{asset.modality === 'video' ? <><VideoFrameThumbnail src={src} fallbackLabel={t('Preview unavailable')} />{previewing && <AssetHoverVideo src={src} />}</> : <div className="om-asset-media-symbol"><RemixIcon name="music-2-line" size={40} /></div>}<MediaDurationBadge duration={version.duration} className="absolute top-2 right-2" /></>}
   </div>;

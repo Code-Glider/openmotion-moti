@@ -74,7 +74,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
       {onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && studio.id === 'cinema' ? <WorkspaceBack inline fallback={onExplore} /> : !breadcrumb && studio.surface === 'techniques' &&
         <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination))} fallback={() => onCollection(studio)} />}
       <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
-      {destination.landing ? <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onOpenStudio(studioDestination(studio, scene.id, destination.model)); }}>
+      {destination.landing ? studio.id !== 'design' && <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onOpenStudio(studioDestination(studio, scene.id, destination.model)); }}>
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />
       </Button> : <nav className="om-asset-tabs" aria-label={t('Scenes')}>{scenesForStudio(studio).map(item => <Button variant="plain" className="om-nav-item" key={item.id}
         aria-current={item.id === scene.id ? 'page' : undefined} onClick={() => {

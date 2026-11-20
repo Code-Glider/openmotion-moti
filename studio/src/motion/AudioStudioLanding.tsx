@@ -42,7 +42,7 @@ export function AudioStudioLanding({ destination, active, onPrompt, onCreate }: 
       </Button>
     </section>
     <section className="om-studio-template-shelf" aria-label={t('Audio templates')}>
-      <header><div className="om-studio-template-heading"><h2 className="om-title">{t('Audio templates')}</h2></div></header>
+      <header><h2 className="om-title">{t('Audio templates')}</h2></header>
       <div className="om-studio-template-grid">
         {templates.map((item, index) => <article key={item.title} className="om-gallery-card om-audio-card" data-current={index === selected}>
           <div className="om-gallery-card-media">

@@ -65,20 +65,24 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
   </div>;
 }
 
-export function StudioIdeas({ destination, onPrompt, active = true }: { destination: StudioDestination; onPrompt: (prompt: string) => void; active?: boolean }) {
+export function StudioIdeas({ destination, onPrompt, active = true, modelName }: { destination: StudioDestination; onPrompt: (prompt: string) => void; active?: boolean; modelName?: string }) {
   const { t } = useI18n();
   const [selected, setSelected] = useState(0);
   const { scene } = destination;
   const options = studioExamples(destination);
   const idea = options[selected] ?? options[0];
+  const [heroBefore, heroAfter] = t('Start creating with {model}').split('{model}');
   const canvas = sceneLayout(scene) === 'canvas';
   return canvas ? <section className="om-canvas-ideas">
     <div className="om-canvas-deck" role="group" aria-label={t('Try an idea')}>{options.map((item, index) =>
-      <Button variant="plain" key={item.title} aria-label={t(item.title)} aria-pressed={index === selected} data-current={index === selected} onClick={() => setSelected(index)}>
-        <img src={item.poster} alt="" />{item.credit && <small className="om-scene-credit">{item.credit}</small>}
+      <Button variant="plain" key={item.title} aria-label={t(item.title)} aria-pressed={index === selected} data-current={index === selected} onClick={() => { setSelected(index); onPrompt(t(item.prompt)); }}>
+        <img src={item.poster} alt="" style={{ objectPosition: item.posterPosition }} />{item.credit && <small className="om-scene-credit">{item.credit}</small>}
       </Button>)}</div>
-    <h2 className="om-title">{t(idea.title)}</h2><p className="om-muted">{t(idea.prompt)}</p>
-    <Button variant="ghost" className="om-button h-auto" onClick={() => onPrompt(t(idea.prompt))}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</Button>
+    <h2 className="om-title">{modelName ? <>{heroBefore}<strong>{modelName}</strong>{heroAfter}</> : t(scene.label)}</h2>
+    <p className="om-muted">{t('Describe a scene, subject, mood, or style and bring it to life')}</p>
+    <Button variant="plain" className="om-canvas-pill om-canvas-idea-prompt" aria-label={t('Use prompt')} title={t(idea.prompt)} onClick={() => onPrompt(t(idea.prompt))}>
+      <RemixIcon name="add-line" size={15} />{t(idea.title)}
+    </Button>
   </section> : <section className="om-scene-guide">
     <div className="om-guide-heading">{idea.title !== scene.label && <span className="om-eyebrow">{t(scene.label)}</span>}<h2 className="om-title">{t(idea.title)}</h2></div>
     <div className="om-scene-example om-card">

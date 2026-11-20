@@ -6,6 +6,7 @@ import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpR
 import { assetNamingInstruction } from '../shared/asset-names.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
+import { imageFeaturePrompt } from '../shared/image-features.ts';
 
 test('MCP onboarding covers every public domain tool and scenarios only compose real tools', () => {
   const described = mcpCapabilities.flatMap(capability => [...capability.tools]);
@@ -66,6 +67,12 @@ test('reference-image and audio guidance is translated in every interface langua
   for (const locale of Object.values(translations) as Record<string, string>[]) {
     for (const [question, answer] of mcpFaq.slice(0, 2)) { assert.ok(locale[question]); assert.ok(locale[answer]); }
   }
+  const refAnswer = mcpFaq.find(([question]) => question === 'Can I generate from a reference image?')![1];
+  assert.match(refAnswer, /OpenDesign Cloud and account video models with first-frame support can animate one image/);
+  assert.match(refAnswer, /2 MiB/);
+  const mediaTool = phase1Tools.find(tool => tool.name === 'openmotion_media_use')!;
+  assert.match(mediaTool.description, /2 MiB for OpenDesign account\/Cloud.*20 MB/);
+  assert.match((mediaTool.inputSchema.properties as Record<string, { description: string }>).referenceAsset.description, /2 MiB for OpenDesign account\/Cloud.*20 MB/);
 });
 
 test('connection guidance exposes the maintained media workflow without asking for credentials', () => {
@@ -163,5 +170,28 @@ test('timeline hover inspection remains a localized, non-mutating preview scenar
   const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/timeline-hover-ui.json', import.meta.url), 'utf8'));
   for (const [language, values] of Object.entries(translations) as [string, Record<string, string>][]) {
     for (const key of [capability.title, capability.description, capability.prompt]) assert.ok(values[key]?.trim() && values[key] !== key, `${language}: missing hover guidance`);
+  }
+});
+
+test('image feature handbook scenarios cover background removal, relight and character consistency with limits and recovery', () => {
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  const removeBg = mcpScenarios.find(item => item.id === 'image-remove-background')!;
+  const relight = mcpScenarios.find(item => item.id === 'image-relight')!;
+  const character = mcpScenarios.find(item => item.id === 'image-character')!;
+  assert.ok(removeBg.prompt.includes(imageFeaturePrompt('remove-background', '')));
+  assert.match(removeBg.prompt, /"background":"transparent"/);
+  assert.match(removeBg.prompt, /gpt-image-2\.6-sunburst/);
+  assert.ok(relight.prompt.includes(imageFeaturePrompt('relight', 'Keep the logo sharp.', { direction: 'left', temperature: 'warm', mood: 'golden-hour' })));
+  assert.match(relight.prompt, /seedream-5\.5/);
+  assert.ok(character.prompt.includes(imageFeaturePrompt('character', 'Show the character walking through a sunlit café.')));
+  assert.match(character.prompt, /drop seedream-5\.5 when using 2 or more references/);
+  for (const scenario of [removeBg, relight, character]) {
+    assert.match(scenario.prompt, /target=providers/);
+    assert.match(scenario.prompt, /action=resume/);
+    assert.match(scenario.prompt, /2 MiB/);
+    for (const locale of Object.values(translations) as Record<string, string>[]) {
+      assert.ok(locale[scenario.title]?.trim());
+      assert.ok(locale[scenario.description]?.trim());
+    }
   }
 });

@@ -6,12 +6,13 @@ import type { Model, Modality } from '../../../shared/gateway';
 import { Popover } from '../components/ui/Popover';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { creativeStudios, studioIconTone, mediaLabels, modelDestination, modelsForScenes, sceneDestination, scenesForStudio, supportsScene, type StudioDestination } from './creativeStudios';
+import { creativeStudios, studioIconTone, mediaLabels, modelDestination, sceneDestination, scenesForStudio, supportsScene, type StudioDestination } from './creativeStudios';
 import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
-import { ModelAvatar } from './settingsPrimitives';
 import lunarStill from './scene-art/lunar-shot-still.webp';
 import speakerStudio from './scene-art/speaker-studio.webp';
+import { imageScene, menuFamilies, withOpenDesignModels } from './imageMenuModels';
+import { ImageMegaMenu, ModelMenuColumn, type ImageParameterSeed } from './ImageMegaMenu';
 import { sceneExamples } from './sceneShowcase';
 import { destinationTarget, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
 
@@ -22,29 +23,22 @@ export type CreativeNavigationProps = {
   motionActive: boolean;
   designActive?: boolean;
   cinemaActive?: boolean;
-  onNavigate: (destination: StudioDestination | null) => void;
+  onNavigate: (destination: StudioDestination | null, seed?: ImageParameterSeed) => void;
   currentPage: 'explore' | 'mcp' | null;
   onOpenPage: (page: 'explore' | 'mcp', client?: McpClient) => void;
   /** The page this navigation is shown on, so its clicks segment by where the user was. */
   trackingPage: CreativePage;
 };
 
-function MediaChoices({ studio, destination, onNavigate, onSelectModel, catalog }: Pick<CreativeNavigationProps, 'destination' | 'onNavigate'> & Pick<ReturnType<typeof useMediaCatalog>, 'catalog'> & { studio: MediaStudio; onSelectModel: (target: StudioDestination) => void }) {
+function MediaChoices({ studio, destination, onNavigate, onSelectModel, catalog }: { destination: StudioDestination | null; onNavigate: (destination: StudioDestination) => void; onSelectModel: (target: StudioDestination) => void; catalog?: ReturnType<typeof useMediaCatalog>['catalog']; studio: MediaStudio }) {
   const { t } = useI18n();
   const kind = studio.primaryModality;
   const scenes = scenesForStudio(studio);
   const pinned = catalog?.models.find(model => model.id === destination?.model);
   const landingDestination = destination?.landing ? destination : null;
-  const models = modelsForScenes(catalog, kind);
-  const distinctModels: Model[] = [];
-  const seenLabels = new Set<string>();
-  for (const model of models) {
-    if (seenLabels.has(model.label)) continue;
-    seenLabels.add(model.label);
-    distinctModels.push(model);
-  }
-  return <>
-    <div className="om-media-menu-grid">
+  const families = catalog ? menuFamilies(withOpenDesignModels(catalog.models, catalog.status.providers).filter(model => model.modality === kind && scenes.some(scene => supportsScene(model, scene))), catalog.status.providers) : [];
+  return <div className="om-media-mega">
+    <div className="om-media-menu-grid om-media-mega-entries">
       {scenes.map(scene => {
         const example = sceneExamples[scene.id][0];
         return <Button variant="plain" key={scene.id} className="om-scene-tile" aria-current={destination?.landing && destination.scene.id === scene.id ? 'page' : undefined}
@@ -82,19 +76,11 @@ function MediaChoices({ studio, destination, onNavigate, onSelectModel, catalog 
         </Button>;
       })}
     </div>
-    {distinctModels.length > 0 && <div className="om-media-menu-models" role="group" aria-label={t('Models')}>
-      <span className="om-media-menu-model-label">{t('Models')}</span>
-      <div className="om-media-menu-model-list">
-        {distinctModels.map(model => <Button variant="plain" key={model.id} className="om-nav-item om-media-menu-model"
-          title={model.label}
-          aria-current={destination?.landing && (destination.model === model.id || (pinned?.modality === kind && pinned.label === model.label)) ? 'page' : undefined}
-          onClick={() => onSelectModel(modelDestination(model, landingDestination))}>
-          <ModelAvatar name={model.label} modelId={model.modelId} provider={{ id: model.provider, custom: model.source === 'custom' }} />
-          <span className="om-media-menu-model-name">{model.label}</span>
-        </Button>)}
-      </div>
-    </div>}
-  </>;
+    <div className="om-media-mega-columns" data-single>
+      <ModelMenuColumn families={families}
+        onOpen={model => onSelectModel(modelDestination(model, landingDestination))} />
+    </div>
+  </div>;
 }
 
 export function CreativeNavigation({ specialty, onChooseStudio, destination, motionActive, designActive, cinemaActive, onNavigate, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
@@ -184,13 +170,17 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
     const { id, studio, label, current, menuLabel, onActivate } = menuDestinations[index - splitStart];
     const expanded = open === id && (index >= visibleCount) === inPanel;
     const where = { navTarget: id, inOverflow: inPanel };
+    const selectScene = (next: StudioDestination, seed?: ImageParameterSeed) => {
+      track('select_scene', { ...where, ...destinationTarget(next) });
+      choose(() => onNavigate(next, seed));
+    };
     return <div className="om-nav-row om-creative-split" data-active={Boolean(current)}>
           <Popover container={popupHost} modal={false} openOnHover={!inPanel} open={expanded}
             onOpenChange={value => {
               if (value && !inPanel) setMoreOpen(false);
               setOpen(previous => value ? id : previous === id ? null : previous);
             }}
-            aria-label={menuLabel} align="start" className={id === 'mcp' ? 'om-selection-panel om-creative-client-menu' : `om-selection-panel om-creative-menu om-creative-menu-${id}`}
+            aria-label={menuLabel} align="start" className={id === 'mcp' ? 'om-selection-panel om-creative-client-menu' : `om-selection-panel om-creative-menu om-creative-mega om-creative-menu-${id}`}
             primaryAction={<Button variant="plain" className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => { track(id === 'mcp' ? 'nav_mcp' : 'nav_media', where); choose(onActivate); }}>{label}</Button>}
             trigger={<Button variant="plain" className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={expanded}><RemixIcon name="arrow-down-s-line" size={12} /></Button>}>
             {id === 'mcp' ? <>
@@ -200,9 +190,10 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
                   <McpClientAvatar client={client} /><span>{t(client.name)}</span>
                 </Button>)}
               </div>
-            </> : expanded && studio && <MediaChoices catalog={catalog.catalog} studio={studio} destination={destination}
-              onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }}
-              onSelectModel={next => { track('select_model', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />}
+            </> : expanded && studio && (id === 'image'
+              ? <ImageMegaMenu catalog={catalog.catalog} destination={destination} onNavigate={selectScene} />
+              : <MediaChoices catalog={catalog.catalog} studio={studio} destination={destination} onNavigate={selectScene}
+                onSelectModel={next => { track('select_model', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }} />)}
           </Popover>
         </div>;
   }

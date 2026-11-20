@@ -145,6 +145,22 @@ retains `billing=plan` and contains no account, installation or credential data.
 AMR must accept the OpenMotion origin and entry source in its attribution
 validation before these parameters can reach its subscription/payment events.
 
+The Black Friday banner above the application header and the header **Pricing** entry link to the
+website Pricing page (`open-design.ai/[zh/]pricing/`) with `od_origin=openmotion`,
+`od_entry_source=openmotion_manage_subscription` (the OpenMotion source AMR already accepts; an unregistered
+source would drop the whole attribution), a fresh `od_entry_id` / UTC `od_entry_at` per
+click, and `utm_source=openmotion`, `utm_medium=banner|header`, `utm_campaign=black_friday_2026`. The
+Pricing page keeps an inbound `od_entry_id` / `od_entry_source` as the first touch through checkout.
+OpenMotion reports `surface_view` (`area=campaign_banner`, `element=banner`) once per page load while the
+banner is shown, and `ui_click` for `claim_offer` and `close_banner` (`area=campaign_banner`) and
+`open_pricing` (`area=header`), each with `campaign_id=black_friday_2026`. The two link clicks also send
+`entry_id`, equal to that click's `od_entry_id`, so a click joins the Pricing visit and payment. `utm_medium`
+and the click's `element` tell the banner and the header entry apart; dedicated entry sources need AMR to register
+them first.
+The campaign shows from 2026-11-21 18:00 until 2026-12-05 00:00 Beijing time. Outside that window the banner is hidden,
+the Pricing entry has no badge, links omit `utm_campaign` and clicks omit `campaign_id`. A dismissed banner stays
+hidden for the rest of the visitor's local day and returns the next day.
+
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.
 Different data directories remain separate installations.

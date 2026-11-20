@@ -1,12 +1,9 @@
 import type { StudioDestination, StudioScene } from './creativeStudios';
-import { motionSkills } from './skillCatalog';
+import { archivedSkillPoster, motionSkills } from './skillCatalog';
 import lunar from './scene-art/apollo-11.jpg';
-import product from './skill-covers/light-shadow-product.webp';
 import speakerRoom from './scene-art/speaker-room.webp';
-import splash from './skill-covers/splash-float-product.webp';
+import speakerStudio from './scene-art/speaker-studio.webp';
 import soundtrackCover from './scene-art/ambient-piano.webp';
-import narration from './skill-covers/talking-head-recreation.webp';
-import camera from './skill-covers/babylon-js.webp';
 import welcomeMusic from '../../../template-library/openmotion-welcome/assets/soundtrack.m4a?url';
 import studiesScore from '../../../examples/motion-studies/assets/score.m4a?url';
 import studiesCover from './scene-art/studies-score.webp';
@@ -32,6 +29,11 @@ import riserAudio from './scene-art/sfx-riser.m4a?url';
 import riserCover from './scene-art/sfx-riser.webp';
 import typingAudio from './scene-art/sfx-typing.m4a?url';
 import typingCover from './scene-art/sfx-typing.webp';
+
+const product = archivedSkillPoster('light-shadow-product');
+const splash = archivedSkillPoster('splash-float-product');
+const narration = archivedSkillPoster('talking-head-recreation');
+const camera = archivedSkillPoster('babylon-js');
 
 /** Audio templates name the model to reproduce them with; the bundled files are the repository's own scores and effects, not output from that model. */
 export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; creditUrl?: string; clip?: string; audio?: string; waveform?: readonly number[]; seconds?: number; model?: string; kind?: 'Music' | 'Sound effect' }
@@ -63,6 +65,9 @@ const orange = { title: 'Slow motion detail', prompt: 'Film a slow-motion close-
 export const sceneExamples: Record<StudioScene['id'], readonly [SceneExample, ...SceneExample[]]> = {
   'text-to-image': [portrait, moon, cameraStudy],
   'image-edit': [{ title: 'From studio to living room', prompt: 'Keep the speaker in place. Put it on a wooden side table in a sunlit living room.', poster: speakerRoom }],
+  'remove-background': [{ title: 'A clean product cutout', prompt: 'Keep only the speaker.', poster: speakerStudio }],
+  relight: [{ title: 'Late afternoon light', prompt: 'Let the light fall across the table and leave soft shadows behind the speaker.', poster: speakerRoom }],
+  character: [{ title: 'The same astronaut, a new place', prompt: 'Show the same astronaut walking through a neon-lit city street at night.', poster: lunar, posterPosition: 'center top', credit: 'NASA · AS11-40-5903' }],
   'shot-image': [moon, cameraStudy, portrait],
   'text-to-video': [orange],
   'image-to-video': [{ title: 'A cinematic opening', prompt: 'Start on the supplied frame. Push in slowly as a band of sunlight moves across the product.', poster: product, clip: productClip }],

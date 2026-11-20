@@ -1,5 +1,4 @@
 import lunar from './scene-art/apollo-11.jpg';
-import studioLight from './skill-covers/light-shadow-product.webp';
 import interior from './scene-art/speaker-room.webp';
 import { sceneExamples } from './sceneShowcase';
 
@@ -81,7 +80,7 @@ export const cinemaTemplates: readonly CinemaTemplate[] = [{
 }, {
   id: 'product-light-reveal',
   scene: 'text-to-video',
-  poster: studioLight,
+  poster: productPushIn.poster,
   model: seedance,
   aspect: '9:16',
   duration: 6,

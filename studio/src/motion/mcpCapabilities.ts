@@ -5,6 +5,7 @@ import { assetNamingInstruction } from '../../../shared/asset-names.ts';
 import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
 import { templateGuideContinuationInstruction } from '../../../shared/template-guide.ts';
 import { designBriefPrompt } from '../../../shared/design-project.ts';
+import { imageFeaturePrompt, imageFeatures } from '../../../shared/image-features.ts';
 import type { IntegrationInfo } from '../../../shared/integration.ts';
 
 /** Maintained product descriptions; coverage is checked against the public MCP contract. */
@@ -115,6 +116,21 @@ export const mcpScenarios = [animeOpeningScenario, {
   description: 'Render a Design Studio slide deck at 1920×1080 into PDF or PowerPoint (.pptx) with speaker notes, or export standalone HTML and PNG screenshots from the current or historical version.',
   tools: ['openmotion_design_project'],
   prompt: 'Inspect my Design Studio deck with openmotion_design_project action=get and export it with openmotion_design_project action=export format=pptx (or format=pdf). Return the saved output path.',
+}, {
+  id: 'image-remove-background', icon: 'scissors-cut-line', title: 'Remove image background',
+  description: 'Isolate a subject from 1 reference image onto a transparent PNG background using OpenDesign GPT Image 2.6 (Cloud API key or Plus+ account).',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_open_preview'],
+  prompt: `Remove the background from my image asset. First call openmotion_media_use action=inspect to check for an available OpenDesign Cloud API key or Plus+ account model (${imageFeatures['remove-background'].models.join(' or ')}). If neither is ready, call openmotion_open_preview with target=providers so I can configure OpenDesign and tell you when ready. Confirm the 1 reference image version (at most ${imageFeatures['remove-background'].maxReferences} reference, up to 2 MiB) via openmotion_assets_use, then submit once with openmotion_assets_use action=generate using parameters=${JSON.stringify(imageFeatures['remove-background'].parameters)} and prompt: "${imageFeaturePrompt('remove-background', '')}". Track the same jobId; if an account download is interrupted, recover with openmotion_assets_use action=resume rather than regenerating.`,
+}, {
+  id: 'image-relight', icon: 'sun-line', title: 'Relight an image',
+  description: 'Change light direction, color temperature and mood on 1 reference image while preserving subject details using OpenDesign models.',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_open_preview'],
+  prompt: `Relight my image asset while keeping the subject unchanged. First call openmotion_media_use action=inspect to discover an available OpenDesign model (${imageFeatures.relight.models.join(', ')}; prefer ${imageFeatures.relight.recommended}). If no OpenDesign route is ready, call openmotion_open_preview with target=providers and wait for my confirmation. Confirm 1 reference image version (max ${imageFeatures.relight.maxReferences}, up to 2 MiB) with openmotion_assets_use, ask for any custom lighting note, then submit once with openmotion_assets_use action=generate using prompt: "${imageFeaturePrompt('relight', 'Keep the logo sharp.', { direction: 'left', temperature: 'warm', mood: 'golden-hour' })}". Track the original jobId and use openmotion_assets_use action=resume if an account download is interrupted.`,
+}, {
+  id: 'image-character', icon: 'user-3-line', title: 'Keep a character consistent',
+  description: 'Place the same character into a new scene from 1 to 5 reference images on OpenDesign (use GPT Image 2.6 or Seedream 5.0 Flash for 2–5 references; Seedream 5.5 accepts 1).',
+  tools: ['openmotion_media_use', 'openmotion_assets_use', 'openmotion_open_preview'],
+  prompt: `Generate a new scene keeping my character consistent across 1 to ${imageFeatures.character.maxReferences} reference images (up to 2 MiB each). First call openmotion_media_use action=inspect for an available OpenDesign model (${imageFeatures.character.models.join(', ')}; drop seedream-5.5 when using 2 or more references). If no OpenDesign route is ready, call openmotion_open_preview with target=providers and wait for confirmation. Confirm the pinned asset versions via openmotion_assets_use, then submit once with openmotion_assets_use action=generate using prompt: "${imageFeaturePrompt('character', 'Show the character walking through a sunlit café.')}". Track the same jobId and recover interrupted downloads with openmotion_assets_use action=resume without generating again.`,
 }] as const;
 
 export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'adapt', locale, workspace });
@@ -135,7 +151,7 @@ export const mcpBenefits = [
 
 export const mcpFaq = [
   ["How do I find where project audio is used?", "In My assets, audio rows show usage status and clickable application intervals. Click a range to select the clip and seek to its start; nested audio opens its owning composition first. Used audio omits duplicate file duration, and narrow panels keep usage on its own line. Detailed previews retain audition and visualization."],
-  ['Can I generate from a reference image?', "Yes. Supported image models can edit a reference. OpenDesign Cloud models with first-frame support can animate an image from Assets; Seedance 2.5 and Wan 2.7 use the image's aspect ratio. Prepare the reference first for a fixed frame. The OpenDesign account provider does not support video references yet."],
+  ['Can I generate from a reference image?', "Yes. Supported image models can edit a reference. OpenDesign Cloud and account video models with first-frame support can animate one image from Assets; Seedance 2.5 and Wan 2.7 use the image's aspect ratio. Prepare the reference first for a fixed frame. OpenDesign reference images must be under 2 MiB (other local adapters allow up to 20 MB)."],
   ['Which audio can I generate?', 'Speech, music and sound effects depend on the selected model and provider. BGM uses a music model. Use the discovered model mode and native parameters; an audio connection does not imply support for every audio operation.'],
   ['How is a Brand Kit different from a Template?', 'Open Brand Kit in Studio to extract a public website or choose the official collection, review its styles and download a Motion Package. Copy for Agent provides a local package path and style-only instructions. Reuse colors, typography, logos, component variants, materials and visual brand rules; context files travel with the package. The fixed showcase does not define your film’s pacing or story. For Agent access, use openmotion_assets_use with action=brand_kit. Brand Kits are separate from the MCP template catalogue.'],
   ["Can Studio run inside DeepSeek Harness?", "Yes, with the optional source-checkout workspace plugin for DSH 0.2.2-rc.1. Run the source-checkout DSH installer with the current profile and data directory, or use a verified release tarball. Refresh the browser if the new frontend is missing; do not restart the active conversation. The plugin opens the template library or Studio to the right of Agent chat and connects MCP to the same data. Configure your model in DSH; refresh the workspace to select newly created projects. This plugin is separate from the standard npm application."],

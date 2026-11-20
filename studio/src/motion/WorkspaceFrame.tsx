@@ -1,3 +1,4 @@
+import type { ImageParameterSeed } from './ImageMegaMenu';
 import { IconButton } from 'open-design-ui/icon-button';
 import { Button } from 'open-design-ui/button';
 import type { SkillCategory } from './skillCategories';
@@ -39,6 +40,8 @@ import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
 import { preservePresentation, workspacePresentation } from '../../../shared/workspace-url';
 import { trackMotion } from './tracking';
 import { ApplicationHeader, WorkspaceUtilityActions } from './ApplicationChrome';
+import { BlackFridayTopBanner } from './BlackFridayTopBanner';
+import { dismissBannerToday, shouldShowBlackFridayBanner, useMinuteCondition } from './campaignAttribution';
 import { SettingsCenter, type SettingsSection } from './SettingsCenter';
 import { SettingsSurfaceBoundary } from './SettingsSurfaceBoundary';
 import { McpConnectionPage } from './McpConnectionPage';
@@ -173,6 +176,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [page.templateCollection, page.skill]);
   const [narrow, setNarrow] = useState(() => window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+  // Shown inside the campaign window unless dismissed today; re-checked each minute for the end and the next day.
+  const [bfBannerShown, setBfBannerShown] = useMinuteCondition(shouldShowBlackFridayBanner);
+  const bfBannerVisible = !hostChrome && bfBannerShown;
+  const closeBfBanner = useCallback(() => { dismissBannerToday(); setBfBannerShown(false); }, [setBfBannerShown]);
+  const expireBfBanner = useCallback(() => setBfBannerShown(false), [setBfBannerShown]);
   const [projectQuery, setProjectQuery] = useState('');
   const editorRoute = !settings && !pageOpen;
   const editorActive = editorRoute && !connectionsOpen;
@@ -288,11 +296,16 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const selectAssetRoute = useCallback((assetId: string | null, assetVersion: string | null) => {
     if (readWorkspacePage(location.search, location.hash).assets) navigatePage({ assetId, assetVersion });
   }, [navigatePage]);
-  const openStudio = (studio: StudioDestination | null, seed?: string | AssetDraft, fromPage = false) => {
+  const openStudio = (studio: StudioDestination | null, seed?: string | AssetDraft | ImageParameterSeed, fromPage = false) => {
     const skill = studio?.studio.surface === 'techniques' && typeof seed === 'object' ? page.skill : null;
     if (studio && seed) {
-      studioDrafts.current.set(studioDraftKey(studio, skill), typeof seed === 'string'
-        ? { modality: studio.scene.modality, prompt: seed, references: [] } : seed);
+      const key = studioDraftKey(studio, skill);
+      const previous = studioDrafts.current.get(key);
+      studioDrafts.current.set(key, typeof seed === 'string'
+        ? { modality: studio.scene.modality, prompt: seed, references: [] }
+        : 'modality' in seed ? seed
+        : { modality: studio.scene.modality, prompt: previous?.prompt ?? '', references: previous?.references ?? [],
+          model: studio.model ?? seed.model, parameters: seed.parameters });
       setStudioVisit(number => number + 1);
     }
     navigatePage({ studio, skill, settings: null, assets: false, skills: false, templates: false, ...lastExplore.current },
@@ -385,7 +398,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     <StudioConnectionToast reconnecting={reconnecting} />
     {archives.manager}
     <Dialog.Root open={sidebarOpen && narrow && editorActive} onOpenChange={setSidebarOpen}>
-    <div ref={applicationRef} className="om-application" data-embedded={presentation.embedded} data-host-chrome={hostChrome} data-navigation-collapsed={navigationCollapsed}>
+    <div ref={applicationRef} className="om-application" data-embedded={presentation.embedded} data-host-chrome={hostChrome} data-has-bf-banner={bfBannerVisible || undefined} data-navigation-collapsed={navigationCollapsed}>
+      {bfBannerVisible && <BlackFridayTopBanner trackingPage={navTrackingPage} onClose={closeBfBanner} onExpire={expireBfBanner} />}
       <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
         specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
