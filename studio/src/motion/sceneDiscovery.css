@@ -190,6 +190,7 @@
 
 .om-studio-template-shelf { display: grid; gap: var(--motion-space-16); }
 .om-studio-template-shelf header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
+.om-studio-template-heading { display: flex; align-items: center; gap: var(--motion-space-12); }
 .om-studio-template-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--motion-space-16); }
 .om-studio-template-grid:empty { display: none; }
 .om-cinema-home .om-discovery-hero > img, .om-cinema-home [data-template-id="lunar-tracking-shot"] img { object-position: center top; }
