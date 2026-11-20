@@ -152,6 +152,11 @@
   gap: var(--motion-space-12);
 }
 .om-sound-section { display: grid; gap: var(--motion-space-8); max-width: 1080px; width: 100%; margin-inline: auto; }
+.om-sound-library-section,
+.om-sound-starters { min-width: 0; }
+.om-sound-estimate { flex: none; }
+.om-sound-model-block { min-width: 0; }
+.om-sound-voice-audio-host { display: none; }
 .om-sound-state-box { min-height: 220px; align-content: center; }
 
 /* Unified chronological day groups & in-place generating/failed rows */
