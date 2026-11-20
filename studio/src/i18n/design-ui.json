@@ -75,7 +75,10 @@
     "Scenario": "场景",
     "Entry file": "入口文件",
     "Tags": "标签",
-    "Example brief": "示例简报"
+    "Example brief": "示例简报",
+    "Type @ to mention templates or skills": "输入 @ 引用模板、技能或提示词",
+    "Mention template or skill": "引用模板或技能",
+    "Prompt": "提示词"
   },
   "ja": {
     "Projects": "プロジェクト",
@@ -153,7 +156,10 @@
     "Scenario": "シナリオ",
     "Entry file": "エントリーファイル",
     "Tags": "タグ",
-    "Example brief": "ブリーフ例"
+    "Example brief": "ブリーフ例",
+    "Type @ to mention templates or skills": "@を入力してテンプレートやスキルを参照",
+    "Mention template or skill": "テンプレート・スキルを参照",
+    "Prompt": "プロンプト"
   },
   "ko": {
     "Projects": "프로젝트",
@@ -231,7 +237,10 @@
     "Scenario": "시나리오",
     "Entry file": "진입 파일",
     "Tags": "태그",
-    "Example brief": "예시 브리프"
+    "Example brief": "예시 브리프",
+    "Type @ to mention templates or skills": "@를 입력해 템플릿이나 스킬을 멘션하세요",
+    "Mention template or skill": "템플릿 또는 스킬 멘션",
+    "Prompt": "프롬프트"
   },
   "de": {
     "Projects": "Projekte",
@@ -309,7 +318,10 @@
     "Scenario": "Szenario",
     "Entry file": "Einstiegsdatei",
     "Tags": "Tags",
-    "Example brief": "Beispiel-Briefing"
+    "Example brief": "Beispiel-Briefing",
+    "Type @ to mention templates or skills": "@ tippen, um Vorlagen oder Skills zu erwähnen",
+    "Mention template or skill": "Vorlage oder Skill erwähnen",
+    "Prompt": "Prompt"
   },
   "fr": {
     "Projects": "Projets",
@@ -387,7 +399,10 @@
     "Scenario": "Scénario",
     "Entry file": "Fichier d’entrée",
     "Tags": "Étiquettes",
-    "Example brief": "Exemple de brief"
+    "Example brief": "Exemple de brief",
+    "Type @ to mention templates or skills": "Tapez @ pour mentionner des modèles ou compétences",
+    "Mention template or skill": "Mentionner un modèle ou une compétence",
+    "Prompt": "Prompt"
   },
   "ru": {
     "Projects": "Проекты",
@@ -465,7 +480,10 @@
     "Scenario": "Сценарий",
     "Entry file": "Входной файл",
     "Tags": "Теги",
-    "Example brief": "Пример брифа"
+    "Example brief": "Пример брифа",
+    "Type @ to mention templates or skills": "Введите @, чтобы упомянуть шаблоны или навыки",
+    "Mention template or skill": "Упомянуть шаблон или навык",
+    "Prompt": "Промпт"
   },
   "es": {
     "Projects": "Proyectos",
@@ -543,7 +561,10 @@
     "Scenario": "Escenario",
     "Entry file": "Archivo de entrada",
     "Tags": "Etiquetas",
-    "Example brief": "Brief de ejemplo"
+    "Example brief": "Brief de ejemplo",
+    "Type @ to mention templates or skills": "Escribe @ para mencionar plantillas o habilidades",
+    "Mention template or skill": "Mencionar plantilla o habilidad",
+    "Prompt": "Prompt"
   },
   "pt-BR": {
     "Projects": "Projetos",
@@ -621,7 +642,10 @@
     "Scenario": "Cenário",
     "Entry file": "Arquivo de entrada",
     "Tags": "Tags",
-    "Example brief": "Exemplo de briefing"
+    "Example brief": "Exemplo de briefing",
+    "Type @ to mention templates or skills": "Digite @ para mencionar modelos ou skills",
+    "Mention template or skill": "Mencionar modelo ou skill",
+    "Prompt": "Prompt"
   },
   "it": {
     "Projects": "Progetti",
@@ -699,7 +723,10 @@
     "Scenario": "Scenario",
     "Entry file": "File di ingresso",
     "Tags": "Tag",
-    "Example brief": "Esempio di brief"
+    "Example brief": "Esempio di brief",
+    "Type @ to mention templates or skills": "Digita @ per menzionare modelli o skill",
+    "Mention template or skill": "Menziona modello o skill",
+    "Prompt": "Prompt"
   },
   "tr": {
     "Projects": "Projeler",
@@ -777,6 +804,9 @@
     "Scenario": "Senaryo",
     "Entry file": "Giriş dosyası",
     "Tags": "Etiketler",
-    "Example brief": "Örnek özet"
+    "Example brief": "Örnek özet",
+    "Type @ to mention templates or skills": "Şablon veya beceri eklemek için @ yazın",
+    "Mention template or skill": "Şablon veya beceri ekle",
+    "Prompt": "İstem"
   }
 }

@@ -137,17 +137,28 @@ const fence = (value: string) => value.replace(/```/g, '`\u200b``');
 
 /** Brief from a Design Studio scene composer, copied to an external Agent. */
 export function designBriefPrompt(input: {
-  scenario: DesignScenarioId; brief: string; designSystemId?: string | null; templateId?: string | null; skillId?: string | null; projectId?: string | null; language?: string | null;
+  scenario: DesignScenarioId;
+  brief: string;
+  designSystemId?: string | null;
+  templateId?: string | null;
+  templateIds?: string[];
+  skillId?: string | null;
+  skillIds?: string[];
+  projectId?: string | null;
+  language?: string | null;
 }) {
   const scenario = findDesignScenario(input.scenario)!;
+  const templates = [...new Set([...(input.templateIds ?? []), ...(input.templateId ? [input.templateId] : [])])];
+  const skills = [...new Set([...(input.skillIds ?? []), ...(input.skillId ? [input.skillId] : [])])];
+  const primaryTemplate = templates[0] ?? null;
   return [
     `Use the OpenMotion MCP design tools to ${input.projectId ? 'update' : 'create'} a ${scenario.label.toLowerCase()} design.`,
     '',
     `Scenario: ${scenario.id}`,
     input.projectId ? `Project: ${input.projectId}` : null,
-    input.designSystemId ? `Design system: ${input.designSystemId} (read it with openmotion_design_catalog action=get_design_system)` : null,
-    input.skillId ? `Design skill: ${input.skillId} (read it with openmotion_design_catalog action=get_skill id=${input.skillId})` : null,
-    input.templateId ? `Start from template: ${input.templateId} (openmotion_design_project action=create templateId=${input.templateId})` : null,
+    input.designSystemId ? `Brand Kit / Design system: ${input.designSystemId} (read it with openmotion_design_catalog action=get_design_system)` : null,
+    skills.length > 0 ? `Design skills (${skills.length}): ${skills.join(', ')} (read each with openmotion_design_catalog action=get_skill)` : null,
+    templates.length > 0 ? `Reference templates (${templates.length}): ${templates.join(', ')} (read with openmotion_design_catalog action=get_template${primaryTemplate ? `; start from ${primaryTemplate}` : ''})` : null,
     input.language ? `Reply and write visible copy in: ${input.language}` : null,
     '',
     'Brief:',
@@ -157,7 +168,7 @@ export function designBriefPrompt(input: {
     '1. Read openmotion://workflow/design/start and the scenario guide, or call openmotion_design_catalog action=list_scenarios.',
     input.projectId
       ? '2. Read the project with openmotion_design_project action=get and current files with openmotion_design_edit action=read_file.'
-      : `2. Create the project with openmotion_design_project action=create scenario=${scenario.id}${input.templateId ? ` templateId=${input.templateId}` : ''}${input.designSystemId ? ` designSystemId=${input.designSystemId}` : ''}.`,
+      : `2. Create the project with openmotion_design_project action=create scenario=${scenario.id}${primaryTemplate ? ` templateId=${primaryTemplate}` : ''}${input.designSystemId ? ` designSystemId=${input.designSystemId}` : ''}.`,
     '3. Write complete HTML/CSS/JS with openmotion_design_edit action=write, passing expectedRevision and a short summary.',
     '4. Call openmotion_design_project action=open so the user can review it in the OpenMotion Design editor.',
   ].filter(line => line !== null).join('\n');

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
@@ -50,10 +50,10 @@ export function DesignScenePage({
 
   const [skills, setSkills] = useState<DesignSkillSummary[]>([]);
   const [skillQuery, setSkillQuery] = useState('');
-  const [selectedSkill, setSelectedSkill] = useState<DesignSkillSummary | null>(null);
+  const [selectedSkills, setSelectedSkills] = useState<DesignSkillSummary[]>([]);
   const [skillOpen, setSkillOpen] = useState(false);
 
-  const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplateSummary | null>(null);
+  const [selectedTemplates, setSelectedTemplates] = useState<DesignTemplateSummary[]>([]);
   const [templates, setTemplates] = useState<DesignTemplateSummary[]>([]);
   const [templateQuery, setTemplateQuery] = useState('');
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -62,11 +62,17 @@ export function DesignScenePage({
   const [manualPrompt, setManualPrompt] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DesignTemplateSummary | null>(null);
 
+  // @ mention autocomplete state
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [mention, setMention] = useState<{ start: number; end: number; query: string } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
   useEffect(() => {
     setPlaceholderIndex(0);
-    setSelectedTemplate(null);
-    setSelectedSkill(null);
+    setSelectedTemplates([]);
+    setSelectedSkills([]);
     setManualPrompt(null);
+    setMention(null);
     if (!scenario || scenario.examples.length <= 1) return;
     const id = window.setInterval(() => setPlaceholderIndex(i => (i + 1) % scenario.examples.length), 6000);
     return () => window.clearInterval(id);
@@ -93,6 +99,105 @@ export function DesignScenePage({
     return [...list].sort((a, b) => Number(b.scenario === scenario?.id) - Number(a.scenario === scenario?.id)).slice(0, 48);
   }, [skills, skillQuery, scenario?.id]);
 
+  type MentionOption =
+    | { kind: 'template'; id: string; label: string; sub: string; item: DesignTemplateSummary }
+    | { kind: 'skill'; id: string; label: string; sub: string; item: DesignSkillSummary }
+    | { kind: 'prompt'; id: string; label: string; sub: string; text: string };
+
+  const mentionOptions = useMemo<MentionOption[]>(() => {
+    if (!mention) return [];
+    const q = mention.query.trim().toLowerCase();
+    const out: MentionOption[] = [];
+    for (const tpl of templates) {
+      if (!q || tpl.title.toLowerCase().includes(q) || tpl.id.toLowerCase().includes(q) || tpl.category.toLowerCase().includes(q)) {
+        out.push({ kind: 'template', id: `tpl:${tpl.id}`, label: tpl.title, sub: `@template:${tpl.id}`, item: tpl });
+        if (out.length >= 6) break;
+      }
+    }
+    let skillCount = 0;
+    for (const sk of skills) {
+      if (!q || sk.title.toLowerCase().includes(q) || sk.id.toLowerCase().includes(q)) {
+        out.push({ kind: 'skill', id: `sk:${sk.id}`, label: sk.title, sub: `@skill:${sk.id}`, item: sk });
+        if (++skillCount >= 6) break;
+      }
+    }
+    for (const [i, ex] of (scenario?.examples ?? []).entries()) {
+      if (!q || ex.toLowerCase().includes(q)) {
+        out.push({ kind: 'prompt', id: `pr:${i}`, label: ex, sub: t('Prompt'), text: ex });
+      }
+    }
+    return out;
+  }, [mention, templates, skills, scenario?.examples, t]);
+
+  const syncMention = (value: string, cursor: number) => {
+    const before = value.slice(0, cursor);
+    const match = /(^|\s)@([^\s@]*)$/.exec(before);
+    if (match) {
+      const start = cursor - match[2].length - 1;
+      setMention({ start, end: cursor, query: match[2] });
+      setMentionIndex(0);
+    } else {
+      setMention(null);
+    }
+  };
+
+  const applyMention = (opt: MentionOption) => {
+    if (!mention) return;
+    let insert = '';
+    if (opt.kind === 'template') {
+      insert = `@template:${opt.item.id} `;
+      setSelectedTemplates(prev => prev.some(x => x.id === opt.item.id) ? prev : [...prev, opt.item]);
+    } else if (opt.kind === 'skill') {
+      insert = `@skill:${opt.item.id} `;
+      setSelectedSkills(prev => prev.some(x => x.id === opt.item.id) ? prev : [...prev, opt.item]);
+    } else {
+      insert = `${opt.text} `;
+    }
+    const next = brief.slice(0, mention.start) + insert + brief.slice(mention.end);
+    setBrief(next);
+    setMention(null);
+    const pos = mention.start + insert.length;
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const triggerAtMention = () => {
+    const el = textareaRef.current;
+    const pos = el?.selectionStart ?? brief.length;
+    const prefix = pos > 0 && !/\s$/.test(brief.slice(0, pos)) ? ' @' : '@';
+    const next = brief.slice(0, pos) + prefix + brief.slice(pos);
+    const nextPos = pos + prefix.length;
+    setBrief(next);
+    setMention({ start: nextPos - 1, end: nextPos, query: '' });
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(nextPos, nextPos);
+    });
+  };
+
+  const toggleSkill = (sk: DesignSkillSummary) => {
+    setSelectedSkills(prev => {
+      const exists = prev.some(x => x.id === sk.id);
+      if (exists) return prev.filter(x => x.id !== sk.id);
+      const token = `@skill:${sk.id}`;
+      setBrief(b => b.includes(token) ? b : (b.trim() ? `${b.trim()} ${token}` : token));
+      return [...prev, sk];
+    });
+  };
+
+  const appendExample = (example: string) => {
+    setBrief(prev => {
+      const trimmed = prev.trim();
+      if (!trimmed) return example;
+      if (trimmed.includes(example)) return prev;
+      return `${trimmed}\n${example}`;
+    });
+    textareaRef.current?.focus();
+  };
+
   const copyInstruction = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -111,8 +216,8 @@ export function DesignScenePage({
       scenario: scenario.id,
       brief: text,
       designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
-      skillId: selectedSkill?.id ?? null,
-      templateId: selectedTemplate?.id ?? null,
+      skillIds: selectedSkills.map(s => s.id),
+      templateIds: selectedTemplates.map(tpl => tpl.id),
       language: locale !== 'en' ? locale : null,
     });
     void copyInstruction(prompt);
@@ -124,7 +229,7 @@ export function DesignScenePage({
     try {
       const { project } = await designClient.createProject({
         scenario: scenario.id,
-        templateId: selectedTemplate?.id ?? null,
+        templateId: selectedTemplates[0]?.id ?? null,
         designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
       });
       onOpenProject(project.id);
@@ -152,15 +257,20 @@ export function DesignScenePage({
   };
 
   const handleUseTemplateWithAgent = (template: DesignTemplateSummary) => {
-    setSelectedTemplate(template);
+    const nextTemplates = selectedTemplates.some(x => x.id === template.id) ? selectedTemplates : [...selectedTemplates, template];
+    setSelectedTemplates(nextTemplates);
+    const token = `@template:${template.id}`;
     const seed = template.examplePrompt || `Adapt the "${template.title}" template for my project.`;
-    if (!brief.trim()) setBrief(seed);
+    const nextBrief = brief.trim()
+      ? (brief.includes(token) ? brief.trim() : `${brief.trim()} ${token}`)
+      : `${token} ${seed}`;
+    setBrief(nextBrief);
     const prompt = designBriefPrompt({
       scenario: template.scenario,
-      brief: brief.trim() || seed,
+      brief: nextBrief,
       designSystemId: selectedBrandKit?.catalogId ?? selectedBrandKit?.id ?? null,
-      skillId: selectedSkill?.id ?? null,
-      templateId: template.id,
+      skillIds: selectedSkills.map(s => s.id),
+      templateIds: nextTemplates.map(tpl => tpl.id),
       language: locale !== 'en' ? locale : null,
     });
     void copyInstruction(prompt);
@@ -223,24 +333,79 @@ export function DesignScenePage({
                 <p className="om-design-hero-sub">{t(scenario.hint)}</p>
               </div>
 
-              <div className="om-design-composer">
+              <div className="om-design-composer" style={{ position: 'relative', overflow: 'visible' }}>
                 <textarea
+                  ref={textareaRef}
                   className="om-design-composer-input"
                   aria-label={t('Design brief')}
-                  placeholder={scenario.examples[placeholderIndex] ?? t(scenario.hint)}
+                  placeholder={`${scenario.examples[placeholderIndex] ?? t(scenario.hint)}  (${t('Type @ to mention templates or skills')})`}
                   value={brief}
-                  onChange={e => setBrief(e.target.value)}
+                  onChange={e => {
+                    setBrief(e.target.value);
+                    syncMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+                  }}
+                  onKeyDown={e => {
+                    if (!mention || mentionOptions.length === 0) return;
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionOptions.length); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionOptions.length) % mentionOptions.length); }
+                    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); applyMention(mentionOptions[mentionIndex] ?? mentionOptions[0]); }
+                    else if (e.key === 'Escape') { e.preventDefault(); setMention(null); }
+                  }}
                 />
+
+                {mention && mentionOptions.length > 0 && (
+                  <div className="om-design-popover om-design-mention-menu" role="listbox" aria-label={t('Mention template or skill')}>
+                    {mentionOptions.map((opt, idx) => (
+                      <Button
+                        key={opt.id}
+                        type="button"
+                        size="sm"
+                        variant={idx === mentionIndex ? 'secondary' : 'ghost'}
+                        className="om-design-mention-item"
+                        icon={<RemixIcon name={opt.kind === 'template' ? 'layout-line' : opt.kind === 'skill' ? 'book-open-line' : 'sparkling-line'} size={14} />}
+                        onMouseEnter={() => setMentionIndex(idx)}
+                        onClick={() => applyMention(opt)}
+                      >
+                        <span className="om-design-mention-label">{opt.label}</span>
+                        <span className="om-design-muted" style={{ fontSize: 11 }}>{opt.sub}</span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
+                {(selectedTemplates.length > 0 || selectedSkills.length > 0) && (
+                  <div className="om-design-attached-chips">
+                    {selectedTemplates.map(tpl => (
+                      <span key={tpl.id} className="om-design-badge">
+                        <RemixIcon name="layout-line" size={12} />
+                        <span>@template:{tpl.id}</span>
+                        <IconButton aria-label={t('Clear template')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedTemplates(prev => prev.filter(x => x.id !== tpl.id))} />
+                      </span>
+                    ))}
+                    {selectedSkills.map(sk => (
+                      <span key={sk.id} className="om-design-badge">
+                        <RemixIcon name="book-open-line" size={12} />
+                        <span>@skill:{sk.id}</span>
+                        <IconButton aria-label={t('Clear design skill')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedSkills(prev => prev.filter(x => x.id !== sk.id))} />
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="om-design-composer-dock">
                   <div className="om-design-header-group">
+                    <Button type="button" size="sm" variant="ghost" onClick={triggerAtMention} title={t('Type @ to mention templates or skills')}>
+                      @
+                    </Button>
+
                     {/* Brand Kit picker backed by Motion Brand Kits */}
                     <BrandKitPicker selected={selectedBrandKit} onSelect={setSelectedBrandKit} />
 
-                    {/* Design Skill picker */}
+                    {/* Multi-select Design Skill picker */}
                     <Popover.Root modal={false} open={skillOpen} onOpenChange={setSkillOpen}>
                       <Popover.Trigger render={
-                        <Button type="button" size="sm" variant={selectedSkill ? 'secondary' : 'ghost'} icon={<RemixIcon name="book-open-line" size={14} />}>
-                          {selectedSkill ? selectedSkill.title : t('Design skill')}
+                        <Button type="button" size="sm" variant={selectedSkills.length > 0 ? 'secondary' : 'ghost'} icon={<RemixIcon name="book-open-line" size={14} />}>
+                          {selectedSkills.length > 0 ? `${t('Design skill')} (${selectedSkills.length})` : t('Design skill')}
                         </Button>
                       } />
                       <Popover.Portal>
@@ -254,36 +419,32 @@ export function DesignScenePage({
                               onChange={e => setSkillQuery(e.target.value)}
                             />
                             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              {selectedSkill && (
-                                <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSkill(null); setSkillOpen(false); }}>
+                              {selectedSkills.length > 0 && (
+                                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedSkills([])}>
                                   {t('Clear design skill')}
                                 </Button>
                               )}
-                              {filteredSkills.map(sk => (
-                                <Button
-                                  key={sk.id}
-                                  type="button"
-                                  size="sm"
-                                  variant={selectedSkill?.id === sk.id ? 'secondary' : 'ghost'}
-                                  style={{ justifyContent: 'space-between' }}
-                                  onClick={() => { setSelectedSkill(sk); setSkillOpen(false); }}
-                                >
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{sk.title}</span>
-                                  {sk.scenario && <span className="om-design-badge">{sk.scenario}</span>}
-                                </Button>
-                              ))}
+                              {filteredSkills.map(sk => {
+                                const active = selectedSkills.some(x => x.id === sk.id);
+                                return (
+                                  <Button
+                                    key={sk.id}
+                                    type="button"
+                                    size="sm"
+                                    variant={active ? 'secondary' : 'ghost'}
+                                    style={{ justifyContent: 'space-between' }}
+                                    onClick={() => toggleSkill(sk)}
+                                  >
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{active ? '✓ ' : ''}{sk.title}</span>
+                                    {sk.scenario && <span className="om-design-badge">{sk.scenario}</span>}
+                                  </Button>
+                                );
+                              })}
                             </div>
                           </Popover.Popup>
                         </Popover.Positioner>
                       </Popover.Portal>
                     </Popover.Root>
-
-                    {selectedTemplate && (
-                      <span className="om-design-badge">
-                        {t('Template')}: {selectedTemplate.title}
-                        <IconButton aria-label={t('Clear template')} icon={<RemixIcon name="close-line" size={12} />} onClick={() => setSelectedTemplate(null)} />
-                      </span>
-                    )}
                   </div>
 
                   <div className="om-design-header-group">
@@ -300,7 +461,7 @@ export function DesignScenePage({
                 </div>
               </div>
 
-              {/* Quick example prompt chips */}
+              {/* Quick example prompt chips (appendable so you can combine with @mentions) */}
               {scenario.examples.length > 0 && (
                 <div className="om-design-example-chips">
                   {scenario.examples.map(example => (
@@ -312,7 +473,7 @@ export function DesignScenePage({
                       className="om-design-example-chip"
                       title={example}
                       icon={<RemixIcon name="sparkling-line" size={13} />}
-                      onClick={() => setBrief(example)}
+                      onClick={() => appendExample(example)}
                     >
                       <span className="om-design-example-chip-label">{example}</span>
                     </Button>

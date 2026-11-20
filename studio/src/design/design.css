@@ -1043,3 +1043,35 @@
   gap: var(--motion-space-10);
   font-size: var(--motion-text-sm);
 }
+
+/* --- @ Mention Autocomplete & Attached Chips --- */
+.om-design-mention-menu {
+  position: absolute;
+  left: var(--motion-space-14);
+  right: var(--motion-space-14);
+  top: 124px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 160;
+}
+
+.om-design-mention-item {
+  width: 100%;
+  justify-content: space-between !important;
+  gap: var(--motion-space-10);
+}
+
+.om-design-mention-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+
+.om-design-attached-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--motion-space-6);
+  padding: 0 var(--motion-space-14) var(--motion-space-8);
+}
