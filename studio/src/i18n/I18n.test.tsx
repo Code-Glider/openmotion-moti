@@ -3,6 +3,7 @@ import React, { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider, LOCALE_STORAGE_KEY, languages, readLocale, translate, useI18n } from './I18n';
+import { designScenarios, type DesignScenarioId } from '../../../shared/design-project';
 import { pageMetadata } from '../../../packages/design-system/metadata.js';
 import baseZhCN from './zh-CN.json';
 import mvpZhCN from './mvp-zh-CN.json';
@@ -11,6 +12,7 @@ import { FlatSelectRow } from '../components/editor/propertyPanelFlatSelectRow';
 import { Section } from '../components/editor/propertyPanelPrimitives';
 import { StudioToast } from '../components/StudioToast';
 import { LintModal } from '../components/LintModal';
+import { DesignScenePage } from '../design/scenes/DesignScenePage';
 import { systemMessage } from './systemMessages';
 import { HF_COLOR_GRADING_PRESETS, HF_COLOR_GRADING_PALETTES } from '@hyperframes/core/color-grading';
 import { FlatColorGradingAccessory } from '../components/editor/propertyPanelFlatColorGradingAccessory';
@@ -277,6 +279,39 @@ it('uses OpenMotion in copied project-check instructions', async () => {
   </I18nProvider>));
   await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent === 'Copy to Agent')!.click(); });
   expect(writeText).toHaveBeenCalledWith('Fix these OpenMotion project check issues for project "demo":\n\n[error] Missing composition');
+});
+
+it('localizes design examples across all scenes and uses them in the design brief', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ kits: [], entries: [], projects: [], items: [], skills: [] }));
+  const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  const renderScene = (scene: DesignScenarioId, locale: 'zh-CN' | 'en') => act(async () => {
+    root.render(<I18nProvider key={locale} initialLocale={locale}>
+      <DesignScenePage scene={scene} onSelectDesignScene={vi.fn()} onSelectImageScene={vi.fn()}
+        onChooseStudio={vi.fn()} onOpenProject={vi.fn()} onExplore={vi.fn()} onOpenMcp={vi.fn()} />
+    </I18nProvider>);
+  });
+  const chips = () => Array.from(host.querySelectorAll<HTMLButtonElement>('.om-design-example-chip'));
+
+  for (const scenario of designScenarios) {
+    await renderScene(scenario.id, 'zh-CN');
+    expect(chips()).toHaveLength(scenario.examples.length);
+    for (const chip of chips()) expect(chip.textContent).toMatch(/\p{Script=Han}/u);
+  }
+
+  await renderScene('mobile-app', 'zh-CN');
+  const brief = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="设计简报"]')!;
+  const [fitness, finance] = chips();
+  expect(brief.placeholder).toContain(fitness.innerText);
+  const copy = Array.from(host.querySelectorAll('button')).find(button => button.textContent === '复制给 Agent')!;
+  await act(async () => { copy.click(); });
+  expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining(fitness.innerText));
+  await act(async () => { finance.click(); });
+  expect(brief.value).toBe(finance.innerText);
+  await act(async () => { copy.click(); });
+  expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining(finance.innerText));
+
+  await renderScene('mobile-app', 'en');
+  expect(chips().map(chip => chip.textContent)).toEqual(designScenarios.find(scenario => scenario.id === 'mobile-app')?.examples);
 });
 
 it('preserves custom console-error titles and original diagnostics in the shared lint dialog', () => {

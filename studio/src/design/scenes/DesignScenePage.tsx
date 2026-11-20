@@ -45,6 +45,7 @@ export function DesignScenePage({
   const designMediaStudio = findMediaStudio('design')!;
   const imageScenes = scenesForStudio(designMediaStudio);
   const scenario = scene === 'projects' ? null : findDesignScenario(scene) ?? null;
+  const examples = useMemo(() => scenario?.examples.map(example => t(example)) ?? [], [scenario, t]);
 
   const [brief, setBrief] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -123,13 +124,13 @@ export function DesignScenePage({
         if (++skillCount >= 6) break;
       }
     }
-    for (const [i, ex] of (scenario?.examples ?? []).entries()) {
+    for (const [i, ex] of examples.entries()) {
       if (!q || ex.toLowerCase().includes(q)) {
         out.push({ kind: 'prompt', id: `pr:${i}`, label: ex, sub: t('Prompt'), text: ex });
       }
     }
     return out;
-  }, [mention, templates, skills, scenario?.examples, t]);
+  }, [mention, templates, skills, examples, t]);
 
   const syncMention = (value: string, cursor: number) => {
     const before = value.slice(0, cursor);
@@ -213,7 +214,7 @@ export function DesignScenePage({
 
   const handleCopyBrief = () => {
     if (!scenario) return;
-    const text = brief.trim() || scenario.examples[placeholderIndex] || scenario.hint;
+    const text = brief.trim() || examples[placeholderIndex] || scenario.hint;
     const prompt = designBriefPrompt({
       scenario: scenario.id,
       brief: text,
@@ -353,9 +354,9 @@ export function DesignScenePage({
               </div>
 
               {/* Quick starter prompt chips */}
-              {scenario.examples.length > 0 && (
+              {examples.length > 0 && (
                 <div className="om-design-example-chips" style={{ justifyContent: 'flex-start', maxWidth: 'none' }}>
-                  {scenario.examples.map(example => (
+                  {examples.map(example => (
                     <Button
                       key={example}
                       type="button"
@@ -470,7 +471,7 @@ export function DesignScenePage({
                 ref={textareaRef}
                 className="om-design-composer-input om-design-bottom-input"
                 aria-label={t('Design brief')}
-                placeholder={`${scenario.examples[placeholderIndex] ?? t(scenario.hint)}  (${t('Type @ to mention templates or skills')})`}
+                placeholder={`${examples[placeholderIndex] ?? t(scenario.hint)}  (${t('Type @ to mention templates or skills')})`}
                 value={brief}
                 onChange={e => {
                   setBrief(e.target.value);
