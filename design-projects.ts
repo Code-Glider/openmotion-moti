@@ -1425,6 +1425,16 @@ async function readMultipartZip(req: IncomingMessage, maxBytes = MAX_IMPORT_BYTE
 }
 
 /** HTTP adapter mounted by server.ts for /motion-api/design/* (rewritten to /api/design/*). */
+const THUMB_PERF_SCRIPT = `<style data-om-thumb-style>html:not([data-om-thumb-play="1"]) *,html:not([data-om-thumb-play="1"]) *::before,html:not([data-om-thumb-play="1"]) *::after{animation-play-state:paused!important;transition:none!important;}</style><script data-om-thumb-guard>(function(){try{Object.defineProperty(window,'devicePixelRatio',{get:function(){return 1;},configurable:true});}catch(e){}var nRaf=window.requestAnimationFrame.bind(window),nCaf=window.cancelAnimationFrame.bind(window);var playing=false,budget=3,q=[],nextId=1;window.requestAnimationFrame=function(cb){if(playing||budget>0){if(!playing)budget--;return nRaf(cb);}var id=nextId++;q.push({id:id,cb:cb});return id;};window.cancelAnimationFrame=function(id){nCaf(id);q=q.filter(function(x){return x.id!==id;});};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='om:thumb-play')return;playing=Boolean(d.play);document.documentElement.setAttribute('data-om-thumb-play',playing?'1':'0');if(playing&&q.length){var batch=q.splice(0,q.length);for(var i=0;i<batch.length;i++)nRaf(batch[i].cb);}});})();</script>`;
+
+function injectThumbPerfGuard(buf: Buffer): Buffer {
+  const html = buf.toString('utf8');
+  const injected = /<head\b[^>]*>/i.test(html)
+    ? html.replace(/<head\b[^>]*>/i, m => `${m}\n${THUMB_PERF_SCRIPT}`)
+    : `${THUMB_PERF_SCRIPT}\n${html}`;
+  return Buffer.from(injected, 'utf8');
+}
+
 export async function designHttp(
   req: IncomingMessage,
   res: ServerResponse,
@@ -1467,8 +1477,11 @@ export async function designHttp(
       const rel = decodeURIComponent(tplPreview[2]);
       const file = catalog.templateFile(id, rel);
       if (!file) return sendJson(404, { error: { code: 'NOT_FOUND', message: 'Template preview file not found' } });
-      res.writeHead(200, { 'Content-Type': mimeFor(file), 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
-      res.end(await readFile(file));
+      const mime = mimeFor(file);
+      let data: Buffer = await readFile(file);
+      if (url.searchParams.get('thumb') === '1' && mime.startsWith('text/html')) data = injectThumbPerfGuard(data);
+      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
+      res.end(data);
       return true;
     }
     const tplDetail = /^catalog\/templates\/([^/]+)$/.exec(sub);
@@ -1508,8 +1521,9 @@ export async function designHttp(
     const rawMatch = /^raw\/([^/]+)\/(.*)$/.exec(sub);
     if (rawMatch && req.method === 'GET') {
       const { body, mime } = await service.readRawFile(rawMatch[1], decodeURIComponent(rawMatch[2]), url.searchParams.get('version'));
+      const out = url.searchParams.get('thumb') === '1' && mime.startsWith('text/html') ? injectThumbPerfGuard(body) : body;
       res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-      res.end(body);
+      res.end(out);
       return true;
     }
 

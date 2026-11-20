@@ -1,12 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Skeleton } from '../components/ui/Skeleton';
 
-const VIRTUAL_WIDTH = 1280;
-const VIRTUAL_HEIGHT = 800;
+const VIRTUAL_WIDTH = 960;
+const VIRTUAL_HEIGHT = 600;
+
+function withThumbParam(src: string): string {
+  if (!src.startsWith('/motion-api/design/')) return src;
+  return src.includes('?') ? `${src}&thumb=1` : `${src}?thumb=1`;
+}
 
 /**
- * Lazy-loaded, edge-to-edge scaled sandboxed iframe thumbnail for Design Studio templates and projects.
- * Dynamically matches the host container width via ResizeObserver so there is zero dead gutter.
+ * Viewport-aware, edge-to-edge scaled sandboxed iframe thumbnail for Design Studio templates and projects.
+ * - Unmounts off-screen iframes so WebGL/rAF contexts are freed immediately when scrolling away.
+ * - Appends ?thumb=1 so heavy WebGL/rAF animations paint their initial frame and freeze at 0% GPU until hovered.
  */
 export function ScaledPreviewThumb({
   src,
@@ -20,9 +26,12 @@ export function ScaledPreviewThumb({
   topRight?: React.ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [scale, setScale] = useState(0.25);
+  const [scale, setScale] = useState(0.32);
+
+  const thumbSrc = useMemo(() => withThumbParam(src), [src]);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -42,22 +51,34 @@ export function ScaledPreviewThumb({
       return () => ro?.disconnect();
     }
     const io = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) {
-        setVisible(true);
-        io.disconnect();
-      }
-    }, { rootMargin: '160px' });
+      const inView = entries.some(e => e.isIntersecting);
+      setVisible(inView);
+      if (!inView) setLoaded(false);
+    }, { rootMargin: '120px' });
     io.observe(el);
     return () => { io.disconnect(); ro?.disconnect(); };
   }, []);
 
+  const setPlaying = (play: boolean) => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'om:thumb-play', play }, '*');
+    } catch { /* ignore */ }
+  };
+
   return (
-    <div ref={hostRef} className="om-design-card-thumb" data-loaded={loaded}>
+    <div
+      ref={hostRef}
+      className="om-design-card-thumb"
+      data-loaded={loaded}
+      onMouseEnter={() => setPlaying(true)}
+      onMouseLeave={() => setPlaying(false)}
+    >
       {!loaded && <Skeleton className="om-design-thumb-skeleton" />}
       {visible && (
         <iframe
+          ref={iframeRef}
           title={title}
-          src={src}
+          src={thumbSrc}
           loading="lazy"
           sandbox="allow-scripts"
           tabIndex={-1}

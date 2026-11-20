@@ -619,6 +619,7 @@
   background: var(--motion-panel);
   border: 1px solid var(--motion-border-subtle);
   overflow: hidden;
+  contain: layout paint style;
   transition: border-color var(--motion-duration-control) var(--motion-ease-out),
     transform var(--motion-duration-control) var(--motion-ease-out),
     box-shadow var(--motion-duration-control) var(--motion-ease-out);
@@ -637,6 +638,7 @@
   background: var(--motion-inset);
   border-bottom: 1px solid var(--motion-border-subtle);
   overflow: hidden;
+  contain: strict;
 }
 
 .om-design-thumb-skeleton {
