@@ -43,6 +43,10 @@
 .om-asset-composer { width: 460px; max-width: 48%; flex: none; display: flex; flex-direction: column; min-height: 0; padding: var(--motion-space-20); gap: var(--motion-space-12); overflow: hidden; }
 .om-asset-direct { flex: 1; display: flex; flex-direction: column; gap: var(--motion-space-12); overflow-y: auto; min-height: 0; padding: var(--motion-space-4); margin: calc(var(--motion-space-4) * -1); }
 .om-asset-direct > * { flex-shrink: 0; }
+/* Keep task details and parameters reachable when the inspector stacks below the preview. */
+.om-asset-direct-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-4); margin: calc(var(--motion-space-4) * -1); }
+.om-asset-direct-scroll > .om-asset-direct { flex: none; overflow: visible; }
+.om-asset-direct-scroll > .om-asset-current-job { max-height: none; overflow: visible; }
 .om-asset-current-job { flex: none; max-height: 220px; overflow-y: auto; }
 .om-asset-direct > .om-button { width: 100%; }
 .om-asset-model-skeleton { height: var(--motion-control); }
@@ -340,7 +344,7 @@
   align-items: end; gap: var(--motion-space-8);
   width: 100%; max-width: none; padding: 0; background: transparent; border: 0; overflow: visible;
 }
-.om-canvas-dock :is(.om-asset-direct, .om-creation-submit) { display: contents; }
+.om-canvas-dock :is(.om-asset-direct-scroll, .om-asset-direct, .om-creation-submit) { display: contents; }
 .om-canvas-dock .om-creation-prompt { grid-area: prompt; min-width: 0; }
 [data-motion-studio] .om-canvas-dock .om-creation-prompt textarea { min-height: 46px; height: 46px; }
 .om-canvas-dock .om-creation-model { grid-area: models; min-width: 0; }
