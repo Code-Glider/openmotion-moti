@@ -132,3 +132,78 @@ test('OpenDesign speech offers checked voices with a default, accepts other voic
   assert.equal(listed.defaults?.voice, undefined);
   await gateway.close();
 }));
+
+test('OpenDesign Cloud and account video models derive duration options from published capabilities.durations', async () => {
+  const seedanceDurations = Array.from({ length: 27 }, (_, i) => i + 4);
+  const wanDurations = Array.from({ length: 14 }, (_, i) => i + 2);
+  for (const provider of ['opendesign', 'account']) {
+    const seedance: Model = {
+      id: `${provider}:doubao-seedance-2-5-260628`, provider, modelId: 'doubao-seedance-2-5-260628', label: 'doubao-seedance-2-5-260628',
+      modality: 'video', mode: 'text-to-video', source: 'live',
+      nativeOptions: { durations: { values: seedanceDurations, default: 5 } },
+    };
+    const wan: Model = {
+      id: `${provider}:wan-2.7`, provider, modelId: 'wan-2.7', label: 'wan-2.7',
+      modality: 'video', mode: 'text-to-video', source: 'live',
+      nativeOptions: { durations: { values: wanDurations, default: 5 } },
+    };
+    const [seedanceField] = generationOptions(seedance)!.fields;
+    assert.equal(seedanceField.key, 'duration');
+    assert.equal(seedanceField.kind, 'choice');
+    assert.equal(seedanceField.default, 5);
+    assert.deepEqual(seedanceField.choices!.map(c => c.value), seedanceDurations);
+    const [wanField] = generationOptions(wan)!.fields;
+    assert.deepEqual(wanField.choices!.map(c => c.value), wanDurations);
+    assert.equal(wanField.default, 5);
+    validateGenerationOptions(seedance, { duration: 15 });
+    validateGenerationOptions(seedance, { duration: 30 });
+    assert.throws(() => validateGenerationOptions(seedance, { duration: 31 }), /Invalid Duration/);
+    assert.throws(() => validateGenerationOptions(seedance, { duration: '15' }), /Invalid Duration/);
+    validateGenerationOptions(wan, { duration: 2 });
+    validateGenerationOptions(wan, { duration: 15 });
+    assert.throws(() => validateGenerationOptions(wan, { duration: 16 }), /Invalid Duration/);
+    assert.equal(generationOptions({ ...seedance, nativeOptions: {} }), undefined);
+    assert.equal(generationOptions({ ...seedance, nativeOptions: { durations: { values: [] } } }), undefined);
+  }
+});
+
+test('account catalogue preserves capabilities.durations and forwards explicit --duration', () => fixture(async store => {
+  const calls: string[][] = [];
+  const account = new OpenDesignAccount(store.directory, {
+    run: async args => {
+      calls.push(args);
+      if (args[0] === 'model') return JSON.stringify({ source: 'remote', data: [] });
+      if (args[0] === 'media') {
+        return JSON.stringify({
+          models: [
+            { model: 'doubao-seedance-2-5-260628', kind: 'video', capabilities: { durations: { values: Array.from({ length: 27 }, (_, i) => i + 4), default: 5 } } },
+            { model: 'wan-2.7', kind: 'video', capabilities: { durations: { values: Array.from({ length: 14 }, (_, i) => i + 2), default: 5 } } },
+          ],
+        });
+      }
+      if (args[0] === 'video' && args[1] === 'gen') return JSON.stringify({ task_id: 'vt_15s' });
+      if (args[0] === 'video' && args[1] === 'get') {
+        const { writeFile } = await import('node:fs/promises');
+        await writeFile(args[args.indexOf('--output') + 1], Buffer.from('mp4'));
+        return JSON.stringify({ task_id: 'vt_15s', status: 'succeeded' });
+      }
+      throw new Error(`unexpected call: ${args.join(' ')}`);
+    },
+    pollMs: 0,
+  });
+  account.profile = async () => ({ runtimeKey: 'fixture-key' });
+  account.identity = async () => 'fixture-session';
+  account.summary = async () => ({ state: 'signed-in' } as AccountSummary);
+  try {
+    await account.models(true);
+    const media = await account.mediaModels();
+    const seedance = media.find(m => m.modelId === 'doubao-seedance-2-5-260628')!;
+    const wan = media.find(m => m.modelId === 'wan-2.7')!;
+    assert.deepEqual(generationOptions(seedance)!.fields[0].choices!.map(c => c.value), Array.from({ length: 27 }, (_, i) => i + 4));
+    assert.deepEqual(generationOptions(wan)!.fields[0].choices!.map(c => c.value), Array.from({ length: 14 }, (_, i) => i + 2));
+    const job = { id: 'job-15s', model: seedance, modality: 'video', prompt: 'Drive along the boulevard', providerOrigin: 'fixture-session', parameters: { duration: 15 } } as GenerationJob;
+    await account.generate(job, store.directory, new AbortController().signal, async () => {});
+    const submitArgs = calls.find(args => args[0] === 'video' && args[1] === 'gen')!;
+    assert.equal(submitArgs[submitArgs.indexOf('--duration') + 1], '15');
+  } finally { account.close(); }
+}));

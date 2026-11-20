@@ -53,6 +53,17 @@ export function resolveGenerationParameters(model: Model, parameters: Record<str
   return resolved;
 }
 
+function publishedDurations(nativeOptions: Record<string, unknown> | undefined): { values: number[]; default?: number } | undefined {
+  const raw = nativeOptions?.durations;
+  const envelope = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : undefined;
+  const rawValues = Array.isArray(raw) ? raw : Array.isArray(envelope?.values) ? envelope.values : undefined;
+  if (!rawValues) return undefined;
+  const values = [...new Set(rawValues.filter((value): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0))];
+  if (!values.length) return undefined;
+  const fallback = typeof envelope?.default === 'number' && values.includes(envelope.default) ? envelope.default : undefined;
+  return { values, ...(fallback !== undefined ? { default: fallback } : {}) };
+}
+
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
  * An unknown catalogue model deliberately gets no guessed schema. */
 export function generationOptions(model: Model): GenerationOptions | undefined {
@@ -89,6 +100,11 @@ export function generationOptions(model: Model): GenerationOptions | undefined {
     choice('voice', 'Speech voice', ['af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa'], 'af_heart'),
     number('speed', 'Speech speed', 1, undefined, undefined, 0.1),
   ];
+  // Cloud and account video models publish allowed integer durations via `capabilities.durations`.
+  if (['opendesign', 'account'].includes(model.provider) && model.modality === 'video') {
+    const durations = publishedDurations(model.nativeOptions);
+    if (durations) fields = [choice('duration', 'Duration (seconds)', durations.values, durations.default)];
+  }
   // Speech models without checked voices keep a free voice ID: the API publishes no voice list.
   if (cloudSpeech(model)) { const voices = checkedVoices(model); fields = [voices ? { key: 'voice', label: 'Speech voice', kind: 'choice', choices: voices, default: voices[0].value, allowCustom: true } : text('voice', 'Voice ID', true)]; }
   // The connector's `audio music --duration` takes whole seconds; music models publish no duration range.

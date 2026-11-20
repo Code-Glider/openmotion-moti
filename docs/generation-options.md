@@ -17,6 +17,7 @@ Checked on 2026-11-15 against the following official endpoint schemas and curren
 | `fal:fal-ai/flux/schnell` | Image size, output count, format, seed | [fal schema](https://fal.ai/models/fal-ai/flux/schnell/api) |
 | `fal:fal-ai/wan/v2.2-a14b/text-to-video` | Ratio, resolution, frames, frame rate, prompt expansion, negative prompt, seed | [fal schema](https://fal.ai/models/fal-ai/wan/v2.2-a14b/text-to-video/api) |
 | `fal:fal-ai/kokoro/american-english` | Voice and speed; spoken input uses `prompt` | [fal schema](https://fal.ai/models/fal-ai/kokoro/american-english/api) |
+| OpenDesign Cloud/account video | Optional integer duration derived from published `capabilities.durations` | Current Cloud/account `/api/v1/media/models` catalogue contract |
 | OpenDesign Cloud/account speech | `elevenlabs-v3` and `byteplus-tts-2` offer voices checked against the media API, defaulting to the first; another non-empty voice ID for the same model is passed through unchecked. Other speech models require a voice ID | Current Cloud/account adapter contract |
 | OpenDesign account music | Optional whole-second duration | Connector `audio music --duration`; the catalogue publishes no range |
 

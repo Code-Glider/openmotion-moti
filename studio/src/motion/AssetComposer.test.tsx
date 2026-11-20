@@ -325,3 +325,53 @@ it('resumes an old account task while preserving a newer prompt draft', async ()
   expect(container.querySelector<HTMLTextAreaElement>('textarea')?.value).toBe(draft.prompt);
   expect(setDraft).not.toHaveBeenCalled(); expect(generate).not.toHaveBeenCalled();
 });
+
+it('switches Cinema Studio duration options between doubao-seedance-2-5-260628 and wan-2.7 and submits selected duration', async () => {
+  const { studioDestination } = await import('./creativeStudios');
+  const { generationOptions } = await import('../../../shared/generation-options');
+  const makeVideo = (modelId: string, durations: number[]): Model => {
+    const base: Model = {
+      id: `account:${modelId}`, provider: 'account', modelId, label: modelId, modality: 'video', mode: 'text-to-video', source: 'live',
+      nativeOptions: { durations: { values: durations, default: 5 } },
+    };
+    return { ...base, generationOptions: generationOptions(base) };
+  };
+  const seedance = makeVideo('doubao-seedance-2-5-260628', Array.from({ length: 27 }, (_, i) => i + 4));
+  const wan = makeVideo('wan-2.7', Array.from({ length: 14 }, (_, i) => i + 2));
+  const catalog = {
+    models: [seedance, wan],
+    status: { providers: [{ id: 'account', label: 'OpenDesign', available: true }], routes: { video: seedance.id } },
+  };
+  loadGateway.mockResolvedValue(catalog);
+  const loaded = await loadGateway();
+  function Harness() {
+    const [id, chooseModel] = useState(seedance.id);
+    const [draft, setDraft] = useState<AssetDraft>({ modality: 'video', prompt: 'Drive on Los Santos Blvd', references: [] });
+    return <AssetComposer {...props} draft={draft} setDraft={setDraft} studio={{
+      catalog: { catalog: loaded, failed: false, retry: vi.fn() }, chooseModel, remember: vi.fn(),
+      destination: studioDestination(findMediaStudio('cinema')!, 'text-to-video', id),
+    }} />;
+  }
+  await act(async () => root.render(<Harness />));
+
+  // Open Generation settings for doubao-seedance-2-5-260628 and inspect Duration (seconds) choices (4–30s).
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  await act(async () => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Duration (seconds)"]')!.click());
+  const seedanceChoices = [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(node => node.textContent?.trim());
+  expect(seedanceChoices).toEqual(['Model default', ...Array.from({ length: 27 }, (_, i) => String(i + 4))]);
+  // Select 15s and submit.
+  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.textContent?.trim() === '15')!.click());
+  generate.mockResolvedValue({ job: { id: 'seedance-15s' } });
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).toHaveBeenCalledWith(expect.objectContaining({
+    action: 'generate', model: seedance.id, parameters: { duration: 15 },
+  }));
+
+  // Switch model to wan-2.7 and verify Duration (seconds) choices update to 2–15s.
+  await act(async () => container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Generation model"]')!.click());
+  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.textContent?.includes('wan-2.7'))!.click());
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  await act(async () => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Duration (seconds)"]')!.click());
+  const wanChoices = [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(node => node.textContent?.trim());
+  expect(wanChoices).toEqual(['Model default', ...Array.from({ length: 14 }, (_, i) => String(i + 2))]);
+});

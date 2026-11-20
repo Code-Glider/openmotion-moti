@@ -454,8 +454,13 @@ export class OpenDesignAccount {
       if (typeof row.model !== 'string' || !/^[\w./:-]{1,180}$/.test(row.model) || !kind) continue;
       const mode = row.kind === 'audio_speech' ? 'text-to-speech' : row.kind === 'audio_music' ? 'text-to-audio' : `text-to-${kind}`;
       // An image model publishes `edits` only when this account is entitled to edit input images.
-      const editable = kind === 'image' && row.capabilities?.edits === true;
-      models.push({ id: 'account:' + row.model, provider: 'account', modelId: row.model, label: row.model, kind, enabled: row.enabled !== false, source: 'live', mode, ...(editable ? { supportsImageReference: true } : {}) });
+      const capabilities = row.capabilities && typeof row.capabilities === 'object' && !Array.isArray(row.capabilities) ? row.capabilities as Record<string, unknown> : undefined;
+      const editable = kind === 'image' && capabilities?.edits === true;
+      models.push({
+        id: 'account:' + row.model, provider: 'account', modelId: row.model, label: row.model, kind, enabled: row.enabled !== false, source: 'live', mode,
+        ...(editable ? { supportsImageReference: true } : {}),
+        ...(capabilities ? { nativeOptions: capabilities } : {}),
+      });
     }
     if (generation !== this.generation) return [];
     await this.commit(generation, async () => {
