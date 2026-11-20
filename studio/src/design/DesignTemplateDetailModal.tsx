@@ -63,8 +63,19 @@ export function DesignTemplateDetailModal({
         <Dialog.Backdrop className="om-design-dialog-backdrop" />
         <Dialog.Popup className="om-media-detail-surface om-media-detail-popup om-design-tpl-detail-popup" aria-label={template.title}>
           <div className="om-media-detail-grid">
-            {/* Left interactive preview stage */}
+            {/* Left interactive preview stage with Motion-aligned ambient frosted backdrop */}
             <div className="om-media-detail-stage om-design-tpl-stage">
+              <iframe
+                key={`ambient-${template.id}`}
+                title=""
+                aria-hidden="true"
+                tabIndex={-1}
+                src={`${template.previewUrl}?thumb=1`}
+                sandbox="allow-scripts"
+                className="om-media-detail-ambient om-design-tpl-ambient"
+              />
+              <div className="om-media-detail-glass" />
+
               <div className="om-design-tpl-stage-bar">
                 <div className="om-design-segmented">
                   {designViewports.map(item => (
@@ -101,19 +112,6 @@ export function DesignTemplateDetailModal({
                   />
                 </div>
               </div>
-
-              {total > 1 && (
-                <div className="om-design-tpl-stage-nav">
-                  <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="arrow-left-line" size={14} />} onClick={() => onNavigate((index - 1 + total) % total)}>
-                    {t('Previous template')}
-                  </Button>
-                  <span className="om-design-muted">{index + 1} / {total}</span>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => onNavigate((index + 1) % total)}>
-                    <span>{t('Next template')}</span>
-                    <RemixIcon name="arrow-right-line" size={14} />
-                  </Button>
-                </div>
-              )}
             </div>
 
             {/* Right metadata & actions sidebar */}
