@@ -137,6 +137,23 @@ jobs:
           npm run design:test
           npm run typecheck:studio
           npm run typecheck:backend
+      - name: Measure component adoption and detached styles
+        if: steps.scope.outputs.full == 'true'
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          node --test tests/ui-metrics.test.ts
+          args=()
+          if [[ -n "$PR_BASE" ]]; then args+=(--base "$PR_BASE"); fi
+          npm run design:metrics -- "${args[@]}"
+          cat dist/ui-metrics/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload UI metrics with source locations
+        if: steps.scope.outputs.full == 'true'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ui-metrics
+          path: dist/ui-metrics/
+          if-no-files-found: error
       - name: Check capture failure classification and bounded recovery
         if: steps.scope.outputs.full == 'true'
         run: node --test tests/capture-retry.test.ts

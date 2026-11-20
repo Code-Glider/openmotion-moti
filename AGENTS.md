@@ -74,9 +74,9 @@ Keep technical identifiers needed for setup, supported agent/model names and exp
 
 ## UI design system and interaction feedback
 
-Check the [component library registry and contribution guide](packages/design-system/components/README.md) before adding a shared Studio control. Use the listed source import and update the live example when its recommended usage or behavior changes.
+Check the [component library registry and contribution guide](packages/open-design-ui/README.md) before adding a shared Studio control. Use the listed source import and update the live example when its recommended usage or behavior changes.
 
-Record an exercised Studio consumer and an explicit adoption decision for each registered control. Follow the [contribution steps](packages/design-system/components/README.md#contribute-a-control) when deciding whether to enforce reuse.
+Record an exercised Studio consumer and an explicit adoption decision for each registered control. Follow the [contribution steps](packages/open-design-ui/README.md#contribute-a-control) when deciding whether to enforce reuse.
 
 Use the shared Button, IconButton or Slider for new Studio actions and range controls. The design check blocks native `<button>` and `<input type="range">` above the per-file legacy baseline. Lower the baseline when migrating a legacy control.
 

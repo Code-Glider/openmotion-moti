@@ -5,7 +5,7 @@
 
 import { forwardRef } from "react";
 import type { ReactNode } from "react";
-import { buttonClasses, type ButtonBaseProps, type ButtonSize } from "./button";
+import { buttonClasses, type ButtonBaseProps, type ButtonSize } from "./button.js";
 
 interface IconButtonProps extends ButtonBaseProps {
   icon: ReactNode;

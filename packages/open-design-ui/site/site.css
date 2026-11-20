@@ -1,6 +1,6 @@
 @import "tailwindcss" source(none);
-@import "../../tailwind.css";
-@import "../../studio.css";
+@import "../../design-system/tailwind.css";
+@import "../../design-system/studio.css";
 
 @source "../*.tsx";
 @source "./demos/*.tsx";

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -9,13 +9,13 @@ import tailwindcss from '@tailwindcss/vite';
 import { build as viteBuild } from 'vite';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const source = path.join(root, 'packages/design-system/components');
+const source = path.join(root, 'packages/open-design-ui');
 const output = path.join(root, 'dist/open-design-ui');
-const packageDist = path.join(output, 'dist');
-const packageVersion = '0.0.1';
+const packageDist = path.join(source, 'dist');
+const packageManifest = JSON.parse(await readFile(path.join(source, 'package.json'), 'utf8'));
 
 const { name, items } = JSON.parse(await readFile(path.join(source, 'registry.json'), 'utf8'));
-assert.equal(name, 'open-design-ui');
+assert.equal(name, packageManifest.name);
 assert.ok(items.length, 'Register at least one component before building the package');
 const entryPoints = {};
 const exports = { './styles.css': './dist/styles.css' };
@@ -34,22 +34,7 @@ for (const item of items) {
   };
 }
 
-const packageManifest = {
-  name,
-  version: packageVersion,
-  description: 'Shared React UI components from Open Design and OpenMotion.',
-  type: 'module',
-  license: 'Apache-2.0',
-  files: ['dist', 'README.md', 'LICENSE'],
-  sideEffects: ['./dist/styles.css'],
-  exports,
-  peerDependencies: {
-    '@base-ui/react': '^1.7.0',
-    react: '^19.0.0',
-    'react-dom': '^19.0.0',
-  },
-  dependencies: { cn: '^0.2.4' },
-};
+assert.deepEqual(packageManifest.exports, exports, 'Keep package exports in sync with the registry');
 
 const readme = `# Open Design UI
 
@@ -84,6 +69,7 @@ export function Controls() {
 `;
 
 await rm(output, { recursive: true, force: true });
+await rm(packageDist, { recursive: true, force: true });
 await mkdir(packageDist, { recursive: true });
 
 const { metafile } = await esbuild({
@@ -99,7 +85,7 @@ const { metafile } = await esbuild({
 });
 const bundledExports = new Map(Object.entries(metafile.outputs).map(([file, data]) => [path.resolve(root, file), data.exports]));
 for (const item of items) {
-  const entry = path.resolve(output, exports[`./${item.name}`].import);
+  const entry = path.resolve(source, exports[`./${item.name}`].import);
   assert.ok(bundledExports.get(entry)?.includes(item.export), `Missing ${item.export} export from ${item.import}`);
 }
 
@@ -138,10 +124,13 @@ await viteBuild({
 
 for (const entry of Object.values(exports)) {
   for (const file of typeof entry === 'string' ? [entry] : Object.values(entry)) {
-    await readFile(path.resolve(output, file));
+    await readFile(path.resolve(source, file));
   }
 }
+await mkdir(output, { recursive: true });
+await cp(packageDist, path.join(output, 'dist'), { recursive: true });
 await writeFile(path.join(output, 'README.md'), readme);
-await copyFile(path.join(root, 'LICENSE'), path.join(output, 'LICENSE'));
-await writeFile(path.join(output, 'package.json'), `${JSON.stringify(packageManifest, null, 2)}\n`);
-console.log(`Built ${packageManifest.name}@${packageVersion} at ${path.relative(root, output)}`);
+await copyFile(path.join(source, 'LICENSE'), path.join(output, 'LICENSE'));
+const { scripts, ...distributionManifest } = packageManifest;
+await writeFile(path.join(output, 'package.json'), `${JSON.stringify(distributionManifest, null, 2)}\n`);
+console.log(`Built ${packageManifest.name}@${packageManifest.version} at ${path.relative(root, output)}`);

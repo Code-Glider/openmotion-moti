@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { RemixIcon } from '../../react/RemixIcons';
+import { RemixIcon } from '../../design-system/react/RemixIcons';
 import { Button } from 'open-design-ui/button';
 
 interface CopyButtonProps {

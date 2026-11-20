@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Tabs } from '@base-ui/react/tabs';
 import { Button } from 'open-design-ui/button';
-import { RemixIcon } from '../../react/RemixIcons';
+import { RemixIcon } from '../../design-system/react/RemixIcons';
 import registry from '../registry.json';
 import registryUrl from '../registry.json?url&no-inline';
 import { CodeBlock } from './code-block';

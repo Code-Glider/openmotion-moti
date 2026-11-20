@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IconButton } from 'open-design-ui/icon-button';
-import { RemixIcon } from '../../../react/RemixIcons';
+import { RemixIcon } from '../../../design-system/react/RemixIcons';
 
 export function IconButtonDemo() {
   const [muted, setMuted] = useState(false);

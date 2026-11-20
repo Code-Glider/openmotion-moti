@@ -39,7 +39,7 @@ export function ContributionGuide() {
         <h2>Work on a component</h2>
         <ol className="doc-list">
           <li>Find the closest control in <DocLink href="/components">Components</DocLink>. Use its variants and semantic tokens as your starting point.</li>
-          <li>Edit its source in <code>packages/design-system/components/</code>. For a new control, add a catalogue entry, a live example and one real Studio use case in the same PR.</li>
+          <li>Edit its source in <code>packages/open-design-ui/</code>. For a new control, add a catalogue entry, a live example and one real Studio use case in the same PR.</li>
           <li>Register the control as opt-in and record what to verify before requiring it. If it should stay optional, record the reason.</li>
           <li>Show the states users will encounter, including focus, disabled and loading when relevant. Check both themes from the preview toolbar.</li>
         </ol>

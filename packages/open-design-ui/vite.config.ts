@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { 'open-design-ui': fileURLToPath(new URL('.', import.meta.url)) } },
   build: {
+    outDir: fileURLToPath(new URL('../../dist/open-design-ui-site', import.meta.url)),
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: { 'syntax-highlighting': ['@lezer/javascript', '@lezer/highlight'] },

@@ -6,7 +6,7 @@
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn";
-import type { PreviewState } from "./button";
+import type { PreviewState } from "./button.js";
 
 export interface SliderProps {
   /** Accessible name for the thumb. The inspector's row label is the usual one. */

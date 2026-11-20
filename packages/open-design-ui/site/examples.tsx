@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 import { Button, type ButtonSize, type ButtonVariant } from 'open-design-ui/button';
 import { IconButton } from 'open-design-ui/icon-button';
-import { RemixIcon } from '../../react/RemixIcons';
+import { RemixIcon } from '../../design-system/react/RemixIcons';
 import { IconButtonDemo } from './demos/icon-button-demo';
 import iconButtonCode from './demos/icon-button-demo.tsx?raw';
 import { Slider } from 'open-design-ui/slider';
