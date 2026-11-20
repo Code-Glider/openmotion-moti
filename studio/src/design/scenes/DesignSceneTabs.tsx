@@ -39,7 +39,7 @@ export function DesignSceneTabs({
 
   return (
     <nav className="om-design-scene-tabs" aria-label={t('Scenes')}>
-      <HorizontalRail label="Scenes" viewportClassName="om-design-scene-tabs-viewport" selection={activeTab}>
+      <HorizontalRail label="Scenes" viewportClassName="om-design-scene-tabs-viewport" selection={activeTab} plainArrows>
         <div className="om-design-scene-tabs-track">
           {tabs.map(tab => (
             <Button

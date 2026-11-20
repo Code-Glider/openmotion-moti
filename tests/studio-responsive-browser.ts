@@ -129,6 +129,11 @@ test('Design Studio uses the same navigation styles and overflow controls across
         const { color, backgroundColor, fontSize, fontWeight } = getComputedStyle(element);
         return { color, backgroundColor, fontSize, fontWeight };
       });
+      const arrowSurface = (selector: string) => page.$eval(selector, element => {
+        const { backgroundColor, borderTopWidth, boxShadow } = getComputedStyle(element);
+        return [backgroundColor, borderTopWidth, boxShadow];
+      });
+      const transparentArrow = ['rgba(0, 0, 0, 0)', '0px', 'none'];
 
       await page.waitForSelector(active, { visible: true });
       assert.deepEqual(await page.$$eval(`${track} > button`, buttons =>
@@ -148,15 +153,19 @@ test('Design Studio uses the same navigation styles and overflow controls across
 
       await page.setViewport({ width: 860, height: 900 });
       const nextArrow = await page.waitForSelector(next, { visible: true });
+      await nextArrow!.hover();
+      assert.deepEqual(await arrowSurface(next), transparentArrow);
       await nextArrow!.click();
       await page.waitForFunction(selector => document.querySelector(selector)!.scrollLeft > 0, {}, viewport);
       const previousArrow = await page.waitForSelector(previous, { visible: true });
       await previousArrow!.click();
       await page.waitForFunction(selector => document.querySelector(selector)!.scrollLeft === 0, {}, viewport);
 
+      await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }, { name: 'prefers-reduced-motion', value: 'reduce' }]);
       await page.setViewport({ width: 390, height: 800 });
       await page.goto(new URL('/?page=design&scene=webgl', origin).href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(previous, { visible: true });
+      assert.deepEqual(await arrowSurface(previous), transparentArrow);
       assert.equal(await page.$eval(active, button => button.textContent), 'WebGL');
       assert.ok(await page.$eval(active, button => {
         const tab = button.getBoundingClientRect();
