@@ -15,7 +15,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { Tabs, TabsList, Tab, TabPanel } from '../components/ui/Tabs';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
-import { ProviderAvatar, SettingsError, SettingsLoading } from './settingsPrimitives';
+import { SettingsError, SettingsLoading } from './settingsPrimitives';
 import { useIntegrationInfo } from './useIntegrationInfo';
 import { GITHUB_REPOSITORY } from './githubRepository';
 import { McpTemplateShowcase } from './McpTemplateShowcase';
@@ -112,9 +112,8 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
       {breadcrumb}
       <section className="om-mcp-hero om-mcp-section">
         <div className="om-mcp-art" aria-hidden="true">
-          <div className="om-mcp-art-tile om-mcp-art-left"><ProviderAvatar name="ChatGPT" provider={{ id: 'openai', custom: false }} /></div>
-          <div className="om-mcp-art-tile om-mcp-art-center"><img src={designSystemAsset(brand.loadingMark)} alt="" /></div>
-          <div className="om-mcp-art-tile om-mcp-art-right"><McpClientAvatar client={client} /></div>
+          <div className="om-mcp-art-tile om-mcp-art-left"><McpClientAvatar key={client.id} client={client} /></div>
+          <div className="om-mcp-art-tile om-mcp-art-center"><img key={client.id} src={designSystemAsset(brand.loadingMark)} alt="" /></div>
         </div>
         <p className="om-mcp-eyebrow">OPENMOTION × MCP</p>
         <h1 id="mcp-title" ref={heading} tabIndex={-1}>{t('Create in {agent}', { agent: t(client.name) })}<br /><span>{t('Make it move with OpenMotion.')}</span></h1>
