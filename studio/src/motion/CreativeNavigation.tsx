@@ -11,6 +11,7 @@ import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClient
 import { useMediaCatalog } from './useMediaCatalog';
 import { Tooltip } from '../components/ui/Tooltip';
 import { ModelAvatar } from './settingsPrimitives';
+import lunarStill from './scene-art/lunar-shot-still.webp';
 import speakerStudio from './scene-art/speaker-studio.webp';
 import { sceneExamples } from './sceneShowcase';
 import { destinationTarget, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
@@ -40,7 +41,7 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
         return <button key={scene.id} className="om-scene-tile" aria-current={destination?.scene.id === scene.id ? 'page' : undefined}
           onClick={() => onNavigate(sceneDestination(scene, destination, pinned && supportsScene(pinned, scene) ? pinned.id : null))}>
           {scene.id === 'text-to-image' ? (
-            <span className="om-scene-tile-art om-image-demo" aria-hidden="true">
+            <span className="om-scene-tile-art om-media-demo om-image-demo" aria-hidden="true">
               <span className="om-media-demo-frame">
                 <img src={example.poster} alt="" />
                 <span className="om-image-demo-input">
@@ -50,10 +51,21 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
               </span>
             </span>
           ) : scene.id === 'image-edit' ? (
-            <span className="om-scene-tile-art om-edit-demo" aria-hidden="true">
+            <span className="om-scene-tile-art om-media-demo om-edit-demo" aria-hidden="true">
               <span className="om-media-demo-frame">
                 <img src={speakerStudio} alt="" />
                 <img className="om-edit-demo-result" src={example.poster} alt="" />
+              </span>
+            </span>
+          ) : scene.id === 'shot-image' ? (
+            <span className="om-scene-tile-art om-media-demo om-shot-demo" aria-hidden="true">
+              <span className="om-media-demo-frame">
+                <img src={lunarStill} alt="" />
+                <span className="om-shot-viewfinder" />
+                <span className="om-shot-brief">
+                  <span>{t('Astronaut on the Moon')}</span>
+                  <small>{t('Wide shot · Side light')}</small>
+                </span>
               </span>
             </span>
           ) : (

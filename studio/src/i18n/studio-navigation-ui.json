@@ -1,5 +1,7 @@
 {
   "zh-CN": {
+    "Astronaut on the Moon": "月面宇航员",
+    "Wide shot · Side light": "全身远景 · 侧光",
     "Create an image from a description or edit a reference image.": "用文字生成图片，或在参考图上调整细节。",
     "Create a video shot from text or bring a still frame to life.": "用文字生成视频镜头，或让静止画面动起来。",
     "Set a mood with music or turn a script into voiceover.": "用配乐烘托气氛，或把文稿读成旁白。",
@@ -111,6 +113,8 @@
     "Animate type and shapes, then edit their timing on the timeline.": "让文字和图形动起来，在时间线上调整动画节奏。"
   },
   "ja": {
+    "Astronaut on the Moon": "月面の宇宙飛行士",
+    "Wide shot · Side light": "全身のロングショット · サイド光",
     "Create an image from a description or edit a reference image.": "説明文から画像を生成したり、参考画像の細部を編集したりできます。",
     "Create a video shot from text or bring a still frame to life.": "文章から映像のカットを生成したり、静止画に動きを付けたりできます。",
     "Set a mood with music or turn a script into voiceover.": "音楽で雰囲気を演出したり、台本からナレーションを作ったりできます。",
@@ -222,6 +226,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_skill で選択したスキルを読み込んでください。元の映像または依頼内容を確認したら、openmotion_create_project と openmotion_edit_project で編集可能な作品を作成してください。必要な素材や情報が足りない場合は、編集を始める前に依頼者に確認してください。"
   },
   "ko": {
+    "Astronaut on the Moon": "달 위의 우주인",
+    "Wide shot · Side light": "전신 롱숏 · 측면광",
     "Create an image from a description or edit a reference image.": "설명으로 이미지를 만들거나 참조 이미지의 세부 요소를 편집하세요.",
     "Create a video shot from text or bring a still frame to life.": "텍스트로 영상 장면을 만들거나 정지 화면에 움직임을 더하세요.",
     "Set a mood with music or turn a script into voiceover.": "음악으로 분위기를 만들거나 대본을 내레이션으로 바꾸세요.",
@@ -333,6 +339,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "openmotion_get_skill로 선택한 스킬을 읽으세요. 원본 영상이나 요청 내용을 확인한 다음 openmotion_create_project와 openmotion_edit_project로 편집 가능한 결과물을 만드세요. 필요한 자료가 빠졌다면 편집을 시작하기 전에 요청하세요."
   },
   "de": {
+    "Astronaut on the Moon": "Astronaut auf dem Mond",
+    "Wide shot · Side light": "Totale · Seitenlicht",
     "Create an image from a description or edit a reference image.": "Erstelle ein Bild aus einer Beschreibung oder bearbeite ein Referenzbild.",
     "Create a video shot from text or bring a still frame to life.": "Erzeuge eine Videoeinstellung aus Text oder animiere ein Standbild.",
     "Set a mood with music or turn a script into voiceover.": "Schaffe mit Musik eine Stimmung oder vertone einen Text als Voiceover.",
@@ -444,6 +452,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lies den ausgewählten Skill mit openmotion_get_skill. Prüfe das Ausgangsmaterial oder das Briefing. Erstelle dann mit openmotion_create_project und openmotion_edit_project ein bearbeitbares Projekt. Frage vor dem Bearbeiten nach fehlendem Material oder fehlenden Angaben."
   },
   "fr": {
+    "Astronaut on the Moon": "Astronaute sur la Lune",
+    "Wide shot · Side light": "Plan large · Éclairage latéral",
     "Create an image from a description or edit a reference image.": "Créez une image à partir d’une description ou retouchez une image de référence.",
     "Create a video shot from text or bring a still frame to life.": "Créez un plan vidéo à partir d’un texte ou animez une image fixe.",
     "Set a mood with music or turn a script into voiceover.": "Créez une ambiance musicale ou transformez un texte en voix off.",
@@ -555,6 +565,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lisez le Skill sélectionné avec openmotion_get_skill. Vérifiez les images sources ou le brief, puis utilisez openmotion_create_project et openmotion_edit_project pour créer un projet modifiable. Si un élément manque, demandez-le avant de commencer le montage."
   },
   "ru": {
+    "Astronaut on the Moon": "Астронавт на Луне",
+    "Wide shot · Side light": "Общий план · Боковой свет",
     "Create an image from a description or edit a reference image.": "Создайте изображение по описанию или отредактируйте исходную картинку.",
     "Create a video shot from text or bring a still frame to life.": "Создайте видеосцену по тексту или оживите неподвижный кадр.",
     "Set a mood with music or turn a script into voiceover.": "Задайте настроение музыкой или озвучьте текст за кадром.",
@@ -666,6 +678,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Прочитай выбранный навык с помощью openmotion_get_skill. Проверь исходное видео или задание, затем создай редактируемый проект с помощью openmotion_create_project и openmotion_edit_project. Если чего-то не хватает, запроси материалы или сведения до начала редактирования."
   },
   "es": {
+    "Astronaut on the Moon": "Astronauta en la Luna",
+    "Wide shot · Side light": "Plano general · Luz lateral",
     "Create an image from a description or edit a reference image.": "Crea una imagen a partir de una descripción o edita una imagen de referencia.",
     "Create a video shot from text or bring a still frame to life.": "Crea un plano de vídeo a partir de texto o anima una imagen fija.",
     "Set a mood with music or turn a script into voiceover.": "Crea ambiente con música o convierte un guion en voz en off.",
@@ -777,6 +791,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Lee el Skill seleccionado con openmotion_get_skill. Confirma el material original o el encargo y usa openmotion_create_project y openmotion_edit_project para crear un proyecto editable. Si falta algún material o dato, pídelo antes de editar."
   },
   "pt-BR": {
+    "Astronaut on the Moon": "Astronauta na Lua",
+    "Wide shot · Side light": "Plano geral · Luz lateral",
     "Create an image from a description or edit a reference image.": "Crie uma imagem a partir de uma descrição ou edite uma imagem de referência.",
     "Create a video shot from text or bring a still frame to life.": "Crie uma cena de vídeo a partir de um texto ou anime uma imagem estática.",
     "Set a mood with music or turn a script into voiceover.": "Crie uma atmosfera com música ou transforme um roteiro em narração.",
@@ -888,6 +904,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leia o Skill selecionado com openmotion_get_skill. Confira o material original ou o briefing e use openmotion_create_project e openmotion_edit_project para criar um projeto editável. Se faltar algum material ou informação, peça o que falta antes de editar."
   },
   "it": {
+    "Astronaut on the Moon": "Astronauta sulla Luna",
+    "Wide shot · Side light": "Campo lungo · Luce laterale",
     "Create an image from a description or edit a reference image.": "Crea un’immagine da una descrizione o modifica un’immagine di riferimento.",
     "Create a video shot from text or bring a still frame to life.": "Crea un’inquadratura video da un testo o anima un’immagine fissa.",
     "Set a mood with music or turn a script into voiceover.": "Crea un’atmosfera con la musica o trasforma un testo in una voce narrante.",
@@ -999,6 +1017,8 @@
     "Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.": "Leggi lo Skill selezionato con openmotion_get_skill. Verifica il girato originale o il brief, poi usa openmotion_create_project e openmotion_edit_project per creare un progetto modificabile. Richiedi eventuali materiali o informazioni mancanti prima di iniziare il montaggio."
   },
   "tr": {
+    "Astronaut on the Moon": "Ay yüzeyinde astronot",
+    "Wide shot · Side light": "Genel plan · Yan ışık",
     "Create an image from a description or edit a reference image.": "Bir açıklamadan görsel oluşturun veya referans görseli düzenleyin.",
     "Create a video shot from text or bring a still frame to life.": "Metinden bir video sahnesi oluşturun veya durağan bir kareyi canlandırın.",
     "Set a mood with music or turn a script into voiceover.": "Müzikle bir atmosfer yaratın veya bir metni seslendirin.",

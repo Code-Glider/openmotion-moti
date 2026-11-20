@@ -781,7 +781,7 @@ it('lists each primary destination once in order, with only three scene choices 
   expect(menu.querySelector('h2')).toBeNull();
   expect(menu.querySelectorAll('button:has(.om-scene-tile-art img)')).toHaveLength(3);
   expect([...menu.querySelectorAll('button')].map(node => node.querySelector('strong')?.textContent)).toEqual(['Text to image', 'Image editing', 'Shot still']);
-  const still = [...menu.querySelectorAll('button')].find(node => node.textContent?.startsWith('Shot still'))!;
+  const still = [...menu.querySelectorAll('button')].find(node => node.querySelector('strong')?.textContent === 'Shot still')!;
   await act(async () => still.click());
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
 });

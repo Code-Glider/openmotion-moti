@@ -299,10 +299,10 @@
 .om-media-menu-grid .om-scene-tile strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
 .om-media-menu-grid .om-scene-tile:hover strong { text-decoration: none; }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .om-media-menu-grid .om-scene-tile-art:not(.om-image-demo, .om-edit-demo) img { transition: transform var(--motion-duration-fast) var(--motion-ease-out); }
-  .om-media-menu-grid button:hover .om-scene-tile-art:not(.om-image-demo, .om-edit-demo) img { transform: scale(1.04); }
+  .om-media-menu-grid .om-scene-tile-art:not(.om-media-demo) img { transition: transform var(--motion-duration-fast) var(--motion-ease-out); }
+  .om-media-menu-grid button:hover .om-scene-tile-art:not(.om-media-demo) img { transform: scale(1.04); }
 }
-.om-scene-tile-art:is(.om-image-demo, .om-edit-demo) {
+.om-scene-tile-art.om-media-demo {
   container-type: inline-size;
   display: grid;
   place-items: center;
@@ -325,26 +325,73 @@
   inset: 0;
   object-fit: contain;
 }
-/* Slide the divider across two stationary, aligned images. */
+/* One animated position keeps the edge of the new scene aligned with the divider. */
+@property --om-edit-edge {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 100%;
+}
 .om-edit-demo .om-media-demo-frame img { object-fit: cover; }
+.om-shot-brief {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2cqw;
+  padding-inline: 8%;
+  color: var(--motion-overlay-ink);
+  text-align: center;
+  font-size: clamp(9px, 8cqw, 13px);
+  line-height: 1.2;
+  opacity: 0;
+}
+.om-shot-brief small { font-size: .8em; color: var(--motion-neutral-n3); }
+.om-shot-viewfinder {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid var(--motion-overlay-ink);
+  --corner: linear-gradient(currentColor, currentColor);
+  mask: var(--corner) top left, var(--corner) top right, var(--corner) bottom left, var(--corner) bottom right;
+  mask-size: 7cqw 7cqw;
+  mask-repeat: no-repeat;
+  opacity: 0;
+}
 @media (prefers-reduced-motion: no-preference) {
-  .om-edit-demo .om-media-demo-frame { --edit-edge: 0%; }
-  .om-scene-tile:is(:hover, :focus-visible) .om-edit-demo .om-media-demo-frame { --edit-edge: 100%; }
-  .om-edit-demo-result {
-    clip-path: inset(0 calc(100% - var(--edit-edge)) 0 0);
-    transition: clip-path 1.6s ease-in-out;
-  }
+  .om-edit-demo .om-media-demo-frame { animation: om-edit-sweep 5.6s ease-in-out infinite; }
+  .om-edit-demo-result { clip-path: inset(0 calc(100% - var(--om-edit-edge)) 0 0); }
   .om-edit-demo .om-media-demo-frame::after {
     content: "";
     position: absolute;
     inset-block: 0;
-    left: var(--edit-edge);
+    left: var(--om-edit-edge);
     width: 2px;
-    transform: translateX(calc(var(--edit-edge) - 100%));
+    transform: translateX(calc(var(--om-edit-edge) - 100%));
     background: var(--motion-overlay-ink);
     box-shadow: 0 0 2px var(--motion-video-overlay);
-    transition: left 1.6s ease-in-out, transform 1.6s ease-in-out;
   }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo { --shot-timing: 3s ease-in-out both; }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo img { animation: om-shot-photo var(--shot-timing); }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-brief { animation: om-shot-brief var(--shot-timing); }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-viewfinder { animation: om-shot-frame var(--shot-timing); }
+}
+@keyframes om-edit-sweep {
+  0%, 16%, 100% { --om-edit-edge: 0%; }
+  47%, 69% { --om-edit-edge: 100%; }
+}
+@keyframes om-shot-photo {
+  0%, 78%, 100% { opacity: 1; }
+  8%, 46% { opacity: 0; }
+}
+@keyframes om-shot-brief {
+  0%, 5%, 58%, 100% { opacity: 0; }
+  14%, 45% { opacity: 1; }
+}
+@keyframes om-shot-frame {
+  0%, 100% { opacity: 0; }
+  0%, 45% { transform: scale(1.09); }
+  12%, 72% { opacity: 1; }
+  82%, 100% { opacity: 0; transform: scale(1); }
 }
 .om-image-demo-input {
   position: absolute;
