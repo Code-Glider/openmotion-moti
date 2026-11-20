@@ -2,7 +2,7 @@ import { generationOptions, compatibleImageResolutions } from '../../../shared/g
 import type { Model, ProviderState } from '../../../shared/gateway';
 import { providerRegistry, registeredProvider } from '../../../shared/provider-registry';
 import { openDesignImageReferenceCap, openDesignModelLabel, openDesignModels } from '../../../shared/opendesign-models';
-import { videoModelBadge } from '../../../shared/video-features';
+import { openDesignVideoModels, videoModelBadge } from '../../../shared/video-features';
 import { supportsScene, studioScenes } from './creativeStudios';
 
 export const imageScene = studioScenes.find(scene => scene.id === 'text-to-image')!;
@@ -87,16 +87,32 @@ export function modelFamilies(models: Model[], providers: ProviderState[]): Mode
     || a.label.localeCompare(b.label));
 }
 
-/** Before the OpenDesign key or sign-in is set up its models still open and ask for setup; afterwards the live catalogue decides. */
+/** Before the OpenDesign key or sign-in is set up its live models still open and ask for setup; afterwards the live catalogue decides. */
 export function withOpenDesignModels(models: Model[], providers: ProviderState[]): Model[] {
   const known = new Set(models.map(model => model.id));
   const missing = (['opendesign', 'account'] as const).filter(provider => !providerReady(providers, provider)).flatMap(provider =>
-    openDesignModels.filter(model => !known.has(provider + ':' + model.modelId)).map((model): Model => {
+    openDesignModels.filter(model => !model.upcoming && !known.has(provider + ':' + model.modelId)).map((model): Model => {
       const placeholder: Model = { id: provider + ':' + model.modelId, provider, modelId: model.modelId, label: model.label, modality: model.modality, mode: model.mode, source: 'builtin' };
       // Image entries can edit and OpenDesign video entries accept a first frame, so reference-based scenes list them before setup too.
       const cap = model.modality === 'image' ? openDesignImageReferenceCap(model.modelId) : undefined;
       if (cap) Object.assign(placeholder, { supportsImageReference: true, maxInputImages: cap });
-      else if (model.modality === 'video') Object.assign(placeholder, { maxInputImages: 1 });
+      else if (model.modality === 'video') {
+        const videoMeta = openDesignVideoModels.find(entry => entry.modelId === model.modelId);
+        const durationValues = videoMeta
+          ? Array.from({ length: videoMeta.durations.max - videoMeta.durations.min + 1 }, (_, index) => videoMeta.durations.min + index)
+          : undefined;
+        Object.assign(placeholder, {
+          maxInputImages: 1,
+          ...(videoMeta ? {
+            nativeOptions: {
+              ratios: { values: [...videoMeta.ratios], default: videoMeta.ratios[0] },
+              resolutions: { values: [...videoMeta.resolutions], default: videoMeta.resolutions.includes('720p') ? '720p' : videoMeta.resolutions[0] },
+              durations: { values: durationValues, default: videoMeta.durations.default },
+              ...(videoMeta.audioMode === 'toggle' ? { audio: { values: ['on', 'off'], default: 'on' } } : {}),
+            },
+          } : {}),
+        });
+      }
       const options = generationOptions(placeholder);
       return options ? { ...placeholder, generationOptions: options } : placeholder;
     }));

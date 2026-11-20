@@ -9,6 +9,7 @@ export type OpenDesignVideoEntry = {
   tagline: string;
   durations: { min: number; max: number; default: number };
   resolutions: readonly string[];
+  ratios: readonly string[];
   audioMode: 'toggle' | 'always-on';
 };
 
@@ -24,6 +25,7 @@ export const openDesignVideoModels: readonly OpenDesignVideoEntry[] = [
     tagline: '4–30s cinematic video up to 1080p with native audio.',
     durations: { min: 4, max: 30, default: 5 },
     resolutions: ['480p', '720p', '1080p'],
+    ratios: ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9', 'adaptive'],
     audioMode: 'toggle',
   },
   {
@@ -33,6 +35,7 @@ export const openDesignVideoModels: readonly OpenDesignVideoEntry[] = [
     tagline: 'Fast 4–30s generation at 480p/720p with native audio.',
     durations: { min: 4, max: 30, default: 5 },
     resolutions: ['480p', '720p'],
+    ratios: ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9', 'adaptive'],
     audioMode: 'toggle',
   },
   {
@@ -42,6 +45,7 @@ export const openDesignVideoModels: readonly OpenDesignVideoEntry[] = [
     tagline: '2–15s 720p/1080p video with built-in synchronized audio.',
     durations: { min: 2, max: 15, default: 5 },
     resolutions: ['720p', '1080p'],
+    ratios: ['16:9', '9:16', '1:1', '4:3', '3:4', 'adaptive'],
     audioMode: 'always-on',
   },
 ];

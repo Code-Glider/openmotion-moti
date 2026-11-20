@@ -371,12 +371,12 @@
 .om-media-mega-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--motion-space-20); padding-top: var(--motion-space-14); border-top: 1px solid var(--motion-border-subtle); }
 .om-media-mega-columns > section { display: grid; align-content: start; gap: var(--motion-space-4); min-width: 0; }
 .om-media-mega-columns h2 { margin: 0 0 var(--motion-space-4); padding: 0 var(--motion-space-8); color: var(--motion-dim); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-medium); }
-.om-media-mega-items { display: grid; gap: var(--motion-space-2); min-width: 0; }
+.om-media-mega-items { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-2); min-width: 0; }
 .om-media-mega-items[hidden] { display: none; }
 .om-media-mega-columns[data-single] { grid-template-columns: minmax(0, 1fr); }
 .om-media-mega-columns[data-single] .om-media-mega-items { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--motion-space-20); }
 .om-media-mega-empty { margin: 0; padding: var(--motion-space-8); font-size: var(--motion-text-xs); line-height: 1.5; }
-[data-motion-studio] .om-media-mega-row { width: 100%; min-height: 34px; justify-content: flex-start; gap: var(--motion-space-10); padding: var(--motion-space-6) var(--motion-space-8); border-radius: var(--motion-radius-md); font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); color: var(--motion-strong); }
+[data-motion-studio] .om-media-mega-row { width: 100%; min-width: 0; min-height: 34px; justify-content: flex-start; gap: var(--motion-space-10); padding: var(--motion-space-6) var(--motion-space-8); border-radius: var(--motion-radius-md); font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); color: var(--motion-strong); }
 :root[data-motion-ui][data-motion-studio] .om-media-mega-row:disabled { opacity: .78; cursor: not-allowed; color: var(--motion-muted); background-color: transparent; }
 :root[data-motion-ui][data-motion-studio] .om-media-mega-row:disabled:hover { background-color: transparent; }
 [data-motion-studio] .om-media-mega-row .om-avatar { width: 22px; height: 22px; border-radius: var(--motion-radius-sm); font-size: var(--motion-text-xs); flex: none; }

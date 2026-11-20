@@ -827,6 +827,84 @@ it('renders VideoMegaMenu with open video scenes, Coming soon items, and OpenDes
   expect(buttons.some(button => button.textContent?.includes('Seedance 2.5') && !button.disabled)).toBe(true);
   expect(buttons.some(button => button.textContent?.includes('Wan 2.7') && !button.disabled)).toBe(true);
   expect(buttons.some(button => button.textContent?.includes('Seedance 2.5 Flash') && button.disabled)).toBe(true);
+  // Camera control and Start & end frames live on the left tiles without duplicating inside Features.
+  expect(buttons.filter(button => button.textContent?.includes('Camera control'))).toHaveLength(1);
+  expect(buttons.filter(button => button.textContent?.includes('Start & end frames'))).toHaveLength(1);
   await act(async () => buttons.find(button => button.textContent?.includes('Multi-shot narrative'))!.click());
   expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ scene: expect.objectContaining({ id: 'video-multi-shot' }), model: null }));
+});
+
+it('keeps Seedance 2.5 Flash Coming soon before setup and unlocks it once the live catalogue publishes it', async () => {
+  const { VideoMegaMenu } = await import('./VideoMegaMenu');
+  const navigate = vi.fn();
+  await act(async () => root.render(<VideoMegaMenu
+    catalog={{ models: [], status: { routes: {}, providers: [{ id: 'opendesign', label: 'OpenDesign Cloud', available: false }, { id: 'account', label: 'OpenDesign', available: false }] } }}
+    destination={null}
+    onNavigate={navigate}
+  />));
+  const beforeButtons = [...container.querySelectorAll('button')];
+  const flashBefore = beforeButtons.find(button => button.textContent?.includes('Seedance 2.5 Flash'))!;
+  expect(flashBefore.disabled).toBe(true);
+  expect(flashBefore.textContent).toContain('Coming soon');
+  expect(beforeButtons.find(button => button.textContent?.includes('Seedance 2.5') && !button.textContent.includes('Flash'))?.disabled).toBe(false);
+
+  const seedance: Model = { id: 'opendesign:doubao-seedance-2-5-260628', provider: 'opendesign', modelId: 'doubao-seedance-2-5-260628', label: 'Seedance 2.5', modality: 'video', mode: 'text-to-video', source: 'live', maxInputImages: 1 };
+  const flash: Model = { id: 'opendesign:doubao-seedance-2-5-flash-261115', provider: 'opendesign', modelId: 'doubao-seedance-2-5-flash-261115', label: 'Seedance 2.5 Flash', modality: 'video', mode: 'text-to-video', source: 'live', maxInputImages: 1 };
+  const wan: Model = { id: 'opendesign:wan-2.7', provider: 'opendesign', modelId: 'wan-2.7', label: 'Wan 2.7', modality: 'video', mode: 'text-to-video', source: 'live', maxInputImages: 1 };
+  await act(async () => root.render(<VideoMegaMenu
+    catalog={{ models: [seedance, flash, wan], status: { routes: {}, providers: [{ id: 'opendesign', label: 'OpenDesign Cloud', available: true }] } }}
+    destination={null}
+    onNavigate={navigate}
+  />));
+  const afterModels = [...container.querySelectorAll<HTMLButtonElement>('.om-media-mega-columns section:last-child button')];
+  expect(afterModels.map(b => b.querySelector('.om-media-mega-label')?.textContent)).toEqual(['Seedance 2.5', 'Seedance 2.5 Flash', 'Wan 2.7']);
+  expect(afterModels[1].disabled).toBe(false);
+  expect(afterModels[1].textContent).toContain('New');
+});
+
+it('shows optional first-frame upload and video parameter preview before OpenDesign setup without pinning draft.model', async () => {
+  const { sceneDestination, studioScenes } = await import('./creativeStudios');
+  const setDraft = vi.fn();
+  const unconfigured = {
+    models: [],
+    status: { routes: {}, providers: [{ id: 'opendesign', label: 'OpenDesign Cloud', available: false }, { id: 'account', label: 'OpenDesign', available: false }] },
+  };
+  await act(async () => root.render(<AssetComposer {...props} setDraft={setDraft} draft={{ modality: 'video', prompt: '', references: [] }} studio={{
+    catalog: { catalog: unconfigured, failed: false, retry: vi.fn() }, chooseModel: vi.fn(), remember: vi.fn(),
+    destination: sceneDestination(studioScenes.find(item => item.id === 'video-camera-control')!),
+  }} />));
+  expect(container.querySelector('.om-scene-source')?.textContent).toContain('First frame');
+  const settings = container.querySelector('.om-generation-settings')!;
+  expect(settings).toBeTruthy();
+  expect(settings.textContent).toContain('5s');
+  expect(settings.textContent).toContain('720p');
+  expect(settings.textContent).toContain('16:9');
+  const audioSwitch = container.querySelector<HTMLButtonElement>('[role="switch"]')!;
+  expect(audioSwitch).toBeTruthy();
+  await act(async () => audioSwitch.click());
+  expect(setDraft).toHaveBeenCalled();
+  const updatedDraft = setDraft.mock.calls.at(-1)![0];
+  expect(updatedDraft.model).toBeUndefined();
+  expect(updatedDraft.parameters).toMatchObject({ generate_audio: false });
+
+  await act(async () => root.render(<AssetComposer {...props} setDraft={setDraft} draft={{ modality: 'video', prompt: '', references: [] }} studio={{
+    catalog: { catalog: unconfigured, failed: false, retry: vi.fn() }, chooseModel: vi.fn(), remember: vi.fn(),
+    destination: sceneDestination(studioScenes.find(item => item.id === 'video-multi-shot')!),
+  }} />));
+  expect(container.querySelector('.om-generation-settings')?.textContent).toContain('10s');
+});
+
+it('shows Coming soon guidance instead of Sync models when deep-linked to unreleased Seedance 2.5 Flash', async () => {
+  const { sceneDestination, studioScenes } = await import('./creativeStudios');
+  const catalog = {
+    models: [],
+    status: { routes: {}, providers: [{ id: 'opendesign', label: 'OpenDesign Cloud', available: false }, { id: 'account', label: 'OpenDesign', available: false }] },
+  };
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'video', prompt: '', references: [] }} studio={{
+    catalog: { catalog, failed: false, retry: vi.fn() }, chooseModel: vi.fn(), remember: vi.fn(),
+    destination: sceneDestination(studioScenes.find(item => item.id === 'text-to-video')!, null, 'opendesign:doubao-seedance-2-5-flash-261115'),
+  }} />));
+  expect(container.textContent).toContain('Seedance 2.5 Flash');
+  expect(container.textContent).toContain('Coming soon. Choose another model to continue.');
+  expect(container.textContent).not.toContain('Sync models');
 });

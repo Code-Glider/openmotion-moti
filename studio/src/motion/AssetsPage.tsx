@@ -24,6 +24,7 @@ import { sceneLayout } from './sceneShowcase';
 import { StudioIdeas } from './StudioIdeas';
 import { AudioStudioLanding } from './AudioStudioLanding';
 import { SoundStudioWorkspace } from './SoundStudioWorkspace';
+import { sceneFeature, sceneVideoFeature } from './creativeStudios';
 import { creationModels } from './creationModels';
 import { imageModelLabel } from './imageMenuModels';
 import './assets.css';
@@ -283,7 +284,8 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
     finally { if (request === selectionRequest.current) setSelectingTask(false); }
   };
   const blankCanvas = layout === 'canvas' && browser.data?.total === 0 && !browser.query && browser.source === 'all';
-  const canvasModels = studioForm && layout === 'canvas' ? creationModels(studioForm.catalog.catalog, draft.modality, studioForm.destination.model ?? draft.model, studioForm.destination.scene, !studioForm.destination.model) : undefined;
+  const canvasFeatureMode = Boolean(studioForm && (sceneFeature(studioForm.destination.scene) || sceneVideoFeature(studioForm.destination.scene)));
+  const canvasModels = studioForm && layout === 'canvas' ? creationModels(studioForm.catalog.catalog, draft.modality, studioForm.destination.model ?? draft.model, studioForm.destination.scene, canvasFeatureMode) : undefined;
   const studioEmpty = studio && (layout === 'canvas' ? <StudioIdeas destination={studio.destination} onPrompt={applyPrompt}
     modelName={canvasModels?.selected && imageModelLabel(canvasModels.selected)} /> : <p className="om-muted">{t('No assets yet')}</p>);
   const history = { tasks, selectedKey, loading: historyLoading, error: historyError, onRetry: () => { setHistoryLoading(true); setHistoryRetry(value => value + 1); }, onSelect: (task: AssetTask) => { tracking.reportAssetsClick('asset_tasks', 'select_task', { task_mode: task.mode }); void selectTask(task); } };

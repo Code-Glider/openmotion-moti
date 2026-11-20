@@ -1133,6 +1133,10 @@ it('browses Cinema templates and opens editable generation drafts without submit
   expect(container.querySelector('.om-cinema-home .om-discovery-page')?.firstElementChild?.className).toBe('om-discovery-hero');
   const grid = container.querySelector('.om-cinema-home .om-studio-template-grid')!;
   expect(grid.querySelectorAll('.om-design-gallery-card')).toHaveLength(5);
+  // Cinema cards stack title and metadata vertically instead of using the 2-column gallery body grid.
+  expect(grid.querySelectorAll('.om-design-gallery-body')).toHaveLength(0);
+  const posters = new Set([...grid.querySelectorAll<HTMLImageElement>('.om-cinema-template-card img')].map(img => img.getAttribute('src')));
+  expect(posters.size).toBe(5);
   expect(grid.querySelector('[data-template-id="drink-splash-slow-motion"] .om-design-thumb-badge')?.textContent).toBe('Text to video');
   expect(grid.querySelector('[data-template-id="product-window-light-push-in"] .om-design-thumb-badge')?.textContent).toBe('Image to video');
   await click('Slow-motion drink splash');

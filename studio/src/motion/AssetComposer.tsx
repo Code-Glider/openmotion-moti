@@ -4,6 +4,8 @@ import { Tooltip } from "../components/ui/Tooltip";
 import { useEffect, useId, useRef, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import { assetMediaUrl, type AssetReference, type LibraryAsset } from '../../../shared/asset-library';
 import { modelReferenceLimit, type GenerationJob } from '../../../shared/gateway';
+import { resolveGenerationParameters } from '../../../shared/generation-options';
+import { isUpcomingOpenDesignModel, openDesignModelLabel } from '../../../shared/opendesign-models';
 import { useI18n } from '../i18n/I18n';
 import { CreationModelPicker, GenerationModelPickers } from './GenerationModelPickers';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -26,7 +28,7 @@ import { imageFeaturePrompt, imageFeatures, relightControls, type RelightChoices
 import { videoFeatureParameters, videoFeaturePrompt, videoFeatures } from '../../../shared/video-features';
 import { Select } from '../components/ui/Select';
 import { creationModels } from './creationModels';
-import { providerDisplayName } from './imageMenuModels';
+import { isOpenDesignProvider, providerDisplayName } from './imageMenuModels';
 import { registeredProvider } from '../../../shared/provider-registry';
 
 export interface AssetDraft { modality: Modality; prompt: string; relight?: RelightChoices; videoChoices?: Record<string, string>; shotPreferences?: { aspect: string; duration?: number }; preferredModel?: string; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
@@ -61,13 +63,17 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
   const { available, selected, choices, compatible, preferred } = creationModels(
     gateway, draft.modality, modelId, scene, featureMode, draft.references.length, draft.preferredModel,
   );
+  const displayModel = selected ?? preferred;
   const preferredProvider = preferred && gateway?.status.providers.find(provider => provider.id === preferred.provider);
   const unconfiguredPreferred = Boolean(studio && gateway && preferred && !selected && preferredProvider && !preferredProvider.available);
   const providerLabel = preferredProvider?.label ?? (preferred && registeredProvider(preferred.provider)?.label) ?? preferred?.provider ?? '';
   const accountNotIncluded = selected?.provider === 'account' && preferredProvider?.mediaEntitlement === 'not-included';
   const maximumReferences = selected ? Math.min(modelReferenceLimit(selected), featureRule?.maxReferences ?? Infinity) : 0;
+  const draftMaximumReferences = displayModel ? Math.min(modelReferenceLimit(displayModel), featureRule?.maxReferences ?? Infinity) : 0;
+  const sourceReferenceLimit = displayModel ? draftMaximumReferences : 1;
   const unknownReferences = selected?.provider === 'opendesign' && selected.modality === 'image' && selected.supportsImageReference === undefined;
-  const cloudModelMissing = !!gateway && !!modelId?.startsWith('opendesign:') && !selected && !unconfiguredPreferred;
+  const upcomingModel = Boolean(modelId && !selected && isUpcomingOpenDesignModel(modelId));
+  const cloudModelMissing = !!gateway && !!modelId?.startsWith('opendesign:') && !selected && !unconfiguredPreferred && !upcomingModel;
   const openDesignMissing = Boolean(studio && gateway && featureMode && !compatible.length);
   const setupProvider = unconfiguredPreferred ? preferred!.provider : openDesignMissing ? 'opendesign' : undefined;
   const syncModels = async () => {
@@ -79,19 +85,27 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
   };
   const invalidReferences = draft.references.length > maximumReferences || Boolean(scene && needsImage(scene) && !draft.references.length);
   const shotPreferences = draft.shotPreferences ?? (studio?.destination.studio.id === 'shorts' ? { aspect: '9:16' } : undefined);
-  const parameterModel = selected;
+  const parameterModel = displayModel;
   const parameterKey = parameterModel ? `${scene?.id ?? 'direct'}:${parameterModel.id}` : '';
   const restoredParameters = (model: NonNullable<typeof parameterModel>): ParameterDraft => {
-    if (draft.model !== model.id || !draft.parameters) {
+    const defaults = (): ParameterDraft => {
       const base = shotParameters(model, shotPreferences);
       if (!videoFeature) return base;
       const seeded = videoFeatureParameters(videoFeature, model);
       return Object.keys(seeded).length ? { ...base, values: { ...base.values, ...seeded } } : base;
+    };
+    if (!draft.parameters || (draft.model && draft.model !== model.id)) return defaults();
+    // Exact model matches preserve explicit JSON verbatim so conflicting instructions are rejected rather than silently dropped.
+    if (draft.model === model.id) return { values: {}, advanced: JSON.stringify(draft.parameters, null, 2) };
+    try {
+      resolveGenerationParameters(model, draft.parameters, draft.references.length > 0);
+      return { values: {}, advanced: JSON.stringify(draft.parameters, null, 2) };
+    } catch {
+      return defaults();
     }
-    return { values: {}, advanced: JSON.stringify(draft.parameters, null, 2) };
   };
   const parameters = parameterModel ? parameterDrafts[parameterKey] ?? restoredParameters(parameterModel) : emptyParameters;
-  const inputImageRatio = selected && parameterInputImageRatio(selected, parameters, draft.references.length > 0);
+  const inputImageRatio = parameterModel && parameterInputImageRatio(parameterModel, parameters, draft.references.length > 0);
   const kind = creationKinds.find(k => k.id === draft.modality)!;
   const latest = jobs.find(job => job.id === taskIds.direct);
   const promptReady = Boolean(draft.prompt.trim() || featureRule?.promptOptional);
@@ -157,9 +171,12 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
       </div>
     </div> : <div className="om-creation-setup"><RemixIcon name="plug-line" size={20} /><p className="om-muted">{t('Configure a provider or sign in to use media models.')}</p><Button variant="ghost" className="om-button h-auto" onClick={openModelSettings}>{t('Model providers')}</Button></div>}
   </>;
+  const unavailableLabel = modelId && (gateway?.models.find(model => model.id === modelId)?.label
+    ?? (isOpenDesignProvider(modelId.split(':')[0]) ? openDesignModelLabel(modelId.slice(modelId.indexOf(':') + 1)) : undefined)
+    ?? modelId);
   const setup = <>
       {unconfiguredPreferred && <p className="om-muted" role="status">{t('{provider} needs setup before generating.', { provider: providerLabel })}</p>}
-      {studio && gateway && !available.length && compatible.length > 0 && !unconfiguredPreferred && <Button variant="ghost" className="om-button h-auto" onClick={openModelSettings}>{t('Configure a provider or sign in to use media models.')}</Button>}
+      {studio && gateway && !available.length && compatible.length > 0 && !unconfiguredPreferred && !upcomingModel && <Button variant="ghost" className="om-button h-auto" onClick={openModelSettings}>{t('Configure a provider or sign in to use media models.')}</Button>}
       {accountNotIncluded && <div className="om-creation-setup" role="status">
         <RemixIcon name="bank-card-line" size={20} />
         <p className="om-muted">{t('Signed in; multimodal generation requires OpenDesign Plus or above')}</p>
@@ -167,13 +184,16 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
           {t('Manage subscription')}
         </Button>
       </div>}
-      {gateway && modelId && !selected && !unconfiguredPreferred && !openDesignMissing && <p className="om-muted" role="status">{scene && <strong>{gateway.models.find(model => model.id === modelId)?.label ?? modelId} · </strong>}{t('This task’s model is unavailable. Choose a model to continue.')}</p>}
+      {gateway && modelId && !selected && !unconfiguredPreferred && !openDesignMissing && <p className="om-muted" role="status">{scene && <strong>{unavailableLabel} · </strong>}{t(upcomingModel ? 'Coming soon. Choose another model to continue.' : 'This task’s model is unavailable. Choose a model to continue.')}</p>}
   </>;
   const modelNotice = unknownReferences || cloudModelMissing ? <p className="om-muted" role="status">{unknownReferences && t('Image editing capability is unknown. Sync models to check reference support.')} <Button variant="ghost" className="om-button h-auto" disabled={syncing} onClick={() => void syncModels()}>{t(syncing ? 'Working…' : 'Sync models')}</Button></p> : selected && draft.references.length > 0 && <p className="om-muted">{t(maximumReferences ? draft.modality === 'video' ? 'This video model uses one image as its first frame.' : 'This model edits up to {count} image references.' : 'This model cannot use asset references. Choose an image model that supports editing, or remove the references.', { count: maximumReferences })}</p>;
   const generationSettings = parameterModel && <GenerationParameters key={parameterKey} model={parameterModel} draft={parameters}
     hasInputImage={draft.references.length > 0} hidden={[...Object.keys(featureRule?.parameters ?? {}), ...(videoFeature === 'native-audio' ? ['generate_audio'] : [])]} onChange={value => {
       setParameterDrafts(current => ({ ...current, [parameterKey]: value }));
-      try { setDraft({ ...draft, model: parameterModel.id, parameters: requestParameters(value, parameterModel, draft.references.length > 0) }); }
+      try {
+        const nextParameters = requestParameters(value, parameterModel, draft.references.length > 0);
+        setDraft({ ...draft, ...(selected ? { model: selected.id } : {}), parameters: nextParameters });
+      }
       catch { /* Keep invalid JSON or conflicting parameters in the local editor until corrected. */ }
     }} />;
   const generate = setupProvider ? <Button variant="plain" className="om-button om-creation-submit-button" data-primary onClick={() => configureProvider(setupProvider)}>
@@ -202,11 +222,11 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
       <div className="om-asset-direct">
       {draft.target && <div className="om-card om-asset-edit-target"><span><RemixIcon name="history-line" size={16} />{draft.target.asset.name} · V{draft.target.asset.versions.findIndex(v => v.id === draft.target!.versionId) + 1}</span><Button variant="plain" className="om-nav-item" onClick={() => setDraft({ ...draft, target: undefined })}>{t('Create separately')}</Button></div>}
       {!scene && <div className="om-creation-types" role="group" aria-label={t('Media type')}>{creationKinds.map(item => <Button variant="plain" key={item.id} className="om-creation-type" data-tone={item.id} aria-pressed={draft.modality === item.id} disabled={Boolean(draft.target) && item.id !== draft.modality} onClick={() => setDraft({ ...draft, modality: item.id, model: undefined, parameters: undefined, ...(item.id === 'audio' ? { references: [] } : {}) })}><span className="om-creation-icon" data-tone={item.id}><RemixIcon name={item.icon} size={20} /></span><span>{t(item.label)}</span>{draft.modality === item.id && <RemixIcon name="check-line" size={13} />}</Button>)}</div>}
-      {scene && (needsImage(scene) || ((scene.modality === 'image' || Boolean(videoFeature)) && maximumReferences > 0)) && <section className="om-scene-source">
+      {scene && (needsImage(scene) || ((scene.modality === 'image' || Boolean(videoFeature)) && draftMaximumReferences > 0)) && <section className="om-scene-source">
         <h3 className="om-eyebrow">{t(scene.modality === 'video' ? 'First frame' : needsImage(scene) ? 'Reference asset' : 'Reference image')}</h3>
         {draft.references.length > 0 && <div className="om-scene-source-files">{draft.references.map(item => <Button variant="plain" key={item.reference.assetId + '/' + item.reference.versionId} className="om-nav-item" aria-label={t('Remove reference: {name}', { name: item.name })} onClick={() => setDraft({ ...draft, references: draft.references.filter(reference => reference !== item) })}>
           <img src={assetMediaUrl(item.reference.assetId, item.reference.versionId)} alt="" /><span>{item.name}</span><RemixIcon name="close-line" size={16} /></Button>)}</div>}
-        {draft.references.length < (selected ? maximumReferences : 1) && <div className="om-source-actions">
+        {draft.references.length < sourceReferenceLimit && <div className="om-source-actions">
           <Button variant="ghost" className="om-button h-auto" onClick={onReference}><RemixIcon name="image-line" size={21} />{t('Choose an asset')}</Button>
           {onUploadReference && <Button variant="plain" className="om-nav-item" onClick={onUploadReference}><RemixIcon name="upload-2-line" size={16} />{t('Upload image')}</Button>}
         </div>}

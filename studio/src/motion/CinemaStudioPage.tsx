@@ -41,7 +41,7 @@ export function CinemaStudioPage({ onTemplate, onStart }: {
                 <span className="om-design-thumb-badge" id={template.id + '-mode'}>{mode}</span>
                 {template.credit && <small className="om-scene-credit">{template.credit}</small>}
               </span>
-              <span className="om-design-card-body om-design-gallery-body">
+              <span className="om-design-card-body">
                 <strong className="om-design-card-title">{copy.title}</strong>
                 <span className="om-design-card-desc" id={template.id + '-details'}>{copy.tag} · {chinese ? '推荐' : 'Recommended'} {template.model.name} · {template.aspect} · {t('{value}s', { value: template.duration })}</span>
                 <span className="om-design-card-desc" id={template.id + '-materials'}>{copy.materials}</span>

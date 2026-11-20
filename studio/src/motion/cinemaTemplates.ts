@@ -1,5 +1,6 @@
 import lunar from './scene-art/apollo-11.jpg';
 import interior from './scene-art/speaker-room.webp';
+import productStudio from './scene-art/speaker-studio.webp';
 import { sceneExamples } from './sceneShowcase';
 
 const seedance = { name: 'Seedance 2.5', id: 'doubao-seedance-2-5-260628' };
@@ -66,7 +67,7 @@ export const cinemaTemplates: readonly CinemaTemplate[] = [{
 }, {
   id: 'product-window-light-push-in',
   scene: 'image-to-video',
-  poster: productPushIn.poster,
+  poster: productStudio,
   model: seedance,
   aspect: '16:9',
   duration: 8,

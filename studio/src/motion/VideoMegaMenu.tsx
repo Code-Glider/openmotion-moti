@@ -31,7 +31,6 @@ const topScenes = [
 ] as const;
 
 const upcomingVideoFeatures = [
-  ['Start & end frames', 'slideshow-line'],
   ['Multi-image reference', 'stack-line'],
   ['Reference video', 'film-line'],
   ['Edit video', 'edit-line'],
@@ -127,12 +126,6 @@ export function VideoMegaMenu({ catalog, destination, onNavigate }: {
           onClick={() => openFeature(multiShotScene)}>
           <span className="om-image-menu-icon"><RemixIcon name="clapperboard-line" size={16} /></span>
           <span className="om-media-mega-label">{t('Multi-shot narrative')}</span>
-        </Button>,
-        <Button key="camera" variant="plain" className="om-nav-item om-media-mega-row"
-          aria-current={destination?.scene.id === cameraScene.id ? 'page' : undefined}
-          onClick={() => openFeature(cameraScene)}>
-          <span className="om-image-menu-icon"><RemixIcon name="camera-line" size={16} /></span>
-          <span className="om-media-mega-label">{t('Camera control')}</span>
         </Button>,
         <Button key="shot-image" variant="plain" className="om-nav-item om-media-mega-row"
           aria-current={destination?.scene.id === shotImageScene.id ? 'page' : undefined}
