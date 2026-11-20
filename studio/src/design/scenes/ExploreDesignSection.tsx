@@ -128,6 +128,8 @@ export function ExploreDesignSection({
                 }}>
                   <div>
                     <ScaledPreviewThumb
+                      key={tpl.previewUrl}
+                      brandedFallback
                       src={tpl.previewUrl}
                       title={tpl.title}
                       badge={scen ? t(scen.label) : tpl.scenario}

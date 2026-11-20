@@ -10,7 +10,8 @@ import { exploreCommunities, findMediaStudio, findTechniqueStudio, type Creative
 import type { GalleryTemplate, TemplatePage } from '../../../shared/catalog';
 import type { ExploreFilters, TemplateCollection } from './workspacePageRouting';
 import { useI18n } from '../i18n/I18n';
-import { Skeleton } from '../components/ui/Skeleton';
+import { CoverPlaceholder } from '../components/ui/CoverPlaceholder';
+import { ExploreCoverImage } from './ExploreCoverImage';
 import { RemixIcon } from '../icons/RemixIcons';
 import { creativeStudios, mediaLabels, motionStudio, sceneDestination, scenesForStudio, studioDestination, studioScenes, type StudioDestination, type StudioScene } from './creativeStudios';
 import { sceneExamples, type SceneExample } from './sceneShowcase';
@@ -90,7 +91,7 @@ function FeedCard({ title, detail, promptAction, badge, studioLabel, description
     onMouseEnter={playbackId ? () => onPriority?.(playbackId) : undefined} onMouseLeave={playbackId ? () => onPriority?.(null) : undefined}
     onFocus={playbackId ? () => onPriority?.(playbackId) : undefined} onBlur={playbackId ? () => onPriority?.(null) : undefined}>
     <span className="om-scene-tile-art">
-      {poster && <img src={poster} style={{ objectPosition: posterPosition }} loading="lazy" alt="" />}{children}
+      {sceneId && <ExploreCoverImage src={poster} position={posterPosition} />}{children}
       {credit && <small className="om-scene-credit">{credit}</small>}
     </span>
     <span className="om-feed-template-copy">
@@ -100,7 +101,7 @@ function FeedCard({ title, detail, promptAction, badge, studioLabel, description
       </span>
       {studioLabel && <span className="om-feed-card-label">{studioLabel}</span>}
       <span className="om-feed-card-description">{description}</span>
-      <span className="om-feed-card-detail"><RemixIcon name={icon} size={14} /><span>{detail}</span>{promptAction && <RemixIcon name="arrow-right-line" size={15} />}</span>
+      <span className="om-feed-card-detail">{!promptAction && <RemixIcon name={icon} size={14} />}<span>{detail}</span>{promptAction && <RemixIcon name="arrow-right-line" size={15} />}</span>
     </span>
   </Button>;
 }
@@ -134,7 +135,7 @@ function SkillFeedCard({ skill, section, icon, onSkill, playing, onPriority, com
       track(area, 'open_skill', { skill: skill.id, collection, community });
       onSkill(skill.id);
     }}>
-    <SkillMedia skill={skill} playing={playing.has(id)} />
+    <SkillMedia skill={skill} playing={playing.has(id)} brandedFallback />
   </FeedCard>;
 }
 
@@ -144,7 +145,7 @@ function CommunitySpotlight({ community, skill, onChooseStudio }: {
   const { t } = useI18n();
   const lead = creativeStudios.find(studio => studio.id === community.studios[0])!;
   return <section className="om-discovery-hero" aria-label={t(community.label)}>
-    {skill?.cover?.poster && <img src={skill.cover.poster} alt="" />}
+    <div className="om-community-hero-art"><ExploreCoverImage src={skill?.cover?.poster} eager /></div>
     <div className="om-discovery-hero-copy"><span>{t('Communities')}</span><h2>{t(community.label)}</h2>
       <p>{t(community.description)}</p><Button variant="ghost" className="om-button h-auto" data-primary="media" onClick={() => { track('explore_spotlight', 'open_studio', { studio: lead.id, community: community.id }); onChooseStudio(lead); }}>{t(lead.title)}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </div>
@@ -155,7 +156,7 @@ function TemplateSpotlight({ item, onTry }: { item: GalleryTemplate; onTry: (pro
   const { t } = useI18n(), { openLibrary } = useWorkspaceChrome();
   return <article className="om-featured-template"><Button variant="plain" className="om-featured-open" aria-label={t('Preview template {title}', { title: item.title })}
     onClick={event => { track('explore_featured', 'open_template', { template: item.id }); openLibrary(event.currentTarget, item); }}>
-    <div className="om-featured-cover"><TemplatePoster key={item.id} template={item} eager /></div>
+    <div className="om-featured-cover"><TemplatePoster key={item.id} template={item} eager brandedFallback /></div>
     <div className="om-featured-caption"><span className="om-feed-card-label">{t('Community template')}</span>
       <strong>{item.title}<RemixIcon name="arrow-right-up-line" size={22} /></strong>
       <small>{item.authorName || item.author || item.brand}</small>
@@ -308,7 +309,7 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
   // Reserve the template slots so the scene and Skill beside each one stay in place on first load.
   if (showTemplates && templates.loading && !templates.pages.length) {
     for (let i = 0; i < Math.max(sceneCards.length, skillCards.length, 1); i++) {
-      firstTemplates.push(<div key={'pending-' + i} className="om-gallery-card" aria-hidden="true"><Skeleton className="om-feed-template-placeholder" /></div>);
+      firstTemplates.push(<div key={'pending-' + i} className="om-gallery-card" aria-hidden="true"><CoverPlaceholder className="om-feed-template-placeholder" /></div>);
     }
   }
   const firstGroup: ReactNode[] = [];
@@ -328,7 +329,7 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
           onOpenMotionEditor={props.onOpenMotionEditor} motionEditorDisabled={props.motionEditorDisabled} onModelHub={props.onModelHub} />}
       {featuredTemplate && <TemplateSpotlight item={featuredTemplate} onTry={tryVideoPrompt} />}
       {initialTemplateError && templateError}
-      {initialLoading && <Skeleton className="om-featured-template-skeleton" />}
+      {initialLoading && <CoverPlaceholder className="om-featured-template-skeleton" />}
     </div>}
     {home && <>
       <ExploreHighlights onChooseStudio={onChooseStudio} onOpenBlackFriday={props.onOpenBlackFriday} />
@@ -338,7 +339,7 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
       <header className="om-discovery-heading"><h2 id="explore-community">{t('Community showcase')}</h2>
         <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'creators'); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></Button>
       </header>
-      {initialLoading && <div className="om-community-picks" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <Skeleton key={n} />)}</div>}
+      {initialLoading && <div className="om-community-picks" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <CoverPlaceholder key={n} />)}</div>}
       {communityPicks.length > 0 && <div className="om-community-picks">{communityPicks.map(templateCard)}</div>}
     </section>}
     {showModelStories && medium !== 'image' && <ModelCollection story={seedanceStory} gateway={gateway} onNavigate={onNavigate} onModel={props.onModel} />}
@@ -356,7 +357,7 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
       </div>
       {showTemplates && <div className="om-feed-more">
         {medium && initialTemplateError && templateError}
-        {templates.loading && (medium || templates.pages.length > 0) && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <Skeleton key={n} />)}</div>}
+        {templates.loading && (medium || templates.pages.length > 0) && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <CoverPlaceholder key={n} />)}</div>}
         {templates.error && !initialTemplateError && templateError}
         {!templates.error && !templates.loading && (templates.hasMore ? <Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_feed', 'load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></Button> :
           !firstPage.length && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>)}
@@ -387,8 +388,8 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
         {shelf.error ? <div className="om-discovery-empty" role="alert"><span>{t('Templates could not be loaded.')}</span><Button type="button" variant="secondary" className="om-button" onClick={shelf.retry}>{t('Retry')}</Button></div>
           : !shelf.loading && !shelfItems.length ? <p className="om-muted">{t('No templates available. Open the library or try again later.')}</p>
           : <div className="om-studio-template-grid om-explore-preview-grid" aria-busy={shelf.loading} aria-label={shelf.loading ? t('Loading templates…') : undefined}>
-            {shelf.loading ? Array.from({ length: templatePreviewLimit }, (_, n) => <Skeleton key={n} />) : shelfItems.map(item =>
-              <TemplateGalleryCard key={item.id} template={item} active={playing.has(item.id)} onPriority={setPriority}
+            {shelf.loading ? Array.from({ length: templatePreviewLimit }, (_, n) => <CoverPlaceholder key={n} />) : shelfItems.map(item =>
+              <TemplateGalleryCard key={item.id} template={item} active={playing.has(item.id)} onPriority={setPriority} brandedFallback
                 brandCredit={shelf.collection === 'top-100-brands' || facet?.key === 'industries'}
                 onSelect={(template, trigger) => {
                   send('ui_click', { page_name: 'explore', area: 'explore_feed', element: 'open_template', ...slugField('template_id', template.id), ...(shelf.collection ? templateShelfTarget(shelf.collection) : {}) });

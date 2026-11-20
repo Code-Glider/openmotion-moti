@@ -1463,11 +1463,14 @@ async function readMultipartZip(req: IncomingMessage, maxBytes = MAX_IMPORT_BYTE
 /** HTTP adapter mounted by server.ts for /motion-api/design/* (rewritten to /api/design/*). */
 const THUMB_PERF_SCRIPT = `<style data-om-thumb-style>html:not([data-om-thumb-play="1"]) *,html:not([data-om-thumb-play="1"]) *::before,html:not([data-om-thumb-play="1"]) *::after{animation-play-state:paused!important;transition:none!important;}</style><script data-om-thumb-guard>(function(){try{Object.defineProperty(window,'devicePixelRatio',{get:function(){return 1;},configurable:true});}catch(e){}var nRaf=window.requestAnimationFrame.bind(window),nCaf=window.cancelAnimationFrame.bind(window);var playing=false,budget=3,q=[],nextId=1;window.requestAnimationFrame=function(cb){if(playing||budget>0){if(!playing)budget--;return nRaf(cb);}var id=nextId++;q.push({id:id,cb:cb});return id;};window.cancelAnimationFrame=function(id){nCaf(id);q=q.filter(function(x){return x.id!==id;});};window.addEventListener('message',function(e){var d=e.data;if(!d||d.type!=='om:thumb-play')return;playing=Boolean(d.play);document.documentElement.setAttribute('data-om-thumb-play',playing?'1':'0');if(playing&&q.length){var batch=q.splice(0,q.length);for(var i=0;i<batch.length;i++)nRaf(batch[i].cb);}});})();</script>`;
 
-function injectThumbPerfGuard(buf: Buffer): Buffer {
+const THUMB_READY_SCRIPT = `<script data-om-thumb-ready>window.addEventListener('load',function(){window.parent.postMessage({type:'om:thumb-ready'},'*');},{once:true});</script>`;
+
+function injectThumbPerfGuard(buf: Buffer, notifyReady = false): Buffer {
   const html = buf.toString('utf8');
+  const scripts = THUMB_PERF_SCRIPT + (notifyReady ? THUMB_READY_SCRIPT : '');
   const injected = /<head\b[^>]*>/i.test(html)
-    ? html.replace(/<head\b[^>]*>/i, m => `${m}\n${THUMB_PERF_SCRIPT}`)
-    : `${THUMB_PERF_SCRIPT}\n${html}`;
+    ? html.replace(/<head\b[^>]*>/i, m => `${m}\n${scripts}`)
+    : `${scripts}\n${html}`;
   return Buffer.from(injected, 'utf8');
 }
 
@@ -1515,7 +1518,7 @@ export async function designHttp(
       if (!file) return sendJson(404, { error: { code: 'NOT_FOUND', message: 'Template preview file not found' } });
       const mime = mimeFor(file);
       let data: Buffer = await readFile(file);
-      if (url.searchParams.get('thumb') === '1' && mime.startsWith('text/html')) data = injectThumbPerfGuard(data);
+      if (url.searchParams.get('thumb') === '1' && mime.startsWith('text/html')) data = injectThumbPerfGuard(data, url.searchParams.get('thumbReady') === '1');
       const headers: Record<string, string> = { 'Content-Type': mime, 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' };
       if (mime.startsWith('text/html')) headers['Content-Security-Policy'] = 'sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads';
       res.writeHead(200, headers);

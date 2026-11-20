@@ -1189,7 +1189,7 @@ it('lists each primary destination once in order, with Image scenes separated fr
   expect(destinations).toEqual(['Explore', 'Image', 'Video', 'Audio', 'MCP', 'Design Studio', 'Motion Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
   const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node =>
     [node.getAttribute('aria-label'), document.getElementById(node.getAttribute('aria-describedby')!)?.textContent]);
-  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot'], ['3D Studio', 'Coming soon']]);
+  expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot']]);
   await click('Image · Scenes');
   const imageMenu = document.querySelector('.om-creative-menu')!;
   expect(imageMenu.querySelector('h2')).toBeNull();
@@ -1212,7 +1212,7 @@ it('localizes every top navigation Studio label in Chinese while keeping English
     const badge = document.getElementById(node.getAttribute('aria-describedby')!);
     return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
   });
-  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['Motion 工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en'], ['3D 工作室', 'Coming soon', 'en']]);
+  expect(badges).toEqual([['设计工作室', 'New', 'en'], ['Motion 工作室', 'Top', 'en'], ['影视工作室', 'Hot', 'en']]);
 });
 
 it.each([

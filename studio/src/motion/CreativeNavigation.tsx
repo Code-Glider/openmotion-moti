@@ -6,7 +6,7 @@ import type { Model, Modality } from '../../../shared/gateway';
 import { Popover } from '../components/ui/Popover';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { creativeStudios, studioIconTone, mediaLabels, modelDestination, modelsForScenes, sceneDestination, scenesForStudio, supportsScene, type StudioDestination } from './creativeStudios';
+import { creativeStudios, studioComingSoon, studioIconTone, mediaLabels, modelDestination, modelsForScenes, sceneDestination, scenesForStudio, supportsScene, type StudioDestination } from './creativeStudios';
 import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
 import { ModelAvatar } from './settingsPrimitives';
@@ -215,9 +215,9 @@ export function CreativeNavigation({ specialty, onChooseStudio, destination, mot
     const studio = creativeStudios[index - studioStart];
     const isCurrent = studio.surface === 'editor' ? motionActive
       : (studio.id === 'design' && Boolean(designActive)) || (studio.id === destination?.studio.id && !destination?.landing) || studio.id === specialty?.id;
-    const badge = 'navBadge' in studio ? studio.navBadge : undefined;
+    const badge = 'navBadge' in studio && studio.id !== '3d' ? studio.navBadge : undefined;
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
-    return <Button variant="plain" className="om-nav-item" data-coming-soon={badge === 'Coming soon' || undefined} aria-current={isCurrent ? 'page' : undefined}
+    return <Button variant="plain" className="om-nav-item" data-coming-soon={studioComingSoon(studio) || undefined} aria-current={isCurrent ? 'page' : undefined}
       aria-label={t(studio.title)} aria-describedby={badgeId} onClick={() => { track('nav_studio', { navTarget: studio.id, studio: studio.id, inOverflow: inPanel }); choose(() => onChooseStudio(studio)); }}>
       {inPanel && <span className="om-studio-heading-icon" data-tone={studioIconTone(studio)}><RemixIcon name={studio.icon} size={17} /></span>}
       {t(studio.title)}{badge && <span className="om-badge" data-nav-badge={badge} id={badgeId} lang="en">{badge}</span>}

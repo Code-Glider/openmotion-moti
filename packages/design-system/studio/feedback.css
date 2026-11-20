@@ -13,9 +13,14 @@
 .motion-error-notice-details [role=status] { display: block; font-size: 11px; overflow-wrap: anywhere; }
 .motion-error-notice-compact { padding: 0; border: 0; background: transparent; font-size: 11px; }
 
+.hf-toast-viewport,
+[data-motion-ui] .motion-inline-toast {
+  --toast-top: var(--motion-space-64);
+}
+
 .hf-toast-viewport {
   position: absolute;
-  top: calc(var(--motion-space-64) - var(--motion-space-24));
+  top: calc(var(--toast-top) - var(--motion-space-24));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -25,7 +30,7 @@
   box-sizing: border-box;
   width: min(calc(420px + 2 * var(--motion-space-24)), 100%);
   padding: var(--motion-space-24);
-  max-height: calc(100dvh - var(--motion-space-64) + var(--motion-space-24));
+  max-height: calc(100dvh - var(--toast-top) + var(--motion-space-24));
   overflow-y: auto;
   overscroll-behavior-y: contain;
   pointer-events: none;
@@ -63,11 +68,11 @@
 
 [data-motion-ui] .motion-inline-toast {
   position: fixed;
-  inset: auto var(--motion-space-16) var(--motion-space-16);
+  inset: var(--toast-top) var(--motion-space-24) auto;
   z-index: 1000;
   box-sizing: border-box;
   width: fit-content;
-  max-width: calc(100% - 2 * var(--motion-space-16));
+  max-width: min(420px, calc(100% - 2 * var(--motion-space-24)));
   margin: 0 auto;
   pointer-events: none;
 }
