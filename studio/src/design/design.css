@@ -98,14 +98,6 @@
   justify-self: end;
 }
 
-.om-design-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--motion-border-subtle);
-  margin: 0 var(--motion-space-4);
-  flex-shrink: 0;
-}
-
 /* --- Split editor body --- */
 .om-design-body {
   display: flex;
@@ -894,13 +886,6 @@
   border: 1px solid var(--motion-border);
 }
 
-.om-design-scene-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--motion-space-4);
-  flex-wrap: wrap;
-}
-
 .om-design-muted {
   color: var(--motion-muted);
   font-size: var(--motion-text-sm);
@@ -1219,13 +1204,7 @@
   display: none;
 }
 
-.om-design-scene-tabs {
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-}
-
-.om-studio-bar .om-asset-tabs button,
-.om-design-scene-tabs button {
+.om-studio-bar .om-asset-tabs button {
   height: 36px;
   min-height: 36px;
   padding: 0 var(--motion-space-12);
@@ -1235,11 +1214,32 @@
   box-shadow: none;
 }
 
-.om-design-scene-tabs button[aria-current="page"] {
-  background: var(--motion-inset);
-  border-color: transparent;
-  color: var(--motion-text);
-  font-weight: var(--motion-weight-medium);
+.om-studio-bar > nav.om-design-scene-tabs {
+  flex: 1;
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.om-design-scene-tabs-viewport {
+  overflow-x: auto;
+  scroll-padding-inline: calc(var(--motion-control) + var(--motion-space-8));
+}
+
+.om-design-scene-tabs-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  gap: var(--motion-space-4);
+  padding: var(--motion-space-2);
+}
+
+[data-motion-studio] .om-design-scene-tabs .om-nav-item {
+  flex: none;
+  height: 36px;
+  padding: 0 var(--motion-space-12);
+  gap: var(--motion-space-4);
+  font-size: var(--motion-text-sm);
+  white-space: nowrap;
 }
 
 /* --- Bottom Floating Composer Layout (aligned with Image Studio & Manus) --- */

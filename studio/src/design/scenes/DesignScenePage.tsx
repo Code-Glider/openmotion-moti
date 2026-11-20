@@ -6,12 +6,11 @@ import {
   designBriefPrompt, findDesignScenario,
   type DesignSkillSummary, type DesignTemplateSummary,
 } from '../../../../shared/design-project';
-import { findMediaStudio, type CreativeStudio } from '../../../../shared/studio-catalog';
+import type { CreativeStudio, StudioScene } from '../../../../shared/studio-catalog';
 import { IconButton } from 'open-design-ui/icon-button';
 import { StudioToastViewport } from '../../components/StudioToastViewport';
 import { useToast } from '../../hooks/useToast';
 import { useI18n } from '../../i18n/I18n';
-import { scenesForStudio } from '../../motion/creativeStudios';
 import { useIntegrationInfo } from '../../motion/useIntegrationInfo';
 import { BrandKitPicker, type SelectedBrandKit } from '../BrandKitPicker';
 import { designClient } from '../designClient';
@@ -32,7 +31,7 @@ export function DesignScenePage({
 }: {
   scene: DesignTabId;
   onSelectDesignScene: (scene: DesignTabId) => void;
-  onSelectImageScene: (sceneId: 'text-to-image' | 'image-edit') => void;
+  onSelectImageScene: (sceneId: StudioScene['id']) => void;
   onChooseStudio: (studio: CreativeStudio) => void;
   onOpenProject: (projectId: string) => void;
   onExplore: () => void;
@@ -42,8 +41,6 @@ export function DesignScenePage({
   const { info: integrationInfo } = useIntegrationInfo();
   const toast = useToast();
   const showToast = toast.showToast;
-  const designMediaStudio = findMediaStudio('design')!;
-  const imageScenes = scenesForStudio(designMediaStudio);
   const scenario = scene === 'projects' ? null : findDesignScenario(scene) ?? null;
   const examples = useMemo(() => scenario?.examples.map(example => t(example)) ?? [], [scenario, t]);
 
@@ -291,24 +288,11 @@ export function DesignScenePage({
           <span className="om-creation-icon" data-tone="image"><RemixIcon name="palette-line" size={18} /></span>
           {t('Design Studio')}
         </h1>
-        <nav className="om-asset-tabs" aria-label={t('Scenes')}>
-          {imageScenes.map(item => (
-            <Button
-              key={item.id}
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => onSelectImageScene(item.id as 'text-to-image' | 'image-edit')}
-            >
-              {t(item.label)}
-            </Button>
-          ))}
-          <span className="om-design-divider" aria-hidden="true" />
-          <DesignSceneTabs
-            activeTab={scene}
-            onSelectDesignScene={onSelectDesignScene}
-          />
-        </nav>
+        <DesignSceneTabs
+          activeTab={scene}
+          onSelectImageScene={item => onSelectImageScene(item.id)}
+          onSelectDesignScene={onSelectDesignScene}
+        />
       </header>
 
       {scene === 'projects' || !scenario ? (

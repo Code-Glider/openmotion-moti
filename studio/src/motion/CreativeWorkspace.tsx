@@ -2,7 +2,7 @@ import { WorkspaceBack } from './WorkspaceBack';
 import { StudioComingSoon } from './StudioComingSoon';
 import { studioComingSoon } from './creativeStudios';
 import { Button } from 'open-design-ui/button';
-import type { TechniqueStudio } from '../../../shared/studio-catalog';
+import type { StudioScene, TechniqueStudio } from '../../../shared/studio-catalog';
 import type { RefObject } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -44,19 +44,22 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
     onNavigate(next);
   } : undefined;
   const pinned = catalog.catalog?.models.find(model => model.id === destination.model);
+  const selectScene = (item: StudioScene) => {
+    if (item.id === scene.id) return;
+    const next = { studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null };
+    reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
+    onNavigate(next);
+  };
   return <div className="om-assets-host om-creative-workspace">
     <header className="om-studio-bar">
       <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', studio.surface === 'techniques' ? 'open_skills' : 'back_to_explore', destinationTarget(destination))} fallback={studio.surface === 'techniques' ? () => onCollection(studio) : onExplore} />
       <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
       {destination.landing ? <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onNavigate(studioDestination(studio, scene.id, destination.model)); }}>
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />
-      </Button> : <nav className="om-asset-tabs" aria-label={t('Scenes')}>{scenesForStudio(studio).map(item => <Button variant="plain" className="om-nav-item" key={item.id}
-        aria-current={item.id === scene.id ? 'page' : undefined} onClick={() => {
-        if (item.id === scene.id) return;
-        const next = { studio, scene: item, model: pinned && supportsScene(pinned, item) ? pinned.id : null };
-        reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
-        onNavigate(next);
-      }}>{t(item.label)}</Button>)}{studio.id === 'design' && onSelectDesignScene && <DesignSceneTabs activeTab={null} onSelectDesignScene={onSelectDesignScene} />}</nav>}
+      </Button> : studio.id === 'design' && onSelectDesignScene
+        ? <DesignSceneTabs activeTab={scene.id} onSelectImageScene={selectScene} onSelectDesignScene={onSelectDesignScene} />
+        : <nav className="om-asset-tabs" aria-label={t('Scenes')}>{scenesForStudio(studio).map(item => <Button variant="plain" className="om-nav-item" key={item.id}
+          aria-current={item.id === scene.id ? 'page' : undefined} onClick={() => selectScene(item)}>{t(item.label)}</Button>)}</nav>}
       {onOpenBrandKit && <div className="om-control-row om-studio-library-link"><WorkspaceResourceActions onBrandKit={onOpenBrandKit} /></div>}
     </header>
     <AssetsPage key={draftKey + visit} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),

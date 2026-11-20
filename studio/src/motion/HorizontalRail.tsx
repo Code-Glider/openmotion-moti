@@ -41,7 +41,7 @@ export function HorizontalRail({ label, className = '', viewportClassName, selec
   useLayoutEffect(() => {
     if (selection === undefined) return;
     const list = viewport.current!;
-    const choice = list.querySelector('[aria-pressed="true"]');
+    const choice = list.querySelector('[aria-pressed="true"], [aria-current="page"]');
     if (!choice || !list.clientWidth) return;
     const bounds = list.getBoundingClientRect(), target = choice.getBoundingClientRect();
     const padding = getComputedStyle(list);

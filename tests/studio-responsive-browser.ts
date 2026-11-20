@@ -102,6 +102,71 @@ test('Explore is home and project navigation stays in the workspace', { timeout:
   });
 });
 
+test('Design Studio uses the same navigation styles and overflow controls across scenes', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.evaluateOnNewDocument(() => {
+        localStorage.setItem('motion.studio.locale', 'en');
+        localStorage.setItem('hf-studio-ui-preferences', JSON.stringify({ theme: 'system' }));
+      });
+      await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-reduced-motion', value: 'reduce' }]);
+      await page.setViewport({ width: 1800, height: 900 });
+      const origin = (await running.info()).previewUrl;
+      await page.goto(new URL('/?page=design&scene=text-to-image', origin).href, { waitUntil: 'domcontentloaded' });
+
+      const track = '.om-design-scene-tabs-track';
+      const viewport = '.om-design-scene-tabs-viewport';
+      const active = `${track} > button[aria-current="page"]`;
+      const imageEditing = `${track} ::-p-text(Image editing)`;
+      const projects = `${track} ::-p-text(Projects)`;
+      const previous = '.om-design-scene-tabs [data-edge="left"]';
+      const next = '.om-design-scene-tabs [data-edge="right"]';
+      const style = (selector: string) => page.$eval(selector, async element => {
+        await Promise.all(element.getAnimations().map(animation => animation.finished));
+        const { color, backgroundColor, fontSize, fontWeight } = getComputedStyle(element);
+        return { color, backgroundColor, fontSize, fontWeight };
+      });
+
+      await page.waitForSelector(active, { visible: true });
+      assert.deepEqual(await page.$$eval(`${track} > button`, buttons =>
+        [...new Set(buttons.map(button => getComputedStyle(button).fontSize))]), ['12px']);
+      assert.equal(await page.$(next), null);
+      const imageSelected = await style(active);
+      const defaultStyle = await style(imageEditing);
+      assert.deepEqual(await style(projects), defaultStyle);
+      await page.hover(imageEditing);
+      const imageHover = await style(imageEditing);
+      assert.notEqual(imageHover.backgroundColor, defaultStyle.backgroundColor);
+      await page.hover(projects);
+      assert.deepEqual(await style(projects), imageHover);
+      await page.click(`${track} ::-p-text(Prototype)`);
+      await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Prototype', {}, active);
+      assert.deepEqual(await style(active), imageSelected);
+
+      await page.setViewport({ width: 860, height: 900 });
+      const nextArrow = await page.waitForSelector(next, { visible: true });
+      await nextArrow!.click();
+      await page.waitForFunction(selector => document.querySelector(selector)!.scrollLeft > 0, {}, viewport);
+      const previousArrow = await page.waitForSelector(previous, { visible: true });
+      await previousArrow!.click();
+      await page.waitForFunction(selector => document.querySelector(selector)!.scrollLeft === 0, {}, viewport);
+
+      await page.setViewport({ width: 390, height: 800 });
+      await page.goto(new URL('/?page=design&scene=webgl', origin).href, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector(previous, { visible: true });
+      assert.equal(await page.$eval(active, button => button.textContent), 'WebGL');
+      assert.ok(await page.$eval(active, button => {
+        const tab = button.getBoundingClientRect();
+        const strip = button.closest('.om-design-scene-tabs-viewport')!.getBoundingClientRect();
+        return tab.left >= strip.left && tab.right <= strip.right;
+      }));
+    } finally { await browser.close(); await running.close(); }
+  });
+});
+
 test('Studio controls fit their resizable generator and timeline panes', { timeout: 60_000 }, async () => {
   await fixture(async store => {
     const gateway = gatewayFor(store);
