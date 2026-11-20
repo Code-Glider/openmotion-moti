@@ -389,7 +389,7 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
                 brandCredit={shelf.collection === 'top-100-brands' || facet?.key === 'industries'}
                 onSelect={(template, trigger) => {
                   send('ui_click', { page_name: 'explore', area: 'explore_feed', element: 'open_template', ...slugField('template_id', template.id), ...(shelf.collection ? templateShelfTarget(shelf.collection) : {}) });
-                  openLibrary(trigger, template, shelf.collection ?? undefined);
+                  openLibrary(trigger, template);
                 }} />)}
           </div>}
       </ExploreShelf>

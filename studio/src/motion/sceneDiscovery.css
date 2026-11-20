@@ -198,8 +198,9 @@
 .om-shelf-more { justify-self: center; }
 .om-studio-techniques-title { margin-block: var(--motion-space-24) var(--motion-space-16); }
 @container (max-width: 900px) { .om-studio-template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-/* Motion templates share the editor workspace, so keep cards compact beside navigation. */
 @container (max-width: 420px) { .om-studio-template-grid { grid-template-columns: minmax(0, 1fr); } }
+.om-motion-template-tags { display: flex; flex-wrap: wrap; gap: var(--motion-space-6); padding-block: var(--motion-space-8) var(--motion-space-4); }
+.om-motion-template-tags .om-badge { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 
 .om-explore-shelf { display: grid; gap: var(--motion-space-16); min-width: 0; }
 .om-explore-shelf > .om-discovery-heading { margin: 0; }

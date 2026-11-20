@@ -262,10 +262,13 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
 it.each(['motion', 'marketing'])('opens a card over %s while the full catalogue is pending and restores the trigger', async studio => {
   history.replaceState(null, '', firstUrl.replace('#', `&page=${studio}#`));
   const fallback = fetcher.getMockImplementation()!;
-  fetcher.mockImplementation((input: string, options?: RequestInit) =>
-    input.includes('limit=60') ? new Promise<Response>(() => {}) : fallback(input, options));
+  let catalogRequests = 0;
+  fetcher.mockImplementation((input: string, options?: RequestInit) => {
+    if (!input.includes('limit=60') || (studio === 'motion' && catalogRequests++ === 0)) return fallback(input, options);
+    return new Promise<Response>(() => {});
+  });
   await mount();
-  const shelf = container.querySelector('.om-studio-template-shelf')!;
+  const shelf = container.querySelector(studio === 'motion' ? '.om-explore-shelf[aria-label="Motion templates"]' : '.om-studio-template-shelf')!;
   const card = shelf.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!;
   await act(async () => card.click());
   const detail = container.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
@@ -482,13 +485,13 @@ it('shows Motion templates without the projects sidebar and returns to the retai
   expect(container.querySelector('main[aria-label="Motion templates"] .om-discovery-hero h1')?.textContent).toBe('Motion Studio');
   expect(fetcher.mock.calls.some(([input]) => {
     const url = new URL(input, location.origin);
-    return url.pathname.endsWith('/template-catalog') && url.searchParams.get('category') === 'builtin';
+    return url.pathname.endsWith('/template-catalog') && url.searchParams.get('category') === 'all';
   })).toBe(true);
   await click('Template library');
   expect(page()).toMatchObject({ templates: true, templateCollection: null });
   await traverse(-1);
   expect(page()).toMatchObject({ motion: true, templates: false });
-  const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
+  const template = container.querySelector<HTMLButtonElement>('[aria-label="Motion templates"] [data-template-id="product-promo"] button')!;
   await act(async () => template.click());
   expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
   await traverse(-1);
@@ -498,6 +501,37 @@ it('shows Motion templates without the projects sidebar and returns to the retai
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   expect(draft.value).toBe('Keep this edit');
   expect(location.hash).toContain('t=12');
+});
+
+it('browses the complete Motion catalog in batches and filters by its existing tags', async () => {
+  const fallback = fetcher.getMockImplementation()!;
+  const entries = Array.from({ length: 19 }, (_, index) => ({
+    id: 'motion-fixture-' + index, title: 'Motion fixture ' + index, kind: index === 18 ? 'builtin' : 'reference',
+    tags: [], uses: [index === 18 ? 'Product demo' : 'Product launch'], styles: ['UI motion'],
+    industries: index === 18 ? ['Design & creative tools'] : ['Business software'],
+  }));
+  fetcher.mockImplementation((input: string, options?: RequestInit) => {
+    const url = new URL(input, location.origin);
+    if (!url.pathname.endsWith('/template-catalog')) return fallback(input, options);
+    const firstPage = url.searchParams.get('offset') === '0';
+    return Promise.resolve(Response.json({ items: firstPage ? entries.slice(0, 9) : entries.slice(9), next: firstPage ? 9 : null, catalogVersion: 'test' }));
+  });
+  await mount();
+  await click('Motion Studio');
+  const shelf = container.querySelector('[aria-label="Motion templates"] .om-explore-shelf')!;
+  const cards = () => [...shelf.querySelectorAll('[data-template-id]')];
+  expect(shelf.querySelector('[role="status"]')?.textContent).toBe('19 templates');
+  expect(cards()).toHaveLength(16);
+  expect(cards()[0].querySelector('.om-motion-template-tags')?.textContent).toBe('Product launch filmsUI motion');
+  await click('More templates');
+  expect(cards()).toHaveLength(19);
+  expect(button('More templates')).toBeUndefined();
+  await click('Product demos & explainers');
+  expect(cards().map(card => card.getAttribute('data-template-id'))).toEqual(['motion-fixture-18']);
+  await click('Editable templates');
+  expect(cards()).toHaveLength(1);
+  await click('All');
+  expect(cards()).toHaveLength(16);
 });
 
 it('restores the narrow Motion Studio landing and opens the editor from its banner', async () => {
@@ -616,7 +650,7 @@ it('shows mixed media in one Explore feed and opens templates and editing preset
   expect(page()).toMatchObject({ specialty: { id: 'shorts' }, skill: 'openmotion-shortlist-shorts' });
 });
 
-it('opens curated Explore collections with the matching library filters and template details', async () => {
+it('opens a collection with its filters and opens individual Explore cards directly', async () => {
   const fallback = fetcher.getMockImplementation()!;
   const item = (id: string, brand?: string) => ({ id, title: id, brand, author: 'Studio', tags: [], kind: 'reference' });
   const entries = [
@@ -662,17 +696,38 @@ it('opens curated Explore collections with the matching library filters and temp
   await pick('AI & technology');
   expect(works(shelf)).toEqual(['AI release']);
   await pick('Preview template AI release');
-  expect(page()).toMatchObject({ templateCollection: 'ai-technology', template: 'AI release' });
+  expect(page()).toMatchObject({ explore: true, templates: false, template: 'AI release' });
   await mount(1);
-  expect(works(library())).toEqual(['AI release']);
+  expect(library()).toBeNull();
   expect(container.querySelector('dialog[open] h2')?.textContent).toContain('AI release');
   await traverse(-1);
-  expect(container.querySelector('.om-explore-shelf [aria-label="AI & technology"]')?.getAttribute('aria-pressed')).toBe('true');
+  expect(page()).toMatchObject({ explore: true, templates: false, template: null });
   const campaign = container.querySelector<HTMLButtonElement>('.om-explore-shelf [aria-label="Black Friday collection"]')!;
   await act(async () => campaign.click());
   const first = container.querySelector<HTMLElement>('.om-explore-shelf [data-template-id]')!;
   await act(async () => first.querySelector('button')!.click());
-  expect(page()).toMatchObject({ templateCollection: 'black-friday', template: first.dataset.templateId });
+  expect(page()).toMatchObject({ explore: true, templates: false, template: first.dataset.templateId });
+  expect(container.querySelector('dialog[open] h2')).toBeTruthy();
+});
+
+it('opens the same Design detail from the Explore template card and its Try action', async () => {
+  await mount();
+  await click('Explore');
+  const card = container.querySelector<HTMLDivElement>('[data-design-explore-section] [data-design-template="fixture-prototype"]')!;
+  const tryButton = [...card.querySelectorAll('button')].find(node => node.textContent === 'Try')!;
+  const details = () => document.querySelector('[role="dialog"].om-design-tpl-detail-popup');
+  tryButton.focus();
+  await act(async () => tryButton.click());
+  expect(page().explore).toBe(true);
+  expect(page().designScene).toBeUndefined();
+  expect(details()?.getAttribute('aria-label')).toBe('Design prototype fixture');
+  const close = details()!.querySelector<HTMLButtonElement>('[aria-label="Close"]')!;
+  await act(async () => { close.click(); });
+  expect(details()).toBeNull();
+  await act(async () => card.click());
+  expect(page().explore).toBe(true);
+  expect(page().designScene).toBeUndefined();
+  expect(details()?.getAttribute('aria-label')).toBe('Design prototype fixture');
 });
 
 it('browses both Explore shelves, opens exact details and restores the selected categories', async () => {
@@ -701,7 +756,7 @@ it('browses both Explore shelves, opens exact details and restores the selected 
   await act(async () => finish(Response.json({ items: [{ id: 'late-result' }] })));
   expect(templates.querySelector('[data-template-id="late-result"]')).toBeNull();
   await act(async () => templates.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
-  expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
+  expect(page()).toMatchObject({ explore: true, templates: false, template: 'product-promo' });
   await traverse(-1);
   expect(templates.querySelector('[aria-pressed="true"]')?.textContent).toBe('Editable templates');
   await choose(skills, 'Motion techniques');

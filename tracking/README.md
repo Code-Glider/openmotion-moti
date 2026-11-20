@@ -422,6 +422,9 @@ backend/data directory. Deterministic coverage lives in
   `studio_id=design, landing=true`. Category changes report `studio_bar/scene_tab` with `scene_id` and template
   opens report `studio_bar/open_template` with both `scene_id` and `template_id`.
   The Motion Studio banner's editor button reports `studio_bar/open_editor` with `studio_id=motion`.
+  The Motion Studio template shelf reuses `studio_bar/category_select`, `load_more`, `view_all_templates`
+  and `open_template`. Explore Design template cards and their Try buttons report `explore_collection/open_template`
+  with their Design scenario and template IDs.
   The Explore banner's editor button retains `explore_spotlight/slide_action` for the first Motion slide.
 - Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
   sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and

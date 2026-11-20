@@ -2,7 +2,7 @@ import { Button } from 'open-design-ui/button';
 import { useRef } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
-import { StudioTemplateShelf } from './StudioTemplateShelf';
+import { MotionTemplateShelf } from './MotionTemplateShelf';
 import { reportCreativeClick } from './exploreTracking';
 import { BackToExploreButton } from './BackToExploreButton';
 import { motionStudioCover } from './skillCatalog';
@@ -31,6 +31,6 @@ export function MotionStudioPage({ active, editorDisabled, onOpenEditor, onBackT
         </Button>
       </div>
     </header>
-    <StudioTemplateShelf key={locale} studio="motion" root={root} active={active} />
+    <MotionTemplateShelf key={locale} root={root} active={active} />
   </div></main>;
 }
