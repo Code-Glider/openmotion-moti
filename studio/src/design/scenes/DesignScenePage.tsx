@@ -327,7 +327,7 @@ export function DesignScenePage({
       ) : (
         <main className="om-explore om-design-template-page" aria-labelledby="design-studio-title">
           <div className="om-discovery-page">
-            <header className="om-discovery-hero om-design-studio-hero">
+            <header className="om-discovery-hero om-studio-landing-hero">
               <img src={designArtwork} alt="" />
               <div className="om-discovery-hero-copy">
                 <h1 id="design-studio-title">{t('Design Studio')}</h1>

@@ -42,9 +42,8 @@ export function StudioTemplateShelf({ studio, root, active, navigation }: {
   const [priority, setPriority] = useState<string | null>(null);
   const playing = useTemplatePlayback(root, items.map(item => item.id).join('|'), active, true, priority, true);
   const title = t(studio === 'motion' ? 'Motion templates' : 'Templates');
-  const Heading = studio === 'motion' ? 'h1' : 'h2';
   return <section className="om-studio-template-shelf" data-studio={studio} aria-label={title}>
-    <header><div className="om-studio-template-heading">{navigation}<Heading className="om-title">{title}</Heading></div>
+    <header><div className="om-studio-template-heading">{navigation}<h2 className="om-title">{title}</h2></div>
       <Button variant="ghost" type="button" className="om-button h-auto" onClick={event => openLibrary(event.currentTarget)}>{t('Template library')}<RemixIcon name="arrow-right-line" size={16} /></Button>
     </header>
     <div className="om-studio-template-grid">

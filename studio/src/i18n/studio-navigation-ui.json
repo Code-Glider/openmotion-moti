@@ -1,5 +1,7 @@
 {
   "zh-CN": {
+    "Open Motion Editor": "打开 Motion 编辑器",
+    "Open in Motion Editor": "在 Motion 编辑器里打开",
     "Start with an editable motion template or open your timeline.": "从可编辑的动效模板开始，或打开时间线继续创作。",
     "Editable templates": "可编辑模板",
     "Motion templates": "Motion 模板",
@@ -137,6 +139,8 @@
     "3D Creative Skills": "3D 创作 Skills"
   },
   "ja": {
+    "Open Motion Editor": "Motion エディターを開く",
+    "Open in Motion Editor": "Motion エディターで開く",
     "Start with an editable motion template or open your timeline.": "編集可能なモーションテンプレートから始めるか、タイムラインを開きましょう。",
     "Editable templates": "編集可能なテンプレート",
     "Motion templates": "Motion テンプレート",
@@ -274,6 +278,8 @@
     "3D Creative Skills": "3D 制作 Skills"
   },
   "ko": {
+    "Open Motion Editor": "Motion 편집기 열기",
+    "Open in Motion Editor": "Motion 편집기에서 열기",
     "Start with an editable motion template or open your timeline.": "편집 가능한 모션 템플릿으로 시작하거나 타임라인을 여세요.",
     "Editable templates": "편집 가능한 템플릿",
     "Motion templates": "Motion 템플릿",
@@ -411,6 +417,8 @@
     "3D Creative Skills": "3D 창작 Skills"
   },
   "de": {
+    "Open Motion Editor": "Motion-Editor öffnen",
+    "Open in Motion Editor": "Im Motion-Editor öffnen",
     "Start with an editable motion template or open your timeline.": "Starte mit einer editierbaren Motion-Vorlage oder öffne deine Zeitleiste.",
     "Editable templates": "Editierbare Vorlagen",
     "Motion templates": "Motion-Vorlagen",
@@ -548,6 +556,8 @@
     "3D Creative Skills": "3D Kreative Skills"
   },
   "fr": {
+    "Open Motion Editor": "Ouvrir l’éditeur Motion",
+    "Open in Motion Editor": "Ouvrir dans l’éditeur Motion",
     "Start with an editable motion template or open your timeline.": "Partez d’un modèle d’animation modifiable ou ouvrez votre timeline.",
     "Editable templates": "Modèles modifiables",
     "Motion templates": "Modèles Motion",
@@ -685,6 +695,8 @@
     "3D Creative Skills": "3D Skills créatifs"
   },
   "ru": {
+    "Open Motion Editor": "Открыть редактор Motion",
+    "Open in Motion Editor": "Открыть в редакторе Motion",
     "Start with an editable motion template or open your timeline.": "Начните с редактируемого шаблона анимации или откройте монтажную шкалу.",
     "Editable templates": "Редактируемые шаблоны",
     "Motion templates": "Шаблоны Motion",
@@ -822,6 +834,8 @@
     "3D Creative Skills": "3D Творческие Skills"
   },
   "es": {
+    "Open Motion Editor": "Abrir el editor de Motion",
+    "Open in Motion Editor": "Abrir en el editor de Motion",
     "Start with an editable motion template or open your timeline.": "Empieza con una plantilla de animación editable o abre tu línea de tiempo.",
     "Editable templates": "Plantillas editables",
     "Motion templates": "Plantillas Motion",
@@ -959,6 +973,8 @@
     "3D Creative Skills": "3D Skills creativos"
   },
   "pt-BR": {
+    "Open Motion Editor": "Abrir o editor do Motion",
+    "Open in Motion Editor": "Abrir no editor do Motion",
     "Start with an editable motion template or open your timeline.": "Comece com um modelo de animação editável ou abra sua linha do tempo.",
     "Editable templates": "Modelos editáveis",
     "Motion templates": "Modelos Motion",
@@ -1096,6 +1112,8 @@
     "3D Creative Skills": "3D Skills criativos"
   },
   "it": {
+    "Open Motion Editor": "Apri l’editor di Motion",
+    "Open in Motion Editor": "Apri nell’editor di Motion",
     "Start with an editable motion template or open your timeline.": "Inizia da un modello di animazione modificabile o apri la timeline.",
     "Editable templates": "Modelli modificabili",
     "Motion templates": "Modelli Motion",
@@ -1233,6 +1251,8 @@
     "3D Creative Skills": "3D Skills creativi"
   },
   "tr": {
+    "Open Motion Editor": "Motion düzenleyicisini aç",
+    "Open in Motion Editor": "Motion düzenleyicisinde aç",
     "Start with an editable motion template or open your timeline.": "Düzenlenebilir bir hareketli grafik şablonuyla başlayın veya zaman çizelgenizi açın.",
     "Editable templates": "Düzenlenebilir şablonlar",
     "Motion templates": "Motion şablonları",

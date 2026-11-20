@@ -224,6 +224,16 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [workspaceActive, openSettings, toggleSidebar]);
   const libraryBusy = workspace.busy || blocked || Boolean(editorState?.blocked);
   const switchingDisabled = libraryBusy || !workspace.status;
+  const motionEditorDisabled = switchingDisabled || workspace.projects.length === 0;
+  const openMotionEditor = async (selection: 'first' | 'last') => {
+    if (motionEditorDisabled) return;
+    const current = projectId ?? workspace.activeProjectId;
+    const previous = selection === 'last' ? workspace.projects.find(project => project.id === current) : undefined;
+    const target = previous ?? workspace.projects[0];
+    if (!target) return;
+    if (target.id === projectId) openEditor();
+    else if (!await workspace.open('projects', target.id)) navigationToast.showToast(t('Could not open project'), 'error', 'feedback');
+  };
   const archives = useProjectArchives(workspace, beforeViewChange, switchingDisabled, () => { if (narrow) setSidebarOpen(false); });
   const reconnecting = Boolean(workspace.connectionError && isConnectionFailure(workspace.connectionError));
   const workspaceNotice = workspace.errorSource === 'connection' && reconnecting ? '' : workspace.error;
@@ -381,7 +391,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         {children}
       </div>
       {(exploreVisited || page.explore) && <div className="om-explore-host" hidden={!page.explore || templatesPage} inert={!page.explore || templatesPage}>
-        <ExploreStudios initialTemplateCollection={page.templateCollection} onModel={openModelFromPage} onModelHub={openModelHub} onOpenBlackFriday={trigger => {
+        <ExploreStudios initialTemplateCollection={page.templateCollection} onModel={openModelFromPage} onModelHub={openModelHub}
+          onOpenMotionEditor={() => void openMotionEditor('last')} motionEditorDisabled={motionEditorDisabled} onOpenBlackFriday={trigger => {
           reportBlackFridayEntry();
           value.openLibrary(trigger, undefined, 'black-friday');
         }} onCreators={trigger => { libraryTrigger.current = trigger; navigatePage({ templates: true, creators: true, creator: null, template: null }); }} onBrandKit={() => openSettings('brand-kit')} onMcp={(client, example) => openMcp(client, example, true)}
@@ -389,7 +400,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
           onOpenDesignProject={id => navigatePage({ designScene: 'projects', designProject: id, templates: false, ...lastExplore.current })}
           filters={lastExplore.current} onChooseStudio={studio => chooseStudio(studio, undefined, true)} active={page.explore && !connectionsOpen} onNavigate={openStudioFromPage} onSkill={openSkill} />
       </div>}
-      {motionTemplatesOpen && <div className="om-explore-host"><MotionStudioPage active={!connectionsOpen} onBackToExplore={fromExplore ? returnToExplore : undefined} /></div>}
+      {motionTemplatesOpen && <div className="om-explore-host"><MotionStudioPage active={!connectionsOpen}
+        onOpenEditor={() => void openMotionEditor('first')} editorDisabled={motionEditorDisabled}
+        onBackToExplore={fromExplore ? returnToExplore : undefined} /></div>}
       {page.modelHub && !templatesPage && <div className="om-explore-host"><ModelHub id={page.modelHub} hasProject={Boolean(projectId)} onExplore={returnToExplore} onModel={openModelFromPage} onSettings={openSettings}
         onProvider={provider => navigatePage({ settings: 'providers', provider, templates: false })}
         onUse={() => chooseStudio(motionStudio)} /></div>}

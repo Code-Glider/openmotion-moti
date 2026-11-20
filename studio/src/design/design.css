@@ -1317,16 +1317,6 @@
   gap: 4px;
 }
 
-/* Design Studio shares the discovery banner and template grid. */
-.om-design-studio-hero > img {
-  object-position: center;
-  mask-image: linear-gradient(90deg, transparent, currentColor 28%);
-}
-
-.om-design-studio-hero .om-discovery-hero-copy {
-  padding-block: var(--motion-space-24);
-}
-
 .om-design-template-section {
   display: grid;
   gap: var(--motion-space-12);

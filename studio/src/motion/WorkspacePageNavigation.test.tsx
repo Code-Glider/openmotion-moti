@@ -445,7 +445,7 @@ it('switches studios and restores a scene through history while retaining the ed
   await click('Design Studio');
   expect(page().designScene).toBe('prototype');
   const designPage = container.querySelector('.om-design-template-page')!;
-  expect(designPage.querySelector('.om-design-studio-hero + section h2')?.textContent).toBe('Design templates');
+  expect(designPage.querySelector('.om-studio-landing-hero + section h2')?.textContent).toBe('Design templates');
   const categories = [...designPage.querySelectorAll('nav button')].map(node => node.textContent);
   expect(categories).toEqual(['Prototype', 'Mobile App', 'Slide deck', 'Document', 'Website clone', 'Live artifact', 'WebGL']);
   await click('Design prototype fixture');
@@ -478,7 +478,7 @@ it('opens Motion templates inside the workspace and returns from the full librar
   await click('Motion templates');
   expect(page()).toMatchObject({ motion: true, templates: false });
   expect(container.querySelector('#om-project-navigation')?.getAttribute('aria-hidden')).toBe('false');
-  expect(container.querySelector('main[aria-label="Motion templates"] .om-discovery-hero')).toBeNull();
+  expect(container.querySelector('main[aria-label="Motion templates"] .om-discovery-hero h1')?.textContent).toBe('Motion Studio');
   expect(fetcher.mock.calls.some(([input]) => {
     const url = new URL(input, location.origin);
     return url.pathname.endsWith('/template-catalog') && url.searchParams.get('category') === 'builtin';
@@ -491,6 +491,10 @@ it('opens Motion templates inside the workspace and returns from the full librar
   expect(page()).toMatchObject({ templates: true, templateCollection: null });
   await traverse(-1);
   expect(page()).toMatchObject({ motion: true, templates: false });
+  const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
+  await act(async () => template.click());
+  expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
+  await traverse(-1);
   await click('First project');
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
@@ -502,7 +506,7 @@ it('restores Motion templates on reload and opens a project from its narrow work
   vi.stubGlobal('innerWidth', 800);
   history.replaceState(null, '', firstUrl.replace('#', '&page=motion#'));
   await mount();
-  expect(container.querySelector('h1')?.textContent).toBe('Motion templates');
+  expect(container.querySelector('h1')?.textContent).toBe('Motion Studio');
   expect(container.querySelector('[aria-label="Editor draft"]')).toBeNull();
   await click('Open project list');
   expect(document.querySelector('[role="dialog"] .motion-sidebar-footer [aria-current="page"]')).toBeTruthy();
@@ -717,7 +721,6 @@ it('browses both Explore shelves, opens exact details and restores the selected 
 });
 
 it.each([
-  ['motion', 'motion'],
   ['black-friday', 'explore'],
   ['hub-gemini-4', 'model-hub'],
   ['text-to-image', 'design'],
@@ -794,24 +797,47 @@ it('opens the Gemini 4 hub from the third Explore slide and returns with browser
   expect(page().explore).toBe(true);
 });
 
-it('opens Motion templates from the Explore spotlight and resumes the retained project from the sidebar', async () => {
+it('opens the first project from the Motion Studio banner even if another project is open', async () => {
+  history.replaceState(null, '', firstUrl.replaceAll(first, second));
+  await mount();
+  expect(container.querySelector('[aria-label="Editor draft"]')?.getAttribute('data-project')).toBe(second);
+  await click('Motion Studio');
+  await click('Open Motion Editor');
+  expect(page()).toMatchObject({ explore: false, motion: false, templates: false });
+  expect(container.querySelector('[aria-label="Editor draft"]')?.getAttribute('data-project')).toBe(first);
+  expect(container.querySelector('.motion-session-list [aria-current="page"]')?.getAttribute('aria-label')).toBe('First project');
+});
+
+it('resumes the project from the Explore spotlight without remounting its editor', async () => {
+  history.replaceState(null, '', firstUrl.replaceAll(first, second));
   await mount();
   const draft = container.querySelector('[aria-label="Editor draft"]');
+  expect(draft?.getAttribute('data-project')).toBe(second);
   await click('Explore');
   expect(container.querySelector('.om-feature-slide:not([inert]) h2')?.textContent).toBe('Motion Studio');
-  await click('Open in Motion Studio');
-  expect(page()).toMatchObject({ explore: false, motion: true });
-  const template = container.querySelector<HTMLButtonElement>('.om-studio-template-shelf [data-template-id="product-promo"] button')!;
-  await act(async () => template.click());
-  expect(page()).toMatchObject({ motion: true, templates: false, template: 'product-promo' });
-  await traverse(-1);
-  await click('First project');
+  await click('Open in Motion Editor');
+  expect(page()).toMatchObject({ explore: false, motion: false });
   expect(container.querySelector<HTMLElement>('.motion-workspace-content')?.hidden).toBe(false);
   expect(container.querySelector('[aria-label="Editor draft"]')).toBe(draft);
   await traverse(-1);
-  expect(page().motion).toBe(true);
-  await traverse(-1);
   expect(page().explore).toBe(true);
+});
+
+it.each([
+  ['opens the first project on a fresh visit', first, 'First project'],
+  ['restores the previously opened project on a new page load', second, 'Second project'],
+])('%s from the Explore spotlight', async (_name, activeId, title) => {
+  history.replaceState(null, '', '/?page=explore');
+  const fallback = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation((input: string, init?: RequestInit) =>
+    new URL(input, location.origin).pathname.endsWith('/projects') && !init?.method
+      ? Promise.resolve(Response.json({ ...catalog, activeId }))
+      : fallback(input, init));
+  await mount();
+  await click('Open in Motion Editor');
+  expect(page()).toMatchObject({ explore: false, motion: false, templates: false });
+  expect(container.querySelector('[aria-label="Editor draft"]')?.getAttribute('data-project')).toBe(activeId);
+  expect(container.querySelector('.motion-session-list [aria-current="page"]')?.getAttribute('aria-label')).toBe(title);
 });
 
 it('shows every Studio in Explore and opens the selected example or technique', async () => {
