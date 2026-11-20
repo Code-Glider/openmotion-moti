@@ -1266,6 +1266,67 @@
   overflow-y: auto;
 }
 
+.om-design-project-navigation {
+  border-inline-end: 1px solid var(--motion-border-subtle);
+}
+
+.om-design-project-search {
+  display: flex;
+  align-items: center;
+  gap: var(--motion-space-8);
+  min-width: 0;
+}
+
+.om-design-project-search > :is(.om-design-input, .motion-session-search) {
+  flex: 1;
+  min-width: 0;
+}
+
+.om-design-sidebar-search {
+  margin: var(--motion-space-12) 0 var(--motion-space-8);
+}
+
+.om-design-sidebar-search .motion-session-search {
+  margin: 0;
+}
+
+.om-project-sidebar-row div.om-disclosure-row-label {
+  cursor: default;
+}
+
+.om-design-project-rename {
+  display: flex;
+  gap: var(--motion-space-6);
+  align-items: center;
+}
+
+.om-design-project-rename .om-design-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.om-project-sidebar-row > .om-design-project-rename {
+  flex: 1;
+  min-width: 0;
+}
+
+.om-design-project-menu > button {
+  justify-content: flex-start;
+}
+
+.om-design-sidebar-footer button[aria-pressed="true"] {
+  background: var(--motion-accent-soft);
+  color: var(--motion-accent);
+}
+
+.om-design-project-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--motion-space-10);
+  min-width: 0;
+}
+
 .om-design-page-with-dock {
   padding-bottom: 180px;
 }

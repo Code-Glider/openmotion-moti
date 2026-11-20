@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import puppeteer, { type Page } from 'puppeteer-core';
 import { browserExecutable } from '../browser.ts';
+import { designProjectsFor } from '../design-projects.ts';
 import { gatewayFor } from '../gateway/service.ts';
 import { startServer } from '../server.ts';
+import { designRoutes } from '../shared/design-project.ts';
 import { fixture } from './fixtures.ts';
 
 async function checkCreator(page: Page, stacked: boolean) {
@@ -121,7 +123,7 @@ test('Design Studio uses the same navigation styles and overflow controls across
       const viewport = '.om-design-scene-tabs-viewport';
       const active = `${track} > button[aria-current="page"]`;
       const imageEditing = `${track} ::-p-text(Image editing)`;
-      const projects = `${track} ::-p-text(Projects)`;
+      const prototype = `${track} ::-p-text(Prototype)`;
       const previous = '.om-design-scene-tabs [data-edge="left"]';
       const next = '.om-design-scene-tabs [data-edge="right"]';
       const style = (selector: string) => page.$eval(selector, async element => {
@@ -141,13 +143,14 @@ test('Design Studio uses the same navigation styles and overflow controls across
       assert.equal(await page.$(next), null);
       const imageSelected = await style(active);
       const defaultStyle = await style(imageEditing);
-      assert.deepEqual(await style(projects), defaultStyle);
+      assert.equal(await page.$(`${track} ::-p-text(Projects)`), null);
+      assert.deepEqual(await style(prototype), defaultStyle);
       await page.hover(imageEditing);
       const imageHover = await style(imageEditing);
       assert.notEqual(imageHover.backgroundColor, defaultStyle.backgroundColor);
-      await page.hover(projects);
-      assert.deepEqual(await style(projects), imageHover);
-      await page.click(`${track} ::-p-text(Prototype)`);
+      await page.hover(prototype);
+      assert.deepEqual(await style(prototype), imageHover);
+      await page.click(prototype);
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === 'Prototype', {}, active);
       assert.deepEqual(await style(active), imageSelected);
       const galleryHeader = '.om-design-page-with-dock > section:first-child > .om-design-section-head';
@@ -331,6 +334,178 @@ test('Design Studio copies template briefs in place and creates projects separat
       const errorNotice = await page.waitForSelector(`${feedback} [role="alert"]`, { visible: true });
       assert.equal(await errorNotice!.evaluate(element => element.textContent), '复制失败，请检查剪贴板权限后重试。');
       assert.equal(page.url(), explore);
+    } finally { await browser.close(); await running.close(); }
+  });
+});
+
+test('Design Studio opens projects from its collapsible sidebar', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const designProjects = designProjectsFor(store.directory);
+    const project = await designProjects.create({
+      requestId: 'design-sidebar-project', scenario: 'mobile-app', title: 'Mobile app project',
+    });
+    const prototype = await designProjects.create({
+      requestId: 'design-sidebar-prototype', scenario: 'prototype', title: 'Prototype project',
+    });
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.browserContext().setDownloadBehavior({ policy: 'allow', downloadPath: store.directory });
+      await page.setViewport({ width: 1440, height: 800 });
+      await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
+      const origin = (await running.info()).previewUrl;
+      await page.goto(new URL('/?page=design&scene=mobile-app', origin).href, { waitUntil: 'domcontentloaded' });
+
+      const sidebar = '#om-design-project-navigation';
+      const toggle = 'button[aria-controls="om-design-project-navigation"][aria-label="Open project list"]';
+      const search = `${sidebar} input[type="search"]`;
+      const row = `${sidebar} button[aria-label="Mobile app project"]`;
+      const sidebarProject = `${sidebar} [data-design-project-row="${project.id}"]`;
+      const galleryProject = `.om-design-card[data-design-project-row="${project.id}"]`;
+      const category = `${sidebar} .om-design-project-search button[aria-label="Filters"]`;
+      const galleryCategory = '.om-design-page .om-design-project-search button[aria-haspopup="menu"]';
+      const categoryMenu = '[role="menu"][aria-label="Project category"]:not([data-ending-style])';
+      const sidebarTrash = `${sidebar} button[aria-pressed]`;
+      const actionPopup = '.om-design-project-menu:not([data-ending-style])';
+      const openActions = async (rowSelector: string) => {
+        if (rowSelector.startsWith(sidebar)) await page.locator(rowSelector).setTimeout(5000).hover();
+        await page.locator(`${rowSelector} [data-project-actions]`).setTimeout(5000).click();
+      };
+      const selectAction = (name: string) => page.locator(`${actionPopup} ::-p-text(${name})`).setTimeout(5000).click();
+      await page.waitForSelector(row, { visible: true });
+      assert.equal(await page.$('.om-studio-bar nav ::-p-text(Projects)'), null);
+      assert.equal(await page.$(`${sidebar} ::-p-text(All projects)`), null);
+
+      const actionWrapper = `${sidebarProject} .om-disclosure-row-action`;
+      assert.ok(await page.$(`${actionWrapper} [data-remix-icon="more-2-line"]`));
+      const restColor = await page.$eval(sidebarProject, el => getComputedStyle(el).backgroundColor);
+      assert.equal(await page.$eval(actionWrapper, el => getComputedStyle(el).opacity), '0');
+      await page.hover(sidebarProject);
+      await page.waitForFunction(selector => getComputedStyle(document.querySelector(selector)!).opacity === '1', {}, actionWrapper);
+      assert.notEqual(await page.$eval(sidebarProject, el => getComputedStyle(el).backgroundColor), restColor);
+      await page.mouse.move(800, 400);
+      await page.waitForFunction(selector => getComputedStyle(document.querySelector(selector)!).opacity === '0', {}, actionWrapper);
+      await page.focus(row);
+      await page.keyboard.press('Tab');
+      assert.ok(await page.$eval(actionWrapper, el => el.contains(document.activeElement)));
+      await page.keyboard.press('Enter');
+      await page.waitForSelector(actionPopup, { visible: true });
+      await page.keyboard.press('Escape');
+      await page.waitForSelector(actionPopup, { hidden: true });
+      await page.locator(search).fill('missing');
+      await page.waitForSelector(`${sidebar} ::-p-text(No matching projects)`, { visible: true });
+      await page.$eval(search, (input: HTMLInputElement) => input.select());
+      await page.keyboard.press('Backspace');
+      await page.waitForSelector(row, { visible: true });
+      await page.locator(category).click();
+      await page.locator(`${categoryMenu} ::-p-text(Prototype)`).click();
+      await page.waitForSelector(`${sidebar} [data-design-project-row="${prototype.id}"]`, { visible: true });
+      assert.equal(await page.$(sidebarProject), null);
+      await page.locator(category).click();
+      const selectedCategory = await page.waitForSelector(`${categoryMenu} [aria-checked="true"]`, { visible: true });
+      assert.equal(await selectedCategory!.evaluate(el => el.textContent?.trim()), 'Prototype');
+      await page.locator(`${categoryMenu} ::-p-text(All categories)`).click();
+      await page.waitForSelector(row, { visible: true });
+      await page.click(`${sidebar} button[aria-label="Close project list"]`);
+      await page.waitForSelector(sidebar, { hidden: true });
+      await page.waitForFunction(selector => document.activeElement?.matches(selector), {}, toggle);
+      await page.click(toggle);
+      await page.waitForSelector(row, { visible: true });
+      await page.click(`${sidebar} button[aria-label="New project"]`);
+      await page.waitForSelector('.om-design-popover ::-p-text(Mobile App)', { visible: true });
+      await page.keyboard.press('Escape');
+
+      await page.locator('.om-design-page .om-design-section-head ::-p-text(View all)').click();
+      await page.waitForFunction(() => document.querySelector('.om-design-hero-title')?.textContent === 'Design projects');
+      assert.equal(new URL(page.url()).searchParams.get('scene'), 'projects');
+      await page.locator(galleryCategory).click();
+      await page.locator(`${categoryMenu} ::-p-text(Prototype)`).click();
+      await page.waitForSelector(galleryProject, { hidden: true });
+      await page.locator(galleryCategory).click();
+      await page.locator(`${categoryMenu} ::-p-text(All categories)`).click();
+      await page.waitForSelector(galleryProject, { visible: true });
+
+      await openActions(sidebarProject);
+      await selectAction('Rename');
+      const rename = `${sidebarProject} input[aria-label="Rename project"]`;
+      await page.waitForFunction(selector => document.activeElement?.matches(selector), {}, rename);
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(selector => document.activeElement?.matches(`${selector} [data-project-actions]`), {}, sidebarProject);
+      await openActions(sidebarProject);
+      await selectAction('Rename');
+      await page.locator(rename).fill('Renamed project');
+      await page.keyboard.press('Enter');
+      await page.waitForSelector(`${sidebarProject} button[aria-label="Renamed project"]`, { visible: true });
+      await page.waitForSelector(`${galleryProject} ::-p-text(Renamed project)`, { visible: true });
+
+      for (const [label, format] of [['Export ZIP', 'zip'], ['Export for Open Design', 'open-design']] as const) {
+        await openActions(sidebarProject);
+        const response = page.waitForResponse(res => new URL(res.url()).pathname === designRoutes.exportProject(project.id));
+        await selectAction(label);
+        const exported = await response;
+        assert.ok(exported.ok());
+        assert.equal(JSON.parse(exported.request().postData()!).format, format);
+        assert.match(exported.headers()['content-disposition'], /\.zip"/);
+      }
+
+      await openActions(galleryProject);
+      await selectAction('Duplicate');
+      const copy = `${sidebar} button[aria-label="Renamed project (Copy)"]`;
+      await page.waitForSelector(copy, { visible: true });
+      const copyId = await page.$eval(copy, el => el.closest('[data-design-project-row]')!.getAttribute('data-design-project-row'));
+      const copyRow = `${sidebar} [data-design-project-row="${copyId}"]`;
+      await openActions(copyRow);
+      await selectAction('Move to Trash');
+      await page.waitForSelector(copy, { hidden: true });
+      await page.click(sidebarTrash);
+      await page.waitForSelector(`${copyRow} [data-project-actions]`, { visible: true });
+      assert.equal(await page.$(sidebarProject), null);
+      await openActions(copyRow);
+      await selectAction('Restore');
+      await page.waitForSelector(copyRow, { hidden: true });
+      await page.waitForSelector(`.om-design-card[data-design-project-row="${copyId}"]`, { visible: true });
+
+      await page.click(sidebarTrash);
+      await openActions(copyRow);
+      await selectAction('Move to Trash');
+      const galleryTrash = '.om-design-header-group ::-p-text(Trash)';
+      await page.locator(galleryTrash).click();
+      const trashedCard = `.om-design-card[data-design-project-row="${copyId}"]`;
+      await page.waitForSelector(`${trashedCard} ::-p-text(Restore)`, { visible: true });
+      await page.click(sidebarTrash);
+      await openActions(copyRow);
+      await selectAction('Delete permanently');
+      await page.waitForSelector(`${sidebar} ::-p-text(Trash is empty.)`, { visible: true });
+      await page.waitForSelector('.om-design-page ::-p-text(Trash is empty.)', { visible: true });
+      assert.equal((await designProjects.list({ trashed: true })).length, 0);
+      await page.click(sidebarTrash);
+
+      await page.click('.om-studio-bar ::-p-text(Text to image)');
+      await page.waitForFunction(() => new URL(location.href).searchParams.get('scene') === 'text-to-image');
+      await page.waitForSelector(sidebarProject, { visible: true });
+      assert.equal(await page.$('.om-studio-bar nav ::-p-text(Projects)'), null);
+
+      await page.setViewport({ width: 390, height: 800, hasTouch: true });
+      await page.waitForSelector(toggle, { visible: true });
+      await page.waitForSelector(sidebar, { hidden: true });
+      await page.click(toggle);
+      await page.waitForSelector(`${sidebar}[role="dialog"]`, { visible: true });
+      await page.waitForFunction(selector => document.querySelector(selector)!.getBoundingClientRect().left >= -0.5, {}, sidebar);
+      await page.waitForSelector(actionWrapper, { visible: true });
+      assert.equal(await page.$eval(actionWrapper, el => getComputedStyle(el).opacity), '1');
+      await page.tap(category);
+      await page.waitForSelector(`${categoryMenu} ::-p-text(All categories)`, { visible: true, timeout: 5000 });
+      await page.keyboard.press('Escape');
+      await page.waitForSelector(categoryMenu, { hidden: true });
+      await page.tap(`${sidebarProject} [data-project-actions]`);
+      await page.waitForSelector(`${actionPopup} ::-p-text(Export ZIP)`, { visible: true });
+      await page.keyboard.press('Escape');
+      await page.waitForSelector(actionPopup, { hidden: true });
+      await page.waitForSelector(`${sidebar}[role="dialog"]`, { visible: true });
+      await page.locator(`${sidebarProject} button[aria-label="Renamed project"]`).setTimeout(5000).click();
+      await page.waitForSelector(`[data-design-editor="${project.id}"]`, { visible: true });
+      await page.waitForSelector(sidebar, { hidden: true });
     } finally { await browser.close(); await running.close(); }
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Button } from 'open-design-ui/button';
 import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
@@ -34,6 +34,9 @@ export function DesignScenePage({
   onSelectImageScene,
   onChooseStudio,
   onOpenProject,
+  projectListVersion,
+  onProjectsChanged,
+  projectNavigation,
   onExplore,
   onOpenMcp,
 }: {
@@ -42,6 +45,9 @@ export function DesignScenePage({
   onSelectImageScene: (sceneId: StudioScene['id']) => void;
   onChooseStudio: (studio: CreativeStudio) => void;
   onOpenProject: (projectId: string) => void;
+  projectListVersion: number;
+  onProjectsChanged?: () => void;
+  projectNavigation?: ReactNode;
   onExplore: () => void;
   onOpenMcp: () => void;
 }) {
@@ -315,15 +321,18 @@ export function DesignScenePage({
         <div className="om-design-scroll-body">
           <div className="om-design-page">
             <div className="om-design-section-head">
-              <div>
-                <h2 className="om-design-hero-title" style={{ fontSize: 28 }}>{t('Design projects')}</h2>
-                <p className="om-design-hero-sub" style={{ marginTop: 4 }}>{t('Preview responsive HTML designs, annotate elements, inspect versions and hand off edits to your MCP Agent.')}</p>
+              <div className="om-design-project-heading">
+                {projectNavigation}
+                <div>
+                  <h2 className="om-design-hero-title" style={{ fontSize: 28 }}>{t('Design projects')}</h2>
+                  <p className="om-design-hero-sub" style={{ marginTop: 4 }}>{t('Preview responsive HTML designs, annotate elements, inspect versions and hand off edits to your MCP Agent.')}</p>
+                </div>
               </div>
               <Button type="button" size="sm" variant="secondary" icon={<RemixIcon name="plug-line" size={14} />} onClick={onOpenMcp}>
                 {t('Connect an Agent')}
               </Button>
             </div>
-            <DesignProjectList onOpen={onOpenProject} />
+            <DesignProjectList onOpen={onOpenProject} refreshKey={projectListVersion} onProjectsChanged={onProjectsChanged} />
           </div>
         </div>
       ) : (
@@ -334,7 +343,10 @@ export function DesignScenePage({
               {/* Template gallery */}
               <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="om-design-section-head">
-                  <h2 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h2>
+                  <div className="om-design-project-heading">
+                    {projectNavigation}
+                    <h2 className="om-design-section-title">{t('{scenario} templates', { scenario: t(scenario.label) })}</h2>
+                  </div>
                   <div className="om-design-header-group">
                     <input
                       type="search"
@@ -384,9 +396,10 @@ export function DesignScenePage({
               <DesignProjectList
                 key={scenario.id}
                 scenario={scenario.id}
-                compact
+                layout="compact"
                 onOpen={onOpenProject}
                 onViewAll={() => onSelectDesignScene('projects')}
+                refreshKey={projectListVersion}
               />
             </div>
           </div>

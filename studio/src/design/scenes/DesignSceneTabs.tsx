@@ -28,7 +28,6 @@ export function DesignSceneTabs({
       icon: undefined,
       select: () => onSelectImageScene(scene),
     })),
-    { id: 'projects', label: 'Projects', icon: 'folder-open-line', select: () => onSelectDesignScene('projects') },
     ...designScenarios.map(scenario => ({
       id: scenario.id,
       label: scenario.label,

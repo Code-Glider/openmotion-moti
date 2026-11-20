@@ -3,7 +3,7 @@ import { StudioComingSoon } from './StudioComingSoon';
 import { studioComingSoon } from './creativeStudios';
 import { Button } from 'open-design-ui/button';
 import type { StudioScene, TechniqueStudio } from '../../../shared/studio-catalog';
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { WorkspaceResourceActions } from './WorkspaceResourceActions';
@@ -23,9 +23,10 @@ export type StudioCreation = {
   chooseModel: (model: string) => void;
 };
 
-export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, projectNavigation, hasProject, active, drafts }: {
   onOpenBrandKit?: () => void;
   onSelectDesignScene?: (scene: DesignTabId) => void;
+  projectNavigation?: ReactNode;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
   const { t } = useI18n();
@@ -50,10 +51,11 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onExp
     reportCreativeClick('creative_studio', 'studio_bar', 'scene_tab', destinationTarget(next));
     onNavigate(next);
   };
+  const heading = <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>;
   return <div className="om-assets-host om-creative-workspace">
     <header className="om-studio-bar">
       <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', studio.surface === 'techniques' ? 'open_skills' : 'back_to_explore', destinationTarget(destination))} fallback={studio.surface === 'techniques' ? () => onCollection(studio) : onExplore} />
-      <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
+      {projectNavigation ? <div className="om-design-project-heading">{projectNavigation}{heading}</div> : heading}
       {destination.landing ? <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onNavigate(studioDestination(studio, scene.id, destination.model)); }}>
         {t('Open in {studio}', { studio: t(studio.title) })}<RemixIcon name="arrow-right-line" size={15} />
       </Button> : studio.id === 'design' && onSelectDesignScene

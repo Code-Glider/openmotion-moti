@@ -10,6 +10,7 @@ import { CreativeNavigation } from './CreativeNavigation';
 import { ExploreStudios } from './ExploreStudios';
 import { creativeStudios, findMediaStudio, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
 import { DesignProjectEditor } from '../design/DesignProjectEditor';
+import { DesignProjectSidebar } from '../design/DesignProjectSidebar';
 import { DesignScenePage } from '../design/scenes/DesignScenePage';
 import type { Modality } from '../../../shared/gateway';
 import { motionStudio, scenesForStudio, studioDestination, studioDraftKey, type StudioDestination } from './creativeStudios';
@@ -56,6 +57,8 @@ import { reportCreativePageView, type CreativePage } from './exploreTracking';
 
 import { WorkspaceChromeContext, useWorkspaceChrome, type WorkspaceChrome, type EditorGuard } from './WorkspaceChromeContext';
 export { useWorkspaceChrome, useOptionalWorkspaceChrome, type EditorGuard } from './WorkspaceChromeContext';
+
+const designProjectNavigationId = 'om-design-project-navigation';
 
 export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, blocked = false, message = '', saveState = '', onLibraryClose, onNavigate }: {
   children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void; onNavigate?: () => void;
@@ -143,6 +146,39 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1000);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1000);
   const [projectQuery, setProjectQuery] = useState('');
+  const [designSidebarOpen, setDesignSidebarOpen] = useState(!narrow);
+  const [designProjectListVersion, setDesignProjectListVersion] = useState(0);
+  const refreshDesignProjectLists = () => setDesignProjectListVersion(version => version + 1);
+  const designSidebarTrigger = useRef<HTMLButtonElement>(null);
+  const designSidebarClose = useRef<HTMLButtonElement>(null);
+  const designWorkspaceActive = !hostChrome && !settings && !connectionsOpen && !page.designProject &&
+    (Boolean(page.designScene) || (page.studio?.studio.id === 'design' && !page.studio.landing));
+  useEffect(() => { if (narrow && !designWorkspaceActive) setDesignSidebarOpen(false); }, [narrow, designWorkspaceActive]);
+  const openDesignProject = (id: string) => {
+    if (narrow) setDesignSidebarOpen(false);
+    navigatePage({ designScene: page.designScene ?? 'projects', designProject: id, templates: false });
+  };
+  const designProjectNavigation = designWorkspaceActive && (narrow || !designSidebarOpen) && (
+    <Tooltip label={t('Open project list')} wrap>
+      <IconButton ref={designSidebarTrigger} type="button" variant="ghost" className="motion-icon-button motion-workspace-menu"
+        aria-label={t('Open project list')} aria-controls={designProjectNavigationId} aria-expanded={designSidebarOpen}
+        icon={<MotionIcon name="sidebar" size={16} />} onClick={() => {
+          setDesignSidebarOpen(true);
+          if (!narrow) requestAnimationFrame(() => designSidebarClose.current?.focus({ preventScroll: true }));
+        }} />
+    </Tooltip>
+  );
+  const designSidebar = designWorkspaceActive && <DesignProjectSidebar
+    navigationId={designProjectNavigationId}
+    closeRef={designSidebarClose}
+    refreshKey={designProjectListVersion}
+    onProjectsChanged={refreshDesignProjectLists}
+    onClose={() => {
+      setDesignSidebarOpen(false);
+      if (!narrow) requestAnimationFrame(() => designSidebarTrigger.current?.focus({ preventScroll: true }));
+    }}
+    onOpen={openDesignProject}
+  />;
   const editorRoute = !settings && !pageOpen;
   const editorActive = editorRoute && !connectionsOpen;
   const motionTemplatesOpen = page.motion && !templatesPage && !settings;
@@ -178,6 +214,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     const update = () => {
       // Close the desktop list in the same render that enables the modal drawer.
       if (query.matches) setSidebarOpen(false);
+      setDesignSidebarOpen(!query.matches);
       setNarrow(query.matches);
     };
     query.addEventListener('change', update); return () => query.removeEventListener('change', update);
@@ -322,6 +359,22 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       {!narrow && workspaceRoute && <div id="om-project-navigation" className="om-project-navigation om-collapsible" data-collapsed={!sidebarOpen || navigationCollapsed} aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
         <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} openSettings={openSettings} templatesOpen={motionTemplatesOpen} openTemplates={openMotionTemplates} openEditor={openEditor} />
       </div>}
+      {designWorkspaceActive && (narrow ? (
+        <Dialog.Root open={designSidebarOpen} onOpenChange={setDesignSidebarOpen}>
+          <Dialog.Portal>
+            <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
+            <Dialog.Popup id={designProjectNavigationId} className="motion-sidebar-drawer" aria-label={t('Project list')}
+              initialFocus={designSidebarClose} finalFocus={designSidebarTrigger} onKeyDown={event => event.stopPropagation()}>
+              {designSidebar}
+            </Dialog.Popup>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : (
+        <div id={designProjectNavigationId} className="om-project-navigation om-design-project-navigation"
+          hidden={!designSidebarOpen} inert={!designSidebarOpen}>
+          {designSidebar}
+        </div>
+      ))}
       <div className="motion-workspace-content" hidden={!editorRoute} inert={!editorRoute}>
         {visibleNotice && <ErrorNotice key={noticeKey} message={notice}
           onDismiss={() => { setDismissedNotice(noticeKey); if (workspaceNotice) workspace.clearError(); }} />}
@@ -339,7 +392,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         onUse={() => chooseStudio(motionStudio)} /></div>}
       {page.modelOverview && !templatesPage && <div className="om-explore-host"><ModelOverview id={page.modelOverview} onExplore={returnToExplore}
         onProvider={provider => navigatePage({ settings: 'providers', provider: provider ?? null, templates: false })} onScene={openStudio} /></div>}
-      <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false, ...lastExplore.current })} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })} onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} onNavigate={studio => navigatePage({ studio, templates: false })} /></div>
+      <div className="om-workspace-layer" hidden={templatesPage} inert={templatesPage}><CreativeWorkspace onOpenBrandKit={hostChrome ? () => openSettings('brand-kit') : undefined} onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false, ...lastExplore.current })} projectNavigation={designProjectNavigation} skill={page.skill} onCollection={specialty => navigatePage({ specialty, templates: false })} onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} onNavigate={studio => navigatePage({ studio, templates: false })} /></div>
       {page.designScene && !templatesPage && (
         <div className="om-assets-host" style={{ padding: 0 }}>
           {page.designProject
@@ -353,7 +406,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
                 onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false })}
                 onSelectImageScene={sceneId => openStudio(studioDestination(findMediaStudio('design')!, sceneId))}
                 onChooseStudio={chooseStudio}
-                onOpenProject={id => navigatePage({ designScene: page.designScene ?? 'projects', designProject: id, templates: false })}
+                onOpenProject={openDesignProject}
+                projectListVersion={designProjectListVersion}
+                onProjectsChanged={refreshDesignProjectLists}
+                projectNavigation={designProjectNavigation}
                 onExplore={returnToExplore}
                 onOpenMcp={() => openPage('mcp')}
               />}
