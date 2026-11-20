@@ -126,7 +126,7 @@ export function ExploreDesignSection({
                   if (event.target instanceof Element && event.target.closest('button')) return;
                   event.currentTarget.querySelector<HTMLButtonElement>('.om-design-card-open')?.click();
                 }}>
-                  <div>
+                  <div className="om-design-explore-cover">
                     <ScaledPreviewThumb
                       key={tpl.previewUrl}
                       brandedFallback
@@ -134,16 +134,22 @@ export function ExploreDesignSection({
                       title={tpl.title}
                       badge={scen ? t(scen.label) : tpl.scenario}
                     />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="primary"
+                      className="om-design-gallery-action om-design-explore-use"
+                      disabled={remixing}
+                      onClick={() => void remix(tpl)}
+                    >
+                      {t('Use')}
+                    </Button>
                   </div>
                   <div className="om-design-card-body">
                     <Button type="button" variant="plain" className="om-design-card-open" onClick={event => openPreview(idx, event.currentTarget)}>
                       <strong className="om-design-card-title">{tpl.title}</strong>
                     </Button>
                     <p className="om-design-card-desc">{tpl.description}</p>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
-                      <Button type="button" size="sm" variant="primary" onClick={event => openPreview(idx, event.currentTarget)}>{t('Try')}</Button>
-                      <Button type="button" size="sm" variant="secondary" disabled={remixing} onClick={() => void remix(tpl)}>{t('Remix')}</Button>
-                    </div>
                   </div>
                 </article>
               );

@@ -286,12 +286,12 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
   const shelf = useExploreTemplateShelf(templateFilter, locale, showShelves, active, templates, templatePreviewLimit);
   const shelfItems = shelf.items;
   const facet = collectionFacet(shelf.collection);
-  const groups = templates.pages.map(page => page.items);
-  const firstPage = groups[0] ?? [];
+  const firstTemplatePage = templates.pages[0];
+  const firstPage = firstTemplatePage?.items ?? [];
   const featuredTemplate = medium ? undefined : firstPage[0];
   const communityPicks = home ? firstPage.slice(1, 5) : [];
-  const initialTemplateError = templates.error && !templates.pages.length;
-  const catalogKey = [medium, skillFilter, templateFilter, ...shelfItems.map(item => item.id), ...groups.map(group => group.map(item => item.id).join(','))].join('|');
+  const initialTemplateError = templates.error && !firstTemplatePage;
+  const catalogKey = [medium, skillFilter, templateFilter, ...shelfItems.map(item => item.id), firstPage.map(item => item.id).join(',')].join('|');
   const playing = useTemplatePlayback(root, catalogKey, active && showMotion, true, priority);
   const sceneCards = scenes.filter(scene => community || medium || !featuredSceneIds.includes(scene.id)).map(scene => {
     return <SceneFeedCard key={scene.id} section="feed" target={sceneDestination(scene)} example={sceneExamples[scene.id][0]}
@@ -307,7 +307,7 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
   const firstTemplates = showTemplates ? firstPage.slice(feedStart).map(templateCard) : [];
 
   // Reserve the template slots so the scene and Skill beside each one stay in place on first load.
-  if (showTemplates && templates.loading && !templates.pages.length) {
+  if (showTemplates && templates.loading && !firstTemplatePage) {
     for (let i = 0; i < Math.max(sceneCards.length, skillCards.length, 1); i++) {
       firstTemplates.push(<div key={'pending-' + i} className="om-gallery-card" aria-hidden="true"><CoverPlaceholder className="om-feed-template-placeholder" /></div>);
     }
@@ -319,8 +319,11 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
   const studioSection = (studio: CreativeStudio) => <StudioCollection key={studio.id} studio={studio} medium={medium}
     onSelectDesignScene={props.onSelectDesignScene} onOpenDesignProject={props.onOpenDesignProject}
     onNavigate={onNavigate} onChooseStudio={onChooseStudio} onSkill={onSkill} playing={playing} onPriority={setPriority} />;
-  const initialLoading = templates.loading && !templates.pages.length;
+  const initialLoading = templates.loading && !firstTemplatePage;
   const showCommunityPicks = home && (initialLoading || communityPicks.length > 0);
+  const feedLoading = templates.loading && (medium || firstTemplatePage);
+  const feedError = templates.error && (medium || !initialTemplateError);
+  const feedEmpty = !templates.error && !templates.loading && !firstPage.length;
   const templateError = <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><Button variant="ghost" className="om-button h-auto" onClick={templates.retry}>{t('Retry')}</Button></div>;
   return <>
     {!medium && <div className="om-explore-features" data-split={Boolean(featuredTemplate || initialTemplateError || initialLoading)}>
@@ -350,18 +353,13 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
         <div><h2 id="om-feed-heading">{t(community?.id === '3d-motion' ? '3D techniques' : 'Communities')}</h2>
           {specialty && <p className="om-muted">{t(specialty.briefHint)}</p>}
         </div>
+        {showTemplates && <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'view_all_templates', { community: community?.id }); openLibrary(event.currentTarget); }}>{t('More community templates')}<RemixIcon name="arrow-right-line" size={16} /></Button>}
       </header>
-      <div className="om-feed-group">
-        {firstGroup}
-        {showTemplates && groups.slice(1).flatMap(group => group.map(templateCard))}
-      </div>
-      {showTemplates && <div className="om-feed-more">
-        {medium && initialTemplateError && templateError}
-        {templates.loading && (medium || templates.pages.length > 0) && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <CoverPlaceholder key={n} />)}</div>}
-        {templates.error && !initialTemplateError && templateError}
-        {!templates.error && !templates.loading && (templates.hasMore ? <Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_feed', 'load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></Button> :
-          !firstPage.length && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>)}
-        <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'view_all_templates', { community: community?.id }); openLibrary(event.currentTarget); }}>{t('View all templates')}<RemixIcon name="arrow-right-line" size={16} /></Button>
+      <div className="om-feed-group">{firstGroup}</div>
+      {showTemplates && (feedLoading || feedError || feedEmpty || !showCommunityPicks) && <div className="om-feed-more">
+        {feedLoading && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <CoverPlaceholder key={n} />)}</div>}
+        {feedError && templateError}
+        {feedEmpty && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>}
         {!showCommunityPicks && <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'creators', { community: community?.id }); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></Button>}
       </div>}
     </section>
@@ -437,7 +435,7 @@ export function ExploreStudios(props: ExploreProps) {
           }}>{t('Skills')}</Button>
         </nav>}
       </header>
-      <div className="om-explore-sections">
+      <div className="om-explore-sections" data-explore-home={!community && !props.filters.medium}>
         <ExploreCollection key={locale + '/' + (community?.id ?? '')} firstPages={firstPages} community={community} root={root} {...props} />
       </div>
     </div>

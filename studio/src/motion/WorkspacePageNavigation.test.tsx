@@ -750,24 +750,41 @@ it('opens a collection with its filters and opens individual Explore cards direc
   expect(container.querySelector('dialog[open] h2')).toBeTruthy();
 });
 
-it('opens the same Design detail from the Explore template card and its Try action', async () => {
+it('previews an Explore Design template from its cover and title and creates a project with Use', async () => {
+  const fallback = fetcher.getMockImplementation()!;
+  const createDesign = vi.fn<(body: RequestInit['body']) => Response>(() => Response.json({ project: { id: 'my-design' } }));
+  fetcher.mockImplementation((input: string, init?: RequestInit) => {
+    const { pathname } = new URL(input, location.origin);
+    if (pathname.endsWith('/design/projects') && init?.method === 'POST') return Promise.resolve(createDesign(init.body));
+    if (pathname.endsWith('/design/projects/my-design')) return Promise.resolve(new Response(null, { status: 404 }));
+    return fallback(input, init);
+  });
   await mount();
   await click('Explore');
-  const card = container.querySelector<HTMLDivElement>('[data-design-explore-section] [data-design-template="fixture-prototype"]')!;
-  const tryButton = [...card.querySelectorAll('button')].find(node => node.textContent === 'Try')!;
+  const card = container.querySelector<HTMLElement>('[data-design-explore-section] [data-design-template="fixture-prototype"]')!;
+  const cover = card.querySelector<HTMLElement>('.om-design-card-thumb')!;
+  const title = card.querySelector<HTMLButtonElement>('.om-design-card-open')!;
+  const use = card.querySelector<HTMLButtonElement>('button.om-design-explore-use')!;
   const details = () => document.querySelector('[role="dialog"].om-design-tpl-detail-popup');
-  tryButton.focus();
-  await act(async () => tryButton.click());
+  expect([...card.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Use', 'Design prototype fixture']);
+  await act(async () => cover.click());
   expect(page().explore).toBe(true);
   expect(page().designScene).toBeUndefined();
   expect(details()?.getAttribute('aria-label')).toBe('Design prototype fixture');
   const close = details()!.querySelector<HTMLButtonElement>('[aria-label="Close"]')!;
   await act(async () => { close.click(); });
   expect(details()).toBeNull();
-  await act(async () => card.click());
+  await act(async () => title.click());
   expect(page().explore).toBe(true);
   expect(page().designScene).toBeUndefined();
   expect(details()?.getAttribute('aria-label')).toBe('Design prototype fixture');
+  expect(createDesign).not.toHaveBeenCalled();
+  await act(async () => details()!.querySelector<HTMLButtonElement>('[aria-label="Close"]')!.click());
+  await act(async () => use.click());
+  expect(createDesign).toHaveBeenCalledOnce();
+  expect(JSON.parse(String(createDesign.mock.calls[0][0]))).toMatchObject({ scenario: 'prototype', templateId: 'fixture-prototype' });
+  expect(page()).toMatchObject({ designScene: 'projects', designProject: 'my-design' });
+  expect(details()).toBeNull();
 });
 
 it('browses both Explore shelves, opens exact details and restores the selected categories', async () => {
@@ -1130,7 +1147,7 @@ it('carries a community template brief and an audio example into the matching st
   expect(fetcher.mock.calls.some(([, options]) => options?.body && String(options.body).includes('"action":"generate"'))).toBe(false);
 });
 
-it('recovers template discovery and appends only new cards without replacing earlier results', async () => {
+it('recovers community templates and opens the library from the community heading', async () => {
   const fallback = fetcher.getMockImplementation()!;
   const template = (id: string) => ({ id, title: id, description: 'A product reveal.', kind: 'builtin', tags: [] });
   let failures = 0;
@@ -1139,8 +1156,7 @@ it('recovers template discovery and appends only new cards without replacing ear
     if (!url.pathname.endsWith('/template-catalog')) return fallback(input, options);
     if (url.searchParams.get('limit') === '60') return fallback(input, options);
     if (failures++ === 0) return new Response(null, { status: 503 });
-    const offset = Number(url.searchParams.get('offset'));
-    return Response.json({ offset, items: (offset ? ['second', 'third', 'third'] : ['first', 'second']).map(template), next: offset ? null : 2 });
+    return Response.json({ offset: 0, items: ['first', 'second', 'second'].map(template), next: 2 });
   });
   await mount(); await click('Explore');
   const spotlight = container.querySelector('.om-explore-features')!;
@@ -1152,13 +1168,13 @@ it('recovers template discovery and appends only new cards without replacing ear
   expect(sections.map(section => section.getAttribute('aria-labelledby') ?? section.getAttribute('data-studio') ?? section.className))
     .toEqual(['om-explore-features', 'explore-highlights', 'explore-claude', 'explore-community', 'explore-seedance', 'design', 'explore-gpt-image']);
   const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
-  const card = picks.querySelector('[data-template-id="second"]');
-  expect(card).not.toBeNull();
-  await click('More community templates');
-  expect(container.querySelector('[data-template-id="second"]')).toBe(card);
   expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second']);
-  expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['third']);
-  expect(button('More community templates')).toBeUndefined();
+  const communities = container.querySelector('[aria-labelledby="om-feed-heading"]')!;
+  expect(communities.querySelector('.om-feed-more')).toBeNull();
+  const openLibrary = communities.querySelector<HTMLButtonElement>('header button')!;
+  expect(openLibrary.textContent).toBe('More community templates');
+  await act(async () => openLibrary.click());
+  expect(page()).toMatchObject({ templates: true, template: null });
 });
 
 it('keeps Agent Skills available while the 3D studio is pending and preserves the community feed', async () => {

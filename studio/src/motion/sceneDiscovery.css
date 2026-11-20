@@ -68,6 +68,7 @@
 .om-featured-caption small, .om-feed-card-label { color: var(--motion-muted); }
 .om-discovery-heading { margin-bottom: var(--motion-space-16); }
 .om-discovery-heading h2 { font: var(--motion-weight-semibold) clamp(var(--motion-text-heading), 2.5vw, var(--motion-text-display-sm))/1.15 var(--motion-font-display); letter-spacing: -.035em; }
+.om-explore-sections[data-explore-home="true"] > section .om-discovery-heading h2 { color: var(--motion-accent); }
 .om-discovery-heading p { margin-top: var(--motion-space-6); font-size: var(--motion-text-body); }
 [data-theme="paper"] .om-explore .om-discovery-heading p.om-muted { color: var(--motion-dim); }
 .om-discovery-heading .om-choice-tabs .om-nav-item { flex: none; white-space: nowrap; }
