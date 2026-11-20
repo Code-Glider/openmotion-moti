@@ -6,7 +6,8 @@ import { I18nProvider } from '../i18n/I18n';
 import { studioEvents } from '../../../tracking/events.ts';
 import { validProperties } from '../../../tracking/core.ts';
 import { BlackFridayTopBanner, resetBlackFridayImpression } from './BlackFridayTopBanner';
-import { campaignPricingUrl } from './campaignAttribution';
+import campaignUi from '../i18n/campaign-ui.json';
+import { BLACK_FRIDAY_ENDS_AT, bannerDismissedToday, blackFridayActive, campaignPricingUrl, dismissBannerToday, resetBannerDismissal } from './campaignAttribution';
 import { PricingEntry } from './PricingEntry';
 import { trackMotion } from './tracking';
 
@@ -23,7 +24,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
 });
-afterEach(() => { act(() => root.unmount()); container.remove(); });
+afterEach(() => { act(() => root.unmount()); container.remove(); vi.useRealTimers(); localStorage.clear(); resetBannerDismissal(); });
 
 const render = (node: React.ReactNode) => act(() => root.render(<I18nProvider initialLocale="zh-CN">{node}</I18nProvider>));
 const params = (href: string) => new URL(href).searchParams;
@@ -80,4 +81,64 @@ it('registers every reported campaign event in the closed schema', () => {
     ['ui_click', { page_name: 'studio', area: 'header', element: 'open_pricing', campaign_id: 'black_friday_2026', entry_id: id, interaction_method: 'pointer' }],
   ] as const) expect(validProperties(studioEvents, event, properties)).toBe(true);
   expect(validProperties(studioEvents, 'ui_click', { page_name: 'studio', area: 'header', element: 'open_pricing', campaign_id: 'cyber_monday' })).toBe(false);
+});
+
+it('shows the campaign only inside its window and drops campaign fields afterwards', async () => {
+  expect(blackFridayActive(Date.parse('2026-11-19T23:59:59+08:00'))).toBe(false);
+  expect(blackFridayActive(Date.parse('2026-11-25T12:00:00+08:00'))).toBe(true);
+  expect(blackFridayActive(BLACK_FRIDAY_ENDS_AT - 1)).toBe(true);
+  expect(blackFridayActive(BLACK_FRIDAY_ENDS_AT)).toBe(false);
+  expect(params(campaignPricingUrl('en', 'openmotion_header_pricing', 'x', new Date(BLACK_FRIDAY_ENDS_AT))).has('utm_campaign')).toBe(false);
+
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(BLACK_FRIDAY_ENDS_AT + 60_000);
+  render(<PricingEntry trackingPage="studio" />);
+  const link = container.querySelector<HTMLAnchorElement>('a')!;
+  link.addEventListener('click', event => event.preventDefault());
+  expect(container.textContent).not.toContain('50% OFF');
+  expect(link.getAttribute('aria-label')).toBe('Pricing');
+  await act(async () => { link.click(); });
+  expect(tracked().at(-1)?.properties).not.toHaveProperty('campaign_id');
+  expect(params(link.href).get('od_entry_source')).toBe('openmotion_header_pricing');
+});
+
+it('keeps a dismissed banner hidden for the rest of the local day only', () => {
+  const evening = new Date(2026, 10, 25, 23, 30);
+  expect(bannerDismissedToday(evening)).toBe(false);
+  dismissBannerToday(evening);
+  expect(bannerDismissedToday(new Date(2026, 10, 25, 23, 59))).toBe(true);
+  expect(bannerDismissedToday(new Date(2026, 10, 26, 0, 1))).toBe(false);
+});
+
+it('localizes the banner and the Pricing label in every supported language', () => {
+  for (const locale of ['zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr'] as const) {
+    const messages = campaignUi[locale];
+    act(() => root.render(<I18nProvider key={locale} initialLocale={locale}><BlackFridayTopBanner trackingPage="explore" onClose={() => {}} /><PricingEntry trackingPage="studio" /></I18nProvider>));
+    expect(container.textContent).toContain(messages['Claim offer']);
+    expect(container.textContent).toContain(messages['7-day unlimited']);
+    expect(container.querySelector('aside')!.getAttribute('aria-label')).toBe(messages['Black Friday campaign banner']);
+    expect(container.querySelector('a[aria-label^="Pricing"]')!.getAttribute('aria-label')).toBe(messages['Pricing · Black Friday up to 50% off']);
+  }
+});
+
+it('drops the Pricing badge and campaign fields when the campaign ends while the page stays open', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+  vi.setSystemTime(BLACK_FRIDAY_ENDS_AT - 30_000);
+  render(<PricingEntry trackingPage="studio" />);
+  expect(container.textContent).toContain('50% OFF');
+  await act(async () => { vi.advanceTimersByTime(60_000); });
+  expect(container.textContent).not.toContain('50% OFF');
+  const link = container.querySelector<HTMLAnchorElement>('a')!;
+  link.addEventListener('click', event => event.preventDefault());
+  await act(async () => { link.click(); });
+  expect(tracked().at(-1)?.properties).not.toHaveProperty('campaign_id');
+});
+
+it('keeps a dismissal for the day in the page when storage is unavailable', () => {
+  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
+  const noon = new Date(2026, 10, 25, 12);
+  dismissBannerToday(noon);
+  expect(bannerDismissedToday(noon)).toBe(true);
+  expect(bannerDismissedToday(new Date(2026, 10, 26, 9))).toBe(false);
+  setItem.mockRestore();
 });

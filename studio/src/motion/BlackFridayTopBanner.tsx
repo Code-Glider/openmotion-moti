@@ -3,15 +3,14 @@ import { Button } from 'open-design-ui/button';
 import { useI18n } from '../i18n/I18n';
 import flameArtUrl from './bf-dusk-flame.jpg';
 import styles from './BlackFridayTopBanner.module.css';
-import { BLACK_FRIDAY_CAMPAIGN, campaignPricingUrl, newCampaignEntryId } from './campaignAttribution';
+import { BLACK_FRIDAY_CAMPAIGN, BLACK_FRIDAY_ENDS_AT, blackFridayActive, campaignPricingUrl, newCampaignEntryId } from './campaignAttribution';
 import type { CreativePage } from './exploreTracking';
 import { trackMotion } from './tracking';
 
-const CAMPAIGN_END_AT = Date.parse('2026-12-05T00:00:00+08:00');
 const COUNTDOWN_CYCLE_SECONDS = 259200; // 72h rolling cycle
 
 function readCountdown(now = Date.now()) {
-  const diffSec = Math.max(0, Math.floor((CAMPAIGN_END_AT - now) / 1000));
+  const diffSec = Math.max(0, Math.floor((BLACK_FRIDAY_ENDS_AT - now) / 1000));
   const remaining = diffSec > 0 ? (diffSec % COUNTDOWN_CYCLE_SECONDS || COUNTDOWN_CYCLE_SECONDS) : 0;
   const days = Math.floor(remaining / 86400);
   const hours = Math.floor((remaining % 86400) / 3600);
@@ -31,9 +30,9 @@ let impressionReported = false;
 /** Test hook: start a fresh page load. */
 export function resetBlackFridayImpression() { impressionReported = false; }
 
-export function BlackFridayTopBanner({ onClose, trackingPage }: { onClose: () => void; trackingPage: CreativePage }) {
-  const { locale } = useI18n();
-  const zh = locale.startsWith('zh');
+/** `onClose` is the visitor's dismissal; `onExpire` hides the banner when the campaign window ends while the page is open. */
+export function BlackFridayTopBanner({ onClose, onExpire, trackingPage }: { onClose: () => void; onExpire?: () => void; trackingPage: CreativePage }) {
+  const { locale, t } = useI18n();
   const [time, setTime] = useState(() => readCountdown());
 
   // The link's entry id is reported with the click and replaced afterwards, so each click is its own Pricing entry.
@@ -45,9 +44,12 @@ export function BlackFridayTopBanner({ onClose, trackingPage }: { onClose: () =>
   }, [trackingPage]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setTime(readCountdown()), 1000);
+    const timer = window.setInterval(() => {
+      if (!blackFridayActive()) { window.clearInterval(timer); onExpire?.(); return; }
+      setTime(readCountdown());
+    }, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [onExpire]);
 
   const pricingHref = campaignPricingUrl(locale, 'openmotion_bf_banner', entryId);
   const method = (event: MouseEvent) => event.detail === 0 ? 'keyboard' as const : 'pointer' as const;
@@ -65,27 +67,16 @@ export function BlackFridayTopBanner({ onClose, trackingPage }: { onClose: () =>
     '--bf-flame-art': `url("${flameArtUrl}")`,
   } as CSSProperties;
 
-  const copy = zh
-    ? {
-        aria: '黑五活动 Banner',
-        timerLabel: '距结束',
-        dayUnit: '天',
-        offerBefore: '黑五全年最低价！DeepSeek V4.1 Flash Eco、DeepSeek V4.1 Flash 等 ',
-        offerHighlight: '7天无限用',
-        offerAfter: '，年付低至 5 折',
-        bfCta: '领取优惠',
-        closeLabel: '关闭活动 Banner',
-      }
-    : {
-        aria: 'Black Friday campaign banner',
-        timerLabel: 'Ends in',
-        dayUnit: 'd',
-        offerBefore: 'Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more ',
-        offerHighlight: '7-day unlimited',
-        offerAfter: ', up to 50% off annual',
-        bfCta: 'Claim offer',
-        closeLabel: 'Close campaign banner',
-      };
+  const copy = {
+    aria: t('Black Friday campaign banner'),
+    timerLabel: t('Ends in'),
+    dayUnit: t('d'),
+    offerBefore: t("Black Friday lowest of the year! DeepSeek V4.1 Flash Eco, DeepSeek V4.1 Flash & more "),
+    offerHighlight: t('7-day unlimited'),
+    offerAfter: t(', up to 50% off annual'),
+    bfCta: t('Claim offer'),
+    closeLabel: t('Close campaign banner'),
+  };
 
   return (
     <aside className={styles.banner} aria-label={copy.aria} style={bannerStyle}>

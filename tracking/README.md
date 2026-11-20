@@ -155,6 +155,9 @@ banner is shown, and `ui_click` for `claim_offer` and `close_banner` (`area=camp
 `open_pricing` (`area=header`), each with `campaign_id=black_friday_2026`. The two link clicks also send
 `entry_id`, equal to that click's `od_entry_id`, so a click joins the Pricing visit and payment. These
 entry sources reach payment events only once AMR accepts them in its attribution validation.
+The campaign shows from release until 2026-12-05 00:00 Beijing time. Outside that window the banner is hidden,
+the Pricing entry has no badge, links omit `utm_campaign` and clicks omit `campaign_id`. A dismissed banner stays
+hidden for the rest of the visitor's local day and returns the next day.
 
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.

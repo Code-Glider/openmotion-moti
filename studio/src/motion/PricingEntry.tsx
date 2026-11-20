@@ -1,21 +1,22 @@
 import { useId, useState, type MouseEvent } from 'react';
 import { useI18n } from '../i18n/I18n';
-import { BLACK_FRIDAY_CAMPAIGN, campaignPricingUrl, newCampaignEntryId } from './campaignAttribution';
+import { BLACK_FRIDAY_CAMPAIGN, campaignPricingUrl, newCampaignEntryId, useBlackFridayActive } from './campaignAttribution';
 import type { CreativePage } from './exploreTracking';
 import { trackMotion } from './tracking';
 import styles from './PricingEntry.module.css';
 
 export function PricingEntry({ trackingPage }: { trackingPage: CreativePage }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const gradientId = useId();
-  const zh = locale.startsWith('zh');
   // Each click is its own Pricing entry: its id is on the link and on the click event, then replaced.
   const [entryId, setEntryId] = useState(newCampaignEntryId);
   const href = campaignPricingUrl(locale, 'openmotion_header_pricing', entryId);
-  const aria = zh ? 'Pricing · 黑五特惠年付低至 5 折' : 'Pricing · Black Friday up to 50% off';
+  // Outside the campaign window the entry stays as plain Pricing: no badge, campaign label or campaign fields.
+  const campaign = useBlackFridayActive();
+  const aria = campaign ? t('Pricing · Black Friday up to 50% off') : 'Pricing';
 
   function open(event: MouseEvent<HTMLAnchorElement>) {
-    void trackMotion('ui_click', { page_name: trackingPage, area: 'header', element: 'open_pricing', campaign_id: BLACK_FRIDAY_CAMPAIGN, entry_id: entryId,
+    void trackMotion('ui_click', { page_name: trackingPage, area: 'header', element: 'open_pricing', ...(campaign ? { campaign_id: BLACK_FRIDAY_CAMPAIGN } : {}), entry_id: entryId,
       interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
     // Stamp the click time on the address the browser is about to open, then replace the id for the next click.
     event.currentTarget.href = campaignPricingUrl(locale, 'openmotion_header_pricing', entryId);
@@ -47,9 +48,9 @@ export function PricingEntry({ trackingPage }: { trackingPage: CreativePage }) {
         />
       </svg>
       <span className={styles.label}>Pricing</span>
-      <span className={styles.badge} aria-hidden="true">
+      {campaign && <span className={styles.badge} aria-hidden="true">
         <span className={styles.badgeText}>50% OFF</span>
-      </span>
+      </span>}
     </a>
   );
 }
