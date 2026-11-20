@@ -213,7 +213,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
           if (!group) continue;
           const wi = group.segmentIds.indexOf(segId);
           if (wi < 0) continue;
-          const wordEl = getWordEl(iframe, gi, wi);
+          const wordEl = getWordEl(iframe, gi, wi, group.segmentIds.length);
           if (!wordEl) continue;
           const wrapper = getOrCreateWrapper(wordEl);
           const state = readGsapTransform(wrapper, win);
@@ -420,7 +420,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               top: box.y,
               width: box.width,
               height: box.height,
-              cursor: isSelected ? "move" : "pointer",
+              cursor: isSelected && box.canTransform ? "move" : "pointer",
               touchAction: "none",
               borderRadius: 2,
             }}
@@ -429,10 +429,10 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               selectSegment(box.segmentId, e.shiftKey);
             }}
             onPointerDown={(e) => {
-              if (isSelected) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
+              if (isSelected && box.canTransform) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
             }}
           >
-            {isSelected && (
+            {isSelected && box.canTransform && (
               <>
                 {/* Rotation handle — 24px hit area around an 8px dot */}
                 <div
