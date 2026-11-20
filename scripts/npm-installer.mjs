@@ -168,6 +168,8 @@ export async function setup(options) {
         ...(plan.host === 'codex' ? { skillsDirectory: targets[0] } : {}) };
       // The registered MCP launcher must be usable even if Harness starts it synchronously.
       await writeJSON(stateFile, state); wroteState = true;
+      // Before registration, so a host starting the service right away does not run a second npm into the same directory.
+      await prepareAccountConnector(appRoot, dataDirectory);
       await plan.register();
       if (plan.host === 'deepseek' && previous?.hosts?.deepseek?.bundleDirectory) {
         console.error('OpenMotion: previous Harness bundle retained at ' + previous.hosts.deepseek.bundleDirectory + '. Refresh host Tools/Skills; remove this old bundle only after the host has stopped.');
@@ -210,6 +212,21 @@ export async function setup(options) {
     } finally { for (const item of directories) if (item.stage) await rm(item.stage, { recursive: true, force: true }); }
 
   });
+}
+
+/**
+ * Installs the OpenDesign sign-in connector while the terminal's npm and network settings are available. The service
+ * started later by a host may not find npm or reach the registry, so it only installs when this did not.
+ */
+async function prepareAccountConnector(appRoot, dataDirectory) {
+  try {
+    const connector = await import(pathToFileURL(path.join(appRoot, 'gateway/account-connector.ts')).href);
+    console.error('OpenMotion: preparing the OpenDesign sign-in component.');
+    // Bounded so a slow registry cannot hold up setup; the service installs it at first sign-in instead.
+    await connector.installConnector(connector.connectorRuntime(dataDirectory), { timeoutMs: 60_000 });
+  } catch (error) {
+    console.error('OpenMotion: the OpenDesign sign-in component will be prepared at first sign-in. ' + (error.detail || error.message));
+  }
 }
 
 // Hosts without an adapter: the Agent applies its own documented MCP format, so the installer never guesses a config file.

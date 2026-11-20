@@ -24,7 +24,9 @@ vi.mock('./ExploreStudios', async () => {
     return <button onClick={event => openLibrary(event.currentTarget)}>Browse templates</button>;
   } };
 });
-vi.mock('./SettingsCenter', () => ({ SettingsCenter: () => <section data-testid="settings-center">Settings</section> }));
+vi.mock('./SettingsCenter', () => ({
+  SettingsCenter: ({ onBack }: { onBack: () => void }) => <section data-testid="settings-center"><button type="button" onClick={onBack}>返回</button></section>,
+}));
 
 const state = vi.hoisted(() => ({
   connectionError: '',
@@ -66,7 +68,7 @@ let layoutStyle: HTMLStyleElement | undefined;
 const originalWidth = window.innerWidth;
 beforeEach(() => {
   history.replaceState(null, '', '/?project=demo');
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 });
   window.happyDOM.settings.enableIframePageLoading = false;
   vi.clearAllMocks();
   localStorage.clear();
@@ -93,7 +95,7 @@ function render(historyBusy = false, children?: React.ReactNode) {
     inspectorPanelActive={false} onExport={state.export} />{children}</MotionEditorFrame></MotionStudioHost>));
 }
 function openSidebar() {
-  act(() => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="项目"]')!.click());
+  act(() => container.querySelector<HTMLButtonElement>('.motion-project-navigation-trigger button')!.click());
 }
 const button = (text: string) => [...container.querySelectorAll('button')].find(el => el.textContent === text)!;
 
@@ -136,8 +138,8 @@ it('keeps project switching, templates, history actions and native export in the
   expect(container.querySelector('a[download]')).toBeNull();
   expect(container.querySelector('.om-app-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenDesign');
   expect(container.querySelector('.om-app-brand .motion-brand-lockup--responsive')).not.toBeNull();
-  expect(container.querySelector('.om-app-rail [aria-label="模型供应商"]')).not.toBeNull();
-  expect(container.querySelector('.om-app-rail [aria-label="设置"]')).not.toBeNull();
+  expect(document.querySelector('.motion-sidebar-utilities [aria-label="模型供应商"]')).not.toBeNull();
+  expect(document.querySelector('.motion-sidebar-utilities [aria-label="设置"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="编辑器"]')).toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="展开或收起项目列表"]')).toBeNull();
   expect(header.querySelector('[aria-label="语言"]')).toBeNull();
@@ -216,13 +218,13 @@ it('searches projects in an overlay and closes it without removing the header br
   expect(container.querySelector('.om-app-brand [role=img]')).not.toBeNull();
 });
 
-it('shows the rail on direct editor links regardless of the old collapse preference', () => {
+it('shows the workspace without a separate rail on direct editor links', () => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
   history.replaceState(null, '', '/?embed=1#project/demo');
   localStorage.setItem('motion.workspace.navigation.v1', 'collapsed');
   render();
   expect(container.querySelector('.om-app-sidebar-toggle')).toBeNull();
-  expect(container.querySelector('.om-app-rail')?.hasAttribute('inert')).toBe(false);
+  expect(container.querySelector('.om-app-rail')).toBeNull();
   expect(container.querySelector('.om-project-navigation')?.hasAttribute('inert')).toBe(false);
   const actions = container.querySelectorAll('header.om-app-header button');
   expect(actions[actions.length - 1]?.getAttribute('aria-label')).toBe('账户菜单');
@@ -263,25 +265,39 @@ it.each([true, false])('preserves the desktop sidebar when opening and dismissin
   }
 });
 
-it.each([[1440, 'OpenDesign · 返回探索'], [800, 'OpenDesign · 返回探索'], [1440, '关闭设置'], [800, '关闭设置']] as const)('returns to Explore from settings without replacing the current editor at %ipx via %s', async (width, closeLabel) => {
+it.each([[1440, 'OpenDesign · 返回探索'], [800, 'OpenDesign · 返回探索'], [1440, '返回'], [800, '返回']] as const)('leaves settings without replacing the current editor at %ipx via %s', async (width, label) => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   render();
+  const editorUrl = location.href;
   const editor = container.querySelector('.motion-studio-header');
-  await act(async () => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="设置"]')!.click());
+  if (!document.querySelector('.motion-sidebar-utilities')) openSidebar();
+  await act(async () => document.querySelector<HTMLButtonElement>('.motion-sidebar-utilities [aria-label="设置"]')!.click());
   expect(container.querySelector('[data-testid="settings-center"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail')).toBeNull();
-  await act(async () => container.querySelector<HTMLButtonElement>(`[aria-label="${closeLabel}"]`)!.click());
+  await act(async () => {
+    if (label === '返回') {
+      button(label).click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    } else {
+      container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click();
+    }
+  });
   expect(container.querySelector('[data-testid="settings-center"]')).toBeNull();
-  expect(container.querySelector('.om-explore-host:not([hidden])')).not.toBeNull();
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
-  expect(container.querySelector('.om-project-navigation, .om-app-rail')).toBeNull();
+  if (label === '返回') {
+    expect(location.href).toBe(editorUrl);
+    expect(container.querySelector('.motion-workspace-content:not([hidden])')).not.toBeNull();
+  } else {
+    expect(container.querySelector('.om-explore-host:not([hidden])')).not.toBeNull();
+    expect(container.querySelector('.om-project-navigation, .om-app-rail')).toBeNull();
+  }
   expect(document.querySelector('.motion-sidebar-drawer:not([data-closed])')).toBeNull();
   expect(state.open).not.toHaveBeenCalled();
   expect(state.home).not.toHaveBeenCalled();
 });
 
 async function hoverProjects(pointerType = 'mouse') {
-  const home = container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="项目"]')!;
+  const home = container.querySelector<HTMLButtonElement>('.motion-project-navigation-trigger button')!;
   act(() => {
     home.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType }));
     home.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
@@ -292,7 +308,7 @@ async function hoverProjects(pointerType = 'mouse') {
 }
 
 it.each(['pinned', 'drawer', 'hover'] as const)('keeps the %s project list open when clicking the current project', async surface => {
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: surface === 'drawer' ? 800 : 1440 });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: surface === 'drawer' ? 700 : 1440 });
   await act(async () => render());
   const editor = container.querySelector('.motion-studio-header');
   if (surface !== 'pinned') openSidebar();
@@ -314,7 +330,7 @@ it('toggles Projects and previews the searchable project list without expanding 
   render();
   const editor = container.querySelector('.motion-studio-header');
   const sidebar = container.querySelector('.om-project-navigation')!;
-  const home = container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="项目"]')!;
+  const home = container.querySelector<HTMLButtonElement>('.motion-project-navigation-trigger button')!;
   expect(home.getAttribute('aria-expanded')).toBe('true');
   act(() => home.click());
   expect(sidebar.hasAttribute('inert')).toBe(true);
@@ -390,7 +406,8 @@ it('does not preview projects for touch pointers, mobile drawers or settings', a
   openSidebar();
   await hoverProjects('touch');
   expect(document.querySelector('.om-project-flyout')).toBeNull();
-  await act(async () => container.querySelector<HTMLButtonElement>('.om-app-rail [aria-label="设置"]')!.click());
+  if (!document.querySelector('.motion-sidebar-utilities')) openSidebar();
+  await act(async () => document.querySelector<HTMLButtonElement>('.motion-sidebar-utilities [aria-label="设置"]')!.click());
   expect(container.querySelector('.om-app-rail')).toBeNull();
   expect(document.querySelector('.om-project-flyout')).toBeNull();
 });

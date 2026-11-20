@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
-import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { execFile, spawn, type SpawnOptions } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -11,7 +11,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
 import { gatewayFor, ModelGateway } from '../gateway/service.ts';
 import { ProviderConnections, connectionBaseUrl } from '../gateway/connections.ts';
-import { AccountRequestError, OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
+import { AccountRequestError, OpenDesignAccount, systemBrowserCommand, type SignInRecord } from '../gateway/account.ts';
+import { ConnectorUnavailable, findNpmCli, installConnector, manualInstallCommand, npmCliCandidates } from '../gateway/account-connector.ts';
 import { createTracker, validProperties } from '../tracking/core.ts';
 import { createPosthogSender } from '../tracking/node.ts';
 import { omEvents } from '../tracking/events.ts';
@@ -363,6 +364,70 @@ test('source installations use the connector locked with their dependencies inst
   });
 });
 
+test('the connector installer finds npm beside Homebrew and other Node layouts, then on PATH', { skip: process.platform === 'win32' }, async t => {
+  // A Homebrew Node reports its resolved Cellar binary; npm lives under libexec there, not under lib.
+  assert.deepEqual(npmCliCandidates('/opt/homebrew/Cellar/node/24.1.0/bin/node', 'darwin', {}), [
+    '/opt/homebrew/Cellar/node/24.1.0/lib/node_modules/npm/bin/npm-cli.js', '/opt/homebrew/Cellar/node/24.1.0/libexec/lib/node_modules/npm/bin/npm-cli.js']);
+  // npm's own entry is preferred when npm launched this process; another package manager's entry is ignored.
+  assert.equal(npmCliCandidates('/usr/local/bin/node', 'darwin', { npm_execpath: '/x/npm/bin/npm-cli.js' })[0], '/x/npm/bin/npm-cli.js');
+  assert.equal(npmCliCandidates('/usr/local/bin/node', 'darwin', { npm_execpath: '/x/pnpm/bin/pnpm.cjs' })[0], '/usr/local/lib/node_modules/npm/bin/npm-cli.js');
+  assert.deepEqual(npmCliCandidates('C:\\Program Files\\nodejs\\node.exe', 'win32', {}), ['C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js']);
+  await fixture(async store => {
+    const cellar = path.join(store.directory, 'Cellar/node/24.1.0'), cli = path.join(cellar, 'libexec/lib/node_modules/npm/bin/npm-cli.js');
+    await mkdir(path.dirname(cli), { recursive: true }); await writeFile(cli, '');
+    assert.equal(await findNpmCli(path.join(cellar, 'bin/node'), 'darwin', { PATH: '' }), cli);
+    // Without npm beside Node, the `npm` link on PATH is followed to its entry.
+    const bin = path.join(store.directory, 'path-bin'); await mkdir(bin); await symlink(cli, path.join(bin, 'npm'));
+    assert.equal(await findNpmCli(path.join(store.directory, 'standalone/bin/node'), 'darwin', { PATH: '/missing:' + bin }), await realpath(cli));
+    assert.equal(await findNpmCli(path.join(store.directory, 'standalone/bin/node'), 'darwin', { PATH: '/missing' }), undefined);
+  });
+});
+
+test('the manual connector command quotes the private directory for the shell, and its failure telemetry is valid', t => fixture(async store => {
+  assert.equal(manualInstallCommand("/Users/o'neil/$HOME/runtime", 'darwin'), `npm install --prefix '/Users/o'\\''neil/$HOME/runtime' --ignore-scripts @powerformer/vela-cli@0.1.10`);
+  assert.equal(manualInstallCommand('C:\\Users\\me\\runtime', 'win32'), 'npm install --prefix "C:\\Users\\me\\runtime" --ignore-scripts @powerformer/vela-cli@0.1.10');
+  const records: SignInRecord[] = [];
+  const account = new OpenDesignAccount(store.directory, { binary: path.join(store.directory, 'missing-connector'), log: () => {}, track: record => records.push(record) });
+  t.after(() => account.close());
+  await account.login(); await until(async () => (await account.summary()).state !== 'authorizing');
+  assert.equal(records.length, 1); assert.equal(records[0].error_code, 'connector_unavailable'); assert.equal(records[0].connector_problem, 'start_failed');
+  assert(validProperties(omEvents, 'account_sign_in_result', records[0]), JSON.stringify(records[0]));
+  assert.doesNotMatch(JSON.stringify(records[0]), /missing-connector|ENOENT/);
+}));
+
+test('the connector installation reports why it failed and reuses a working installation', { skip: process.platform === 'win32' }, async t => {
+  await fixture(async store => {
+    // A stand-in npm: installs a connector whose binary prints the requested version, or fails like an unreachable registry.
+    const npm = path.join(store.directory, 'fake-npm.mjs');
+    await writeFile(npm, `import { mkdirSync, writeFileSync, chmodSync, appendFileSync } from 'node:fs'; import path from 'node:path';
+const prefix = process.argv[process.argv.indexOf('--prefix') + 1], mode = process.env.FAKE_NPM;
+appendFileSync(path.join(path.dirname(prefix), 'npm-calls'), 'x');
+if (mode === 'offline') { console.error('npm error code ECONNREFUSED'); process.exit(1); }
+const pkg = path.join(prefix, 'node_modules/@powerformer/vela-cli'); mkdirSync(pkg, { recursive: true });
+writeFileSync(path.join(prefix, 'package.json'), '{}');
+writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({ name: '@powerformer/vela-cli', main: 'index.js' }));
+writeFileSync(path.join(pkg, 'vela'), '#!/bin/sh\\necho ' + (mode === 'wrong' ? '0.0.9' : '0.1.10') + '\\n'); chmodSync(path.join(pkg, 'vela'), 0o755);
+writeFileSync(path.join(pkg, 'index.js'), 'exports.resolveVelaCliBin = () => __dirname + "/vela";');`);
+    const install = async (name: string, mode: string, findNpm: () => Promise<string | undefined> = async () => npm) => {
+      process.env.FAKE_NPM = mode;
+      try { return await installConnector(path.join(store.directory, name, 'runtime'), { findNpm }); } finally { delete process.env.FAKE_NPM; }
+    };
+    const problem = (name: string, mode: string, findNpm?: () => Promise<string | undefined>) => install(name, mode, findNpm).then(() => assert.fail('installed'), (error: ConnectorUnavailable) => {
+      assert.ok(error instanceof ConnectorUnavailable); return [error.problem, error.detail];
+    });
+    assert.deepEqual(await problem('none', 'ok', async () => undefined), ['npm_missing', `npm was not found next to ${process.execPath} or on PATH`]);
+    const [offline, detail] = await problem('offline', 'offline'); assert.equal(offline, 'install_failed'); assert.match(detail, /ECONNREFUSED/);
+    assert.equal((await problem('wrong', 'wrong'))[0], 'start_failed');
+    const binary = await install('ok', 'ok'); assert.match(binary, /vela$/);
+    // A data directory that cannot be written is an installation failure, not a connector that fails to start.
+    await writeFile(path.join(store.directory, 'blocked'), '');
+    assert.equal((await installConnector(path.join(store.directory, 'blocked', 'runtime'), { findNpm: async () => npm }).catch((error: ConnectorUnavailable) => error.problem)), 'install_failed');
+    // An existing working installation is reused without running npm again.
+    assert.equal(await install('ok', 'offline'), binary);
+    assert.equal(await readFile(path.join(store.directory, 'ok', 'npm-calls'), 'utf8'), 'x');
+  });
+});
+
 test('cancelling account authorization cannot register a provider from a late completion', t => fixture(async store => {
   await chmod(binary, 0o755); const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());
   await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
@@ -393,7 +458,9 @@ test('sign-in failures are classified by the stage reached and logged without ac
   assert.deepEqual(created.attempt?.stages, ['attempt_started:started', 'device_auth_create_result:failed:network_error']); assert.equal(created.attempt?.exitCode, 1);
   const missing = await attempt('', { binary: path.join(store.directory, 'missing-connector'), authorize: false });
   assert.equal(missing.errorCode, 'connector_unavailable');
-  assert.match(missing.error ?? '', /npm install -g @powerformer\/vela-cli@0\.1\.10/);
+  assert.equal(missing.error, "The OpenDesign sign-in component set by OPENMOTION_ACCOUNT_CLI couldn't start. Check or clear that path, then select Retry.");
+  // An explicit connector path is used as is, so the private-directory command would not help it.
+  assert.equal(missing.connectorInstall, undefined);
   const denied = await attempt('login-denied');
   assert.equal(denied.errorCode, 'authorization_expired'); assert.equal(denied.attempt?.stages.at(-1), 'device_authorization_result:failed:oauth_denied');
   assert.equal((await attempt('', { authorize: false, authorizationMs: 300 })).errorCode, 'authorization_expired');
@@ -412,6 +479,8 @@ test('sign-in failures are classified by the stage reached and logged without ac
   assert.equal(persisted.errorCode, 'setup_failed'); assert.equal(persisted.attempt?.stages.at(-1), 'credential_persist_result:failed:credential_persist_error');
   assert.equal(persisted.attempt?.persisted, false);
   assert.equal(logs.length, 9);
+  // The local log keeps why the connector was unavailable for support.
+  assert.match(logs.join('\n'), /"connectorProblem":"start_failed","connectorDetail":"spawn [^"]*missing-connector ENOENT"/);
   assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id|private upstream/);
 }));
 
@@ -608,11 +677,67 @@ test('production billing uses the authenticated summary and preserves HTTP refus
   });
   const summary = await account.summary(true);
   assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.3456');
+  response = Response.json({ membershipTier: 'free', balanceUsd: '0.00', totalAvailableCreditsUsd: '5.50' });
+  const credited = await account.summary(true);
+  assert.equal(credited.plan, 'free'); assert.equal(credited.balance, '5.50');
   response = Response.json({ error: 'workspace_billing_scope_locked' }, { status: 403 });
   const denied = await account.summary(true);
   assert.deepEqual(denied.billingError, { status: 403, code: 'workspace_billing_scope_locked' });
   assert.equal(denied.balance, undefined);
 }));
+
+test('the subscription page opens in the system browser through a one-time account intent, falling back to the plain page', t => fixture(async store => {
+  const account = new OpenDesignAccount(store.directory);
+  await mkdir(account.home, { recursive: true });
+  await writeFile(path.join(store.directory, 'account/session.json'), JSON.stringify({ id: 'test-session' }));
+  const profile = { apiUrl: 'https://amr-api.open-design.ai', user: { id: 'test' }, controlKey: 'test-control', controlKeyId: 'test-id', runtimeKey: 'test-runtime' };
+  await writeFile(path.join(account.home, 'config.json'), JSON.stringify({ profiles: { prod: profile } }));
+  const targets: string[] = [];
+  let response: () => Response = () => Response.json({ intentId: 'intent_1-a', expiresAt: '2026-11-20T00:10:00.000Z' });
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    assert.equal(url, 'https://amr-api.open-design.ai/api/v1/auth/intents');
+    assert.equal(init.method, 'POST'); assert.equal(init.redirect, 'error');
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer test-control');
+    targets.push(JSON.parse(String(init.body)).target);
+    return response();
+  });
+  const opened: string[] = [];
+  const launch = async (url: string) => { opened.push(url); };
+  assert.deepEqual(await account.openSubscription(launch), { url: 'https://open-design.ai/cloud/login?intentId=intent_1-a', opened: true });
+  assert.deepEqual(opened, ['https://open-design.ai/cloud/login?intentId=intent_1-a']);
+  const target = new URL(targets[0], 'https://open-design.ai'), params = target.searchParams;
+  assert.equal(target.pathname, '/dashboard');
+  assert.deepEqual([...params.keys()].sort(), ['billing', 'od_entry_at', 'od_entry_id', 'od_entry_source', 'od_origin']);
+  assert.equal(params.get('billing'), 'plan'); assert.equal(params.get('od_origin'), 'openmotion');
+  assert.equal(params.get('od_entry_source'), 'openmotion_manage_subscription');
+  assert.match(params.get('od_entry_id')!, /^[0-9a-f-]{36}$/); assert.equal(new Date(params.get('od_entry_at')!).toISOString(), params.get('od_entry_at'));
+  // Each open carries a fresh entry; a refused or malformed intent still opens the plain page.
+  for (const refusal of [() => Response.json({ error: 'unauthorized' }, { status: 401 }), () => Response.json({ intentId: '../evil' }), () => { throw new TypeError('offline'); }]) {
+    response = refusal;
+    const result = await account.openSubscription(launch);
+    assert.equal(new URL(result.url).origin + new URL(result.url).pathname, 'https://open-design.ai/cloud/dashboard');
+    assert.equal(new URL(result.url).searchParams.get('od_origin'), 'openmotion'); assert.equal(result.opened, true);
+  }
+  assert.equal(new Set(targets.map(value => new URL(value, 'https://x.test').searchParams.get('od_entry_id'))).size, targets.length);
+  // A launcher failure hands the link back to Studio.
+  response = () => Response.json({ intentId: 'intent-2' });
+  assert.deepEqual(await account.openSubscription(async () => { throw new Error('no browser'); }), { url: 'https://open-design.ai/cloud/login?intentId=intent-2', opened: false });
+  // Signed out (or another connector environment): no intent request, the plain page opens.
+  await writeFile(path.join(account.home, 'config.json'), JSON.stringify({ profiles: { prod: { ...profile, apiUrl: 'https://amr-api.example.test' } } }));
+  const calls = targets.length;
+  assert.match((await account.openSubscription(launch)).url, /^https:\/\/open-design\.ai\/cloud\/dashboard\?billing=plan&/);
+  await rm(path.join(store.directory, 'account/session.json'));
+  await writeFile(path.join(account.home, 'config.json'), JSON.stringify({ profiles: { prod: profile } }));
+  assert.match((await account.openSubscription(launch)).url, /^https:\/\/open-design\.ai\/cloud\/dashboard\?/);
+  assert.equal(targets.length, calls);
+}));
+
+test('the subscription launcher uses the system default browser on each platform', () => {
+  const url = 'https://open-design.ai/cloud/login?intentId=a&b=c';
+  assert.deepEqual(systemBrowserCommand(url, 'darwin'), { command: '/usr/bin/open', args: [url] });
+  assert.deepEqual(systemBrowserCommand(url, 'win32'), { command: 'rundll32.exe', args: ['url.dll,FileProtocolHandler', url] });
+  assert.deepEqual(systemBrowserCommand(url, 'linux'), { command: 'xdg-open', args: [url] });
+});
 
 test('billing reads an empty tier as Free, keeps the session on refusal and asks to sign in again on a rejected key', t => fixture(async store => {
   await chmod(binary, 0o755);
@@ -784,8 +909,8 @@ test('media inspection refreshes advisory billing without disabling account mode
   for (const [mode, entitlement, plan, hasBalance] of [
     ['billing-free', 'not-included', 'free', false], ['billing-go', 'not-included', 'go', false],
     ['billing-plus', 'included', 'plus', undefined], ['', 'included', 'pro', undefined],
-    ['billing-topup', 'unknown', 'free', true], ['billing-malformed', 'unknown', 'free', undefined],
-    ['billing-missing', 'unknown', 'go', undefined], ['billing-403', 'unknown', undefined, undefined],
+    ['billing-topup', 'not-included', 'free', true], ['billing-malformed', 'not-included', 'free', undefined],
+    ['billing-missing', 'not-included', 'go', undefined], ['billing-403', 'unknown', undefined, undefined],
     ['billing-failure', 'unknown', undefined, undefined],
   ] as const) {
     await writeFile(path.join(account.home, 'fixture-mode'), mode);

@@ -85,6 +85,17 @@ export const workflowRegistry = {
       opendesign: 'skills/openmotion-media/references/providers/opendesign.md',
       atlascloud: 'skills/openmotion-media/references/providers/atlascloud.md',
       wavespeed: 'skills/openmotion-media/references/providers/wavespeed.md',
+      codex: 'skills/openmotion-media/references/providers/codex.md',
+    },
+  },
+  design: {
+    status: 'ready',
+    sections: {
+      start: 'skills/openmotion-design/SKILL.md',
+      scenarios: 'skills/openmotion-design/references/scenarios.md',
+      iterate: 'skills/openmotion-design/references/iterate.md',
+      export: 'skills/openmotion-design/references/export.md',
+      systems: 'skills/openmotion-design/references/systems.md',
     },
   },
 } as const;
@@ -93,9 +104,9 @@ export const workflowRegistry = {
 export const workflowFiles = workflowRegistry.production.sections;
 export const workflowNames = Object.keys(workflowRegistry);
 export const workflowSections = [...new Set(Object.values(workflowRegistry).flatMap(workflow => Object.keys(workflow.sections)))];
-export const phase1WorkflowNames = ['production', 'director', 'template', 'recreate', 'video-to-template', 'media'];
+export const phase1WorkflowNames = ['production', 'director', 'template', 'recreate', 'video-to-template', 'media', 'design'];
 export const phase1Skills = ['openmotion-production', 'openmotion-director', 'openmotion-template-to-video', 'openmotion-recreate', 'openmotion-video-to-template'];
-export const supportingSkills = ['openmotion-media'];
+export const supportingSkills = ['openmotion-media', 'openmotion-design'];
 export const packagedSkills = [...phase1Skills, ...supportingSkills];
 export function workflowResources() {
   return Object.entries(workflowRegistry).filter(([name]) => phase1WorkflowNames.includes(name)).flatMap(([workflow, definition]) => Object.keys(definition.sections).map(section => ({

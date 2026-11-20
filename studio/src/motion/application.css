@@ -1,9 +1,7 @@
 /* Application geometry; all presentation primitives come from the design system. */
-.om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: var(--motion-space-56) minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
+.om-application { --om-project-navigation-width: 200px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); height: 100%; width: 100%; min-height: 0; overflow: hidden; }
 .om-app-header { container-type: inline-size; grid-column: 1 / -1; display: flex; align-items: center; gap: var(--motion-space-16); padding: 0 var(--motion-space-8); min-width: 0; }
-.om-application[data-navigation-collapsed="true"] { grid-template-columns: 0px minmax(0, 1fr); }
-.om-application > .motion-workspace { grid-column: 2; width: auto; height: auto; margin: 0 var(--motion-space-4) var(--motion-space-4) 0; }
-.om-application[data-navigation-collapsed="true"] > .motion-workspace { margin-left: var(--motion-space-4); }
+.om-application > .motion-workspace { grid-column: 1; width: auto; height: auto; margin: 0 var(--motion-space-4) var(--motion-space-4); }
 .om-app-brand { display: flex; align-items: center; gap: var(--motion-space-8); flex: 0 0 auto; }
 .om-app-brand .motion-brand-lockup { height: var(--motion-space-16); }
 @container (width > 700px) {
@@ -33,7 +31,11 @@
 .om-app-header-actions { display: flex; align-items: center; gap: var(--motion-space-8); flex-shrink: 0; margin-left: auto; }
 [data-motion-studio] .om-app-header-actions .om-header-icon { width: var(--motion-control-sm); padding-inline: 0; justify-content: center; }
 .om-app-header-links { display: flex; align-items: center; gap: var(--motion-space-8); }
-.om-app-rail { grid-column: 1; grid-row: 2; }
+.motion-sidebar-utilities { display: flex; align-items: center; justify-content: flex-start; gap: var(--motion-space-12); padding-top: var(--motion-space-12); }
+.motion-sidebar-footer > .om-nav-item { padding-inline: var(--motion-space-4); }
+.motion-session-heading-actions { display: flex; align-items: center; gap: var(--motion-space-4); }
+.motion-project-navigation-trigger { display: inline-flex; flex-shrink: 0; }
+.motion-project-navigation-trigger[hidden] { display: none; }
 .om-account-trigger .om-avatar { width: 28px; height: 28px; border-radius: var(--motion-radius-full); }
 .om-account-menu { width: 258px; max-width: calc(100vw - 24px); }
 .om-application .motion-workspace { min-width: 0; }
@@ -61,12 +63,12 @@
   padding-inline: 0;
 }
 .om-application .motion-session-dot { display: none; }
-.om-application .motion-sidebar-footer { border-top: 1px solid var(--motion-border-subtle); }
 .om-settings-center { --om-settings-nav-width: clamp(216px, 18vw, 248px); display: flex; flex: 1; min-width: 0; min-height: 0; }
 .om-settings-navigation-slot { flex: 0 0 var(--om-settings-nav-width); min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
 .om-settings-navigation-clip { min-width: 0; min-height: 0; overflow: hidden; }
 .om-settings-navigation { width: var(--om-settings-nav-width); height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-12) var(--motion-space-8); border-right: 1px solid var(--motion-border-subtle); }
-.om-settings-navigation > h1 { padding: var(--motion-space-4) var(--motion-space-10); }
+.om-settings-heading { display: flex; align-items: center; gap: var(--motion-space-4); }
+.om-settings-heading > h1:first-child { padding: var(--motion-space-4) var(--motion-space-10); }
 .om-settings-navigation > .om-field { margin: 0 var(--motion-space-2); }
 .om-settings-mobile-navigation { display: none; }
 .om-settings-sections { display: flex; flex-direction: column; gap: var(--motion-space-4); overflow: auto; min-height: 0; }
@@ -78,7 +80,7 @@
 .om-settings-row { display: flex; align-items: center; justify-content: space-between; gap: var(--motion-space-16); min-width: 0; }
 .om-settings-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8); }
 .om-settings-section { display: grid; gap: var(--motion-space-16); }
-.om-settings-section > a { justify-self: start; }
+.om-settings-section > .om-button { justify-self: start; }
 .om-settings-loading { padding: var(--motion-space-40); display: grid; align-content: start; gap: var(--motion-space-24); width: 100%; }
 .om-provider-settings { display: flex; width: 100%; height: 100%; min-height: 0; min-width: 0; }
 .om-provider-list { flex: 0 0 clamp(228px, 19vw, 268px); display: flex; flex-direction: column; gap: var(--motion-space-8); min-height: 0; min-width: 0; padding: var(--motion-space-12) var(--motion-space-8); border-right: 1px solid var(--motion-border-subtle); }
@@ -101,6 +103,8 @@
 .om-provider-form .om-settings-row > .om-muted { max-width: 65%; font-size: var(--motion-text-sm); }
 .om-text-link { display: inline-flex; align-items: center; gap: var(--motion-space-4); color: var(--motion-accent); font-size: var(--motion-text-md); text-decoration: none; }
 .om-text-link:hover { text-decoration: underline; }
+.om-workspace-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-4); min-height: var(--motion-control-sm); font-size: var(--motion-text-md); }
+.om-workspace-breadcrumb > svg { flex: none; }
 .om-model-section { display: grid; gap: var(--motion-space-16); border-top: 1px solid var(--motion-border-subtle); padding-top: var(--motion-space-24); }
 .om-model-filters { display: flex; align-items: center; gap: var(--motion-space-8); }
 .om-model-filters .om-field { flex: 1; min-width: 0; }
@@ -159,9 +163,9 @@
   .om-settings-center { flex-direction: column; }
   .om-settings-navigation-slot { flex: 0 0 auto; }
   .om-settings-navigation { width: auto; height: auto; padding: var(--motion-space-6); border-right: 0; border-bottom: 1px solid var(--motion-border-subtle); }
-  .om-settings-navigation > h1, .om-settings-navigation > .om-field, .om-settings-sections .om-eyebrow { display: none; }
+  .om-settings-heading > h1, .om-settings-navigation > .om-field, .om-settings-sections .om-eyebrow { display: none; }
   .om-settings-sections { display: none; }
-  .om-settings-mobile-navigation { display: block; }
+  .om-settings-mobile-navigation { display: block; flex: 1; min-width: 0; }
   .om-settings-main { min-height: 0; }
   .om-provider-list { flex-basis: 200px; }
 }
@@ -267,9 +271,9 @@
   .om-explore-link > svg { display: block; }
   [data-motion-studio] .om-explore-link { width: var(--motion-control-sm); padding-inline: 0; justify-content: center; }
 }
-.om-nav-more-panel { width: min(380px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 70dvh); overflow: auto; }
+.om-nav-more-panel { width: min(460px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 70dvh); overflow: auto; }
 .om-nav-more-tools { display: flex; flex-wrap: wrap; gap: var(--motion-space-4); padding-bottom: var(--motion-space-8); margin-bottom: var(--motion-space-8); border-bottom: 1px solid var(--motion-border); }
-.om-nav-more-studios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(168px, 100%), 1fr)); gap: var(--motion-space-4); }
+.om-nav-more-studios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(208px, 100%), 1fr)); gap: var(--motion-space-4); }
 .om-nav-more-studios .om-nav-item { width: 100%; text-align: start; white-space: nowrap; }
 [data-theme="paper"] .om-nav-more-studios .om-nav-item { color: var(--motion-strong); }
 .om-creative-split { display: flex; align-items: center; }
@@ -494,12 +498,14 @@
   60% { opacity: .95; transform: scale(1); }
   68%, 100% { opacity: 0; transform: scale(1.42); }
 }
-.om-media-menu-models { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-8); margin-top: var(--motion-space-12); padding-top: var(--motion-space-8); border-top: 1px solid var(--motion-border-subtle); }
-.om-media-menu-models [role="img"] { display: inline-flex; border-radius: var(--motion-radius-md); }
-.om-media-menu-model-label { color: var(--motion-muted); font-size: var(--motion-text-xs); }
-.om-media-menu-models [role="img"]:focus-visible { outline: 1px solid var(--motion-focus); }
-[data-motion-studio] .om-media-menu-models .om-avatar { width: var(--motion-space-32); height: var(--motion-space-32); border: 1px solid var(--motion-border-subtle); }
+.om-media-menu-models { display: flex; flex-direction: column; gap: var(--motion-space-6); width: 0; min-width: 100%; margin-top: var(--motion-space-12); padding-top: var(--motion-space-10); border-top: 1px solid var(--motion-border-subtle); }
+.om-media-menu-model-label { color: var(--motion-muted); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-medium); padding-inline: var(--motion-space-8); }
+.om-media-menu-model-list { display: flex; flex-direction: column; gap: var(--motion-space-2); max-height: min(280px, 36dvh); overflow-y: auto; overscroll-behavior: contain; }
+[data-motion-studio] .om-media-menu-model { width: 100%; justify-content: flex-start; gap: var(--motion-space-10); min-height: var(--motion-space-32); padding: var(--motion-space-6) var(--motion-space-8); font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
+.om-media-menu-model-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-motion-studio] .om-media-menu-models .om-avatar { width: var(--motion-space-24); height: var(--motion-space-24); flex: none; border: 1px solid var(--motion-border-subtle); }
 .om-page-back-row { padding: var(--motion-space-12); }
+.om-studio-back, .om-back-to-explore { flex: none; }
 .om-creative-client-menu { width: min(420px, calc(100vw - var(--motion-space-24))); max-height: min(var(--available-height), 72dvh); overflow: auto; }
 .om-creative-client-menu h2 { margin: 0; padding: var(--motion-space-4) var(--motion-space-8) var(--motion-space-12); color: var(--motion-strong); font-size: var(--motion-text-heading); font-weight: var(--motion-weight-semibold); }
 [data-motion-studio] :is(.om-mcp-client-grid, .om-mcp-client-tabs) .om-mcp-generic-icon { background: var(--motion-brand-surface); color: var(--motion-neutral-n7); border-color: color-mix(in srgb, var(--motion-border) 55%, transparent); }

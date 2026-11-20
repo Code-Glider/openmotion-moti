@@ -6,7 +6,8 @@ export { providerSetupEntries, type ProviderSetupEntry };
 
 export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_list_skills', 'motion_get_skill', 'motion_create_project', 'motion_open_preview',
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
-  'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
+  'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project',
+  'motion_design_catalog', 'motion_design_project', 'motion_design_edit', 'motion_design_comments'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
 export const mcpToolNames = [...toolNames, 'motion_show_video', 'motion_show_template_recommendations'] as const;
 const tool = { tool_name: mcpToolNames, ...toolDimensions, call_id: 'uuid', operation_id: 'uuid', accepted: 'boolean' } as const;
@@ -14,6 +15,7 @@ export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'o
   'openmotion_create_project', 'openmotion_open_preview', 'openmotion_import_assets', 'openmotion_get_project',
   'openmotion_edit_project', 'openmotion_export_request', 'openmotion_list_versions', 'openmotion_restore_version',
   'openmotion_export_cancel', 'openmotion_project_archive', 'openmotion_manage_project',
+  'openmotion_design_catalog', 'openmotion_design_project', 'openmotion_design_edit', 'openmotion_design_comments',
   'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
   'openmotion_studio_frame', 'openmotion_studio_inspect'] as const;
 const webMcp = { tool_name: webMcpToolNames, transport: ['webmcp'] } as const;
@@ -113,7 +115,8 @@ export const omEvents = {
   // protocol; only confirmed account IDs are allowed, never links, authorization codes or credentials.
   account_sign_in_result: { producers: ['mcp'], fields: { attempt_id: 'uuid', outcome: ['success', 'failure', 'cancelled', 'replaced'],
     source_product: ['openmotion'], source_detail: ['openmotion_editor_login'], entry_id: 'uuid', entry_occurred_at: 'timestamp', amr_user_id: 'code',
-    error_code: ['connector_unavailable', 'setup_failed', 'authorization_expired', 'credentials_rejected'], connector_version: 'code', resumed: 'boolean',
+    error_code: ['connector_unavailable', 'setup_failed', 'authorization_expired', 'credentials_rejected'],
+    connector_problem: ['npm_missing', 'install_failed', 'start_failed'], connector_version: 'code', resumed: 'boolean',
     last_stage: accountStages, last_result: ['started', 'success', 'failed'], error_kind: accountErrorKinds, browser_opened: 'boolean',
     receipt: ['accepted', 'rejected'], exit_code: 'integer', duration_ms: 'integer', prepare_ms: 'integer', link_ms: 'integer', approved_ms: 'integer' },
     required: ['attempt_id', 'outcome', 'connector_version', 'resumed', 'duration_ms'] },

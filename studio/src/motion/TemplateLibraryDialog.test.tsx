@@ -83,10 +83,10 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   expect(banner.querySelector('h1')?.textContent).toBe('Black Friday');
   expect(button('Back to Explore', banner)).toBeTruthy();
   expect(banner.querySelectorAll('button')).toHaveLength(1);
-  expect(cards()).toHaveLength(10);
+  expect(cards()).toHaveLength(59);
   const galleries = host.querySelectorAll('[data-black-friday] .om-gallery-masonry');
   expect(galleries).toHaveLength(1);
-  expect(galleries[0].querySelectorAll(':scope > .om-gallery-card')).toHaveLength(10);
+  expect(galleries[0].querySelectorAll(':scope > .om-gallery-card')).toHaveLength(59);
   expect(galleries[0].querySelector('.om-gallery-avatar')).toBeNull();
   expect(galleries[0].querySelector('.om-gallery-card-caption small')?.textContent).toBe('Zzz_Futurist');
   expect([...host.querySelectorAll('[data-black-friday] h2')].map(heading => heading.textContent)).toEqual(['Black Friday templates']);
@@ -98,14 +98,14 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   expect(host.querySelector('header .om-gallery-page-label, header .om-gallery-header-actions')).toBeNull();
   const all = button('All', filters);
   expect(filters.querySelector('button[aria-pressed="true"]')).toBe(all);
-  for (const [label, count] of [['Before the sale', 2], ['Sale launch', 6], ['Cyber Monday and last call', 2]] as const) {
+  for (const [label, count] of [['Before the sale', 5], ['Sale launch', 48], ['Cyber Monday and last call', 6]] as const) {
     const stage = button(label, filters);
     await act(async () => stage.click());
     expect([...filters.querySelectorAll('button[aria-pressed="true"]')]).toEqual([stage]);
     expect(cards()).toHaveLength(count);
   }
   await act(async () => all.click());
-  expect(cards()).toHaveLength(10);
+  expect(cards()).toHaveLength(59);
   const playback = observer();
   const visibleCards = playback.elements.slice(0, 2);
   act(() => playback.emit(1, visibleCards));
@@ -119,7 +119,7 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   await act(async () => button('Next template', detail).click());
   expect(current()).toBe('Agentcard | Black-and-Gold Type and Card Launch');
   await act(async () => button('Next template', detail).click());
-  expect(current()).toBe('Black Friday | Text-led SaaS Promotion');
+  expect(current()).toBe('Black Friday | Adobe — Illustrated A Monogram');
   await act(async () => button('Close template preview', detail).click());
   await act(async () => button('Back to Explore').click());
   expect(onClose).toHaveBeenCalledOnce();
@@ -144,7 +144,7 @@ it('omits the project return in both the template library and Black Friday detai
 it('keeps the search in the header and preserves filters when clearing the keyword', async () => {
   await mount();
   expect(host.querySelectorAll('input[type=search]')).toHaveLength(1);
-  expect(searchInput().closest('header')?.querySelector('a[href*="github.com"]')).not.toBeNull();
+  expect(searchInput().closest('header')?.querySelector('a[href*="github.com"]')).toBeNull();
   await act(async () => button('Brand & company films').click());
   await search('not-here');
   await confirmSearch();

@@ -43,6 +43,10 @@
 .om-asset-composer { width: 460px; max-width: 48%; flex: none; display: flex; flex-direction: column; min-height: 0; padding: var(--motion-space-20); gap: var(--motion-space-12); overflow: hidden; }
 .om-asset-direct { flex: 1; display: flex; flex-direction: column; gap: var(--motion-space-12); overflow-y: auto; min-height: 0; padding: var(--motion-space-4); margin: calc(var(--motion-space-4) * -1); }
 .om-asset-direct > * { flex-shrink: 0; }
+/* Keep task details and parameters reachable when the inspector stacks below the preview. */
+.om-asset-direct-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-4); margin: calc(var(--motion-space-4) * -1); }
+.om-asset-direct-scroll > .om-asset-direct { flex: none; overflow: visible; }
+.om-asset-direct-scroll > .om-asset-current-job { max-height: none; overflow: visible; }
 .om-asset-current-job { flex: none; max-height: 220px; overflow-y: auto; }
 .om-asset-direct > .om-button { width: 100%; }
 .om-asset-model-skeleton { height: var(--motion-control); }
@@ -281,9 +285,11 @@
 .om-creative-workspace .om-studio-bar { padding-inline-start: var(--motion-space-12); }
 .om-studio-heading-icon { display: inline-flex; flex: none; color: var(--creation-color); }
 .om-studio-bar h1 { display: inline-flex; align-items: center; gap: var(--motion-space-8); }
+.om-creative-workspace > .om-workspace-breadcrumb { flex: none; padding: var(--motion-space-4) var(--motion-space-24) 0; }
 .om-studio-library-link { margin-inline-start: auto; }
 @container asset-workspace (max-width: 680px) {
   .om-studio-bar { padding: var(--motion-space-8) var(--motion-space-16); }
+  .om-creative-workspace > .om-workspace-breadcrumb { padding-inline: var(--motion-space-16); }
 }
 @container asset-workspace (max-width: 480px) {
   .om-studio-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--motion-space-8); }
@@ -338,7 +344,7 @@
   align-items: end; gap: var(--motion-space-8);
   width: 100%; max-width: none; padding: 0; background: transparent; border: 0; overflow: visible;
 }
-.om-canvas-dock :is(.om-asset-direct, .om-creation-submit) { display: contents; }
+.om-canvas-dock :is(.om-asset-direct-scroll, .om-asset-direct, .om-creation-submit) { display: contents; }
 .om-canvas-dock .om-creation-prompt { grid-area: prompt; min-width: 0; }
 [data-motion-studio] .om-canvas-dock .om-creation-prompt textarea { min-height: 46px; height: 46px; }
 .om-canvas-dock .om-creation-model { grid-area: models; min-width: 0; }
@@ -391,3 +397,13 @@
   [data-motion-studio] .om-canvas-dock .om-creation-prompt { gap: var(--motion-space-4); padding: var(--motion-space-8); }
   [data-motion-studio] .om-canvas-dock .om-creation-prompt textarea { min-height: var(--motion-control); height: var(--motion-control); }
 }
+
+/* Sound Studio landing: the technique-studio banner and template grid, with audio previews. */
+.om-audio-landing { display: grid; gap: var(--motion-space-32); container-type: inline-size; }
+.om-audio-card .om-gallery-poster img { opacity: 1; }
+.om-audio-card[data-current="true"] .om-gallery-cover { outline: 2px solid var(--motion-accent); outline-offset: 2px; }
+.om-audio-card-prompt { display: grid; justify-items: start; gap: var(--motion-space-8); padding-block-start: var(--motion-space-12); }
+.om-audio-card-prompt p { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.om-audio-card-prompt p span { display: block; color: var(--motion-text); font-weight: var(--motion-weight-medium); }
+
+.om-audio-card .om-gallery-card-top { opacity: 1; }

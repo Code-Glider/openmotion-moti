@@ -33,6 +33,8 @@ export type DirectoryModel = ModelMetadata & {
   enabled: boolean; source: 'builtin' | 'live' | 'custom'; mode?: string;
   /** Accepts one input image to edit; set only from the provider's own capability data. */
   supportsImageReference?: boolean;
+  /** Provider-published native options (durations, resolutions, ratios, quality, sizes, profiles). */
+  nativeOptions?: Record<string, unknown>;
 };
 export type ProviderDirectory = {
   providers: ProviderConnection[]; models: DirectoryModel[];
@@ -57,5 +59,7 @@ export type AccountSummary = {
   /** Service rejection behind `billingUnavailable`, when the connector reported one. */
   billingError?: { status: number; code?: string };
   error?: string; errorCode?: AccountErrorCode; attempt?: AccountAttempt;
+  /** After `connector_unavailable`: the terminal command that installs the sign-in component where this service looks for it. */
+  connectorInstall?: { command: string };
   consoleUrl: string;
 };
