@@ -167,6 +167,49 @@ test('Design Studio uses the same navigation styles and overflow controls across
   });
 });
 
+test('Design Studio dismisses mention suggestions on an outside press', { timeout: 60_000 }, async () => {
+  await fixture(async store => {
+    const running = await startServer(store, 0, { editor: true });
+    const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.evaluateOnNewDocument(() => {
+        localStorage.setItem('hf-studio-ui-preferences', JSON.stringify({ theme: 'system' }));
+      });
+      const origin = (await running.info()).previewUrl;
+      const input = '.om-design-bottom-input';
+      const menu = '.om-design-mention-menu';
+      const filter = '.om-design-page-with-dock input[type="search"]';
+      const prompt = `${menu} [data-kind="prompt"]`;
+      const draft = 'Make a mobile app @';
+
+      for (const [theme, width] of [['dark', 1400], ['light', 480]] as const) {
+        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: theme }]);
+        await page.setViewport({ width, height: 900 });
+        await page.goto(new URL('/?page=design&scene=mobile-app', origin).href, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector(input, { visible: true });
+        await page.type(input, draft);
+        await page.waitForSelector(menu, { visible: true });
+
+        await page.click(filter);
+        await page.waitForSelector(menu, { hidden: true, timeout: 2500 });
+        assert.equal(await page.$eval(input, field => (field as HTMLTextAreaElement).value), draft);
+        assert.equal(await page.$eval(filter, field => field === document.activeElement), true);
+
+        await page.focus(input);
+        await page.keyboard.press('End');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.type('@');
+        const firstPrompt = await page.waitForSelector(prompt, { visible: true });
+        const label = await firstPrompt!.$eval('.om-design-mention-label', element => element.textContent);
+        await firstPrompt!.click();
+        await page.waitForSelector(menu, { hidden: true });
+        assert.equal(await page.$eval(input, field => (field as HTMLTextAreaElement).value), `Make a mobile app ${label} `);
+      }
+    } finally { await browser.close(); await running.close(); }
+  });
+});
+
 test('Studio controls fit their resizable generator and timeline panes', { timeout: 60_000 }, async () => {
   await fixture(async store => {
     const gateway = gatewayFor(store);

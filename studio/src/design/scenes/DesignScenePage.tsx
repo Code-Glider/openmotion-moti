@@ -72,8 +72,21 @@ export function DesignScenePage({
 
   // @ mention autocomplete state
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mentionMenuRef = useRef<HTMLDivElement>(null);
   const [mention, setMention] = useState<{ start: number; end: number; query: string } | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
+  const mentionActive = mention !== null;
+
+  useEffect(() => {
+    if (!mentionActive) return;
+    const dismissOutside = (event: PointerEvent) => {
+      const menu = mentionMenuRef.current;
+      if (menu && event.composedPath().includes(menu)) return;
+      setMention(null);
+    };
+    document.addEventListener('pointerdown', dismissOutside, true);
+    return () => document.removeEventListener('pointerdown', dismissOutside, true);
+  }, [mentionActive]);
 
   useEffect(() => {
     setPlaceholderIndex(0);
@@ -425,7 +438,7 @@ export function DesignScenePage({
           <div className="om-design-bottom-dock-wrap">
             <div className="om-design-composer om-design-bottom-composer" style={{ position: 'relative', overflow: 'visible' }}>
               {mention && mentionOptions.length > 0 && (
-                <div className="om-design-popover om-design-mention-menu om-design-mention-up" role="listbox" aria-label={t('Mention template or skill')}>
+                <div ref={mentionMenuRef} className="om-design-popover om-design-mention-menu om-design-mention-up" role="listbox" aria-label={t('Mention template or skill')}>
                   {mentionOptions.map((opt, idx) => (
                     <Button
                       key={opt.id}
