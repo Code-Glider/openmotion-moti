@@ -27,10 +27,13 @@ export function TemplateIdentity({ template, brand = false, favicon = false }: {
   const [loadedUrl, setLoadedUrl] = useState<string>();
   const candidates = favicon ? [template.brandLogoUrl] : [!brand && template.authorAvatarUrl, template.brandLogoUrl, brandLogos[template.brand ?? '']];
   const url = candidates.find((candidate): candidate is string => Boolean(candidate) && !failedUrls.includes(candidate as string));
-  return <span className="om-gallery-avatar" data-favicon={favicon || undefined} aria-hidden="true">{name.slice(0, 1).toUpperCase()}{url
-    && (favicon ? <BrandArtworkImage src={url} alt="" style={{ opacity: loadedUrl === url ? 1 : 0 }}
+  const loadingFavicon = Boolean(favicon && url && loadedUrl !== url);
+  return <span className="om-gallery-avatar" data-favicon={favicon || undefined} data-loading={loadingFavicon || undefined} aria-hidden="true">
+    {loadingFavicon ? <Skeleton className="om-gallery-avatar-skeleton" /> : (!favicon || !url) ? name.slice(0, 1).toUpperCase() : null}
+    {url && (favicon ? <BrandArtworkImage src={url} channel="favicon" alt="" style={{ opacity: loadedUrl === url ? 1 : 0 }}
         onLoad={() => setLoadedUrl(url)} onError={() => setFailedUrls(previous => [...previous, url])} />
-      : <img src={url} alt="" loading="lazy" onError={() => setFailedUrls(previous => [...previous, url])} />)}</span>;
+      : <img src={url} alt="" loading="lazy" onError={() => setFailedUrls(previous => [...previous, url])} />)}
+  </span>;
 }
 
 /** A separate anchor keeps website navigation independent from opening the preview. */
@@ -48,11 +51,13 @@ export function TemplateSourceLink({ template, className }: { template: GalleryT
 export function TemplatePoster({ template, eager = false, coverUrl, onCoverAspect }: { template: Pick<GalleryTemplate, 'posterUrl' | 'title'>; eager?: boolean; coverUrl?: string; onCoverAspect?: (aspect: number | undefined) => void }) {
   const [loaded, setLoaded] = useState(false), [failed, setFailed] = useState(false);
   const [loadedCover, setLoadedCover] = useState<string>(), [failedCover, setFailedCover] = useState<string>();
-  return <div className="om-gallery-poster" data-loaded={loaded}>
-    {!loaded && !failed && template.posterUrl && <Skeleton className="om-gallery-poster-skeleton" animated={false} />}
-    {(!template.posterUrl || failed) && <div className="om-gallery-poster-fallback"><MotionIcon name="film" size={26} /><span>{template.title}</span></div>}
-    {template.posterUrl && !failed && <img src={template.posterUrl} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
-    {coverUrl && coverUrl !== failedCover && <BrandArtworkImage className="om-gallery-poster-cover" src={coverUrl} alt="" onLoad={event => { setLoadedCover(coverUrl); const image = event.currentTarget; if (image.naturalWidth && image.naturalHeight) onCoverAspect?.(image.naturalWidth / image.naturalHeight); }} onError={() => { setFailedCover(coverUrl); onCoverAspect?.(undefined); }} style={{ opacity: loadedCover === coverUrl ? 1 : 0 }} />}
+  const usingCover = Boolean(coverUrl && coverUrl !== failedCover);
+  const coverLoaded = Boolean(usingCover && loadedCover === coverUrl);
+  return <div className="om-gallery-poster" data-loaded={usingCover ? coverLoaded : loaded}>
+    {usingCover ? (!coverLoaded && <Skeleton className="om-gallery-poster-skeleton" />) : (!loaded && !failed && template.posterUrl && <Skeleton className="om-gallery-poster-skeleton" animated={false} />)}
+    {!usingCover && (!template.posterUrl || failed) && <div className="om-gallery-poster-fallback"><MotionIcon name="film" size={26} /><span>{template.title}</span></div>}
+    {!usingCover && template.posterUrl && !failed && <img src={template.posterUrl} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
+    {usingCover && coverUrl && <BrandArtworkImage className="om-gallery-poster-cover" channel="cover" src={coverUrl} alt="" onLoad={event => { setLoadedCover(coverUrl); const image = event.currentTarget; if (image.naturalWidth && image.naturalHeight) onCoverAspect?.(image.naturalWidth / image.naturalHeight); }} onError={() => { setFailedCover(coverUrl); onCoverAspect?.(undefined); }} style={{ opacity: coverLoaded ? 1 : 0 }} />}
   </div>;
 }
 
@@ -95,12 +100,13 @@ export const TemplateGalleryCard = memo(function TemplateGalleryCard({
   const brandName = brandCredit ? template.brand?.trim() : undefined;
   const credit = template.authorName || template.author || template.brand;
   const linkedSource = resourceKind === 'brand-kit' && Boolean(template.sourceUrl);
+  const fixedAspect = resourceKind === 'brand-kit';
   return <article className="om-gallery-card" data-template-id={template.id} data-playback-id={template.previewUrl ? playbackId : undefined} data-has-video={Boolean(template.previewUrl || animatedPreview)} data-website-cover={Boolean(coverUrl)}>
     <div className="om-gallery-card-media">
-    <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: Math.max(0.8, Math.min(1.9, coverAspect || templateAspect(template))) }} onClick={event => onSelect(template, event.currentTarget)}
+    <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: fixedAspect ? templateAspect(template) : Math.max(0.8, Math.min(1.9, coverAspect || templateAspect(template))) }} onClick={event => onSelect(template, event.currentTarget)}
       onMouseEnter={() => onPriority(playbackId ?? template.id)} onMouseLeave={() => onPriority(null)} onFocus={() => onPriority(playbackId ?? template.id)} onBlur={() => onPriority(null)}
       aria-label={t(resourceKind === 'brand-kit' ? 'Preview Brand Kit {title}' : 'Preview template {title}', { title: template.title })}>
-      <TemplatePoster key={template.posterUrl} template={template} coverUrl={coverUrl} onCoverAspect={setCoverAspect} />
+      <TemplatePoster key={template.posterUrl} template={template} coverUrl={coverUrl} onCoverAspect={fixedAspect ? undefined : setCoverAspect} />
       {template.previewUrl && <video ref={video} muted playsInline loop preload="none" aria-hidden="true" onPlaying={() => setPlaying(true)} onError={() => { setFailed(true); setPlaying(false); }} style={{ opacity: active && playing ? 1 : 0 }} />}
       {animatedPreview && active && animate && <iframe className="om-gallery-animation" src={animatedPreview} loading="lazy" sandbox="allow-scripts" title={template.title} tabIndex={-1} aria-hidden="true" />}
       <span className="om-gallery-card-shade" />

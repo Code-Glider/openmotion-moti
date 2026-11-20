@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { brandKitsFor } from "./brand-kits.ts";
 import { brandCatalogRoot, catalogEntry, catalogPoster, catalogShowcase, catalogStyleCover, readBrandCatalog } from './brand-catalog.ts';
 import { brandCoversFor } from './brand-cover.ts';
+import { brandCatalogArtworkUrl } from '../shared/brand-catalog.ts';
 import { brandKitWebsite } from '../shared/brand-kit.ts';
 
 export async function brandKitHttp(
@@ -43,13 +44,14 @@ export async function brandKitHttp(
       if (req.method !== 'GET' || action === 'import') return json(405, { error: 'Unsupported Brand Kit operation' });
       const entry = await catalogEntry(id);
       if (action === 'style-cover.svg') return sendCover(catalogStyleCover(entry), 'image/svg+xml');
+      const artworkUrl = brandCatalogArtworkUrl(entry);
       if (action === 'favicon') {
-        const icon = entry.websiteUrl ? await brandCoversFor(directory).favicon(entry.websiteUrl, entry.coverPage) : undefined;
+        const icon = artworkUrl ? await brandCoversFor(directory).favicon(artworkUrl, entry.websiteUrl ? entry.coverPage : undefined) : undefined;
         return icon ? sendCover(icon.body, icon.mime) : json(404, { error: 'Brand favicon is unavailable' });
       }
       if (action === 'cover') {
-        const cover = entry.websiteUrl ? await brandCoversFor(directory).get(entry.websiteUrl, undefined, entry.coverPage) : undefined;
-        return cover ? sendCover(cover.body, cover.mime) : sendCover(catalogStyleCover(entry), 'image/svg+xml', entry.websiteUrl ? 60 : 3600);
+        const cover = artworkUrl ? await brandCoversFor(directory).get(artworkUrl, entry.coverImage, entry.websiteUrl ? entry.coverPage : undefined) : undefined;
+        return cover ? sendCover(cover.body, cover.mime) : sendCover(catalogStyleCover(entry), 'image/svg+xml', artworkUrl ? 60 : 3600);
       }
       if (action !== 'showcase') return sendCover(catalogPoster(entry), 'image/svg+xml');
       // The viewer remains opaque-origin. Authorize only the scripts generated here.
@@ -72,8 +74,10 @@ export async function brandKitHttp(
       const entry = kit.catalogId ? await catalogEntry(kit.catalogId).catch(() => undefined) : undefined;
       // Imported style fixtures have GitHub provenance, not a brand website.
       const website = brandKitWebsite(kit);
+      const artworkUrl = website || entry?.sourceUrl || kit.url;
+      const coverPage = website ? entry?.coverPage : undefined;
       if (coverRoute[2] === 'favicon') {
-        const icon = website ? await brandCoversFor(directory).favicon(website, entry?.coverPage) : undefined;
+        const icon = artworkUrl ? await brandCoversFor(directory).favicon(artworkUrl, coverPage) : undefined;
         if (icon) return sendCover(icon.body, icon.mime);
         if (kit.logo) {
           const captured = await library.file(kit.id, 'assets/logo.png').then(readFile).catch(() => undefined);
@@ -81,9 +85,9 @@ export async function brandKitHttp(
         }
         return json(404, { error: 'Brand favicon is unavailable' });
       }
-      const cover = website ? await brandCoversFor(directory).get(website, kit.sample?.tokens?.ogImage, entry?.coverPage) : undefined;
+      const cover = artworkUrl ? await brandCoversFor(directory).get(artworkUrl, kit.sample?.tokens?.ogImage || entry?.coverImage, coverPage) : undefined;
       if (cover) return sendCover(cover.body, cover.mime);
-      if (entry) return sendCover(catalogStyleCover(kit.sample ? { ...entry, name: kit.name, sample: kit.sample } : entry), 'image/svg+xml', website ? 60 : 3600);
+      if (entry) return sendCover(catalogStyleCover(kit.sample ? { ...entry, name: kit.name, sample: kit.sample } : entry), 'image/svg+xml', artworkUrl ? 60 : 3600);
       if (!kit.catalogId) {
         const screenshot = await library.file(kit.id, 'website.png').then(readFile).catch(() => undefined);
         if (screenshot) return sendCover(screenshot, 'image/png', 60);

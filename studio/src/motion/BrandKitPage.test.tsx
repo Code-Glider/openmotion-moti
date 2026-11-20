@@ -450,7 +450,7 @@ it('opens extraction in the detail layout and returns to its source collection',
   expect(galleryCards()).toHaveLength(3);
 });
 
-it('keeps website covers visible until hover and falls back to the poster on image failure', async () => {
+it('shows loading skeletons before website covers load, keeps fixed geometry and falls back to the poster on image failure', async () => {
   records = [{ ...kit, poster: true, preview: true }];
   let intersect!: IntersectionObserverCallback;
   vi.stubGlobal('IntersectionObserver', class {
@@ -466,13 +466,22 @@ it('keeps website covers visible until hover and falls back to the poster on ima
   const card = page().querySelector<HTMLElement>('[data-template-id]')!;
   await act(async () => intersect([{ target: card, isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry], {} as IntersectionObserver));
   const cover = card.querySelector<HTMLImageElement>('.om-gallery-poster-cover')!;
+  const initialAspect = card.querySelector('button')?.style.aspectRatio;
   expect(cover.getAttribute('data-artwork-src')).toContain(`/brand-kits/${kit.id}/cover`);
+  expect(card.querySelector('.om-gallery-poster-skeleton')).toBeTruthy();
+  expect(card.querySelectorAll('.om-gallery-poster img')).toHaveLength(1);
+  expect(card.querySelector('.om-gallery-avatar-skeleton')).toBeTruthy();
+  expect(card.querySelector('.om-gallery-avatar')?.textContent).toBe('');
   expect(card.querySelector('video[src]')).toBeNull();
   Object.defineProperty(cover, 'naturalWidth', { value: 600 });
   Object.defineProperty(cover, 'naturalHeight', { value: 600 });
   await act(async () => cover.dispatchEvent(new Event('load')));
   expect(cover.style.opacity).toBe('1');
-  expect(card.querySelector('button')?.style.aspectRatio).toBe('1 / 1');
+  expect(card.querySelector('.om-gallery-poster-skeleton')).toBeNull();
+  expect(card.querySelector('button')?.style.aspectRatio).toBe(initialAspect);
+  const avatarImg = card.querySelector<HTMLImageElement>('.om-gallery-avatar img')!;
+  await act(async () => avatarImg.dispatchEvent(new Event('load')));
+  expect(card.querySelector('.om-gallery-avatar-skeleton')).toBeNull();
   await act(async () => card.querySelector('button')!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
   expect(card.querySelector('video')?.getAttribute('src')).toContain('/files/preview.mp4');
   await act(async () => card.querySelector('button')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })));
@@ -480,4 +489,16 @@ it('keeps website covers visible until hover and falls back to the poster on ima
   await act(async () => cover.dispatchEvent(new Event('error')));
   expect(card.querySelector('.om-gallery-poster-cover')).toBeNull();
   expect(card.querySelector('.om-gallery-poster img')?.getAttribute('src')).toContain('/files/poster.png');
+});
+
+it('requests both favicon and cover artwork for every official catalogue card, including source-only entries', async () => {
+  serveCatalog();
+  await act(async () => root.render(<Harness selected="official" />));
+  const cards = [...page().querySelectorAll<HTMLElement>('[data-template-id]')];
+  expect(cards).toHaveLength(3);
+  for (const card of cards) {
+    const id = card.getAttribute('data-template-id')!;
+    expect(card.querySelector('.om-gallery-poster-cover')?.getAttribute('data-artwork-src')).toContain(`/brand-kits/catalog/${id}/cover`);
+    expect(card.querySelector('.om-gallery-avatar img')?.getAttribute('data-artwork-src')).toContain(`/brand-kits/catalog/${id}/favicon`);
+  }
 });
