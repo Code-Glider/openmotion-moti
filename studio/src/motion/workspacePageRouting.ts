@@ -1,6 +1,7 @@
 import { findTemplateCollection, type TemplateCollection } from './templateCollections';
 import { skillCategories, type SkillCategory } from './skillCategories';
 import { blackFridaySkillIds } from '../../../shared/black-friday-collection';
+import { isDesignScenario, type DesignScenarioId } from '../../../shared/design-project';
 import { workspacePageName } from '../../../shared/workspace-url';
 import { mcpClients, type McpClient } from './mcpClients';
 import { exploreCommunities, findLandingScene, findMediaStudio, findTechniqueStudio, type ExploreCommunity, type TechniqueStudio, type StudioScene } from '../../../shared/studio-catalog';
@@ -11,15 +12,20 @@ export const settingsSections = ['account', 'subscription', 'providers', 'models
 export type SettingsSection = typeof settingsSections[number];
 export type ExploreFilters = { community: ExploreCommunity['id'] | null; medium: StudioScene['modality'] | null };
 export { findTemplateCollection, type TemplateCollection } from './templateCollections';
-export type WorkspacePage = ExploreFilters & { motion: boolean; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; mcpExample?: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
+export type DesignSceneTarget = DesignScenarioId | 'projects';
+export type WorkspacePage = ExploreFilters & { motion: boolean; designScene?: DesignSceneTarget | null; designProject?: string | null; specialty: TechniqueStudio | null; assetId: string | null; assetVersion: string | null; explore: boolean; studio: StudioDestination | null; settings: SettingsSection | null; assets: boolean; skills: boolean; skillCategory: SkillCategory | null; skill: string | null; templates: boolean; templateCollection: TemplateCollection | null; modelOverview: string | null; modelHub: string | null; creators: boolean; creator: string | null; mcpExample?: string | null; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null; brandKit: string | null };
 
 export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
   const query = new URLSearchParams(search), page = workspacePageName(query, hash), section = query.get('section');
   const settings = page === 'brand-kit' ? 'brand-kit' : page === 'mcp' ? 'mcp' : page === 'settings'
     ? settingsSections.find(value => value === section) ?? 'general' : null;
   const sceneId = query.get('scene'), model = query.get('model') || null;
+  const rawDesignProject = page === 'design' ? query.get('designProject') || null : null;
+  const isDesignHtmlScene = page === 'design' && (isDesignScenario(sceneId) || sceneId === 'projects' || Boolean(rawDesignProject));
+  const designScene: DesignSceneTarget | null = isDesignHtmlScene ? (isDesignScenario(sceneId) ? sceneId : 'projects') : null;
+  const designProject = isDesignHtmlScene ? rawDesignProject : null;
   const collection = findTechniqueStudio(page);
-  const studioKind = collection?.scenes.some(id => id === sceneId) ? collection : findMediaStudio(page);
+  const studioKind = collection?.scenes.some(id => id === sceneId) ? collection : (isDesignHtmlScene ? undefined : findMediaStudio(page));
   const landing = page === 'create' && findLandingScene(sceneId);
   const studio = landing ? sceneDestination(landing, null, model) : studioKind ? studioDestination(studioKind, sceneId, model) : null;
   const specialty = studio ? null : collection ?? null;
@@ -31,7 +37,7 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
   const templateCollection = templates && !creators ? findTemplateCollection(query.get('collection')) : null;
   const selectedSkill = templateCollection === 'black-friday' ? blackFridaySkillIds.find(id => id === skill) ?? null
     : page === 'skills' || collection?.techniques.some(id => id === skill) ? skill : null;
-  return { motion: page === 'motion', modelOverview: page === 'model' ? model : null, modelHub: page === 'model-hub' ? query.get('hub') || null : null, creators, creator: creators ? query.get('creator')?.trim() || null : null, specialty, community, medium, assetId: page === 'assets' ? query.get('asset') || null : null,
+  return { motion: page === 'motion', ...(designScene ? { designScene } : {}), ...(designProject ? { designProject } : {}), modelOverview: page === 'model' ? model : null, modelHub: page === 'model-hub' ? query.get('hub') || null : null, creators, creator: creators ? query.get('creator')?.trim() || null : null, specialty, community, medium, assetId: page === 'assets' ? query.get('asset') || null : null,
     assetVersion: page === 'assets' && query.get('asset') ? query.get('version') || null : null, explore: page === 'explore', studio, settings, brandKit: settings === 'brand-kit' ? query.get('kit') || null : null, assets: page === 'assets', skills: page === 'skills', skillCategory: page === 'skills' ? skillCategories.find(value => value === query.get('skillCategory')) ?? null : null, skill: selectedSkill, templates, templateCollection,
     mcpExample: settings === 'mcp' ? query.get('example') : null,
     client: mcpClients.find(value => value.id === query.get('host'))?.id ?? 'codex',
@@ -43,18 +49,20 @@ export function readWorkspacePage(search: string, hash = ''): WorkspacePage {
 export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): string {
   const url = new URL(href), current = readWorkspacePage(url.search, url.hash), page = { ...current, ...patch };
   const currentSearchPage = url.searchParams.get('page');
-  for (const key of ['page', 'section', 'templates', 'host', 'setup', 'provider', 'template', 'skill', 'skillCategory', 'kit', 'community', 'medium', 'collection', 'hub']) url.searchParams.delete(key);
+  for (const key of ['page', 'section', 'templates', 'host', 'setup', 'provider', 'template', 'skill', 'skillCategory', 'kit', 'community', 'medium', 'collection', 'hub', 'designProject']) url.searchParams.delete(key);
   if (current.settings === 'mcp' || page.settings === 'mcp') url.searchParams.delete('example');
   if (currentSearchPage === 'api') url.searchParams.delete('tool');
   if (current.creators || page.creators) { url.searchParams.delete('view'); url.searchParams.delete('creator'); }
   if (current.assets || page.assets) { url.searchParams.delete('asset'); url.searchParams.delete('version'); }
-  if (current.studio || current.specialty || page.studio || currentSearchPage === 'create' || currentSearchPage === 'model') {
+  if (current.studio || current.specialty || current.designScene || page.studio || page.designScene || currentSearchPage === 'create' || currentSearchPage === 'model') {
     url.searchParams.delete('scene');
     url.searchParams.delete('model');
   }
   // A primary destination replaces its peers. Overlay and detail patches retain their parent.
-  if (['explore', 'motion', 'studio', 'modelOverview', 'modelHub', 'specialty', 'assets', 'skills', 'settings'].some(key => key in patch)) {
+  if (['explore', 'motion', 'designScene', 'studio', 'modelOverview', 'modelHub', 'specialty', 'assets', 'skills', 'settings'].some(key => key in patch)) {
     page.motion = Boolean(patch.motion);
+    page.designScene = patch.designScene ?? null;
+    page.designProject = patch.designScene ? (patch.designProject ?? null) : null;
     page.explore = Boolean(patch.explore);
     page.studio = patch.studio ?? null;
     page.modelOverview = patch.modelOverview ?? null;
@@ -70,6 +78,10 @@ export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): 
     url.searchParams.set('page', 'explore');
   } else if (page.motion) {
     url.searchParams.set('page', 'motion');
+  } else if (page.designScene) {
+    url.searchParams.set('page', 'design');
+    url.searchParams.set('scene', page.designScene);
+    if (page.designProject) url.searchParams.set('designProject', page.designProject);
   } else if (page.modelOverview) {
     url.searchParams.set('page', 'model');
     url.searchParams.set('model', page.modelOverview);
