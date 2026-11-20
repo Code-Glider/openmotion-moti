@@ -213,7 +213,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
           if (!group) continue;
           const wi = group.segmentIds.indexOf(segId);
           if (wi < 0) continue;
-          const wordEl = getWordEl(iframe, gi, wi);
+          const wordEl = getWordEl(iframe, gi, wi, m);
           if (!wordEl) continue;
           const wrapper = getOrCreateWrapper(wordEl);
           const state = readGsapTransform(wrapper, win);
@@ -256,7 +256,8 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const iframe = iframeRef.current;
       if (!iframe) return;
-      const wordEl = getWordEl(iframe, groupIndex, wordIndex);
+      const liveModel = modelRef.current;
+      const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
@@ -283,7 +284,8 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const iframe = iframeRef.current;
       if (!iframe) return;
-      const wordEl = getWordEl(iframe, groupIndex, wordIndex);
+      const liveModel = modelRef.current;
+      const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
       const rect = wordEl.getBoundingClientRect();
@@ -316,7 +318,8 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const iframe = iframeRef.current;
       if (!iframe) return;
-      const wordEl = getWordEl(iframe, box.groupIndex, box.wordIndex);
+      const liveModel = modelRef.current;
+      const wordEl = liveModel ? getWordEl(iframe, box.groupIndex, box.wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
@@ -420,7 +423,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               top: box.y,
               width: box.width,
               height: box.height,
-              cursor: isSelected ? "move" : "pointer",
+              cursor: isSelected && box.editable ? "move" : "pointer",
               touchAction: "none",
               borderRadius: 2,
             }}
@@ -429,10 +432,10 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
               selectSegment(box.segmentId, e.shiftKey);
             }}
             onPointerDown={(e) => {
-              if (isSelected) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
+              if (isSelected && box.editable) startMove(box.groupIndex, box.wordIndex, box.segmentId, e);
             }}
           >
-            {isSelected && (
+            {isSelected && box.editable && (
               <>
                 {/* Rotation handle — 24px hit area around an 8px dot */}
                 <div
