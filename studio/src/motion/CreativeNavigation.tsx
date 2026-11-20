@@ -60,14 +60,10 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
           ) : scene.id === 'shot-image' ? (
             <span className="om-scene-tile-art om-media-demo om-shot-demo" aria-hidden="true">
               <span className="om-media-demo-frame">
-                <img src={lunarStill} alt="" />
-                <svg className="om-shot-sketch" viewBox="0 0 160 90" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" focusable="false">
-                  <path opacity=".4" d="M0 21 35 18 66 18 98 15 160 10 M10 58l12-1m36-10 7-1m68 12 10-1m-99 6 5-1" />
-                  <path fill="currentColor" opacity=".22" stroke="none" d="m91 74-27 16H48l41-17zm24 1L89 90H74l37-17z" />
-                  <path d="m87 26 4-7m19-1 5 4 3 11-3 7-6-1 M88 21l-4 5-2 18 3 2 3-2 3-14 M88 45l1 12-2 15 5 2 7-19 4 2 5 15 6-1-3-20-3-8 M87 71l-4 4 1 2h8l1-5m15 0 1 4 10-1-1-3-5-2 M91 25l-3 19q10 5 20 1l2-18 M91 28l9 4 10-4m-13 6-1 6 8 1 1-6z" />
-                  <path d="M87 12q0-8 9-8h5q8 1 8 9v4q-1 7-10 8-11 0-12-9z M91 12q1-5 9-5 6 0 6 6t-6 8q-8 0-9-6z" />
-                </svg>
-                <span className="om-shot-viewfinder" />
+                <span className="om-shot-composition">
+                  <img src={lunarStill} alt="" />
+                  <span className="om-shot-viewfinder" />
+                </span>
               </span>
             </span>
           ) : (

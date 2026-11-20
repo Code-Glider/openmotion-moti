@@ -332,24 +332,28 @@
   initial-value: 100%;
 }
 .om-edit-demo .om-media-demo-frame img { object-fit: cover; }
-.om-shot-sketch {
+.om-shot-demo {
+  --shot-window: .87;
+  --shot-anchor: 74% 16%;
+}
+.om-shot-composition, .om-shot-viewfinder {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--motion-overlay-ink);
-  stroke-width: 1.1;
-  opacity: 0;
+  transform-origin: var(--shot-anchor);
 }
 .om-shot-viewfinder {
+  opacity: 0;
+  box-shadow: 0 0 0 100cqw var(--motion-video-overlay);
+}
+.om-shot-viewfinder::after {
+  content: "";
   position: absolute;
-  inset: 8%;
+  inset: 0;
   border: 1px solid var(--motion-overlay-ink);
   --corner: linear-gradient(currentColor, currentColor);
   mask: var(--corner) top left, var(--corner) top right, var(--corner) bottom left, var(--corner) bottom right;
   mask-size: 7cqw 7cqw;
   mask-repeat: no-repeat;
-  opacity: 0;
 }
 @media (prefers-reduced-motion: no-preference) {
   .om-edit-demo .om-media-demo-frame { animation: om-edit-sweep 5.6s ease-in-out infinite; }
@@ -365,27 +369,23 @@
     box-shadow: 0 0 2px var(--motion-video-overlay);
   }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo { --shot-timing: 3s ease-in-out both; }
-  .om-scene-tile:is(:hover, :focus-visible) .om-shot-demo img { animation: om-shot-photo var(--shot-timing); }
-  .om-scene-tile:is(:hover, :focus-visible) .om-shot-sketch { animation: om-shot-sketch var(--shot-timing); }
+  .om-scene-tile:is(:hover, :focus-visible) .om-shot-composition { animation: om-shot-compose var(--shot-timing); }
   .om-scene-tile:is(:hover, :focus-visible) .om-shot-viewfinder { animation: om-shot-frame var(--shot-timing); }
 }
 @keyframes om-edit-sweep {
   0%, 16%, 100% { --om-edit-edge: 0%; }
   47%, 69% { --om-edit-edge: 100%; }
 }
-@keyframes om-shot-photo {
-  0%, 78%, 100% { opacity: 1; }
-  8%, 46% { opacity: 0; }
-}
-@keyframes om-shot-sketch {
-  0%, 5%, 58%, 100% { opacity: 0; }
-  14%, 45% { opacity: 1; }
+/* Enlarge the chosen window around the same anchor so its edges fill the preview. */
+@keyframes om-shot-compose {
+  0%, 53% { transform: scale(1); }
+  78%, 100% { transform: scale(calc(1 / var(--shot-window))); }
 }
 @keyframes om-shot-frame {
-  0%, 100% { opacity: 0; }
-  0%, 45% { transform: scale(1.09); }
-  12%, 72% { opacity: 1; }
-  82%, 100% { opacity: 0; transform: scale(1); }
+  0% { opacity: 0; transform: scale(.98); }
+  10% { opacity: 1; transform: scale(.98); }
+  44%, 64% { opacity: 1; transform: scale(var(--shot-window)); }
+  78%, 100% { opacity: 0; transform: scale(var(--shot-window)); }
 }
 .om-image-demo-input {
   position: absolute;

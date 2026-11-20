@@ -411,7 +411,7 @@ it('opens a Cinema still from Explore and restores its studio when changing hist
   await click('Explore');
   expect(page().explore).toBe(true);
   await click('Image · Scenes');
-  await click('Shot still');
+  await click('Generate a shot reference');
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image', modality: 'image' } });
   expect(container.querySelector('.om-studio-bar h1')?.textContent).toBe('Cinema Studio');
   await click('Image to video');
@@ -780,8 +780,8 @@ it('lists each primary destination once in order, with only three scene choices 
   const menu = document.querySelector('.om-creative-menu')!;
   expect(menu.querySelector('h2')).toBeNull();
   expect(menu.querySelectorAll('button:has(.om-scene-tile-art img)')).toHaveLength(3);
-  expect([...menu.querySelectorAll('button')].map(node => node.querySelector('strong')?.textContent)).toEqual(['Text to image', 'Image editing', 'Shot still']);
-  const still = [...menu.querySelectorAll('button')].find(node => node.querySelector('strong')?.textContent === 'Shot still')!;
+  expect([...menu.querySelectorAll('button')].map(node => node.querySelector('strong')?.textContent)).toEqual(['Text to image', 'Image editing', 'Generate a shot reference']);
+  const still = [...menu.querySelectorAll('button')].find(node => node.querySelector('strong')?.textContent === 'Generate a shot reference')!;
   await act(async () => still.click());
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'shot-image' } });
 });
@@ -806,7 +806,7 @@ it('retains the active model and scene on same-modality entry and switches a Cin
   history.replaceState(null, '', firstUrl.replace('#', '&page=create&scene=speech&model=voice%3Anarrator#'));
   await mount(); await click('Audio');
   expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech' }, model: 'voice:narrator' });
-  await click('Cinema Studio'); await click('Shot still');
+  await click('Cinema Studio'); await click('Generate a shot reference');
   await click('Video');
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'text-to-video' }, model: null });
 });
