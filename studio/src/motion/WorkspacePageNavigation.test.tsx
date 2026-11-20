@@ -561,7 +561,7 @@ it('shows every Studio in Discover and opens the selected example or technique',
   await traverse(-1);
   await select('.om-studio-collection[data-studio="design"] [data-scene="image-edit"]');
   expect(page().studio).toMatchObject({ studio: { id: 'design' }, scene: { id: 'image-edit' } });
-  expect(container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value).toContain('Keep the product and its lettering');
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Asset draft"]')?.value).toContain('Keep the speaker in place');
   await traverse(-1);
   await select('.om-studio-collection[data-studio="marketing"] .om-scene-tile');
   expect(page()).toMatchObject({ specialty: { id: 'marketing' }, skill: 'openmotion-flat-lay-product' });

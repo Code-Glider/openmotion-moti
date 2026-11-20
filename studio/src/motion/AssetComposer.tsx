@@ -106,7 +106,7 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
 
   return <aside className="om-asset-composer om-creation-surface" data-active={active} data-mode={mode} aria-label={t('Create asset')}>
     {scene ? <header className={canvas ? "om-sr-only" : "om-studio-form-heading"} data-landing={studio?.destination.landing}>
-      {!canvas && scene.modality !== 'video' && <img src={studioExamples(studio!.destination)[0].poster} alt="" />}
+      {!canvas && scene.modality === 'image' && <img src={studioExamples(studio!.destination)[0].poster} alt="" />}
       {!studio?.destination.landing && <h2 className="om-title">{t(scene.label)}</h2>}
       <p className="om-muted">{t(scene.hint)}</p>
     </header> : <header className="om-task-toolbar">

@@ -11,6 +11,7 @@ import { mcpClients, supportsLocalConnection, type McpClient } from './mcpClient
 import { useMediaCatalog } from './useMediaCatalog';
 import { Tooltip } from '../components/ui/Tooltip';
 import { ModelAvatar } from './settingsPrimitives';
+import speakerStudio from './scene-art/speaker-studio.webp';
 import { sceneExamples } from './sceneShowcase';
 import { destinationTarget, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
 
@@ -52,7 +53,7 @@ function MediaChoices({ kind, destination, onNavigate, catalog }: Pick<CreativeN
             <span className="om-scene-tile-art om-edit-demo" aria-hidden="true">
               <img src={example.poster} alt="" />
               <span className="om-edit-demo-before">
-                <img src={example.poster} alt="" />
+                <img src={speakerStudio} alt="" />
                 <small>{t('Before')}</small>
               </span>
               <small className="om-edit-demo-after">{t('After')}</small>

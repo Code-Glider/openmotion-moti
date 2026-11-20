@@ -303,7 +303,6 @@
   .om-media-menu-grid button:hover .om-scene-tile-art:not(.om-image-demo, .om-edit-demo) img { transform: scale(1.04); }
 }
 .om-edit-demo-before { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); }
-.om-edit-demo-before img { filter: grayscale(1); }
 .om-edit-demo small {
   position: absolute; bottom: var(--motion-space-6); left: var(--motion-space-6);
   padding: var(--motion-space-2) var(--motion-space-6); border-radius: var(--motion-radius-full);
