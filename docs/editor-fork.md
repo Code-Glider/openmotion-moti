@@ -99,7 +99,6 @@ The application shell reads its destination from the URL query. The native edito
 | Scene landing page | `page=create&scene=image-edit` opens the focused generator. The optional `model` identifies the provider and model. |
 | Creative studio | `page=design`, `page=cinema`, or `page=sound` with a `scene` and optional provider-qualified `model`. For example, `page=cinema&scene=shot-image` opens an image composer inside Cinema. |
 | Asset workspace | `page=assets` opens the shared asset library independently of the retained project |
-| API | `page=api` lists models and registered tools. `tool=openmotion_media_use` opens its input schema. |
 | MCP onboarding | `page=mcp&host=codex`; `setup=manual` opens manual configuration |
 | Settings | `page=settings&section=general` |
 | Provider detail | `page=settings&section=providers&provider=openai` |

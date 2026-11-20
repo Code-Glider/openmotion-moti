@@ -480,11 +480,6 @@ it('opens a Cinema still from Explore and restores its studio when changing hist
   const client = clients.find(button => button.textContent === 'Claude Code')!;
   await act(async () => client.click());
   expect(page()).toMatchObject({ explore: false, settings: 'mcp', client: 'claude' });
-  expect(container.querySelector('.om-creative-strip a')?.getAttribute('href')).toContain('page=api');
-  await act(async () => container.querySelector<HTMLAnchorElement>('.om-creative-strip a')!.click());
-  await click('openmotion_media_use');
-  expect(location.search).toContain('tool=openmotion_media_use');
-  expect(container.querySelector('.om-code-block')?.textContent).toContain('modality');
 });
 
 it('reports Explore once per arrival and its spotlight, index links and top navigation as catalogue ids', async () => {
@@ -953,7 +948,7 @@ it('lists each primary destination once in order, with only three scene choices 
   await mount();
   const nav = container.querySelector('.om-app-header nav.om-creative-navigation')!;
   const destinations = [...nav.querySelectorAll('button:not([aria-expanded]),a')].map(node => node.getAttribute('aria-label') ?? node.textContent?.trim());
-  expect(destinations).toEqual(['Explore', 'Image', 'Video', 'Audio', 'MCP', 'API', 'Design Studio', 'Motion Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
+  expect(destinations).toEqual(['Explore', 'Image', 'Video', 'Audio', 'MCP', 'Design Studio', 'Motion Studio', 'Cinema Studio', 'Sound Studio', 'Shorts Studio', 'Marketing Studio', 'Explainer Studio', '3D Studio']);
   const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node =>
     [node.getAttribute('aria-label'), document.getElementById(node.getAttribute('aria-describedby')!)?.textContent]);
   expect(badges).toEqual([['Design Studio', 'New'], ['Motion Studio', 'Top'], ['Cinema Studio', 'Hot'], ['3D Studio', 'Coming soon']]);
@@ -971,7 +966,7 @@ it('localizes every top navigation Studio label in Chinese while keeping English
   await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><MotionApp /></I18nProvider>));
   const nav = container.querySelector('.om-app-header nav.om-creative-navigation')!;
   const destinations = [...nav.querySelectorAll('button:not([aria-expanded]),a')].map(node => node.getAttribute('aria-label') ?? node.textContent?.trim());
-  expect(destinations).toEqual(['探索', '图片', '视频', '音频', 'MCP', 'API', '设计工作室', '动效工作室', '影视工作室', '音频工作室', '短视频工作室', '营销工作室', '讲解视频工作室', '3D 工作室']);
+  expect(destinations).toEqual(['探索', '图片', '视频', '音频', 'MCP', '设计工作室', '动效工作室', '影视工作室', '音频工作室', '短视频工作室', '营销工作室', '讲解视频工作室', '3D 工作室']);
   const badges = [...nav.querySelectorAll('button[aria-describedby]')].map(node => {
     const badge = document.getElementById(node.getAttribute('aria-describedby')!);
     return [node.getAttribute('aria-label'), badge?.textContent, badge?.getAttribute('lang')];
