@@ -71,7 +71,11 @@
     "Clear Brand Kit": "清除 Brand Kit",
     "View Brand Kit details": "查看 Brand Kit 详情",
     "View details": "查看详情",
-    "Use this Brand Kit": "使用此 Brand Kit"
+    "Use this Brand Kit": "使用此 Brand Kit",
+    "Scenario": "场景",
+    "Entry file": "入口文件",
+    "Tags": "标签",
+    "Example brief": "示例简报"
   },
   "ja": {
     "Projects": "プロジェクト",
@@ -145,7 +149,11 @@
     "Clear Brand Kit": "Brand Kitを解除",
     "View Brand Kit details": "Brand Kitの詳細を見る",
     "View details": "詳細を見る",
-    "Use this Brand Kit": "このBrand Kitを使う"
+    "Use this Brand Kit": "このBrand Kitを使う",
+    "Scenario": "シナリオ",
+    "Entry file": "エントリーファイル",
+    "Tags": "タグ",
+    "Example brief": "ブリーフ例"
   },
   "ko": {
     "Projects": "프로젝트",
@@ -219,7 +227,11 @@
     "Clear Brand Kit": "Brand Kit 해제",
     "View Brand Kit details": "Brand Kit 상세 보기",
     "View details": "상세 보기",
-    "Use this Brand Kit": "이 Brand Kit 사용"
+    "Use this Brand Kit": "이 Brand Kit 사용",
+    "Scenario": "시나리오",
+    "Entry file": "진입 파일",
+    "Tags": "태그",
+    "Example brief": "예시 브리프"
   },
   "de": {
     "Projects": "Projekte",
@@ -293,7 +305,11 @@
     "Clear Brand Kit": "Brand Kit entfernen",
     "View Brand Kit details": "Brand-Kit-Details anzeigen",
     "View details": "Details anzeigen",
-    "Use this Brand Kit": "Dieses Brand Kit verwenden"
+    "Use this Brand Kit": "Dieses Brand Kit verwenden",
+    "Scenario": "Szenario",
+    "Entry file": "Einstiegsdatei",
+    "Tags": "Tags",
+    "Example brief": "Beispiel-Briefing"
   },
   "fr": {
     "Projects": "Projets",
@@ -367,7 +383,11 @@
     "Clear Brand Kit": "Retirer le Brand Kit",
     "View Brand Kit details": "Voir les détails du Brand Kit",
     "View details": "Voir les détails",
-    "Use this Brand Kit": "Utiliser ce Brand Kit"
+    "Use this Brand Kit": "Utiliser ce Brand Kit",
+    "Scenario": "Scénario",
+    "Entry file": "Fichier d’entrée",
+    "Tags": "Étiquettes",
+    "Example brief": "Exemple de brief"
   },
   "ru": {
     "Projects": "Проекты",
@@ -441,7 +461,11 @@
     "Clear Brand Kit": "Сбросить Brand Kit",
     "View Brand Kit details": "Подробнее о Brand Kit",
     "View details": "Подробнее",
-    "Use this Brand Kit": "Использовать этот Brand Kit"
+    "Use this Brand Kit": "Использовать этот Brand Kit",
+    "Scenario": "Сценарий",
+    "Entry file": "Входной файл",
+    "Tags": "Теги",
+    "Example brief": "Пример брифа"
   },
   "es": {
     "Projects": "Proyectos",
@@ -515,7 +539,11 @@
     "Clear Brand Kit": "Quitar Brand Kit",
     "View Brand Kit details": "Ver detalles del Brand Kit",
     "View details": "Ver detalles",
-    "Use this Brand Kit": "Usar este Brand Kit"
+    "Use this Brand Kit": "Usar este Brand Kit",
+    "Scenario": "Escenario",
+    "Entry file": "Archivo de entrada",
+    "Tags": "Etiquetas",
+    "Example brief": "Brief de ejemplo"
   },
   "pt-BR": {
     "Projects": "Projetos",
@@ -589,7 +617,11 @@
     "Clear Brand Kit": "Limpar Brand Kit",
     "View Brand Kit details": "Ver detalhes do Brand Kit",
     "View details": "Ver detalhes",
-    "Use this Brand Kit": "Usar este Brand Kit"
+    "Use this Brand Kit": "Usar este Brand Kit",
+    "Scenario": "Cenário",
+    "Entry file": "Arquivo de entrada",
+    "Tags": "Tags",
+    "Example brief": "Exemplo de briefing"
   },
   "it": {
     "Projects": "Progetti",
@@ -663,7 +695,11 @@
     "Clear Brand Kit": "Rimuovi Brand Kit",
     "View Brand Kit details": "Vedi dettagli Brand Kit",
     "View details": "Vedi dettagli",
-    "Use this Brand Kit": "Usa questo Brand Kit"
+    "Use this Brand Kit": "Usa questo Brand Kit",
+    "Scenario": "Scenario",
+    "Entry file": "File di ingresso",
+    "Tags": "Tag",
+    "Example brief": "Esempio di brief"
   },
   "tr": {
     "Projects": "Projeler",
@@ -737,6 +773,10 @@
     "Clear Brand Kit": "Brand Kit temizle",
     "View Brand Kit details": "Brand Kit ayrıntılarını gör",
     "View details": "Ayrıntıları gör",
-    "Use this Brand Kit": "Bu Brand Kit’i kullan"
+    "Use this Brand Kit": "Bu Brand Kit’i kullan",
+    "Scenario": "Senaryo",
+    "Entry file": "Giriş dosyası",
+    "Tags": "Etiketler",
+    "Example brief": "Örnek özet"
   }
 }

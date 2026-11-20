@@ -4,6 +4,7 @@ import { RemixIcon } from '../../../../packages/design-system/react/RemixIcons';
 import { designScenarios, findDesignScenario, type DesignScenarioId, type DesignTemplateSummary } from '../../../../shared/design-project';
 import { useI18n } from '../../i18n/I18n';
 import { designClient } from '../designClient';
+import { DesignTemplateDetailModal } from '../DesignTemplateDetailModal';
 import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
 import type { DesignTabId } from './DesignSceneTabs';
 import '../design.css';
@@ -20,6 +21,7 @@ export function ExploreDesignSection({
 }) {
   const { t } = useI18n();
   const [templates, setTemplates] = useState<DesignTemplateSummary[]>([]);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -75,17 +77,19 @@ export function ExploreDesignSection({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <span className="om-design-muted">{t('Design templates')}</span>
           <div className="om-design-grid">
-            {templates.slice(0, 8).map(tpl => {
+            {templates.slice(0, 8).map((tpl, idx) => {
               const scen = findDesignScenario(tpl.scenario);
               return (
                 <article key={tpl.id} className="om-design-card" data-design-template={tpl.id}>
-                  <ScaledPreviewThumb
-                    src={tpl.previewUrl}
-                    title={tpl.title}
-                    badge={scen ? t(scen.label) : tpl.scenario}
-                  />
+                  <div style={{ cursor: 'pointer' }} onClick={() => setPreviewIdx(idx)}>
+                    <ScaledPreviewThumb
+                      src={tpl.previewUrl}
+                      title={tpl.title}
+                      badge={scen ? t(scen.label) : tpl.scenario}
+                    />
+                  </div>
                   <div className="om-design-card-body">
-                    <strong className="om-design-card-title">{tpl.title}</strong>
+                    <strong className="om-design-card-title" style={{ cursor: 'pointer' }} onClick={() => setPreviewIdx(idx)}>{tpl.title}</strong>
                     <p className="om-design-card-desc">{tpl.description}</p>
                     <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                       <Button type="button" size="sm" variant="primary" onClick={() => onSelectDesignScene(tpl.scenario)}>{t('Try')}</Button>
@@ -97,6 +101,17 @@ export function ExploreDesignSection({
             })}
           </div>
         </div>
+      )}
+
+      {previewIdx !== null && (
+        <DesignTemplateDetailModal
+          templates={templates.slice(0, 8)}
+          index={previewIdx}
+          onNavigate={setPreviewIdx}
+          onClose={() => setPreviewIdx(null)}
+          onRemix={tpl => { void remix(tpl); setPreviewIdx(null); }}
+          onUseWithAgent={tpl => { onSelectDesignScene(tpl.scenario); setPreviewIdx(null); }}
+        />
       )}
     </div>
   );

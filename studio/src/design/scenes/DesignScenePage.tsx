@@ -15,6 +15,7 @@ import { scenesForStudio } from '../../motion/creativeStudios';
 import { BrandKitPicker, type SelectedBrandKit } from '../BrandKitPicker';
 import { designClient } from '../designClient';
 import { DesignProjectList } from '../DesignProjectList';
+import { DesignTemplateDetailModal } from '../DesignTemplateDetailModal';
 import { ScaledPreviewThumb } from '../ScaledPreviewThumb';
 import { DesignSceneTabs, type DesignTabId } from './DesignSceneTabs';
 import '../design.css';
@@ -349,20 +350,22 @@ export function DesignScenePage({
                 <div className="om-design-grid">
                   {templates.map(tpl => (
                     <article key={tpl.id} className="om-design-card">
-                      <ScaledPreviewThumb
-                        src={tpl.previewUrl}
-                        title={tpl.title}
-                        badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
-                        topRight={
-                          <IconButton
-                            aria-label={t('Enlarge preview')}
-                            icon={<RemixIcon name="fullscreen-line" size={14} />}
-                            onClick={() => setPreviewTemplate(tpl)}
-                          />
-                        }
-                      />
+                      <div style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>
+                        <ScaledPreviewThumb
+                          src={tpl.previewUrl}
+                          title={tpl.title}
+                          badge={tpl.category !== tpl.scenario ? tpl.category : undefined}
+                          topRight={
+                            <IconButton
+                              aria-label={t('Enlarge preview')}
+                              icon={<RemixIcon name="fullscreen-line" size={14} />}
+                              onClick={e => { e.stopPropagation(); setPreviewTemplate(tpl); }}
+                            />
+                          }
+                        />
+                      </div>
                       <div className="om-design-card-body">
-                        <strong className="om-design-card-title">{tpl.title}</strong>
+                        <strong className="om-design-card-title" style={{ cursor: 'pointer' }} onClick={() => setPreviewTemplate(tpl)}>{tpl.title}</strong>
                         <p className="om-design-card-desc">{tpl.description}</p>
                         <div style={{ display: 'flex', gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
                           <Button type="button" size="sm" variant="primary" onClick={() => handleUseTemplateWithAgent(tpl)}>
@@ -391,21 +394,17 @@ export function DesignScenePage({
         )}
       </div>
 
-      {/* Template enlarge preview dialog */}
+      {/* Motion-aligned full template detail view */}
       {previewTemplate && (
-        <div role="dialog" aria-label={previewTemplate.title} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--motion-scrim)', display: 'grid', placeItems: 'center', padding: 24 }}>
-          <div style={{ width: 'min(1140px, 94vw)', height: 'min(780px, 88vh)', background: 'var(--motion-panel)', border: '1px solid var(--motion-border)', borderRadius: 'var(--motion-radius-xl)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--motion-shadow-lg)' }}>
-            <div className="om-design-header">
-              <strong>{previewTemplate.title}</strong>
-              <div className="om-design-header-group">
-                <Button type="button" size="sm" variant="primary" onClick={() => { handleUseTemplateWithAgent(previewTemplate); setPreviewTemplate(null); }}>{t('Use with Agent')}</Button>
-                <Button type="button" size="sm" variant="secondary" onClick={() => { void handleRemixTemplate(previewTemplate); setPreviewTemplate(null); }}>{t('Remix into project')}</Button>
-                <IconButton aria-label={t('Close')} icon={<RemixIcon name="close-line" size={16} />} onClick={() => setPreviewTemplate(null)} />
-              </div>
-            </div>
-            <iframe title={previewTemplate.title} src={previewTemplate.previewUrl} sandbox="allow-scripts" className="om-design-iframe" style={{ flex: 1 }} />
-          </div>
-        </div>
+        <DesignTemplateDetailModal
+          templates={templates}
+          index={Math.max(0, templates.findIndex(tItem => tItem.id === previewTemplate.id))}
+          remixing={remixingId === previewTemplate.id}
+          onNavigate={nextIdx => { const next = templates[nextIdx]; if (next) setPreviewTemplate(next); }}
+          onClose={() => setPreviewTemplate(null)}
+          onRemix={tpl => { void handleRemixTemplate(tpl); setPreviewTemplate(null); }}
+          onUseWithAgent={tpl => { handleUseTemplateWithAgent(tpl); setPreviewTemplate(null); }}
+        />
       )}
 
       <StudioToastViewport {...toast} />
