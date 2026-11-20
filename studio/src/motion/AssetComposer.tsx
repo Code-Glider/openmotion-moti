@@ -23,7 +23,7 @@ import type { StudioCreation } from './CreativeWorkspace';
 import { studioExamples, sceneLayout } from './sceneShowcase';
 import { needsImage, supportsScene } from './creativeStudios';
 
-export interface AssetDraft { modality: Modality; prompt: string; shotPreferences?: { aspect: string; duration?: number }; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
+export interface AssetDraft { modality: Modality; prompt: string; shotPreferences?: { aspect: string; duration?: number }; preferredModel?: string; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
 export function AssetComposer({ active, studio, draft, setDraft, agentReferences, setAgentReferences, jobs, mode, onMode, taskIds, history, selectingTask, onNew, onChatChanged, onChatStarted, onCancel, onView, onRetrySave, onResume, onReference, onUploadReference, onCreated, onError, onClose }: {
   active: boolean; studio?: StudioCreation; draft: AssetDraft; setDraft: Dispatch<SetStateAction<AssetDraft>>; jobs: GenerationJob[];
   agentReferences: AssetDraft['references']; setAgentReferences: (references: AssetDraft['references']) => void;
@@ -50,7 +50,8 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
   const compatible = gateway?.models.filter(model => model.modality === draft.modality && (!scene || supportsScene(model, scene))) ?? [];
   const available = compatible.filter(model => gateway?.status.providers.some(provider => provider.id === model.provider && provider.available));
   const preferred = modelId ? compatible.find(model => model.id === modelId)
-    : available.find(model => model.id === gateway?.status.routes[draft.modality]) ?? available[0] ?? (studio ? compatible[0] : undefined);
+    : available.find(model => model.modelId === draft.preferredModel)
+      ?? available.find(model => model.id === gateway?.status.routes[draft.modality]) ?? available[0] ?? (studio ? compatible[0] : undefined);
   const selected = available.find(model => model.id === preferred?.id);
   const selectedProvider = selected ? gateway?.status.providers.find(provider => provider.id === selected.provider) : undefined;
   const preferredProvider = preferred ? gateway?.status.providers.find(provider => provider.id === preferred.provider) : undefined;

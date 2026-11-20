@@ -192,6 +192,21 @@
 .om-studio-template-shelf header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--motion-space-12); }
 .om-studio-template-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--motion-space-16); }
 .om-studio-template-grid:empty { display: none; }
+.om-cinema-home .om-discovery-hero > img, .om-cinema-home [data-template-id="lunar-tracking-shot"] img { object-position: center top; }
+.om-cinema-home .om-discovery-hero-copy { padding-block: var(--motion-space-24); }
+.om-cinema-home .om-cinema-template-card {
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  color: var(--motion-strong);
+  text-align: start;
+  white-space: normal;
+}
+.om-cinema-template-card .om-design-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.om-cinema-template-card .om-design-card-body { min-width: 0; width: 100%; }
 .om-studio-template-grid > span, .om-studio-template-grid .om-gallery-card-media { aspect-ratio: 16 / 10; }
 .om-studio-template-grid .om-gallery-cover { width: 100%; height: 100%; }
 .om-studio-template-grid .om-gallery-card { margin: 0; }

@@ -459,7 +459,7 @@ it('switches studios and restores a scene through history while retaining the ed
   expect(page().designScene).toBe('deck');
   expect(button('Design deck fixture')).toBeTruthy();
   await click('Cinema Studio');
-  expect(page().studio?.scene.id).toBe('text-to-video');
+  expect(page()).toMatchObject({ cinemaLanding: true, studio: null });
   await traverse(-1);
   expect(page().designScene).toBe('deck');
   await click('Motion Studio');
@@ -660,6 +660,7 @@ it('reports Explore once per arrival and its spotlight, index links and top navi
   await traverse(-1);
   await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });
+  await act(async () => inside('.om-cinema-home', 'Text to video').click());
   await act(async () => inside('.om-studio-bar', 'Image to video').click());
   expect(clicks().at(-1)).toMatchObject({ page_name: 'creative_studio', area: 'studio_bar', element: 'scene_tab', studio_id: 'cinema', scene_id: 'image-to-video' });
   const nav = container.querySelector('.om-creative-navigation')!;
@@ -1105,6 +1106,37 @@ it('opens Black Friday from the second Explore slide and reuses the native Skill
   expect(container.querySelector('[aria-label="Video purpose"] [aria-label="Black Friday collection"]')).toBeNull();
 });
 
+it('browses Cinema templates and opens editable generation drafts without submitting', async () => {
+  const { trackMotion } = await import('./tracking');
+  await mount();
+  await click('Cinema Studio');
+  expect(page()).toMatchObject({ cinemaLanding: true, studio: null });
+  expect(container.querySelector('.om-cinema-home .om-discovery-page')?.firstElementChild?.className).toBe('om-discovery-hero');
+  const grid = container.querySelector('.om-cinema-home .om-studio-template-grid')!;
+  expect(grid.querySelectorAll('.om-design-gallery-card')).toHaveLength(5);
+  expect(grid.querySelector('[data-template-id="drink-splash-slow-motion"] .om-design-thumb-badge')?.textContent).toBe('Text to video');
+  expect(grid.querySelector('[data-template-id="product-window-light-push-in"] .om-design-thumb-badge')?.textContent).toBe('Image to video');
+  await click('Slow-motion drink splash');
+  expect(page()).toMatchObject({ cinemaTemplate: 'drink-splash-slow-motion', studio: { scene: { id: 'text-to-video' } } });
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('orange soda bottle');
+  await traverse(-1);
+  await click('Warm window light product shot');
+  expect(page()).toMatchObject({ cinemaTemplate: 'product-window-light-push-in', studio: { scene: { id: 'image-to-video' } } });
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('supplied frame');
+  await traverse(-1);
+  await click('Product light reveal');
+  expect(page()).toMatchObject({ cinemaTemplate: 'product-light-reveal', studio: { scene: { id: 'text-to-video' } } });
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('vertical product shot');
+  expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ area: 'studio_bar', element: 'try_prompt', studio_id: 'cinema', template_id: 'product-light-reveal' }));
+  await traverse(-1);
+  expect(page().cinemaLanding).toBe(true);
+  await click('Interior slow push-in');
+  expect(page()).toMatchObject({ cinemaTemplate: 'interior-first-frame', studio: { scene: { id: 'image-to-video' } } });
+  await mount(1);
+  expect(container.querySelector<HTMLInputElement>('.om-creative-workspace input')?.value).toContain('as the first frame');
+  expect(fetcher.mock.calls.some(([, options]) => options?.body && String(options.body).includes('"action":"generate"'))).toBe(false);
+});
+
 it('carries a community template brief and an audio example into the matching studio without submitting generation', async () => {
   await mount(); await click('Search workspace'); await click('Product films');
   expect(page().community).toBe('product-films');
@@ -1233,6 +1265,8 @@ it.each([
   if (studio === 'design') {
     expect(page().designScene).toBeTruthy();
     expect(page().studio).toBeNull();
+  } else if (studio === 'cinema') {
+    expect(page()).toMatchObject({ cinemaLanding: true, studio: null });
   } else {
     expect(page().studio).toMatchObject({ studio: { id: studio }, scene: { id: scene } });
     expect(page().studio?.landing).toBeUndefined();
@@ -1347,7 +1381,7 @@ it('retains the active model and scene on same-modality entry and switches a Cin
   history.replaceState(null, '', firstUrl.replace('#', '&page=create&scene=speech&model=voice%3Anarrator#'));
   await mount(); await click('Audio');
   expect(page().studio).toMatchObject({ studio: { id: 'sound' }, scene: { id: 'speech' }, model: 'voice:narrator' });
-  await click('Cinema Studio'); await click('Video first frame');
+  await click('Cinema Studio'); await click('Text to video'); await click('Video first frame');
   await click('Video');
   expect(page().studio).toMatchObject({ studio: { id: 'cinema' }, scene: { id: 'text-to-video' }, model: null });
 });

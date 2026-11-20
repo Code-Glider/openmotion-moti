@@ -87,6 +87,8 @@
     "Browse vertical videos and turn longer footage into captioned clips.": "浏览竖屏作品，把长素材剪成带字幕的短片。",
     "See how an idea becomes a visual story through data, paper animation or a narrated tutorial.": "看看如何用数据、剪纸动画或带旁白的教程把想法讲清楚。",
     "Adapt a credited template": "改编署名模板",
+    "How do I use a Cinema Studio template?": "如何使用影视工作室模板？",
+    "Open Cinema Studio and select a template. Review the prompt and available model and settings. Add a first frame if requested, then select Generate.": "打开影视工作室并选择模板。检查提示词、可用模型和参数。按需添加首帧，然后点击生成。",
     "Design Studio": "设计工作室",
     "Motion Studio": "Motion 工作室",
     "Cinema Studio": "影视工作室",

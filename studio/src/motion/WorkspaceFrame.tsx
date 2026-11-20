@@ -8,7 +8,7 @@ import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpClient } from './mcpClients';
 import { CreativeNavigation } from './CreativeNavigation';
 import { ExploreStudios } from './ExploreStudios';
-import { creativeStudios, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
+import { creativeStudios, findMediaStudio, type CreativeStudio, type TechniqueStudio } from '../../../shared/studio-catalog';
 import { DesignProjectEditor } from '../design/DesignProjectEditor';
 import { DesignScenePage } from '../design/scenes/DesignScenePage';
 import type { Modality } from '../../../shared/gateway';
@@ -19,6 +19,8 @@ import { CreativeWorkspace } from './CreativeWorkspace';
 import { AssetsPage } from './AssetsPage';
 import type { AssetDraft } from './AssetComposer';
 import type { SkillParameters } from './skillCatalog';
+import { CinemaStudioPage } from './CinemaStudioPage';
+import { findCinemaTemplate } from './cinemaTemplates';
 import { MotionStudioPage } from './MotionStudioPage';
 import { SkillsPage } from './SkillsPage';
 import { reportBlackFridayEntry } from './templateLibraryTracking';
@@ -50,7 +52,7 @@ import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { BrandKitPage } from './BrandKitPage';
 import { clickMethod, searchStarted, trackStudioClick } from './editorTracking';
-import { reportCreativePageView, type CreativePage } from './exploreTracking';
+import { reportCreativeClick, reportCreativePageView, type CreativePage } from './exploreTracking';
 
 // Settings shares the model-picker dependencies. Keep it in the loaded shell so
 // an open editor never requests a removed Settings chunk after a local rebuild.
@@ -69,12 +71,14 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const fromExplore = sourcePage?.explore && !sourcePage.templates && !sourcePage.template;
   const { settings, assets: assetsOpen, skills: skillsOpen, templates: libraryRequested } = page;
   const standaloneMcp = settings === 'mcp' && !page.mcpInSettings;
+  const cinema = findMediaStudio('cinema')!;
+  const selectedCinemaTemplate = findCinemaTemplate(page.cinemaTemplate);
   const detailOnly = Boolean(page.template) && !libraryRequested;
   const connectionsOpen = libraryRequested || detailOnly;
   const hostChrome = window.parent !== window && new URLSearchParams(location.search).get('hostChrome') === '1';
   const templatesPage = libraryRequested && !page.creators && !hostChrome;
   // Resource pages cover the editor without unmounting it.
-  const pageOpen = templatesPage || page.motion || Boolean(page.designScene) || Boolean(page.modelOverview) || Boolean(page.modelHub) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
+  const pageOpen = templatesPage || page.motion || page.cinemaLanding || Boolean(page.designScene) || Boolean(page.modelOverview) || Boolean(page.modelHub) || Boolean(page.specialty) || page.explore || assetsOpen || skillsOpen || Boolean(page.studio);
   const lastExplore = useRef({ community: page.community, medium: page.medium });
   if (page.explore) lastExplore.current = { community: page.community, medium: page.medium };
   const [exploreVisited, setExploreVisited] = useState(page.explore);
@@ -299,6 +303,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (entry.surface === 'techniques') navigatePage({ specialty: entry, skill: null, templates: false, ...lastExplore.current });
     else if (entry.surface === 'editor') navigatePage({ motion: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
     else if (entry.id === 'design' && !kind) navigatePage({ designScene: defaultDesignScene, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
+    else if (entry.id === 'cinema' && !kind) navigatePage({ cinemaLanding: true, templates: false, ...lastExplore.current }, false, fromPage ? 'from-page' : undefined);
     else if (!kind && hasStudioHome(entry)) openStudio({ ...studioDestination(entry, page.studio?.studio.id === entry.id ? page.studio.scene.id : null), home: true }, undefined, fromPage);
     else if (page.studio?.studio.id === entry.id && (!kind || page.studio.scene.modality === kind)) {
       openStudio(studioDestination(entry, page.studio.scene.id, page.studio.model), undefined, fromPage);
@@ -312,22 +317,22 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   // Count arrivals to template and discovery pages. Media forms report their own scene views.
   const routeView = templatesPage ? null : page.explore ? 'explore' : page.motion ? 'motion'
     : page.designScene && page.designScene !== 'projects' && !page.designProject ? 'design'
-    : page.modelOverview ? 'model:' + page.modelOverview : null;
+    : page.cinemaLanding ? 'cinema' : page.modelOverview ? 'model:' + page.modelOverview : null;
   useEffect(() => {
     if (!routeView) return;
     const hasProject = Boolean(projectId);
     if (routeView === 'explore') reportCreativePageView('explore', hasProject, { community: page.community, medium: page.medium ?? 'all' });
-    else if (routeView === 'motion' || routeView === 'design') reportCreativePageView('creative_studio', hasProject, { studio: routeView, landing: true });
+    else if (routeView === 'motion' || routeView === 'design' || routeView === 'cinema') reportCreativePageView('creative_studio', hasProject, { studio: routeView, landing: true });
     else reportCreativePageView('model_overview', hasProject, { model: page.modelOverview });
     // Only an arrival counts; filter changes within Explore are reported as clicks.
   }, [routeView]);
   // Where the top navigation is shown, so its clicks segment by the page the user was on.
   const navTrackingPage: CreativePage = templatesPage ? 'studio' : page.explore ? 'explore' : standaloneMcp ? 'mcp'
     : settings === 'brand-kit' ? 'brand_kit' : settings ? 'settings'
-    : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion || page.designScene ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio';
+    : page.modelOverview ? 'model_overview' : page.modelHub ? 'model_hub' : page.studio || page.motion || page.cinemaLanding || page.designScene ? 'creative_studio' : skillsOpen || page.specialty ? 'skills' : assetsOpen ? 'assets' : 'studio';
   const returnToExplore = () => {
     if (source && fromExplore && restoreWorkspaceSource(source)) return;
-    const filters = page.motion || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills
+    const filters = page.motion || page.cinemaLanding || page.modelOverview || page.modelHub || page.specialty || page.studio || page.skills
       ? { community: page.community, medium: page.medium } : lastExplore.current;
     navigatePage({ explore: true, templates: false, ...filters });
   };
@@ -384,7 +389,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       <ApplicationHeader atExploreHome={page.explore && !page.community && !page.medium && !connectionsOpen}
         specialty={page.specialty} onChooseStudio={chooseStudio} openSettings={openSettings}
         openAsset={(assetId, assetVersion) => navigatePage({ assets: true, assetId, assetVersion, templates: false })}
-        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} designActive={!templatesPage && Boolean(page.designScene)} onNavigate={openStudio} />
+        onCommunity={feed => navigatePage({ explore: true, community: feed.id, medium: null, templates: false })} onSkill={openSkill} currentPage={currentPage} trackingPage={navTrackingPage} onOpenPage={openPage} settings={visibleSettings} destination={templatesPage ? null : page.studio} motionActive={!templatesPage && (page.motion || editorActive)} cinemaActive={!templatesPage && page.cinemaLanding} designActive={!templatesPage && Boolean(page.designScene)} onNavigate={openStudio} />
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
@@ -410,6 +415,12 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
           onOpenDesignProject={id => navigatePage({ designScene: 'projects', designProject: id, templates: false, ...lastExplore.current })}
           filters={lastExplore.current} onChooseStudio={studio => chooseStudio(studio, undefined, true)} active={page.explore && !connectionsOpen} onNavigate={openStudioFromPage} onSkill={openSkill} />
       </div>}
+      {page.cinemaLanding && !templatesPage && !settings && <div className="om-explore-host">
+        <CinemaStudioPage onStart={() => openStudio(studioDestination(cinema, 'text-to-video'))} onTemplate={(template, position) => {
+          reportCreativeClick('creative_studio', 'studio_bar', 'try_prompt', { studio: 'cinema', scene: template.scene, template: template.id, position });
+          navigatePage({ studio: studioDestination(cinema, template.scene), cinemaTemplate: template.id, templates: false, ...lastExplore.current });
+        }} />
+      </div>}
       {motionTemplatesOpen && <div className="om-explore-host"><MotionStudioPage active={!connectionsOpen}
         onOpenEditor={() => void openMotionEditor('first')} editorDisabled={motionEditorDisabled}
         onBackToExplore={fromExplore ? returnToExplore : undefined} /></div>}
@@ -422,9 +433,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         onSelectDesignScene={designScene => navigatePage({ designScene, designProject: null, templates: false, ...lastExplore.current })}
         breadcrumb={source && page.studio && !showStudioBackToExplore && <WorkspaceBreadcrumb source={source} destination={t(page.studio.landing ? page.studio.scene.label : page.studio.studio.title)} />}
         onBackToExplore={showStudioBackToExplore || (hostChrome && !source) ? returnToExplore : undefined}
-        onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)}
+        onExplore={returnToExplore} drafts={studioDrafts} active={!connectionsOpen} destination={page.studio} visit={studioVisit} hasProject={Boolean(projectId)} cinemaTemplate={selectedCinemaTemplate}
         onOpenStudio={studio => navigatePage({ studio, templates: false }, false, 'from-page')}
-        onNavigate={studio => navigatePage({ studio, templates: false }, false, 'keep')} /></div>
+        onNavigate={studio => navigatePage({ studio, templates: false,
+          cinemaTemplate: studio.studio.id === 'cinema' && studio.scene.id === page.studio?.scene.id ? page.cinemaTemplate : null,
+        }, false, 'keep')} /></div>
       {page.designScene && !templatesPage && (
         <div className="om-assets-host" style={{ padding: 0 }}>
           {page.designProject

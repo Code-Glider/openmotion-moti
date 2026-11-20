@@ -9,6 +9,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { WorkspaceResourceActions } from './WorkspaceResourceActions';
 import { BackToExploreButton } from './BackToExploreButton';
 import { AssetsPage } from './AssetsPage';
+import type { CinemaTemplate } from './cinemaTemplates';
 import type { AssetDraft } from './AssetComposer';
 import { useMediaCatalog } from './useMediaCatalog';
 import { destinationTarget, reportCreativeClick } from './exploreTracking';
@@ -26,19 +27,27 @@ export type StudioCreation = {
   openCreate?: (prompt?: string, scene?: StudioScene['id']) => void;
 };
 
-export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpenStudio, breadcrumb, onBackToExplore, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, hasProject, active, drafts }: {
+export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpenStudio, breadcrumb, onBackToExplore, onExplore, onCollection, onOpenBrandKit, onSelectDesignScene, hasProject, active, drafts, cinemaTemplate }: {
+  cinemaTemplate?: CinemaTemplate;
   onOpenBrandKit?: () => void;
   onSelectDesignScene?: (scene: DesignTabId) => void;
   onOpenStudio: (next: StudioDestination) => void; breadcrumb?: ReactNode; onBackToExplore?: () => void;
   skill: string | null; onCollection: (studio: TechniqueStudio) => void; onExplore: () => void; drafts: RefObject<Map<string, AssetDraft>>; destination: StudioDestination | null; active: boolean; visit: number; onNavigate: (next: StudioDestination) => void; hasProject: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const comingSoon = studioComingSoon(destination?.studio);
   const catalog = useMediaCatalog(active && Boolean(destination) && !comingSoon);
   if (!destination) return null;
   const { scene, studio } = destination;
   if (comingSoon) return <div className="om-assets-host om-creative-workspace"><WorkspaceBack fallback={onExplore} /><StudioComingSoon studio={studio} /></div>;
-  const draftKey = studioDraftKey(destination, skill);
+  const draftKey = studioDraftKey(destination, skill) + (cinemaTemplate ? '/' + cinemaTemplate.id : '');
+  const initialDraft: AssetDraft | undefined = drafts.current.get(draftKey) ?? (cinemaTemplate && {
+    modality: 'video',
+    prompt: (locale === 'zh-CN' ? cinemaTemplate.zh : cinemaTemplate.en).prompt,
+    preferredModel: cinemaTemplate.model.id,
+    shotPreferences: { aspect: cinemaTemplate.aspect, duration: cinemaTemplate.duration },
+    references: [],
+  });
   const firstFrameScene = studio.scenes.find(id => id === 'image-to-video');
   const useAsFirstFrame = scene.modality === 'image' && firstFrameScene ? (reference: AssetDraft['references'][number]) => {
     const next = studioDestination(studio, firstFrameScene);
@@ -62,7 +71,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
     {breadcrumb}
     {destination.home ? (onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && <WorkspaceBack fallback={onExplore} />) : <>
     <header className="om-studio-bar">
-      {onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && studio.surface === 'techniques' &&
+      {onBackToExplore ? <BackToExploreButton onClick={onBackToExplore} /> : !breadcrumb && studio.id === 'cinema' ? <WorkspaceBack inline fallback={onExplore} /> : !breadcrumb && studio.surface === 'techniques' &&
         <WorkspaceBack inline onBack={() => reportCreativeClick('creative_studio', 'studio_bar', 'open_skills', destinationTarget(destination))} fallback={() => onCollection(studio)} />}
       <h1 className="om-subtitle"><span className="om-studio-heading-icon" data-tone={destination.landing ? scene.modality : studioIconTone(studio)}><RemixIcon name={destination.landing ? scene.icon : studio.icon} size={18} /></span>{destination.landing ? t(scene.label) : t(studio.title)}</h1>
       {destination.landing ? <Button variant="plain" className="om-button" onClick={() => { reportCreativeClick('creative_studio', 'studio_bar', 'open_in_studio', destinationTarget(destination)); onOpenStudio(studioDestination(studio, scene.id, destination.model)); }}>
@@ -77,7 +86,7 @@ export function CreativeWorkspace({ destination, skill, visit, onNavigate, onOpe
       {onOpenBrandKit && <div className="om-control-row om-studio-library-link"><WorkspaceResourceActions onBrandKit={onOpenBrandKit} /></div>}
     </header>
     </>}
-    <AssetsPage key={draftKey + visit + (destination.home ? ':home' : '')} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft: drafts.current.get(draftKey),
+    <AssetsPage key={draftKey + visit + (destination.home ? ':home' : '')} active={active} hasProject={hasProject} studio={{ destination, catalog, useAsFirstFrame, initialDraft,
       remember: draft => drafts.current.set(draftKey, draft), chooseModel: model => onNavigate({ ...destination, model }), openCreate }} />
   </div>;
 }
