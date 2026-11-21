@@ -1,8 +1,9 @@
 /** Fail-closed cross-runner attestation for actual Studio/MP4/ZIP font evidence. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { open, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { inflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 export const runners = Object.freeze({
@@ -14,6 +15,16 @@ const requiredFaces = ['hebrew', 'arabic', 'urdu', 'syriac', 'ethiopic', 'latin'
 const semiticWoff2Faces = ['hebrew', 'arabic', 'urdu', 'syriac'];
 const requiredScripts = ['he', 'ar', 'fa', 'ur', 'syr', 'am', 'en'];
 const hexSha = /^[a-f0-9]{64}$/;
+const hexBlob = /^[a-f0-9]{40}$/;
+const sourceCommit = '06bfe0d62a98375cb09c942fa18e68bd32cff057';
+const requiredSfnt = ['cmap', 'GSUB', 'GPOS', 'GDEF', 'fvar', 'gvar', 'maxp', 'name', 'glyf', 'loca'];
+// This verifier only consumes the four pinned sub-megabyte fixture faces.
+// These are evidence caps, not production import limits.
+const maxWoff1Bytes = 4 * 1024 * 1024;
+const maxWoff1SfntBytes = 16 * 1024 * 1024;
+const maxOflBytes = 128 * 1024;
+const sha256 = data => createHash('sha256').update(data).digest('hex');
+const gitBlob = data => createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
 const pngHeader = Buffer.from([137,80,78,71,13,10,26,10]);
 const mediaNames = [
   'exported-rtl.mp4', 'exported-mp4-frame.png', 'preview-frame.png',
@@ -50,11 +61,16 @@ export async function verifyArtifactFiles(root, os) {
 }
 
 
-export function verifyCrossOsFontEvidence(reports) {
+export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
+  assert(['woff2', 'woff'].includes(webfontFormat), 'Unknown webfont evidence format');
+  const woff1 = webfontFormat === 'woff';
+  const webfontLabel = woff1 ? 'WOFF1' : 'WOFF2';
   assert.deepEqual(Object.keys(reports).sort(), Object.keys(runners).sort(), 'Three exact OS reports required');
   const hashes = new Map();
   let expectedFaces = null;
   let expectedScriptWoff2 = null;
+  let expectedWoff1Source = null;
+  const woff1ByOs = {};
   for (const [os, platform] of Object.entries(runners)) {
     const report = reports[os];
     assert(report && typeof report === 'object', os + ': missing actual result.json');
@@ -70,50 +86,89 @@ export function verifyCrossOsFontEvidence(reports) {
       faces.set(face.id, { fontSha256: face.fontSha256, licenseSha256: face.licenseSha256 });
     }
     assert.deepEqual([...faces.keys()].sort(), [...requiredFaces].sort(), os + ': missing pinned face/license');
-    const sortedFaces = Object.fromEntries([...faces].sort(([a], [b]) => a.localeCompare(b)));
+    // The original WOFF2 gate still requires exact byte identity. For WOFF1,
+    // compressed container hashes are per runner; compare source/SFNT/license
+    // identity below instead. TTF control faces still require identical bytes.
+    const sortedFaces = Object.fromEntries([...faces].sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, face]) => [id, woff1 && semiticWoff2Faces.includes(id)
+        ? { licenseSha256: face.licenseSha256 } : face]));
     if (!expectedFaces) expectedFaces = sortedFaces;
     else assert.deepEqual(sortedFaces, expectedFaces, os + ': font or license bytes differ from other runner');
 
     const fontCheck = report.checks?.find(item => item.name ===
-      'Project-local licensed fonts actually used by Chromium, including four Semitic WOFF2 faces');
+      'Project-local licensed fonts actually used by Chromium, including four Semitic ' + webfontLabel + ' faces');
     const conversion = fontCheck?.hebrewWoff2;
     for (const lang of requiredScripts) {
       assert(fontCheck?.fontUsage?.[lang]?.some(face =>
         face.isCustomFont === true && Number.isInteger(face.glyphCount) && face.glyphCount > 0),
         os + ': actual Chromium custom-font use missing for ' + lang);
     }
-    const converted = fontCheck?.scriptWoff2;
+    const converted = woff1 ? fontCheck?.scriptWoff : fontCheck?.scriptWoff2;
     assert(Array.isArray(converted) && converted.length === 4,
-      os + ': four actual Semitic WOFF2 converter results required');
-    assert.deepEqual(report.scriptWoff2, converted, os + ': reported font conversions contradict browser evidence');
+      os + ': four actual Semitic ' + webfontLabel + ' converter results required');
+    assert.deepEqual(woff1 ? report.scriptWoff : report.scriptWoff2, converted, os + ': reported font conversions contradict browser evidence');
     assert.deepEqual(converted.map(f => f.id), semiticWoff2Faces,
       os + ': conversion missing an ordered Semitic script');
     const hashesByScript = {};
+    const woff1SourceByScript = {};
     for (const encoded of converted) {
-      assert.equal(encoded.format, 'woff2', os + ': converted ' + encoded.id + ' is not WOFF2');
-      assert.equal(encoded.filename, encoded.id + '.woff2', os + ': unexpected WOFF2 filename');
-      assert.equal(encoded.converter, 'fonttools 4.59.0 + Brotli 1.1.0', os + ': unpinned converter');
+      assert.equal(encoded.format, webfontFormat, os + ': converted ' + encoded.id + ' is not ' + webfontLabel);
+      assert.equal(encoded.filename, encoded.id + '.' + webfontFormat, os + ': unexpected ' + webfontLabel + ' filename');
+      assert.equal(encoded.converter, woff1 ? 'fonttools 4.59.0 + zlib' : 'fonttools 4.59.0 + Brotli 1.1.0',
+        os + ': unpinned converter');
+      if (woff1) {
+        assert.equal(encoded.signature, 'wOFF', os + ': WOFF1 signature missing');
+        assert(Number.isSafeInteger(encoded.encodedBytes) && encoded.encodedBytes >= 44 &&
+          encoded.encodedBytes <= maxWoff1Bytes && Number.isSafeInteger(encoded.numGlyphs) &&
+          Number.isSafeInteger(encoded.codepointCount), os + ': invalid WOFF1 receipt sizes');
+        assert.equal(encoded.sourceCommit, sourceCommit, os + ': wrong pinned face source commit');
+        assert(hexBlob.test(encoded.sourceFontGitBlob) && hexBlob.test(encoded.sourceLicenseGitBlob),
+          os + ': missing pinned WOFF1 source/license blob');
+        assert.equal(encoded.sourceLicense, encoded.id + '.OFL.txt', os + ': unexpected adjacent OFL name');
+        assert.equal(encoded.deterministicOnRunner, true, os + ': WOFF1 local reproducibility not verified');
+        assert(typeof encoded.zlibRuntimeVersion === 'string' && /^\d+\.\d+[0-9A-Za-z.+_-]*$/.test(encoded.zlibRuntimeVersion),
+          os + ': missing exact zlib runtime version');
+        assert.deepEqual(encoded.decodedSfntTables, encoded.sourceSfntTables, os + ': decoded WOFF1 SFNT differs from source');
+        assert(requiredSfnt.every(tag => hexSha.test(encoded.sourceSfntTables?.[tag])),
+          os + ': missing pinned WOFF1 shaping and glyph table hashes');
+        assert.equal(fontCheck?.servedWoffSha256?.[encoded.id], encoded.sha256,
+          os + ': actual Chromium WOFF bytes differ from import');
+        woff1SourceByScript[encoded.id] = {
+          sourceTtfSha256: encoded.sourceTtfSha256, sourceFontGitBlob: encoded.sourceFontGitBlob,
+          sourceLicenseSha256: encoded.sourceLicenseSha256, sourceLicenseGitBlob: encoded.sourceLicenseGitBlob,
+          sourceSfntTables: encoded.sourceSfntTables,
+        };
+      }
       assert(hexSha.test(encoded.sha256) && hexSha.test(encoded.sourceTtfSha256),
         os + ': missing converted source/hash');
       assert.equal(encoded.sha256, faces.get(encoded.id).fontSha256,
-        os + ': converted WOFF2 differs from actual imported font: ' + encoded.id);
+        os + ': converted ' + webfontLabel + ' differs from actual imported font: ' + encoded.id);
       assert.equal(encoded.sourceLicenseSha256, faces.get(encoded.id).licenseSha256,
-        os + ': converted WOFF2 lost source OFL license: ' + encoded.id);
+        os + ': converted ' + webfontLabel + ' lost source OFL license: ' + encoded.id);
       assert(encoded.encodedBytes > 0 && encoded.numGlyphs > 0 && encoded.codepointCount > 0 &&
         ['GSUB', 'GPOS'].every(tag => encoded.layoutTables?.includes(tag)),
-        os + ': missing glyph or shaping table after WOFF2 conversion for ' + encoded.id);
+        os + ': missing glyph or shaping table after ' + webfontLabel + ' conversion for ' + encoded.id);
       hashesByScript[encoded.id] = encoded.sha256;
     }
-    assert.equal(conversion?.sha256, hashesByScript.hebrew, os + ': Hebrew legacy conversion disagrees');
-    assert.equal(conversion?.sourceTtfSha256,
-      '7ef36a2c3593758cdb622e1bdef4f84523e92fbc3ccc667438dd80ff54c2de88',
-      os + ': changed original pinned Hebrew font');
-    assert(['GSUB', 'GPOS', 'GDEF'].every(tag => conversion.layoutTables?.includes(tag)),
-      os + ': missing shaping table after Hebrew WOFF2 conversion');
-    if (!expectedScriptWoff2) expectedScriptWoff2 = hashesByScript;
-    else assert.deepEqual(hashesByScript, expectedScriptWoff2,
-      os + ': Semitic WOFF2 byte hashes differ between runners');
-    hashes.set(os, conversion.sha256);
+    if (woff1) {
+      const zlib = new Set(converted.map(face => face.zlibRuntimeVersion));
+      assert.equal(zlib.size, 1, os + ': inconsistent WOFF1 zlib runtime');
+      if (!expectedWoff1Source) expectedWoff1Source = woff1SourceByScript;
+      else assert.deepEqual(woff1SourceByScript, expectedWoff1Source,
+        os + ': pinned source, OFL or decoded WOFF1 SFNT differs across runners');
+      woff1ByOs[os] = { zlibRuntimeVersion: converted[0].zlibRuntimeVersion, scriptWoffSha256: hashesByScript };
+    } else {
+      assert.equal(conversion?.sha256, hashesByScript.hebrew, os + ': Hebrew legacy conversion disagrees');
+      assert.equal(conversion?.sourceTtfSha256,
+        '7ef36a2c3593758cdb622e1bdef4f84523e92fbc3ccc667438dd80ff54c2de88',
+        os + ': changed original pinned Hebrew font');
+      assert(['GSUB', 'GPOS', 'GDEF'].every(tag => conversion.layoutTables?.includes(tag)),
+        os + ': missing shaping table after Hebrew WOFF2 conversion');
+      if (!expectedScriptWoff2) expectedScriptWoff2 = hashesByScript;
+      else assert.deepEqual(hashesByScript, expectedScriptWoff2,
+        os + ': Semitic WOFF2 byte hashes differ between runners');
+      hashes.set(os, conversion.sha256);
+    }
 
     const zip = report.checks.find(item =>
       item.name === 'Offline ZIP reimport retained exact edited Unicode and six licensed font assets');
@@ -130,8 +185,8 @@ export function verifyCrossOsFontEvidence(reports) {
         os + ': license bytes not independently preserved by ZIP reimport');
     }
     for (const script of semiticWoff2Faces) {
-      assert(files.some(f => f.path?.endsWith('.woff2') && f.sha256 === hashesByScript[script]),
-        os + ': offline archive lost actual ' + script + ' WOFF2 bytes');
+      assert(files.some(f => f.path?.endsWith('.' + webfontFormat) && f.sha256 === hashesByScript[script]),
+        os + ': offline archive lost actual ' + script + ' ' + webfontLabel + ' bytes');
     }
     const video = report.checks.find(item =>
       item.name === 'Actual decoded MP4 preserves each script row and preview glyph geometry');
@@ -193,26 +248,114 @@ export function verifyCrossOsFontEvidence(reports) {
     }
     assert.equal(report.cleanup?.errors?.length, 0, os + ': test cleanup failures');
   }
+  if (woff1) {
+    const os = Object.keys(runners);
+    return {
+      passed: true, format: 'woff', os, sourceCommit, faces: requiredFaces,
+      sourceByScript: expectedWoff1Source, runnerEncodings: woff1ByOs,
+      byteIdenticalAcrossOs: semiticWoff2Faces.every(id =>
+        new Set(os.map(name => woff1ByOs[name].scriptWoffSha256[id])).size === 1),
+    };
+  }
   assert.equal(new Set(hashes.values()).size, 1,
     'Converted Hebrew WOFF2 must be byte-identical on Windows, macOS and Linux');
   return { passed: true, os: [...hashes.keys()], hebrewWoff2Sha256: hashes.get('ubuntu-24.04'), scriptWoff2Sha256: expectedScriptWoff2, faces: requiredFaces };
 }
 
-export async function verifyFromDirectory(root) {
+// Independently verify the actual archived WOFF1, including zlib-decoded
+// table bytes, rather than trusting the producer report's magic or hashes.
+export function verifyWoff1File(bytes, encoded) {
+  assert(bytes.length >= 44 && bytes.toString('ascii', 0, 4) === 'wOFF', 'Invalid WOFF1 signature');
+  assert(bytes.length <= maxWoff1Bytes && bytes.length === encoded.encodedBytes, 'Invalid WOFF1 receipt length');
+  assert.equal(bytes.length, bytes.readUInt32BE(8), 'Invalid WOFF1 length');
+  const declaredSfntBytes = bytes.readUInt32BE(16);
+  assert(declaredSfntBytes > 0 && declaredSfntBytes <= maxWoff1SfntBytes, 'Invalid WOFF1 decoded SFNT size');
+  assert.equal(sha256(bytes), encoded.sha256, 'WOFF1 ZIP font bytes differ from browser/import');
+  const tableCount = bytes.readUInt16BE(12);
+  const directoryEnd = 44 + 20 * tableCount;
+  assert(tableCount > 0 && tableCount <= 128 && directoryEnd <= bytes.length, 'Invalid WOFF1 table directory');
+  const seen = new Set();
+  const knownTables = [];
+  let sfntBytes = 12 + 16 * tableCount;
+  for (let i = 0; i < tableCount; i++) {
+    const entry = 44 + 20 * i;
+    const tag = bytes.toString('ascii', entry, entry + 4);
+    assert(!seen.has(tag), 'Duplicate WOFF1 table ' + tag);
+    seen.add(tag);
+    const offset = bytes.readUInt32BE(entry + 4);
+    const storedLength = bytes.readUInt32BE(entry + 8);
+    const rawLength = bytes.readUInt32BE(entry + 12);
+    assert(offset >= directoryEnd && offset + storedLength <= bytes.length &&
+      storedLength <= rawLength && rawLength <= maxWoff1SfntBytes, 'Invalid WOFF1 table extent for ' + tag);
+    sfntBytes += Math.ceil(rawLength / 4) * 4;
+    if (Object.hasOwn(encoded.decodedSfntTables, tag)) {
+      assert(storedLength > 0, 'Empty required WOFF1 table: ' + tag);
+      knownTables.push({ tag, offset, storedLength, rawLength });
+    }
+  }
+  assert.equal(sfntBytes, declaredSfntBytes, 'Invalid WOFF1 aggregate SFNT size');
+  for (const { tag, offset, storedLength, rawLength } of knownTables) {
+    const contents = bytes.subarray(offset, offset + storedLength);
+    const data = storedLength === rawLength ? contents : inflateSync(contents, { maxOutputLength: rawLength });
+    assert.equal(data.length, rawLength, 'WOFF1 table size changed: ' + tag);
+    assert.equal(sha256(data), encoded.decodedSfntTables[tag], 'WOFF1 table digest changed: ' + tag);
+  }
+  for (const tag of requiredSfnt) assert(seen.has(tag), 'WOFF1 required table missing: ' + tag);
+}
+
+async function readBoundedFile(filename, limit) {
+  const file = await open(filename, 'r');
+  try {
+    const info = await file.stat();
+    assert(info.isFile() && info.size > 0 && info.size <= limit, 'Oversized or invalid WOFF1 archive file');
+    const bytes = Buffer.alloc(info.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const { bytesRead } = await file.read(bytes, offset, bytes.length - offset, offset);
+      assert(bytesRead > 0, 'Truncated WOFF1 archive file');
+      offset += bytesRead;
+    }
+    const tail = await file.read(Buffer.alloc(1), 0, 1, offset);
+    assert.equal(tail.bytesRead, 0, 'WOFF1 archive file changed while reading');
+    return bytes;
+  } finally {
+    await file.close();
+  }
+}
+
+export async function verifyFromDirectory(root, webfontFormat = 'woff2') {
   assert(path.isAbsolute(root), 'Expected absolute evidence directory');
   const reports = {};
   for (const os of Object.keys(runners)) {
     reports[os] = JSON.parse(await readFile(path.join(root, os, 'result.json'), 'utf8'));
   }
-  const verified = verifyCrossOsFontEvidence(reports);
+  const verified = verifyCrossOsFontEvidence(reports, webfontFormat);
   const artifactSha256 = {};
   for (const os of Object.keys(runners)) artifactSha256[os] = await verifyArtifactFiles(root, os);
+  if (webfontFormat === 'woff') {
+    const woffArchiveSha256 = {};
+    for (const os of Object.keys(runners)) {
+      const dir = path.join(root, os, 'woff1-fonts');
+      woffArchiveSha256[os] = {};
+      for (const encoded of reports[os].scriptWoff) {
+        const font = await readBoundedFile(path.join(dir, encoded.filename), maxWoff1Bytes);
+        const license = await readBoundedFile(path.join(dir, encoded.sourceLicense), maxOflBytes);
+        verifyWoff1File(font, encoded);
+        assert.equal(sha256(license), encoded.sourceLicenseSha256, os + ': WOFF1 ZIP OFL bytes changed');
+        assert.equal(gitBlob(license), encoded.sourceLicenseGitBlob, os + ': WOFF1 ZIP OFL Git blob changed');
+        woffArchiveSha256[os][encoded.id] = { font: sha256(font), ofl: sha256(license) };
+      }
+    }
+    return { ...verified, artifactSha256, woffArchiveSha256 };
+  }
   return { ...verified, artifactSha256 };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const result = await verifyFromDirectory(process.argv[2] || '');
+    assert(process.argv.length <= 4 && (process.argv[3] === undefined || process.argv[3] === '--woff1'),
+      'Unknown webfont evidence mode');
+    const result = await verifyFromDirectory(process.argv[2] || '', process.argv[3] === '--woff1' ? 'woff' : 'woff2');
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   } catch (error) {
     process.stderr.write('RTL_CROSS_OS_FONT_ATTESTATION_FAILED: ' + error.message + '\n');
