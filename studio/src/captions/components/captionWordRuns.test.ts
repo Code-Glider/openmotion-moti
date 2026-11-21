@@ -1,7 +1,24 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { splitCaptionWordRuns } from "./captionWordRuns";
-import { readWordBoxes, getWordEl, sameWordBoxes, type WordBox } from "./CaptionOverlayUtils";
+import { readWordBoxes, getWordEl, sameWordBoxes, writeTransform, computeTransformStyle, type WordBox } from "./CaptionOverlayUtils";
+
+it("clears every saved transform when an authored word returns to neutral", () => {
+  const iframe = document.createElement("iframe");
+  document.body.append(iframe);
+  try {
+    const word = iframe.contentDocument!.createElement("span");
+    word.textContent = "السَّلَامُ";
+    iframe.contentDocument!.body.append(word);
+    const win = iframe.contentWindow!;
+    writeTransform(word, win, 12, -8, 1.25, 30);
+    const previous = computeTransformStyle(word, win);
+    writeTransform(word, win, 0, 0, 1, 0);
+    expect({ ...previous, ...computeTransformStyle(word, win) }).toEqual({
+      x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0,
+    });
+  } finally { iframe.remove(); }
+});
 
 it("retains exact Hebrew whitespace and logical word order", () => {
   const text = "  שלום\t  עולם!\n";
