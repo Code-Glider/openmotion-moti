@@ -61,6 +61,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTX: number;
         origTY: number;
         origScale: number;
+        origScaleY: number;
         origRotation: number;
       }
     | {
@@ -72,6 +73,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTX: number;
         origTY: number;
         origScale: number;
+        origScaleY: number;
         origRotation: number;
       }
     | {
@@ -83,6 +85,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTY: number;
         origRotation: number;
         origScale: number;
+        origScaleY: number;
       }
     | null
   >(null);
@@ -161,7 +164,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const win = getWin();
       if (win) {
         // Restore the pre-drag transform instead of committing the partial one.
-        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation);
+        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
       }
       interactionRef.current = null;
       return true;
@@ -216,7 +219,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
           if (!wordEl) continue;
           const wrapper = getOrCreateWrapper(wordEl);
           const state = readGsapTransform(wrapper, win);
-          writeTransform(wordEl, win, state.x + dx, state.y + dy, state.scale, state.rotation);
+          writeTransform(wordEl, win, state.x + dx, state.y + dy, state.scale, state.rotation, state.scaleY);
           syncToStore(segId, wordEl, win);
           break;
         }
@@ -276,6 +279,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTX: state.x,
         origTY: state.y,
         origScale: state.scale,
+        origScaleY: state.scaleY,
         origRotation: state.rotation,
       };
     },
@@ -310,6 +314,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTX: state.x,
         origTY: state.y,
         origScale: state.scale,
+        origScaleY: state.scaleY,
         origRotation: state.rotation,
       };
     },
@@ -338,6 +343,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTY: state.y,
         origRotation: state.rotation,
         origScale: state.scale,
+        origScaleY: state.scaleY,
       };
     },
     [iframeRef],
@@ -363,18 +369,22 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         const cssScale = getCssScale();
         const dx = (e.clientX - i.startMX) / cssScale;
         const dy = (e.clientY - i.startMY) / cssScale;
-        writeTransform(i.wordEl, win, i.origTX + dx, i.origTY + dy, i.origScale, i.origRotation);
+        writeTransform(i.wordEl, win, i.origTX + dx, i.origTY + dy, i.origScale, i.origRotation, i.origScaleY);
       } else if (i.type === "scale") {
         const cx = i.startMX - i.startDxFromCenter;
         const startDist = Math.abs(i.startDxFromCenter);
         const currentDist = Math.abs(e.clientX - cx);
         const factor = startDist > 5 ? currentDist / startDist : 1;
         const newScale = Math.max(0.1, i.origScale * factor);
-        writeTransform(i.wordEl, win, i.origTX, i.origTY, newScale, i.origRotation);
+        // Preserve the non-uniform aspect ratio even at the X-axis floor.
+        const newScaleY = i.origScale !== 0
+          ? i.origScaleY * (newScale / i.origScale)
+          : i.origScaleY * factor;
+        writeTransform(i.wordEl, win, i.origTX, i.origTY, newScale, i.origRotation, newScaleY);
       } else if (i.type === "rotate") {
         const dx = e.clientX - i.startMX;
         const delta = (dx / 200) * 90;
-        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation + delta);
+        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation + delta, i.origScaleY);
       }
     },
     [getCssScale, getIframeWin],
