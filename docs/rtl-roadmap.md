@@ -69,3 +69,9 @@ Updated 2026-11-21. This is a tracked engineering checklist, not a claim of fini
 
 ## Process
 Use SHA-checked GitHub writes, independent small PRs, real CI and actual browser/video evidence. Do not fix failures by hiding assertions or silently editing main.
+
+### Phase 5 account-menu reachability (2026-11-21)
+- The initial optional RTL preference was exposed in an isolated LanguageMenu component, but the actual Studio account menu uses a different Language submenu in ApplicationChrome. This could leave users without a reachable RTL toggle despite green storage-only tests.
+- The existing account Language submenu now exposes the same independent Right-to-left project navigation checkbox. Added integration-style component regression to interact with the **real account submenu** and verify persistent RTL preference, unchanged English locale, unchanged root direction and intact Hebrew/Latin project title. Dedicated RTL and full standalone CI must pass on this new PR #7 head.
+- No automatic timeline mirroring or global HTML direction. Actual full-browser navigation and Hebrew/Arabic localized vocabularies remain separate acceptance work.
+

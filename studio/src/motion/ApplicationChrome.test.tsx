@@ -2,7 +2,7 @@
 import React, { act } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanupMounted, mountHost } from '../components/ui/mountHost.testHelpers';
-import { I18nProvider, LOCALE_STORAGE_KEY } from '../i18n/I18n';
+import { I18nProvider, LOCALE_STORAGE_KEY, UI_DIRECTION_STORAGE_KEY, useI18n } from '../i18n/I18n';
 import { readStudioUiPreferences } from '../utils/studioUiPreferences';
 import { ApplicationAccountMenu } from './ApplicationChrome';
 import { SettingsCenter } from './SettingsCenter';
@@ -80,4 +80,29 @@ it('switches the theme from the appearance submenu without navigating to setting
   expect(appearance().textContent).toBe('AppearanceLight');
   await click(appearance());
   expect(light().getAttribute('aria-checked')).toBe('true');
+});
+
+it('offers the independently persisted RTL navigation toggle in the actual account language submenu', async () => {
+  function NavigationProbe() {
+    const { locale, navigationDirection } = useI18n();
+    return <div><aside data-testid="workspace-direction" dir={navigationDirection}><bdi dir="auto">פרויקט ABC-123</bdi></aside><output data-testid="workspace-locale">{locale}</output></div>;
+  }
+  mountHost(<I18nProvider initialLocale="en"><ApplicationAccountMenu settings={null} openSettings={() => {}} /><NavigationProbe /></I18nProvider>);
+  expect(localStorage.getItem(UI_DIRECTION_STORAGE_KEY)).toBeNull();
+  expect(document.querySelector('[data-testid="workspace-direction"]')?.getAttribute('dir')).toBe('ltr');
+  await click(document.querySelector('[aria-label="Account menu"]'));
+  const submenuTrigger = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent?.includes('Language'))!;
+  act(() => { submenuTrigger.focus(); submenuTrigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); });
+  await settle();
+  const toggle = [...document.querySelectorAll<HTMLElement>('[role="menu"][aria-label="Language"] [role="menuitemcheckbox"]')]
+    .find(item => item.textContent?.includes('Right-to-left project navigation'));
+  expect(toggle).toBeDefined();
+  expect(toggle?.getAttribute('aria-checked')).toBe('false');
+  await click(toggle!);
+  expect(localStorage.getItem(UI_DIRECTION_STORAGE_KEY)).toBe('rtl');
+  expect(document.querySelector('[data-testid="workspace-direction"]')?.getAttribute('dir')).toBe('rtl');
+  expect(document.querySelector('[data-testid="workspace-direction"] bdi')?.textContent).toBe('פרויקט ABC-123');
+  expect(document.querySelector('[data-testid="workspace-locale"]')?.textContent).toBe('en');
+  expect(document.documentElement.dir).not.toBe('rtl');
+  expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull();
 });

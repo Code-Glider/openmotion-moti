@@ -4,7 +4,7 @@ import type { ExploreCommunity } from '../../../shared/studio-catalog';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
 import { brand } from '../../../packages/design-system/index.js';
 import { RemixIcon } from '../icons/RemixIcons';
-import { Menu, MenuItem, MenuSeparator, MenuSubmenu, MenuRadioGroup, MenuRadioItem } from '../components/ui/Menu';
+import { Menu, MenuItem, MenuSeparator, MenuSubmenu, MenuRadioGroup, MenuRadioItem, MenuCheckboxItem } from '../components/ui/Menu';
 import { Tooltip } from '../components/ui/Tooltip';
 import { languages, useI18n, type Locale } from '../i18n/I18n';
 import { setStudioTheme, useStudioThemePreference } from '../utils/studioTheme';
@@ -77,7 +77,7 @@ export function WorkspaceUtilityActions({ openSettings }: { openSettings: (secti
 }
 
 export function ApplicationAccountMenu({ settings, openSettings }: { settings: SettingsSection | null; openSettings: (section: SettingsSection) => void }) {
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale, setLocale, navigationDirection, setNavigationDirection } = useI18n();
   const { account } = useAccountSummary();
   const theme = useStudioThemePreference();
   const userName = account?.user?.name?.trim() || account?.user?.email?.trim() || t('Account');
@@ -102,6 +102,10 @@ export function ApplicationAccountMenu({ settings, openSettings }: { settings: S
       </MenuSubmenu>
       <MenuSubmenu aria-label={t('Language')} className="om-selection-panel om-menu-panel" label={<span className="om-menu-label"><RemixIcon name="global-line" size={16} />{t('Language')}</span>} detail={languages.find(language => language.locale === locale)?.label}>
         <MenuRadioGroup value={locale} onValueChange={value => setLocale(value as Locale)}>{languages.map(language => <MenuRadioItem key={language.locale} value={language.locale} closeOnClick>{language.label}</MenuRadioItem>)}</MenuRadioGroup>
+        <MenuSeparator />
+        <MenuCheckboxItem checked={navigationDirection === 'rtl'} onCheckedChange={checked => setNavigationDirection(checked ? 'rtl' : 'ltr')}>
+          {t('Right-to-left project navigation')}
+        </MenuCheckboxItem>
       </MenuSubmenu>
       <MenuSeparator />
       {repositorySupportLinks.map(link => <MenuItem key={link.href} render={<a href={link.href} target="_blank" rel="noopener noreferrer" />}><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}<RemixIcon className="om-menu-external" name="external-link-line" size={14} /></span></MenuItem>)}
