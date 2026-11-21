@@ -67,7 +67,7 @@ export { useWorkspaceChrome, useOptionalWorkspaceChrome, type EditorGuard } from
 export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, blocked = false, message = '', saveState = '', onLibraryClose, onNavigate }: {
   children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void; onNavigate?: () => void;
 }) {
-  const { t, locale } = useI18n();
+  const { t, locale, navigationDirection } = useI18n();
   const [page, setPage] = useState(() => readWorkspacePage(location.search, location.hash));
   const [source, setSource] = useState(workspaceHistorySource);
   const sourceUrl = source ? new URL(source.href) : null;
@@ -420,7 +420,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
-        <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
+        <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" dir={navigationDirection} aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
           <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} openSettings={openSettings} openTemplates={openMotionTemplates} />
         </Dialog.Popup>
       </Dialog.Portal>
