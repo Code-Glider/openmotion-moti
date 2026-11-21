@@ -31,6 +31,84 @@ def glyph_inventory(font: TTFont) -> dict:
     }
 
 
+# These samples deliberately include combining marks and script-specific
+# joining letters. The exact licensed source is checked before conversion;
+# a missing codepoint fails rather than silently falling back to a host font.
+SCRIPT_PROBES = {
+    "hebrew": "שָׁלוֹם",
+    "arabic": "السَّلَامُ",
+    "urdu": "اردو ڈ ٹ ڑ ں ے",
+    "syriac": "ܫܠܡܐ ܒܪܝܟܐ",
+}
+
+
+def convert_face(folder: Path, face: dict, sample: str) -> dict:
+    face_id = face["id"]
+    source = folder / face["filename"]
+    original = source.read_bytes()
+    if sha256(original) != face["fontSha256"]:
+        raise ValueError("PINNED_" + face_id.upper() + "_TTF_SHA256_MISMATCH")
+    license_bytes = (folder / face["licenseFilename"]).read_bytes()
+    if sha256(license_bytes) != face["licenseSha256"]:
+        raise ValueError("PINNED_" + face_id.upper() + "_LICENSE_SHA256_MISMATCH")
+    output = folder / (face_id + ".woff2")
+    repeat = folder / (face_id + "-woff2-repro-check.woff2")
+    manifest_output = folder / (face_id + "-woff2.json")
+    if any(path.exists() for path in (output, repeat, manifest_output)):
+        raise ValueError("REFUSE_TO_OVERWRITE_EXISTING_" + face_id.upper() + "_WOFF2")
+
+    # fontTools' default recalcTimestamp=True restamps the OpenType head
+    # table: the old Hebrew CI failed reproducibility across three OSes.
+    # Preserve original layout, timestamps and glyph bboxes on both passes.
+    font = TTFont(source, lazy=False, recalcTimestamp=False, recalcBBoxes=False)
+    try:
+        prior = glyph_inventory(font)
+        font.flavor = "woff2"
+        font.save(output)
+    finally:
+        font.close()
+    contents = output.read_bytes()
+    probe = TTFont(source, lazy=False, recalcTimestamp=False, recalcBBoxes=False)
+    try:
+        probe.flavor = "woff2"
+        probe.save(repeat)
+    finally:
+        probe.close()
+    try:
+        if repeat.read_bytes() != contents:
+            raise ValueError("NONDETERMINISTIC_" + face_id.upper() + "_WOFF2_CONVERSION")
+    finally:
+        repeat.unlink()
+    if contents[:4] != b"wOF2":
+        raise ValueError(face_id.upper() + "_WOFF2_SIGNATURE_MISMATCH")
+    decoded = TTFont(output, lazy=False)
+    try:
+        restored = glyph_inventory(decoded)
+    finally:
+        decoded.close()
+    if prior != restored:
+        raise ValueError(face_id.upper() + "_WOFF2_ROUNDTRIP_CHANGED_GLYPHS_OR_LAYOUT")
+    required = {ord(char) for char in sample if not char.isspace()}
+    missing = sorted(required.difference(restored["codepoints"]))
+    if missing:
+        raise ValueError(face_id.upper() + "_WOFF2_MISSING_SCRIPT_CODEPOINTS: " + str(missing))
+    result = {
+        "id": face_id, "format": "woff2", "filename": output.name,
+        "sourceTtfSha256": face["fontSha256"], "sha256": sha256(contents),
+        "originalBytes": len(original), "encodedBytes": len(contents),
+        "numGlyphs": restored["numGlyphs"], "codepointCount": len(restored["codepoints"]),
+        "layoutTables": restored["layoutTables"],
+        "converter": "fonttools 4.59.0 + Brotli 1.1.0",
+        "sourceLicense": face["licenseFilename"],
+        "sourceLicenseSha256": face["licenseSha256"],
+        "probeText": sample,
+    }
+    manifest_output.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return result
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         raise ValueError("Usage: python scripts/rtl-reference-woff2.py ABSOLUTE_PINNED_FONT_DIRECTORY")
@@ -40,73 +118,16 @@ def main() -> None:
     manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
     if manifest.get("sourceCommit") != "06bfe0d62a98375cb09c942fa18e68bd32cff057":
         raise ValueError("PINNED_FONT_COMMIT_MISMATCH")
-    faces = [face for face in manifest["faces"] if face["id"] == "hebrew"]
-    if len(faces) != 1:
-        raise ValueError("PINNED_HEBREW_FACE_MISSING_OR_DUPLICATE")
-    face = faces[0]
-    source = folder / face["filename"]
-    original = source.read_bytes()
-    if sha256(original) != face["fontSha256"]:
-        raise ValueError("PINNED_HEBREW_TTF_SHA256_MISMATCH")
-    if not (folder / face["licenseFilename"]).is_file():
-        raise ValueError("PINNED_HEBREW_LICENSE_MISSING")
-    output = folder / "hebrew.woff2"
-    if output.exists():
-        raise ValueError("REFUSE_TO_OVERWRITE_EXISTING_WOFF2")
-    # fontTools defaults recalcTimestamp=True, writing wall-clock time into
-    # the OpenType head.modified table on every save. That made identical
-    # pinned Hebrew input produce a *different WOFF2 SHA256 on each OS* in
-    # CI run 44919144186. Keep source layout/timestamps unchanged.
-    # Recalculating glyph bboxes is unnecessary for lossless format conversion.
-    font = TTFont(source, lazy=False, recalcTimestamp=False, recalcBBoxes=False)
-    try:
-        prior = glyph_inventory(font)
-        font.flavor = "woff2"
-        font.save(output)
-    finally:
-        font.close()
-    contents = output.read_bytes()
-    # A second fresh instance must reproduce exactly the same compressed
-    # bytes, not merely equivalent decompressed glyphs.
-    repeat = folder / "hebrew-woff2-repro-check.woff2"
-    if repeat.exists():
-        raise ValueError("REFUSE_TO_OVERWRITE_EXISTING_WOFF2_REPRO_CHECK")
-    probe = TTFont(source, lazy=False, recalcTimestamp=False, recalcBBoxes=False)
-    try:
-        probe.flavor = "woff2"
-        probe.save(repeat)
-    finally:
-        probe.close()
-    try:
-        if repeat.read_bytes() != contents:
-            raise ValueError("NONDETERMINISTIC_WOFF2_CONVERSION")
-    finally:
-        repeat.unlink()
-    if contents[:4] != b"wOF2":
-        raise ValueError("WOFF2_SIGNATURE_MISMATCH")
-    decoded = TTFont(output, lazy=False)
-    try:
-        restored = glyph_inventory(decoded)
-    finally:
-        decoded.close()
-    if prior != restored:
-        raise ValueError("WOFF2_ROUNDTRIP_CHANGED_GLYPH_CMAP_OR_LAYOUT_TABLES")
-    probe = "שָׁלוֹם"
-    if not all(ord(char) in restored["codepoints"] for char in probe if not char.isspace()):
-        raise ValueError("WOFF2_HEBREW_NIQQUD_CMAP_INCOMPLETE")
-    result = {
-        "id": "hebrew", "format": "woff2", "filename": output.name,
-        "sourceTtfSha256": face["fontSha256"], "sha256": sha256(contents),
-        "originalBytes": len(original), "encodedBytes": len(contents),
-        "numGlyphs": restored["numGlyphs"], "codepointCount": len(restored["codepoints"]),
-        "layoutTables": restored["layoutTables"],
-        "converter": "fonttools 4.59.0 + Brotli 1.1.0",
-        "sourceLicense": face["licenseFilename"],
-    }
-    (folder / "hebrew-woff2.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    print(json.dumps(result, ensure_ascii=False))
+    result = []
+    for face_id, sample in SCRIPT_PROBES.items():
+        matches = [face for face in manifest["faces"] if face["id"] == face_id]
+        if len(matches) != 1:
+            raise ValueError("PINNED_" + face_id.upper() + "_FACE_MISSING_OR_DUPLICATE")
+        result.append(convert_face(folder, matches[0], sample))
+    # Windows Actions Python stdout may be cp1252: native script probe letters cannot
+    # be printed directly. JSON ASCII escaping preserves the exact Unicode values
+    # when parsed, while keeping stdout portable without changing file manifests.
+    print(json.dumps({"sourceCommit": manifest["sourceCommit"], "converted": result}, ensure_ascii=True))
 
 
 if __name__ == "__main__":
