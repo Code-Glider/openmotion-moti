@@ -108,7 +108,7 @@ test('required-script gate is opt-in, checks known probes, and refuses false Sem
   const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
   const result = await auditFont(font, 'A');
   assert.doesNotThrow(() => assertRequiredScriptCoverage(result, ['en']));
-  assert.throws(() => assertRequiredScriptCoverage(result, ['en', 'he']), /MISSING_REQUIRED_SCRIPT_GLYPHS: he:.*U\\+05E9/);
+  assert.throws(() => assertRequiredScriptCoverage(result, ['en', 'he']), /MISSING_REQUIRED_SCRIPT_GLYPHS: he:.*U[+]05E9/);
   assert.throws(() => assertRequiredScriptCoverage(result, ['ar']), /MISSING_REQUIRED_SCRIPT_GLYPHS: ar/);
   assert.throws(() => assertRequiredScriptCoverage(result, ['syr']), /MISSING_REQUIRED_SCRIPT_GLYPHS: syr/);
   assert.throws(() => assertRequiredScriptCoverage(result, []), /REQUIRED_FONT_SCRIPT_PROBES_EMPTY/);
