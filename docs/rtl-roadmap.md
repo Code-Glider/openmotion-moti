@@ -70,3 +70,10 @@ Updated 2026-11-21. This is a tracked engineering checklist, not a claim of fini
 
 ## Process
 Use SHA-checked GitHub writes, independent small PRs, real CI and actual browser/video evidence. Do not fix failures by hiding assertions or silently editing main.
+
+## Phase 6 — real Studio and MP4 qualification (2026-11-21)
+- [ ] Run the new fail-closed Linux Studio-to-MP4 end-to-end gate on the current PR #6 head; passing only after the new dedicated CI job and the independent full CI finish successfully.
+- [ ] Verify artifacts: source-backed actual Studio Content edit of Hebrew niqqud and mixed Latin/numerals, imported license-pinned local fonts used by Chromium for Hebrew/Arabic/Persian/Urdu/Syriac/Ethiopic, raw composition preview frame, exported MP4, FFmpeg-decoded glyph-row intersection-over-union and RGB differences. This is deliberately a static 640×480/10fps test, not a certificate for animated captions, UAX #9 caret affinity or renderer parity on macOS/Windows.
+- [ ] After the Linux fixture is green: extend to scrub/playback, caption overlays, high-contrast shaping/mark visual baselines, offline ZIP replay and native renderer parity on macOS and Windows. Phase 5 RTL interface remains separate.
+- [ ] Do not merge stacked PRs; reconcile independent PR #2 with PR #3 and complete all six acceptance gates first.
+
