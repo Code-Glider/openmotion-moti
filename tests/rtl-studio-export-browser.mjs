@@ -205,6 +205,28 @@ try {
   }
   await page.screenshot({ path: path.join(output, 'studio-before-edit.png') });
   assertStep('Real Studio player loaded all RTL scripts and Ethiopic/LTR with logical source', { samples: loaded });
+  // A project can still show "Opening project..." after the player has loaded
+  // frames and its timeline count. On macOS PR CI 44914430531 the before-edit
+  // screenshot captured that transitional view, then the clip click was lost.
+  // Wait for the real, visible timeline control and fully opened workspace.
+  await page.waitForFunction(() => {
+    const clip = document.querySelector('button[aria-label^="Label,"]');
+    return clip && clip.getClientRects().length > 0
+      && !document.body.innerText.includes('Opening project...');
+  }, { timeout: 30_000 });
+  // Compact layouts auto-collapse the right inspector into a rail. The test
+  // must open the real Design panel through its actual UI, not rely on a
+  // selection magically expanding it or mutate dock store state in JS.
+  const designRail = await page.$('nav[aria-label="Right panels"] button[aria-label="Design"]');
+  if (designRail) await designRail.click();
+  await page.waitForFunction(() => {
+    const design = document.querySelector('[data-dock-panel="design"]');
+    return design && !design.hasAttribute('inert')
+      && design.getBoundingClientRect().width > 150;
+  }, { timeout: 30_000 });
+  assertStep('Actual Studio Design inspector available (expand compact rail via user UI)', {
+    expandedCompactRightRail: Boolean(designRail),
+  });
   await page.click('button[aria-label^="Label,"]');
   await page.waitForFunction(() => document.querySelector('[data-flat-group-open="true"]')?.textContent?.includes('Font'));
   const field = await page.waitForSelector('[data-flat-group-open="true"] textarea');
