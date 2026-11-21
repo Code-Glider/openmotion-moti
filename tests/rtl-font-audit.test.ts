@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditFont } from '../scripts/rtl-font-audit.ts';
+import { auditFont, inspectFontkitLayout } from '../scripts/rtl-font-audit.ts';
 
 test('font audit rejects invalid and oversized WOFF2 without needing a browser', async () => {
   const folder = await mkdtemp(path.join(tmpdir(), 'rtl-font-audit-'));
@@ -41,6 +41,23 @@ test('real font audit reports Hebrew, Arabic and Syriac glyph gaps rather than c
   assert.equal(typeof result.shapedGlyphCount, 'number');
 });
 
+test('fontkit shaping evidence exposes .notdef glyphs and positioning without claiming visual correctness', () => {
+  const layout = (text: string) => {
+    assert.equal(text, 'سَلَام');
+    return {
+      glyphs: [{ id: 7 }, { id: 0 }, { id: 22 }],
+      positions: [{ xOffset: 0, yOffset: 0 }, { xOffset: 0, yOffset: 4 }, { xOffset: 2, yOffset: 0 }],
+    };
+  };
+  assert.deepEqual(inspectFontkitLayout({ layout }, 'سَلَام'), {
+    glyphCount: 3, notdefGlyphCount: 1, positionedGlyphCount: 2,
+  });
+  assert.deepEqual(inspectFontkitLayout({ layout: () => { throw new Error('NO_SHAPING_TABLE'); } }, 'سَلَام'), { error: 'NO_SHAPING_TABLE' });
+  assert.deepEqual(inspectFontkitLayout({ layout: () => ({
+    glyphs: [{ id: 1 }], positions: [],
+  }) }, 'سَلَام'), { error: 'LAYOUT_GLYPH_POSITION_MISMATCH' });
+});
+
 test('font audit records bounded five-script probes plus Ethiopic/LTR without claiming shaping', async () => {
   const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
   const result = await auditFont(font, 'A');
@@ -64,6 +81,15 @@ test('font audit records bounded five-script probes plus Ethiopic/LTR without cl
   assert.equal(byLang.get('en')?.direction, 'ltr');
   assert.equal(byLang.get('en')?.allProbeCodepointsPresent, true);
   assert.equal(byLang.get('en')?.missingCodepoints.length, 0);
+  const latin = byLang.get('en')!.fontkitLayout;
+  assert.ok('glyphCount' in latin, JSON.stringify(latin));
+  if ('glyphCount' in latin) {
+    assert.ok(latin.glyphCount > 0);
+    assert.equal(latin.notdefGlyphCount, 0, 'Orbitron has the Latin sample glyphs');
+  }
+  const arabic = byLang.get('ar')!.fontkitLayout;
+  assert.ok('notdefGlyphCount' in arabic, JSON.stringify(arabic));
+  if ('notdefGlyphCount' in arabic) assert.ok(arabic.notdefGlyphCount > 0, 'Absent Arabic glyphs must not be mistaken for shaping success');
 });
 
 test('font audit excludes RTL format controls but never silently skips vowel marks', async () => {

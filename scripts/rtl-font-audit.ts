@@ -42,10 +42,40 @@ export type FontAudit = {
     checkedCodepoints: number;
     missingCodepoints: Array<{ hex: string; character: string }>;
     allProbeCodepointsPresent: boolean;
+    /** Fontkit shaping diagnostics only; passing here cannot certify browser shaping or GPOS. */
+    fontkitLayout: FontkitLayoutEvidence;
   }>;
   shapedGlyphCount: number | null;
   shapingError?: string;
 };
+
+export type FontkitLayoutEvidence =
+  | { glyphCount: number; notdefGlyphCount: number; positionedGlyphCount: number }
+  | { error: string };
+
+/** Record concrete glyph-run evidence; this is NOT a pass/fail shaping oracle.
+ * A cmap-complete font may still lack contextual substitutions or correct
+ * mark positioning. Glyph zero is .notdef, and positioning is observable but
+ * must be visually qualified using a real browser and rendered video.
+ */
+export function inspectFontkitLayout(font: {
+  layout: (text: string) => {
+    glyphs: Array<{ id: number }>;
+    positions: Array<{ xOffset: number; yOffset: number }>;
+  };
+}, text: string): FontkitLayoutEvidence {
+  try {
+    const run = font.layout(text);
+    if (run.glyphs.length !== run.positions.length) throw new Error('LAYOUT_GLYPH_POSITION_MISMATCH');
+    return {
+      glyphCount: run.glyphs.length,
+      notdefGlyphCount: run.glyphs.filter(glyph => glyph.id === 0).length,
+      positionedGlyphCount: run.positions.filter(pos => pos.xOffset !== 0 || pos.yOffset !== 0).length,
+    };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
 
 function detectFormat(bytes: Buffer): FontAudit['format'] {
   const signature = bytes.toString('ascii', 0, 4);
@@ -95,6 +125,7 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
       ...probe,
       ...coverage,
       allProbeCodepointsPresent: coverage.missingCodepoints.length === 0,
+      fontkitLayout: inspectFontkitLayout(font, probe.sampleText),
     };
   });
   let shapedGlyphCount: number | null = null;
