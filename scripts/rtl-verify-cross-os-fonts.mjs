@@ -11,6 +11,7 @@ export const runners = Object.freeze({
   'windows-2025': 'win32',
 });
 const requiredFaces = ['hebrew', 'arabic', 'urdu', 'syriac', 'ethiopic', 'latin'];
+const semiticWoff2Faces = ['hebrew', 'arabic', 'urdu', 'syriac'];
 const requiredScripts = ['he', 'ar', 'fa', 'ur', 'syr', 'am', 'en'];
 const hexSha = /^[a-f0-9]{64}$/;
 const pngHeader = Buffer.from([137,80,78,71,13,10,26,10]);
@@ -53,6 +54,7 @@ export function verifyCrossOsFontEvidence(reports) {
   assert.deepEqual(Object.keys(reports).sort(), Object.keys(runners).sort(), 'Three exact OS reports required');
   const hashes = new Map();
   let expectedFaces = null;
+  let expectedScriptWoff2 = null;
   for (const [os, platform] of Object.entries(runners)) {
     const report = reports[os];
     assert(report && typeof report === 'object', os + ': missing actual result.json');
@@ -73,24 +75,44 @@ export function verifyCrossOsFontEvidence(reports) {
     else assert.deepEqual(sortedFaces, expectedFaces, os + ': font or license bytes differ from other runner');
 
     const fontCheck = report.checks?.find(item => item.name ===
-      'Project-local licensed fonts actually used by Chromium, including Hebrew WOFF2');
+      'Project-local licensed fonts actually used by Chromium, including four Semitic WOFF2 faces');
     const conversion = fontCheck?.hebrewWoff2;
     for (const lang of requiredScripts) {
       assert(fontCheck?.fontUsage?.[lang]?.some(face =>
         face.isCustomFont === true && Number.isInteger(face.glyphCount) && face.glyphCount > 0),
         os + ': actual Chromium custom-font use missing for ' + lang);
     }
-    assert.equal(conversion?.format, 'woff2', os + ': actual WOFF2 converter result absent');
-    assert.equal(conversion?.filename, 'hebrew.woff2', os + ': unexpected converted filename');
-    assert.equal(conversion?.converter, 'fonttools 4.59.0 + Brotli 1.1.0', os + ': unpinned converter');
+    const converted = fontCheck?.scriptWoff2;
+    assert(Array.isArray(converted) && converted.length === 4,
+      os + ': four actual Semitic WOFF2 converter results required');
+    assert.deepEqual(report.scriptWoff2, converted, os + ': reported font conversions contradict browser evidence');
+    assert.deepEqual(converted.map(f => f.id), semiticWoff2Faces,
+      os + ': conversion missing an ordered Semitic script');
+    const hashesByScript = {};
+    for (const encoded of converted) {
+      assert.equal(encoded.format, 'woff2', os + ': converted ' + encoded.id + ' is not WOFF2');
+      assert.equal(encoded.filename, encoded.id + '.woff2', os + ': unexpected WOFF2 filename');
+      assert.equal(encoded.converter, 'fonttools 4.59.0 + Brotli 1.1.0', os + ': unpinned converter');
+      assert(hexSha.test(encoded.sha256) && hexSha.test(encoded.sourceTtfSha256),
+        os + ': missing converted source/hash');
+      assert.equal(encoded.sha256, faces.get(encoded.id).fontSha256,
+        os + ': converted WOFF2 differs from actual imported font: ' + encoded.id);
+      assert.equal(encoded.sourceLicenseSha256, faces.get(encoded.id).licenseSha256,
+        os + ': converted WOFF2 lost source OFL license: ' + encoded.id);
+      assert(encoded.encodedBytes > 0 && encoded.numGlyphs > 0 && encoded.codepointCount > 0 &&
+        ['GSUB', 'GPOS'].every(tag => encoded.layoutTables?.includes(tag)),
+        os + ': missing glyph or shaping table after WOFF2 conversion for ' + encoded.id);
+      hashesByScript[encoded.id] = encoded.sha256;
+    }
+    assert.equal(conversion?.sha256, hashesByScript.hebrew, os + ': Hebrew legacy conversion disagrees');
     assert.equal(conversion?.sourceTtfSha256,
       '7ef36a2c3593758cdb622e1bdef4f84523e92fbc3ccc667438dd80ff54c2de88',
       os + ': changed original pinned Hebrew font');
-    assert.equal(conversion?.sha256, faces.get('hebrew').fontSha256, os + ': converted-font hash mismatch');
-    assert(conversion.encodedBytes > 0 && conversion.numGlyphs >= 470,
-      os + ': invalid font conversion inventory');
     assert(['GSUB', 'GPOS', 'GDEF'].every(tag => conversion.layoutTables?.includes(tag)),
-      os + ': missing shaping table after WOFF2 conversion');
+      os + ': missing shaping table after Hebrew WOFF2 conversion');
+    if (!expectedScriptWoff2) expectedScriptWoff2 = hashesByScript;
+    else assert.deepEqual(hashesByScript, expectedScriptWoff2,
+      os + ': Semitic WOFF2 byte hashes differ between runners');
     hashes.set(os, conversion.sha256);
 
     const zip = report.checks.find(item =>
@@ -107,8 +129,10 @@ export function verifyCrossOsFontEvidence(reports) {
       assert.equal(files.filter(f => f.sha256 === licenseSha256).length, 1,
         os + ': license bytes not independently preserved by ZIP reimport');
     }
-    assert(files.some(f => f.path?.endsWith('.woff2') && f.sha256 === conversion.sha256),
-      os + ': offline archive lost actual WOFF2 format');
+    for (const script of semiticWoff2Faces) {
+      assert(files.some(f => f.path?.endsWith('.woff2') && f.sha256 === hashesByScript[script]),
+        os + ': offline archive lost actual ' + script + ' WOFF2 bytes');
+    }
     const video = report.checks.find(item =>
       item.name === 'Actual decoded MP4 preserves each script row and preview glyph geometry');
     assert.deepEqual(report.comparison?.map(row => row.script), requiredScripts,
@@ -171,7 +195,7 @@ export function verifyCrossOsFontEvidence(reports) {
   }
   assert.equal(new Set(hashes.values()).size, 1,
     'Converted Hebrew WOFF2 must be byte-identical on Windows, macOS and Linux');
-  return { passed: true, os: [...hashes.keys()], hebrewWoff2Sha256: hashes.get('ubuntu-24.04'), faces: requiredFaces };
+  return { passed: true, os: [...hashes.keys()], hebrewWoff2Sha256: hashes.get('ubuntu-24.04'), scriptWoff2Sha256: expectedScriptWoff2, faces: requiredFaces };
 }
 
 export async function verifyFromDirectory(root) {
