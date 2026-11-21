@@ -8,8 +8,10 @@ export const UI_DIRECTION_STORAGE_KEY = 'motion.studio.navigationDirection';
 export type NavigationDirection = 'ltr' | 'rtl';
 
 /** Explicit navigation preference only: never infer it from authored video text. */
-export function readNavigationDirection(storage: Pick<Storage, 'getItem'> = localStorage): NavigationDirection {
-  try { return storage.getItem(UI_DIRECTION_STORAGE_KEY) === 'rtl' ? 'rtl' : 'ltr'; }
+export function readNavigationDirection(storage?: Pick<Storage, 'getItem'>): NavigationDirection {
+  // Resolve the browser storage inside the try, so absent/blocked storage
+  // preserves the previous LTR fallback even in server-side environments.
+  try { return (storage ?? localStorage).getItem(UI_DIRECTION_STORAGE_KEY) === 'rtl' ? 'rtl' : 'ltr'; }
   catch { return 'ltr'; }
 }
 
