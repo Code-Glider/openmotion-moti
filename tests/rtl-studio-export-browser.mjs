@@ -42,10 +42,10 @@ const samples = [
 const background = [24, 56, 47];
 const width = 640, height = 480;
 let browser, page, ownedPreviewUrl;
-function decodeToRgb(input, isVideo) {
+function decodeToRgb(input, isVideo, atSeconds = 0.5) {
   const ffmpeg = process.env.HYPERFRAMES_FFMPEG_PATH || 'ffmpeg';
   const args = ['-hide_banner', '-loglevel', 'error', '-nostdin'];
-  if (isVideo) args.push('-ss', '0.5');
+  if (isVideo) args.push('-ss', String(atSeconds));
   args.push('-i', input, '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1');
   const result = spawnSync(ffmpeg, args, { maxBuffer: 10 * 1024 * 1024 });
   assert.equal(result.status, 0, 'FFmpeg frame decode failed: ' + result.stderr?.toString().slice(-1500));
@@ -78,10 +78,26 @@ function compareRows(preview, rendered) {
   }
   return rows;
 }
+// Only background highlight changes with playback; word contents and text nodes
+// remain authored, so rendered frames can be compared at two seek positions.
+function yellowPixels(rgb, rect) {
+  let count = 0;
+  const left = Math.max(0, Math.floor(rect.left)), right = Math.min(width, Math.ceil(rect.right));
+  const top = Math.max(0, Math.floor(rect.top)), bottom = Math.min(height, Math.ceil(rect.bottom));
+  assert(right > left + 5 && bottom > top + 5, 'Timed caption has no measurable word geometry');
+  for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+    const pos = (y * width + x) * 3;
+    if (rgb[pos] >= 175 && rgb[pos + 1] >= 115 && rgb[pos + 2] <= 110) count++;
+  }
+  return count;
+}
 function compositionHtml(fontPaths) {
   const css = Object.entries(fontPaths).map(([face, url]) => '@font-face{font-family:"OM RTL ' + face + '";src:url("' + url + '") format("truetype");font-weight:100 900;font-style:normal;font-display:block}').join('\n');
   const rows = samples.map((sample, index) => '<div class="sample" id="' + sample.id + '" dir="' + sample.dir + '" lang="' + sample.lang + '" data-start="0" data-duration="1" data-track-index="' + index + '" style="top:' + (16 + index * 62) + 'px;font-family:' + (sample.face ? "'OM RTL " + sample.face + "'" : 'Arial,sans-serif') + ';">' + sample.copy + '</div>').join('\n');
-  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"})};</script></body></html>';
+  const timedCaption = '<div id="timed-caption" dir="rtl" lang="he" data-start="0" data-duration="1" data-track-index="7">'
+    + '<span id="caption-he" lang="he" dir="rtl">שָׁלוֹם</span> '
+    + '<span id="caption-ar" lang="ar" dir="rtl">السَّلَامُ</span></div>';
+  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5)};</script></body></html>';
 }
 async function findStudioFrame(page, copy) {
   const deadline = Date.now() + 30_000;
@@ -244,6 +260,41 @@ try {
   }
   const png = path.join(output, 'preview-frame.png');
   await direct.screenshot({ path: png, clip: { x: 0, y: 0, width, height } });
+  // Two real Chromium animation seeks, using the same authored GSAP timeline
+  // that the native video renderer plays. Never split or replace caption text.
+  const timedPreviews = [];
+  for (const time of [0.25, 0.75]) {
+    const layout = await direct.evaluate(at => {
+      const timeline = window.__timelines?.main;
+      if (!timeline || typeof timeline.pause !== 'function') throw Error('Missing authored GSAP timeline');
+      const caption = document.getElementById('timed-caption');
+      const he = document.getElementById('caption-he'), ar = document.getElementById('caption-ar');
+      if (!caption || !he || !ar) throw Error('Timed caption word spans not rendered');
+      const nodes = [he.firstChild, ar.firstChild];
+      window.__rtlOriginalCaptionNodes ??= nodes;
+      const unchanged = nodes.every((node, index) => node === window.__rtlOriginalCaptionNodes[index]);
+      timeline.pause(at);
+      const measure = el => {
+        const rect = el.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      };
+      return { unchanged, text: caption.textContent, he: measure(he), ar: measure(ar),
+        heColor: getComputedStyle(he).backgroundColor, arColor: getComputedStyle(ar).backgroundColor };
+    }, time);
+    assert(layout.unchanged, 'Playback replaced an authored caption text node');
+    assert.equal(layout.text, 'שָׁלוֹם السَّلَامُ', 'Playback mutated Unicode caption content');
+    const yellow = color => /250,\\s*204,\\s*21/.test(color);
+    assert.equal(yellow(layout.heColor), time < 0.5, 'Hebrew timed highlight state differs from authored timeline');
+    assert.equal(yellow(layout.arColor), time > 0.5, 'Arabic timed highlight state differs from authored timeline');
+    const screenshot = path.join(output, 'preview-caption-' + time + '.png');
+    await direct.screenshot({ path: screenshot, clip: { x: 0, y: 0, width, height } });
+    const pixels = decodeToRgb(screenshot, false);
+    const heYellow = yellowPixels(pixels, layout.he);
+    const arYellow = yellowPixels(pixels, layout.ar);
+    assert((time < 0.5 ? heYellow : arYellow) > 70, 'Expected real browser caption highlight absent');
+    assert((time < 0.5 ? arYellow : heYellow) < 25, 'Untimed caption word unexpectedly highlighted');
+    timedPreviews.push({ time, screenshot, layout, browserYellow: { he: heYellow, ar: arYellow } });
+  }
   await direct.close();
   assertStep('Project-local licensed fonts actually used by Chromium', { fontUsage });
   current = await client.call('openmotion_get_project', { projectId });
@@ -271,11 +322,28 @@ try {
   assert.equal(frameResult.status, 0, 'Could not retain MP4 frame: ' + frameResult.stderr?.toString().slice(-1000));
   const rows = compareRows(decodeToRgb(png, false), decodeToRgb(mp4, true));
   assertStep('Actual decoded MP4 preserves each script row and preview glyph geometry', { rows, exportVerification: completed.verification });
+  const temporal = [];
+  for (const capture of timedPreviews) {
+    const rgb = decodeToRgb(mp4, true, capture.time);
+    const heYellow = yellowPixels(rgb, capture.layout.he);
+    const arYellow = yellowPixels(rgb, capture.layout.ar);
+    const active = capture.time < 0.5 ? 'he' : 'ar';
+    const inactive = capture.time < 0.5 ? 'ar' : 'he';
+    const videoYellow = { he: heYellow, ar: arYellow };
+    assert(videoYellow[active] > 70, 'MP4 timed caption highlight missing at ' + capture.time);
+    assert(videoYellow[inactive] < 25, 'MP4 contains a stale timed caption highlight at ' + capture.time);
+    const drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
+      / Math.max(videoYellow[active], capture.browserYellow[active]);
+    assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
+    temporal.push({ time: capture.time, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
+  }
+  assertStep('Timed Hebrew/Arabic word highlighting survives two MP4 seek frames without caption text-node mutation', { temporal });
   assert.deepEqual(consoleErrors, [], 'Studio page errors');
   evidence.passed = true;
   evidence.browser = await browser.version();
   evidence.fonts = fontSources.map(({ id, fontSha256, licenseSha256 }) => ({ id, fontSha256, licenseSha256 }));
   evidence.comparison = rows;
+  evidence.temporalCaptions = temporal;
 } catch (error) {
   evidence.error = String(error?.stack || error);
   await page?.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {});
