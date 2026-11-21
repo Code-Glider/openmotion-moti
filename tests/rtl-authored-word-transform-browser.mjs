@@ -130,7 +130,9 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   assert.equal(edited.wordId, 'w-he');
   assert.equal(edited.wordText, 'שָׁלוֹם');
   assert.equal(edited.groupText, 'שָׁלוֹםABC-123');
-  assert.match(edited.transform, /scale\(1\.250, 0\.900\)/,
+  const scale = edited.transform?.match(/\bscale\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)/);
+  assert(scale, 'Live DOM transform did not contain a two-axis scale');
+  assert.deepEqual(scale.slice(1).map(Number), [1.25, 0.9],
     'Live DOM transform lost its independent authored Y scale');
   assert(edited.afterWidth > neutral.rect.width, 'In-place editing lost actual Chromium glyph geometry');
   const outputDir = process.env.RTL_CAPTION_EXPORT_ARTIFACT_DIR;
