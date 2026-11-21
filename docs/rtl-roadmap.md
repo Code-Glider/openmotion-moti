@@ -61,6 +61,9 @@ Updated 2026-11-21. This is a tracked engineering checklist, not a claim of fini
 - [ ] Preserve transport controls, charts, numeric data and media time behavior.
 
 ## Phase 6 — cross-platform release gate
+- [x] Added mandatory, non-skipping actual Chromium HTML reference checks for Hebrew, Arabic, Persian, Urdu and Syriac, plus Ethiopic/LTR, mixed English isolation, logical source and Range glyph ordering. Dedicated RTL workflow captures a screenshot and JSON with browser version. This qualification is on a separate draft Phase 6 branch; full CI still pending. System font fallback is **not pinned**, and neither Studio rendering nor actual MP4 export is exercised.
+- [ ] Review screenshot/JSON from CI and expand with licensed Semitic fonts, editor interactions, and captured OpenMotion MP4 frames.
+
 - [ ] Chromium preview vs decoded MP4 pixel/geometry parity with pinned scripts and fonts on Windows, macOS and Linux.
 - [ ] Real mixed-script cases, legacy/LTR compatibility, regressions and security/license review.
 - [ ] No completion claim, promotion or merge until documented evidence covers all required workflows.

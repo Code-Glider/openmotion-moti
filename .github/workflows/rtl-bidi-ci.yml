@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret]
+    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -19,6 +19,8 @@ on:
       - 'tests/font-import.test.ts'
       - 'tests/text-flow.test.ts'
       - 'tests/rtl-font-audit.test.ts'
+      - 'tests/rtl-browser-rendering.test.ts'
+      - 'tests/rtl-browser-fixture.html'
   workflow_dispatch:
 
 permissions:
@@ -58,6 +60,18 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
+      - name: Require actual Chromium RTL reference geometry
+        env:
+          RTL_BROWSER_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-browser-rendering.test.ts
+      - name: Retain RTL Chromium screenshot and JSON
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-chromium-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/rtl-browser
+          if-no-files-found: warn
+          retention-days: 14
       - name: Install FFmpeg for native caption integration tests
         timeout-minutes: 12
         run: |
