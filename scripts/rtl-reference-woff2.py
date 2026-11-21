@@ -124,7 +124,10 @@ def main() -> None:
         if len(matches) != 1:
             raise ValueError("PINNED_" + face_id.upper() + "_FACE_MISSING_OR_DUPLICATE")
         result.append(convert_face(folder, matches[0], sample))
-    print(json.dumps({"sourceCommit": manifest["sourceCommit"], "converted": result}, ensure_ascii=False))
+    # Windows Actions Python stdout may be cp1252: native script probe letters cannot
+    # be printed directly. JSON ASCII escaping preserves the exact Unicode values
+    # when parsed, while keeping stdout portable without changing file manifests.
+    print(json.dumps({"sourceCommit": manifest["sourceCommit"], "converted": result}, ensure_ascii=True))
 
 
 if __name__ == "__main__":
