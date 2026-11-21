@@ -23,3 +23,19 @@ test('font audit rejects invalid and oversized WOFF2 without needing a browser',
 test('font audit requires actual sample text', async () => {
   await assert.rejects(() => auditFont('/not/needed.ttf',''), /SUPPLY_REAL_TEXT/);
 });
+
+test('real font audit reports Hebrew, Arabic and Syriac glyph gaps rather than claiming shaping coverage', async () => {
+  const font = new URL('./fixtures/fonts/orbitron.ttf', import.meta.url);
+  const result = await auditFont(font.pathname, 'A א ع ܐ');
+  assert.equal(result.format, 'ttf');
+  assert.equal(result.family, 'Orbitron');
+  const missing = new Set(result.missingCodepoints.map(point => point.hex));
+  assert.equal(missing.has('U+0041'), false);
+  assert.equal(missing.has('U+05D0'), true);
+  assert.equal(missing.has('U+0639'), true);
+  assert.equal(missing.has('U+0710'), true);
+  assert.match(result.sha256, /^[0-9a-f]{64}$/);
+  // A successful fontkit layout only counts glyph objects; it never proves
+  // contextual shaping or combining-mark placement in an actual browser.
+  assert.equal(typeof result.shapedGlyphCount, 'number');
+});
