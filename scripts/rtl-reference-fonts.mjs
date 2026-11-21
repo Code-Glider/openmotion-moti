@@ -8,7 +8,7 @@ const GOOGLE_FONTS_COMMIT = '06bfe0d62a98375cb09c942fa18e68bd32cff057';
 const pins = [
   { id: 'hebrew', lang: 'he', directory: 'notosanshebrew', filename: 'NotoSansHebrew[wdth,wght].ttf', blob: 'f31f73b8be8086692ff0156544f80975640e5a42', licenseBlob: '56662b6243717dbe8acee6d87c3f0e795f9c4295' },
   { id: 'arabic', lang: 'ar', directory: 'notonaskharabic', filename: 'NotoNaskhArabic[wght].ttf', blob: 'a8d2867262dc7bb28492ad746de5d56235735c8b', licenseBlob: 'd4e170557fc8bcf8d1dcb317d9f1accaf8acf223' },
-  { id: 'urdu', lang: 'ur', directory: 'notonastaliqurdu', filename: 'NotoNastaliqUrdu[wght].ttf', blob: '896bb7953039c81192d4b62a6968cae1a52bfc52', licenseBlob: '38833b0693a30ee6820edc3bf807ba7c0ab8804a' },
+  { id: 'urdu', lang: 'ur', directory: 'notosansarabic', filename: 'NotoSansArabic[wdth,wght].ttf', blob: 'f1d01edce4ebaedcbe9a06fc75fec07b304ec3df', licenseBlob: '14c589f6384505ede3f8e52627d397513af3662d' },
   { id: 'syriac', lang: 'syr', directory: 'notosanssyriac', filename: 'NotoSansSyriac[wght].ttf', blob: 'ca4a46b400e7b3615006d727fd6052680aa40ee4', licenseBlob: '4b0064f9c08cab737605f7363ebf1b53e8c5c3dc' },
   { id: 'ethiopic', lang: 'am', directory: 'notosansethiopic', filename: 'NotoSansEthiopic[wdth,wght].ttf', blob: '0910ed80aac7398582c515225304623a60d6f35a', licenseBlob: '23e1a135d51a4bfba0ef048fba7f3bce61465475' },
 ];
