@@ -12,6 +12,7 @@ import { browserExecutable } from '../browser.ts';
 import { configureNativeEnvironment } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
 import { Client } from './shared-editor-client.mjs';
+import { readProjectZip } from '../shared/project-zip.ts';
 import { closeFixtureEditor } from './fixtures.ts';
 import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
 
@@ -413,6 +414,72 @@ try {
     temporal.push({ seekIndex: capture.seekIndex, time: capture.time, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
   }
   assertStep('Timed Hebrew/Arabic word highlighting survives forward/reverse/replay seeks and MP4 parity without caption text-node mutation', { temporal });
+  // Production project ZIP export must preserve source Unicode and actual
+  // imported font/LICENSE bytes, not merely look right in Chrome.
+  // Import into an independent project to catch missing relative assets.
+  const originalBeforeArchive = await client.call('openmotion_get_project', {
+    projectId, file: { path: 'index.html' },
+  });
+  const archive = await client.call('openmotion_project_archive', {
+    action: 'export', requestId: 'rtl-offline-archive-export', projectIds: [projectId],
+  });
+  assert(typeof archive.archivePath === 'string' && archive.archivePath,
+    'Offline export did not return an archive path');
+  const entries = readProjectZip(await readFile(archive.archivePath));
+  const manifestEntry = entries.get('openmotion-projects.json');
+  assert(manifestEntry, 'Offline export missing project manifest');
+  const archiveManifest = JSON.parse(manifestEntry.toString('utf8'));
+  assert.equal(archiveManifest.projects.length, 1, 'RTL archive must contain exactly one project');
+  const archiveRoot = archiveManifest.projects[0].root;
+  assert.equal(typeof archiveRoot, 'string', 'Missing versioned archive root');
+  const exportedHtml = entries.get(archiveRoot + '/index.html');
+  assert(exportedHtml, 'Offline export missing edited composition');
+  assert(exportedHtml.toString('utf8').includes(editedHebrew), 'Archive lost edited Hebrew niqqud/Latin copy');
+  assert(!exportedHtml.toString('utf8').includes(originalHebrew), 'Archive restored stale pre-edit text');
+  const assetFiles = [];
+  for (const face of fontSources) {
+    const asset = imported.items.find(item => item.itemId === face.id);
+    assert(asset?.path && asset?.license?.path, 'Missing imported font/license paths: ' + face.id);
+    for (const [relative, originalPath] of [[asset.path, face.sourcePath], [asset.license.path, face.licensePath]]) {
+      const archived = entries.get(archiveRoot + '/' + relative);
+      assert(archived, 'Offline archive missing asset: ' + relative);
+      const original = await readFile(originalPath);
+      assert.deepEqual(archived, original, 'Offline archive changed bytes: ' + relative);
+      assetFiles.push({ path: relative, sha256: sha256(archived) });
+    }
+  }
+  const restored = await client.call('openmotion_project_archive', {
+    action: 'import', requestId: 'rtl-offline-archive-import', sourcePath: archive.archivePath,
+  });
+  assert.equal(restored.projects.length, 1, 'Offline reimport did not restore exactly one project');
+  const restoredId = restored.projects[0].projectId;
+  assert(restoredId && restoredId !== projectId, 'Offline import must create an independent project');
+  const restoredSource = await client.call('openmotion_get_project', {
+    projectId: restoredId, file: { path: 'index.html' },
+  });
+  assert(JSON.stringify(restoredSource.file).includes(editedHebrew), 'Reimport lost edited logical Unicode text');
+  assert(!JSON.stringify(restoredSource.file).includes(originalHebrew), 'Reimport restored stale pre-edit text');
+  for (const face of fontSources) {
+    const asset = imported.items.find(item => item.itemId === face.id);
+    assert.deepEqual(
+      await readFile(path.join(data, 'projects', restoredId, asset.path)),
+      await readFile(face.sourcePath),
+      'Reimport changed font bytes: ' + face.id,
+    );
+    assert.deepEqual(
+      await readFile(path.join(data, 'projects', restoredId, asset.license.path)),
+      await readFile(face.licensePath),
+      'Reimport changed font license bytes: ' + face.id,
+    );
+  }
+  const originalAfterArchive = await client.call('openmotion_get_project', {
+    projectId, file: { path: 'index.html' },
+  });
+  assert.deepEqual(originalAfterArchive.file, originalBeforeArchive.file,
+    'Archive round-trip changed the original authored project');
+  assertStep('Offline ZIP reimport retained exact edited Unicode and six licensed font assets', {
+    restoredProjectId: restoredId, assets: assetFiles,
+  });
   assert.deepEqual(consoleErrors, [], 'Studio page errors');
   evidence.passed = true;
   evidence.browser = await browser.version();
