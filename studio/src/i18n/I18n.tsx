@@ -4,6 +4,14 @@ import { pageMetadata } from '../../../packages/design-system/metadata.js';
 export { languages, isLocale, translate, sourceMessage } from './messages';
 export type { Locale, MessageValues, Translate } from './messages';
 export const LOCALE_STORAGE_KEY = 'motion.studio.locale';
+export const UI_DIRECTION_STORAGE_KEY = 'motion.studio.navigationDirection';
+export type NavigationDirection = 'ltr' | 'rtl';
+
+/** Explicit navigation preference only: never infer it from authored video text. */
+export function readNavigationDirection(): NavigationDirection {
+  try { return localStorage.getItem(UI_DIRECTION_STORAGE_KEY) === 'rtl' ? 'rtl' : 'ltr'; }
+  catch { return 'ltr'; }
+}
 
 function browserLocale(): Locale | undefined {
   if (typeof navigator === 'undefined') return undefined;
@@ -35,15 +43,24 @@ function languageTools(locale: Locale) {
 }
 
 // Standalone upstream components keep English unless a product host provides a locale.
-const I18nContext = createContext({ ...languageTools('en'), setLocale: (_locale: Locale) => {} });
+const I18nContext = createContext({
+  ...languageTools('en'), navigationDirection: 'ltr' as NavigationDirection,
+  setLocale: (_locale: Locale) => {}, setNavigationDirection: (_direction: NavigationDirection) => {},
+});
 export const useI18n = () => useContext(I18nContext);
 
 export function I18nProvider({ children, initialLocale }: { children: ReactNode; initialLocale?: Locale }) {
   const [locale, updateLocale] = useState<Locale>(() => initialLocale ?? readLocale());
+  const [navigationDirection, updateNavigationDirection] = useState<NavigationDirection>(readNavigationDirection);
   const setLocale = useCallback((next: Locale) => {
     if (!isLocale(next)) return;
     updateLocale(next);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch { /* Switching still works without persistence. */ }
+  }, []);
+  const setNavigationDirection = useCallback((next: NavigationDirection) => {
+    if (next !== 'rtl' && next !== 'ltr') return;
+    updateNavigationDirection(next);
+    try { localStorage.setItem(UI_DIRECTION_STORAGE_KEY, next); } catch { /* In-memory switch still works. */ }
   }, []);
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -63,10 +80,14 @@ export function I18nProvider({ children, initialLocale }: { children: ReactNode;
     const onStorage = (event: StorageEvent) => {
       if (event.storageArea && event.storageArea !== localStorage) return;
       if (event.key === LOCALE_STORAGE_KEY || event.key === null) updateLocale(isLocale(event.newValue) ? event.newValue : browserLocale() ?? 'zh-CN');
+      if (event.key === UI_DIRECTION_STORAGE_KEY || event.key === null)
+        updateNavigationDirection(event.key === null ? readNavigationDirection() : event.newValue === 'rtl' ? 'rtl' : 'ltr');
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, [locale]);
-  const value = useMemo(() => ({ ...languageTools(locale), setLocale }), [locale, setLocale]);
+  // Deliberately never set html.dir: media-time coordinates and preview remain LTR-isolated.
+  const value = useMemo(() => ({ ...languageTools(locale), navigationDirection, setLocale, setNavigationDirection }),
+    [locale, navigationDirection, setLocale, setNavigationDirection]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

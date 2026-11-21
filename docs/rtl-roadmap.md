@@ -56,9 +56,11 @@ Updated 2026-11-21. This is a tracked engineering checklist, not a claim of fini
 - [ ] Real shaping/mark-position screenshots and complete TTF, OTF, WOFF, WOFF2 and variable font import/export on the five target scripts.
 - [ ] Offline project ZIP and deterministic render verification against supplied fonts and licenses.
 
-## Phase 5 — RTL Studio UI
-- [ ] Hebrew/Arabic interface locale, logical layout, accessibility and responsive verification.
-- [ ] Preserve transport controls, charts, numeric data and media time behavior.
+## Phase 5 — RTL Studio UI (separate draft branch)
+- [x] First opt-in, independently persisted RTL **project navigation** direction setting in the existing language menu. Do not infer it from video text or the Studio interface language. Only the navigation aside gets `dir=rtl`; project names use `bdi dir=auto` and search chooses direction automatically. Timeline, preview and root direction are untouched.
+- [x] Regression tests cover preference persistence, storage synchronization, inaccessible-storage fallback, locale independence, unchanged authored input/iframe identity and root direction. Dedicated RTL CI now runs the test; current-head verification pending.
+- [ ] Hebrew/Arabic translations, comprehensive vocabulary, full UI logical layout, menu accessibility and responsive visual evidence. Existing locales have strict complete-dictionary test coverage; do not register partial translations as supported languages.
+- [ ] Verify transport controls, charts, numeric data, dock panels and media time behavior in real Chromium; this navigation-only control is not full RTL UI.
 
 ## Phase 6 — cross-platform release gate
 - [ ] Chromium preview vs decoded MP4 pixel/geometry parity with pinned scripts and fonts on Windows, macOS and Linux.

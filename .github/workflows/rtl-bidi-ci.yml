@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase5-ui-locale]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret]
+    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -12,6 +12,9 @@ on:
       - 'shared/transcript-captions.ts'
       - 'shared/transcript-tool.ts'
       - 'studio/src/captions/**'
+      - 'studio/src/i18n/**'
+      - 'studio/src/motion/WorkspaceFrame.tsx'
+      - 'studio/src/motion/workspace.css'
       - 'studio/src/components/editor/**'
       - 'studio/src/player/**'
       - 'scripts/rtl-font-audit.ts'
@@ -85,6 +88,7 @@ jobs:
         run: |
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
+            studio/src/i18n/I18n.test.tsx \
             studio/src/captions/components/captionWordRuns.test.ts \
             studio/src/captions/components/CaptionOverlay.sender.test.tsx \
             studio/src/captions/parser.test.ts \
