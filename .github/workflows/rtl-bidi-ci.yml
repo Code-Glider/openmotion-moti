@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, feat/rtl-textarea-immediate-blur-save]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4]
+    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -29,6 +29,8 @@ on:
       - 'tests/rtl-mixed-caret-browser.mjs'
       - 'tests/rtl-bidi-keyboard-ime-browser.mjs'
       - 'tests/rtl-caption-range-browser.mjs'
+      - 'tests/rtl-cross-os-font-provenance.test.mjs'
+      - 'scripts/rtl-verify-cross-os-fonts.mjs'
       - 'tests/rtl-studio-export-browser.mjs'
       - 'tests/workspace-transient-files.test.ts'
       - 'scripts/rtl-reference-fonts.mjs'
@@ -140,6 +142,7 @@ jobs:
             studio/src/captions/parser.test.ts \
             studio/src/captions/parser.dom.test.ts \
             studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \
+            studio/src/components/editor/textAreaImmediateBlur.test.tsx \
             studio/src/components/editor/InlineTextCaret.test.tsx \
             studio/src/components/editor/inlineTextStyleRange.test.ts \
             studio/src/components/editor/fontAssets.test.ts \
@@ -255,5 +258,51 @@ jobs:
         with:
           name: rtl-studio-mp4-parity-${{ matrix.os }}
           path: ${{ runner.temp }}/rtl-studio-export
+          if-no-files-found: warn
+          retention-days: 14
+
+  rtl-font-provenance:
+    name: Cross-OS reproducible font and offline evidence gate
+    needs: studio-rtl-export
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact RTL feature source
+        uses: actions/checkout@v6.0.2
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Use upstream-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+      - name: Download actual current-run Linux Studio, MP4 and offline ZIP evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-mp4-parity-ubuntu-24.04
+          path: ${{ runner.temp }}/rtl-cross-os/ubuntu-24.04
+      - name: Download actual current-run macOS Studio, MP4 and offline ZIP evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-mp4-parity-macos-15
+          path: ${{ runner.temp }}/rtl-cross-os/macos-15
+      - name: Download actual current-run Windows Studio, MP4 and offline ZIP evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-mp4-parity-windows-2025
+          path: ${{ runner.temp }}/rtl-cross-os/windows-2025
+      - name: Fail on any OS, imported licensed font, byte hash, ZIP or MP4 regression
+        env:
+          RTL_CROSS_OS_FIXTURES: ${{ runner.temp }}/rtl-cross-os
+        run: |
+          set -euo pipefail
+          node --test tests/rtl-cross-os-font-provenance.test.mjs
+          node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_FIXTURES" | tee "$RUNNER_TEMP/rtl-cross-os-attestation.json"
+      - name: Preserve reproducible cross-runner attestation
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-cross-os-font-attestation
+          path: ${{ runner.temp }}/rtl-cross-os-attestation.json
           if-no-files-found: warn
           retention-days: 14
