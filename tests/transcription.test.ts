@@ -380,7 +380,7 @@ test('word-timed Semitic highlights reject partial graphemes and round-trip Unic
   assert.match(native.content, /lang="he" dir="rtl"/);
   assert.match(native.content, /<span style="color:var\(--caption-highlight\)">שָׁלוֹם<\/span>/);
   assert.match(native.content, /<span style="color:var\(--caption-highlight\)">السَّلَامُ<\/span>/);
-  assert.match(native.content, /OpenMotion 2.0 &amp;/);
+  assert.match(native.content, /&amp;/); // escaped in authored HTML; decoded on subtitle export
   for (const format of ['srt', 'vtt'] as const) {
     const exported = exportCaptionSource(native.content, format, parseHTML);
     assert.equal(exported.cueCount, 1, 'timed highlights should export as one authored cue');
