@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, feat/rtl-textarea-immediate-blur-save]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence]
+    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -142,6 +142,7 @@ jobs:
             studio/src/captions/parser.test.ts \
             studio/src/captions/parser.dom.test.ts \
             studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \
+            studio/src/components/editor/textAreaImmediateBlur.test.tsx \
             studio/src/components/editor/InlineTextCaret.test.tsx \
             studio/src/components/editor/inlineTextStyleRange.test.ts \
             studio/src/components/editor/fontAssets.test.ts \
