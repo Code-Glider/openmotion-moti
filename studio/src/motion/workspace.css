@@ -45,6 +45,8 @@
 .motion-workspace-menu { display: inline-flex; flex-shrink: 0; }
 .motion-sidebar-backdrop { position: fixed; inset: 0; background: var(--motion-overlay); z-index: 100; }
 .motion-sidebar-drawer { position: fixed; inset: 0 auto 0 0; width: min(260px, calc(100vw - 32px)); z-index: 101; outline: none; box-shadow: var(--motion-shadow-md); }
+/* The portaled mobile drawer is direction-isolated from the LTR timeline and transport. */
+.motion-sidebar-drawer[dir="rtl"] { inset: 0 0 0 auto; }
 .motion-sidebar-drawer .motion-sidebar { width: 100%; height: 100%; padding-top: 11.5px; }
 .motion-workspace-notice { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 8px 18px; color: var(--motion-danger); background: var(--motion-danger-soft); font-size: var(--motion-text-sm); flex-shrink: 0; }
 /* Project navigation overlays the editor at every viewport size. */
