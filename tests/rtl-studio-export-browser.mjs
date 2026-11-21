@@ -245,6 +245,62 @@ try {
   frame = await findStudioFrame(page, editedHebrew);
   await page.screenshot({ path: path.join(output, 'studio-after-edit.png') });
   assertStep('UI Content editor persisted Hebrew niqqud and mixed English/numerals', { newText: editedHebrew, revision: current.revision });
+  // Qualify the actual Studio transport, not only the raw composition's
+  // GSAP timeline. Pointer-seek forwards, backwards, then repeat: a player
+  // wired to the wrong timeline could otherwise pass all MP4 parity gates.
+  const seekInput = await page.waitForSelector(
+    'input[data-studio-control="seek-preview"]:not(:disabled)', { timeout: 30_000 });
+  assert(seekInput, 'Real Studio seek input is unavailable');
+  const sliderDuration = await seekInput.evaluate(input => Number(input.max));
+  assert(sliderDuration >= 0.95 && sliderDuration <= 1.05,
+    'Studio duration differs from the authored one-second composition: ' + sliderDuration);
+  await seekInput.evaluate(input => input.scrollIntoView({ block: 'center' }));
+  const studioSeeks = [];
+  const repeatedStudioStates = new Map();
+  for (const [seekIndex, expectedTime] of [0.25, 0.75, 0.25, 0.75].entries()) {
+    const bounds = await seekInput.boundingBox();
+    assert(bounds && bounds.width > 150 && bounds.height > 0, 'Studio seek input has no pointer geometry');
+    const inset = Math.min(14, bounds.height / 2);
+    await seekInput.click({ offset: {
+      x: inset + (bounds.width - 2 * inset) * expectedTime / sliderDuration,
+      y: bounds.height / 2,
+    } });
+    const actualTime = await seekInput.evaluate(input => input.valueAsNumber);
+    assert(Math.abs(actualTime - expectedTime) <= 0.08,
+      'Native Studio slider missed the seek: ' + JSON.stringify({ expectedTime, actualTime }));
+    let state;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      frame = await findStudioFrame(page, editedHebrew);
+      state = await frame.evaluate(() => {
+        const he = document.getElementById('caption-he'), ar = document.getElementById('caption-ar');
+        if (!he || !ar) return null;
+        window.__rtlStudioCaptionNodes ??= [he.firstChild, ar.firstChild];
+        return {
+          unchangedNodes: he.firstChild === window.__rtlStudioCaptionNodes[0]
+            && ar.firstChild === window.__rtlStudioCaptionNodes[1],
+          text: document.getElementById('timed-caption')?.textContent,
+          heColor: getComputedStyle(he).backgroundColor,
+          arColor: getComputedStyle(ar).backgroundColor,
+        };
+      });
+      const yellow = color => /250,\\s*204,\\s*21/.test(color || '');
+      if (state && yellow(state.heColor) === (expectedTime < 0.5)
+        && yellow(state.arColor) === (expectedTime > 0.5)) break;
+      await sleep(100);
+    }
+    assert(state, 'Studio player iframe lost authored timed caption on seek');
+    assert.equal(state.text, 'שָׁלוֹם السَّلَامُ', 'Studio preview seek altered RTL Unicode text');
+    assert(state.unchangedNodes, 'Studio preview seek replaced an authored caption text node');
+    const yellow = color => /250,\\s*204,\\s*21/.test(color || '');
+    assert.equal(yellow(state.heColor), expectedTime < 0.5, 'Studio Hebrew highlight wrong at ' + expectedTime);
+    assert.equal(yellow(state.arColor), expectedTime > 0.5, 'Studio Arabic highlight wrong at ' + expectedTime);
+    const previous = repeatedStudioStates.get(expectedTime);
+    if (previous) assert.deepEqual(state, previous, 'Repeated real Studio scrub changed the caption state');
+    else repeatedStudioStates.set(expectedTime, state);
+    studioSeeks.push({ seekIndex, expectedTime, actualTime, ...state });
+  }
+  await page.screenshot({ path: path.join(output, 'studio-after-reverse-seek.png') });
+  assertStep('Actual Studio seek control reverses and replays RTL word highlights without mutation', { studioSeeks });
   const direct = await browser.newPage();
   await direct.setViewport({ width, height, deviceScaleFactor: 1 });
   const route = new URL('/api/projects/' + encodeURIComponent(projectId) + '/preview/index.html', new URL(preview.previewUrl).origin);
