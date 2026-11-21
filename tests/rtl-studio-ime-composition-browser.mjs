@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import puppeteer from 'puppeteer-core';
@@ -56,6 +57,22 @@ test('real Chromium CDP IME preedit never leaks partial source to Studio save', 
   assert.equal(bundle.outputFiles.length, 1);
   const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
   t.after(() => browser.close());
+  // about:blank is not a trustworthy browser origin: production's shared UI
+  // initializes crypto.randomUUID, which browsers expose only in secure
+  // contexts. Local loopback is a real browser secure context, unlike a stub.
+  const fixtureHtml = '<!doctype html><html lang="en" dir="ltr"><body><div id="host"></div><button id="next">Next</button></body></html>';
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end(fixtureHtml);
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const address = server.address();
+  assert(address && typeof address === 'object');
+  const origin = 'http://127.0.0.1:' + address.port;
   const outDir = process.env.RTL_IME_ARTIFACT_DIR;
   if (outDir) await mkdir(outDir, { recursive: true });
   const evidence = [];
@@ -70,7 +87,12 @@ test('real Chromium CDP IME preedit never leaks partial source to Studio save', 
     });
     try {
       await page.setViewport({ width: 750, height: 300, deviceScaleFactor: 1 });
-      await page.setContent('<!doctype html><html lang="en" dir="ltr"><body><div id="host"></div><button id="next">Next</button></body></html>');
+      await page.goto(origin, { waitUntil: 'domcontentloaded' });
+      const context = await page.evaluate(() => ({
+        secure: window.isSecureContext, uuid: typeof window.crypto.randomUUID,
+      }));
+      assert.deepEqual(context, { secure: true, uuid: 'function' },
+        sample.lang + ': Chromium fixture must behave like a secure production origin');
       await page.addScriptTag({ content: bundle.outputFiles[0].text });
       try {
         await page.waitForSelector('textarea', { timeout: 4500 });
