@@ -268,6 +268,69 @@ try {
   frame = await findStudioFrame(page, editedHebrew);
   await page.screenshot({ path: path.join(output, 'studio-after-edit.png') });
   assertStep('UI Content editor persisted Hebrew niqqud and mixed English/numerals', { newText: editedHebrew, revision: current.revision });
+  samples[0].copy = editedHebrew;
+  // The same *actual Studio Content inspector* must save Arabic, Persian,
+  // Urdu and Syriac, not only display font-provenanced static rows.
+  const scriptEdits = [];
+  for (const [id, nextCopy] of [
+    ['arabic', 'السَّلَامُ OpenMotion 52%'],
+    ['persian', 'فارسی پ چ ژ گ ۲۰۶۲'],
+    ['urdu', 'اردو ڈ ٹ ڑ ں ے'],
+    ['syriac', 'ܒܪܝܟܐ ܫܠܡܐ'],
+  ]) {
+    const sample = samples.find(row => row.id === id);
+    assert(sample, 'Unknown script edit ' + id);
+    const oldCopy = sample.copy;
+    let clip;
+    for (const node of await page.$$('button[aria-label]')) {
+      const label = await node.evaluate(element => element.getAttribute('aria-label'));
+      if (label?.toLowerCase().startsWith(id.toLowerCase() + ',')) { clip = node; break; }
+    }
+    assert(clip, 'Cannot select actual timeline clip: ' + id);
+    await clip.click();
+    await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+      .some(el => el.value === expected), { timeout: 30_000 }, oldCopy);
+    let contentField;
+    for (const node of await page.$$('[data-flat-group-open="true"] textarea')) {
+      if (await node.evaluate(el => el.value) === oldCopy) { contentField = node; break; }
+    }
+    assert(contentField, 'Real Studio Content inspector did not target ' + id);
+    await contentField.focus();
+    const chosen = await contentField.evaluate(el => {
+      el.setSelectionRange(0, el.value.length);
+      return [el.selectionStart, el.selectionEnd, el.value.length];
+    });
+    assert.deepEqual(chosen, [0, chosen[2], chosen[2]], id + ' logical selection wrong');
+    await page.keyboard.sendCharacter(nextCopy);
+    assert.equal(await contentField.evaluate(el => el.value), nextCopy, id + ' UI did not type Unicode');
+    await page.keyboard.press('Tab');
+    let persisted = false;
+    for (let attempt = 0; attempt < 80; attempt++) {
+      try { current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } }); }
+      catch (error) {
+        if (error?.code !== 'VERSION_CONFLICT') throw error;
+        await sleep(200); continue;
+      }
+      if (JSON.stringify(current.file).includes(nextCopy)) { persisted = true; break; }
+      await sleep(200);
+    }
+    assert(persisted, id + ' edit did not persist native project Unicode');
+    assert(!JSON.stringify(current.file).includes(oldCopy), id + ' old text persisted');
+    frame = await findStudioFrame(page, editedHebrew);
+    assert.equal(await frame.$eval('#' + id, element => element.textContent), nextCopy,
+      id + ' Studio preview has stale text');
+    sample.copy = nextCopy;
+    scriptEdits.push({ id, text: nextCopy, revision: current.revision });
+  }
+  const ltrControls = await frame.evaluate(() => [
+    document.getElementById('ethiopic')?.textContent,
+    document.getElementById('latin')?.textContent,
+  ]);
+  assert.deepEqual(ltrControls, samples.filter(row => row.dir === 'ltr').map(row => row.copy),
+    'Editing RTL scripts modified Ethiopic/LTR control text');
+  await page.screenshot({ path: path.join(output, 'studio-all-scripts-edited.png') });
+  assertStep('Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls',
+    { scriptEdits, ltrControls });
   // Qualify the actual Studio transport, not only the raw composition's
   // GSAP timeline. Pointer-seek forwards, backwards, then repeat: a player
   // wired to the wrong timeline could otherwise pass all MP4 parity gates.
@@ -331,6 +394,10 @@ try {
   await direct.waitForSelector('#main');
   const raw = await direct.evaluate(async () => { await document.fonts.ready; return document.getElementById('label').textContent; });
   assert.equal(raw, editedHebrew, 'Direct preview route does not match Studio player edit');
+  const liveTexts = await direct.evaluate(() => ['arabic','persian','urdu','syriac','ethiopic','latin'].map(id =>
+    ({ id, text: document.getElementById(id)?.textContent })));
+  for (const row of liveTexts) assert.equal(row.text, samples.find(s => s.id === row.id)?.copy,
+    row.id + ' direct preview does not match real Studio editor');
   const cdp = await direct.createCDPSession();
   await cdp.send('DOM.enable'); await cdp.send('CSS.enable');
   const dom = await cdp.send('DOM.getDocument');
@@ -458,6 +525,8 @@ try {
   assert(exportedHtml, 'Offline export missing edited composition');
   assert(exportedHtml.toString('utf8').includes(editedHebrew), 'Archive lost edited Hebrew niqqud/Latin copy');
   assert(!exportedHtml.toString('utf8').includes(originalHebrew), 'Archive restored stale pre-edit text');
+  for (const sample of samples) assert(exportedHtml.toString('utf8').includes(sample.copy),
+    'Offline ZIP lost author-edited ' + sample.lang + ' Unicode');
   const assetFiles = [];
   for (const face of fontSources) {
     const asset = imported.items.find(item => item.itemId === face.id);
@@ -481,6 +550,8 @@ try {
   });
   assert(JSON.stringify(restoredSource.file).includes(editedHebrew), 'Reimport lost edited logical Unicode text');
   assert(!JSON.stringify(restoredSource.file).includes(originalHebrew), 'Reimport restored stale pre-edit text');
+  for (const sample of samples) assert(JSON.stringify(restoredSource.file).includes(sample.copy),
+    'Offline reimport lost ' + sample.lang + ' Unicode');
   for (const face of fontSources) {
     const asset = imported.items.find(item => item.itemId === face.id);
     assert.deepEqual(
