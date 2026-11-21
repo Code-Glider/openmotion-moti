@@ -156,7 +156,8 @@ try {
   await page.keyboard.down('Control');
   await page.keyboard.press('A');
   await page.keyboard.up('Control');
-  await page.keyboard.insertText(editedHebrew);
+  // Puppeteer's supported CDP text insertion preserves complex-script codepoints.
+  await page.keyboard.sendCharacter(editedHebrew);
   await page.keyboard.press('Tab');
   let edited = false;
   for (let attempt = 0; attempt < 80; attempt++) {

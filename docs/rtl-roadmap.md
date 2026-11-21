@@ -77,3 +77,8 @@ Use SHA-checked GitHub writes, independent small PRs, real CI and actual browser
 - [ ] After the Linux fixture is green: extend to scrub/playback, caption overlays, high-contrast shaping/mark visual baselines, offline ZIP replay and native renderer parity on macOS and Windows. Phase 5 RTL interface remains separate.
 - [ ] Do not merge stacked PRs; reconcile independent PR #2 with PR #3 and complete all six acceptance gates first.
 
+### Phase 6 integration run 44885768858 (head 8ad44c7)
+- Real Studio loaded the authored Hebrew, Arabic, Persian, Urdu, Syriac and Ethiopic/LTR project; the first real-browser stage passed.
+- The new end-to-end job then **failed before export** because its Puppeteer harness called nonexistent keyboard method insertText (TypeError at test line 159). Job log 136790590065 records this exact cause; no renderer failure or MP4-parity conclusion can be drawn.
+- Fix switches to Puppeteer's supported keyboard.sendCharacter() while preserving the exact intended Unicode editing assertion. Re-run both required CI gates and inspect the actual screenshot/video artifacts; do not weaken geometry thresholds.
+
