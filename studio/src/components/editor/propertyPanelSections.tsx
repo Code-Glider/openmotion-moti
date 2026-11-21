@@ -84,6 +84,10 @@ export function TextAreaField({
   const { t } = useI18n();
   const track = useTrackDesignInput();
   const [draft, setDraft] = useState(value);
+  // React may batch the input update until after a keyboard-triggered blur.
+  // Keep the exact latest native textarea value independent of render timing
+  // so blur cannot cancel the debounced save while committing stale state.
+  const latestDraftRef = useRef(value);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interactionChangedRef = useRef(false);
@@ -93,6 +97,7 @@ export function TextAreaField({
 
   useEffect(() => {
     if (focusedRef.current) return;
+    latestDraftRef.current = value;
     setDraft(value);
   }, [value]);
   useEffect(
@@ -131,13 +136,14 @@ export function TextAreaField({
     focusedRef.current = true;
   };
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    latestDraftRef.current = e.target.value;
     setDraft(e.target.value);
     interactionChangedRef.current = true;
     scheduleCommit(e.target.value);
   };
   const handleBlur = () => {
     focusedRef.current = false;
-    commitDraft(draft);
+    commitDraft(latestDraftRef.current);
   };
 
   if (flat) {
