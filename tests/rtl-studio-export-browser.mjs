@@ -239,17 +239,16 @@ try {
     assert.deepEqual([seen?.text, seen?.dir, seen?.lang, seen?.computedDirection], [sample.copy, sample.dir, sample.lang, sample.dir], sample.id);
     assert(seen.width > 200, sample.id + ' is missing geometry');
   }
-  await page.screenshot({ path: path.join(output, 'studio-before-edit.png') });
   assertStep('Real Studio player loaded all RTL scripts and Ethiopic/LTR with logical source', { samples: loaded });
-  // A project can still show "Opening project..." after the player has loaded
-  // frames and its timeline count. On macOS PR CI 44914430531 the before-edit
-  // screenshot captured that transitional view, then the clip click was lost.
-  // Wait for the real, visible timeline control and fully opened workspace.
+  // The player and timeline can exist beneath the project loading overlay.
+  // Wait for its actual removal, regardless of the locale or punctuation,
+  // before inspecting or clicking the responsive workspace controls.
   await page.waitForFunction(() => {
     const clip = document.querySelector('button[aria-label^="Label,"]');
     return clip && clip.getClientRects().length > 0
-      && !document.body.innerText.includes('Opening project...');
+      && !document.querySelector('.motion-editor-loading');
   }, { timeout: 30_000 });
+  await page.screenshot({ path: path.join(output, 'studio-before-edit.png') });
   // Compact layouts auto-collapse the right inspector into a rail. The test
   // must open the real Design panel through its actual UI, not rely on a
   // selection magically expanding it or mutate dock store state in JS.
