@@ -70,6 +70,8 @@ test('real Chromium Studio caret respects the last RTL grapheme at mixed-script 
       }, sample);
       await page.waitForFunction(() => document.querySelector('#composition').contentDocument.getElementById('editable').style.caretColor === 'transparent');
       await page.keyboard.press('End');
+      // Allow the cross-document selectionchange event to update the React portal.
+      await new Promise(resolve => setTimeout(resolve, 80));
       await page.waitForFunction(() => document.querySelector('[data-inline-text-caret="true"]') !== null);
       const result = await page.evaluate(() => {
         const iframe = document.querySelector('#composition');
@@ -94,7 +96,7 @@ test('real Chromium Studio caret respects the last RTL grapheme at mixed-script 
         return {
           text: editable.textContent,
           originalGrapheme: previous.segment,
-          direction: getComputedStyle(editable).direction,
+          direction: iframe.contentWindow.getComputedStyle(editable).direction,
           offset,
           ink: ink ? { left: ink.left, right: ink.right, top: ink.top, height: ink.height } : null,
           leading: leadingRect ? { left: leadingRect.left, top: leadingRect.top } : null,
@@ -111,7 +113,7 @@ test('real Chromium Studio caret respects the last RTL grapheme at mixed-script 
       }
       assert.equal(record.text, sample.text, sample.script + ': browser End changed Unicode');
       assert.equal(record.direction, 'rtl');
-      assert.ok(/[\\p{Script=Hebrew}\\p{Script=Arabic}\\p{Script=Syriac}]/u.test(record.originalGrapheme), sample.script + ': did not land after RTL grapheme');
+      assert.ok(/[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}]/u.test(record.originalGrapheme), sample.script + ': did not land after RTL grapheme');
       assert.ok(record.ink && record.leading && record.layer, sample.script + ': missing actual DOM / Studio caret geometry');
       assert.ok(Math.abs(record.leading.top - record.ink.top) <= 3, sample.script + ': glyph leading marker is on another line');
       assert.ok(Math.abs(record.leading.left - record.ink.right) <= 4, sample.script + ': UAX #9 reference does not put the RTL glyph start at the right');
