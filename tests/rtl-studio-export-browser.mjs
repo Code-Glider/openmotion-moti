@@ -93,6 +93,28 @@ async function findStudioFrame(page, copy) {
   }
   throw new Error('Real Studio player iframe did not render expected text');
 }
+// The Windows end-to-end gate can finish every browser/MP4 assertion and
+// still stall on an owned child-process shutdown. Bound only teardown, keep
+// every rendering/source assertion, and report what actually needed recovery.
+async function cleanupWithin(label, operation, timeoutMs) {
+  let timer;
+  const result = await Promise.race([
+    Promise.resolve().then(operation).then(() => ({ complete: true }), error => ({ complete: true, error })),
+    new Promise(resolve => { timer = setTimeout(() => resolve({ complete: false }), timeoutMs); }),
+  ]);
+  clearTimeout(timer);
+  if (result.error) throw result.error;
+  if (!result.complete) console.warn('RTL teardown deadline reached: ' + label);
+  return result.complete;
+}
+function processExited(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    child.once('exit', resolve);
+    child.once('error', reject);
+  });
+}
+
 try {
   const manifest = JSON.parse(await readFile(path.join(fontDir, 'manifest.json'), 'utf8'));
   assert.equal(manifest.faces.length, 5);
@@ -256,15 +278,49 @@ try {
   throw error;
 } finally {
   evidence.mcpStderr = client.stderr?.slice(-2500);
+  // Persist the primary test outcome before any teardown. A cleanup failure
+  // must not hide a real editor/renderer failure from the uploaded artifact.
   await writeFile(path.join(output, 'result.json'), JSON.stringify(evidence, null, 2));
-  await browser?.close();
-  await client.close();
-  await closeFixtureEditor(data).catch(() => {});
-  // Windows can retain native-editor handles briefly. Do not let cleanup
-  // overwrite the primary test failure already recorded in result.json.
-  await rm(data, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 })
-    .catch(error => {
-      if (evidence.passed) throw error;
-      console.error('Cleanup after test failure:', error);
-    });
+  const cleanupErrors = [], cleanupRecoveries = [];
+  async function cleanup(label, operation) {
+    console.log('RTL teardown start: ' + label);
+    try { await operation(); console.log('RTL teardown done: ' + label); }
+    catch (error) {
+      cleanupErrors.push(label + ': ' + String(error));
+      console.error('RTL teardown failed: ' + label, error);
+    }
+  }
+  await cleanup('Chromium', async () => {
+    if (!browser) return;
+    if (await cleanupWithin('Chromium graceful close', () => browser.close(), 15_000)) return;
+    // Only this integration's Puppeteer-launched process may be terminated.
+    const owned = browser.process();
+    assert(owned, 'Chromium timed out, and no owned browser process is available');
+    if (owned.exitCode === null && owned.signalCode === null) {
+      assert(owned.kill('SIGTERM'), 'Could not terminate test-owned Chromium');
+    }
+    assert(await cleanupWithin('Chromium exit', () => processExited(owned), 10_000),
+      'Test-owned Chromium did not exit after termination');
+    cleanupRecoveries.push('Terminated test-owned Chromium after graceful-close timeout');
+  });
+  await cleanup('MCP child', async () => {
+    if (await cleanupWithin('MCP graceful EOF', () => client.close(), 15_000)) return;
+    // This child was created solely for this temporary project. Do not
+    // terminate or restart an external/shared OpenMotion instance.
+    const owned = client.child;
+    if (owned.exitCode === null && owned.signalCode === null) {
+      assert(owned.kill('SIGTERM'), 'Could not terminate test-owned MCP child');
+    }
+    assert(await cleanupWithin('MCP exit', () => client.closed, 10_000),
+      'Test-owned MCP child did not exit after termination');
+    cleanupRecoveries.push('Terminated test-owned MCP child after graceful EOF timeout');
+  });
+  await cleanup('fixture editor', () => cleanupWithin('fixture editor shutdown', () => closeFixtureEditor(data), 30_000)
+    .then(done => assert(done, 'Fixture editor shutdown exceeded 30 seconds')));
+  await cleanup('temporary project', () => cleanupWithin('temporary project removal',
+    () => rm(data, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 }), 30_000)
+    .then(done => assert(done, 'Temporary project removal exceeded 30 seconds')));
+  evidence.cleanup = { recoveries: cleanupRecoveries, errors: cleanupErrors };
+  await writeFile(path.join(output, 'result.json'), JSON.stringify(evidence, null, 2));
+  if (evidence.passed && cleanupErrors.length) throw new Error('RTL integration teardown failed: ' + cleanupErrors.join('; '));
 }
