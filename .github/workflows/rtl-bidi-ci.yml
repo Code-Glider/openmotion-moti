@@ -21,6 +21,7 @@ on:
       - 'tests/rtl-font-audit.test.ts'
       - 'tests/rtl-browser-rendering.test.ts'
       - 'tests/rtl-studio-export-browser.mjs'
+      - 'tests/workspace-transient-files.test.ts'
       - 'scripts/rtl-reference-fonts.mjs'
       - 'tests/rtl-browser-fixture.html'
   workflow_dispatch:
@@ -92,6 +93,8 @@ jobs:
       # The upstream standalone workflow already runs broad regression suites
       # in bounded lanes on this PR. Running every backend test in one process
       # duplicated that work and hit this job's 45-minute timeout.
+      - name: Require native editor staging files stay out of project versions
+        run: node --experimental-strip-types --test tests/workspace-transient-files.test.ts
       - name: Native captions and font regression
         timeout-minutes: 12
         run: |
@@ -185,6 +188,9 @@ jobs:
           echo "HYPERFRAMES_FFPROBE_PATH=$ffprobe_bin" >> "$GITHUB_ENV"
       - name: Build actual Studio and tracking runtime
         run: |
+          # The full Vite bundle exceeded Node 26's default ~2 GiB heap on
+          # macos-15 arm64 (Actions 44886902367, job 136794024198).
+          if [[ "$RUNNER_OS" == macOS ]]; then export NODE_OPTIONS=--max-old-space-size=6144; fi
           npm run build:studio
           npm run build:tracking
       - name: Download immutable licensed RTL font files

@@ -23,7 +23,7 @@ process.env.OPENMOTION_TELEMETRY = '0';
 await configureNativeEnvironment(pluginRoot);
 const data = await mkdtemp(path.join(tmpdir(), 'openmotion-rtl-studio-export-'));
 const client = new Client(data);
-const evidence = { passed: false, scope: 'Linux Studio browser, source-backed UI edit and native exported MP4', checks: [] };
+const evidence = { passed: false, scope: `${process.platform} Studio browser, source-backed UI edit and native exported MP4`, checks: [] };
 const assertStep = (name, details = {}) => { evidence.checks.push({ name, ...details }); console.log('PASS ' + name); };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -241,5 +241,11 @@ try {
   await browser?.close();
   await client.close();
   await closeFixtureEditor(data).catch(() => {});
-  await rm(data, { recursive: true, force: true, maxRetries: 4, retryDelay: 100 });
+  // Windows can retain native-editor handles briefly. Do not let cleanup
+  // overwrite the primary test failure already recorded in result.json.
+  await rm(data, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 })
+    .catch(error => {
+      if (evidence.passed) throw error;
+      console.error('Cleanup after test failure:', error);
+    });
 }
