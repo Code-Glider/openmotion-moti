@@ -36,7 +36,7 @@ const samples = [
   { id: 'urdu', face: 'urdu', lang: 'ur', dir: 'rtl', copy: 'اردو ٹ ڈ ڑ ں ے' },
   { id: 'syriac', face: 'syriac', lang: 'syr', dir: 'rtl', copy: 'ܫܠܡܐ ܒܪܝܟܐ' },
   { id: 'ethiopic', face: 'ethiopic', lang: 'am', dir: 'ltr', copy: 'ሰላም ኢትዮጵያ' },
-  { id: 'latin', face: null, lang: 'en', dir: 'ltr', copy: 'Render ABC-123 at 10:30' },
+  { id: 'latin', face: 'latin', lang: 'en', dir: 'ltr', copy: 'Render ABC-123 at 10:30' },
 ];
 const background = [24, 56, 47];
 const width = 640, height = 480;
@@ -100,16 +100,26 @@ try {
     assert.equal(sha256(await readFile(path.join(fontDir, face.filename))), face.fontSha256);
     assert.equal(sha256(await readFile(path.join(fontDir, face.licenseFilename))), face.licenseSha256);
   }
+  // The Latin control must use the same portable project-font path as every
+  // Semitic face. The previous unpinned Arial fallback produced a 0.2535
+  // preview/MP4 ink IoU despite identical logical source (run 44885930705).
+  const latinPath = path.join(pluginRoot, 'tests/fixtures/fonts/orbitron.ttf');
+  const latinLicensePath = path.join(pluginRoot, 'tests/fixtures/fonts/OFL.txt');
+  const fontSources = [
+    ...manifest.faces.map(face => ({ ...face, sourcePath: path.join(fontDir, face.filename), licensePath: path.join(fontDir, face.licenseFilename) })),
+    { id: 'latin', sourcePath: latinPath, licensePath: latinLicensePath,
+      fontSha256: sha256(await readFile(latinPath)), licenseSha256: sha256(await readFile(latinLicensePath)) },
+  ];
   await client.initialize();
   const created = await client.call('openmotion_create_project', { projectType: 'natural_language', title: 'RTL Studio / MP4 parity', requirements: 'Offline imported script fonts; reversible logical Unicode editing; silent deterministic render.', requestId: 'rtl-create' });
   const projectId = created.projectId;
   const imported = await client.call('openmotion_import_assets', {
     projectId, requestId: 'rtl-fonts',
-    items: manifest.faces.map(face => ({ itemId: face.id, sourcePath: path.join(fontDir, face.filename), licensePath: path.join(fontDir, face.licenseFilename) })),
+    items: fontSources.map(face => ({ itemId: face.id, sourcePath: face.sourcePath, licensePath: face.licensePath })),
   });
   assert.equal(imported.status, 'completed', JSON.stringify(imported.items));
   const fonts = {};
-  for (const face of manifest.faces) {
+  for (const face of fontSources) {
     const item = imported.items.find(candidate => candidate.itemId === face.id);
     assert.equal(item?.status, 'completed', 'Font import failed for ' + face.id);
     assert.equal(sha256(await readFile(path.join(data, 'projects', projectId, item.path)).catch(async () => readFile(path.join(data, 'project', item.path)))), face.fontSha256, 'Imported font bytes differ for ' + face.id);
@@ -209,12 +219,17 @@ try {
   assert.equal(completed.expected.width, width); assert.equal(completed.expected.height, height);
   const mp4 = path.join(output, 'exported-rtl.mp4');
   await copyFile(completed.path, mp4);
+  // Persist an actual decoded frame alongside the captured Chromium preview.
+  const decoded = path.join(output, 'exported-mp4-frame.png');
+  const frameResult = spawnSync(process.env.HYPERFRAMES_FFMPEG_PATH || 'ffmpeg',
+    ['-hide_banner', '-loglevel', 'error', '-nostdin', '-ss', '0.5', '-i', mp4, '-frames:v', '1', '-y', decoded]);
+  assert.equal(frameResult.status, 0, 'Could not retain MP4 frame: ' + frameResult.stderr?.toString().slice(-1000));
   const rows = compareRows(decodeToRgb(png, false), decodeToRgb(mp4, true));
   assertStep('Actual decoded MP4 preserves each script row and preview glyph geometry', { rows, exportVerification: completed.verification });
   assert.deepEqual(consoleErrors, [], 'Studio page errors');
   evidence.passed = true;
   evidence.browser = await browser.version();
-  evidence.fonts = manifest.faces.map(({ id, fontSha256, licenseSha256 }) => ({ id, fontSha256, licenseSha256 }));
+  evidence.fonts = fontSources.map(({ id, fontSha256, licenseSha256 }) => ({ id, fontSha256, licenseSha256 }));
   evidence.comparison = rows;
 } catch (error) {
   evidence.error = String(error?.stack || error);
