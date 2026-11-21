@@ -10,6 +10,12 @@ import { browserExecutable } from '../browser.ts';
 const harness = [
   "import { generateCaptionHtml } from './studio/src/captions/generator.ts';",
   "import { buildCaptionModel } from './studio/src/captions/parser.ts';",
+  "import { readGsapTransform, writeTransform, computeTransformStyle, getOrCreateWrapper } from './studio/src/captions/components/CaptionOverlayUtils.ts';",
+  "export function editWordWithoutFlattening(word, dx, rotationDelta) {",
+  " const state = readGsapTransform(getOrCreateWrapper(word), window);",
+  " writeTransform(word, window, state.x + dx, state.y, state.scale, state.rotation + rotationDelta, state.scaleY);",
+  " return computeTransformStyle(word, window);",
+  "}",
   "export function htmlFor(style) {",
   " const words = [",
   "   { id: 'w-he', text: 'שָׁלוֹם', start: 0.1, end: 0.45 },",
@@ -103,6 +109,30 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   const styled = await render({ x: 18, y: -11, rotation: 12, scaleX: 1.25, scaleY: 0.9 });
   assert.equal(styled.transform, 'translate(18px, -11px) rotate(12deg) scale(1.25, 0.9)');
   assert(styled.rect.width > neutral.rect.width, 'Native caption nonuniform scale/rotation not applied to browser geometry');
+  // Edit a real generated word in-place: model regeneration alone cannot
+  // verify the Studio editor helper's transform read/write semantics.
+  const edited = await page.evaluate(() => {
+    const group = document.querySelector('.caption-group');
+    const word = group.querySelector('.word');
+    const before = word.getBoundingClientRect();
+    const model = window.RtlNativeCaptionTransform.editWordWithoutFlattening(word, 6, 8);
+    const after = word.getBoundingClientRect();
+    return {
+      model, wordId: word.id, wordText: word.textContent, groupText: group.textContent,
+      transform: word.closest('[data-caption-wrapper]')?.style.transform,
+      wrapperCount: group.querySelectorAll('[data-caption-wrapper]').length,
+      beforeWidth: before.width, afterWidth: after.width,
+    };
+  });
+  assert.deepEqual(edited.model, { x: 24, y: -11, rotation: 20, scaleX: 1.25, scaleY: 0.9 },
+    'Moving and rotating a Hebrew word flattened its non-uniform Y scale');
+  assert.equal(edited.wrapperCount, 1, 'Editing imported word created a duplicate wrapper');
+  assert.equal(edited.wordId, 'w-he');
+  assert.equal(edited.wordText, 'שָׁלוֹם');
+  assert.equal(edited.groupText, 'שָׁלוֹםABC-123');
+  assert.match(edited.transform, /scale\(1\.250, 0\.900\)/,
+    'Live DOM transform lost its independent authored Y scale');
+  assert(edited.afterWidth > neutral.rect.width, 'In-place editing lost actual Chromium glyph geometry');
   const outputDir = process.env.RTL_CAPTION_EXPORT_ARTIFACT_DIR;
   if (outputDir) {
     await mkdir(outputDir, { recursive: true });
@@ -124,5 +154,5 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   }
   if (outputDir) await writeFile(path.join(outputDir, 'rtl-authored-word-transform.json'),
     JSON.stringify({ passed: true, browser: await browser.version(), pinnedHebrewSha256: sha(bytes),
-      original: neutral, moved, styled, reset, scope: 'Native generated caption DOM replay and real browser geometry; native MP4 transform parity is separate.' }, null, 2) + '\n');
+      original: neutral, moved, styled, edited, reset, scope: 'Native generated DOM plus live Chromium move/rotate with preserved non-uniform scale; native MP4 transform parity remains separate.' }, null, 2) + '\n');
 });
