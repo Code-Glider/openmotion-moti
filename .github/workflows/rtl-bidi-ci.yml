@@ -14,6 +14,8 @@ on:
       - 'studio/src/captions/**'
       - 'studio/src/i18n/**'
       - 'studio/src/motion/WorkspaceFrame.tsx'
+      - 'studio/src/motion/ApplicationChrome.tsx'
+      - 'studio/src/motion/ApplicationChrome.test.tsx'
       - 'studio/src/motion/workspace.css'
       - 'studio/src/components/editor/**'
       - 'studio/src/player/**'
@@ -89,6 +91,7 @@ jobs:
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
             studio/src/i18n/I18n.test.tsx \
+            studio/src/motion/ApplicationChrome.test.tsx \
             studio/src/captions/components/captionWordRuns.test.ts \
             studio/src/captions/components/CaptionOverlay.sender.test.tsx \
             studio/src/captions/parser.test.ts \
