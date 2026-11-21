@@ -13,7 +13,7 @@ import { configureNativeEnvironment } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
 import { Client } from './shared-editor-client.mjs';
 import { closeFixtureEditor } from './fixtures.ts';
-import { removeTemporaryRtlProject } from './rtl-temp-project-cleanup.mjs';
+import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
 
 const output = process.argv[2];
 const fontDir = process.argv[3];
@@ -41,7 +41,7 @@ const samples = [
 ];
 const background = [24, 56, 47];
 const width = 640, height = 480;
-let browser, page;
+let browser, page, ownedPreviewUrl;
 function decodeToRgb(input, isVideo) {
   const ffmpeg = process.env.HYPERFRAMES_FFMPEG_PATH || 'ffmpeg';
   const args = ['-hide_banner', '-loglevel', 'error', '-nostdin'];
@@ -156,6 +156,7 @@ try {
   });
   assert(saved.revision, 'Expected versioned editor write');
   const preview = await client.call('openmotion_open_preview', { projectId });
+  ownedPreviewUrl = preview.previewUrl;
   browser = await puppeteer.launch({ executablePath: process.env.HYPERFRAMES_BROWSER_PATH || await browserExecutable(), headless: true });
   page = await browser.newPage();
   page.setDefaultTimeout(40_000);
@@ -315,6 +316,12 @@ try {
     assert(await cleanupWithin('MCP exit', () => client.closed, 10_000),
       'Test-owned MCP child did not exit after termination');
     cleanupRecoveries.push('Terminated test-owned MCP child after graceful EOF timeout');
+  });
+  await cleanup('owned Windows preview service tree', async () => {
+    if (process.platform !== 'win32' || !ownedPreviewUrl) return;
+    const result = await stopOwnedWindowsPreviewTree(data, ownedPreviewUrl);
+    evidence.windowsPreviewTeardown = result;
+    console.log('RTL verified owned preview service stopped: ' + JSON.stringify(result));
   });
   await cleanup('fixture editor', () => cleanupWithin('fixture editor shutdown', () => closeFixtureEditor(data), 30_000)
     .then(done => assert(done, 'Fixture editor shutdown exceeded 30 seconds')));

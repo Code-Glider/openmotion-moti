@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { removeTemporaryRtlProject } from './rtl-temp-project-cleanup.mjs';
+import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
 
 const directory = path.join(tmpdir(), 'openmotion-rtl-studio-export-unit');
 
@@ -52,4 +52,67 @@ test('refuses arbitrary recursive deletion targets', async () => {
     remove: async () => { called = true; },
   }), /Refusing to remove/);
   assert.equal(called, false);
+});
+
+const originalPreviewUrl = 'http://localhost:23991';
+const liveRegistry = { pid: 12412, port: 23991, version: '0.0.1' };
+const goodHealth = { service: 'motion-preview', protocol: 2, version: '0.0.1', dataDirectory: directory };
+
+test('stops only an identity-verified Windows test-owned preview process tree', async () => {
+  let killed = 0;
+  const outcome = await stopOwnedWindowsPreviewTree(directory, originalPreviewUrl, {
+    platform: 'win32',
+    read: async (file, encoding) => {
+      assert.equal(file, path.join(directory, 'preview.json'));
+      assert.equal(encoding, 'utf8');
+      return JSON.stringify(liveRegistry);
+    },
+    request: async (url, options) => {
+      assert.equal(url, 'http://127.0.0.1:23991/api/health');
+      assert(options.signal);
+      return { ok: true, json: async () => goodHealth };
+    },
+    run: (command, args, options) => {
+      killed++;
+      assert.equal(command, 'taskkill.exe');
+      assert.deepEqual(args, ['/PID', '12412', '/T', '/F']);
+      assert.equal(options.timeout, 15000);
+      return { status: 0, stdout: 'SUCCESS' };
+    },
+  });
+  assert.deepEqual(outcome, { pid: 12412, port: 23991, stopped: true });
+  assert.equal(killed, 1);
+});
+
+test('rejects mismatched live workspace ownership without terminating any process', async () => {
+  let killed = false;
+  await assert.rejects(stopOwnedWindowsPreviewTree(directory, originalPreviewUrl, {
+    platform: 'win32',
+    read: async () => JSON.stringify(liveRegistry),
+    request: async () => ({ ok: true, json: async () => ({ ...goodHealth, dataDirectory: path.join(tmpdir(), 'unrelated-project') }) }),
+    run: () => { killed = true; throw new Error('should never kill'); },
+  }), /does not own this test root/);
+  assert.equal(killed, false);
+});
+
+test('rejects wrong PID/port and arbitrary preview URLs without terminating a process', async () => {
+  let killed = false;
+  const run = () => { killed = true; throw new Error('should never kill'); };
+  await assert.rejects(stopOwnedWindowsPreviewTree(directory, originalPreviewUrl, {
+    platform: 'win32', read: async () => JSON.stringify({ ...liveRegistry, port: 23992 }), run,
+  }), /invalid process identity/);
+  await assert.rejects(stopOwnedWindowsPreviewTree(directory, 'https://example.com:23991', {
+    platform: 'win32', run,
+  }), /untrusted preview endpoint/);
+  assert.equal(killed, false);
+});
+
+test('non-Windows systems retain existing graceful preview shutdown', async () => {
+  const result = await stopOwnedWindowsPreviewTree(directory, originalPreviewUrl, {
+    platform: 'linux',
+    read: async () => { throw new Error('unexpected read'); },
+    request: async () => { throw new Error('unexpected request'); },
+    run: () => { throw new Error('unexpected kill'); },
+  });
+  assert.deepEqual(result, { skipped: true });
 });
