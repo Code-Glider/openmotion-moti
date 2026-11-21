@@ -435,7 +435,7 @@ export class WorkspaceStore {
         // They may vanish between readdir() and stat() on Windows. They are not
         // authored project assets and must never enter revision/export hashes.
         // This narrowly scoped marker deliberately preserves other .tmp files.
-        if (entry.isFile() && /\.hf[0-9a-f]{8}\.tmp$/i.test(entry.name)) continue;
+        if (entry.isFile() && /\.hf[0-9a-f]{6}\.tmp$/i.test(entry.name)) continue;
         if (entry.name.startsWith('.') || ignored.has(entry.name) && !(includeDependencies && folder && entry.name === 'dist')) continue;
         const name = folder ? folder + '/' + entry.name : entry.name;
         projectPath(name, includeDependencies);

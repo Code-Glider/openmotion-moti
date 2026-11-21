@@ -163,9 +163,12 @@ try {
   const field = await page.waitForSelector('[data-flat-group-open="true"] textarea');
   assert(field, 'Expected source-backed real Studio Content editor');
   await field.focus();
-  await page.keyboard.down('Control');
+  // Use the platform's actual Select All accelerator. Ctrl+A on macOS
+  // moves the insertion point instead of selecting all source text.
+  const selectModifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.down(selectModifier);
   await page.keyboard.press('A');
-  await page.keyboard.up('Control');
+  await page.keyboard.up(selectModifier);
   // Puppeteer's supported CDP text insertion preserves complex-script codepoints.
   await page.keyboard.sendCharacter(editedHebrew);
   await page.keyboard.press('Tab');
