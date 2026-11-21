@@ -339,3 +339,92 @@ describe("generateCaptionHtml", () => {
     });
   });
 });
+
+
+describe("caption identifier collision safety", () => {
+  it("renders distinct Hebrew/Arabic group and word IDs even when both sanitize to identical JS/CSS tokens", () => {
+    const transcript: TranscriptWord[] = [
+      { text: "שלום", start: 0, end: 0.24 },
+      { text: "ABC-123", start: 0.25, end: 0.49 },
+      { text: "السَّلَامُ", start: 0.5, end: 0.74 },
+      { text: "2026", start: 0.75, end: 1 },
+    ];
+    const model = buildCaptionModel(transcript, { width: 640, height: 360, duration: 2, wordsPerGroup: 2 });
+    const oldIds = Array.from(model.segments.keys());
+    const replacementIds = ["c-א", "c-ع", "c-ב", "c-ب"];
+    const oldGroups = model.groupOrder.map(id => model.groups.get(id)!);
+    expect(oldGroups).toHaveLength(2);
+    model.segments = new Map(oldIds.map((id, index) => [
+      replacementIds[index],
+      { ...model.segments.get(id)!, id: replacementIds[index] },
+    ]));
+    model.groupOrder = ["g-אב", "g-عر"];
+    model.groups = new Map(oldGroups.map((group, index) => [
+      model.groupOrder[index],
+      {
+        ...group,
+        id: model.groupOrder[index],
+        segmentIds: group.segmentIds.map(id => replacementIds[oldIds.indexOf(id)]),
+        style: { ...group.style, color: index ? "#0000ff" : "#ff0000" },
+      },
+    ]));
+
+    // g-אב and g-عر both produce the same fallback class "g---".
+    // All four segment IDs likewise collapse to one local variable stem.
+    const html = generateCaptionHtml(model);
+    const win = new Window();
+    try {
+      const source = win.document.createElement("div");
+      source.innerHTML = html;
+      const inner = source.querySelector("template")?.content;
+      expect(inner).toBeDefined();
+      const script = inner!.querySelector("script")?.textContent ?? "";
+      const css = inner!.querySelector("style")?.textContent ?? "";
+      expect(() => new Function("window", "document", "gsap", script)).not.toThrow();
+      expect(css).toContain('.caption-group.g---[data-caption-style-index="0"]');
+      expect(css).toContain('.caption-group.g---[data-caption-style-index="1"]');
+      expect(css).toContain("#ff0000");
+      expect(css).toContain("#0000ff");
+      win.document.body.innerHTML = '<div id="captions-container"></div>';
+      const fakeGsap = { timeline: () => ({ to() { return this; } }) };
+      new Function("window", "document", "gsap", script)(win, win.document, fakeGsap);
+      const groups = [...win.document.querySelectorAll<HTMLElement>(".caption-group")];
+      expect(groups.map(group => group.dataset.captionGroupId)).toEqual(model.groupOrder);
+      expect(groups.map(group => group.dataset.captionStyleIndex)).toEqual(["0", "1"]);
+      expect(groups.map(group => [...group.querySelectorAll<HTMLElement>(".word")].map(el => el.textContent)))
+        .toEqual([["שלום", "ABC-123"], ["السَّلَامُ", "2026"]]);
+      expect(win.document.querySelectorAll(".word")).toHaveLength(4);
+      expect((win as Window & { __timelines?: Record<string, unknown> }).__timelines?.captions).toBeDefined();
+    } finally {
+      win.close();
+    }
+  });
+
+  it("keeps Unicode group IDs with line breaks as data, not executable script comments", () => {
+    const model = buildCaptionModel([{ text: "مرحبا", start: 0, end: 1 }], {
+      width: 640, height: 360, duration: 2,
+    });
+    const original = model.groupOrder[0];
+    const group = model.groups.get(original)!;
+    const dangerous = "קבוצה\nwindow.__executed = true";
+    model.groups.delete(original);
+    model.groupOrder[0] = dangerous;
+    model.groups.set(dangerous, { ...group, id: dangerous });
+    const win = new Window();
+    try {
+      const source = win.document.createElement("div");
+      source.innerHTML = generateCaptionHtml(model);
+      const code = source.querySelector("template")!.content.querySelector("script")!.textContent!;
+      win.document.body.innerHTML = '<div id="captions-container"></div>';
+      expect(() => new Function("window", "document", "gsap", code)).not.toThrow();
+      new Function("window", "document", "gsap", code)(
+        win, win.document, { timeline: () => ({ to() { return this; } }) },
+      );
+      expect(win.document.querySelector<HTMLElement>(".caption-group")?.dataset.captionGroupId).toBe(dangerous);
+      expect((win as Window & { __executed?: boolean }).__executed).toBeUndefined();
+      expect(win.document.querySelector(".word")?.textContent).toBe("مرحبا");
+    } finally {
+      win.close();
+    }
+  });
+});
