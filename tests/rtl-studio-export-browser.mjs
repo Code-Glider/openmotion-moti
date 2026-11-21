@@ -80,6 +80,9 @@ function compareRows(preview, rendered) {
 }
 // Only background highlight changes with playback; word contents and text nodes
 // remain authored, so rendered frames can be compared at two seek positions.
+// Strict perceptual-near-reference yellow classifier. The old loose channel
+// gates also counted brown/orange antialiased Arabic glyph pixels as yellow.
+// Exact #facc15 palette distance keeps actual FFmpeg/PNG RGB rounding tolerance.
 function yellowPixels(rgb, rect) {
   let count = 0;
   const left = Math.max(0, Math.floor(rect.left)), right = Math.min(width, Math.ceil(rect.right));
@@ -87,7 +90,8 @@ function yellowPixels(rgb, rect) {
   assert(right > left + 5 && bottom > top + 5, 'Timed caption has no measurable word geometry');
   for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
     const pos = (y * width + x) * 3;
-    if (rgb[pos] >= 175 && rgb[pos + 1] >= 115 && rgb[pos + 2] <= 110) count++;
+    const dr = rgb[pos] - 250, dg = rgb[pos + 1] - 204, db = rgb[pos + 2] - 21;
+    if (dr * dr + dg * dg + db * db <= 55 * 55) count++;
   }
   return count;
 }
