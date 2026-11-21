@@ -5,6 +5,7 @@
  * Run: node --experimental-strip-types scripts/rtl-font-audit.ts FILE 'שלום עולם'
  */
 import { createHash } from 'node:crypto';
+import { requiresFontGlyph } from '../shared/font-glyph-coverage.ts';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -60,15 +61,15 @@ function detectFormat(bytes: Buffer): FontAudit['format'] {
 }
 
 /** Count actual cmap-dependent characters, not Unicode control/format codepoints.
- * RTL embeddings, isolates, ZWJ/ZWNJ and directional marks have no glyph of
- * their own; combining vowel marks (Mn/Mc/Me) still require coverage.
+ * RTL embeddings, isolates, joiners and variation selectors do not require
+ * standalone cmap glyphs; script combining marks still require coverage.
  */
 function coverageForText(font: { hasGlyphForCodePoint: (cp: number) => boolean }, text: string) {
   const unique = new Set(Array.from(text, ch => ch.codePointAt(0)!));
   const missingCodepoints: FontAudit['missingCodepoints'] = [];
   let checkedCodepoints = 0;
   for (const cp of unique) {
-    if (/[\p{Cc}\p{Cf}]/u.test(String.fromCodePoint(cp))) continue;
+    if (!requiresFontGlyph(cp)) continue;
     checkedCodepoints += 1;
     if (!font.hasGlyphForCodePoint(cp)) missingCodepoints.push({
       hex: 'U+' + cp.toString(16).toUpperCase().padStart(4, '0'),

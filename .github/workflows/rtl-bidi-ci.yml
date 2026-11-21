@@ -48,8 +48,8 @@ jobs:
           package-manager-cache: false
       - name: Install exact locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Focused text-flow and font-audit tests
-        run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts
+      - name: Focused text-flow, font-audit and font-specimen tests
+        run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts tests/font-specimen.test.ts
       - name: Repository source checks
         run: npm run check
       - name: Backend typecheck
