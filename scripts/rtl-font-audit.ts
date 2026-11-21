@@ -17,13 +17,13 @@ const MAX_DECOMPRESSED = 128 * 1024 * 1024;
 // Explicit Urdu/Persian-only letters, Hebrew niqqud and Arabic/Syriac vowel marks
 // catch common fallback gaps. Ethiopic is an LTR non-regression probe.
 export const FONT_SCRIPT_PROBES = [
-  { language: 'he', direction: 'rtl', sampleText: 'שָׁלוֹם' },
-  { language: 'ar', direction: 'rtl', sampleText: 'السَّلَامُ' },
-  { language: 'fa', direction: 'rtl', sampleText: 'فارسی پ چ ژ گ' },
-  { language: 'ur', direction: 'rtl', sampleText: 'اردو ٹ ڈ ڑ ں ے' },
-  { language: 'syr', direction: 'rtl', sampleText: 'ܫܠܡܐ ܒܪܝܟܐ ܰ ܳ' },
-  { language: 'am', direction: 'ltr', sampleText: 'ሰላም ኢትዮጵያ' },
-  { language: 'en', direction: 'ltr', sampleText: 'ABC123' },
+  { language: 'he', fontkitScript: 'hebr', direction: 'rtl', sampleText: 'שָׁלוֹם' },
+  { language: 'ar', fontkitScript: 'arab', direction: 'rtl', sampleText: 'السَّلَامُ' },
+  { language: 'fa', fontkitScript: 'arab', direction: 'rtl', sampleText: 'فارسی پ چ ژ گ' },
+  { language: 'ur', fontkitScript: 'arab', direction: 'rtl', sampleText: 'اردو ٹ ڈ ڑ ں ے' },
+  { language: 'syr', fontkitScript: 'syrc', direction: 'rtl', sampleText: 'ܫܠܡܐ ܒܪܝܟܐ ܰ ܳ' },
+  { language: 'am', fontkitScript: 'ethi', direction: 'ltr', sampleText: 'ሰላም ኢትዮጵያ' },
+  { language: 'en', fontkitScript: 'latn', direction: 'ltr', sampleText: 'ABC123' },
 ] as const;
 
 export type FontAudit = {
@@ -37,6 +37,8 @@ export type FontAudit = {
   /** Probe-only cmap coverage; this is not joining, mark positioning or MP4 evidence. */
   scriptSamples: Array<{
     language: (typeof FONT_SCRIPT_PROBES)[number]['language'];
+    /** Explicit OpenType script; localized substitutions still need visual qualification. */
+    fontkitScript: (typeof FONT_SCRIPT_PROBES)[number]['fontkitScript'];
     direction: 'rtl' | 'ltr';
     sampleText: string;
     checkedCodepoints: number;
@@ -59,13 +61,15 @@ export type FontkitLayoutEvidence =
  * must be visually qualified using a real browser and rendered video.
  */
 export function inspectFontkitLayout(font: {
-  layout: (text: string) => {
+  layout: (text: string, features?: undefined, script?: string, language?: undefined, direction?: 'rtl' | 'ltr') => {
     glyphs: Array<{ id: number }>;
     positions: Array<{ xOffset: number; yOffset: number }>;
   };
-}, text: string): FontkitLayoutEvidence {
+}, text: string, script?: string, direction?: 'rtl' | 'ltr'): FontkitLayoutEvidence {
   try {
-    const run = font.layout(text);
+    // Explicit OpenType script and direction avoid ambiguous auto-detection.
+    // This is one-script fontkit evidence, not a UAX #9 bidi layout.
+    const run = script ? font.layout(text, undefined, script, undefined, direction) : font.layout(text);
     if (run.glyphs.length !== run.positions.length) throw new Error('LAYOUT_GLYPH_POSITION_MISMATCH');
     return {
       glyphCount: run.glyphs.length,
@@ -129,6 +133,22 @@ export function assertRequiredScriptCoverage(report: FontAudit, languages: reado
   }
 }
 
+/** Opt-in second-stage gate: rejects .notdef, empty and failed fontkit runs.
+ * Does not certify contextual joins, GPOS marks, browser shaping, or MP4 output.
+ * Keep the existing --require-scripts contract cmap-only.
+ */
+export function assertRequiredScriptLayout(report: FontAudit, languages: readonly string[]): void {
+  assertRequiredScriptCoverage(report, languages);
+  for (const language of languages) {
+    const row = report.scriptSamples.find(probe => probe.language === language)!;
+    const layout = row.fontkitLayout;
+    if ('error' in layout)
+      throw new Error(`REQUIRED_SCRIPT_LAYOUT_ERROR: ${language}: ${layout.error}`);
+    if (layout.glyphCount === 0 || layout.notdefGlyphCount !== 0)
+      throw new Error(`REQUIRED_SCRIPT_LAYOUT_INCOMPLETE: ${language}: glyphs=${layout.glyphCount},notdef=${layout.notdefGlyphCount}`);
+  }
+}
+
 export async function auditFont(fontPath: string, text: string, runtimeRoot: string = process.cwd()): Promise<FontAudit> {
   if (!text) throw new Error('SUPPLY_REAL_TEXT');
   const bytes = await readFile(fontPath);
@@ -145,7 +165,7 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
       ...probe,
       ...coverage,
       allProbeCodepointsPresent: coverage.missingCodepoints.length === 0,
-      fontkitLayout: inspectFontkitLayout(font, probe.sampleText),
+      fontkitLayout: inspectFontkitLayout(font, probe.sampleText, probe.fontkitScript, probe.direction),
     };
   });
   let shapedGlyphCount: number | null = null;
@@ -165,10 +185,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   const args = process.argv.slice(2);
   const [filename, text, option, requiredLanguages] = args;
   if (!filename || !text || !(args.length === 2 ||
-    (args.length === 4 && option === '--require-scripts' && requiredLanguages)))
-    throw new Error('Usage: rtl-font-audit.ts FONT-FILE SAMPLE-TEXT [--require-scripts he,ar,fa,ur,syr,am,en]');
+    (args.length === 4 && (option === '--require-scripts' || option === '--require-layout-scripts') && requiredLanguages)))
+    throw new Error('Usage: rtl-font-audit.ts FONT-FILE SAMPLE-TEXT [--require-scripts|--require-layout-scripts he,ar,fa,ur,syr,am,en]');
   const report = await auditFont(path.resolve(filename), text);
   // Always emit the full diagnostic evidence, including when strict mode fails.
   console.log(JSON.stringify(report, null, 2));
-  if (requiredLanguages !== undefined) assertRequiredScriptCoverage(report, requiredLanguages.split(','));
+  if (requiredLanguages !== undefined) {
+    if (option === '--require-layout-scripts') assertRequiredScriptLayout(report, requiredLanguages.split(','));
+    else assertRequiredScriptCoverage(report, requiredLanguages.split(','));
+  }
 }

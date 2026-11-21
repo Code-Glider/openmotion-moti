@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditFont, assertRequiredScriptCoverage, inspectFontkitLayout } from '../scripts/rtl-font-audit.ts';
+import { auditFont, assertRequiredScriptCoverage, assertRequiredScriptLayout, inspectFontkitLayout } from '../scripts/rtl-font-audit.ts';
 
 test('font audit rejects invalid and oversized WOFF2 without needing a browser', async () => {
   const folder = await mkdtemp(path.join(tmpdir(), 'rtl-font-audit-'));
@@ -59,11 +59,27 @@ test('fontkit shaping evidence exposes .notdef glyphs and positioning without cl
   }) }, 'سَلَام'), { error: 'LAYOUT_GLYPH_POSITION_MISMATCH' });
 });
 
+test('fontkit probes explicitly select OpenType script and direction', () => {
+  const seen: Array<[string | undefined, string | undefined]> = [];
+  const font = { layout: (_text: string, _features?: undefined, script?: string, _language?: undefined, direction?: 'rtl' | 'ltr') => {
+    seen.push([script, direction]);
+    return { glyphs: [{ id: 12 }], positions: [{ xOffset: 0, yOffset: 0 }] };
+  } };
+  assert.deepEqual(inspectFontkitLayout(font, 'ܫܠܡܐ', 'syrc', 'rtl'), {
+    glyphCount: 1, notdefGlyphCount: 0, positionedGlyphCount: 0,
+  });
+  assert.deepEqual(inspectFontkitLayout(font, 'ABC', 'latn', 'ltr'), {
+    glyphCount: 1, notdefGlyphCount: 0, positionedGlyphCount: 0,
+  });
+  assert.deepEqual(seen, [['syrc', 'rtl'], ['latn', 'ltr']]);
+});
+
 test('font audit records bounded five-script probes plus Ethiopic/LTR without claiming shaping', async () => {
   const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
   const result = await auditFont(font, 'A');
   const byLang = new Map(result.scriptSamples.map(row => [row.language, row]));
   assert.deepEqual([...byLang.keys()], ['he', 'ar', 'fa', 'ur', 'syr', 'am', 'en']);
+  assert.deepEqual(result.scriptSamples.map(probe => probe.fontkitScript), ['hebr', 'arab', 'arab', 'arab', 'syrc', 'ethi', 'latn']);
   const absent = new Map([
     ['he', 'U+05E9'], // Hebrew shin
     ['ar', 'U+0633'], // Arabic seen
@@ -115,12 +131,27 @@ test('required-script gate is opt-in, checks known probes, and refuses false Sem
   assert.throws(() => assertRequiredScriptCoverage(result, ['unknown']), /UNKNOWN_FONT_SCRIPT_PROBE: unknown/);
 });
 
+test('layout gate checks cmap and fontkit runs, rejecting .notdef and missing shaping evidence', async () => {
+  const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
+  const report = await auditFont(font, 'ABC');
+  assert.doesNotThrow(() => assertRequiredScriptLayout(report, ['en']));
+  assert.throws(() => assertRequiredScriptLayout(report, ['he']), /MISSING_REQUIRED_SCRIPT_GLYPHS: he/);
+  const broken = structuredClone(report);
+  const row = broken.scriptSamples.find(probe => probe.language === 'en')!;
+  row.fontkitLayout = { error: 'SYNTHETIC_LAYOUT_FAILURE' };
+  assert.throws(() => assertRequiredScriptLayout(broken, ['en']), /REQUIRED_SCRIPT_LAYOUT_ERROR: en: SYNTHETIC_LAYOUT_FAILURE/);
+  row.fontkitLayout = { glyphCount: 3, notdefGlyphCount: 1, positionedGlyphCount: 0 };
+  assert.throws(() => assertRequiredScriptLayout(broken, ['en']), /REQUIRED_SCRIPT_LAYOUT_INCOMPLETE: en: glyphs=3,notdef=1/);
+  row.fontkitLayout = { glyphCount: 0, notdefGlyphCount: 0, positionedGlyphCount: 0 };
+  assert.throws(() => assertRequiredScriptLayout(broken, ['en']), /REQUIRED_SCRIPT_LAYOUT_INCOMPLETE: en: glyphs=0,notdef=0/);
+});
+
 test('font audit CLI reports evidence but exits nonzero when required script glyphs are absent', () => {
   const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
   const entry = fileURLToPath(new URL('../scripts/rtl-font-audit.ts', import.meta.url));
   const cwd = fileURLToPath(new URL('../', import.meta.url));
-  const run = (language: string) => spawnSync(process.execPath, [
-    '--experimental-strip-types', entry, font, 'A', '--require-scripts', language,
+  const run = (language: string, gate = '--require-scripts') => spawnSync(process.execPath, [
+    '--experimental-strip-types', entry, font, 'A', gate, language,
   ], { cwd, encoding: 'utf8', timeout: 15000 });
   const latin = run('en');
   assert.equal(latin.status, 0, latin.stderr);
@@ -132,4 +163,11 @@ test('font audit CLI reports evidence but exits nonzero when required script gly
   const unsupported = run('xx');
   assert.notEqual(unsupported.status, 0);
   assert.match(unsupported.stderr, /UNKNOWN_FONT_SCRIPT_PROBE: xx/);
+  const latinLayout = run('en', '--require-layout-scripts');
+  assert.equal(latinLayout.status, 0, latinLayout.stderr);
+  assert.equal(JSON.parse(latinLayout.stdout).scriptSamples.find((row: { language: string }) => row.language === 'en')?.fontkitScript, 'latn');
+  const arabicLayout = run('ar', '--require-layout-scripts');
+  assert.notEqual(arabicLayout.status, 0);
+  assert.match(arabicLayout.stderr, /MISSING_REQUIRED_SCRIPT_GLYPHS: ar/);
+  assert.equal(JSON.parse(arabicLayout.stdout).scriptSamples.find((row: { language: string }) => row.language === 'ar')?.fontkitScript, 'arab');
 });
