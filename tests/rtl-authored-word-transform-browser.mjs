@@ -17,6 +17,7 @@ const harness = [
   " ];",
   " const model = buildCaptionModel(words, { width: 640, height: 360, duration: 2, wordsPerGroup: 2 });",
   " const group = model.groups.get(model.groupOrder[0]);",
+  " group.style.fontFamily = 'Pinned Hebrew QA';",
   " const first = model.segments.get(group.segmentIds[0]);",
   " first.style = style;",
   " return generateCaptionHtml(model);",
@@ -46,7 +47,6 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
-  t.after(() => page.close());
   await page.setViewport({ width: 760, height: 520, deviceScaleFactor: 1 });
   await page.setContent('<!doctype html><html lang="en"><head></head><body style="margin:0">' +
     '<div id="captions-container" style="width:640px;height:360px"></div></body></html>');
