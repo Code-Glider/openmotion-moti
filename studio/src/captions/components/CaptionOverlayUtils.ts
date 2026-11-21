@@ -72,7 +72,13 @@ function directWordElements(
   // wrong saved word. Unidentified legacy spans keep their existing fallback.
   const named = expectedIds.filter((id): id is string => Boolean(id));
   if (new Set(named).size !== named.length) return null;
-  if (candidates.some((el, index) => expectedIds[index] && el?.id !== expectedIds[index])) return null;
+  // Current generated captions carry wordId as a DOM ID. Older authored
+  // projects may have *no* IDs on their word spans: retain editing only when
+  // text makes positional identity unambiguous. Never guess between identical
+  // unlabelled words or accept partially missing generated IDs.
+  const hasDomIds = candidates.some((el) => Boolean(el?.id));
+  if (hasDomIds && candidates.some((el, index) => expectedIds[index] && el?.id !== expectedIds[index])) return null;
+  if (!hasDomIds && named.length && new Set(words.map((word) => word.trim())).size !== words.length) return null;
   if (candidates.some((el, index) => !el || el.textContent?.trim() !== words[index].trim())) return [];
   return candidates as HTMLElement[];
 }
