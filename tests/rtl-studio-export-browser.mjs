@@ -163,14 +163,19 @@ try {
   const field = await page.waitForSelector('[data-flat-group-open="true"] textarea');
   assert(field, 'Expected source-backed real Studio Content editor');
   await field.focus();
-  // Use the platform's actual Select All accelerator. Ctrl+A on macOS
-  // moves the insertion point instead of selecting all source text.
-  const selectModifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-  await page.keyboard.down(selectModifier);
-  await page.keyboard.press('A');
-  await page.keyboard.up(selectModifier);
-  // Puppeteer's supported CDP text insertion preserves complex-script codepoints.
+  // Select via the real textarea selection API, not an OS-dependent keyboard
+  // shortcut. This gate tests Unicode text replacement and MP4 parity; native
+  // Select All / caret affinity needs its own independent interaction gate.
+  const sourceBefore = await field.evaluate(element => element.value);
+  assert.equal(sourceBefore, originalHebrew, 'Wrong selected Studio Content field');
+  const selected = await field.evaluate(element => {
+    element.setSelectionRange(0, element.value.length);
+    return { start: element.selectionStart, end: element.selectionEnd, length: element.value.length };
+  });
+  assert.deepEqual([selected.start, selected.end], [0, selected.length], 'Content selection did not span the logical source');
+  // Puppeteer's supported CDP text insertion emits actual input events.
   await page.keyboard.sendCharacter(editedHebrew);
+  assert.equal(await field.evaluate(element => element.value), editedHebrew, 'Content input did not fully replace logical source');
   await page.keyboard.press('Tab');
   let edited = false;
   for (let attempt = 0; attempt < 80; attempt++) {
