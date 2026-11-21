@@ -19,6 +19,10 @@
 <article><h2>Hebrew niqqud + English brand</h2><div class="sample he" id="he-mixed" lang="he" dir="rtl">בְּרֵאשִׁית — מבצע 25% על <bdi id="ltr-brand" lang="en" dir="ltr">OpenMotion Pro 2.0</bdi>!</div></article>
 <article><h2>Simple Arabic</h2><div class="sample ar" id="ar-basic" lang="ar" dir="rtl">سلام</div></article>
 <article><h2>Arabic diacritics and numbers</h2><div class="sample ar" id="ar-mixed" lang="ar" dir="auto">السَّلَامُ عَلَيْكُمْ — الخصم 25% على <bdi lang="en" dir="ltr">OpenMotion 2.0</bdi>!</div></article>
+<article><h2>Persian</h2><div class="sample ar" id="fa-basic" lang="fa" dir="rtl">فارسی پ چ ژ گ</div></article>
+<article><h2>Urdu</h2><div class="sample ar" id="ur-basic" lang="ur" dir="rtl">اردو ٹ ڈ ڑ ں ے</div></article>
+<article><h2>Syriac</h2><div class="sample" id="syr-basic" lang="syr" dir="rtl">ܫܠܡܐ ܒܪܝܟܐ</div></article>
+<article><h2>Ethiopic control</h2><div class="sample" id="am-basic" lang="am" dir="ltr">ሰላም ኢትዮጵያ</div></article>
 <article><h2>LTR control</h2><div class="sample" id="ltr-control" dir="ltr" lang="en">Render ABC-123 at 10:30</div></article>
 <article><h2>Automated DOM result</h2><output id="rtl-audit"></output></article>
 <script>
@@ -35,14 +39,25 @@ const result = {
   arAutoDir: getComputedStyle(document.getElementById('ar-mixed')).direction,
   ltrDir: getComputedStyle(document.getElementById('ltr-control')).direction,
   englishIsolateDir: getComputedStyle(document.getElementById('ltr-brand')).direction,
+  faDir: getComputedStyle(document.getElementById('fa-basic')).direction,
+  urDir: getComputedStyle(document.getElementById('ur-basic')).direction,
+  syrDir: getComputedStyle(document.getElementById('syr-basic')).direction,
+  amDir: getComputedStyle(document.getElementById('am-basic')).direction,
   heFirstGlyphRightmost: charRect(he,0).left > charRect(he,3).left,
   arFirstGlyphRightmost: charRect(ar,0).left > charRect(ar,3).left,
   savedHebrewIsLogical: he.textContent === 'שלום',
   savedArabicIsLogical: ar.textContent === 'سلام',
+  savedPersianIsLogical: document.getElementById('fa-basic').textContent === 'فارسی پ چ ژ گ',
+  savedUrduIsLogical: document.getElementById('ur-basic').textContent === 'اردو ٹ ڈ ڑ ں ے',
+  savedSyriacIsLogical: document.getElementById('syr-basic').textContent === 'ܫܠܡܐ ܒܪܝܟܐ',
+  savedEthiopicIsLogical: document.getElementById('am-basic').textContent === 'ሰላም ኢትዮጵያ',
 };
 const output=document.getElementById('rtl-audit');
 output.textContent=JSON.stringify(result);
-output.setAttribute('data-pass',Object.values(result).every(Boolean)?'yes':'no');
+const expectedDirections = { heDir:'rtl', arDir:'rtl', arAutoDir:'rtl', ltrDir:'ltr', englishIsolateDir:'ltr', faDir:'rtl', urDir:'rtl', syrDir:'rtl', amDir:'ltr' };
+const directionsPass = Object.entries(expectedDirections).every(([name, direction]) => result[name] === direction);
+const remainingPass = Object.entries(result).filter(([name]) => !(name in expectedDirections)).every(([, value]) => value === true);
+output.setAttribute('data-pass', directionsPass && remainingPass ? 'yes' : 'no');
 </script>
 </body>
 </html>
