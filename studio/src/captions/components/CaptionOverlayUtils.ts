@@ -265,26 +265,34 @@ export function getWordEl(
 export function readGsapTransform(
   el: HTMLElement,
   iframeWin: Window,
-): { x: number; y: number; scale: number; rotation: number } {
+): { x: number; y: number; scale: number; scaleY: number; rotation: number } {
   const gsap = (
     iframeWin as unknown as { gsap?: { getProperty?: (el: HTMLElement, prop: string) => number } }
   ).gsap;
-  if (gsap && gsap.getProperty) {
+  // "scale" alone loses imported non-uniform word geometry. Preserve the X
+  // alias for existing pointer math, while keeping the independent Y axis.
+  const finiteOr = (value: number, fallback: number) =>
+    Number.isFinite(value) ? value : fallback;
+  if (gsap?.getProperty) {
+    const scale = finiteOr(gsap.getProperty(el, "scaleX"), finiteOr(gsap.getProperty(el, "scale"), 1));
     return {
-      x: gsap.getProperty(el, "x") || 0,
-      y: gsap.getProperty(el, "y") || 0,
-      scale: gsap.getProperty(el, "scale") || 1,
-      rotation: gsap.getProperty(el, "rotation") || 0,
+      x: finiteOr(gsap.getProperty(el, "x"), 0),
+      y: finiteOr(gsap.getProperty(el, "y"), 0),
+      scale,
+      scaleY: finiteOr(gsap.getProperty(el, "scaleY"), scale),
+      rotation: finiteOr(gsap.getProperty(el, "rotation"), 0),
     };
   }
   const t = el.style.transform || "";
-  const scaleMatch = t.match(/scale\(([^)]+)\)/);
+  const scaleMatch = t.match(/scale\(\s*([^,\s)]+)\s*(?:,\s*([^)]+))?\)/);
   const rotMatch = t.match(/rotate\(([^)]+)deg\)/);
   const txyMatch = t.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+  const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
   return {
     x: txyMatch ? parseFloat(txyMatch[1]) : 0,
     y: txyMatch ? parseFloat(txyMatch[2]) : 0,
-    scale: scaleMatch ? parseFloat(scaleMatch[1]) : 1,
+    scale,
+    scaleY: scaleMatch?.[2] ? parseFloat(scaleMatch[2]) : scale,
     rotation: rotMatch ? parseFloat(rotMatch[1]) : 0,
   };
 }
@@ -316,6 +324,7 @@ export function writeTransform(
   y: number,
   scale: number,
   rotation: number,
+  scaleY = scale,
 ) {
   const wrapper = getOrCreateWrapper(el);
   const gsap = (
@@ -323,10 +332,14 @@ export function writeTransform(
       gsap?: { set?: (el: HTMLElement, props: Record<string, number>) => void };
     }
   ).gsap;
-  if (gsap && gsap.set) {
-    gsap.set(wrapper, { x, y, scale, rotation });
+  if (gsap?.set) {
+    gsap.set(wrapper, { x, y, scaleX: scale, scaleY, rotation });
   } else {
-    wrapper.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${rotation.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+    // Uniform callers retain the original single-value scale syntax.
+    const cssScale = scaleY === scale
+      ? scale.toFixed(3)
+      : `${scale.toFixed(3)}, ${scaleY.toFixed(3)}`;
+    wrapper.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${rotation.toFixed(1)}deg) scale(${cssScale})`;
   }
 }
 
@@ -358,7 +371,7 @@ export function isCaptionPreviewVisible(): boolean {
 export function applyCaptionModelToIframe(model: {
   groupOrder: string[];
   groups: Map<string, { segmentIds: string[] }>;
-  segments: Map<string, { text: string; style: { x?: number; y?: number; scaleX?: number; rotation?: number } }>;
+  segments: Map<string, { text: string; style: { x?: number; y?: number; scaleX?: number; scaleY?: number; rotation?: number } }>;
 }): void {
   const iframe = registeredIframe?.current;
   if (!iframe) return;
@@ -378,7 +391,7 @@ export function applyCaptionModelToIframe(model: {
       const wordEl = getWordEl(iframe, gi, wi, model);
       if (!wordEl) continue;
       const s = seg.style;
-      writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0);
+      writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0, s.scaleY ?? 1);
     }
   }
 }
@@ -386,6 +399,6 @@ export function applyCaptionModelToIframe(model: {
 /** Include neutral values so merging into saved style clears earlier transforms. */
 export function computeTransformStyle(el: HTMLElement, iframeWin: Window): Record<string, number> {
   const wrapper = getOrCreateWrapper(el);
-  const { x, y, scale, rotation } = readGsapTransform(wrapper, iframeWin);
-  return { x, y, scaleX: scale, scaleY: scale, rotation };
+  const { x, y, scale, scaleY, rotation } = readGsapTransform(wrapper, iframeWin);
+  return { x, y, scaleX: scale, scaleY, rotation };
 }

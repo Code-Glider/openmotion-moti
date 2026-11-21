@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { splitCaptionWordRuns } from "./captionWordRuns";
-import { readWordBoxes, getWordEl, sameWordBoxes, writeTransform, computeTransformStyle, type WordBox } from "./CaptionOverlayUtils";
+import { readWordBoxes, getWordEl, sameWordBoxes, readGsapTransform, getOrCreateWrapper, writeTransform, computeTransformStyle, registerCaptionIframe, applyCaptionModelToIframe, type WordBox } from "./CaptionOverlayUtils";
 
 it("clears every saved transform when an authored word returns to neutral", () => {
   const iframe = document.createElement("iframe");
@@ -195,3 +195,60 @@ it("maps rendered caption groups by stable ID when an earlier group was omitted"
   } finally { f.dispose(); }
 });
 
+
+it("retains independent Hebrew word scales through move, rotate, reset and replay", () => {
+  const frame = captionFrame("שָׁלוֹם", ["שָׁלוֹם"]);
+  const word = frame.doc.createElement("span");
+  word.textContent = "שָׁלוֹם";
+  frame.group.replaceChildren(word);
+  const win = frame.iframe.contentWindow!;
+  const unregister = registerCaptionIframe({ current: frame.iframe });
+  const model = (scaleX: number, scaleY: number) => ({
+    groupOrder: ["group-0"],
+    groups: new Map([["group-0", { segmentIds: ["s0"] }]]),
+    segments: new Map([["s0", { text: "שָׁלוֹם", style: { x: 18, y: -11, rotation: 12, scaleX, scaleY } }]]),
+  });
+  try {
+    applyCaptionModelToIframe(model(1.25, 0.9));
+    expect(computeTransformStyle(word, win)).toEqual({
+      x: 18, y: -11, rotation: 12, scaleX: 1.25, scaleY: 0.9,
+    });
+    const before = readGsapTransform(getOrCreateWrapper(word), win);
+    writeTransform(word, win, before.x + 5, before.y - 3, before.scale, before.rotation + 8, before.scaleY);
+    expect(computeTransformStyle(word, win)).toEqual({
+      x: 23, y: -14, rotation: 20, scaleX: 1.25, scaleY: 0.9,
+    });
+    applyCaptionModelToIframe(model(1, 1));
+    expect(computeTransformStyle(word, win)).toMatchObject({ scaleX: 1, scaleY: 1 });
+    applyCaptionModelToIframe(model(1.25, 0.9));
+    expect(computeTransformStyle(word, win)).toMatchObject({ scaleX: 1.25, scaleY: 0.9 });
+    expect(frame.group.textContent).toBe("שָׁלוֹם");
+    expect(frame.group.querySelector("span > span")).toBe(word);
+  } finally {
+    unregister();
+    frame.dispose();
+  }
+});
+
+it("reads and writes GSAP scaleX and scaleY without flattening Arabic word geometry", () => {
+  const iframe = document.createElement("iframe");
+  document.body.append(iframe);
+  try {
+    const win = iframe.contentWindow!;
+    const word = iframe.contentDocument!.createElement("span");
+    word.textContent = "السَّلَامُ";
+    iframe.contentDocument!.body.append(word);
+    const props: Record<string, number> = { x: 7, y: -4, scale: 1.25, scaleX: 1.25, scaleY: 0.75, rotation: 15 };
+    Reflect.set(win, "gsap", {
+      getProperty: (_: HTMLElement, name: string) => props[name] ?? Number.NaN,
+      set: (_: HTMLElement, values: Record<string, number>) => Object.assign(props, values),
+    });
+    const wrapper = getOrCreateWrapper(word);
+    expect(readGsapTransform(wrapper, win)).toMatchObject({ scale: 1.25, scaleY: 0.75 });
+    writeTransform(word, win, 17, -4, 1.25, 15, 0.75);
+    expect(props).toMatchObject({ x: 17, y: -4, scaleX: 1.25, scaleY: 0.75, rotation: 15 });
+    expect(computeTransformStyle(word, win)).toEqual({
+      x: 17, y: -4, scaleX: 1.25, scaleY: 0.75, rotation: 15,
+    });
+  } finally { iframe.remove(); }
+});
