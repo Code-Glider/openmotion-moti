@@ -344,3 +344,52 @@ test('public caption toggle is replay-safe, revision guarded and reversible', ()
   await service.call('openmotion_restore_version', { projectId, requestId: 'restore-no-captions', versionId: before.currentVersionId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId });
   assert.equal((await call({ command: 'caption_tracks', projectId, compositionPath: 'index.html' })).tracks.length, 0);
 }));
+
+test('word-timed Semitic highlights reject partial graphemes and round-trip Unicode across native SRT/VTT', () => {
+  const base = '<div data-composition-id="main" data-duration="3" data-width="640" data-height="360"></div>';
+  const placement = { sourceStart: 0, sourceEnd: 3, timelineStart: 0, playbackRate: 1 };
+
+  for (const [label, text, words] of [
+    ['Hebrew niqqud', 'בּית', ['ב', 'ּית']],
+    ['Arabic shadda and fatha', 'السَّلَامُ', ['الس', 'َّلَامُ']],
+    ['emoji ZWJ', '👩‍💻 שלום', ['👩', '‍💻', 'שלום']],
+    ['Syriac combining mark', 'ܫܠܵܡܐ', ['ܫܠ', 'ܵܡܐ']],
+  ] as const) {
+    const segment = {
+      id: 'semite-' + words.length,
+      text, start: 0, end: 2,
+      words: words.map((word, i) => ({ text: word, start: i * (2 / words.length), end: (i + 1) * (2 / words.length) })),
+    };
+    assert.throws(
+      () => transcriptCaptionSource(base, document([segment]), placement, { pacing: 'word' }),
+      /Word timestamps split a grapheme cluster/,
+      label + ' must fail closed rather than wrapping a diacritic or joiner separately',
+    );
+  }
+
+  const text = 'שָׁלוֹם OpenMotion 2.0 & السَّلَامُ';
+  const tokens = ['שָׁלוֹם', 'OpenMotion', '2.0', '&', 'السَّلَامُ'];
+  const words = tokens.map((word, i) => ({
+    text: word, start: i * 0.4, end: (i + 1) * 0.4,
+  }));
+  const native = transcriptCaptionSource(
+    base, document([{ id: 'mixed-bidi-1', text, start: 0, end: 2, words }]),
+    placement, { pacing: 'word', language: 'he', direction: 'rtl' },
+  );
+  assert.equal(native.count, tokens.length);
+  assert.match(native.content, /lang="he" dir="rtl"/);
+  assert.match(native.content, /<span style="color:var\(--caption-highlight\)">שָׁלוֹם<\/span>/);
+  assert.match(native.content, /<span style="color:var\(--caption-highlight\)">السَّلَامُ<\/span>/);
+  assert.match(native.content, /OpenMotion 2.0 &amp;/);
+  for (const format of ['srt', 'vtt'] as const) {
+    const exported = exportCaptionSource(native.content, format, parseHTML);
+    assert.equal(exported.cueCount, 1, 'timed highlights should export as one authored cue');
+    const imported = parseTranscriptSubtitles(exported.content);
+    assert.equal(imported.length, 1);
+    assert.deepEqual(
+      { text: imported[0].text, start: imported[0].start, end: imported[0].end },
+      { text, start: 0, end: 2 },
+      format + ' must preserve exact logical Unicode, ampersands and original timing',
+    );
+  }
+});
