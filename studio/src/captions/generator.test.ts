@@ -428,3 +428,82 @@ describe("caption identifier collision safety", () => {
     }
   });
 });
+
+
+describe("native authored word transform persistence", () => {
+  function modelWithWordTransforms() {
+    const model = buildCaptionModel([
+      { id: "word-he", text: "שָׁלוֹם", start: 0.1, end: 0.45 },
+      { id: "word-ar", text: "السَّلَامُ", start: 0.55, end: 0.95 },
+    ], { width: 640, height: 360, duration: 2, wordsPerGroup: 2 });
+    const group = model.groups.get(model.groupOrder[0])!;
+    const first = model.segments.get(group.segmentIds[0])!;
+    first.style = { x: 18, y: -11, rotation: 12, scaleX: 1.25, scaleY: 0.9 };
+    return model;
+  }
+
+  function runGeneratedCaptionHtml(model: ReturnType<typeof modelWithWordTransforms>) {
+    const win = new Window();
+    const wrapper = win.document.createElement("template");
+    wrapper.innerHTML = generateCaptionHtml(model);
+    const template = wrapper.content.querySelector("template");
+    const script = template?.content.querySelector("script")?.textContent;
+    expect(script).toBeTruthy();
+    win.document.body.innerHTML = '<div id="captions-container"></div>';
+    const fakeGsap = { timeline: () => ({ to() { return this; } }) };
+    new Function("window", "document", "gsap", script!)(win, win.document, fakeGsap);
+    return { win, group: win.document.querySelector<HTMLElement>(".caption-group")! };
+  }
+
+  it("replays exact Hebrew translation, non-uniform scale and rotation without rewriting text or timing", () => {
+    const model = modelWithWordTransforms();
+    const { win, group } = runGeneratedCaptionHtml(model);
+    try {
+      expect(group.dataset.captionGroupId).toBe(model.groupOrder[0]);
+      expect(group.children).toHaveLength(2);
+      const transformed = group.children[0] as HTMLElement;
+      const word = transformed.querySelector<HTMLElement>(".word")!;
+      expect(transformed.dataset.captionWrapper).toBe("true");
+      expect(transformed.style.display).toBe("inline-block");
+      expect(transformed.style.transform).toBe("translate(18px, -11px) rotate(12deg) scale(1.25, 0.9)");
+      expect(word.textContent).toBe("שָׁלוֹם");
+      expect(word.id).toBe("word-he");
+      expect(word.dataset.start).toBe("0.1");
+      expect(word.dataset.end).toBe("0.45");
+      // The untouched Arabic caption is still a direct authored word span.
+      const neutral = group.children[1] as HTMLElement;
+      expect(neutral.classList.contains("word")).toBe(true);
+      expect(neutral.dataset.captionWrapper).toBeUndefined();
+      expect(neutral.id).toBe("word-ar");
+      expect(neutral.textContent).toBe("السَّلَامُ");
+      expect(neutral.dataset.start).toBe("0.55");
+      expect(neutral.dataset.end).toBe("0.95");
+      expect(group.textContent).toBe("שָׁלוֹםالسَّلَامُ");
+    } finally { win.close(); }
+  });
+
+  it("omits the wrapper after a reset to neutral while preserving the stable word ID", () => {
+    const model = modelWithWordTransforms();
+    const segment = model.segments.get(model.groups.get(model.groupOrder[0])!.segmentIds[0])!;
+    segment.style = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+    const { win, group } = runGeneratedCaptionHtml(model);
+    try {
+      expect(group.querySelector("[data-caption-wrapper]")).toBeNull();
+      const firstWord = group.children[0] as HTMLElement;
+      expect(firstWord.id).toBe("word-he");
+      expect(firstWord.textContent).toBe("שָׁלוֹם");
+    } finally { win.close(); }
+  });
+
+  it("rejects non-finite transform state rather than serializing invalid project output", () => {
+    const model = modelWithWordTransforms();
+    const segment = model.segments.get(model.groups.get(model.groupOrder[0])!.segmentIds[0])!;
+    for (const [field, value] of [
+      ["x", Infinity], ["y", -Infinity], ["rotation", Number.NaN],
+      ["scaleX", Infinity], ["scaleY", Number.NaN],
+    ] as const) {
+      segment.style = { [field]: value };
+      expect(() => generateCaptionHtml(model)).toThrow("INVALID_CAPTION_WORD_TRANSFORM_" + field.toUpperCase());
+    }
+  });
+});
