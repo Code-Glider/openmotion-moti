@@ -20,6 +20,7 @@ on:
       - 'tests/text-flow.test.ts'
       - 'tests/rtl-font-audit.test.ts'
       - 'tests/rtl-browser-rendering.test.ts'
+      - 'scripts/rtl-reference-fonts.mjs'
       - 'tests/rtl-browser-fixture.html'
   workflow_dispatch:
 
@@ -60,9 +61,13 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
+      - name: Download and verify five licensed reference faces
+        run: node scripts/rtl-reference-fonts.mjs "$RUNNER_TEMP/rtl-reference-fonts"
       - name: Require actual Chromium RTL reference geometry
         env:
           RTL_BROWSER_ARTIFACT_DIR: .artifacts/rtl-browser
+          RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
+          RTL_BROWSER_PINNED_REQUIRED: '1'
         run: node --experimental-strip-types --test tests/rtl-browser-rendering.test.ts
       - name: Retain RTL Chromium screenshot and JSON
         if: always()
