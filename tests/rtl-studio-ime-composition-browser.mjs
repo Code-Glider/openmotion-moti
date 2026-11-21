@@ -61,11 +61,29 @@ test('real Chromium CDP IME preedit never leaks partial source to Studio save', 
   const evidence = [];
   for (const sample of samples) {
     const page = await browser.newPage();
+    // Surface browser bundle/runtime exceptions immediately instead of an
+    // opaque 30s textarea timeout; never mute failures as a passing test.
+    const pageErrors = [];
+    page.on('pageerror', error => pageErrors.push('pageerror: ' + error.stack));
+    page.on('console', message => {
+      if (message.type() === 'error') pageErrors.push('console: ' + message.text());
+    });
     try {
       await page.setViewport({ width: 750, height: 300, deviceScaleFactor: 1 });
       await page.setContent('<!doctype html><html lang="en" dir="ltr"><body><div id="host"></div><button id="next">Next</button></body></html>');
       await page.addScriptTag({ content: bundle.outputFiles[0].text });
-      await page.waitForSelector('textarea');
+      try {
+        await page.waitForSelector('textarea', { timeout: 4500 });
+      } catch (error) {
+        const snapshot = await page.evaluate(() => ({
+          markup: document.body.innerHTML.slice(0, 900),
+          commits: window.__rtlImeCommits,
+          mount: Boolean(document.getElementById('host')),
+        }));
+        throw new Error(sample.lang + ': production TextAreaField did not mount: ' +
+          JSON.stringify({ error: String(error), snapshot, pageErrors }));
+      }
+      assert.deepEqual(pageErrors, [], sample.lang + ': Chromium reported React render errors');
       await page.evaluate(() => {
         window.__rtlImeEvents = [];
         const textarea = document.querySelector('textarea');
