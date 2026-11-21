@@ -178,7 +178,7 @@ export function TextAreaField({
 
   if (flat) {
     return (
-      <div data-flat-textarea-boxed={boxed ? "true" : undefined} className={boxed
+      <div data-flat-textarea-boxed={boxed ? String(boxed) : undefined} className={boxed
         ? "rounded-md bg-panel-bg-inset px-3 py-2 focus-within:ring-1 focus-within:ring-panel-accent/30"
         : "border-l-2 border-panel-border-input py-0.5 pl-[10px]"}>
         {!boxed && <OverflowText text={t(label)} className="mb-[3px] block min-w-0 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-panel-text-5" />}
