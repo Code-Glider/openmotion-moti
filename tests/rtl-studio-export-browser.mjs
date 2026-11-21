@@ -177,12 +177,23 @@ try {
   await page.keyboard.sendCharacter(editedHebrew);
   assert.equal(await field.evaluate(element => element.value), editedHebrew, 'Content input did not fully replace logical source');
   await page.keyboard.press('Tab');
-  let edited = false;
+  let edited = false, conflictingReads = 0;
   for (let attempt = 0; attempt < 80; attempt++) {
-    current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } });
+    try {
+      current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } });
+    } catch (error) {
+      // During a real native Studio autosave the source can change between
+      // stat and hash. Read-only VERSION_CONFLICT is explicitly retriable;
+      // write conflicts, other errors and an unpersisted edit still fail.
+      if (error?.code !== 'VERSION_CONFLICT') throw error;
+      conflictingReads++;
+      await sleep(200);
+      continue;
+    }
     if (JSON.stringify(current.file).includes(editedHebrew)) { edited = true; break; }
     await sleep(200);
   }
+  evidence.conflictingReadAttempts = conflictingReads;
   assert(edited, 'Real Studio text edit did not persist the exact logical Unicode string');
   assert(!JSON.stringify(current.file).includes(originalHebrew), 'Old Hebrew source text still present after Studio edit');
   frame = await findStudioFrame(page, editedHebrew);
