@@ -53,7 +53,12 @@ def main() -> None:
     output = folder / "hebrew.woff2"
     if output.exists():
         raise ValueError("REFUSE_TO_OVERWRITE_EXISTING_WOFF2")
-    font = TTFont(source, lazy=False)
+    # fontTools defaults recalcTimestamp=True, writing wall-clock time into
+    # the OpenType head.modified table on every save. That made identical
+    # pinned Hebrew input produce a *different WOFF2 SHA256 on each OS* in
+    # CI run 44919144186. Keep source layout/timestamps unchanged.
+    # Recalculating glyph bboxes is unnecessary for lossless format conversion.
+    font = TTFont(source, lazy=False, recalcTimestamp=False, recalcBBoxes=False)
     try:
         prior = glyph_inventory(font)
         font.flavor = "woff2"
@@ -61,6 +66,22 @@ def main() -> None:
     finally:
         font.close()
     contents = output.read_bytes()
+    # A second fresh instance must reproduce exactly the same compressed
+    # bytes, not merely equivalent decompressed glyphs.
+    repeat = folder / "hebrew-woff2-repro-check.woff2"
+    if repeat.exists():
+        raise ValueError("REFUSE_TO_OVERWRITE_EXISTING_WOFF2_REPRO_CHECK")
+    probe = TTFont(source, lazy=False, recalcTimestamp=False, recalcBBoxes=False)
+    try:
+        probe.flavor = "woff2"
+        probe.save(repeat)
+    finally:
+        probe.close()
+    try:
+        if repeat.read_bytes() != contents:
+            raise ValueError("NONDETERMINISTIC_WOFF2_CONVERSION")
+    finally:
+        repeat.unlink()
     if contents[:4] != b"wOF2":
         raise ValueError("WOFF2_SIGNATURE_MISMATCH")
     decoded = TTFont(output, lazy=False)
