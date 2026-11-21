@@ -68,7 +68,7 @@ function coverageForText(font: { hasGlyphForCodePoint: (cp: number) => boolean }
   const missingCodepoints: FontAudit['missingCodepoints'] = [];
   let checkedCodepoints = 0;
   for (const cp of unique) {
-    if (/[\\p{Cc}\\p{Cf}]/u.test(String.fromCodePoint(cp))) continue;
+    if (/[\p{Cc}\p{Cf}]/u.test(String.fromCodePoint(cp))) continue;
     checkedCodepoints += 1;
     if (!font.hasGlyphForCodePoint(cp)) missingCodepoints.push({
       hex: 'U+' + cp.toString(16).toUpperCase().padStart(4, '0'),

@@ -69,7 +69,7 @@ test('font audit records bounded five-script probes plus Ethiopic/LTR without cl
 test('font audit excludes RTL format controls but never silently skips vowel marks', async () => {
   const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
   // RLO, isolate and PDF must not be reported as missing glyphs; niqqud must.
-  const result = await auditFont(font, 'A\\u202E\\u2067\\u05E9\\u05B8\\u202C\\u2069');
+  const result = await auditFont(font, 'A\u202E\u2067\u05E9\u05B8\u202C\u2069');
   assert.equal(result.checkedCodepoints, 3);
   const missing = new Set(result.missingCodepoints.map(point => point.hex));
   assert.deepEqual(missing, new Set(['U+05E9', 'U+05B8']));
