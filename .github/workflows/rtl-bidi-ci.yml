@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, feat/rtl-textarea-immediate-blur-save]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, feat/rtl-textarea-immediate-blur-save, feat/rtl-caption-word-native-transform-export]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate]
+    branches: [main, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -30,6 +30,7 @@ on:
       - 'tests/rtl-bidi-keyboard-ime-browser.mjs'
       - 'tests/rtl-studio-ime-composition-browser.mjs'
       - 'tests/rtl-caption-range-browser.mjs'
+      - 'tests/rtl-authored-word-transform-browser.mjs'
       - 'tests/rtl-cross-os-font-provenance.test.mjs'
       - 'scripts/rtl-verify-cross-os-fonts.mjs'
       - 'tests/rtl-studio-export-browser.mjs'
@@ -89,6 +90,11 @@ jobs:
           RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
           RTL_CAPTION_ARTIFACT_DIR: .artifacts/rtl-browser
         run: node --experimental-strip-types --test tests/rtl-caption-range-browser.mjs
+      - name: Verify generated native caption word transforms in real Chromium
+        env:
+          RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
+          RTL_CAPTION_EXPORT_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-authored-word-transform-browser.mjs
       - name: Verify actual Studio mixed-script visual End caret in Chromium
         env:
           RTL_CARET_ARTIFACT_DIR: .artifacts/rtl-browser
