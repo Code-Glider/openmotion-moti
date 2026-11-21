@@ -2,7 +2,7 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub]
   pull_request:
     branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
     paths:
