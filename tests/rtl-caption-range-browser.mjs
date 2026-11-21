@@ -57,7 +57,7 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
       'body{margin:0;background:#222}.caption-group{position:absolute;width:175px;font-size:24px;line-height:1.3;' +
       'white-space:pre-wrap;overflow-wrap:anywhere;opacity:1;color:white}</style></head><body></body></html>';
   });
-  await page.waitForFunction(() => Boolean(document.querySelector('#preview')?.contentDocument?.body));
+  await page.waitForFunction(() => Boolean(document.querySelector('#preview')?.contentDocument?.querySelector('style')?.textContent?.includes('.caption-group')));
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   const result = await page.evaluate(async ({ cases, styles }) => {
     const iframe = document.getElementById('preview');
