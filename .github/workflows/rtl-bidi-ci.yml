@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
+    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -26,6 +26,7 @@ on:
       - 'tests/text-flow.test.ts'
       - 'tests/rtl-font-audit.test.ts'
       - 'tests/rtl-browser-rendering.test.ts'
+      - 'tests/rtl-mixed-caret-browser.mjs'
       - 'tests/rtl-studio-export-browser.mjs'
       - 'tests/workspace-transient-files.test.ts'
       - 'scripts/rtl-reference-fonts.mjs'
@@ -77,6 +78,10 @@ jobs:
           RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
           RTL_BROWSER_PINNED_REQUIRED: '1'
         run: node --experimental-strip-types --test tests/rtl-browser-rendering.test.ts
+      - name: Verify actual Studio mixed-script visual End caret in Chromium
+        env:
+          RTL_CARET_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-mixed-caret-browser.mjs
       - name: Retain RTL Chromium screenshot and JSON
         if: always()
         uses: actions/upload-artifact@v7.0.2

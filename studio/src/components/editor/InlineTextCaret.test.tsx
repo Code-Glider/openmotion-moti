@@ -147,6 +147,57 @@ describe("InlineTextCaret", () => {
     ]);
   });
 
+  it.each([
+    { label: "Hebrew following Latin", value: "ABC-123 שלום", leading: 400, trailing: 300 },
+    { label: "Arabic with vowels following Latin", value: "ABC مَدّ", leading: 400, trailing: 300 },
+    { label: "Latin following Hebrew", value: "שלום ABC", leading: 300, trailing: 400 },
+    { label: "digits following Persian", value: "سلام 2026", leading: 300, trailing: 400 },
+  ])("uses the browser-resolved visual glyph edge for mixed BiDi $label at End", ({ value, leading, trailing }) => {
+    const { element, iframe, session, text } = scene();
+    element.dir = "rtl";
+    text.data = value;
+    const last = [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(value)].at(-1)!;
+    const graphemeStart = last.index;
+    window.getSelection()!.collapse(text, value.length);
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      if (!this.collapsed) {
+        // A complete glyph occupies this rectangle on the earlier line.
+        expect([this.startOffset, this.endOffset]).toEqual([graphemeStart, value.length]);
+        return [{ left: 300, right: 400, top: 200, height: 120 }] as unknown as DOMRectList;
+      }
+      // Only the preceding grapheme's *start* remains on the earlier line.
+      // Chromium has already resolved its UAX #9 embedding direction here.
+      return [this.startOffset === graphemeStart
+        ? { left: leading, top: 200, height: 120 }
+        : { left: 0, top: 320, height: 120 }] as unknown as DOMRectList;
+    });
+    const caret = render(session, iframe).caret;
+    act(() => element.dispatchEvent(new KeyboardEvent("keydown", { key: "End" })));
+    fire(document, "selectionchange");
+    expect([caret()!.style.left, caret()!.style.top]).toEqual([
+      `${100 + trailing / 4 - CARET_PX / 2}px`,
+      `${50 + 200 / 4}px`,
+    ]);
+  });
+
+  it("does not invent a mixed-BiDi visual edge when the anchor is on another wrap line", () => {
+    const { element, iframe, session, text } = scene();
+    text.data = "ABC-123 שלום";
+    window.getSelection()!.collapse(text, text.length);
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      return (this.collapsed
+        ? [{ left: 0, top: 320, height: 120 }]
+        : [{ left: 300, right: 400, top: 200, height: 120 }]) as unknown as DOMRectList;
+    });
+    const caret = render(session, iframe).caret;
+    act(() => element.dispatchEvent(new KeyboardEvent("keydown", { key: "End" })));
+    fire(document, "selectionchange");
+    expect([caret()!.style.left, caret()!.style.top]).toEqual([
+      `${100 - CARET_PX / 2}px`,
+      `${50 + 320 / 4}px`,
+    ]);
+  });
+
   it("places an RTL caret at the left edge of a final nested formatted node", () => {
     document.body.innerHTML = `<h1 dir="rtl" contenteditable="true">שלום <strong>עולם</strong></h1>`;
     const element = document.body.firstElementChild as HTMLElement;
