@@ -109,6 +109,26 @@ function coverageForText(font: { hasGlyphForCodePoint: (cp: number) => boolean }
   return { checkedCodepoints, missingCodepoints };
 }
 
+/**
+ * Optional, deliberately narrow eligibility gate for a *known* sample set.
+ * It fails closed on absent script codepoints but cannot certify contextual
+ * substitutions, mark positioning, browser font fallback or MP4 output.
+ * A positive result says only that the audited face's cmap covers the probe.
+ */
+export function assertRequiredScriptCoverage(report: FontAudit, languages: readonly string[]): void {
+  if (!languages.length) throw new Error('REQUIRED_FONT_SCRIPT_PROBES_EMPTY');
+  for (const language of languages) {
+    if (!FONT_SCRIPT_PROBES.some(probe => probe.language === language))
+      throw new Error('UNKNOWN_FONT_SCRIPT_PROBE: ' + language);
+    const row = report.scriptSamples.find(probe => probe.language === language);
+    if (!row) throw new Error('MISSING_FONT_SCRIPT_PROBE: ' + language);
+    if (!row.allProbeCodepointsPresent) {
+      const missing = row.missingCodepoints.map(cp => cp.hex).join(',');
+      throw new Error(`MISSING_REQUIRED_SCRIPT_GLYPHS: ${language}: ${missing}`);
+    }
+  }
+}
+
 export async function auditFont(fontPath: string, text: string, runtimeRoot: string = process.cwd()): Promise<FontAudit> {
   if (!text) throw new Error('SUPPLY_REAL_TEXT');
   const bytes = await readFile(fontPath);
@@ -142,7 +162,13 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  const [filename, text] = process.argv.slice(2);
-  if (!filename || !text) throw new Error('Usage: rtl-font-audit.ts FONT-FILE SAMPLE-TEXT');
-  console.log(JSON.stringify(await auditFont(path.resolve(filename), text), null, 2));
+  const args = process.argv.slice(2);
+  const [filename, text, option, requiredLanguages] = args;
+  if (!filename || !text || !(args.length === 2 ||
+    (args.length === 4 && option === '--require-scripts' && requiredLanguages)))
+    throw new Error('Usage: rtl-font-audit.ts FONT-FILE SAMPLE-TEXT [--require-scripts he,ar,fa,ur,syr,am,en]');
+  const report = await auditFont(path.resolve(filename), text);
+  // Always emit the full diagnostic evidence, including when strict mode fails.
+  console.log(JSON.stringify(report, null, 2));
+  if (requiredLanguages !== undefined) assertRequiredScriptCoverage(report, requiredLanguages.split(','));
 }

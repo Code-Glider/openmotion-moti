@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditFont, inspectFontkitLayout } from '../scripts/rtl-font-audit.ts';
+import { auditFont, assertRequiredScriptCoverage, inspectFontkitLayout } from '../scripts/rtl-font-audit.ts';
 
 test('font audit rejects invalid and oversized WOFF2 without needing a browser', async () => {
   const folder = await mkdtemp(path.join(tmpdir(), 'rtl-font-audit-'));
@@ -101,4 +102,34 @@ test('font audit excludes RTL format controls but never silently skips vowel mar
   assert.deepEqual(missing, new Set(['U+05E9', 'U+05B8']));
   assert.equal(result.missingCodepoints.some(point => point.hex === 'U+202E'), false);
   assert.equal(result.missingCodepoints.some(point => point.hex === 'U+FE0F' || point.hex === 'U+200D'), false, 'Variation selectors and joiners are not standalone glyphs');
+});
+
+test('required-script gate is opt-in, checks known probes, and refuses false Semitic coverage', async () => {
+  const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
+  const result = await auditFont(font, 'A');
+  assert.doesNotThrow(() => assertRequiredScriptCoverage(result, ['en']));
+  assert.throws(() => assertRequiredScriptCoverage(result, ['en', 'he']), /MISSING_REQUIRED_SCRIPT_GLYPHS: he:.*U\\+05E9/);
+  assert.throws(() => assertRequiredScriptCoverage(result, ['ar']), /MISSING_REQUIRED_SCRIPT_GLYPHS: ar/);
+  assert.throws(() => assertRequiredScriptCoverage(result, ['syr']), /MISSING_REQUIRED_SCRIPT_GLYPHS: syr/);
+  assert.throws(() => assertRequiredScriptCoverage(result, []), /REQUIRED_FONT_SCRIPT_PROBES_EMPTY/);
+  assert.throws(() => assertRequiredScriptCoverage(result, ['unknown']), /UNKNOWN_FONT_SCRIPT_PROBE: unknown/);
+});
+
+test('font audit CLI reports evidence but exits nonzero when required script glyphs are absent', () => {
+  const font = fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url));
+  const entry = fileURLToPath(new URL('../scripts/rtl-font-audit.ts', import.meta.url));
+  const cwd = fileURLToPath(new URL('../', import.meta.url));
+  const run = (language: string) => spawnSync(process.execPath, [
+    '--experimental-strip-types', entry, font, 'A', '--require-scripts', language,
+  ], { cwd, encoding: 'utf8', timeout: 15000 });
+  const latin = run('en');
+  assert.equal(latin.status, 0, latin.stderr);
+  assert.equal(JSON.parse(latin.stdout).family, 'Orbitron');
+  const hebrew = run('he');
+  assert.notEqual(hebrew.status, 0, 'A Latin-only face cannot qualify as Hebrew');
+  assert.equal(JSON.parse(hebrew.stdout).scriptSamples.some((row: { language: string }) => row.language === 'he'), true);
+  assert.match(hebrew.stderr, /MISSING_REQUIRED_SCRIPT_GLYPHS: he/);
+  const unsupported = run('xx');
+  assert.notEqual(unsupported.status, 0);
+  assert.match(unsupported.stderr, /UNKNOWN_FONT_SCRIPT_PROBE: xx/);
 });
