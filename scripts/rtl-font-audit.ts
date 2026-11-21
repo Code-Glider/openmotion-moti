@@ -17,13 +17,13 @@ const MAX_DECOMPRESSED = 128 * 1024 * 1024;
 // Explicit Urdu/Persian-only letters, Hebrew niqqud and Arabic/Syriac vowel marks
 // catch common fallback gaps. Ethiopic is an LTR non-regression probe.
 export const FONT_SCRIPT_PROBES = [
-  { language: 'he', fontkitScript: 'hebr', direction: 'rtl', sampleText: 'שָׁלוֹם' },
-  { language: 'ar', fontkitScript: 'arab', direction: 'rtl', sampleText: 'السَّلَامُ' },
-  { language: 'fa', fontkitScript: 'arab', direction: 'rtl', sampleText: 'فارسی پ چ ژ گ' },
-  { language: 'ur', fontkitScript: 'arab', direction: 'rtl', sampleText: 'اردو ٹ ڈ ڑ ں ے' },
-  { language: 'syr', fontkitScript: 'syrc', direction: 'rtl', sampleText: 'ܫܠܡܐ ܒܪܝܟܐ ܰ ܳ' },
-  { language: 'am', fontkitScript: 'ethi', direction: 'ltr', sampleText: 'ሰላም ኢትዮጵያ' },
-  { language: 'en', fontkitScript: 'latn', direction: 'ltr', sampleText: 'ABC123' },
+  { language: 'he', fontkitScript: 'hebr', fontkitLanguage: 'IWR ', direction: 'rtl', sampleText: 'שָׁלוֹם' },
+  { language: 'ar', fontkitScript: 'arab', fontkitLanguage: 'ARA ', direction: 'rtl', sampleText: 'السَّلَامُ' },
+  { language: 'fa', fontkitScript: 'arab', fontkitLanguage: 'FAR ', direction: 'rtl', sampleText: 'فارسی پ چ ژ گ' },
+  { language: 'ur', fontkitScript: 'arab', fontkitLanguage: 'URD ', direction: 'rtl', sampleText: 'اردو ٹ ڈ ڑ ں ے' },
+  { language: 'syr', fontkitScript: 'syrc', fontkitLanguage: 'SYR ', direction: 'rtl', sampleText: 'ܫܠܡܐ ܒܪܝܟܐ ܰ ܳ' },
+  { language: 'am', fontkitScript: 'ethi', fontkitLanguage: 'AMH ', direction: 'ltr', sampleText: 'ሰላም ኢትዮጵያ' },
+  { language: 'en', fontkitScript: 'latn', fontkitLanguage: 'ENG ', direction: 'ltr', sampleText: 'ABC123' },
 ] as const;
 
 export type FontAudit = {
@@ -39,6 +39,8 @@ export type FontAudit = {
     language: (typeof FONT_SCRIPT_PROBES)[number]['language'];
     /** Explicit OpenType script; localized substitutions still need visual qualification. */
     fontkitScript: (typeof FONT_SCRIPT_PROBES)[number]['fontkitScript'];
+    /** Four-byte OpenType language-system tag for localized substitutions. */
+    fontkitLanguage: (typeof FONT_SCRIPT_PROBES)[number]['fontkitLanguage'];
     direction: 'rtl' | 'ltr';
     sampleText: string;
     checkedCodepoints: number;
@@ -61,15 +63,16 @@ export type FontkitLayoutEvidence =
  * must be visually qualified using a real browser and rendered video.
  */
 export function inspectFontkitLayout(font: {
-  layout: (text: string, features?: undefined, script?: string, language?: undefined, direction?: 'rtl' | 'ltr') => {
+  layout: (text: string, features?: undefined, script?: string, language?: string, direction?: 'rtl' | 'ltr') => {
     glyphs: Array<{ id: number }>;
     positions: Array<{ xOffset: number; yOffset: number }>;
   };
-}, text: string, script?: string, direction?: 'rtl' | 'ltr'): FontkitLayoutEvidence {
+}, text: string, script?: string, direction?: 'rtl' | 'ltr', language?: string): FontkitLayoutEvidence {
   try {
-    // Explicit OpenType script and direction avoid ambiguous auto-detection.
+    // Explicit script, language-system tag and direction avoid ambiguous auto-detection.
+    // In particular, Persian and Urdu must not silently use Arabic's default language.
     // This is one-script fontkit evidence, not a UAX #9 bidi layout.
-    const run = script ? font.layout(text, undefined, script, undefined, direction) : font.layout(text);
+    const run = script ? font.layout(text, undefined, script, language, direction) : font.layout(text);
     if (run.glyphs.length !== run.positions.length) throw new Error('LAYOUT_GLYPH_POSITION_MISMATCH');
     return {
       glyphCount: run.glyphs.length,
@@ -165,7 +168,7 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
       ...probe,
       ...coverage,
       allProbeCodepointsPresent: coverage.missingCodepoints.length === 0,
-      fontkitLayout: inspectFontkitLayout(font, probe.sampleText, probe.fontkitScript, probe.direction),
+      fontkitLayout: inspectFontkitLayout(font, probe.sampleText, probe.fontkitScript, probe.direction, probe.fontkitLanguage),
     };
   });
   let shapedGlyphCount: number | null = null;

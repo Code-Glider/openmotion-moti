@@ -60,18 +60,18 @@ test('fontkit shaping evidence exposes .notdef glyphs and positioning without cl
 });
 
 test('fontkit probes explicitly select OpenType script and direction', () => {
-  const seen: Array<[string | undefined, string | undefined]> = [];
-  const font = { layout: (_text: string, _features?: undefined, script?: string, _language?: undefined, direction?: 'rtl' | 'ltr') => {
-    seen.push([script, direction]);
+  const seen: Array<[string | undefined, string | undefined, string | undefined]> = [];
+  const font = { layout: (_text: string, _features?: undefined, script?: string, language?: string, direction?: 'rtl' | 'ltr') => {
+    seen.push([script, language, direction]);
     return { glyphs: [{ id: 12 }], positions: [{ xOffset: 0, yOffset: 0 }] };
   } };
-  assert.deepEqual(inspectFontkitLayout(font, 'ܫܠܡܐ', 'syrc', 'rtl'), {
+  assert.deepEqual(inspectFontkitLayout(font, 'ܫܠܡܐ', 'syrc', 'rtl', 'SYR '), {
     glyphCount: 1, notdefGlyphCount: 0, positionedGlyphCount: 0,
   });
-  assert.deepEqual(inspectFontkitLayout(font, 'ABC', 'latn', 'ltr'), {
+  assert.deepEqual(inspectFontkitLayout(font, 'ABC', 'latn', 'ltr', 'ENG '), {
     glyphCount: 1, notdefGlyphCount: 0, positionedGlyphCount: 0,
   });
-  assert.deepEqual(seen, [['syrc', 'rtl'], ['latn', 'ltr']]);
+  assert.deepEqual(seen, [['syrc', 'SYR ', 'rtl'], ['latn', 'ENG ', 'ltr']]);
 });
 
 test('font audit records bounded five-script probes plus Ethiopic/LTR without claiming shaping', async () => {
@@ -80,6 +80,8 @@ test('font audit records bounded five-script probes plus Ethiopic/LTR without cl
   const byLang = new Map(result.scriptSamples.map(row => [row.language, row]));
   assert.deepEqual([...byLang.keys()], ['he', 'ar', 'fa', 'ur', 'syr', 'am', 'en']);
   assert.deepEqual(result.scriptSamples.map(probe => probe.fontkitScript), ['hebr', 'arab', 'arab', 'arab', 'syrc', 'ethi', 'latn']);
+  assert.deepEqual(result.scriptSamples.map(probe => probe.fontkitLanguage), ['IWR ', 'ARA ', 'FAR ', 'URD ', 'SYR ', 'AMH ', 'ENG ']);
+  assert.deepEqual(result.scriptSamples.filter(probe => ['ar', 'fa', 'ur'].includes(probe.language)).map(probe => [probe.fontkitScript, probe.fontkitLanguage]), [['arab', 'ARA '], ['arab', 'FAR '], ['arab', 'URD ']], 'Persian and Urdu must use their own OpenType language systems, not Arabic defaults');
   const absent = new Map([
     ['he', 'U+05E9'], // Hebrew shin
     ['ar', 'U+0633'], // Arabic seen
