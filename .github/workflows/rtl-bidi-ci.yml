@@ -10,6 +10,8 @@ on:
       - 'shared/caption-style.ts'
       - 'shared/text-flow.ts'
       - 'shared/transcript-captions.ts'
+      - 'shared/transcript.ts'
+      - 'tests/rtl-subtitle-bidi-entities.test.ts'
       - 'shared/transcript-tool.ts'
       - 'studio/src/captions/**'
       - 'studio/src/i18n/**'
@@ -139,6 +141,7 @@ jobs:
           node --experimental-strip-types --test --test-concurrency=1 \
             tests/transcription.test.ts \
             tests/caption-export.test.ts \
+            tests/rtl-subtitle-bidi-entities.test.ts \
             tests/studio-fonts.test.ts \
             tests/font-import.test.ts
       - name: Focused Studio RTL editor regression
