@@ -294,6 +294,7 @@ jobs:
         env:
           RTL_CROSS_OS_FIXTURES: ${{ runner.temp }}/rtl-cross-os
         run: |
+          set -euo pipefail
           node --test tests/rtl-cross-os-font-provenance.test.mjs
           node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_FIXTURES" | tee "$RUNNER_TEMP/rtl-cross-os-attestation.json"
       - name: Preserve reproducible cross-runner attestation
