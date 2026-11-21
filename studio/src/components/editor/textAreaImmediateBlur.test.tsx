@@ -44,7 +44,8 @@ it.each([
         // Same task: trigger the blur before the state update has rendered.
         textarea!.blur();
       });
-      expect(onCommit).toHaveBeenCalledExactlyOnceWith(replacement);
+      expect(onCommit).toHaveBeenCalledTimes(1);
+      expect(onCommit).toHaveBeenCalledWith(replacement);
       // The pending debounce must have been cancelled by the blur commit.
       await new Promise((resolve) => setTimeout(resolve, 160));
       expect(onCommit).toHaveBeenCalledTimes(1);
