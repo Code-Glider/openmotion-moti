@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile, copyFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
@@ -13,6 +13,7 @@ import { configureNativeEnvironment } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
 import { Client } from './shared-editor-client.mjs';
 import { closeFixtureEditor } from './fixtures.ts';
+import { removeTemporaryRtlProject } from './rtl-temp-project-cleanup.mjs';
 
 const output = process.argv[2];
 const fontDir = process.argv[3];
@@ -318,8 +319,14 @@ try {
   await cleanup('fixture editor', () => cleanupWithin('fixture editor shutdown', () => closeFixtureEditor(data), 30_000)
     .then(done => assert(done, 'Fixture editor shutdown exceeded 30 seconds')));
   await cleanup('temporary project', () => cleanupWithin('temporary project removal',
-    () => rm(data, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 }), 30_000)
-    .then(done => assert(done, 'Temporary project removal exceeded 30 seconds')));
+    async () => {
+      const result = await removeTemporaryRtlProject(data, {
+        onRetry: retry => console.warn('RTL temp directory removal retry: ' + JSON.stringify(retry)),
+      });
+      evidence.cleanupRemoval = result;
+      if (result.retries.length) cleanupRecoveries.push('Removed owned project after ' + result.retries.length + ' transient filesystem errors');
+    }, 90_000)
+    .then(done => assert(done, 'Temporary project removal exceeded 90 seconds')));
   evidence.cleanup = { recoveries: cleanupRecoveries, errors: cleanupErrors };
   await writeFile(path.join(output, 'result.json'), JSON.stringify(evidence, null, 2));
   if (evidence.passed && cleanupErrors.length) throw new Error('RTL integration teardown failed: ' + cleanupErrors.join('; '));
