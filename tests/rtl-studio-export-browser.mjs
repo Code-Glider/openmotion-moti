@@ -283,7 +283,7 @@ try {
           arColor: getComputedStyle(ar).backgroundColor,
         };
       });
-      const yellow = color => /250,\\s*204,\\s*21/.test(color || '');
+      const yellow = color => /250,\s*204,\s*21/.test(color || '');
       if (state && yellow(state.heColor) === (expectedTime < 0.5)
         && yellow(state.arColor) === (expectedTime > 0.5)) break;
       await sleep(100);
@@ -291,7 +291,7 @@ try {
     assert(state, 'Studio player iframe lost authored timed caption on seek');
     assert.equal(state.text, 'שָׁלוֹם السَّلَامُ', 'Studio preview seek altered RTL Unicode text');
     assert(state.unchangedNodes, 'Studio preview seek replaced an authored caption text node');
-    const yellow = color => /250,\\s*204,\\s*21/.test(color || '');
+    const yellow = color => /250,\s*204,\s*21/.test(color || '');
     assert.equal(yellow(state.heColor), expectedTime < 0.5, 'Studio Hebrew highlight wrong at ' + expectedTime);
     assert.equal(yellow(state.arColor), expectedTime > 0.5, 'Studio Arabic highlight wrong at ' + expectedTime);
     const previous = repeatedStudioStates.get(expectedTime);
