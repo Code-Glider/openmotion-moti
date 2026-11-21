@@ -2,7 +2,7 @@ import { Button } from "open-design-ui/button";
 import { OverflowText } from "../ui/OverflowText";
 import { FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type CompositionEvent } from "react";
 import { Plus, Type } from "../../icons/SystemIcons";
 import { isTextEditableSelection, type DomEditSelection } from "./domEditing";
 import type { ImportedFontAsset, FontImportInput } from "./fontAssets";
@@ -92,11 +92,15 @@ export function TextAreaField({
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interactionChangedRef = useRef(false);
   const focusedRef = useRef(false);
+  // IME input can remain provisional for longer than the text debounce.
+  // Never save partial composition strings or overwrite them from props.
+  const composingRef = useRef(false);
+  const blurPendingRef = useRef(false);
   const valueRef = useRef(value);
   valueRef.current = value;
 
   useEffect(() => {
-    if (focusedRef.current) return;
+    if (focusedRef.current || composingRef.current || blurPendingRef.current) return;
     latestDraftRef.current = value;
     setDraft(value);
   }, [value]);
@@ -122,6 +126,8 @@ export function TextAreaField({
   const scheduleCommit = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     commitTimerRef.current = setTimeout(() => {
+      // A pending debounce from pre-composition text must never write an IME preedit.
+      if (composingRef.current) return;
       if (d !== valueRef.current) {
         if (interactionChangedRef.current) {
           interactionChangedRef.current = false;
@@ -139,10 +145,34 @@ export function TextAreaField({
     latestDraftRef.current = e.target.value;
     setDraft(e.target.value);
     interactionChangedRef.current = true;
-    scheduleCommit(e.target.value);
+    if (!composingRef.current) scheduleCommit(e.target.value);
+  };
+  const handleCompositionStart = () => {
+    composingRef.current = true;
+    // Cancel any earlier edit's pending save; it can be rescheduled after
+    // compositionend with the final, logical Unicode text.
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = null;
+  };
+  const handleCompositionEnd = (e: CompositionEvent<HTMLTextAreaElement>) => {
+    composingRef.current = false;
+    latestDraftRef.current = e.currentTarget.value;
+    setDraft(e.currentTarget.value);
+    if (blurPendingRef.current || !focusedRef.current) {
+      blurPendingRef.current = false;
+      commitDraft(latestDraftRef.current);
+    } else {
+      scheduleCommit(latestDraftRef.current);
+    }
   };
   const handleBlur = () => {
     focusedRef.current = false;
+    if (composingRef.current) {
+      // Chromium can blur before compositionend on focus changes; the
+      // final compositionend must own the single commit.
+      blurPendingRef.current = true;
+      return;
+    }
     commitDraft(latestDraftRef.current);
   };
 
@@ -161,6 +191,8 @@ export function TextAreaField({
           style={boxed ? { outline: "none" } : undefined}
           onFocus={handleFocus}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           onBlur={handleBlur}
           className={`field-sizing-content max-h-[40vh] min-h-12 w-full ${boxed ? "resize-none" : "resize-y"} overflow-x-hidden overflow-y-auto bg-transparent font-mono text-[11px] leading-normal text-panel-text-0 outline-hidden disabled:cursor-not-allowed disabled:text-panel-text-4`}
         />
@@ -179,6 +211,8 @@ export function TextAreaField({
           rows={4}
           onFocus={handleFocus}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           onBlur={handleBlur}
           className="field-sizing-content max-h-[40vh] min-h-20 w-full resize-y overflow-x-hidden overflow-y-auto bg-transparent text-[11px] font-medium text-neutral-100 outline-hidden disabled:cursor-not-allowed disabled:text-neutral-600"
         />
