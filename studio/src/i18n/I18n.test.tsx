@@ -95,8 +95,12 @@ it('fails closed to LTR navigation for invalid preferences or blocked storage', 
   expect(readNavigationDirection()).toBe('ltr');
   localStorage.setItem(UI_DIRECTION_STORAGE_KEY, 'rtl');
   expect(readNavigationDirection()).toBe('rtl');
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+  // Happy DOM exposes the active localStorage method on the instance, not
+  // necessarily through the browser Storage prototype. Spy on the actual
+  // lookup used by readNavigationDirection and prove the failure was exercised.
+  const blockedRead = vi.spyOn(localStorage, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
   expect(readNavigationDirection()).toBe('ltr');
+  expect(blockedRead).toHaveBeenCalledWith(UI_DIRECTION_STORAGE_KEY);
 });
 
 it('falls back to Chinese for unsupported preferences and switches when persistence is unavailable', () => {
