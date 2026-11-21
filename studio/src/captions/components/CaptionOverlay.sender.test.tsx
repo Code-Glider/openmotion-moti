@@ -4,10 +4,84 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { CaptionOverlay } from "./CaptionOverlay";
 import { useCaptionStore } from "../store";
-import { DEFAULT_ANIMATION_SET } from "../types";
+import { DEFAULT_ANIMATION_SET, DEFAULT_STYLE, DEFAULT_CONTAINER } from "../types";
+import { applyCaptionModelToIframe, readGsapTransform, getOrCreateWrapper } from "./CaptionOverlayUtils";
 import { usePreviewIframeStore } from "../../player/store/previewIframeStore";
 
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
+
+it("persists a return to the authored caption position through undo and redo", () => {
+  const host = document.createElement("div");
+  const preview = document.createElement("iframe");
+  document.body.append(host, preview);
+  preview.style.width = "640px";
+  const root = createRoot(host);
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  let now = 1000;
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  const doc = preview.contentDocument!;
+  const group = doc.createElement("div");
+  group.className = "caption-group";
+  group.dataset.captionGroup = "g";
+  group.dir = "rtl";
+  const word = doc.createElement("span");
+  word.textContent = "שָׁלוֹם";
+  word.style.transform = "rotate(7deg)";
+  const authoredHTML = word.outerHTML;
+  group.append(word);
+  doc.body.append(group);
+  const segment = {
+    id: "s", wordId: "w0", text: word.textContent, start: 0.25, end: 1.5,
+    groupIndex: 0, style: {}, animation: {},
+  };
+  useCaptionStore.getState().reset();
+  useCaptionStore.getState().setModel({
+    width: 640, height: 360, duration: 3,
+    segments: new Map([["s", segment]]),
+    groups: new Map([["g", {
+      id: "g", segmentIds: ["s"], style: DEFAULT_STYLE,
+      animation: DEFAULT_ANIMATION_SET, containerStyle: DEFAULT_CONTAINER,
+    }]]),
+    groupOrder: ["g"], defaultAnimation: DEFAULT_ANIMATION_SET,
+  });
+  useCaptionStore.getState().setEditMode(true);
+  useCaptionStore.getState().selectSegment("s");
+  const press = (key: string) => act(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    press("ArrowRight");
+    expect(useCaptionStore.getState().model!.segments.get("s")!.style.x).toBe(1);
+    now += 1000; // Separate intentional edits, rather than one coalesced nudge.
+    press("ArrowLeft");
+    expect(useCaptionStore.getState().model!.segments.get("s")!.style.x).toBe(0);
+    for (const [operation, x] of [["undo", 1], ["redo", 0]] as const) {
+      act(() => {
+        const restored = useCaptionStore.getState()[operation]();
+        expect(restored).not.toBeNull();
+        applyCaptionModelToIframe(restored!);
+      });
+      expect(readGsapTransform(getOrCreateWrapper(word), preview.contentWindow!).x).toBe(x);
+      expect(useCaptionStore.getState().model!.segments.get("s")).toMatchObject({
+        ...segment, style: { x },
+      });
+      expect(word.outerHTML).toBe(authoredHTML);
+      expect(group.textContent).toBe(segment.text);
+      expect(group.querySelector("[data-caption-wrapper]")!.firstChild).toBe(word);
+      expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(1);
+    }
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    preview.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+});
 
 it("only schedules caption layout for messages from its preview", () => {
   const host = document.createElement("div");

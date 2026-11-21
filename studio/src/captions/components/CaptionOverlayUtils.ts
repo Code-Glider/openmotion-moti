@@ -361,17 +361,9 @@ export function applyCaptionModelToIframe(model: {
   }
 }
 
-/** Compute style deltas from the current wrapper transform — used by syncToStore in the overlay. */
+/** Include neutral values so merging into saved style clears earlier transforms. */
 export function computeTransformStyle(el: HTMLElement, iframeWin: Window): Record<string, number> {
   const wrapper = getOrCreateWrapper(el);
   const { x, y, scale, rotation } = readGsapTransform(wrapper, iframeWin);
-  const style: Record<string, number> = {};
-  if (Math.abs(x) > 0.5) style.x = x;
-  if (Math.abs(y) > 0.5) style.y = y;
-  if (Math.abs(scale - 1) > 0.001) {
-    style.scaleX = scale;
-    style.scaleY = scale;
-  }
-  if (Math.abs(rotation) > 0.1) style.rotation = rotation;
-  return style;
+  return { x, y, scaleX: scale, scaleY: scale, rotation };
 }
