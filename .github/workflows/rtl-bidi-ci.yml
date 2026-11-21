@@ -259,6 +259,9 @@ jobs:
         timeout-minutes: 5
         run: |
           python -m pip install --disable-pip-version-check --no-input fonttools==4.59.0 Brotli==1.1.0
+          # Simulate the strict Windows cp1252 console even on macOS/Linux;
+          # never allow logging to abort a successful font conversion.
+          python tests/test_rtl_reference_woff2_console.py
           python scripts/rtl-reference-woff2.py "$RUNNER_TEMP/rtl-reference-fonts"
       - name: Edit in real Studio, export real MP4 and compare decoded glyph rows
         timeout-minutes: 12
