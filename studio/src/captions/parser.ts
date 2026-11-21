@@ -116,6 +116,93 @@ function buildGroupedCaptionModel(
 const GROUP_SELECTOR = ".caption-group, .caption-line, .caption-block";
 const WORD_SELECTOR = ".word, .caption-word";
 
+// Accept only the literal transform form emitted by the caption generator. A
+// computed matrix has already lost the authored scale signs and decomposition.
+const CSS_NUMBER = String.raw`([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)`;
+const WORD_TRANSFORM = new RegExp(
+  String.raw`^translate\(\s*${CSS_NUMBER}px\s*,\s*${CSS_NUMBER}px\s*\)\s+rotate\(\s*${CSS_NUMBER}deg\s*\)\s+scale\(\s*${CSS_NUMBER}\s*,\s*${CSS_NUMBER}\s*\)$`, "i",
+);
+type WordTransform = Pick<CaptionStyle, "x" | "y" | "rotation" | "scaleX" | "scaleY">;
+
+function markedWordWrapper(word: Element): HTMLElement | null {
+  const wrapper = word.parentElement;
+  if (
+    word.tagName !== "SPAN" || !word.matches(WORD_SELECTOR) ||
+    !wrapper || wrapper.tagName !== "SPAN" ||
+    wrapper.getAttribute("data-caption-wrapper") !== "true" ||
+    wrapper.children.length !== 1 || word.children.length !== 0 ||
+    [...wrapper.childNodes].some((node) => node !== word && node.nodeType !== 8 && node.textContent?.trim()) ||
+    wrapper.parentElement?.closest(GROUP_SELECTOR) == null
+  ) return null;
+  return wrapper;
+}
+
+function literalWordTransform(wrapper: HTMLElement): WordTransform | null {
+  const { style } = wrapper;
+  if (
+    style.getPropertyPriority("transform") ||
+    ["translate", "rotate", "scale", "animation", "animation-name", "transition", "transition-property"]
+      .some((property) => style.getPropertyValue(property))
+  ) return null;
+  const match = WORD_TRANSFORM.exec(style.getPropertyValue("transform").trim());
+  if (!match) return null;
+  const values = match.slice(1).map(Number);
+  if (!values.every(Number.isFinite)) return null;
+  const [x, y, rotation, scaleX, scaleY] = values;
+  return { x, y, rotation, scaleX, scaleY };
+}
+
+function indexUniqueIds(root: ParentNode, result = new Map<string, Element | null>()) {
+  for (const element of root.querySelectorAll("[id]")) {
+    result.set(element.id, result.has(element.id) ? null : element);
+  }
+  return result;
+}
+
+function hydrateAuthoredWordTransforms(model: CaptionModel, transcript: TranscriptWord[], doc: Document, source: string) {
+  // Do not infer authorship from an iframe's mutated DOM, nor from a segment's
+  // synthesized fallback ID. Keep generated/dynamic markup on the old path.
+  if (!source.includes("data-caption-wrapper") || !transcript.some((word) => word.id)) return;
+  const authored = doc.createElement("template");
+  authored.innerHTML = source; // Detached/inert: no author scripts are run.
+  const authoredIds = new Map<string, Element | null>();
+  const roots: ParentNode[] = [authored.content];
+  while (roots.length) {
+    const root = roots.pop()!;
+    indexUniqueIds(root, authoredIds);
+    for (const template of root.querySelectorAll("template")) roots.push(template.content);
+  }
+  const liveIds = indexUniqueIds(doc);
+  const seen = new Set<string>();
+  const duplicateIds = new Set<string>();
+  for (const { id } of transcript) {
+    if (id && seen.has(id)) duplicateIds.add(id);
+    if (id) seen.add(id);
+  }
+
+  let index = 0;
+  for (const segment of model.segments.values()) {
+    const id = transcript[index++]?.id;
+    if (!id || id !== segment.wordId || duplicateIds.has(id)) continue;
+    const authoredWord = authoredIds.get(id);
+    const liveWord = liveIds.get(id);
+    if (!authoredWord || !liveWord || authoredWord.textContent !== segment.text || liveWord.textContent !== segment.text) continue;
+    const authoredWrapper = markedWordWrapper(authoredWord);
+    const liveWrapper = markedWordWrapper(liveWord);
+    // This only rules out current Web Animations/CSS effects, not future
+    // script effects such as GSAP. Compare the observable authored baseline.
+    if (!authoredWrapper || !liveWrapper || liveWrapper.getAnimations?.().length) continue;
+    const transform = literalWordTransform(authoredWrapper);
+    const liveTransform = literalWordTransform(liveWrapper);
+    if (
+      transform && liveTransform &&
+      (Object.keys(transform) as (keyof WordTransform)[]).every((key) => transform[key] === liveTransform[key])
+    ) {
+      segment.style = { ...segment.style, ...transform };
+    }
+  }
+}
+
 /** Read outer groups in transcript order; return null if their word counts do not match. */
 function readTranscriptGroups(transcript: TranscriptWord[], groupEls: NodeListOf<Element>) {
   const wordGroups: TranscriptWord[][] = [];
@@ -200,6 +287,7 @@ export function parseCaptionComposition(
   const model = wordGroups
     ? buildGroupedCaptionModel(wordGroups, options)
     : buildCaptionModel(transcript, options);
+  hydrateAuthoredWordTransforms(model, transcript, iframeDoc, source);
 
   // Step 5: Read computed styles from the first word or group element
   const firstWordEl = wordEls.item(0) as Element | null;

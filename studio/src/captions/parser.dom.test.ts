@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import { generateCaptionHtml } from "./generator";
-import { parseCaptionComposition } from "./parser";
+import { parseCaptionComposition, type TranscriptWord } from "./parser";
 
 const transcript = "We asked what you needed. Forty-seven percent".split(" ").map((text, i) => ({
   id: `word-${i}`,
@@ -122,5 +122,65 @@ describe("parseCaptionComposition grouping", () => {
       transcript.slice(2, 6).map((word) => word.text),
       transcript.slice(6).map((word) => word.text),
     ]);
+  });
+});
+
+describe("authored caption word transform baselines", () => {
+  const words = [
+    { id: "he-target", text: "שָׁלוֹם", start: 0, end: 0.5 },
+    { id: "ar-control", text: "السَّلَامُ", start: 0.5, end: 1 },
+  ];
+  const transform = "translate(0px, -11px) rotate(12deg) scale(1.25, 0)";
+  const markup = (style = "transform:" + transform) =>
+    `<div class="caption-group" dir="rtl"><span data-caption-wrapper="true" style="${style}"><span class="word" id="he-target" lang="he">שָׁלוֹם</span></span> <span class="word" id="ar-control" lang="ar">السَّلَامُ</span></div>`;
+  const sourceFor = (html: string, records: TranscriptWord[] = words) =>
+    `<template id="captions-template">${html}</template><script>const TRANSCRIPT = ${JSON.stringify(records)};</script>`;
+  function result(authored = markup(), live = authored, records: TranscriptWord[] = words, beforeParse?: (doc: Document) => void) {
+    const doc = document.implementation.createHTMLDocument();
+    doc.body.innerHTML = live;
+    beforeParse?.(doc);
+    const { model } = importCaptions(doc, sourceFor(authored, records));
+    return [...model.segments.values()];
+  }
+
+  it("hydrates only the matched word, preserving anisotropy, zero, text, and timing", () => {
+    const [target, other] = result();
+    expect(target).toMatchObject({ wordId: words[0].id, text: words[0].text, start: 0, end: 0.5,
+      style: { x: 0, y: -11, rotation: 12, scaleX: 1.25, scaleY: 0 } });
+    expect(other).toMatchObject({ wordId: words[1].id, text: words[1].text, start: 0.5, end: 1 });
+    expect(other.style).toEqual({});
+  });
+
+  it.each([
+    ["missing authored wrapper", markup().replace('data-caption-wrapper="true"', ""), markup()],
+    ["missing live ID", markup(), markup().replace('id="he-target"', "")],
+    ["wrong word identity", markup(), markup().replace("שָׁלוֹם", "שָׁלוֹם!")],
+    ["duplicate authored ID", markup() + '<i id="he-target"></i>', markup()],
+    ["duplicate authored ID inside a nested template", markup() + '<template><template><i id="he-target"></i></template></template>', markup()],
+    ["duplicate live ID", markup(), markup() + '<i id="he-target"></i>'],
+    ["modified live transform", markup(), markup().replace("1.25", "1.5")],
+    ["matrix", markup("transform:matrix(1,0,0,1,0,0)"), markup("transform:matrix(1,0,0,1,0,0)")],
+    ["animated inline wrapper", markup("transform:" + transform + ";animation-name:pulse"), markup("transform:" + transform + ";animation-name:pulse")],
+    ["dynamic-only markup", `<script>const fake = ${JSON.stringify(markup())};</script>`, markup()],
+    ["wrapper sibling", markup().replace("</span></span>", "</span><span>extra</span></span>"), markup()],
+  ])("retains the old parser path for %s", (_label, authored, live) => {
+    expect(result(authored, live)[0].style).toEqual({});
+  });
+
+  it("does not infer identity from a synthesized ID or duplicate transcript IDs", () => {
+    const withFallbackId = markup().replace('id="he-target"', 'id="w0"');
+    const { text, start, end } = words[0];
+    const [fallback] = result(withFallbackId, withFallbackId, [{ text, start, end }, words[1]]);
+    expect(fallback.wordId).toBe("w0");
+    expect(fallback.style).toEqual({});
+    expect(result(markup(), markup(), [words[0], { ...words[1], id: words[0].id }])[0].style).toEqual({});
+  });
+
+  it("ignores a wrapper with a running animation or transition", () => {
+    const [target] = result(markup(), markup(), words, (doc) => {
+      const wrapper = doc.querySelector<HTMLElement>("[data-caption-wrapper]")!;
+      Object.defineProperty(wrapper, "getAnimations", { value: () => [{}] });
+    });
+    expect(target.style).toEqual({});
   });
 });
