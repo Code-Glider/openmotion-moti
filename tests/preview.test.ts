@@ -43,6 +43,29 @@ test('startup verifies the native Studio service and reuses the same workspace',
   assert.equal(mock.launches.length, 1); assert.equal(mock.stops.length, 0);
   assert.equal((await store.get()).revision, before.revision); assert.equal(await previewUrl(store), first.previewUrl);
 }, false));
+test('rediscovering a live preview preserves only its matching original process identity', () => fixture(async store => {
+  const mock = runtime(store);
+  const first = await ensureService(store, mock.environment);
+  assert.equal(first.reused, false);
+  const filename = path.join(store.directory, 'preview.json');
+  const before = JSON.parse(await readFile(filename, 'utf8'));
+  assert.deepEqual({ port: before.port, pid: before.pid, version: before.version },
+    { port: Number(new URL(first.previewUrl).port), pid: 1234, version: VERSION });
+  const reopened = await openPreview(new WorkspaceStore(store.directory), mock.environment);
+  assert.equal(reopened.reused, true);
+  const after = JSON.parse(await readFile(filename, 'utf8'));
+  assert.deepEqual(after, before, 'Reusing the same live process must not erase its PID');
+
+  // If an existing preview registration is for a different service version,
+  // do not preserve the old PID even when the new port matches.
+  await writeFile(filename, JSON.stringify({ ...before, version: 'incompatible', pid: 98765 }));
+  const again = await openPreview(new WorkspaceStore(store.directory), mock.environment);
+  assert.equal(again.reused, true);
+  const replacement = JSON.parse(await readFile(filename, 'utf8'));
+  assert.equal(replacement.port, before.port);
+  assert.equal(replacement.version, VERSION);
+  assert.equal(replacement.pid, undefined, 'Must not copy a stale incompatible PID');
+}, false));
 test('background startup preserves an empty revision; opening the editor upgrades the same process', () => fixture(async store => {
   const mock = runtime(store), before = await store.get();
   const service = await ensureService(store, mock.environment);
