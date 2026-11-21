@@ -12,7 +12,18 @@ import { pathToFileURL } from 'node:url';
 
 const MAX_FONT_FILE = 64 * 1024 * 1024;
 const MAX_DECOMPRESSED = 128 * 1024 * 1024;
-const IGNORABLE = new Set([0x200c,0x200d,0x200e,0x200f,0x061c,0x2066,0x2067,0x2068,0x2069]);
+// Representative script probes, not a Unicode coverage census or shaping certification.
+// Explicit Urdu/Persian-only letters, Hebrew niqqud and Arabic/Syriac vowel marks
+// catch common fallback gaps. Ethiopic is an LTR non-regression probe.
+export const FONT_SCRIPT_PROBES = [
+  { language: 'he', direction: 'rtl', sampleText: 'שָׁלוֹם' },
+  { language: 'ar', direction: 'rtl', sampleText: 'السَّلَامُ' },
+  { language: 'fa', direction: 'rtl', sampleText: 'فارسی پ چ ژ گ' },
+  { language: 'ur', direction: 'rtl', sampleText: 'اردو ٹ ڈ ڑ ں ے' },
+  { language: 'syr', direction: 'rtl', sampleText: 'ܫܠܡܐ ܒܪܝܟܐ ܰ ܳ' },
+  { language: 'am', direction: 'ltr', sampleText: 'ሰላም ኢትዮጵያ' },
+  { language: 'en', direction: 'ltr', sampleText: 'ABC123' },
+] as const;
 
 export type FontAudit = {
   family: string;
@@ -22,6 +33,15 @@ export type FontAudit = {
   sha256: string;
   checkedCodepoints: number;
   missingCodepoints: Array<{ hex: string; character: string }>;
+  /** Probe-only cmap coverage; this is not joining, mark positioning or MP4 evidence. */
+  scriptSamples: Array<{
+    language: (typeof FONT_SCRIPT_PROBES)[number]['language'];
+    direction: 'rtl' | 'ltr';
+    sampleText: string;
+    checkedCodepoints: number;
+    missingCodepoints: Array<{ hex: string; character: string }>;
+    allProbeCodepointsPresent: boolean;
+  }>;
   shapedGlyphCount: number | null;
   shapingError?: string;
 };
@@ -39,6 +59,25 @@ function detectFormat(bytes: Buffer): FontAudit['format'] {
   throw new Error('UNSUPPORTED_FONT_SIGNATURE');
 }
 
+/** Count actual cmap-dependent characters, not Unicode control/format codepoints.
+ * RTL embeddings, isolates, ZWJ/ZWNJ and directional marks have no glyph of
+ * their own; combining vowel marks (Mn/Mc/Me) still require coverage.
+ */
+function coverageForText(font: { hasGlyphForCodePoint: (cp: number) => boolean }, text: string) {
+  const unique = new Set(Array.from(text, ch => ch.codePointAt(0)!));
+  const missingCodepoints: FontAudit['missingCodepoints'] = [];
+  let checkedCodepoints = 0;
+  for (const cp of unique) {
+    if (/[\\p{Cc}\\p{Cf}]/u.test(String.fromCodePoint(cp))) continue;
+    checkedCodepoints += 1;
+    if (!font.hasGlyphForCodePoint(cp)) missingCodepoints.push({
+      hex: 'U+' + cp.toString(16).toUpperCase().padStart(4, '0'),
+      character: String.fromCodePoint(cp),
+    });
+  }
+  return { checkedCodepoints, missingCodepoints };
+}
+
 export async function auditFont(fontPath: string, text: string, runtimeRoot: string = process.cwd()): Promise<FontAudit> {
   if (!text) throw new Error('SUPPLY_REAL_TEXT');
   const bytes = await readFile(fontPath);
@@ -48,12 +87,15 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
   const fontkit = require('fontkit') as { create: (bytes: Buffer) => any };
   const parsed = fontkit.create(bytes);
   const font = parsed.fonts?.[0] ?? parsed;
-  const missingCodepoints: FontAudit['missingCodepoints'] = [];
-  const unique = new Set(Array.from(text, ch => ch.codePointAt(0)!));
-  for (const cp of unique) {
-    if (IGNORABLE.has(cp) || /\p{Cc}/u.test(String.fromCodePoint(cp))) continue;
-    if (!font.hasGlyphForCodePoint(cp)) missingCodepoints.push({hex:'U+'+cp.toString(16).toUpperCase().padStart(4,'0'),character:String.fromCodePoint(cp)});
-  }
+  const { checkedCodepoints, missingCodepoints } = coverageForText(font, text);
+  const scriptSamples: FontAudit['scriptSamples'] = FONT_SCRIPT_PROBES.map(probe => {
+    const coverage = coverageForText(font, probe.sampleText);
+    return {
+      ...probe,
+      ...coverage,
+      allProbeCodepointsPresent: coverage.missingCodepoints.length === 0,
+    };
+  });
   let shapedGlyphCount: number | null = null;
   let shapingError: string | undefined;
   try { shapedGlyphCount = font.layout(text).glyphs.length; }
@@ -62,7 +104,7 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
     family: font.getName?.('preferredFamily') || font.familyName || '(unnamed)',
     postscriptName: font.postscriptName || '(unnamed)',format,size:bytes.length,
     sha256:createHash('sha256').update(bytes).digest('hex'),
-    checkedCodepoints:unique.size,missingCodepoints,shapedGlyphCount,
+    checkedCodepoints,missingCodepoints,scriptSamples,shapedGlyphCount,
     ...(shapingError ? {shapingError}:{}),
   };
 }
