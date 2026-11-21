@@ -28,6 +28,7 @@ on:
       - 'tests/rtl-browser-rendering.test.ts'
       - 'tests/rtl-mixed-caret-browser.mjs'
       - 'tests/rtl-bidi-keyboard-ime-browser.mjs'
+      - 'tests/rtl-studio-ime-composition-browser.mjs'
       - 'tests/rtl-caption-range-browser.mjs'
       - 'tests/rtl-cross-os-font-provenance.test.mjs'
       - 'scripts/rtl-verify-cross-os-fonts.mjs'
@@ -96,6 +97,10 @@ jobs:
         env:
           RTL_CARET_ARTIFACT_DIR: .artifacts/rtl-browser
         run: node --experimental-strip-types --test tests/rtl-bidi-keyboard-ime-browser.mjs
+      - name: Prevent provisional IME composition from being saved in real Chromium inspector
+        env:
+          RTL_IME_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-studio-ime-composition-browser.mjs
       - name: Retain RTL Chromium screenshot and JSON
         if: always()
         uses: actions/upload-artifact@v7.0.2
