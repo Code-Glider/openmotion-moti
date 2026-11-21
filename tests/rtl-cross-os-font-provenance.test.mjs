@@ -20,6 +20,8 @@ test('require identical actual converted WOFF2 and six licenses across OS', asyn
   const result = verifyCrossOsFontEvidence(await load());
   assert.equal(result.passed, true);
   assert.match(result.hebrewWoff2Sha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(Object.keys(result.scriptWoff2Sha256), ['hebrew', 'arabic', 'urdu', 'syriac']);
+  for (const hash of Object.values(result.scriptWoff2Sha256)) assert.match(hash, /^[a-f0-9]{64}$/);
 });
 test('refuse cross-runner WOFF2 hash divergence even when all reports pass', async () => {
   const reports = await load();
@@ -101,4 +103,21 @@ test('reject missing and negative inactive pixel counters instead of treating th
   assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
   row.browserYellow.he = -1;
   assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+});
+
+test('reject converted non-Hebrew WOFF2 bytes that disagree with imported font receipts', async () => {
+  const reports = await load();
+  const windows = reports['windows-2025'];
+  const converted = windows.scriptWoff2.find(face => face.id === 'urdu');
+  const used = windows.checks.find(check => Array.isArray(check.scriptWoff2))
+    .scriptWoff2.find(face => face.id === 'urdu');
+  assert(converted && used, 'Real current-run Urdu conversion evidence required');
+  converted.sha256 = 'f'.repeat(64);
+  used.sha256 = 'f'.repeat(64);
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /converted WOFF2 differs from actual imported font/);
+});
+test('reject missing Semitic converter evidence even when native MP4 and ZIP were green', async () => {
+  const reports = await load();
+  reports['macos-15'].scriptWoff2 = reports['macos-15'].scriptWoff2.filter(face => face.id !== 'syriac');
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /reported font conversions contradict browser evidence/);
 });
