@@ -75,3 +75,7 @@ Use SHA-checked GitHub writes, independent small PRs, real CI and actual browser
 - The existing account Language submenu now exposes the same independent Right-to-left project navigation checkbox. Added integration-style component regression to interact with the **real account submenu** and verify persistent RTL preference, unchanged English locale, unchanged root direction and intact Hebrew/Latin project title. Dedicated RTL and full standalone CI must pass on this new PR #7 head.
 - No automatic timeline mirroring or global HTML direction. Actual full-browser navigation and Hebrew/Arabic localized vocabularies remain separate acceptance work.
 
+### Phase 5 — real Studio Chromium account navigation acceptance
+- [ ] Validate a real English Studio Chromium session, with an actual Hebrew/Latin composition, project title isolation and an account-menu toggle that moves only the workspace sidebar. Require before/after/reload screenshots, inspect actual project text and media timeline direction and repeat the menu action to restore LTR. Test: `tests/rtl-navigation-browser.mjs`, executed under the dedicated RTL workflow.
+- [ ] Continue separate Hebrew/Arabic translation coverage, responsive/mobile and keyboard accessibility review after the real-browser navigation gate passes.
+

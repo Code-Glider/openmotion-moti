@@ -16,6 +16,7 @@ on:
       - 'studio/src/motion/WorkspaceFrame.tsx'
       - 'studio/src/motion/ApplicationChrome.tsx'
       - 'studio/src/motion/ApplicationChrome.test.tsx'
+      - 'tests/rtl-navigation-browser.mjs'
       - 'studio/src/motion/workspace.css'
       - 'studio/src/components/editor/**'
       - 'studio/src/player/**'
@@ -102,3 +103,18 @@ jobs:
             studio/src/components/editor/fontAssets.test.ts \
             studio/src/components/editor/fontImport.test.ts \
             studio/src/player/components/TextClipContent.test.ts
+
+      - name: Actual Studio RTL account-menu and sidebar browser regression
+        timeout-minutes: 5
+        env:
+          HYPERFRAMES_BROWSER_PATH: /usr/bin/google-chrome
+          OPENMOTION_TELEMETRY: '0'
+        run: node --experimental-strip-types tests/rtl-navigation-browser.mjs "$RUNNER_TEMP/rtl-navigation"
+      - name: Preserve real Studio RTL navigation screenshots
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-navigation-browser-evidence
+          path: ${{ runner.temp }}/rtl-navigation
+          if-no-files-found: warn
+          retention-days: 14
