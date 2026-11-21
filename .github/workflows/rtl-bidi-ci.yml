@@ -149,6 +149,7 @@ jobs:
             studio/src/i18n/I18n.test.tsx \
             studio/src/motion/ApplicationChrome.test.tsx \
             studio/src/captions/components/captionWordRuns.test.ts \
+            studio/src/captions/components/CaptionOverlayUtils.identity.test.ts \
             studio/src/captions/components/CaptionOverlay.sender.test.tsx \
             studio/src/captions/parser.test.ts \
             studio/src/captions/parser.dom.test.ts \
