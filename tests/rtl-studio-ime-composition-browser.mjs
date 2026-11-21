@@ -17,6 +17,26 @@ const harness = [
   "const root = createRoot(document.getElementById('host'));",
   "root.render(createElement(TextAreaField, { flat: true, label: 'Content', value: '', onCommit: value => window.__rtlImeCommits.push(value) }));",
 ].join('\n');
+// The standalone Node esbuild runner is not Vite: unrelated inspector
+// dependencies include a Node-only parser (recast/os) and ?raw SVG icons.
+// These browser-only shims are deliberately unreachable from TextAreaField;
+// do not mock React, textarea events, Unicode or production edit handlers.
+const browserDependencyShim = {
+  name: 'unused-ancestor-dependency-shim',
+  setup(bundle) {
+    bundle.onResolve({ filter: /^(?:node:)?os$/ }, () => ({
+      path: 'os', namespace: 'rtl-test-node-shim',
+    }));
+    bundle.onLoad({ filter: /.*/, namespace: 'rtl-test-node-shim' }, () => ({
+      contents: "export const EOL = '\\n'; export default { EOL: '\\n' };",
+      loader: 'js',
+    }));
+    bundle.onLoad({ filter: /\.svg\?raw$/ }, () => ({
+      contents: "export default '';",
+      loader: 'js',
+    }));
+  },
+};
 const samples = [
   { lang: 'he', text: 'שָׁלוֹם', partial: 'שָׁ' },
   { lang: 'ar', text: 'السَّلَامُ', partial: 'السَّ' },
@@ -30,6 +50,7 @@ test('real Chromium CDP IME preedit never leaks partial source to Studio save', 
   const bundle = await build({
     stdin: { contents: harness, resolveDir: process.cwd(), sourcefile: 'rtl-inspector-ime.ts', loader: 'ts' },
     bundle: true, platform: 'browser', format: 'iife', write: false,
+    loader: { '.svg': 'text' }, plugins: [browserDependencyShim],
     define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'silent',
   });
   assert.equal(bundle.outputFiles.length, 1);
