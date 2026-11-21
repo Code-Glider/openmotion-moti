@@ -2,7 +2,7 @@
 import React, { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { I18nProvider, LOCALE_STORAGE_KEY, languages, readLocale, translate, useI18n } from './I18n';
+import { I18nProvider, LOCALE_STORAGE_KEY, UI_DIRECTION_STORAGE_KEY, languages, readLocale, readNavigationDirection, translate, useI18n } from './I18n';
 import { pageMetadata } from '../../../packages/design-system/metadata.js';
 import baseZhCN from './zh-CN.json';
 import mvpZhCN from './mvp-zh-CN.json';
@@ -56,6 +56,55 @@ it('switches immediately, retains the editor subtree, and remembers the selected
   expect(preview?.srcdoc).toBe('<h1>Preview</h1>');
   act(() => window.dispatchEvent(new StorageEvent('storage', { key: LOCALE_STORAGE_KEY, newValue: 'zh-CN' })));
   expect(host.querySelector('h1')?.textContent).toBe('预览');
+});
+
+it('persists optional RTL navigation without remounting authored editing content or changing root direction', () => {
+  function NavigationPreference() {
+    const { locale, navigationDirection, setLocale, setNavigationDirection } = useI18n();
+    return <>
+      <button data-action="direction" onClick={() => setNavigationDirection(navigationDirection === 'ltr' ? 'rtl' : 'ltr')}>Direction</button>
+      <button data-action="locale" onClick={() => setLocale(locale === 'en' ? 'zh-CN' : 'en')}>Language</button>
+      <aside dir={navigationDirection}><bdi dir="auto">פרויקט ABC-123</bdi></aside>
+      <input aria-label="Authored text" defaultValue="שלום ABC 25%" />
+      <iframe title="Video preview" srcDoc="<p dir='rtl'>שלום ABC</p>" />
+    </>;
+  }
+  const initialRootDir = document.documentElement.dir;
+  expect(readNavigationDirection()).toBe('ltr');
+  act(() => root.render(<I18nProvider initialLocale="en"><NavigationPreference /></I18nProvider>));
+  const input = host.querySelector('input'), preview = host.querySelector('iframe');
+  act(() => host.querySelector<HTMLButtonElement>('[data-action="direction"]')!.click());
+  expect(host.querySelector('aside')?.getAttribute('dir')).toBe('rtl');
+  expect(host.querySelector('bdi')?.getAttribute('dir')).toBe('auto');
+  expect(localStorage.getItem(UI_DIRECTION_STORAGE_KEY)).toBe('rtl');
+  expect(readNavigationDirection()).toBe('rtl');
+  expect(document.documentElement.dir).toBe(initialRootDir);
+  act(() => host.querySelector<HTMLButtonElement>('[data-action="locale"]')!.click());
+  expect(document.documentElement.lang).toBe('zh-CN');
+  expect(host.querySelector('aside')?.getAttribute('dir')).toBe('rtl');
+  expect(host.querySelector('input')).toBe(input);
+  expect(host.querySelector('iframe')).toBe(preview);
+  expect(preview?.srcdoc).toBe("<p dir='rtl'>שלום ABC</p>");
+  act(() => window.dispatchEvent(new StorageEvent('storage', { key: UI_DIRECTION_STORAGE_KEY, newValue: 'ltr' })));
+  expect(host.querySelector('aside')?.getAttribute('dir')).toBe('ltr');
+  expect(document.documentElement.dir).toBe(initialRootDir);
+});
+
+it('fails closed to LTR navigation for invalid preferences or blocked storage', () => {
+  localStorage.setItem(UI_DIRECTION_STORAGE_KEY, 'auto');
+  expect(readNavigationDirection()).toBe('ltr');
+  localStorage.setItem(UI_DIRECTION_STORAGE_KEY, 'rtl');
+  expect(readNavigationDirection()).toBe('rtl');
+  // Exercise a real throwing read without monkeypatching global Storage:
+  // happy-dom's instance spies can leak into unrelated locale tests.
+  const lookedUpKeys: string[] = [];
+  const unavailableStorage = { getItem: (key: string) => {
+    lookedUpKeys.push(key);
+    throw new Error('blocked');
+  } };
+  expect(readNavigationDirection(unavailableStorage)).toBe('ltr');
+  expect(lookedUpKeys).toEqual([UI_DIRECTION_STORAGE_KEY]);
+  expect(readNavigationDirection()).toBe('rtl');
 });
 
 it('falls back to Chinese for unsupported preferences and switches when persistence is unavailable', () => {

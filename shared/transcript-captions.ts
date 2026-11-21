@@ -151,9 +151,25 @@ export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtm
       if (!segment.words?.length) throw new Error('Word highlighting requires real word timestamps');
       const words = segment.words;
       if (words.some((word, i) => i > 0 && word.start < words[i - 1].end)) throw new Error('Word highlighting requires ordered, non-overlapping word timestamps');
-      // Keep the exact transcript punctuation and spaces; do not rebuild it from tokens.
+      // Keep exact transcript punctuation and spacing. DOM text offsets are
+      // UTF-16 code units, but timed-word styling must never wrap only part of
+      // a grapheme: niqqud, Arabic/Syriac vowel marks, emoji, and joiners
+      // belong to their neighboring base character even in mixed-BiDi text.
+      const boundaries = new Set<number>([0, segment.text.length]);
+      for (const { index, segment: grapheme } of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(segment.text)) {
+        boundaries.add(index);
+        boundaries.add(index + grapheme.length);
+      }
       let cursor = 0;
-      const spans = words.map(word => { const start = segment.text.indexOf(word.text.trim(), cursor); if (start < 0) throw new Error('Word timestamps do not match the edited text'); const end = start + word.text.trim().length; cursor = end; return { start, end }; });
+      const spans = words.map(word => {
+        const token = word.text.trim();
+        const start = segment.text.indexOf(token, cursor);
+        if (start < 0) throw new Error('Word timestamps do not match the edited text');
+        const end = start + token.length;
+        if (!boundaries.has(start) || !boundaries.has(end)) throw new Error('Word timestamps split a grapheme cluster');
+        cursor = end;
+        return { start, end };
+      });
       return words.map((word, i) => ({ ...segment, id: `${segment.id}-word-${i}`, start: i === 0 ? segment.start : word.start, end: words[i + 1]?.start ?? segment.end,
         html: escape(segment.text.slice(0, spans[i].start)) + `<span style="color:var(--caption-highlight)">${escape(segment.text.slice(spans[i].start, spans[i].end))}</span>` + escape(segment.text.slice(spans[i].end)) }));
     });

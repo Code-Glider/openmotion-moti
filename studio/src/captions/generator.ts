@@ -87,8 +87,9 @@ function generateCss(model: CaptionModel): string {
   // .word base styles
   lines.push(`.word {`, `  display: inline-block;`, `}`, ``);
 
-  // Per-group CSS classes
-  for (const groupId of model.groupOrder) {
+  // Per-group CSS classes; scope rules to their true ordinal so Semitic
+  // group IDs that normalize to the same ASCII class cannot bleed styles.
+  for (const [groupIndex, groupId] of model.groupOrder.entries()) {
     const group = model.groups.get(groupId);
     if (!group) continue;
 
@@ -96,7 +97,7 @@ function generateCss(model: CaptionModel): string {
     const styleDecls = buildGroupStyleDecls(group.style, group.containerStyle);
 
     if (styleDecls.length > 0) {
-      lines.push(`.caption-group.${className} {`);
+      lines.push(`.caption-group.${className}[data-caption-style-index="${groupIndex}"] {`);
       for (const decl of styleDecls) {
         lines.push(`  ${decl}`);
       }
@@ -260,6 +261,40 @@ function hexToRgba(color: string, opacity: number): string {
 // JS generation
 // ---------------------------------------------------------------------------
 
+/** Generated JS local names are not authored segment/group identities.
+ * Sanitizing Hebrew/Arabic/Syriac IDs can collapse distinct strings into the
+ * same ASCII token. Resolve clashes without changing persisted IDs or text.
+ */
+function uniqueJsLocal(base: string, used: Set<string>): string {
+  let candidate = base;
+  for (let index = 2; used.has(candidate); index++) candidate = `${base}_${index}`;
+  used.add(candidate);
+  return candidate;
+}
+
+/** Preserve authored word transforms across source regeneration and native export.
+ * A word wrapper is required only for non-neutral values: directly authored
+ * word spans continue to be resolved by CaptionOverlayUtils.getWordEl().
+ * Reject impossible values instead of generating invalid script or CSS.
+ */
+function captionWordTransform(style: Partial<CaptionStyle> | undefined): string | null {
+  const axis = (key: "x" | "y" | "rotation" | "scaleX" | "scaleY", neutral: number): number => {
+    const supplied = style?.[key];
+    if (supplied === undefined) return neutral;
+    if (typeof supplied !== "number" || !Number.isFinite(supplied)) {
+      throw new Error("INVALID_CAPTION_WORD_TRANSFORM_" + key.toUpperCase());
+    }
+    return Object.is(supplied, -0) ? 0 : supplied;
+  };
+  const x = axis("x", 0);
+  const y = axis("y", 0);
+  const rotation = axis("rotation", 0);
+  const scaleX = axis("scaleX", 1);
+  const scaleY = axis("scaleY", 1);
+  if (x === 0 && y === 0 && rotation === 0 && scaleX === 1 && scaleY === 1) return null;
+  return `translate(${x}px, ${y}px) rotate(${rotation}deg) scale(${scaleX}, ${scaleY})`;
+}
+
 function generateJs(model: CaptionModel): string {
   // Collect all segments across all groups in order
   const allSegments: Array<{ id?: string; text: string; start: number; end: number }> = [];
@@ -281,8 +316,10 @@ function generateJs(model: CaptionModel): string {
   const transcriptJson = JSON.stringify(allSegments, null, 2).replace(/</g, "\\u003c");
 
   const groupBlocks: string[] = [];
+  const usedGroupNames = new Set<string>();
+  const usedWordNames = new Set<string>();
 
-  for (const groupId of model.groupOrder) {
+  for (const [groupIndex, groupId] of model.groupOrder.entries()) {
     const group = model.groups.get(groupId);
     if (!group) continue;
 
@@ -300,15 +337,31 @@ function generateJs(model: CaptionModel): string {
     const groupStart = firstSeg.start;
     const groupEnd = lastSeg.end;
 
-    const groupVar = className.replace(/[^a-zA-Z0-9_]/g, "_");
+    const groupVar = uniqueJsLocal(className.replace(/[^a-zA-Z0-9_]/g, "_"), usedGroupNames);
 
     // Build word spans
     const wordLines: string[] = groupSegments.map((seg) => {
       const escaped = JSON.stringify(seg.text).replace(/</g, "\\u003c");
-      const segVar = `w_${seg.id.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+      const segVar = uniqueJsLocal(`w_${seg.id.replace(/[^a-zA-Z0-9_]/g, "_")}`, usedWordNames);
       const idLine = seg.wordId
         ? `\n  ${segVar}.id = ${JSON.stringify(seg.wordId).replace(/</g, "\\u003c")};`
         : "";
+      const transform = captionWordTransform(seg.style);
+      // Use the same exact marker that the live editor's getOrCreateWrapper()
+      // reads. An authored transform must never be applied twice on reload.
+      const wrapperVar = transform
+        ? uniqueJsLocal(`wrap_${seg.id.replace(/[^a-zA-Z0-9_]/g, "_")}`, usedWordNames)
+        : null;
+      const append = wrapperVar
+        ? (
+          `\n  const ${wrapperVar} = document.createElement('span');` +
+          `\n  ${wrapperVar}.dataset.captionWrapper = 'true';` +
+          `\n  ${wrapperVar}.style.display = 'inline-block';` +
+          `\n  ${wrapperVar}.style.transform = ${JSON.stringify(transform)};` +
+          `\n  ${wrapperVar}.appendChild(${segVar});` +
+          `\n  groupEl_${groupVar}.appendChild(${wrapperVar});`
+        )
+        : `\n  groupEl_${groupVar}.appendChild(${segVar});`;
       return (
         `  const ${segVar} = document.createElement('span');` +
         `\n  ${segVar}.className = 'word clip';` +
@@ -316,7 +369,7 @@ function generateJs(model: CaptionModel): string {
         `\n  ${segVar}.textContent = ${escaped};` +
         `\n  ${segVar}.dataset.start = '${seg.start}';` +
         `\n  ${segVar}.dataset.end = '${seg.end}';` +
-        `\n  groupEl_${groupVar}.appendChild(${segVar});`
+        append
       );
     });
 
@@ -341,10 +394,11 @@ function generateJs(model: CaptionModel): string {
     }
 
     const block = [
-      `// Group: ${groupId}`,
+      `// Group index: ${groupIndex}`,
       `const ${groupVarName} = document.createElement('div');`,
       `${groupVarName}.className = 'caption-group clip ${className}';`,
       `${groupVarName}.dataset.captionGroupId = ${JSON.stringify(groupId).replace(/</g, "\\u003c")};`,
+      `${groupVarName}.dataset.captionStyleIndex = '${groupIndex}';`,
       `${groupVarName}.dataset.start = '${groupStart}';`,
       `${groupVarName}.dataset.end = '${groupEnd}';`,
       `container.appendChild(${groupVarName});`,

@@ -67,7 +67,7 @@ export { useWorkspaceChrome, useOptionalWorkspaceChrome, type EditorGuard } from
 export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, blocked = false, message = '', saveState = '', onLibraryClose, onNavigate }: {
   children: ReactNode; waitForSaves: () => Promise<void>; projectId?: string; sessionId?: string; blocked?: boolean; message?: string; saveState?: string; onLibraryClose?: () => void; onNavigate?: () => void;
 }) {
-  const { t, locale } = useI18n();
+  const { t, locale, navigationDirection } = useI18n();
   const [page, setPage] = useState(() => readWorkspacePage(location.search, location.hash));
   const [source, setSource] = useState(workspaceHistorySource);
   const sourceUrl = source ? new URL(source.href) : null;
@@ -420,7 +420,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
       <div className="motion-workspace">
       <Dialog.Portal>
         <Dialog.Backdrop className="hf-overlay-backdrop motion-sidebar-backdrop" />
-        <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
+        <Dialog.Popup id="om-project-navigation" className="motion-sidebar-drawer" dir={navigationDirection} aria-label={t('Project list')} onKeyDown={event => event.stopPropagation()}>
           <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} openSettings={openSettings} openTemplates={openMotionTemplates} />
         </Dialog.Popup>
       </Dialog.Portal>
@@ -505,12 +505,12 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
   openSettings: (section: SettingsSection) => void;
   openTemplates: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, navigationDirection } = useI18n();
   const { workspace, switchingDisabled } = useWorkspaceChrome();
   const projects = workspace.projects;
   const filtered = projects.filter(project => project.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const loadingProjects = !workspace.status && !workspace.error && projects.length === 0;
-  return <aside className="motion-sidebar" aria-label={t('Workspace navigation')}>
+  return <aside className="motion-sidebar" dir={navigationDirection} aria-label={t('Workspace navigation')}>
     <div className="motion-sidebar-brand">
       <strong className="om-subtitle">{t('Workspace')}</strong>
       {/* Collapsing the docked navigation toggles it back with the workspace menu button, so this icon-only control keeps a state-aware tooltip in both states. */}
@@ -531,7 +531,7 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
         </Tooltip>
       </div>
     </div>
-    <label data-form-field="regular" className="motion-session-search"><MotionIcon name="search" /><FieldInput appearance="embedded" type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
+    <label data-form-field="regular" className="motion-session-search"><MotionIcon name="search" /><FieldInput appearance="embedded" dir="auto" type="search" value={query} onChange={event => { if (searchStarted(query, event.target.value)) trackStudioClick('project_drawer', 'project_search', currentId); setQuery(event.target.value); }} placeholder={t('Search projects…')} aria-label={t('Search projects')} /></label>
     <nav className="motion-session-list" aria-label={t('Project list')} aria-busy={loadingProjects}>
       {loadingProjects && ['75%', '55%', '65%'].map(width => <div key={width} className="motion-session pointer-events-none" data-testid="project-list-skeleton" aria-hidden="true">
         <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
@@ -546,7 +546,7 @@ function WorkspaceSidebar({ archives, currentId, close, expand, query, setQuery,
           void workspace.open('projects', project.id);
           onNavigate?.();
         }}>
-        <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>
+        <span className="motion-session-dot" aria-hidden="true" /><span><strong><bdi dir="auto">{project.title}</bdi></strong></span>
       </Button></Tooltip>
       </DisclosureRow>)}
     </nav>

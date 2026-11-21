@@ -15,6 +15,9 @@
 .motion-sidebar-brand { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 16px; padding-inline: 4px; gap: 10px; }
 .motion-sidebar .motion-brand { border: 0; background: transparent; padding: 0; min-width: 0; gap: 8px; }
 .motion-sidebar .motion-brand-logo { display: block; width: 104px; max-width: 100%; height: auto; }
+/* Only opt-in project navigation mirrors; never mirror editor timelines or transport. */
+.motion-sidebar[dir="rtl"] .motion-sidebar-nav button,
+.motion-sidebar[dir="rtl"] .motion-session { text-align: start; }
 .motion-sidebar-new { height: 38px; margin-bottom: 20px; }
 .motion-sidebar-nav { display: grid; gap: 4px; margin-bottom: 30px; }
 .motion-sidebar-nav button, .motion-session { display: flex; align-items: center; gap: 10px; border: 0; border-radius: var(--motion-radius-step-7); background: transparent; color: var(--motion-muted); text-align: left; cursor: pointer; min-height: 38px; padding: 9px 10px; font-size: var(--motion-text-md); }
@@ -42,6 +45,8 @@
 .motion-workspace-menu { display: inline-flex; flex-shrink: 0; }
 .motion-sidebar-backdrop { position: fixed; inset: 0; background: var(--motion-overlay); z-index: 100; }
 .motion-sidebar-drawer { position: fixed; inset: 0 auto 0 0; width: min(260px, calc(100vw - 32px)); z-index: 101; outline: none; box-shadow: var(--motion-shadow-md); }
+/* The portaled mobile drawer is direction-isolated from the LTR timeline and transport. */
+.motion-sidebar-drawer[dir="rtl"] { inset: 0 0 0 auto; }
 .motion-sidebar-drawer .motion-sidebar { width: 100%; height: 100%; padding-top: 11.5px; }
 .motion-workspace-notice { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 8px 18px; color: var(--motion-danger); background: var(--motion-danger-soft); font-size: var(--motion-text-sm); flex-shrink: 0; }
 /* Project navigation overlays the editor at every viewport size. */
