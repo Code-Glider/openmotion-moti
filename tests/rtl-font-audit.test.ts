@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { auditFont } from '../scripts/rtl-font-audit.ts';
 
 test('font audit rejects invalid and oversized WOFF2 without needing a browser', async () => {
@@ -26,7 +27,7 @@ test('font audit requires actual sample text', async () => {
 
 test('real font audit reports Hebrew, Arabic and Syriac glyph gaps rather than claiming shaping coverage', async () => {
   const font = new URL('./fixtures/fonts/orbitron.ttf', import.meta.url);
-  const result = await auditFont(font.pathname, 'A א ع ܐ');
+  const result = await auditFont(fileURLToPath(font), 'A א ع ܐ');
   assert.equal(result.format, 'ttf');
   assert.equal(result.family, 'Orbitron');
   const missing = new Set(result.missingCodepoints.map(point => point.hex));
