@@ -130,12 +130,61 @@ test('actual Chromium mixed-script arrows and selection retain logical Unicode a
       assert.equal(selectionState.text, sample.text, sample.name + ': selection mutated source');
       await page.keyboard.press('ArrowRight');
       await page.waitForFunction(() => document.querySelector('[data-inline-text-caret="true"]') !== null);
-      evidence.push({ script: sample.name, source: sample.text, arrows: moves, rangeSelection: selectionState, measured });
+
+      // Exercise Chromium's actual composition event pipeline through CDP,
+      // not fake JavaScript-dispatched compositionstart/compositionend events.
+      // Cancel rather than commit so the saved logical source is unchanged.
+      await page.evaluate(() => {
+        const frame = document.querySelector('#frame');
+        const editable = frame.contentDocument.getElementById('editable');
+        window.__rtlCompositionEvents = [];
+        for (const eventName of ['compositionstart','compositionupdate','compositionend']) {
+          editable.addEventListener(eventName, event => {
+            window.__rtlCompositionEvents.push({ event: event.type, data: event.data });
+          });
+        }
+        editable.focus();
+        frame.contentWindow.getSelection().collapse(editable.firstChild, editable.firstChild.length);
+      });
+      await page.waitForFunction(() => document.querySelector('[data-inline-text-caret="true"]') !== null);
+      const cdp = await page.createCDPSession();
+      await cdp.send('Input.imeSetComposition', {
+        text: sample.ime, selectionStart: sample.ime.length, selectionEnd: sample.ime.length,
+      });
+      await page.waitForFunction(() => {
+        const events = window.__rtlCompositionEvents || [];
+        return events.some(entry => entry.event === 'compositionstart') &&
+          !document.querySelector('[data-inline-text-caret="true"]');
+      }, { timeout: 10_000 });
+      const duringComposition = await page.evaluate(() => ({
+        events: [...window.__rtlCompositionEvents],
+        caretVisible: Boolean(document.querySelector('[data-inline-text-caret="true"]')),
+        text: document.querySelector('#frame').contentDocument.getElementById('editable').textContent,
+      }));
+      assert.equal(duringComposition.caretVisible, false, sample.name + ': synthetic caret covered actual Chromium IME composition');
+      assert(duringComposition.events.some(event => event.event === 'compositionupdate' && event.data === sample.ime),
+        sample.name + ': Chromium did not preserve script-specific composition data');
+      await cdp.send('Input.imeSetComposition', { text: '', selectionStart: 0, selectionEnd: 0 });
+      await page.waitForFunction(() => {
+        const events = window.__rtlCompositionEvents || [];
+        return events.some(entry => entry.event === 'compositionend') &&
+          Boolean(document.querySelector('[data-inline-text-caret="true"]'));
+      }, { timeout: 10_000 });
+      const afterCancel = await page.evaluate(() => ({
+        events: [...window.__rtlCompositionEvents],
+        text: document.querySelector('#frame').contentDocument.getElementById('editable').textContent,
+        caretVisible: Boolean(document.querySelector('[data-inline-text-caret="true"]')),
+      }));
+      assert.equal(afterCancel.text, sample.text, sample.name + ': cancelled IME composition changed original Unicode text');
+      assert.equal(afterCancel.caretVisible, true, sample.name + ': custom caret not restored after cancelled composition');
+      await cdp.detach();
+      evidence.push({ script: sample.name, source: sample.text, arrows: moves, rangeSelection: selectionState,
+        ime: { composition: duringComposition, cancelled: afterCancel }, measured });
       if (outputDir) {
         await page.screenshot({ path: path.join(outputDir, 'rtl-arrows-' + sample.lang + '.png') });
         await writeFile(path.join(outputDir, 'rtl-arrows.json'), JSON.stringify({
           browser: await browser.version(), evidence,
-          limitation: 'Actual Chromium native arrows and production React caret overlay; not an IME-composition certificate.',
+          limitation: 'Actual Chromium native arrows and CDP IME-composition cancel through the real React caret overlay; not OS-level keyboard IME or full UAX #9 editing certification.',
         }, null, 2) + '\n');
       }
     } finally {
