@@ -15,6 +15,8 @@ const source = [
 const cases = [
   { id: 'hebrew', lang: 'he', dir: 'rtl', text: 'שָׁלוֹם  OpenMotion 25%!', words: ['שָׁלוֹם', 'OpenMotion', '25%!'], face: 'hebrew' },
   { id: 'arabic', lang: 'ar', dir: 'rtl', text: 'السَّلَامُ  OpenMotion 2026!', words: ['السَّلَامُ', 'OpenMotion', '2026!'], face: 'arabic' },
+  { id: 'persian', lang: 'fa', dir: 'rtl', text: 'فارسی  OpenMotion ۲۰۲۶', words: ['فارسی', 'OpenMotion', '۲۰۲۶'], face: 'arabic' },
+  { id: 'urdu', lang: 'ur', dir: 'rtl', text: 'اردو  ABC-123  ٹڈڑںے', words: ['اردو', 'ABC-123', 'ٹڈڑںے'], face: 'urdu' },
   { id: 'syriac', lang: 'syr', dir: 'rtl', text: 'ܫܠܡܐ  ܒܪܝܟܐ ABC-123', words: ['ܫܠܡܐ', 'ܒܪܝܟܐ', 'ABC-123'], face: 'syriac' },
   { id: 'ethiopic', lang: 'am', dir: 'ltr', text: 'ሰላም  English 2026', words: ['ሰላም', 'English', '2026'], face: 'ethiopic' },
   { id: 'authored', lang: 'he', dir: 'rtl', text: 'שלום ABC-123', words: ['שלום', 'ABC-123'], face: 'hebrew' },
@@ -28,7 +30,7 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
   const manifest = JSON.parse(await readFile(path.join(fontDir, 'manifest.json'), 'utf8'));
   assert.equal(manifest.sourceCommit, '06bfe0d62a98375cb09c942fa18e68bd32cff057');
   const css = [];
-  for (const id of ['hebrew', 'arabic', 'syriac', 'ethiopic']) {
+  for (const id of ['hebrew', 'arabic', 'urdu', 'syriac', 'ethiopic']) {
     const face = manifest.faces.find(item => item.id === id);
     assert(face, id + ': pinned font face missing');
     const bytes = await readFile(path.join(fontDir, face.filename));
@@ -47,10 +49,10 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
   const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
-  await page.setViewport({ width: 900, height: 800, deviceScaleFactor: 1 });
+  await page.setViewport({ width: 900, height: 1150, deviceScaleFactor: 1 });
   await page.setContent('<!doctype html><html lang="en" dir="ltr"><body style="margin:0">' +
-    '<div id="overlay" style="position:absolute;left:0;top:0;width:900px;height:800px;pointer-events:none"></div>' +
-    '<iframe id="preview" title="RTL video" style="position:absolute;left:36px;top:28px;width:640px;height:720px;border:0"></iframe>' +
+    '<div id="overlay" style="position:absolute;left:0;top:0;width:900px;height:1150px;pointer-events:none"></div>' +
+    '<iframe id="preview" title="RTL video" style="position:absolute;left:36px;top:28px;width:640px;height:1050px;border:0"></iframe>' +
     '</body></html>');
   await page.evaluate(() => {
     document.getElementById('preview').srcdoc = '<!doctype html><html lang="en"><head><style>' +
@@ -107,7 +109,7 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
       duplicate.dataset.captionGroupId = 'duplicate';
       duplicate.textContent = 'שלום';
       duplicate.dir = 'rtl';
-      duplicate.style.top = (550 + n * 45) + 'px';
+      duplicate.style.top = (850 + n * 45) + 'px';
       doc.body.append(duplicate);
     }
     groupOrder.push('duplicate');
@@ -170,7 +172,7 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
           height: Math.max(...rects.map(r => r.bottom)) - Math.min(...rects.map(r => r.top)) });
         cursor = end;
       }
-      if (index < 4 && window.RTLCaptionRanges.getWordEl(iframe, index, 0, model) !== null)
+      if (sample.id !== 'authored' && window.RTLCaptionRanges.getWordEl(iframe, index, 0, model) !== null)
         throw Error(sample.id + ': read-only plain text gained a transformable word element');
     }
     const authoredIndex = groupOrder.indexOf('authored');
@@ -184,7 +186,7 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
       fontFamilies: cases.map(s => ({ id:s.id, family: doc.defaultView.getComputedStyle(doc.getElementById('rtl-group-' + s.id)).fontFamily })) };
   }, { cases, styles: css.join('\n') });
   const byId = new Map(result.first.map(box => [box.segmentId, box]));
-  assert.equal(result.first.length, 14, 'Must measure 12 plain-text + two authored spans, excluding ambiguous/hidden groups');
+  assert.equal(result.first.length, 20, 'Must measure 18 plain-text including Persian/Urdu + two authored spans, excluding ambiguous/hidden groups');
   assert.deepEqual(result.first, result.second, 'Repeat geometry reads changed caption identities, alignment or positions');
   assert.equal(result.unchangedMarkup, true, 'Caption hit measurement rewrote authored HTML');
   assert.equal(result.unchangedNodes, true, 'Caption hit measurement replaced original Unicode text nodes');
