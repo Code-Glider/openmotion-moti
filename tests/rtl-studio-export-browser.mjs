@@ -264,10 +264,13 @@ try {
   }
   const png = path.join(output, 'preview-frame.png');
   await direct.screenshot({ path: png, clip: { x: 0, y: 0, width, height } });
-  // Two real Chromium animation seeks, using the same authored GSAP timeline
-  // that the native video renderer plays. Never split or replace caption text.
+  // Seek forward, reverse, then forward again using the same authored GSAP
+  // timeline as the native renderer. A stale tween or destructive caption
+  // measurement can pass a one-way test but fail when scrubbing backwards.
+  // Never split or replace authored caption text nodes.
   const timedPreviews = [];
-  for (const time of [0.25, 0.75]) {
+  const priorSeekStates = new Map();
+  for (const [seekIndex, time] of [0.25, 0.75, 0.25, 0.75].entries()) {
     const layout = await direct.evaluate(at => {
       const timeline = window.__timelines?.main;
       if (!timeline || typeof timeline.pause !== 'function') throw Error('Missing authored GSAP timeline');
@@ -290,14 +293,26 @@ try {
     const yellow = color => /250,\s*204,\s*21/.test(color);
     assert.equal(yellow(layout.heColor), time < 0.5, 'Hebrew timed highlight state differs from authored timeline');
     assert.equal(yellow(layout.arColor), time > 0.5, 'Arabic timed highlight state differs from authored timeline');
-    const screenshot = path.join(output, 'preview-caption-' + time + '.png');
+    const screenshot = path.join(output, 'preview-caption-seek-' + seekIndex + '-' + time + '.png');
     await direct.screenshot({ path: screenshot, clip: { x: 0, y: 0, width, height } });
     const pixels = decodeToRgb(screenshot, false);
     const heYellow = yellowPixels(pixels, layout.he);
     const arYellow = yellowPixels(pixels, layout.ar);
     assert((time < 0.5 ? heYellow : arYellow) > 70, 'Expected real browser caption highlight absent');
     assert((time < 0.5 ? arYellow : heYellow) < 25, 'Untimed caption word unexpectedly highlighted');
-    timedPreviews.push({ time, screenshot, layout, browserYellow: { he: heYellow, ar: arYellow } });
+    const seekState = {
+      he: layout.he, ar: layout.ar,
+      heColor: layout.heColor, arColor: layout.arColor,
+      browserYellow: { he: heYellow, ar: arYellow },
+    };
+    const previous = priorSeekStates.get(time);
+    if (previous) {
+      assert.deepEqual(seekState, previous,
+        'Reverse/forward seeking changed the repeated caption geometry or highlight state at ' + time);
+    } else {
+      priorSeekStates.set(time, seekState);
+    }
+    timedPreviews.push({ seekIndex, time, screenshot, layout, browserYellow: seekState.browserYellow });
   }
   await direct.close();
   assertStep('Project-local licensed fonts actually used by Chromium', { fontUsage });
@@ -339,9 +354,9 @@ try {
     const drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
       / Math.max(videoYellow[active], capture.browserYellow[active]);
     assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
-    temporal.push({ time: capture.time, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
+    temporal.push({ seekIndex: capture.seekIndex, time: capture.time, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
   }
-  assertStep('Timed Hebrew/Arabic word highlighting survives two MP4 seek frames without caption text-node mutation', { temporal });
+  assertStep('Timed Hebrew/Arabic word highlighting survives forward/reverse/replay seeks and MP4 parity without caption text-node mutation', { temporal });
   assert.deepEqual(consoleErrors, [], 'Studio page errors');
   evidence.passed = true;
   evidence.browser = await browser.version();
