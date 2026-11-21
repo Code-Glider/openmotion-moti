@@ -117,14 +117,18 @@ jobs:
             studio/src/player/components/TextClipContent.test.ts
 
   studio-rtl-export:
-    name: Real Studio RTL edit and MP4 parity (Linux)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 24
+    name: Real Studio RTL edit and MP4 parity (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
     env:
       OPENMOTION_TELEMETRY: '0'
-      HYPERFRAMES_BROWSER_PATH: /usr/bin/google-chrome
-      HYPERFRAMES_FFMPEG_PATH: /usr/bin/ffmpeg
-      HYPERFRAMES_FFPROBE_PATH: /usr/bin/ffprobe
     steps:
       - name: Checkout feature branch without Git LFS media
         uses: actions/checkout@v6.0.2
@@ -140,18 +144,45 @@ jobs:
           package-manager-cache: false
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Require Chromium and native media tools
-        shell: bash
+      - name: Resolve actual browser and FFmpeg on each runner
+        timeout-minutes: 15
         run: |
-          "$HYPERFRAMES_BROWSER_PATH" --version
-          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-            if ! sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg; then
-              sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update
-              sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg
-            fi
+          case "$RUNNER_OS" in
+            Linux)
+              browser=/usr/bin/google-chrome
+              if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+                if ! sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg; then
+                  sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update
+                  sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg
+                fi
+              fi
+              ;;
+            macOS)
+              browser="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+              if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then brew install ffmpeg; fi
+              ;;
+            Windows)
+              browser="/c/Program Files/Google/Chrome/Application/chrome.exe"
+              if [[ ! -f "$browser" ]]; then browser="/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"; fi
+              if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+                choco install ffmpeg --yes --no-progress
+                export PATH="$PATH:/c/ProgramData/chocolatey/bin"
+              fi
+              ;;
+            *) echo "::error::Unsupported runner OS $RUNNER_OS"; exit 1 ;;
+          esac
+          [[ -f "$browser" ]] || { echo "::error::Real Google Chrome binary not found: $browser"; exit 1; }
+          "$browser" --version
+          ffmpeg_bin="$(command -v ffmpeg)" || { echo "::error::FFmpeg missing"; exit 1; }
+          ffprobe_bin="$(command -v ffprobe)" || { echo "::error::FFprobe missing"; exit 1; }
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            browser="$(cygpath -w "$browser")"
+            ffmpeg_bin="$(cygpath -w "$ffmpeg_bin")"
+            ffprobe_bin="$(cygpath -w "$ffprobe_bin")"
           fi
-          ffmpeg -hide_banner -version | head -n 1
-          ffprobe -hide_banner -version | head -n 1
+          echo "HYPERFRAMES_BROWSER_PATH=$browser" >> "$GITHUB_ENV"
+          echo "HYPERFRAMES_FFMPEG_PATH=$ffmpeg_bin" >> "$GITHUB_ENV"
+          echo "HYPERFRAMES_FFPROBE_PATH=$ffprobe_bin" >> "$GITHUB_ENV"
       - name: Build actual Studio and tracking runtime
         run: |
           npm run build:studio
@@ -165,7 +196,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: rtl-studio-mp4-parity
+          name: rtl-studio-mp4-parity-${{ matrix.os }}
           path: ${{ runner.temp }}/rtl-studio-export
           if-no-files-found: warn
           retention-days: 14
