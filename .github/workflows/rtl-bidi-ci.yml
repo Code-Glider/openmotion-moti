@@ -275,10 +275,37 @@ jobs:
           path: ${{ runner.temp }}/rtl-studio-export
           if-no-files-found: warn
           retention-days: 14
+      - name: Verify WOFF1 in real Studio, MP4 and offline ZIP
+        id: woff1
+        timeout-minutes: 12
+        # A WOFF1 failure must fail this runner so a failed-jobs retry really
+        # reruns the failing producer, not only the downstream reducer.
+        run: |
+          set -euo pipefail
+          python scripts/rtl-reference-woff2.py "$RUNNER_TEMP/rtl-reference-fonts" --woff1
+          node --experimental-strip-types tests/rtl-studio-export-browser.mjs "$RUNNER_TEMP/rtl-woff1-export" "$RUNNER_TEMP/rtl-reference-fonts" --woff1
+      - name: Retain successful WOFF1 Studio and archive evidence
+        if: steps.woff1.outcome == 'success'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-studio-woff1-${{ matrix.os }}
+          path: ${{ runner.temp }}/rtl-woff1-export
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain WOFF1 failure diagnostics separately
+        if: always() && steps.woff1.outcome == 'failure'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-studio-woff1-failure-${{ matrix.os }}
+          path: ${{ runner.temp }}/rtl-woff1-export
+          if-no-files-found: warn
+          retention-days: 14
 
   rtl-font-provenance:
     name: Cross-OS reproducible font and offline evidence gate
     needs: studio-rtl-export
+    # Attest retained WOFF2 independently if the later WOFF1 step failed.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -319,5 +346,41 @@ jobs:
         with:
           name: rtl-cross-os-font-attestation
           path: ${{ runner.temp }}/rtl-cross-os-attestation.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Download actual current-run WOFF1 evidence for Linux
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-woff1-ubuntu-24.04
+          path: ${{ runner.temp }}/rtl-cross-os-woff1/ubuntu-24.04
+      - name: Download actual current-run WOFF1 evidence for macOS
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-woff1-macos-15
+          path: ${{ runner.temp }}/rtl-cross-os-woff1/macos-15
+      - name: Download actual current-run WOFF1 evidence for Windows
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-woff1-windows-2025
+          path: ${{ runner.temp }}/rtl-cross-os-woff1/windows-2025
+      - name: Require independent cross-OS WOFF1 byte and SFNT evidence
+        if: needs.studio-rtl-export.result == 'success'
+        env:
+          RTL_CROSS_OS_FIXTURES: ${{ runner.temp }}/rtl-cross-os
+          RTL_CROSS_OS_WOFF1_FIXTURES: ${{ runner.temp }}/rtl-cross-os-woff1
+        run: |
+          set -euo pipefail
+          node --test --test-name-pattern WOFF1 tests/rtl-cross-os-font-provenance.test.mjs
+          node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_WOFF1_FIXTURES" --woff1 | tee "$RUNNER_TEMP/rtl-cross-os-woff1-attestation.json"
+      - name: Preserve cross-runner WOFF1 attestation
+        if: always() && needs.studio-rtl-export.result == 'success'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-cross-os-woff1-attestation
+          path: ${{ runner.temp }}/rtl-cross-os-woff1-attestation.json
           if-no-files-found: warn
           retention-days: 14

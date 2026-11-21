@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { verifyArtifactFiles, verifyCrossOsFontEvidence, verifyFromDirectory, runners } from '../scripts/rtl-verify-cross-os-fonts.mjs';
+import { verifyArtifactFiles, verifyCrossOsFontEvidence, verifyFromDirectory, verifyWoff1File, runners } from '../scripts/rtl-verify-cross-os-fonts.mjs';
 
 const dir = process.env.RTL_CROSS_OS_FIXTURES;
-async function load() {
+async function load(root = dir) {
   const reports = {};
   for (const os of Object.keys(runners)) {
-    reports[os] = JSON.parse(await readFile(path.join(dir, os, 'result.json'), 'utf8'));
+    reports[os] = JSON.parse(await readFile(path.join(root, os, 'result.json'), 'utf8'));
   }
   return reports;
 }
@@ -121,3 +122,56 @@ test('reject missing Semitic converter evidence even when native MP4 and ZIP wer
   reports['macos-15'].scriptWoff2 = reports['macos-15'].scriptWoff2.filter(face => face.id !== 'syriac');
   assert.throws(() => verifyCrossOsFontEvidence(reports), /reported font conversions contradict browser evidence/);
 });
+
+const woff1Dir = process.env.RTL_CROSS_OS_WOFF1_FIXTURES;
+if (woff1Dir) {
+  test('WOFF1 binds actual WOFF archive bytes, decoded SFNT, licenses and media to all three OS receipts', async () => {
+    const result = await verifyFromDirectory(woff1Dir, 'woff');
+    assert.equal(result.passed, true);
+    assert.equal(result.format, 'woff');
+    for (const os of Object.keys(runners)) {
+      assert.equal(Object.keys(result.artifactSha256[os]).length, 11);
+      assert.equal(Object.keys(result.woffArchiveSha256[os]).length, 4);
+      assert.equal(typeof result.runnerEncodings[os].zlibRuntimeVersion, 'string');
+    }
+  });
+
+  test('WOFF1 reports distinct runner container bytes without weakening decoded font identity', async () => {
+    const reports = await load(woff1Dir);
+    const windows = reports['windows-2025'];
+    const alias = windows.checks.find(x => x.scriptWoff);
+    const different = 'f'.repeat(64);
+    const previous = windows.scriptWoff[0].sha256;
+    windows.scriptWoff[0].sha256 = alias.scriptWoff[0].sha256 = different;
+    alias.servedWoffSha256.hebrew = windows.fonts.find(f => f.id === 'hebrew').fontSha256 = different;
+    windows.checks.find(x => x.assets).assets.find(asset => asset.sha256 === previous).sha256 = different;
+    const result = verifyCrossOsFontEvidence(reports, 'woff');
+    assert.equal(result.byteIdenticalAcrossOs, false);
+    assert.equal(result.runnerEncodings['windows-2025'].scriptWoffSha256.hebrew, different);
+    windows.scriptWoff[0].decodedSfntTables.GSUB = alias.scriptWoff[0].decodedSfntTables.GSUB = different;
+    assert.throws(() => verifyCrossOsFontEvidence(reports, 'woff'), /decoded WOFF1 SFNT differs/);
+  });
+
+  test('WOFF1 fails closed on absent zlib provenance, wrong magic or mismatched decoded table digest', async () => {
+    const reports = await load(woff1Dir);
+    const linux = reports['ubuntu-24.04'];
+    const encoded = linux.scriptWoff[0];
+    const bytes = await readFile(path.join(woff1Dir, 'ubuntu-24.04', 'woff1-fonts', encoded.filename));
+    const wrongMagic = Buffer.from(bytes);
+    wrongMagic.write('wOF2', 0, 'ascii');
+    assert.throws(() => verifyWoff1File(wrongMagic, encoded), /Invalid WOFF1 signature/);
+    const oversized = Buffer.from(bytes);
+    oversized.writeUInt32BE(16 * 1024 * 1024 + 1, 16);
+    assert.throws(() => verifyWoff1File(oversized, encoded), /Invalid WOFF1 decoded SFNT size/);
+    const wrongAggregate = Buffer.from(bytes);
+    wrongAggregate.writeUInt32BE(wrongAggregate.readUInt32BE(16) + 4, 16);
+    const forgedReceipt = { ...encoded, sha256: createHash('sha256').update(wrongAggregate).digest('hex') };
+    assert.throws(() => verifyWoff1File(wrongAggregate, forgedReceipt), /Invalid WOFF1 aggregate SFNT size/);
+    const wrongTable = structuredClone(encoded);
+    wrongTable.decodedSfntTables.GPOS = '0'.repeat(64);
+    assert.throws(() => verifyWoff1File(bytes, wrongTable), /WOFF1 table digest changed/);
+    delete encoded.zlibRuntimeVersion;
+    delete linux.checks.find(x => x.scriptWoff).scriptWoff[0].zlibRuntimeVersion;
+    assert.throws(() => verifyCrossOsFontEvidence(reports, 'woff'), /missing exact zlib runtime version/);
+  });
+}

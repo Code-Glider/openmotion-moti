@@ -6,7 +6,10 @@ Requirements (CI-pinned): fonttools==4.59.0 Brotli==1.1.0.
 import hashlib
 import json
 import sys
+import zlib
 from pathlib import Path
+
+import fontTools
 
 from fontTools.ttLib import TTFont
 
@@ -109,9 +112,69 @@ def convert_face(folder: Path, face: dict, sample: str) -> dict:
     return result
 
 
+
+def convert_woff1(folder: Path, face: dict, sample: str) -> dict:
+    """Repackage the same pinned SFNT tables; container bytes may vary with zlib."""
+    face_id = face["id"]
+    source = folder / face["filename"]
+    license_path = folder / face["licenseFilename"]
+    original = source.read_bytes()
+    license_bytes = license_path.read_bytes()
+    if sha256(original) != face["fontSha256"] or sha256(license_bytes) != face["licenseSha256"]:
+        raise ValueError("PINNED_" + face_id.upper() + "_FONT_OR_LICENSE_SHA256_MISMATCH")
+    output = folder / (face_id + ".woff")
+    repeat = folder / (face_id + "-woff-repro-check.woff")
+    manifest_output = folder / (face_id + "-woff.json")
+    if any(path.exists() for path in (output, repeat, manifest_output)):
+        raise ValueError("REFUSE_TO_OVERWRITE_EXISTING_" + face_id.upper() + "_WOFF")
+    for candidate in (output, repeat):
+        with TTFont(source, lazy=True, recalcTimestamp=False, recalcBBoxes=False) as font:
+            font.flavor = "woff"
+            font.save(candidate, reorderTables=False)
+    contents = output.read_bytes()
+    try:
+        if repeat.read_bytes() != contents:
+            raise ValueError("NONDETERMINISTIC_" + face_id.upper() + "_WOFF_CONVERSION")
+    finally:
+        repeat.unlink()
+    if contents[:4] != b"wOFF":
+        raise ValueError(face_id.upper() + "_WOFF_SIGNATURE_MISMATCH")
+    tags = ("cmap", "GSUB", "GPOS", "GDEF", "fvar", "gvar", "maxp", "name", "glyf", "loca")
+    with TTFont(source, lazy=True) as source_font, TTFont(output, lazy=True) as decoded:
+        preserved = [tag for tag in tags if tag in source_font.reader.tables]
+        if not {"cmap", "GSUB", "GPOS", "GDEF"}.issubset(preserved) or any(
+            tag not in decoded.reader.tables or source_font.reader[tag] != decoded.reader[tag]
+            for tag in preserved
+        ):
+            raise ValueError(face_id.upper() + "_WOFF_ROUNDTRIP_CHANGED_SFNT_TABLES")
+        source_table_hashes = {tag: sha256(source_font.reader[tag]) for tag in preserved}
+        decoded_table_hashes = {tag: sha256(decoded.reader[tag]) for tag in preserved}
+        restored = glyph_inventory(decoded)
+    required = {ord(char) for char in sample if not char.isspace()}
+    if missing := sorted(required.difference(restored["codepoints"])):
+        raise ValueError(face_id.upper() + "_WOFF_MISSING_SCRIPT_CODEPOINTS: " + str(missing))
+    result = {
+        "id": face_id, "format": "woff", "signature": "wOFF", "filename": output.name,
+        "sourceCommit": "06bfe0d62a98375cb09c942fa18e68bd32cff057",
+        "sourceFontGitBlob": face["fontGitBlob"], "sourceLicenseGitBlob": face["licenseGitBlob"],
+        "sourceTtfSha256": face["fontSha256"], "sha256": sha256(contents),
+        "originalBytes": len(original), "encodedBytes": len(contents),
+        "numGlyphs": restored["numGlyphs"], "codepointCount": len(restored["codepoints"]),
+        "layoutTables": restored["layoutTables"], "sourceSfntTables": source_table_hashes,
+        "decodedSfntTables": decoded_table_hashes,
+        "converter": f"fonttools {fontTools.__version__} + zlib",
+        "zlibRuntimeVersion": zlib.ZLIB_RUNTIME_VERSION, "deterministicOnRunner": True,
+        "sourceLicense": face["licenseFilename"], "sourceLicenseSha256": face["licenseSha256"],
+        "probeText": sample,
+    }
+    manifest_output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return result
+
+
 def main() -> None:
-    if len(sys.argv) != 2:
-        raise ValueError("Usage: python scripts/rtl-reference-woff2.py ABSOLUTE_PINNED_FONT_DIRECTORY")
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "--woff1"):
+        raise ValueError("Usage: python scripts/rtl-reference-woff2.py ABSOLUTE_PINNED_FONT_DIRECTORY [--woff1]")
+    woff1 = len(sys.argv) == 3
     folder = Path(sys.argv[1])
     if not folder.is_absolute():
         raise ValueError("Expected absolute input directory")
@@ -123,7 +186,13 @@ def main() -> None:
         matches = [face for face in manifest["faces"] if face["id"] == face_id]
         if len(matches) != 1:
             raise ValueError("PINNED_" + face_id.upper() + "_FACE_MISSING_OR_DUPLICATE")
-        result.append(convert_face(folder, matches[0], sample))
+        if woff1:
+            # The real Studio Persian row shares the Arabic face.
+            if face_id == "arabic":
+                sample += " فارسی پ چ ژ گ ۲۰۶۲"
+            result.append(convert_woff1(folder, matches[0], sample))
+        else:
+            result.append(convert_face(folder, matches[0], sample))
     # Windows Actions Python stdout may be cp1252: native script probe letters cannot
     # be printed directly. JSON ASCII escaping preserves the exact Unicode values
     # when parsed, while keeping stdout portable without changing file manifests.
