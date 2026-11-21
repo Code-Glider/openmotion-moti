@@ -2,7 +2,7 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub]
   pull_request:
     branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
     paths:
@@ -12,6 +12,12 @@ on:
       - 'shared/transcript-captions.ts'
       - 'shared/transcript-tool.ts'
       - 'studio/src/captions/**'
+      - 'studio/src/i18n/**'
+      - 'studio/src/motion/WorkspaceFrame.tsx'
+      - 'studio/src/motion/ApplicationChrome.tsx'
+      - 'studio/src/motion/ApplicationChrome.test.tsx'
+      - 'tests/rtl-navigation-browser.mjs'
+      - 'studio/src/motion/workspace.css'
       - 'studio/src/components/editor/**'
       - 'studio/src/player/**'
       - 'scripts/rtl-font-audit.ts'
@@ -110,6 +116,8 @@ jobs:
         run: |
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
+            studio/src/i18n/I18n.test.tsx \
+            studio/src/motion/ApplicationChrome.test.tsx \
             studio/src/captions/components/captionWordRuns.test.ts \
             studio/src/captions/components/CaptionOverlay.sender.test.tsx \
             studio/src/captions/parser.test.ts \
@@ -120,6 +128,21 @@ jobs:
             studio/src/components/editor/fontAssets.test.ts \
             studio/src/components/editor/fontImport.test.ts \
             studio/src/player/components/TextClipContent.test.ts
+
+      - name: Actual Studio RTL account-menu and sidebar browser regression
+        timeout-minutes: 5
+        env:
+          HYPERFRAMES_BROWSER_PATH: /usr/bin/google-chrome
+          OPENMOTION_TELEMETRY: '0'
+        run: node --experimental-strip-types tests/rtl-navigation-browser.mjs "$RUNNER_TEMP/rtl-navigation"
+      - name: Preserve real Studio RTL navigation screenshots
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-navigation-browser-evidence
+          path: ${{ runner.temp }}/rtl-navigation
+          if-no-files-found: warn
+          retention-days: 14
 
   studio-rtl-export:
     name: Real Studio RTL edit and MP4 parity (${{ matrix.os }})

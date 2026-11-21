@@ -15,6 +15,9 @@
 .motion-sidebar-brand { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 16px; padding-inline: 4px; gap: 10px; }
 .motion-sidebar .motion-brand { border: 0; background: transparent; padding: 0; min-width: 0; gap: 8px; }
 .motion-sidebar .motion-brand-logo { display: block; width: 104px; max-width: 100%; height: auto; }
+/* Only opt-in project navigation mirrors; never mirror editor timelines or transport. */
+.motion-sidebar[dir="rtl"] .motion-sidebar-nav button,
+.motion-sidebar[dir="rtl"] .motion-session { text-align: start; }
 .motion-sidebar-new { height: 38px; margin-bottom: 20px; }
 .motion-sidebar-nav { display: grid; gap: 4px; margin-bottom: 30px; }
 .motion-sidebar-nav button, .motion-session { display: flex; align-items: center; gap: 10px; border: 0; border-radius: var(--motion-radius-step-7); background: transparent; color: var(--motion-muted); text-align: left; cursor: pointer; min-height: 38px; padding: 9px 10px; font-size: var(--motion-text-md); }
