@@ -283,7 +283,7 @@ try {
     }, time);
     assert(layout.unchanged, 'Playback replaced an authored caption text node');
     assert.equal(layout.text, 'שָׁלוֹם السَّلَامُ', 'Playback mutated Unicode caption content');
-    const yellow = color => /250,\\s*204,\\s*21/.test(color);
+    const yellow = color => /250,\s*204,\s*21/.test(color);
     assert.equal(yellow(layout.heColor), time < 0.5, 'Hebrew timed highlight state differs from authored timeline');
     assert.equal(yellow(layout.arColor), time > 0.5, 'Arabic timed highlight state differs from authored timeline');
     const screenshot = path.join(output, 'preview-caption-' + time + '.png');
