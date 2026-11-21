@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { fixture } from './fixtures.ts';
 import { Phase1Service } from '../phase1.ts';
+import { readProjectZip } from '../shared/project-zip.ts';
 import { pluginRoot } from '../hyperframes.ts';
 
 // Uses the actual phase-one version/history boundary, not a mock of the import implementation.
@@ -61,4 +62,23 @@ test('offline WOFF2 project import retains portable font bytes, a neighboring li
   const directory = store.projectDirectoryFor(original.projectId);
   assert.deepEqual(await readFile(path.join(directory, asset.path)), await readFile(fontFile));
   assert.deepEqual(await readFile(path.join(directory, asset.license.path)), await readFile(licensePath));
+  // The actual font bytes and adjacent license must survive an offline ZIP
+  // handoff and reimport into an independent project, not just a local copy.
+  const exported = await service.call('openmotion_project_archive', {
+    action: 'export', requestId: 'woff2-export', projectIds: [original.projectId],
+  });
+  const entries = readProjectZip(await readFile(exported.archivePath));
+  const manifest = JSON.parse(entries.get('openmotion-projects.json')!.toString('utf8'));
+  assert.equal(manifest.projects.length, 1);
+  const archiveRoot = manifest.projects[0].root as string;
+  assert.deepEqual(entries.get(`${archiveRoot}/${asset.path}`), await readFile(fontFile));
+  assert.deepEqual(entries.get(`${archiveRoot}/${asset.license.path}`), await readFile(licensePath));
+  const reimported = await service.call('openmotion_project_archive', {
+    action: 'import', requestId: 'woff2-reimport', sourcePath: exported.archivePath,
+  });
+  const copiedId = reimported.projects[0].projectId;
+  assert.notEqual(copiedId, original.projectId);
+  const copiedDirectory = store.projectDirectoryFor(copiedId);
+  assert.deepEqual(await readFile(path.join(copiedDirectory, asset.path)), await readFile(fontFile));
+  assert.deepEqual(await readFile(path.join(copiedDirectory, asset.license.path)), await readFile(licensePath));
 }, false));

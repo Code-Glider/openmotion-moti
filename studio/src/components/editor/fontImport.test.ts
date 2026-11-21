@@ -51,7 +51,7 @@ it.each(["font/otf", "font/woff", "font/woff2"])(
   },
 );
 
-it.each([null, "text/html", "font/woff2-not-a-font"])(
+it.each([null, "text/html", "font/woff2-not-a-font", "constructor", "toString", "__proto__"])(
   "rejects an unrecognized prepared font type %s before browser validation",
   async (contentType) => {
     const load = vi.fn(async () => ({}));

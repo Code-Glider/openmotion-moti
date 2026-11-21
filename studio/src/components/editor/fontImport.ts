@@ -17,7 +17,8 @@ export async function prepareFontImport(file: File) {
   const metadata = JSON.parse(decodeURIComponent(response.headers.get("X-Font-Metadata") ?? "")) as Pick<ImportedFontAsset, "family" | "weight" | "style">;
   if (!metadata.family || typeof metadata.family !== "string") throw new Error("Font has no family");
   const type = response.headers.get("Content-Type")?.split(";", 1)[0]?.trim().toLowerCase();
-  const extension = type && FONT_TYPES[type];
+  // MIME values must match declared entries, not inherited Object.prototype keys.
+  const extension = type && Object.prototype.hasOwnProperty.call(FONT_TYPES, type) ? FONT_TYPES[type] : undefined;
   if (!extension) throw new Error("Unsupported prepared font format");
   const bytes = await response.arrayBuffer();
   await new FontFace("Motion font validation", bytes).load();
