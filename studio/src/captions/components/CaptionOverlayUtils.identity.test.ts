@@ -84,3 +84,35 @@ it("retains the positional legacy fallback when there are no authored identities
     expect(getWordEl(f.iframe, 0, 1, f.model)).toBe(f.group.children[1]);
   } finally { f.dispose(); }
 });
+
+
+it("preserves a single legacy authored word without a DOM ID, including undo target lookup", () => {
+  const f = authoredFrame([
+    { segmentId: "legacy-0", wordId: "w0", text: "שָׁלוֹם" },
+  ]);
+  try {
+    f.group.innerHTML = '<span class="word" style="transform:rotate(7deg)">שָׁלוֹם</span>';
+    expect(getWordEl(f.iframe, 0, 0, f.model)).toBe(f.group.children[0]);
+    expect(readWordBoxes(f.iframe, f.model, f.overlay).map((box) => box.editable))
+      .toEqual([true]);
+  } finally { f.dispose(); }
+});
+
+it("keeps unique-IDless legacy captions editable but refuses repeated ambiguous unlabelled words", () => {
+  const f = authoredFrame([
+    { segmentId: "s1", wordId: "w1", text: "שלום" },
+    { segmentId: "s2", wordId: "w2", text: "OpenMotion" },
+  ]);
+  try {
+    f.group.innerHTML = '<span class="word">שלום</span> <span class="word">OpenMotion</span>';
+    expect(readWordBoxes(f.iframe, f.model, f.overlay).map((box) => box.editable))
+      .toEqual([true, true]);
+    expect(getWordEl(f.iframe, 0, 1, f.model)).toBe(f.group.children[1]);
+
+    // Text-only identity is no longer enough once two words are identical.
+    f.model.segments.get("s2")!.text = "שלום";
+    f.group.innerHTML = '<span class="word">שלום</span> <span class="word">שלום</span>';
+    expect(readWordBoxes(f.iframe, f.model, f.overlay)).toEqual([]);
+    expect(getWordEl(f.iframe, 0, 0, f.model)).toBeNull();
+  } finally { f.dispose(); }
+});
