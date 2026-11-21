@@ -2,9 +2,9 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs]
+    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -15,6 +15,8 @@ on:
       - 'studio/src/components/editor/**'
       - 'studio/src/player/**'
       - 'scripts/rtl-font-audit.ts'
+      - 'tests/studio-fonts.test.ts'
+      - 'tests/font-import.test.ts'
       - 'tests/text-flow.test.ts'
       - 'tests/rtl-font-audit.test.ts'
   workflow_dispatch:
