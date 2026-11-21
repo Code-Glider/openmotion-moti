@@ -21,6 +21,18 @@ test('prepared font responses retain exact bytes and actual metadata', async () 
   assert.equal(JSON.parse(decodeURIComponent(response.headers.get('x-font-metadata')!)).family, font.family);
 });
 
+test('a pinned WOFF2 project asset survives font preparation and response without byte conversion', async () => {
+  const original = await readFile(new URL('../library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/assets/fonts/Inter-400.woff2', import.meta.url));
+  const font = prepareFont(original, create);
+  assert.equal(font.format, 'woff2');
+  assert.match(font.family, /^Inter$/i);
+  assert.deepEqual(font.data, original);
+  const response = preparedFontResponse(font);
+  assert.equal(response.headers.get('content-type'), 'font/woff2');
+  assert.equal(response.headers.get('content-length'), String(original.length));
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), original);
+});
+
 function collection(...fonts: Buffer[]) {
   let offset = 12 + fonts.length * 4;
   const result = Buffer.alloc(offset + fonts.reduce((size, font) => size + Math.ceil(font.length / 4) * 4, 0));
