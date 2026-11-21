@@ -56,8 +56,8 @@ test('offline WOFF2 project import retains portable font bytes, a neighboring li
   const asset = imported.items[0];
   assert.equal(asset.status, 'completed');
   assert.equal(asset.font.family, 'Inter');
-  assert.match(asset.path, /\\.woff2$/);
-  assert.match(asset.fontFaceCss, /assets\\/fonts\\/[^" ]+\\.woff2/);
+  assert.ok(asset.path.endsWith('.woff2'));
+  assert.ok(asset.fontFaceCss.includes(asset.path));
   const directory = store.projectDirectoryFor(original.projectId);
   assert.deepEqual(await readFile(path.join(directory, asset.path)), await readFile(fontFile));
   assert.deepEqual(await readFile(path.join(directory, asset.license.path)), await readFile(licensePath));
