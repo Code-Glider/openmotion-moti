@@ -48,7 +48,7 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   t.after(() => browser.close());
   const page = await browser.newPage();
   await page.setViewport({ width: 760, height: 520, deviceScaleFactor: 1 });
-  await page.setContent('<!doctype html><html lang="en"><head></head><body style="margin:0">' +
+  await page.setContent('<!doctype html><html lang="en"><head></head><body style="margin:0;background:#111827">' +
     '<div id="captions-container" style="width:640px;height:360px"></div></body></html>');
   await page.addStyleTag({ content: '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
     bytes.toString('base64') + '") format("truetype");font-display:block}.caption-group{font-family:"Pinned Hebrew QA",sans-serif}' });
