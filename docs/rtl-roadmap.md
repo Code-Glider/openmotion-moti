@@ -249,3 +249,7 @@ Use SHA-checked GitHub writes, independent small PRs, real CI and actual browser
 
 ### 2026-11-21 — PR #15 integration preconditions
 - The latest PR #14 head includes the cross-OS deterministic Hebrew WOFF2 conversion fix; retained without modification. The PR #15 source is reviewed separately and must pass fresh focused RTL/standalone CI plus three-OS preview/MP4 checks on its integrated branch before being merged into Phase 4. Full captions editing, RTL localization and mixed-script native IME remain open.
+
+### 2026-11-21 — Phase 2 actual Persian and Urdu Range geometry extension
+- Expanded the existing actual Chromium, production-code read-only `Range` geometry verification from Hebrew/Arabic/Syriac/Ethiopic plus authored words to include **Persian and Urdu**, mixed Latin/numerals and 18 plain-text caption hit targets plus two authored-word spans. Persian uses the pinned Arabic font; Urdu uses its separately Git-pinned, license-hash-verified Noto Sans Arabic face. Exact logical text and original node identities, geometry parity to independent Chromium Range reads, no false transform handles, duplicate-ID/hidden-caption fail-closed behavior and LTR/Ethiopic controls remain unchanged.
+- The new head has **not yet passed** dedicated RTL and full standalone CI; require inspection of fresh real Chromium JSON/screenshots and three-OS MP4 artifacts before checking this off. This tests read-only measurement, not native captions-tool transforms, IME or complete UAX #9 visual editing. Keep the feature branch draft and main unchanged.
