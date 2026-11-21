@@ -40,3 +40,25 @@ test('font import retains the actual face and license, rejects corrupt fonts, de
   assert.deepEqual(await readFile(path.join(directory, font.path)), await readFile(sourcePath));
   assert.equal(await readFile(path.join(directory, font.license.path), 'utf8'), await readFile(licensePath, 'utf8'));
 }, false));
+
+test('offline WOFF2 project import retains portable font bytes, a neighboring license and correct CSS', () => fixture(async store => {
+  const service = new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => ({}) });
+  const original = await service.call('openmotion_create_project', {
+    requestId: 'woff2-project', projectType: 'natural_language', title: 'WOFF2 regression', requirements: 'Editable bilingual captions',
+  });
+  const fontFile = fileURLToPath(new URL('../library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/assets/fonts/Inter-400.woff2', import.meta.url));
+  const licensePath = fileURLToPath(new URL('../library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/assets/fonts/OFL-inter.txt', import.meta.url));
+  const imported = await service.call('openmotion_import_assets', {
+    projectId: original.projectId, requestId: 'woff2-import', items: [{ itemId: 'inter-woff2', sourcePath: fontFile, licensePath }],
+  });
+  assert.equal(imported.status, 'completed');
+  const asset = imported.items[0];
+  assert.equal(asset.status, 'completed');
+  assert.equal(asset.font.family, 'Inter');
+  assert.match(asset.path, /\\.woff2$/);
+  assert.match(asset.fontFaceCss, /assets\\/fonts\\/[^" ]+\\.woff2/);
+  const directory = store.projectDirectoryFor(original.projectId);
+  assert.deepEqual(await readFile(path.join(directory, asset.path)), await readFile(fontFile));
+  assert.deepEqual(await readFile(path.join(directory, asset.license.path)), await readFile(licensePath));
+}, false));
