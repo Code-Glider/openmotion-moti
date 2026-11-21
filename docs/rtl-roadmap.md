@@ -36,10 +36,13 @@ Updated 2026-11-21. This is a tracked engineering checklist, not a claim of fini
 - [ ] Prove visual caret affinity and selection geometry across mixed BiDi boundaries, wraps and IME in actual Chromium. The limited grapheme fix is **not** full UAX #9 caret behavior.
 - [ ] Retain English Studio editing of RTL video and left-to-right media time axis.
 
-## Phase 4 — fonts
-- [ ] Verified and license-pinned Hebrew/Arabic/Persian/Urdu/Syriac fonts and fallback coverage.
-- [ ] Real shaping/mark-position screenshots and TTF, OTF, WOFF, WOFF2 and variable font import/export.
-- [ ] Offline project ZIP and deterministic render verification.
+## Phase 4 — fonts (stacked draft PR #5)
+- [x] Add format-allowlisted Studio prepared-font import (TTF, OTF, WOFF, WOFF2), rejecting missing or unexpected response MIME rather than constructing arbitrary file extensions. Existing server-side font normalization and browser FontFace decoding remain mandatory.
+- [x] Add a repository-checked **real WOFF2** Inter fixture regression through fontkit preparation, normalized response, project asset import, local byte copy, CSS path and adjacent pinned license. Frontend tests cover all four prepared MIME variants and reject unsupported types. Add actual Orbitron-vs-Hebrew/Arabic/Syriac glyph-gap checks; missing glyphs are *reported*, not synthesized.
+- [ ] Validate both dedicated RTL CI and independent standalone CI on PR #5 head (new tests have **not** passed yet). These checks are headless/fontkit tests, **not** visual/script shaping qualification.
+- [ ] Verified and license-pinned Hebrew/Arabic/Persian/Urdu/Syriac fonts and fallback coverage; current Inter/Orbitron fixtures do not cover Semitic scripts.
+- [ ] Real shaping/mark-position screenshots and complete TTF, OTF, WOFF, WOFF2 and variable font import/export on the five target scripts.
+- [ ] Offline project ZIP and deterministic render verification against supplied fonts and licenses.
 
 ## Phase 5 — RTL Studio UI
 - [ ] Hebrew/Arabic interface locale, logical layout, accessibility and responsive verification.
