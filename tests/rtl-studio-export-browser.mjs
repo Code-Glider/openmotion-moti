@@ -156,7 +156,9 @@ try {
   });
   assert(saved.revision, 'Expected versioned editor write');
   const preview = await client.call('openmotion_open_preview', { projectId });
-  ownedPreviewUrl = preview.previewUrl;
+  // Phase-1's previewUrl is a viewer page with a session path/query/hash.
+  // Teardown authenticates the local preview SERVICE origin, not the viewer URL.
+  ownedPreviewUrl = preview.serverUrl || new URL(preview.previewUrl).origin;
   browser = await puppeteer.launch({ executablePath: process.env.HYPERFRAMES_BROWSER_PATH || await browserExecutable(), headless: true });
   page = await browser.newPage();
   page.setDefaultTimeout(40_000);
