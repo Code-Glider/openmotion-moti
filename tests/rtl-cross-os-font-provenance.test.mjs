@@ -77,3 +77,28 @@ test('reject timed MP4 caption pass with no visible selected-word highlight', as
   assert.throws(() => verifyCrossOsFontEvidence(reports),
     /active caption highlight not visible/);
 });
+
+test('reject inactive word highlight contamination above the original browser/MP4 pixel contract', async () => {
+  const reports = await load();
+  const windows = reports['windows-2025'].temporalCaptions[0];
+  // The real source-backed browser test already requires <25; its cross-OS
+  // gate must ALSO reject a tiny stale region that exceeds 2% active ink.
+  windows.browserYellow.ar = 25;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+  windows.browserYellow.ar = 24;
+  windows.browserYellow.he = 500;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+  windows.browserYellow.ar = 0;
+  windows.browserYellow.he = 1197;
+  windows.videoYellow.ar = 25;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong native MP4 highlight/);
+});
+
+test('reject missing and negative inactive pixel counters instead of treating them as zero', async () => {
+  const reports = await load();
+  const row = reports['macos-15'].temporalCaptions[1];
+  delete row.browserYellow.he;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+  row.browserYellow.he = -1;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+});
