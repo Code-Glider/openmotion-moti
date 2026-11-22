@@ -127,6 +127,8 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
     await doc.fonts.ready;
     const model = { segments, groups, groupOrder };
     const overlay = document.getElementById('overlay');
+    // Retain the actual Chromium preview objects for the time-varying ancestor probe below.
+    window.__rtlCaptionRangeEvidence = { iframe, overlay, model, nodeRefs };
     const before = doc.body.innerHTML;
     const first = window.RTLCaptionRanges.readWordBoxes(iframe, model, overlay);
     const second = window.RTLCaptionRanges.readWordBoxes(iframe, model, overlay);
@@ -203,14 +205,104 @@ test('non-destructive RTL caption hit geometry matches Chromium Range and preser
         row.id + ': non-destructive RTL geometry diverged from actual Range ' + key + ': ' + JSON.stringify({ box, row }));
     }
   }
+
+  // Exercise real Chromium frames across caption-parent visibility transitions.
+  // The visible legacy range and the authored DOM spans share a parent, but
+  // neither their logical Unicode nor their selectable identities may change.
+  const visibility = await page.evaluate(async () => {
+    const { iframe, overlay, model, nodeRefs } = window.__rtlCaptionRangeEvidence;
+    const doc = iframe.contentDocument;
+    const legacy = doc.getElementById('rtl-group-hebrew');
+    const authored = doc.getElementById('rtl-group-authored');
+    const originalLegacyText = legacy.textContent;
+    const originalAuthoredText = authored.textContent;
+    const authoredFirstSpan = authored.firstElementChild;
+    const parent = doc.createElement('section');
+    parent.id = 'rtl-caption-visibility-parent';
+    doc.body.append(parent);
+    // Keep the original group, span and text nodes; moving an element is not
+    // recreating a caption, and absolute groups keep the same containing block.
+    parent.append(legacy, authored);
+    const targetGroups = new Set(['hebrew', 'authored']);
+    const nextPaint = () => new Promise(resolve => doc.defaultView.requestAnimationFrame(() => resolve()));
+    const snapshots = [];
+    const capture = (stage, hidden) => {
+      const boxes = window.RTLCaptionRanges.readWordBoxes(iframe, model, overlay);
+      const nodeIdentity = ['hebrew', 'authored'].every(id => {
+        const group = doc.getElementById('rtl-group-' + id);
+        const originals = nodeRefs.get(id);
+        return originals.length === group.childNodes.length &&
+          originals.every((node, index) => group.childNodes[index] === node);
+      });
+      const authoredIndex = model.groupOrder.indexOf('authored');
+      snapshots.push({
+        stage, hidden,
+        targets: boxes.filter(box => targetGroups.has(box.groupId)),
+        otherIds: boxes.filter(box => !targetGroups.has(box.groupId)).map(box => box.segmentId),
+        unchangedUnicode: legacy.textContent === originalLegacyText && authored.textContent === originalAuthoredText,
+        unchangedNodes: nodeIdentity,
+        unchangedAuthoredTarget: window.RTLCaptionRanges.getWordEl(iframe, authoredIndex, 0, model) === authoredFirstSpan,
+        frameTimeMs: Math.round(performance.now()),
+      });
+    };
+    await nextPaint();
+    capture('visible-before', false);
+    const transitions = [
+      ['parent-opacity-zero', () => { parent.style.opacity = '0'; }, () => { parent.style.opacity = ''; }],
+      ['parent-display-none', () => { parent.style.display = 'none'; }, () => { parent.style.display = ''; }],
+      ['parent-visibility-hidden', () => { parent.style.visibility = 'hidden'; }, () => { parent.style.visibility = ''; }],
+      ['parent-hidden', () => { parent.hidden = true; }, () => { parent.hidden = false; }],
+      ['parent-inert', () => { parent.inert = true; }, () => { parent.inert = false; }],
+    ];
+    for (const [name, hide, reveal] of transitions) {
+      hide();
+      await nextPaint();
+      capture(name, true);
+      reveal();
+      await nextPaint();
+      capture(name + '-restored', false);
+    }
+    return { snapshots, parentId: parent.id };
+  });
+  const targetIds = result.first.filter(box => ['hebrew', 'authored'].includes(box.groupId)).map(box => box.segmentId);
+  const unaffectedIds = result.first.filter(box => !['hebrew', 'authored'].includes(box.groupId)).map(box => box.segmentId);
+  assert.equal(targetIds.length, 5, 'Must exercise three Hebrew legacy Range hits and two authored spans');
+  assert.equal(visibility.snapshots.length, 11, 'Missing Chromium hide/reveal frame');
+  for (const state of visibility.snapshots) {
+    assert.equal(state.unchangedUnicode, true, state.stage + ': parent toggle changed authored Unicode');
+    assert.equal(state.unchangedNodes, true, state.stage + ': parent toggle replaced real text/span nodes');
+    assert.equal(state.unchangedAuthoredTarget, true, state.stage + ': authored span identity changed');
+    assert.deepEqual(state.otherIds, unaffectedIds, state.stage + ': other scripts gained or lost hit targets');
+    assert.deepEqual(state.targets.map(box => box.segmentId), state.hidden ? [] : targetIds,
+      state.stage + ': phantom hidden hit target or missing restored word');
+    if (!state.hidden) {
+      for (const box of state.targets) {
+        const original = byId.get(box.segmentId);
+        assert.equal(box.editable, original.editable, state.stage + ': changed transform guard');
+        for (const key of ['x', 'y', 'width', 'height']) {
+          assert(Math.abs(box[key] - original[key]) < 1.5,
+            state.stage + ': restoration moved actual Chromium word ' + box.segmentId + ' ' + key);
+        }
+      }
+    }
+  }
+
   const outputDir = process.env.RTL_CAPTION_ARTIFACT_DIR;
   if (outputDir) {
     await mkdir(outputDir, { recursive: true });
     await page.screenshot({ path: path.join(outputDir, 'rtl-caption-range-chromium.png') });
+    await page.evaluate(() => {
+      document.getElementById('preview').contentDocument.getElementById('rtl-caption-visibility-parent').style.opacity = '0';
+    });
+    await page.screenshot({ path: path.join(outputDir, 'rtl-caption-parent-hidden-chromium.png') });
+    await page.evaluate(() => {
+      document.getElementById('preview').contentDocument.getElementById('rtl-caption-visibility-parent').style.opacity = '';
+    });
+    await page.screenshot({ path: path.join(outputDir, 'rtl-caption-parent-restored-chromium.png') });
     await writeFile(path.join(outputDir, 'rtl-caption-range.json'), JSON.stringify({
       passed: true, browser: await browser.version(), pinnedSource: manifest.sourceCommit,
       measuredBoxes: result.first.length, scripts: cases.map(s => s.lang),
-      result, limitation: 'Actual Chromium non-destructive caption Range geometry; not drag editing, exported MP4, or OS IME.',
+      visibility, result, limitation: 'Actual Chromium caption-parent visibility and non-destructive Range/word identities; not real Studio playback, drag editing, exported MP4, or OS IME.',
     }, null, 2) + '\n');
   }
 });
