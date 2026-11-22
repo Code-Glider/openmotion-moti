@@ -48,9 +48,41 @@ test('refuse nominal success without actual native MP4 or caption-seek evidence'
 test('hash all actual Studio PNGs, browser seek captures and exported MP4 bytes', async () => {
   const evidence = await verifyFromDirectory(dir);
   for (const os of Object.keys(runners)) {
-    assert.equal(Object.keys(evidence.artifactSha256[os]).length, 11);
+    assert.equal(Object.keys(evidence.artifactSha256[os]).length, 14);
     for (const hash of Object.values(evidence.artifactSha256[os])) assert.match(hash, /^[a-f0-9]{64}$/);
   }
+});
+
+test('reject missing hide/reveal states and any invisible caption ink in either renderer', async () => {
+  const reports = await load();
+  const linux = reports['ubuntu-24.04'];
+  const hidden = linux.temporalCaptions[1];
+  const originalBrowserInk = hidden.browserInk;
+  const originalVideoInk = hidden.videoInk;
+  const originalVideoYellow = hidden.videoYellow.he;
+  hidden.browserInk = 25;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /hidden caption browser ink leaked/);
+  hidden.browserInk = originalBrowserInk;
+  hidden.videoInk = 25;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /hidden caption native MP4 ink leaked/);
+  hidden.videoInk = originalVideoInk;
+  hidden.videoYellow.he = 25;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /hidden caption native MP4 ink leaked/);
+  hidden.videoYellow.he = originalVideoYellow;
+  hidden.visible = true;
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /visibility receipt mismatch/);
+  hidden.visible = false;
+  linux.temporalCaptions.splice(3, 1);
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /reverse\/hide\/seek evidence missing/);
+});
+
+test('reject claimed hidden CSS state without actual Studio parent opacity', async () => {
+  const reports = await load();
+  const linux = reports['ubuntu-24.04'];
+  const item = linux.checks.find(check => check.studioSeeks)?.studioSeeks?.[1];
+  assert(item, 'Real current-run Studio hide evidence required');
+  item.parentOpacity = '1';
+  assert.throws(() => verifyCrossOsFontEvidence(reports), /actual Studio caption parent opacity/);
 });
 
 test('reject corrupt PNG evidence even when every JSON report claims pass', async () => {
@@ -97,13 +129,34 @@ test('reject inactive word highlight contamination above the original browser/MP
   assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong native MP4 highlight/);
 });
 
-test('reject missing and negative inactive pixel counters instead of treating them as zero', async () => {
-  const reports = await load();
-  const row = reports['macos-15'].temporalCaptions[1];
-  delete row.browserYellow.he;
-  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
-  row.browserYellow.he = -1;
-  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+test('reject absent and malformed actual pixel counters and ink on visible and hidden frames', async () => {
+  const pristine = await load();
+  // Mutate the actual current-run reports, not a fabricated passing fixture.
+  // Missing counters are rejected *before* the separate highlight/ink limits;
+  // require the exact fail-closed error so an unrelated gate cannot mask this.
+  for (const seekIndex of [0, 1]) {
+    for (const [kind, pixelKey, inkKey] of [
+      ['browser', 'browserYellow', 'browserInk'],
+      ['native MP4', 'videoYellow', 'videoInk'],
+    ]) {
+      const pixelError = new RegExp('macos-15: missing or invalid ' + kind + ' caption pixel counters');
+      const inkError = new RegExp('macos-15: missing or invalid ' + kind + ' caption ink');
+      for (const invalid of [-1, 0.5, '0', null, Number.NaN]) {
+        const badPixels = structuredClone(pristine);
+        badPixels['macos-15'].temporalCaptions[seekIndex][pixelKey].he = invalid;
+        assert.throws(() => verifyCrossOsFontEvidence(badPixels), pixelError);
+        const badInk = structuredClone(pristine);
+        badInk['macos-15'].temporalCaptions[seekIndex][inkKey] = invalid;
+        assert.throws(() => verifyCrossOsFontEvidence(badInk), inkError);
+      }
+      const missingPixel = structuredClone(pristine);
+      delete missingPixel['macos-15'].temporalCaptions[seekIndex][pixelKey].he;
+      assert.throws(() => verifyCrossOsFontEvidence(missingPixel), pixelError);
+      const missingInk = structuredClone(pristine);
+      delete missingInk['macos-15'].temporalCaptions[seekIndex][inkKey];
+      assert.throws(() => verifyCrossOsFontEvidence(missingInk), inkError);
+    }
+  }
 });
 
 test('reject converted non-Hebrew WOFF2 bytes that disagree with imported font receipts', async () => {
@@ -130,7 +183,7 @@ if (woff1Dir) {
     assert.equal(result.passed, true);
     assert.equal(result.format, 'woff');
     for (const os of Object.keys(runners)) {
-      assert.equal(Object.keys(result.artifactSha256[os]).length, 11);
+      assert.equal(Object.keys(result.artifactSha256[os]).length, 14);
       assert.equal(Object.keys(result.woffArchiveSha256[os]).length, 4);
       assert.equal(typeof result.runnerEncodings[os].zlibRuntimeVersion, 'string');
     }

@@ -29,9 +29,11 @@ const pngHeader = Buffer.from([137,80,78,71,13,10,26,10]);
 const mediaNames = [
   'exported-rtl.mp4', 'exported-mp4-frame.png', 'preview-frame.png',
   'studio-before-edit.png', 'studio-after-edit.png',
-  'studio-all-scripts-edited.png', 'studio-after-reverse-seek.png',
-  'preview-caption-seek-0-0.25.png', 'preview-caption-seek-1-0.75.png',
-  'preview-caption-seek-2-0.25.png', 'preview-caption-seek-3-0.75.png',
+  'studio-all-scripts-edited.png', 'studio-caption-parent-hidden.png',
+  'studio-after-reverse-seek.png',
+  'preview-caption-seek-0-0.25.png', 'preview-caption-seek-1-0.45.png',
+  'preview-caption-seek-2-0.75.png', 'preview-caption-seek-3-0.45.png',
+  'preview-caption-seek-4-0.25.png', 'preview-caption-seek-5-0.75.png',
 ];
 
 // Read actual downloaded current-run media, not just self-reported JSON.
@@ -209,42 +211,60 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
         row.meanRgbError <= 22,
         os + ': MP4 color error exceeds acceptance threshold ' + row.script);
     }
-    const times = [0.25, 0.75, 0.25, 0.75];
-    const words = ['he', 'ar', 'he', 'ar'];
+    // Contract must track the actual six-state Studio and decoded-MP4
+    // hide/reveal run. Do not drop the two hidden seek states or treat their
+    // absence as a passing four-state highlight check.
+    const times = [0.25, 0.45, 0.75, 0.45, 0.25, 0.75];
+    const words = ['he', 'he', 'ar', 'he', 'he', 'ar'];
+    const visible = [true, false, true, false, true, true];
     assert.deepEqual(report.temporalCaptions?.map(row => row.time), times,
-      os + ': real timed native caption reverse/seek evidence missing');
+      os + ': real timed native caption reverse/hide/seek evidence missing');
     const studio = report.checks.find(item =>
-      item.name === 'Actual Studio seek control reverses and replays RTL word highlights without mutation')?.studioSeeks;
+      item.name === 'Actual Studio seek hides and restores authored RTL caption parent without mutation')?.studioSeeks;
     assert.deepEqual(studio?.map(row => row.expectedTime), times,
-      os + ': Studio reverse-seek evidence missing');
+      os + ': Studio hide/restore reverse-seek evidence missing');
     for (let i = 0; i < times.length; i++) {
       const row = report.temporalCaptions[i], seek = studio[i];
       const active = words[i], inactive = active === 'he' ? 'ar' : 'he';
       assert.equal(row.seekIndex, i, os + ': timed caption seek index mismatch');
       assert.equal(row.active, active, os + ': wrong active caption after seek');
-      assert(row.browserYellow?.[active] > 90 && row.videoYellow?.[active] > 90,
-        os + ': active caption highlight not visible in browser and MP4');
-      // The real browser pixel analyzer accepts <25 stray yellow pixels in
-      // an inactive caption bounding rect (antialiasing/adjacent glyph edges).
-      // Windows Chrome yielded 14 on a real passed seek while the word's
-      // computed style was inactive. Demand BOTH the renderer's absolute
-      // tolerance and a stricter <2% contamination relative to active ink.
-      // Never accept missing, negative, NaN, or forged non-integer counts.
-      for (const [kind, pixels] of [
-        ['browser', row.browserYellow],
-        ['native MP4', row.videoYellow],
-      ]) {
-        const ghost = pixels?.[inactive], ink = pixels?.[active];
-        assert(Number.isInteger(ghost) && ghost >= 0 && ghost < 25 &&
-          Number.isInteger(ink) && ghost / ink < 0.02,
-          os + ': wrong ' + kind + ' highlight');
-      }
-      assert(Number.isFinite(row.areaDrift) && row.areaDrift >= 0 && row.areaDrift <= 0.35,
-        os + ': timed native caption area drift exceeds acceptance threshold');
+      assert.equal(row.visible, visible[i], os + ': timed caption visibility receipt mismatch');
+      assert.equal(Number(row.parentOpacity) < 0.02, !visible[i],
+        os + ': wrong preview caption parent opacity');
+      assert.equal(Number(seek.parentOpacity) < 0.02, !visible[i],
+        os + ': wrong actual Studio caption parent opacity');
       assert.equal(seek.seekIndex, i, os + ': Studio seek index mismatch');
       assert.equal(seek.unchangedNodes, true, os + ': seek mutated authored caption DOM');
       assert(Math.abs(seek.actualTime - times[i]) <= 0.02,
         os + ': Studio seek time did not match slider request');
+      for (const [kind, pixels, ink] of [
+        ['browser', row.browserYellow, row.browserInk],
+        ['native MP4', row.videoYellow, row.videoInk],
+      ]) {
+        assert(['he', 'ar'].every(lang => Number.isInteger(pixels?.[lang]) && pixels[lang] >= 0),
+          os + ': missing or invalid ' + kind + ' caption pixel counters');
+        assert(Number.isInteger(ink) && ink >= 0, os + ': missing or invalid ' + kind + ' caption ink');
+        if (!visible[i]) {
+          // A styled yellow word can still be invisible because its parent
+          // is transparent. Verify actual sampled pixels, not just CSS.
+          assert(pixels.he < 25 && pixels.ar < 25 && ink < 25,
+            os + ': hidden caption ' + kind + ' ink leaked into decoded pixels');
+        } else {
+          assert(ink > 90 && pixels[active] > 90,
+            os + ': active caption highlight not visible in ' + kind);
+          const ghost = pixels[inactive];
+          // Preserve BOTH strict absolute and relative ghost thresholds.
+          assert(ghost < 25 && ghost / pixels[active] < 0.02,
+            os + ': wrong ' + kind + ' highlight');
+        }
+      }
+      if (!visible[i]) {
+        assert.equal(row.areaDrift, null,
+          os + ': hidden caption must not claim measured visible area parity');
+      } else {
+        assert(Number.isFinite(row.areaDrift) && row.areaDrift >= 0 && row.areaDrift <= 0.35,
+          os + ': timed native caption area drift exceeds acceptance threshold');
+      }
     }
     assert.equal(report.cleanup?.errors?.length, 0, os + ': test cleanup failures');
   }
