@@ -48,7 +48,7 @@ test('refuse nominal success without actual native MP4 or caption-seek evidence'
 test('hash all actual Studio PNGs, browser seek captures and exported MP4 bytes', async () => {
   const evidence = await verifyFromDirectory(dir);
   for (const os of Object.keys(runners)) {
-    assert.equal(Object.keys(evidence.artifactSha256[os]).length, 14);
+    assert.equal(Object.keys(evidence.artifactSha256[os]).length, 16);
     for (const hash of Object.values(evidence.artifactSha256[os])) assert.match(hash, /^[a-f0-9]{64}$/);
   }
 });
@@ -74,6 +74,37 @@ test('reject missing hide/reveal states and any invisible caption ink in either 
   hidden.visible = false;
   linux.temporalCaptions.splice(3, 1);
   assert.throws(() => verifyCrossOsFontEvidence(reports), /reverse\/hide\/seek evidence missing/);
+});
+
+test('reject missing, reordered or forged real Studio playback transport evidence', async () => {
+  const original = await load();
+  const withoutPlay = structuredClone(original);
+  delete withoutPlay['ubuntu-24.04'].livePlayback;
+  assert.throws(() => verifyCrossOsFontEvidence(withoutPlay),
+    /real Studio transport evidence differs/);
+  const missing = structuredClone(original);
+  missing['ubuntu-24.04'].livePlayback.phases.pop();
+  missing['ubuntu-24.04'].checks.find(check => check.pauseClockDrift != null).phases.pop();
+  assert.throws(() => verifyCrossOsFontEvidence(missing),
+    /real Play\/Pause\/Resume caption state sequence missing/);
+  for (const field of ['unchangedNodes', 'text', 'parentOpacity', 'timelineTime']) {
+    const forged = structuredClone(original);
+    const item = forged['macos-15'].livePlayback.phases[1];
+    const receipt = forged['macos-15'].checks.find(check => check.pauseClockDrift != null).phases[1];
+    const bad = field === 'text' ? 'NOT ORIGINAL' : field === 'unchangedNodes' ? false : 10;
+    item[field] = receipt[field] = bad;
+    const errors = {
+      unchangedNodes: /live transport replaced authored caption nodes/,
+      text: /live transport mutated exact logical Unicode/,
+      parentOpacity: /real transport parent opacity/,
+      timelineTime: /slider and playback composition clock disagree/,
+    };
+    assert.throws(() => verifyCrossOsFontEvidence(forged), errors[field]);
+  }
+  const moving = structuredClone(original);
+  moving['windows-2025'].livePlayback.pauseClockDrift = 0.1;
+  moving['windows-2025'].checks.find(check => check.pauseClockDrift != null).pauseClockDrift = 0.1;
+  assert.throws(() => verifyCrossOsFontEvidence(moving), /Pause did not hold its clock/);
 });
 
 test('reject claimed hidden CSS state without actual Studio parent opacity', async () => {
@@ -183,7 +214,7 @@ if (woff1Dir) {
     assert.equal(result.passed, true);
     assert.equal(result.format, 'woff');
     for (const os of Object.keys(runners)) {
-      assert.equal(Object.keys(result.artifactSha256[os]).length, 14);
+      assert.equal(Object.keys(result.artifactSha256[os]).length, 16);
       assert.equal(Object.keys(result.woffArchiveSha256[os]).length, 4);
       assert.equal(typeof result.runnerEncodings[os].zlibRuntimeVersion, 'string');
     }
