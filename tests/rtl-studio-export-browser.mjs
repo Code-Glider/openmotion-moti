@@ -123,6 +123,46 @@ async function findStudioFrame(page, copy) {
   }
   throw new Error('Real Studio player iframe did not render expected text');
 }
+// Wait for the actual live inspector input to commit its controlled React
+// value before blurring. A CDP insertText acknowledgement alone is not proof
+// that Studio accepted the edit: on Windows the selected textarea can rerender
+// between timeline selection and an immediately asserted value. Do not retry
+// failed inserts or inject DOM events; a dropped user input stays a red gate.
+async function replaceStudioInspectorText(page, field, before, after, script) {
+  // Click the real input, not just a stale ElementHandle.focus() call. This
+  // uses the same focus path as a person selecting the inspector field.
+  await field.click();
+  const selected = await field.evaluate(element => {
+    assertActiveInput(element);
+    element.setSelectionRange(0, element.value.length);
+    return { value: element.value, start: element.selectionStart, end: element.selectionEnd, length: element.value.length };
+    function assertActiveInput(el) {
+      if (!el.isConnected || document.activeElement !== el) throw new Error('Inspector input is not the active connected textarea');
+    }
+  });
+  assert.equal(selected.value, before, script + ': inspector targets wrong Unicode text');
+  assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
+  await page.keyboard.sendCharacter(after);
+  // The input is React-controlled. Chrome can deliver input before React has
+  // committed value/selection to the inspector (notably on Windows). Require
+  // the LIVE focused textarea to show the exact full logical string.
+  try {
+    await page.waitForFunction(expected =>
+      Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+        .some(element => element.isConnected && document.activeElement === element && element.value === expected),
+    { timeout: 8_000 }, after);
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      activeTag: document.activeElement?.tagName,
+      activeValue: document.activeElement?.value,
+      visibleTextareas: Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+        .map(element => ({ value: element.value, connected: element.isConnected,
+          focused: document.activeElement === element })),
+    }));
+    throw new Error(script + ': Studio rejected or reverted the actual Unicode input: ' + JSON.stringify(state), { cause: error });
+  }
+}
+
 // The Windows end-to-end gate can finish every browser/MP4 assertion and
 // still stall on an owned child-process shutdown. Bound only teardown, keep
 // every rendering/source assertion, and report what actually needed recovery.
@@ -281,20 +321,9 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-flat-group-open="true"]')?.textContent?.includes('Font'));
   const field = await page.waitForSelector('[data-flat-group-open="true"] textarea');
   assert(field, 'Expected source-backed real Studio Content editor');
-  await field.focus();
-  // Select via the real textarea selection API, not an OS-dependent keyboard
-  // shortcut. This gate tests Unicode text replacement and MP4 parity; native
-  // Select All / caret affinity needs its own independent interaction gate.
-  const sourceBefore = await field.evaluate(element => element.value);
-  assert.equal(sourceBefore, originalHebrew, 'Wrong selected Studio Content field');
-  const selected = await field.evaluate(element => {
-    element.setSelectionRange(0, element.value.length);
-    return { start: element.selectionStart, end: element.selectionEnd, length: element.value.length };
-  });
-  assert.deepEqual([selected.start, selected.end], [0, selected.length], 'Content selection did not span the logical source');
-  // Puppeteer's supported CDP text insertion emits actual input events.
-  await page.keyboard.sendCharacter(editedHebrew);
-  assert.equal(await field.evaluate(element => element.value), editedHebrew, 'Content input did not fully replace logical source');
+  // Select the full logical value, not visual order; the keyboard Select All
+  // and caret-affinity behavior is separately gated in Chromium.
+  await replaceStudioInspectorText(page, field, originalHebrew, editedHebrew, 'hebrew');
   await page.keyboard.press('Tab');
   let edited = false, conflictingReads = 0;
   for (let attempt = 0; attempt < 80; attempt++) {
@@ -345,14 +374,7 @@ try {
       if (await node.evaluate(el => el.value) === oldCopy) { contentField = node; break; }
     }
     assert(contentField, 'Real Studio Content inspector did not target ' + id);
-    await contentField.focus();
-    const chosen = await contentField.evaluate(el => {
-      el.setSelectionRange(0, el.value.length);
-      return [el.selectionStart, el.selectionEnd, el.value.length];
-    });
-    assert.deepEqual(chosen, [0, chosen[2], chosen[2]], id + ' logical selection wrong');
-    await page.keyboard.sendCharacter(nextCopy);
-    assert.equal(await contentField.evaluate(el => el.value), nextCopy, id + ' UI did not type Unicode');
+    await replaceStudioInspectorText(page, contentField, oldCopy, nextCopy, id);
     await page.keyboard.press('Tab');
     let persisted = false;
     for (let attempt = 0; attempt < 80; attempt++) {
