@@ -585,14 +585,44 @@ try {
   // pixel-parity checks below. Slow the REAL Studio transport with its public
   // speed menu, so a three-OS runner can observe both timed boundaries without
   // injecting time into React, a player store, or the authored timeline.
-  await page.locator('button[aria-label="Playback speed"]').click();
-  await page.locator('[role="menuitemradio"]')
-    .filter(element => element.textContent?.trim() === '0.25x')
-    .setTimeout(10_000)
-    .click();
-  await page.waitForFunction(() =>
-    document.querySelector('button[aria-label="Playback speed"]')?.textContent?.includes('0.25x'),
-  { timeout: 10_000 });
+  // The Base UI speed popup can render an unselected 1x option while
+  // Puppeteer's filtered Locator.click waits indefinitely for it to become
+  // actionable. In the original three-OS failure a real Studio screenshot
+  // showed the 1x row plainly visible beneath the selected 0.25x row.
+  // Resolve exactly one visible, enabled, unobstructed radio from the LIVE DOM,
+  // then use a real Chromium mouse click (never dispatch synthetic events).
+  async function chooseActualStudioSpeed(rate) {
+    const label = `${rate}x`;
+    await page.locator('button[aria-label="Playback speed"]').click();
+    await page.waitForFunction(wanted =>
+      [...document.querySelectorAll('[role="menuitemradio"]')]
+        .some(row => row.textContent?.trim() === wanted),
+    { timeout: 10_000 }, label);
+    const target = await page.evaluate(wanted => {
+      const rows = [...document.querySelectorAll('[role="menuitemradio"]')]
+        .filter(row => row.textContent?.trim() === wanted);
+      if (rows.length !== 1) return { matches: rows.length };
+      const row = rows[0];
+      const bounds = row.getBoundingClientRect();
+      const x = bounds.left + bounds.width / 2;
+      const y = bounds.top + bounds.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return {
+        matches: rows.length, x, y,
+        rendered: bounds.width > 0 && bounds.height > 0,
+        enabled: row.getAttribute('aria-disabled') !== 'true',
+        unobstructed: Boolean(hit && row.contains(hit)),
+      };
+    }, label);
+    assert.equal(target.matches, 1, 'Ambiguous real Studio speed-menu radio: ' + label);
+    assert(target.rendered && target.enabled && target.unobstructed,
+      'Real Studio speed option is hidden, disabled or obstructed: ' + JSON.stringify({ label, target }));
+    await page.mouse.click(target.x, target.y);
+    await page.waitForFunction(wanted =>
+      document.querySelector('button[aria-label="Playback speed"]')?.textContent?.trim() === wanted,
+    { timeout: 10_000 }, label);
+  }
+  await chooseActualStudioSpeed(0.25);
   const playbackSelector = 'button[data-studio-control="playback"]:not(:disabled)';
   const sliderBounds = await seekInput.boundingBox();
   assert(sliderBounds && sliderBounds.width > 150 && sliderBounds.height > 0,
@@ -696,13 +726,7 @@ try {
   'Real Studio transport did not observe both caption visibility boundaries');
   // The user-facing speed preference must not leak from a test into subsequent
   // checks or mask a transport-duration discrepancy.
-  await page.locator('button[aria-label="Playback speed"]').click();
-  await page.locator('[role="menuitemradio"]')
-    .filter(element => element.textContent?.trim() === '1x')
-    .click();
-  await page.waitForFunction(() =>
-    document.querySelector('button[aria-label="Playback speed"]')?.textContent?.trim() === '1x',
-  { timeout: 10_000 });
+  await chooseActualStudioSpeed(1);
   evidence.livePlayback = { phases: livePlaybackPhases, pauseClockDrift: Math.abs(frozenAfter - frozenAt) };
   assertStep('Real Studio Play Pause Resume crosses RTL caption hide and restore with intact authored nodes',
     evidence.livePlayback);
