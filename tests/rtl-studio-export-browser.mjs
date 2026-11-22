@@ -124,29 +124,33 @@ async function findStudioFrame(page, copy) {
   }
   throw new Error('Real Studio player iframe did not render expected text');
 }
-// Wait for the actual live inspector input to commit its controlled React
-// value before blurring. A CDP insertText acknowledgement alone is not proof
-// that Studio accepted the edit: on Windows the selected textarea can rerender
-// between timeline selection and an immediately asserted value. Do not retry
-// failed inserts or inject DOM events; a dropped user input stays a red gate.
-async function replaceStudioInspectorText(page, field, before, after, script) {
-  // Click the real input, not just a stale ElementHandle.focus() call. This
-  // uses the same focus path as a person selecting the inspector field.
-  await field.click();
-  const selected = await field.evaluate(element => {
-    assertActiveInput(element);
+// The selected Studio Content inspector is React-controlled. A previously
+// captured ElementHandle can be detached when the timeline/inspector rerenders
+// after a real click (macOS 45008326986). Puppeteer's Locator re-resolves the
+// live textarea before clicking, so a pre-input detach can safely recover
+// WITHOUT retrying a rejected character insertion or mutating DOM values.
+async function replaceStudioInspectorText(page, before, after, script) {
+  await page.locator('[data-flat-group-open="true"] textarea')
+    .filter(element => element.isConnected)
+    .setTimeout(15_000)
+    .click();
+  // Read the DOM's currently active element, never the transient ElementHandle
+  // returned by an earlier query. Reject wrong-clip focus or stale data.
+  const selected = await page.evaluate(() => {
+    const element = document.activeElement;
+    if (!(element instanceof HTMLTextAreaElement) || !element.isConnected ||
+        !element.closest('[data-flat-group-open="true"]')) {
+      throw new Error('Inspector input is not the active connected textarea');
+    }
     element.setSelectionRange(0, element.value.length);
     return { value: element.value, start: element.selectionStart, end: element.selectionEnd, length: element.value.length };
-    function assertActiveInput(el) {
-      if (!el.isConnected || document.activeElement !== el) throw new Error('Inspector input is not the active connected textarea');
-    }
   });
   assert.equal(selected.value, before, script + ': inspector targets wrong Unicode text');
   assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
   await page.keyboard.sendCharacter(after);
-  // The input is React-controlled. Chrome can deliver input before React has
-  // committed value/selection to the inspector (notably on Windows). Require
-  // the LIVE focused textarea to show the exact full logical string.
+  // A CDP insertText acknowledgement alone is not proof that React accepted
+  // the edit. Wait for the LIVE focused textarea to show the exact logical
+  // Unicode string; if the user input was dropped this remains a hard failure.
   try {
     await page.waitForFunction(expected =>
       Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
@@ -320,11 +324,10 @@ try {
   });
   await page.click('button[aria-label^="Label,"]');
   await page.waitForFunction(() => document.querySelector('[data-flat-group-open="true"]')?.textContent?.includes('Font'));
-  const field = await page.waitForSelector('[data-flat-group-open="true"] textarea');
-  assert(field, 'Expected source-backed real Studio Content editor');
-  // Select the full logical value, not visual order; the keyboard Select All
-  // and caret-affinity behavior is separately gated in Chromium.
-  await replaceStudioInspectorText(page, field, originalHebrew, editedHebrew, 'hebrew');
+  // Locate the live controlled field by its exact Unicode string. Locator
+  // click retries pre-input detachment, never a failed text edit.
+  // The full logical selection and caret-affinity remain separately gated.
+  await replaceStudioInspectorText(page, originalHebrew, editedHebrew, 'hebrew');
   await page.keyboard.press('Tab');
   let edited = false, conflictingReads = 0;
   for (let attempt = 0; attempt < 80; attempt++) {
@@ -361,21 +364,14 @@ try {
     const sample = samples.find(row => row.id === id);
     assert(sample, 'Unknown script edit ' + id);
     const oldCopy = sample.copy;
-    let clip;
-    for (const node of await page.$$('button[aria-label]')) {
-      const label = await node.evaluate(element => element.getAttribute('aria-label'));
-      if (label?.toLowerCase().startsWith(id.toLowerCase() + ',')) { clip = node; break; }
-    }
-    assert(clip, 'Cannot select actual timeline clip: ' + id);
-    await clip.click();
+    // Clip and inspector can rerender when selection changes. Use live
+    // selectors for both actual UI clicks instead of collecting handles.
+    await page.locator('button[aria-label^="' + id + '," i]')
+      .setTimeout(30_000)
+      .click();
     await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
-      .some(el => el.value === expected), { timeout: 30_000 }, oldCopy);
-    let contentField;
-    for (const node of await page.$$('[data-flat-group-open="true"] textarea')) {
-      if (await node.evaluate(el => el.value) === oldCopy) { contentField = node; break; }
-    }
-    assert(contentField, 'Real Studio Content inspector did not target ' + id);
-    await replaceStudioInspectorText(page, contentField, oldCopy, nextCopy, id);
+      .some(el => el.isConnected && el.value === expected), { timeout: 30_000 }, oldCopy);
+    await replaceStudioInspectorText(page, oldCopy, nextCopy, id);
     await page.keyboard.press('Tab');
     let persisted = false;
     for (let attempt = 0; attempt < 80; attempt++) {
