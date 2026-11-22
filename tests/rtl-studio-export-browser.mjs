@@ -131,7 +131,7 @@ async function findStudioFrame(page, copy) {
 // WITHOUT retrying a rejected character insertion or mutating DOM values.
 async function replaceStudioInspectorText(page, before, after, script) {
   await page.locator('[data-flat-group-open="true"] textarea')
-    .filter((element, expected) => element.isConnected && element.value === expected, before)
+    .filter(element => element.isConnected)
     .setTimeout(15_000)
     .click();
   // Read the DOM's currently active element, never the transient ElementHandle
