@@ -392,7 +392,7 @@ try {
         .some(el => el.isConnected && el.value === expected), { timeout: 30_000 }, oldCopy);
     } catch (error) {
       const observed = await page.evaluate(() => ({
-        selectedGroup: document.body.textContent?.match(/\\d+ elements selected/)?.[0] ?? null,
+        selectedGroup: document.body.textContent?.match(/[0-9]+ elements selected/)?.[0] ?? null,
         connectedInspectorValues: Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
           .filter(el => el.isConnected).map(el => el.value),
       }));
