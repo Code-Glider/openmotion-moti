@@ -419,11 +419,25 @@ try {
     'History shortcut focus missed the selected timeline clip');
   const historyModifier = process.platform === 'darwin' ? 'Meta' : 'Control';
   const historySteps = [];
-  for (const [direction, shortcut, wanted, rejected] of [
-    ['undo', 'z', 'ܫܠܡܐ ܒܪܝܟܐ', 'ܒܪܝܟܐ ܫܠܡܐ'],
-    ['redo', 'Shift+z', 'ܒܪܝܟܐ ܫܠܡܐ', 'ܫܠܡܐ ܒܪܝܟܐ'],
+  for (const [direction, wanted, rejected] of [
+    ['undo', 'ܫܠܡܐ ܒܪܝܟܐ', 'ܒܪܝܟܐ ܫܠܡܐ'],
+    ['redo', 'ܒܪܝܟܐ ܫܠܡܐ', 'ܫܠܡܐ ܒܪܝܟܐ'],
   ]) {
-    await page.keyboard.press(historyModifier + '+' + shortcut);
+    // Puppeteer's Keyboard.press() accepts one key, not a compound
+    // "Control+z"/"Meta+z" name. Dispatch the real modifier keydown,
+    // physical Z press/release, then modifier keyup as browser input.
+    // Keep focus on the timeline button; do not call history APIs.
+    const heldKeys = [historyModifier, ...(direction === 'redo' ? ['Shift'] : [])];
+    const pressedKeys = [];
+    try {
+      for (const key of heldKeys) {
+        await page.keyboard.down(key);
+        pressedKeys.push(key);
+      }
+      await page.keyboard.press('z');
+    } finally {
+      for (const key of pressedKeys.reverse()) await page.keyboard.up(key);
+    }
     let persisted = false;
     for (let attempt = 0; attempt < 100; attempt++) {
       try { current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } }); }
