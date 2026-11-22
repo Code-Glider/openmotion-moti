@@ -651,7 +651,8 @@ try {
     } else {
       priorSeekStates.set(time, seekState);
     }
-    timedPreviews.push({ seekIndex, time, screenshot, layout, browserYellow: seekState.browserYellow });
+    timedPreviews.push({ seekIndex, time, screenshot, layout,
+      browserYellow: seekState.browserYellow, browserInk: seekState.browserInk });
   }
   await direct.close();
   if (woff1) {
@@ -712,7 +713,7 @@ try {
     }
     temporal.push({ seekIndex: capture.seekIndex, time: capture.time, visible: capture.time !== 0.45,
       parentOpacity: capture.layout.parentOpacity, active, browserYellow: capture.browserYellow,
-      browserInk: capture.layout.parentOpacity === '0' ? 0 : undefined, videoInk,
+      browserInk: capture.browserInk, videoInk,
       videoYellow, areaDrift: drift });
   }
   assertStep('Timed RTL caption parent hide/restore and per-word highlights match decoded MP4 on repeated seeks', { temporal });
