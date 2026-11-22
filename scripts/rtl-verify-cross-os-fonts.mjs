@@ -31,6 +31,8 @@ const mediaNames = [
   'studio-before-edit.png', 'studio-after-edit.png',
   'studio-all-scripts-edited.png', 'studio-caption-parent-hidden.png',
   'studio-after-reverse-seek.png',
+  'studio-caption-playback-paused-hidden.png',
+  'studio-caption-playback-paused-restored.png',
   'preview-caption-seek-0-0.25.png', 'preview-caption-seek-1-0.45.png',
   'preview-caption-seek-2-0.75.png', 'preview-caption-seek-3-0.45.png',
   'preview-caption-seek-4-0.25.png', 'preview-caption-seek-5-0.75.png',
@@ -266,6 +268,40 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
           os + ': timed native caption area drift exceeds acceptance threshold');
       }
     }
+    // Live Studio transport is separate from six externally sought static
+    // frames: the physical Play/Pause/Resume button and clock must cross the
+    // same visibility boundaries without replacing authored Hebrew/Arabic nodes.
+    const live = report.checks.find(item => item.name ===
+      'Real Studio Play Pause Resume crosses RTL caption hide and restore with intact authored nodes');
+    assert.deepEqual(report.livePlayback, live && {
+      phases: live.phases, pauseClockDrift: live.pauseClockDrift,
+    }, os + ': real Studio transport evidence differs from source receipt');
+    const phases = live?.phases;
+    assert.deepEqual(phases?.map(row => row.phase),
+      ['hebrew-playing', 'hidden-paused', 'arabic-paused'],
+      os + ': real Play/Pause/Resume caption state sequence missing');
+    assert.deepEqual(phases.map(row => row.playing), [true, false, false],
+      os + ': real Studio transport state was not observed');
+    assert.deepEqual(phases.map(row => row.visible), [true, false, true],
+      os + ': real Studio transport caption hide/reveal is incomplete');
+    const limits = [[0.18, 0.35], [0.35, 0.65], [0.65, 1.02]];
+    for (let i = 0; i < phases.length; i++) {
+      const row = phases[i];
+      assert(Number.isFinite(row.actualTime) && row.actualTime >= limits[i][0] &&
+        row.actualTime < limits[i][1], os + ': real transport time outside caption interval');
+      assert(Number.isFinite(row.timelineTime) &&
+        Math.abs(row.timelineTime - row.actualTime) <= 0.12,
+        os + ': Studio slider and playback composition clock disagree');
+      assert.equal(row.unchangedNodes, true, os + ': live transport replaced authored caption nodes');
+      assert.equal(row.text, 'שָׁלוֹם السَّلَامُ',
+        os + ': live transport mutated exact logical Unicode');
+      assert(Number.isFinite(row.parentOpacity) &&
+        (row.parentOpacity < 0.02) === !row.visible,
+        os + ': real transport parent opacity does not match observed visibility');
+    }
+    assert(Number.isFinite(live.pauseClockDrift) &&
+      live.pauseClockDrift >= 0 && live.pauseClockDrift < 0.025,
+      os + ': live Studio Pause did not hold its clock');
     assert.equal(report.cleanup?.errors?.length, 0, os + ': test cleanup failures');
   }
   if (woff1) {
