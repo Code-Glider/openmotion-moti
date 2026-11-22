@@ -2,7 +2,7 @@ import { Button } from "open-design-ui/button";
 import { OverflowText } from "../ui/OverflowText";
 import { FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
-import { useEffect, useRef, useState, type ChangeEvent, type CompositionEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type CompositionEvent, type FocusEvent } from "react";
 import { Plus, Type } from "../../icons/SystemIcons";
 import { isTextEditableSelection, type DomEditSelection } from "./domEditing";
 import type { ImportedFontAsset, FontImportInput } from "./fontAssets";
@@ -165,7 +165,7 @@ export function TextAreaField({
       scheduleCommit(latestDraftRef.current);
     }
   };
-  const handleBlur = () => {
+  const handleBlur = (event: FocusEvent<HTMLTextAreaElement>) => {
     focusedRef.current = false;
     if (composingRef.current) {
       // Chromium can blur before compositionend on focus changes; the
@@ -173,7 +173,14 @@ export function TextAreaField({
       blurPendingRef.current = true;
       return;
     }
-    commitDraft(latestDraftRef.current);
+    // The browser's live textarea is authoritative on blur. In particular,
+    // an input/selection change delivered in the same task as Tab can reach
+    // the DOM before React's onChange updates latestDraftRef. Otherwise the
+    // inspector displays the new Unicode string but quietly saves the old one.
+    const liveValue = event.currentTarget.value;
+    latestDraftRef.current = liveValue;
+    if (draft !== liveValue) setDraft(liveValue);
+    commitDraft(liveValue);
   };
 
   if (flat) {
