@@ -677,6 +677,11 @@ try {
   assert(typeof archive.archivePath === 'string' && archive.archivePath,
     'Offline export did not return an archive path');
   const archiveBytes = await readFile(archive.archivePath);
+  // Reimport the exact persisted evidence file, not a second unretained ZIP.
+  const retainedArchive = path.join(output, 'offline-project.zip');
+  await copyFile(archive.archivePath, retainedArchive);
+  assert.equal(sha256(await readFile(retainedArchive)), sha256(archiveBytes),
+    'Retained offline ZIP differs from native project export');
   const entries = readProjectZip(archiveBytes);
   const manifestEntry = entries.get('openmotion-projects.json');
   assert(manifestEntry, 'Offline export missing project manifest');
@@ -708,7 +713,7 @@ try {
     }
   }
   const restored = await client.call('openmotion_project_archive', {
-    action: 'import', requestId: 'rtl-offline-archive-import', sourcePath: archive.archivePath,
+    action: 'import', requestId: 'rtl-offline-archive-import', sourcePath: retainedArchive,
   });
   assert.equal(restored.projects.length, 1, 'Offline reimport did not restore exactly one project');
   const restoredId = restored.projects[0].projectId;
@@ -740,10 +745,8 @@ try {
     'Archive round-trip changed the original authored project');
   // Preserve the actual generated offline project archive for independent
   // review. Previous runner artifacts retained receipts, but not ZIP bytes.
-  const retainedArchive = path.join(output, 'offline-project.zip');
-  await copyFile(archive.archivePath, retainedArchive);
   assert.equal(sha256(await readFile(retainedArchive)), sha256(archiveBytes),
-    'Retained offline ZIP differs from the exact archive accepted by the native importer');
+    'Offline ZIP bytes changed during native project reimport');
   evidence.offlineArchive = {
     filename: 'offline-project.zip', sha256: sha256(archiveBytes), bytes: archiveBytes.length,
   };
