@@ -383,15 +383,34 @@ try {
   // disable linked selection through the REAL toolbar, still Alt-click the
   // requested clip, and require exactly one selected clip and exact Unicode
   // before any input. Restore the user's prior toolbar preference afterward.
+  // The embedded MVP intentionally has no toggle and forces linked
+  // selection off. Assert the actual subscribed Studio preference in both
+  // shell modes; a missing full-Studio button or an enabled MVP must fail.
+  const linkedSelectionToolbar = '.motion-timeline-toolbar[data-linked-selection-mode]';
   const linkedSelectionButton = 'button[aria-label="Linked Selection"]';
-  const linkedSelectionInitiallyOn = await page.$eval(linkedSelectionButton,
-    element => element.getAttribute('aria-pressed') === 'true');
-  if (linkedSelectionInitiallyOn) {
-    await page.locator(linkedSelectionButton).setTimeout(15_000).click();
+  const linkedSelectionMode = await page.$eval(linkedSelectionToolbar,
+    element => element.getAttribute('data-linked-selection-mode'));
+  assert(['host-locked', 'user-toggle'].includes(linkedSelectionMode),
+    'Studio did not expose a recognized linked-selection UI mode');
+  const linkedSelectionControlCount = await page.evaluate(
+    selector => document.querySelectorAll(selector).length, linkedSelectionButton);
+  assert.equal(linkedSelectionControlCount, linkedSelectionMode === 'user-toggle' ? 1 : 0,
+    'Actual Studio linked-selection control visibility disagrees with its host mode');
+  let linkedSelectionInitiallyOn = false;
+  if (linkedSelectionMode === 'user-toggle') {
+    linkedSelectionInitiallyOn = await page.$eval(linkedSelectionButton,
+      element => element.getAttribute('aria-pressed') === 'true');
+    if (linkedSelectionInitiallyOn) {
+      await page.locator(linkedSelectionButton).setTimeout(15_000).click();
+    }
   }
-  await page.waitForFunction(selector =>
-    document.querySelector(selector)?.getAttribute('aria-pressed') === 'false',
-  { timeout: 10_000 }, linkedSelectionButton);
+  await page.waitForFunction(selector => {
+    const toolbar = document.querySelector('.motion-timeline-toolbar[data-linked-selection-mode]');
+    const button = document.querySelector(selector);
+    return toolbar?.getAttribute('data-linked-selection-state') === 'off'
+      && (button ? button.getAttribute('aria-pressed') === 'false'
+        : toolbar.getAttribute('data-linked-selection-mode') === 'host-locked');
+  }, { timeout: 10_000 }, linkedSelectionButton);
   const scriptEdits = [];
   for (const [id, nextCopy] of [
     ['arabic', 'السَّلَامُ OpenMotion 52%'],
@@ -548,8 +567,13 @@ try {
   if (linkedSelectionInitiallyOn) {
     await page.locator(linkedSelectionButton).setTimeout(15_000).click();
     await page.waitForFunction(selector =>
-      document.querySelector(selector)?.getAttribute('aria-pressed') === 'true',
+      document.querySelector(selector)?.getAttribute('aria-pressed') === 'true'
+        && document.querySelector('.motion-timeline-toolbar')?.getAttribute('data-linked-selection-state') === 'on',
     { timeout: 10_000 }, linkedSelectionButton);
+  } else {
+    assert.equal(await page.$eval(linkedSelectionToolbar,
+      element => element.getAttribute('data-linked-selection-state')), 'off',
+      'Studio linked selection drifted on during multi-script edits');
   }
   // Qualify the actual Studio transport, not only the raw composition's
   // GSAP timeline. Pointer-seek forwards, backwards, then repeat: a player
