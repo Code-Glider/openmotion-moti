@@ -110,6 +110,18 @@ function captionInkPixels(rgb) {
   }
   return pixels;
 }
+// Measure painted highlight position in both the real Chromium screenshot and
+// independently decoded native MP4; CSS transforms alone cannot prove parity.
+function yellowCentroid(rgb) {
+  let pixels = 0, sumX = 0, sumY = 0;
+  for (let y = 451; y < height; y++) for (let x = 24; x < width - 24; x++) {
+    const pos = (y * width + x) * 3;
+    const dr = rgb[pos] - 250, dg = rgb[pos + 1] - 204, db = rgb[pos + 2] - 21;
+    if (dr * dr + dg * dg + db * db > 55 * 55) continue;
+    pixels++; sumX += x; sumY += y;
+  }
+  return pixels ? { x: sumX / pixels, y: sumY / pixels, pixels } : null;
+}
 function compositionHtml(fontPaths) {
   const css = Object.entries(fontPaths).map(([face, url]) => {
     const lower = url.toLowerCase();
@@ -120,7 +132,7 @@ function compositionHtml(fontPaths) {
   const timedCaption = '<div id="timed-caption" dir="rtl" lang="he" data-start="0" data-duration="1" data-track-index="7">'
     + '<span id="caption-he" lang="he" dir="rtl">שָׁלוֹם</span> '
     + '<span id="caption-ar" lang="ar" dir="rtl">السَّلَامُ</span></div>';
-  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5).set("#timed-caption",{opacity:0},0.35).set("#timed-caption",{opacity:1},0.65)};</script></body></html>';
+  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).to("#caption-he",{x:-32,duration:1,ease:"none"},0).to("#caption-ar",{x:-32,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5).set("#timed-caption",{opacity:0},0.35).set("#timed-caption",{opacity:1},0.65)};</script></body></html>';
 }
 async function findStudioFrame(page, copy) {
   const deadline = Date.now() + 30_000;
@@ -802,11 +814,18 @@ try {
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
       };
       return { unchanged, text: caption.textContent, he: measure(he), ar: measure(ar),
+        wordMotion: { he: new DOMMatrixReadOnly(getComputedStyle(he).transform).m41,
+          ar: new DOMMatrixReadOnly(getComputedStyle(ar).transform).m41 },
         parentOpacity: getComputedStyle(caption).opacity,
         heColor: getComputedStyle(he).backgroundColor, arColor: getComputedStyle(ar).backgroundColor };
     }, time);
     assert(layout.unchanged, 'Playback replaced an authored caption text node');
     assert.equal(layout.text, 'שָׁלוֹם السَّلَامُ', 'Playback mutated Unicode caption content');
+    for (const id of ['he', 'ar']) {
+      assert(Number.isFinite(layout.wordMotion[id]) &&
+        Math.abs(layout.wordMotion[id] + 32 * time) <= 2.1,
+        id + ': authored per-word GSAP translation missing at ' + time);
+    }
     assert.equal(Number(layout.parentOpacity) < 0.02, time === 0.45,
       'Authored caption parent opacity did not reverse correctly on seek at ' + time);
     const yellow = color => /250,\s*204,\s*21/.test(color);
@@ -818,6 +837,18 @@ try {
     const heYellow = yellowPixels(pixels, layout.he);
     const arYellow = yellowPixels(pixels, layout.ar);
     const totalInk = captionInkPixels(pixels);
+    const browserCentroid = yellowCentroid(pixels);
+    if (time !== 0.45) {
+      const activeRect = time < 0.5 ? layout.he : layout.ar;
+      assert(browserCentroid && browserCentroid.pixels > 90,
+        'Animated Chromium caption has no painted yellow region');
+      assert(browserCentroid.x >= activeRect.left - 2 && browserCentroid.x <= activeRect.right + 2 &&
+        browserCentroid.y >= activeRect.top - 2 && browserCentroid.y <= activeRect.bottom + 2,
+        'Chromium yellow pixels do not occupy the transformed authored word');
+    } else {
+      assert(!browserCentroid || browserCentroid.pixels < 25,
+        'Hidden animated caption leaked Chromium yellow pixels');
+    }
     if (time === 0.45) {
       assert(totalInk < 25, 'Hidden caption leaked visible glyph or highlight ink in Chromium');
       assert(heYellow < 25 && arYellow < 25,
@@ -830,6 +861,7 @@ try {
     const seekState = {
       he: layout.he, ar: layout.ar,
       heColor: layout.heColor, arColor: layout.arColor, parentOpacity: layout.parentOpacity,
+      wordMotion: layout.wordMotion, browserCentroid,
       browserYellow: { he: heYellow, ar: arYellow }, browserInk: totalInk,
     };
     const previous = priorSeekStates.get(time);
@@ -840,7 +872,7 @@ try {
       priorSeekStates.set(time, seekState);
     }
     timedPreviews.push({ seekIndex, time, screenshot, layout,
-      browserYellow: seekState.browserYellow, browserInk: seekState.browserInk });
+      browserYellow: seekState.browserYellow, browserInk: seekState.browserInk, browserCentroid });
   }
   await direct.close();
   if (woff1) {
@@ -886,6 +918,8 @@ try {
     const inactive = capture.time < 0.5 ? 'ar' : 'he';
     const videoYellow = { he: heYellow, ar: arYellow };
     const videoInk = captionInkPixels(rgb);
+    const videoCentroid = yellowCentroid(rgb);
+    let centroidDriftPx = null;
     let drift = null;
     if (capture.time === 0.45) {
       assert(videoInk < 25, 'Decoded MP4 leaked visible caption glyph ink while its parent was hidden');
@@ -898,10 +932,19 @@ try {
       drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
         / Math.max(videoYellow[active], capture.browserYellow[active]);
       assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
+      assert(videoCentroid && videoCentroid.pixels > 90,
+        'Decoded MP4 lacks a painted animated caption centroid');
+      centroidDriftPx = Math.hypot(
+        videoCentroid.x - capture.browserCentroid.x, videoCentroid.y - capture.browserCentroid.y);
+      assert(centroidDriftPx <= 9,
+        'MP4 animated word displaced from real Chromium pixels: ' +
+        JSON.stringify({ time: capture.time, centroidDriftPx, browser: capture.browserCentroid, video: videoCentroid }));
     }
     temporal.push({ seekIndex: capture.seekIndex, time: capture.time, visible: capture.time !== 0.45,
       parentOpacity: capture.layout.parentOpacity, active, browserYellow: capture.browserYellow,
       browserInk: capture.browserInk, videoInk,
+      wordMotion: capture.layout.wordMotion,
+      browserCentroid: capture.browserCentroid, videoCentroid, centroidDriftPx,
       videoYellow, areaDrift: drift });
   }
   assertStep('Timed RTL caption parent hide/restore and per-word highlights match decoded MP4 on repeated seeks', { temporal });
@@ -931,6 +974,11 @@ try {
   assert.equal(typeof archiveRoot, 'string', 'Missing versioned archive root');
   const exportedHtml = entries.get(archiveRoot + '/index.html');
   assert(exportedHtml, 'Offline export missing edited composition');
+  const authoredMotion = '.to("#caption-he",{x:-32,duration:1,ease:"none"},0).to("#caption-ar",{x:-32,duration:1,ease:"none"},0)';
+  assert(exportedHtml.toString('utf8').includes(authoredMotion) &&
+    exportedHtml.toString('utf8').includes('id="caption-he"') &&
+    exportedHtml.toString('utf8').includes('id="caption-ar"'),
+    'Offline project lost distinct authored word IDs or animated GSAP transforms');
   assert(exportedHtml.toString('utf8').includes(editedHebrew), 'Archive lost edited Hebrew niqqud/Latin copy');
   assert(!exportedHtml.toString('utf8').includes(originalHebrew), 'Archive restored stale pre-edit text');
   for (const sample of samples) assert(exportedHtml.toString('utf8').includes(sample.copy),
@@ -962,6 +1010,10 @@ try {
     projectId: restoredId, file: { path: 'index.html' },
   });
   assert(JSON.stringify(restoredSource.file).includes(editedHebrew), 'Reimport lost edited logical Unicode text');
+  assert(JSON.stringify(restoredSource.file).includes('x:-32') &&
+    JSON.stringify(restoredSource.file).includes('caption-he') &&
+    JSON.stringify(restoredSource.file).includes('caption-ar'),
+    'Offline ZIP reimport lost independently authored word animation');
   assert(!JSON.stringify(restoredSource.file).includes(originalHebrew), 'Reimport restored stale pre-edit text');
   for (const sample of samples) assert(JSON.stringify(restoredSource.file).includes(sample.copy),
     'Offline reimport lost ' + sample.lang + ' Unicode');

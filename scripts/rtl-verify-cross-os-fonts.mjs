@@ -260,10 +260,33 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
             os + ': wrong ' + kind + ' highlight');
         }
       }
+      // Painted word-centroid drift is independent of yellow-area similarity:
+      // a frozen native caption can have identical pixel area but be displaced.
+      for (const id of ['he', 'ar']) {
+        assert(Number.isFinite(row.wordMotion?.[id]) &&
+          Math.abs(row.wordMotion[id] + 32 * times[i]) <= 2.1,
+          os + ': authored caption word animation not observed');
+      }
       if (!visible[i]) {
+        assert.equal(row.browserCentroid, null, os + ': hidden animated caption reports a visible centroid');
+        assert.equal(row.videoCentroid, null, os + ': hidden animated MP4 reports a visible centroid');
+        assert.equal(row.centroidDriftPx, null, os + ': hidden animated caption claims centroid parity');
         assert.equal(row.areaDrift, null,
           os + ': hidden caption must not claim measured visible area parity');
       } else {
+        for (const [kind, centroid] of [
+          ['browser', row.browserCentroid], ['native MP4', row.videoCentroid],
+        ]) {
+          assert(centroid && Number.isFinite(centroid.x) && Number.isFinite(centroid.y) &&
+            Number.isInteger(centroid.pixels) && centroid.pixels > 90 &&
+            centroid.x >= 24 && centroid.x <= 616 && centroid.y >= 451 && centroid.y < 480,
+            os + ': missing actual ' + kind + ' animated word centroid');
+        }
+        const measuredDrift = Math.hypot(row.videoCentroid.x - row.browserCentroid.x,
+          row.videoCentroid.y - row.browserCentroid.y);
+        assert(Number.isFinite(row.centroidDriftPx) && row.centroidDriftPx >= 0 &&
+          row.centroidDriftPx <= 9 && Math.abs(measuredDrift - row.centroidDriftPx) <= 0.01,
+          os + ': decoded MP4 animated word centroid drift');
         assert(Number.isFinite(row.areaDrift) && row.areaDrift >= 0 && row.areaDrift <= 0.35,
           os + ': timed native caption area drift exceeds acceptance threshold');
       }

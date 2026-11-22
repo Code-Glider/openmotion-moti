@@ -190,6 +190,24 @@ test('reject absent and malformed actual pixel counters and ink on visible and h
   }
 });
 
+test('reject static authored motion, fabricated MP4 centroids and hidden word evidence', async () => {
+  const pristine = await load();
+  const staticWord = structuredClone(pristine);
+  staticWord['macos-15'].temporalCaptions[0].wordMotion.he = 0;
+  assert.throws(() => verifyCrossOsFontEvidence(staticWord), /authored caption word animation not observed/);
+  const noPixels = structuredClone(pristine);
+  delete noPixels['windows-2025'].temporalCaptions[0].browserCentroid;
+  assert.throws(() => verifyCrossOsFontEvidence(noPixels), /missing actual browser animated word centroid/);
+  const displaced = structuredClone(pristine);
+  const row = displaced['ubuntu-24.04'].temporalCaptions[2];
+  row.videoCentroid.x += 32;
+  row.centroidDriftPx = Math.hypot(row.videoCentroid.x - row.browserCentroid.x,
+    row.videoCentroid.y - row.browserCentroid.y);
+  assert.throws(() => verifyCrossOsFontEvidence(displaced), /decoded MP4 animated word centroid drift/);
+  const hidden = structuredClone(pristine);
+  hidden['ubuntu-24.04'].temporalCaptions[1].browserCentroid = { x: 500, y: 459, pixels: 120 };
+  assert.throws(() => verifyCrossOsFontEvidence(hidden), /hidden animated caption reports a visible centroid/);
+});
 test('reject converted non-Hebrew WOFF2 bytes that disagree with imported font receipts', async () => {
   const reports = await load();
   const windows = reports['windows-2025'];
