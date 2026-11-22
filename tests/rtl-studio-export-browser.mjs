@@ -407,11 +407,7 @@ try {
   // browser's native textarea history. Focus a timeline clip after the
   // inspector's blur/save and require BOTH durable native source and preview
   // to reverse and reapply the latest Syriac edit. Other scripts must survive.
-  let historyClip;
-  for (const node of await page.$('button[aria-label]')) {
-    const label = await node.evaluate(element => element.getAttribute('aria-label'));
-    if (label?.toLowerCase().startsWith('syriac,')) { historyClip = node; break; }
-  }
+  const historyClip = await page.$('button[aria-label^="Syriac," i]');
   assert(historyClip, 'Cannot focus real Syriac timeline clip for project undo/redo');
   await historyClip.click();
   const historyFocus = await page.evaluate(() => ({
