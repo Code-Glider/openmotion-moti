@@ -101,6 +101,15 @@ function yellowPixels(rgb, rect) {
   }
   return count;
 }
+function captionInkPixels(rgb) {
+  // Check the entire caption lane, not just the yellow highlight: an opacity
+  // regression must not leave white glyphs visible in browser or native MP4.
+  let pixels = 0;
+  for (let y = 451; y < height; y++) for (let x = 24; x < width - 24; x++) {
+    if (ink(rgb, x, y)) pixels++;
+  }
+  return pixels;
+}
 function compositionHtml(fontPaths) {
   const css = Object.entries(fontPaths).map(([face, url]) => {
     const lower = url.toLowerCase();
@@ -620,17 +629,20 @@ try {
     const pixels = decodeToRgb(screenshot, false);
     const heYellow = yellowPixels(pixels, layout.he);
     const arYellow = yellowPixels(pixels, layout.ar);
+    const totalInk = captionInkPixels(pixels);
     if (time === 0.45) {
+      assert(totalInk < 25, 'Hidden caption leaked visible glyph or highlight ink in Chromium');
       assert(heYellow < 25 && arYellow < 25,
         'Hidden caption parent leaked visible Hebrew/Arabic pixels in Chromium');
     } else {
+      assert(totalInk > 90, 'Restored browser caption has no visible glyph ink');
       assert((time < 0.5 ? heYellow : arYellow) > 70, 'Expected real browser caption highlight absent');
       assert((time < 0.5 ? arYellow : heYellow) < 25, 'Untimed caption word unexpectedly highlighted');
     }
     const seekState = {
       he: layout.he, ar: layout.ar,
       heColor: layout.heColor, arColor: layout.arColor, parentOpacity: layout.parentOpacity,
-      browserYellow: { he: heYellow, ar: arYellow },
+      browserYellow: { he: heYellow, ar: arYellow }, browserInk: totalInk,
     };
     const previous = priorSeekStates.get(time);
     if (previous) {
@@ -684,11 +696,14 @@ try {
     const active = capture.time < 0.5 ? 'he' : 'ar';
     const inactive = capture.time < 0.5 ? 'ar' : 'he';
     const videoYellow = { he: heYellow, ar: arYellow };
+    const videoInk = captionInkPixels(rgb);
     let drift = null;
     if (capture.time === 0.45) {
+      assert(videoInk < 25, 'Decoded MP4 leaked visible caption glyph ink while its parent was hidden');
       assert(videoYellow.he < 25 && videoYellow.ar < 25,
         'Decoded MP4 leaks visible caption pixels while the authored parent is hidden');
     } else {
+      assert(videoInk > 90, 'Restored MP4 caption has no visible glyph ink');
       assert(videoYellow[active] > 70, 'MP4 timed caption highlight missing at ' + capture.time);
       assert(videoYellow[inactive] < 25, 'MP4 contains a stale timed caption highlight at ' + capture.time);
       drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
@@ -696,7 +711,9 @@ try {
       assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
     }
     temporal.push({ seekIndex: capture.seekIndex, time: capture.time, visible: capture.time !== 0.45,
-      parentOpacity: capture.layout.parentOpacity, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
+      parentOpacity: capture.layout.parentOpacity, active, browserYellow: capture.browserYellow,
+      browserInk: capture.layout.parentOpacity === '0' ? 0 : undefined, videoInk,
+      videoYellow, areaDrift: drift });
   }
   assertStep('Timed RTL caption parent hide/restore and per-word highlights match decoded MP4 on repeated seeks', { temporal });
   // Production project ZIP export must preserve source Unicode and actual
