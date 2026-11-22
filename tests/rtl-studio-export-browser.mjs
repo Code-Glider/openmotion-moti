@@ -376,6 +376,22 @@ try {
   samples[0].copy = editedHebrew;
   // The same *actual Studio Content inspector* must save Arabic, Persian,
   // Urdu and Syriac, not only display font-provenanced static rows.
+  // Exercise the public Linked Selection control before multi-script editing.
+  // Windows run 45075179101 reached a correct single-clip precheck, then the
+  // subsequent inspector click found two linked clips and no textarea.
+  // Do not set the selection store directly or retry an inserted character:
+  // disable linked selection through the REAL toolbar, still Alt-click the
+  // requested clip, and require exactly one selected clip and exact Unicode
+  // before any input. Restore the user's prior toolbar preference afterward.
+  const linkedSelectionButton = 'button[aria-label="Linked Selection"]';
+  const linkedSelectionInitiallyOn = await page.$eval(linkedSelectionButton,
+    element => element.getAttribute('aria-pressed') === 'true');
+  if (linkedSelectionInitiallyOn) {
+    await page.locator(linkedSelectionButton).setTimeout(15_000).click();
+  }
+  await page.waitForFunction(selector =>
+    document.querySelector(selector)?.getAttribute('aria-pressed') === 'false',
+  { timeout: 10_000 }, linkedSelectionButton);
   const scriptEdits = [];
   for (const [id, nextCopy] of [
     ['arabic', 'السَّلَامُ OpenMotion 52%'],
@@ -529,6 +545,12 @@ try {
   assertStep('Real Studio keyboard undo/redo reverses and reapplies Syriac Unicode in native source and preview', {
     modifier: historyModifier, steps: historySteps,
   });
+  if (linkedSelectionInitiallyOn) {
+    await page.locator(linkedSelectionButton).setTimeout(15_000).click();
+    await page.waitForFunction(selector =>
+      document.querySelector(selector)?.getAttribute('aria-pressed') === 'true',
+    { timeout: 10_000 }, linkedSelectionButton);
+  }
   // Qualify the actual Studio transport, not only the raw composition's
   // GSAP timeline. Pointer-seek forwards, backwards, then repeat: a player
   // wired to the wrong timeline could otherwise pass all MP4 parity gates.
