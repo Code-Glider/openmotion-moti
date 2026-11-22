@@ -375,11 +375,30 @@ try {
     const oldCopy = sample.copy;
     // Clip and inspector can rerender when selection changes. Use live
     // selectors for both actual UI clicks instead of collecting handles.
-    await page.locator('button[aria-label^="' + id + '," i]')
-      .setTimeout(30_000)
-      .click();
-    await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
-      .some(el => el.isConnected && el.value === expected), { timeout: 30_000 }, oldCopy);
+    // The real Studio supports Alt-click to select this clip ALONE when
+    // linked selection is enabled. A macOS CI screenshot captured a two-clip
+    // Persian/Arabic group after a plain click, leaving no text inspector.
+    // Use the public UI's single-selection gesture; never set store/DOM state.
+    await page.keyboard.down('Alt');
+    try {
+      await page.locator('button[aria-label^="' + id + '," i]')
+        .setTimeout(30_000)
+        .click();
+    } finally {
+      await page.keyboard.up('Alt');
+    }
+    try {
+      await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+        .some(el => el.isConnected && el.value === expected), { timeout: 30_000 }, oldCopy);
+    } catch (error) {
+      const observed = await page.evaluate(() => ({
+        selectedGroup: document.body.textContent?.match(/\\d+ elements selected/)?.[0] ?? null,
+        connectedInspectorValues: Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+          .filter(el => el.isConnected).map(el => el.value),
+      }));
+      throw new Error(id + ': single-clip Studio inspector did not show exact Unicode after Alt-click: '
+        + JSON.stringify(observed), { cause: error });
+    }
     await replaceStudioInspectorText(page, oldCopy, nextCopy, id);
     await page.keyboard.press('Tab');
     let persisted = false;
