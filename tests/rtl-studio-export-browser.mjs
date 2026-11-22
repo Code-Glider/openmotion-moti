@@ -379,6 +379,10 @@ try {
     // linked selection is enabled. A macOS CI screenshot captured a two-clip
     // Persian/Arabic group after a plain click, leaving no text inspector.
     // Use the public UI's single-selection gesture; never set store/DOM state.
+    // Escape clears any prior inspector/multi-selection through the real UI
+    // before applying Studio's Alt-click single-clip gesture. This prevents a
+    // previous composition selection from leaking into the next source edit.
+    await page.keyboard.press('Escape');
     await page.keyboard.down('Alt');
     try {
       await page.locator('button[aria-label^="' + id + '," i]')
@@ -387,14 +391,28 @@ try {
     } finally {
       await page.keyboard.up('Alt');
     }
+    // An inspector with the correct text is insufficient when linked clips
+    // remain selected. Require the actual accessible timeline state to be
+    // exactly this one clip before sending any Unicode characters.
+    const selectedClips = () => Array.from(document.querySelectorAll('button.timeline-clip[aria-pressed="true"]'))
+      .map(el => el.getAttribute('aria-label') ?? '');
     try {
-      await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
-        .some(el => el.isConnected && el.value === expected), { timeout: 30_000 }, oldCopy);
+      await page.waitForFunction((expected, targetId) => {
+        const pressed = Array.from(document.querySelectorAll('button.timeline-clip[aria-pressed="true"]'))
+          .map(el => (el.getAttribute('aria-label') ?? '').toLowerCase());
+        return pressed.length === 1 && pressed[0].startsWith(targetId.toLowerCase() + ',')
+          && Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+            .some(el => el.isConnected && el.value === expected);
+      }, { timeout: 30_000 }, oldCopy, id);
+      const selectedLabels = await page.evaluate(selectedClips);
+      (evidence.singleClipSelections ??= []).push({ id, selectedLabels });
     } catch (error) {
       const observed = await page.evaluate(() => ({
         selectedGroup: document.body.textContent?.match(/[0-9]+ elements selected/)?.[0] ?? null,
         connectedInspectorValues: Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
           .filter(el => el.isConnected).map(el => el.value),
+        selectedClipLabels: Array.from(document.querySelectorAll('button.timeline-clip[aria-pressed="true"]'))
+          .map(el => el.getAttribute('aria-label')),
       }));
       throw new Error(id + ': single-clip Studio inspector did not show exact Unicode after Alt-click: '
         + JSON.stringify(observed), { cause: error });
