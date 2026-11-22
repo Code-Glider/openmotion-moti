@@ -4,7 +4,7 @@ import test from 'node:test';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { verifyArtifactFiles, verifyCrossOsFontEvidence, verifyFromDirectory, verifyWoff1File, runners } from '../scripts/rtl-verify-cross-os-fonts.mjs';
+import { paintedCaptionSeekTimes, verifyArtifactFiles, verifyCrossOsFontEvidence, verifyFromDirectory, verifyWoff1File, runners } from '../scripts/rtl-verify-cross-os-fonts.mjs';
 
 const dir = process.env.RTL_CROSS_OS_FIXTURES;
 async function load(root = dir) {
@@ -48,7 +48,7 @@ test('refuse nominal success without actual native MP4 or caption-seek evidence'
 test('hash all actual Studio PNGs, browser seek captures and exported MP4 bytes', async () => {
   const evidence = await verifyFromDirectory(dir);
   for (const os of Object.keys(runners)) {
-    assert.equal(Object.keys(evidence.artifactSha256[os]).length, 16);
+    assert.equal(Object.keys(evidence.artifactSha256[os]).length, 10 + paintedCaptionSeekTimes.length);
     for (const hash of Object.values(evidence.artifactSha256[os])) assert.match(hash, /^[a-f0-9]{64}$/);
   }
 });
@@ -208,6 +208,24 @@ test('reject static authored motion, fabricated MP4 centroids and hidden word ev
   hidden['ubuntu-24.04'].temporalCaptions[1].browserCentroid = { x: 500, y: 459, pixels: 120 };
   assert.throws(() => verifyCrossOsFontEvidence(hidden), /hidden animated caption reports a visible centroid/);
 });
+test('reject a frozen renderer even when each visible frame individually meets parity', async () => {
+  for (const [early, late] of [[0.1, 0.3], [0.7, 0.9]]) {
+    for (const [kind, message] of [
+      ['videoCentroid', /decoded MP4 caption paint did not move/],
+      ['browserCentroid', /browser caption paint did not move/],
+    ]) {
+      const reports = await load();
+      const rows = reports['ubuntu-24.04'].temporalCaptions;
+      const first = rows.find(row => row.time === early);
+      const last = rows.find(row => row.time === late);
+      last[kind] = { ...first[kind] };
+      last.centroidDriftPx = Math.hypot(last.videoCentroid.x - last.browserCentroid.x,
+        last.videoCentroid.y - last.browserCentroid.y);
+      assert(last.centroidDriftPx <= 9, 'Frozen fixture must still pass single-frame parity');
+      assert.throws(() => verifyCrossOsFontEvidence(reports), message);
+    }
+  }
+});
 test('reject converted non-Hebrew WOFF2 bytes that disagree with imported font receipts', async () => {
   const reports = await load();
   const windows = reports['windows-2025'];
@@ -232,7 +250,7 @@ if (woff1Dir) {
     assert.equal(result.passed, true);
     assert.equal(result.format, 'woff');
     for (const os of Object.keys(runners)) {
-      assert.equal(Object.keys(result.artifactSha256[os]).length, 16);
+      assert.equal(Object.keys(result.artifactSha256[os]).length, 10 + paintedCaptionSeekTimes.length);
       assert.equal(Object.keys(result.woffArchiveSha256[os]).length, 4);
       assert.equal(typeof result.runnerEncodings[os].zlibRuntimeVersion, 'string');
     }

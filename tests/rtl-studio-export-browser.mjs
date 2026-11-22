@@ -3,6 +3,7 @@
 // Fails closed if the licensed fonts, Studio edit, actual export, or glyph pixels are absent.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { paintedCaptionSeekTimes, verifyPaintedCaptionMovement } from '../scripts/rtl-verify-cross-os-fonts.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -798,7 +799,7 @@ try {
   // Never split or replace authored caption text nodes.
   const timedPreviews = [];
   const priorSeekStates = new Map();
-  for (const [seekIndex, time] of [0.25, 0.45, 0.75, 0.45, 0.25, 0.75].entries()) {
+  for (const [seekIndex, time] of paintedCaptionSeekTimes.entries()) {
     const layout = await direct.evaluate(at => {
       const timeline = window.__timelines?.main;
       if (!timeline || typeof timeline.pause !== 'function') throw Error('Missing authored GSAP timeline');
@@ -947,6 +948,7 @@ try {
       browserCentroid: capture.browserCentroid, videoCentroid, centroidDriftPx,
       videoYellow, areaDrift: drift });
   }
+  verifyPaintedCaptionMovement(temporal, 'Studio/MP4');
   assertStep('Timed RTL caption parent hide/restore and per-word highlights match decoded MP4 on repeated seeks', { temporal });
   // Production project ZIP export must preserve source Unicode and actual
   // imported font/LICENSE bytes, not merely look right in Chrome.
