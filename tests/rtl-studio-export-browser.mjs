@@ -639,10 +639,14 @@ try {
     const visible = phase !== 'hidden-paused';
     assert.equal(state.parentOpacity < 0.02, !visible,
       'Actual Studio playback caption parent visibility wrong during ' + phase);
-    assert.equal(yellow(state.heColor), phase !== 'arabic-paused',
-      'Hebrew authored word highlight wrong during ' + phase);
-    assert.equal(yellow(state.arColor), phase === 'arabic-paused',
-      'Arabic authored word highlight wrong during ' + phase);
+    // The hidden interval spans the 0.5s word-swap boundary. A real
+    // pause may land on either side while the parent is invisible; assert the
+    // authored highlight against the ACTUAL playback clock, not a phase name.
+    const hebrewActive = state.timelineTime < 0.5;
+    assert.equal(yellow(state.heColor), hebrewActive,
+      'Hebrew authored word highlight wrong at real playback time during ' + phase);
+    assert.equal(yellow(state.arColor), !hebrewActive,
+      'Arabic authored word highlight wrong at real playback time during ' + phase);
     livePlaybackPhases.push({
       phase, actualTime, playing: expectedPlaying, visible,
       parentOpacity: state.parentOpacity, timelineTime: state.timelineTime,
