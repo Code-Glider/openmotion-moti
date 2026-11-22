@@ -15,6 +15,7 @@ import { Client } from './shared-editor-client.mjs';
 import { readProjectZip } from '../shared/project-zip.ts';
 import { closeFixtureEditor } from './fixtures.ts';
 import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
+import { readLiveFrameText } from './rtl-preview-frame-read.mjs';
 
 const output = process.argv[2];
 const fontDir = process.argv[3];
@@ -116,7 +117,7 @@ async function findStudioFrame(page, copy) {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     for (const frame of page.frames()) {
-      const found = await frame.$eval('#label', element => element.textContent).catch(() => null);
+      const found = await readLiveFrameText(frame, '#label');
       if (found === copy) return frame;
     }
     await sleep(150);
@@ -458,7 +459,7 @@ try {
     let previewText = null;
     for (let attempt = 0; attempt < 100; attempt++) {
       for (const liveFrame of page.frames()) {
-        const found = await liveFrame.$eval('#syriac', element => element.textContent).catch(() => null);
+        const found = await readLiveFrameText(liveFrame, '#syriac');
         if (found === wanted) { previewText = found; break; }
       }
       if (previewText !== null) break;

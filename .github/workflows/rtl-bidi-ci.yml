@@ -36,6 +36,8 @@ on:
       - 'tests/rtl-cross-os-font-provenance.test.mjs'
       - 'scripts/rtl-verify-cross-os-fonts.mjs'
       - 'tests/rtl-studio-export-browser.mjs'
+      - 'tests/rtl-preview-frame-read.mjs'
+      - 'tests/rtl-preview-frame-read.test.mjs'
       - 'tests/workspace-transient-files.test.ts'
       - 'scripts/rtl-reference-fonts.mjs'
       - 'scripts/rtl-reference-woff2.py'
@@ -71,6 +73,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Focused text-flow, font-audit and font-specimen tests
         run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts tests/font-specimen.test.ts
+      - name: Reject stale/detached Studio player iframe handles during native history
+        run: node --test tests/rtl-preview-frame-read.test.mjs
       - name: Repository source checks
         run: npm run check
       - name: Backend typecheck
