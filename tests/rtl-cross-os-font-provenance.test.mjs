@@ -129,13 +129,34 @@ test('reject inactive word highlight contamination above the original browser/MP
   assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong native MP4 highlight/);
 });
 
-test('reject missing and negative inactive pixel counters instead of treating them as zero', async () => {
-  const reports = await load();
-  const row = reports['macos-15'].temporalCaptions[1];
-  delete row.browserYellow.he;
-  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
-  row.browserYellow.he = -1;
-  assert.throws(() => verifyCrossOsFontEvidence(reports), /wrong browser highlight/);
+test('reject absent and malformed actual pixel counters and ink on visible and hidden frames', async () => {
+  const pristine = await load();
+  // Mutate the actual current-run reports, not a fabricated passing fixture.
+  // Missing counters are rejected *before* the separate highlight/ink limits;
+  // require the exact fail-closed error so an unrelated gate cannot mask this.
+  for (const seekIndex of [0, 1]) {
+    for (const [kind, pixelKey, inkKey] of [
+      ['browser', 'browserYellow', 'browserInk'],
+      ['native MP4', 'videoYellow', 'videoInk'],
+    ]) {
+      const pixelError = new RegExp('macos-15: missing or invalid ' + kind + ' caption pixel counters');
+      const inkError = new RegExp('macos-15: missing or invalid ' + kind + ' caption ink');
+      for (const invalid of [-1, 0.5, '0', null, Number.NaN]) {
+        const badPixels = structuredClone(pristine);
+        badPixels['macos-15'].temporalCaptions[seekIndex][pixelKey].he = invalid;
+        assert.throws(() => verifyCrossOsFontEvidence(badPixels), pixelError);
+        const badInk = structuredClone(pristine);
+        badInk['macos-15'].temporalCaptions[seekIndex][inkKey] = invalid;
+        assert.throws(() => verifyCrossOsFontEvidence(badInk), inkError);
+      }
+      const missingPixel = structuredClone(pristine);
+      delete missingPixel['macos-15'].temporalCaptions[seekIndex][pixelKey].he;
+      assert.throws(() => verifyCrossOsFontEvidence(missingPixel), pixelError);
+      const missingInk = structuredClone(pristine);
+      delete missingInk['macos-15'].temporalCaptions[seekIndex][inkKey];
+      assert.throws(() => verifyCrossOsFontEvidence(missingInk), inkError);
+    }
+  }
 });
 
 test('reject converted non-Hebrew WOFF2 bytes that disagree with imported font receipts', async () => {
