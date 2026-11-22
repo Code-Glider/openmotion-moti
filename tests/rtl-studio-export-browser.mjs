@@ -111,7 +111,7 @@ function compositionHtml(fontPaths) {
   const timedCaption = '<div id="timed-caption" dir="rtl" lang="he" data-start="0" data-duration="1" data-track-index="7">'
     + '<span id="caption-he" lang="he" dir="rtl">שָׁלוֹם</span> '
     + '<span id="caption-ar" lang="ar" dir="rtl">السَّلَامُ</span></div>';
-  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5)};</script></body></html>';
+  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5).set("#timed-caption",{opacity:0},0.35).set("#timed-caption",{opacity:1},0.65)};</script></body></html>';
 }
 async function findStudioFrame(page, copy) {
   const deadline = Date.now() + 30_000;
@@ -482,7 +482,7 @@ try {
   await seekInput.evaluate(input => input.scrollIntoView({ block: 'center' }));
   const studioSeeks = [];
   const repeatedStudioStates = new Map();
-  for (const [seekIndex, expectedTime] of [0.25, 0.75, 0.25, 0.75].entries()) {
+  for (const [seekIndex, expectedTime] of [0.25, 0.45, 0.75, 0.45, 0.25, 0.75].entries()) {
     const bounds = await seekInput.boundingBox();
     assert(bounds && bounds.width > 150 && bounds.height > 0, 'Studio seek input has no pointer geometry');
     const inset = Math.min(14, bounds.height / 2);
@@ -498,24 +498,29 @@ try {
       frame = await findStudioFrame(page, editedHebrew);
       state = await frame.evaluate(() => {
         const he = document.getElementById('caption-he'), ar = document.getElementById('caption-ar');
-        if (!he || !ar) return null;
+        const parent = document.getElementById('timed-caption');
+        if (!he || !ar || !parent) return null;
         window.__rtlStudioCaptionNodes ??= [he.firstChild, ar.firstChild];
         return {
           unchangedNodes: he.firstChild === window.__rtlStudioCaptionNodes[0]
             && ar.firstChild === window.__rtlStudioCaptionNodes[1],
-          text: document.getElementById('timed-caption')?.textContent,
+          text: parent.textContent,
+          parentOpacity: getComputedStyle(parent).opacity,
           heColor: getComputedStyle(he).backgroundColor,
           arColor: getComputedStyle(ar).backgroundColor,
         };
       });
       const yellow = color => /250,\s*204,\s*21/.test(color || '');
       if (state && yellow(state.heColor) === (expectedTime < 0.5)
-        && yellow(state.arColor) === (expectedTime > 0.5)) break;
+        && yellow(state.arColor) === (expectedTime > 0.5)
+        && (Number(state.parentOpacity) < 0.02) === (expectedTime === 0.45)) break;
       await sleep(100);
     }
     assert(state, 'Studio player iframe lost authored timed caption on seek');
     assert.equal(state.text, 'שָׁלוֹם السَّلَامُ', 'Studio preview seek altered RTL Unicode text');
     assert(state.unchangedNodes, 'Studio preview seek replaced an authored caption text node');
+    assert.equal(Number(state.parentOpacity) < 0.02, expectedTime === 0.45,
+      'Studio player did not hide/restore the actual caption parent at ' + expectedTime);
     const yellow = color => /250,\s*204,\s*21/.test(color || '');
     assert.equal(yellow(state.heColor), expectedTime < 0.5, 'Studio Hebrew highlight wrong at ' + expectedTime);
     assert.equal(yellow(state.arColor), expectedTime > 0.5, 'Studio Arabic highlight wrong at ' + expectedTime);
@@ -523,9 +528,12 @@ try {
     if (previous) assert.deepEqual(state, previous, 'Repeated real Studio scrub changed the caption state');
     else repeatedStudioStates.set(expectedTime, state);
     studioSeeks.push({ seekIndex, expectedTime, actualTime, ...state });
+    if (expectedTime === 0.45 && seekIndex === 1) {
+      await page.screenshot({ path: path.join(output, 'studio-caption-parent-hidden.png') });
+    }
   }
   await page.screenshot({ path: path.join(output, 'studio-after-reverse-seek.png') });
-  assertStep('Actual Studio seek control reverses and replays RTL word highlights without mutation', { studioSeeks });
+  assertStep('Actual Studio seek hides and restores authored RTL caption parent without mutation', { studioSeeks });
   const direct = await browser.newPage();
   await direct.setViewport({ width, height, deviceScaleFactor: 1 });
   const route = new URL('/api/projects/' + encodeURIComponent(projectId) + '/preview/index.html', new URL(preview.previewUrl).origin);
@@ -581,7 +589,7 @@ try {
   // Never split or replace authored caption text nodes.
   const timedPreviews = [];
   const priorSeekStates = new Map();
-  for (const [seekIndex, time] of [0.25, 0.75, 0.25, 0.75].entries()) {
+  for (const [seekIndex, time] of [0.25, 0.45, 0.75, 0.45, 0.25, 0.75].entries()) {
     const layout = await direct.evaluate(at => {
       const timeline = window.__timelines?.main;
       if (!timeline || typeof timeline.pause !== 'function') throw Error('Missing authored GSAP timeline');
@@ -597,10 +605,13 @@ try {
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
       };
       return { unchanged, text: caption.textContent, he: measure(he), ar: measure(ar),
+        parentOpacity: getComputedStyle(caption).opacity,
         heColor: getComputedStyle(he).backgroundColor, arColor: getComputedStyle(ar).backgroundColor };
     }, time);
     assert(layout.unchanged, 'Playback replaced an authored caption text node');
     assert.equal(layout.text, 'שָׁלוֹם السَّلَامُ', 'Playback mutated Unicode caption content');
+    assert.equal(Number(layout.parentOpacity) < 0.02, time === 0.45,
+      'Authored caption parent opacity did not reverse correctly on seek at ' + time);
     const yellow = color => /250,\s*204,\s*21/.test(color);
     assert.equal(yellow(layout.heColor), time < 0.5, 'Hebrew timed highlight state differs from authored timeline');
     assert.equal(yellow(layout.arColor), time > 0.5, 'Arabic timed highlight state differs from authored timeline');
@@ -609,11 +620,16 @@ try {
     const pixels = decodeToRgb(screenshot, false);
     const heYellow = yellowPixels(pixels, layout.he);
     const arYellow = yellowPixels(pixels, layout.ar);
-    assert((time < 0.5 ? heYellow : arYellow) > 70, 'Expected real browser caption highlight absent');
-    assert((time < 0.5 ? arYellow : heYellow) < 25, 'Untimed caption word unexpectedly highlighted');
+    if (time === 0.45) {
+      assert(heYellow < 25 && arYellow < 25,
+        'Hidden caption parent leaked visible Hebrew/Arabic pixels in Chromium');
+    } else {
+      assert((time < 0.5 ? heYellow : arYellow) > 70, 'Expected real browser caption highlight absent');
+      assert((time < 0.5 ? arYellow : heYellow) < 25, 'Untimed caption word unexpectedly highlighted');
+    }
     const seekState = {
       he: layout.he, ar: layout.ar,
-      heColor: layout.heColor, arColor: layout.arColor,
+      heColor: layout.heColor, arColor: layout.arColor, parentOpacity: layout.parentOpacity,
       browserYellow: { he: heYellow, ar: arYellow },
     };
     const previous = priorSeekStates.get(time);
@@ -668,14 +684,21 @@ try {
     const active = capture.time < 0.5 ? 'he' : 'ar';
     const inactive = capture.time < 0.5 ? 'ar' : 'he';
     const videoYellow = { he: heYellow, ar: arYellow };
-    assert(videoYellow[active] > 70, 'MP4 timed caption highlight missing at ' + capture.time);
-    assert(videoYellow[inactive] < 25, 'MP4 contains a stale timed caption highlight at ' + capture.time);
-    const drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
-      / Math.max(videoYellow[active], capture.browserYellow[active]);
-    assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
-    temporal.push({ seekIndex: capture.seekIndex, time: capture.time, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
+    let drift = null;
+    if (capture.time === 0.45) {
+      assert(videoYellow.he < 25 && videoYellow.ar < 25,
+        'Decoded MP4 leaks visible caption pixels while the authored parent is hidden');
+    } else {
+      assert(videoYellow[active] > 70, 'MP4 timed caption highlight missing at ' + capture.time);
+      assert(videoYellow[inactive] < 25, 'MP4 contains a stale timed caption highlight at ' + capture.time);
+      drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
+        / Math.max(videoYellow[active], capture.browserYellow[active]);
+      assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
+    }
+    temporal.push({ seekIndex: capture.seekIndex, time: capture.time, visible: capture.time !== 0.45,
+      parentOpacity: capture.layout.parentOpacity, active, browserYellow: capture.browserYellow, videoYellow, areaDrift: drift });
   }
-  assertStep('Timed Hebrew/Arabic word highlighting survives forward/reverse/replay seeks and MP4 parity without caption text-node mutation', { temporal });
+  assertStep('Timed RTL caption parent hide/restore and per-word highlights match decoded MP4 on repeated seeks', { temporal });
   // Production project ZIP export must preserve source Unicode and actual
   // imported font/LICENSE bytes, not merely look right in Chrome.
   // Import into an independent project to catch missing relative assets.
