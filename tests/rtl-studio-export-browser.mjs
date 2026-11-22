@@ -580,6 +580,129 @@ try {
   }
   await page.screenshot({ path: path.join(output, 'studio-after-reverse-seek.png') });
   assertStep('Actual Studio seek hides and restores authored RTL caption parent without mutation', { studioSeeks });
+
+  // Real transport acceptance is distinct from the direct GSAP seek and
+  // pixel-parity checks below. Slow the REAL Studio transport with its public
+  // speed menu, so a three-OS runner can observe both timed boundaries without
+  // injecting time into React, a player store, or the authored timeline.
+  await page.locator('button[aria-label="Playback speed"]').click();
+  await page.locator('[role="menuitemradio"]')
+    .filter(element => element.textContent?.trim() === '0.25x')
+    .setTimeout(10_000)
+    .click();
+  await page.waitForFunction(() =>
+    document.querySelector('button[aria-label="Playback speed"]')?.textContent?.includes('0.25x'),
+  { timeout: 10_000 });
+  const playbackSelector = 'button[data-studio-control="playback"]:not(:disabled)';
+  const sliderBounds = await seekInput.boundingBox();
+  assert(sliderBounds && sliderBounds.width > 150 && sliderBounds.height > 0,
+    'Real Studio transport slider has no pointer geometry');
+  const sliderInset = Math.min(14, sliderBounds.height / 2);
+  await seekInput.click({ offset: {
+    x: sliderInset + (sliderBounds.width - 2 * sliderInset) * 0.18 / sliderDuration,
+    y: sliderBounds.height / 2,
+  } });
+  await page.waitForFunction(() => {
+    const input = document.querySelector('input[data-studio-control="seek-preview"]');
+    return input && Math.abs(input.valueAsNumber - 0.18) < 0.06;
+  }, { timeout: 10_000 });
+  const livePlaybackPhases = [];
+  async function observeRealPlayback(phase, expectedPlaying) {
+    const actualTime = await seekInput.evaluate(input => input.valueAsNumber);
+    const controlLabel = await page.$eval(playbackSelector, control => control.getAttribute('aria-label'));
+    assert.equal(controlLabel, expectedPlaying ? 'Pause' : 'Play',
+      'Actual Studio transport button did not reflect ' + phase);
+    frame = await findStudioFrame(page, editedHebrew);
+    const state = await frame.evaluate(() => {
+      const parent = document.getElementById('timed-caption');
+      const he = document.getElementById('caption-he');
+      const ar = document.getElementById('caption-ar');
+      if (!parent || !he || !ar) return null;
+      window.__rtlStudioCaptionNodes ??= [he.firstChild, ar.firstChild];
+      return {
+        unchangedNodes: he.firstChild === window.__rtlStudioCaptionNodes[0]
+          && ar.firstChild === window.__rtlStudioCaptionNodes[1],
+        text: parent.textContent,
+        parentOpacity: Number(getComputedStyle(parent).opacity),
+        heColor: getComputedStyle(he).backgroundColor,
+        arColor: getComputedStyle(ar).backgroundColor,
+        timelineTime: Number(window.__timelines?.main?.time?.()),
+      };
+    });
+    assert(state, 'Real Studio playback lost authored Hebrew/Arabic caption elements');
+    assert(state.unchangedNodes, 'Real Studio transport replaced authored caption text nodes');
+    assert.equal(state.text, 'שָׁלוֹם السَّلَامُ',
+      'Real Studio playback altered logical Unicode or caption word identity');
+    assert(Number.isFinite(state.timelineTime) && Math.abs(state.timelineTime - actualTime) <= 0.12,
+      'Studio transport slider and actual composition clock diverged: ' + phase);
+    const yellow = color => /250,\s*204,\s*21/.test(color || '');
+    const visible = phase !== 'hidden-paused';
+    assert.equal(state.parentOpacity < 0.02, !visible,
+      'Actual Studio playback caption parent visibility wrong during ' + phase);
+    assert.equal(yellow(state.heColor), phase !== 'arabic-paused',
+      'Hebrew authored word highlight wrong during ' + phase);
+    assert.equal(yellow(state.arColor), phase === 'arabic-paused',
+      'Arabic authored word highlight wrong during ' + phase);
+    livePlaybackPhases.push({
+      phase, actualTime, playing: expectedPlaying, visible,
+      parentOpacity: state.parentOpacity, timelineTime: state.timelineTime,
+      unchangedNodes: state.unchangedNodes, text: state.text,
+    });
+  }
+  await page.locator(playbackSelector).click();
+  await page.waitForFunction(() =>
+    document.querySelector('button[data-studio-control="playback"]')?.getAttribute('aria-label') === 'Pause',
+  { timeout: 10_000 });
+  await page.waitForFunction(() => {
+    const t = document.querySelector('input[data-studio-control="seek-preview"]')?.valueAsNumber;
+    return t >= 0.24 && t < 0.35;
+  }, { polling: 20, timeout: 12_000 });
+  await observeRealPlayback('hebrew-playing', true);
+  // A running Studio clock must actually cross the hidden parent boundary.
+  await page.waitForFunction(() => {
+    const t = document.querySelector('input[data-studio-control="seek-preview"]')?.valueAsNumber;
+    return t >= 0.43 && t < 0.60;
+  }, { polling: 20, timeout: 12_000 });
+  await page.locator(playbackSelector).click();
+  await page.waitForFunction(() =>
+    document.querySelector('button[data-studio-control="playback"]')?.getAttribute('aria-label') === 'Play',
+  { timeout: 10_000 });
+  await observeRealPlayback('hidden-paused', false);
+  const frozenAt = await seekInput.evaluate(input => input.valueAsNumber);
+  await sleep(350);
+  const frozenAfter = await seekInput.evaluate(input => input.valueAsNumber);
+  assert(Math.abs(frozenAfter - frozenAt) < 0.025,
+    'Pause did not freeze real Studio playback clock inside hidden caption interval');
+  await page.screenshot({ path: path.join(output, 'studio-caption-playback-paused-hidden.png') });
+  await page.locator(playbackSelector).click();
+  await page.waitForFunction(() => {
+    const input = document.querySelector('input[data-studio-control="seek-preview"]');
+    return input?.valueAsNumber >= 0.73
+      && document.querySelector('button[data-studio-control="playback"]')?.getAttribute('aria-label') === 'Pause';
+  }, { polling: 20, timeout: 12_000 });
+  await page.locator(playbackSelector).click();
+  await observeRealPlayback('arabic-paused', false);
+  await page.screenshot({ path: path.join(output, 'studio-caption-playback-paused-restored.png') });
+  assert(livePlaybackPhases[0].actualTime < livePlaybackPhases[1].actualTime
+    && livePlaybackPhases[1].actualTime < livePlaybackPhases[2].actualTime,
+  'Real Studio Play/Pause/Resume did not advance the authored composition clock');
+  assert(livePlaybackPhases[0].actualTime < 0.35
+    && livePlaybackPhases[1].actualTime > 0.35 && livePlaybackPhases[1].actualTime < 0.65
+    && livePlaybackPhases[2].actualTime >= 0.65,
+  'Real Studio transport did not observe both caption visibility boundaries');
+  // The user-facing speed preference must not leak from a test into subsequent
+  // checks or mask a transport-duration discrepancy.
+  await page.locator('button[aria-label="Playback speed"]').click();
+  await page.locator('[role="menuitemradio"]')
+    .filter(element => element.textContent?.trim() === '1x')
+    .click();
+  await page.waitForFunction(() =>
+    document.querySelector('button[aria-label="Playback speed"]')?.textContent?.trim() === '1x',
+  { timeout: 10_000 });
+  evidence.livePlayback = { phases: livePlaybackPhases, pauseClockDrift: Math.abs(frozenAfter - frozenAt) };
+  assertStep('Real Studio Play Pause Resume crosses RTL caption hide and restore with intact authored nodes',
+    evidence.livePlayback);
+
   const direct = await browser.newPage();
   await direct.setViewport({ width, height, deviceScaleFactor: 1 });
   const route = new URL('/api/projects/' + encodeURIComponent(projectId) + '/preview/index.html', new URL(preview.previewUrl).origin);
