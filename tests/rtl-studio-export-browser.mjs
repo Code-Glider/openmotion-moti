@@ -403,6 +403,66 @@ try {
   await page.screenshot({ path: path.join(output, 'studio-all-scripts-edited.png') });
   assertStep('Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls',
     { scriptEdits, ltrControls });
+  // Exercise the real Studio project-history keyboard path, not the
+  // browser's native textarea history. Focus a timeline clip after the
+  // inspector's blur/save and require BOTH durable native source and preview
+  // to reverse and reapply the latest Syriac edit. Other scripts must survive.
+  let historyClip;
+  for (const node of await page.$('button[aria-label]')) {
+    const label = await node.evaluate(element => element.getAttribute('aria-label'));
+    if (label?.toLowerCase().startsWith('syriac,')) { historyClip = node; break; }
+  }
+  assert(historyClip, 'Cannot focus real Syriac timeline clip for project undo/redo');
+  await historyClip.click();
+  const historyFocus = await page.evaluate(() => ({
+    tag: document.activeElement?.tagName,
+    label: document.activeElement?.getAttribute('aria-label'),
+  }));
+  assert.equal(historyFocus.tag, 'BUTTON', 'History shortcut would target an editable field instead of Studio');
+  assert(historyFocus.label?.toLowerCase().startsWith('syriac,'),
+    'History shortcut focus missed the selected timeline clip');
+  const historyModifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  const historySteps = [];
+  for (const [direction, shortcut, wanted, rejected] of [
+    ['undo', 'z', 'ܫܠܡܐ ܒܪܝܟܐ', 'ܒܪܝܟܐ ܫܠܡܐ'],
+    ['redo', 'Shift+z', 'ܒܪܝܟܐ ܫܠܡܐ', 'ܫܠܡܐ ܒܪܝܟܐ'],
+  ]) {
+    await page.keyboard.press(historyModifier + '+' + shortcut);
+    let persisted = false;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      try { current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } }); }
+      catch (error) {
+        if (error?.code !== 'VERSION_CONFLICT') throw error;
+        await sleep(200);
+        continue;
+      }
+      const text = JSON.stringify(current.file);
+      if (text.includes(wanted) && !text.includes(rejected)) { persisted = true; break; }
+      await sleep(200);
+    }
+    assert(persisted, 'Studio keyboard ' + direction + ' did not persist exact Syriac Unicode in native project source');
+    for (const row of samples.filter(sample => sample.id !== 'syriac')) {
+      assert(JSON.stringify(current.file).includes(row.copy),
+        'Studio keyboard ' + direction + ' altered unrelated ' + row.lang + ' source');
+    }
+    let previewText = null;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      for (const liveFrame of page.frames()) {
+        const found = await liveFrame.$eval('#syriac', element => element.textContent).catch(() => null);
+        if (found === wanted) { previewText = found; break; }
+      }
+      if (previewText !== null) break;
+      await sleep(200);
+    }
+    assert.equal(previewText, wanted, 'Studio keyboard ' + direction + ' did not update actual preview');
+    await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+      .some(element => element.value === expected), { timeout: 20_000 }, wanted);
+    await page.screenshot({ path: path.join(output, 'studio-after-' + direction + '.png') });
+    historySteps.push({ direction, text: wanted, revision: current.revision });
+  }
+  assertStep('Real Studio keyboard undo/redo reverses and reapplies Syriac Unicode in native source and preview', {
+    modifier: historyModifier, steps: historySteps,
+  });
   // Qualify the actual Studio transport, not only the raw composition's
   // GSAP timeline. Pointer-seek forwards, backwards, then repeat: a player
   // wired to the wrong timeline could otherwise pass all MP4 parity gates.
@@ -620,7 +680,8 @@ try {
   });
   assert(typeof archive.archivePath === 'string' && archive.archivePath,
     'Offline export did not return an archive path');
-  const entries = readProjectZip(await readFile(archive.archivePath));
+  const archiveBytes = await readFile(archive.archivePath);
+  const entries = readProjectZip(archiveBytes);
   const manifestEntry = entries.get('openmotion-projects.json');
   assert(manifestEntry, 'Offline export missing project manifest');
   const archiveManifest = JSON.parse(manifestEntry.toString('utf8'));
@@ -681,8 +742,17 @@ try {
   });
   assert.deepEqual(originalAfterArchive.file, originalBeforeArchive.file,
     'Archive round-trip changed the original authored project');
+  // Preserve the actual generated offline project archive for independent
+  // review. Previous runner artifacts retained receipts, but not ZIP bytes.
+  const retainedArchive = path.join(output, 'offline-project.zip');
+  await copyFile(archive.archivePath, retainedArchive);
+  assert.equal(sha256(await readFile(retainedArchive)), sha256(archiveBytes),
+    'Retained offline ZIP differs from the exact archive accepted by the native importer');
+  evidence.offlineArchive = {
+    filename: 'offline-project.zip', sha256: sha256(archiveBytes), bytes: archiveBytes.length,
+  };
   assertStep('Offline ZIP reimport retained exact edited Unicode and six licensed font assets', {
-    restoredProjectId: restoredId, assets: assetFiles,
+    restoredProjectId: restoredId, assets: assetFiles, offlineArchive: evidence.offlineArchive,
   });
   assert.deepEqual(consoleErrors, [], 'Studio page errors');
   evidence.passed = true;
