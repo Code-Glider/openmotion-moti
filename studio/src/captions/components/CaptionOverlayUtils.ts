@@ -171,6 +171,22 @@ function captionGroupLookup(doc: Document): (groupId: string, index: number) => 
     hasIdentifiers ? identified.get(groupId) ?? null : groupEls[index] ?? null;
 }
 
+/** Overlay hit targets must respect the full preview visibility ancestry.
+ * Styles on a parent are not reflected in getComputedStyle(child). In
+ * particular, opacity is not inherited, while a descendant still has a
+ * measurable DOMRect inside an opacity:0 container.
+ */
+function isCaptionHitVisible(groupEl: HTMLElement, win: Window): boolean {
+  for (let el: HTMLElement | null = groupEl; el; el = el.parentElement) {
+    if (el.hidden || el.hasAttribute("inert")) return false;
+    const style = win.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return false;
+    const opacity = parseFloat(style.opacity);
+    if (Number.isFinite(opacity) && opacity <= 0.01) return false;
+  }
+  return true;
+}
+
 export function readWordBoxes(
   iframe: HTMLIFrameElement,
   model: CaptionHitModel,
@@ -202,8 +218,10 @@ export function readWordBoxes(
     if (!group) continue;
     const groupEl = captionGroupAt(groupId, gi);
     if (!groupEl) continue;
-    const computed = win.getComputedStyle(groupEl);
-    if (parseFloat(computed.opacity) <= 0.01 || computed.visibility === "hidden") continue;
+    // A group can have visible children in the DOM while an ancestor is
+    // hidden/inert or a caption animation has faded its container out.
+    // Do not expose invisible words as selectable/transformable overlay hits.
+    if (!isCaptionHitVisible(groupEl, win)) continue;
     const words = groupWords(model, groupId);
     if (!words) continue;
 
