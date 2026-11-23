@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 import { CaptionOverlay } from "./CaptionOverlay";
 import { useCaptionStore } from "../store";
 import { DEFAULT_ANIMATION_SET, DEFAULT_STYLE, DEFAULT_CONTAINER } from "../types";
-import { applyCaptionModelToIframe, readGsapTransform, getOrCreateWrapper } from "./CaptionOverlayUtils";
+import { applyCaptionModelToIframe, readGsapTransform, readWordTransformForGesture, getOrCreateWrapper } from "./CaptionOverlayUtils";
 import { usePreviewIframeStore } from "../../player/store/previewIframeStore";
 
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
@@ -321,7 +321,8 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
   const capture = (element: Element) =>
     Object.defineProperty(element, "setPointerCapture", { configurable: true, value: vi.fn() });
   const modelStyle = () => useCaptionStore.getState().model!.segments.get("s1")!.style;
-  const actualStyle = () => readGsapTransform(getOrCreateWrapper(words[1]), iframe.contentWindow!);
+  // Observing a pointer-down word must itself be non-destructive.
+  const actualStyle = () => readWordTransformForGesture(words[1], iframe.contentWindow!);
   try {
     act(() => root.render(<CaptionOverlay iframeRef={{ current: iframe }} />));
     flushLayout();
@@ -331,6 +332,28 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     act(() => hit.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
     capture(hit);
+    // Clicking, stationary mousemove, a cancelled press and Escape before
+    // movement must not create an anonymous wrapper or any transform history.
+    // This is an authored two-word Hebrew/niqqud group with stable IDs, not a
+    // model-only simulation of a transformed word.
+    const idleHistoryLength = useCaptionStore.getState().past.length;
+    const untouchedMarkup = group.innerHTML;
+    pointer(hit, "pointerdown", 285, 105);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    pointer(hit, "pointermove", 285, 105);
+    pointer(hit, "pointerup", 285, 105);
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointercancel", 285, 105);
+    pointer(hit, "lostpointercapture", 285, 105);
+    pointer(hit, "pointerdown", 285, 105);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(hit, "pointerup", 285, 105);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(0);
+    expect(actualStyle()).toEqual({ x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 });
+    expect(modelStyle()).toEqual({});
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+    expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
     clock += 1000;
     pointer(hit, "pointerdown", 285, 105);
     // A second touch cannot steal the gesture, translate the Hebrew word or
