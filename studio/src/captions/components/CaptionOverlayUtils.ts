@@ -409,6 +409,16 @@ export function applyCaptionModelToIframe(model: {
       const wordEl = getWordEl(iframe, gi, wi, model);
       if (!wordEl) continue;
       const s = seg.style;
+      // Undo/redo can visit every segment, including visually identical words
+      // that were never edited. Do not wrap or otherwise mutate untouched
+      // authored DOM for a neutral transform; an existing wrapper still needs
+      // a neutral write to clear an earlier move/scale/rotation on undo.
+      const neutral = (s.x ?? 0) === 0 && (s.y ?? 0) === 0
+        && (s.scaleX ?? 1) === 1 && (s.scaleY ?? 1) === 1
+        && (s.rotation ?? 0) === 0;
+      const hasWrapper = wordEl.dataset.captionWrapper === "true"
+        || wordEl.parentElement?.dataset.captionWrapper === "true";
+      if (neutral && !hasWrapper) continue;
       writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0, s.scaleY ?? 1);
     }
   }
