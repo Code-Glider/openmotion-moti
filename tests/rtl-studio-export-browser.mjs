@@ -622,9 +622,16 @@ try {
       await sleep(200);
     }
     assert(persisted, 'Studio keyboard ' + direction + ' did not persist exact Syriac Unicode in native project source');
+    const nativeHistorySource = JSON.stringify(current.file);
     for (const row of samples.filter(sample => sample.id !== 'syriac')) {
-      assert(JSON.stringify(current.file).includes(row.copy),
+      assert(nativeHistorySource.includes(row.copy),
         'Studio keyboard ' + direction + ' altered unrelated ' + row.lang + ' source');
+    }
+    // A later undo/redo must never resurrect an earlier clip's original
+    // Unicode even when the most recently edited Syriac clip is correct.
+    for (const earlier of scriptEdits.filter(row => row.id !== 'syriac')) {
+      assert(!nativeHistorySource.includes(earlier.original),
+        'Studio keyboard ' + direction + ' restored stale ' + earlier.id + ' source');
     }
     let previewText = null;
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -636,6 +643,14 @@ try {
       await sleep(200);
     }
     assert.equal(previewText, wanted, 'Studio keyboard ' + direction + ' did not update actual preview');
+    // Read the actual refreshed Chromium player after each project-level
+    // history transition; checking only Syriac would miss collateral edits
+    // to other script rows and the Ethiopic/Latin compatibility controls.
+    const historyFrame = await findStudioFrame(page, editedHebrew);
+    for (const row of samples.filter(sample => sample.id !== 'syriac')) {
+      assert.equal(await historyFrame.$eval('#' + row.id, element => element.textContent), row.copy,
+        'Studio keyboard ' + direction + ' changed ' + row.lang + ' Chromium preview');
+    }
     await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
       .some(element => element.value === expected), { timeout: 20_000 }, wanted);
     await page.screenshot({ path: path.join(output, 'studio-after-' + direction + '.png') });
