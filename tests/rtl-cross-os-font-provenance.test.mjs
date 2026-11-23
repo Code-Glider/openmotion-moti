@@ -24,6 +24,26 @@ test('require identical actual converted WOFF2 and six licenses across OS', asyn
   assert.deepEqual(Object.keys(result.scriptWoff2Sha256), ['hebrew', 'arabic', 'urdu', 'syriac']);
   for (const hash of Object.values(result.scriptWoff2Sha256)) assert.match(hash, /^[a-f0-9]{64}$/);
 });
+test('reject forged Studio Unicode input event receipts even if native source and MP4 claim to pass', async () => {
+  const pristine = await load();
+  const missing = structuredClone(pristine);
+  const edits = missing['windows-2025'].checks.find(check =>
+    check.name === 'Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls')?.scriptEdits;
+  assert(edits?.length === 4, 'Actual native edit receipts must exist for this regression');
+  edits[0].inputEvents = 0;
+  assert.throws(() => verifyCrossOsFontEvidence(missing),
+    /windows-2025: missing actual browser Unicode input event for arabic/);
+  const malformed = structuredClone(pristine);
+  const second = malformed['macos-15'].checks.find(check => check.scriptEdits).scriptEdits[1];
+  second.inputEvents = '1';
+  assert.throws(() => verifyCrossOsFontEvidence(malformed),
+    /macos-15: missing actual browser Unicode input event for persian/);
+  const reorder = structuredClone(pristine);
+  reorder['ubuntu-24.04'].checks.find(check => check.scriptEdits).scriptEdits.reverse();
+  assert.throws(() => verifyCrossOsFontEvidence(reorder),
+    /ubuntu-24.04: real Studio authored input receipts missing or reordered/);
+});
+
 test('refuse cross-runner WOFF2 hash divergence even when all reports pass', async () => {
   const reports = await load();
   reports['windows-2025'].fonts[0].fontSha256 = 'f'.repeat(64);
