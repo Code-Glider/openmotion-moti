@@ -430,6 +430,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         return (
           <div
             key={box.segmentId}
+            data-caption-segment-id={box.segmentId}
             className={[
               "absolute",
               isSelected ? "ring-2 ring-studio-accent" : "hover:ring-1 hover:ring-white/30",
