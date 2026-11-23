@@ -111,6 +111,32 @@ def main(path):
         reject(repack({**nested, html_path: stale, "openmotion-projects.json": json.dumps(edited)}, report),
                directory, "stale-unicode", "archived source lost or resurrected Unicode")
 
+        # Preserve all final strings and all archive digests, but break their
+        # association with the actual authored elements.
+        def reject_html(html, name, expected):
+            changed = copy.deepcopy(manifest)
+            value = html.encode("utf-8")
+            item = next(f for f in changed["projects"][0]["files"] if f["path"] == "index.html")
+            item.update(bytes=len(value), sha256=audit.digest(value))
+            reject(repack({**nested, html_path: value,
+                           "openmotion-projects.json": json.dumps(changed)}, report),
+                   directory, name, expected)
+
+        html = nested[html_path].decode("utf-8")
+        edits = audit.one_check(report, "Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls")["scriptEdits"]
+        first, second = edits[0]["text"], edits[1]["text"]
+        sentinel = "__RTL_TEST_SWAP_SENTINEL__"
+        audit.require(sentinel not in html, "test sentinel already present")
+        swapped = html.replace(first, sentinel, 1).replace(second, first, 1).replace(sentinel, second, 1)
+        reject_html(swapped, "swapped-row-text", "fixture row Unicode differs")
+        reject_html(html.replace(first, "<!--" + first + "-->", 1),
+                    "comment-only-text", "fixture row Unicode differs")
+        reject_html(html.replace('id="latin" dir="ltr"', 'id="latin" dir="rtl"', 1),
+                    "reversed-ltr-control", "fixture row language or direction differs")
+        reject_html(html.replace("</body>", '<div id="arabic" dir="rtl" lang="ar">' +
+                                 first + "</div></body>", 1),
+                    "duplicate-row", "duplicate or misplaced fixture row")
+
         modified = copy.deepcopy(report)
         assets = audit.one_check(modified, "Offline ZIP reimport retained exact edited Unicode and six licensed font assets")["assets"]
         assets[0]["sha256"] = "0" * 64
