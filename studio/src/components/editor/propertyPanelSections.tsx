@@ -102,6 +102,10 @@ export function TextAreaField({
   // completes. Compare authored edits with the value at focus, not only the
   // latest props, or a same-value echo silently suppresses persistence.
   const focusValueRef = useRef(value);
+  // A debounced source commit can still be in flight when the field blurs.
+  // Suppress an identical second write, but do not suppress a later reversal
+  // to the original Unicode after an intermediate value was submitted.
+  const lastSubmittedDuringFocusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (focusedRef.current || composingRef.current || blurPendingRef.current) return;
@@ -119,9 +123,14 @@ export function TextAreaField({
     textareaRef.current?.focus();
   }, [autoFocus]);
 
-  const shouldCommitDraft = (d: string) =>
-    d !== valueRef.current ||
-    (interactionChangedRef.current && d !== focusValueRef.current);
+  const shouldCommitDraft = (d: string) => {
+    if (d === lastSubmittedDuringFocusRef.current) return false;
+    // Returning to the original value is a no-op only if no intervening
+    // debounced write was sent. Otherwise it is a necessary undo in source.
+    return lastSubmittedDuringFocusRef.current !== null ||
+      d !== valueRef.current ||
+      (interactionChangedRef.current && d !== focusValueRef.current);
+  };
   const commitDraft = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     const shouldCommit = shouldCommitDraft(d);
@@ -129,26 +138,25 @@ export function TextAreaField({
       interactionChangedRef.current = false;
       track("text", label);
     }
-    if (shouldCommit) onCommit(d);
+    if (shouldCommit) {
+      lastSubmittedDuringFocusRef.current = d;
+      onCommit(d);
+    }
   };
   const scheduleCommit = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     commitTimerRef.current = setTimeout(() => {
+      commitTimerRef.current = null;
       // A pending debounce from pre-composition text must never write an IME preedit.
-      if (composingRef.current) return;
-      if (shouldCommitDraft(d)) {
-        if (interactionChangedRef.current) {
-          interactionChangedRef.current = false;
-          track("text", label);
-        }
-        onCommit(d);
-      }
+      if (!composingRef.current) commitDraft(d);
     }, 120);
   };
 
   const handleFocus = () => {
     focusedRef.current = true;
     focusValueRef.current = valueRef.current;
+    // A distinct editing session may intentionally retry a rejected save.
+    lastSubmittedDuringFocusRef.current = null;
   };
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     latestDraftRef.current = e.target.value;

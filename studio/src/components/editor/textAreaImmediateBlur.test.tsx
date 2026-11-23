@@ -257,3 +257,46 @@ it("does not author a phantom commit when an edited RTL field is restored to its
     host.remove();
   }
 });
+
+/**
+ * Native source writes are async. A 120ms debounce can dispatch before the
+ * parent has acknowledged its revision. Blurring the same field must not send
+ * a second identical write against that stale revision, but a later return
+ * to the original text must undo the already-submitted intermediate edit.
+ */
+it.each([
+  { script: "Persian", before: "فارسی پ چ ژ گ ۲۰۲۶", after: "فارسی پ چ ژ گ ۲۰۶۲" },
+  { script: "Arabic", before: "السَّلَامُ 25%", after: "السَّلَامُ 52%" },
+])("deduplicates $script debounce/blur while preserving an authored reversal", async ({ before, after }) => {
+  const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+  for (const reverse of [false, true]) {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const onCommit = vi.fn();
+    try {
+      // The parent intentionally continues to report the previous source
+      // revision while an asynchronous save is still unresolved.
+      act(() => root.render(<TextAreaField flat label="Content" value={before} onCommit={onCommit} />));
+      const textarea = host.querySelector("textarea")!;
+      const input = (next: string) => act(() => {
+        setNative.call(textarea, next);
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      act(() => textarea.focus());
+      input(after);
+      await new Promise(resolve => setTimeout(resolve, 175));
+      expect(onCommit).toHaveBeenCalledTimes(1);
+      expect(onCommit).toHaveBeenNthCalledWith(1, after);
+      if (reverse) input(before);
+      act(() => textarea.blur());
+      expect(onCommit).toHaveBeenCalledTimes(reverse ? 2 : 1);
+      if (reverse) expect(onCommit).toHaveBeenNthCalledWith(2, before);
+      await new Promise(resolve => setTimeout(resolve, 165));
+      expect(onCommit, "a late debounce duplicated the native save").toHaveBeenCalledTimes(reverse ? 2 : 1);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
+  }
+});
