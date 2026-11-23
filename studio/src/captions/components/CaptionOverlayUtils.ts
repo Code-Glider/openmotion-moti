@@ -320,6 +320,23 @@ export function readGsapTransform(
 }
 
 /**
+ * Read only a gesture's existing per-word transform. A press is not an edit:
+ * creating a wrapper here changes authored DOM geometry even if the user
+ * releases without moving. Do not read a word's own GSAP animation as an
+ * editor offset when it has never had an editor transform wrapper.
+ */
+export function readWordTransformForGesture(
+  el: HTMLElement,
+  iframeWin: Window,
+): ReturnType<typeof readGsapTransform> {
+  const wrapper = el.dataset.captionWrapper === "true"
+    ? el
+    : el.parentElement?.dataset.captionWrapper === "true" ? el.parentElement : null;
+  return wrapper ? readGsapTransform(wrapper, iframeWin)
+    : { x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 };
+}
+
+/**
  * Get or create an inline-block wrapper span around a word element.
  * Transforms are applied to the wrapper so the word's GSAP animations are preserved.
  */
