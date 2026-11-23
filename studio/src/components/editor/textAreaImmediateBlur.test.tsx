@@ -300,3 +300,65 @@ it.each([
     }
   }
 });
+
+/**
+ * Switching the selected clip can update inspector props while the old
+ * textarea remains focused. Its unchanged draft is not a newly authored
+ * source edit. Blurring must NOT write the old clip's text over the newly
+ * selected clip; after blur the field must display the new source text.
+ * This is distinct from a preview echo following a real input (covered above).
+ */
+it.each([
+  { from: "فارسی پ چ ژ گ ۲۰۲۶", to: "السَّلَامُ 25%", script: "Persian to Arabic" },
+  { from: "شָׁלוֹם OpenMotion", to: "English LTR ABC-123", script: "Hebrew to English" },
+])("does not persist untouched $script inspector content into a different clip on blur", async ({ from, to }) => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onCommit = vi.fn();
+  const render = (value: string) => <TextAreaField flat label="Content" value={value} onCommit={onCommit} />;
+  try {
+    act(() => root.render(render(from)));
+    const textarea = host.querySelector("textarea")!;
+    act(() => textarea.focus());
+    expect(textarea.value).toBe(from);
+    // Studio selection changes without a single trusted input into this field.
+    act(() => root.render(render(to)));
+    expect(textarea.value).toBe(from);
+    act(() => textarea.blur());
+    expect(onCommit, "an old clip was written into a new source").not.toHaveBeenCalled();
+    expect(textarea.value, "the unedited draft was not replaced on blur").toBe(to);
+    await new Promise(resolve => setTimeout(resolve, 165));
+    expect(onCommit).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
+
+/** A visible native edit remains authoritative even without an onChange event. */
+it("commits native Unicode input while props changed during focus when the textarea actually differs from its baseline", () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onCommit = vi.fn();
+  const original = "فارسی ۲۰۲۶";
+  const switched = "English clip 12";
+  const typed = "فارسی ۲۰۶۲";
+  const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+  try {
+    act(() => root.render(<TextAreaField flat label="Content" value={original} onCommit={onCommit} />));
+    const textarea = host.querySelector("textarea")!;
+    act(() => textarea.focus());
+    act(() => root.render(<TextAreaField flat label="Content" value={switched} onCommit={onCommit} />));
+    act(() => {
+      setNative.call(textarea, typed);
+      // The native input arrives before React's onChange observes it.
+      textarea.blur();
+    });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(typed);
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
