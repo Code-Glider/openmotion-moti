@@ -98,6 +98,10 @@ export function TextAreaField({
   const blurPendingRef = useRef(false);
   const valueRef = useRef(value);
   valueRef.current = value;
+  // Inspector props can echo a live preview before the native project save
+  // completes. Compare authored edits with the value at focus, not only the
+  // latest props, or a same-value echo silently suppresses persistence.
+  const focusValueRef = useRef(value);
 
   useEffect(() => {
     if (focusedRef.current || composingRef.current || blurPendingRef.current) return;
@@ -115,20 +119,24 @@ export function TextAreaField({
     textareaRef.current?.focus();
   }, [autoFocus]);
 
+  const shouldCommitDraft = (d: string) =>
+    d !== valueRef.current ||
+    (interactionChangedRef.current && d !== focusValueRef.current);
   const commitDraft = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    const shouldCommit = shouldCommitDraft(d);
     if (interactionChangedRef.current) {
       interactionChangedRef.current = false;
       track("text", label);
     }
-    if (d !== valueRef.current) onCommit(d);
+    if (shouldCommit) onCommit(d);
   };
   const scheduleCommit = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     commitTimerRef.current = setTimeout(() => {
       // A pending debounce from pre-composition text must never write an IME preedit.
       if (composingRef.current) return;
-      if (d !== valueRef.current) {
+      if (shouldCommitDraft(d)) {
         if (interactionChangedRef.current) {
           interactionChangedRef.current = false;
           track("text", label);
@@ -140,6 +148,7 @@ export function TextAreaField({
 
   const handleFocus = () => {
     focusedRef.current = true;
+    focusValueRef.current = valueRef.current;
   };
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     latestDraftRef.current = e.target.value;
