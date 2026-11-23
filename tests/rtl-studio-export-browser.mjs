@@ -539,8 +539,29 @@ try {
     frame = await findStudioFrame(page, editedHebrew);
     assert.equal(await frame.$eval('#' + id, element => element.textContent), nextCopy,
       id + ' Studio preview has stale text');
+    // The latest clip saving correctly is not enough: a rapid selection/blur
+    // race can write the previous clip's textarea value into the newly selected
+    // source. Re-check every earlier authored RTL script in BOTH the durable
+    // native project and live Chromium preview after each subsequent save.
+    const nativeAfterEdit = JSON.stringify(current.file);
+    for (const earlier of scriptEdits) {
+      assert(nativeAfterEdit.includes(earlier.text),
+        id + ' save overwrote previously authored ' + earlier.id + ' native Unicode');
+      assert(!nativeAfterEdit.includes(earlier.original),
+        id + ' save restored the original ' + earlier.id + ' native Unicode');
+      assert.equal(await frame.$eval('#' + earlier.id, element => element.textContent), earlier.text,
+        id + ' save corrupted earlier ' + earlier.id + ' Chromium preview');
+    }
+    // LTR and Ethiopic projects must remain untouched throughout the session,
+    // not only in the last preview frame after all RTL edits have finished.
+    for (const control of samples.filter(row => row.dir === 'ltr')) {
+      assert(nativeAfterEdit.includes(control.copy),
+        id + ' save removed LTR control ' + control.id + ' from native source');
+      assert.equal(await frame.$eval('#' + control.id, element => element.textContent), control.copy,
+        id + ' save changed LTR control ' + control.id + ' in browser preview');
+    }
     sample.copy = nextCopy;
-    scriptEdits.push({ id, text: nextCopy, revision: current.revision,
+    scriptEdits.push({ id, original: oldCopy, text: nextCopy, revision: current.revision,
       inputEvents: inputReceipt?.events?.filter(event => event.type === 'input').length ?? 0,
       blurEvents: inputReceipt?.events?.filter(event => event.type === 'blur').length ?? 0 });
   }
