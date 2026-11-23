@@ -6,6 +6,7 @@ substitute for real Studio, rendering, or cross-platform acceptance.
 """
 import argparse
 import hashlib
+from html.parser import HTMLParser
 import io
 import json
 from pathlib import Path, PurePosixPath
@@ -47,6 +48,56 @@ def one_check(report, name):
     checks = [c for c in report["checks"] if c["name"] == name]
     require(len(checks) == 1, "missing or duplicate receipt: " + name)
     return checks[0]
+
+
+class FixtureRows(HTMLParser):
+    """Read the seven plain-text fixture elements, never comments or scripts."""
+
+    def __init__(self, expected):
+        super().__init__(convert_charrefs=True)
+        self.expected = expected
+        self.rows = {}
+        self.active = None
+        self.in_body = False
+
+    def handle_starttag(self, tag, attrs):
+        require(self.active is None, "nested markup in fixture row: " + str(self.active))
+        if tag == "body":
+            self.in_body = True
+        ids = [value for key, value in attrs if key == "id"]
+        matching = [row for row in ids if row in self.expected]
+        if not matching:
+            return
+        row = matching[0]
+        require(len(ids) == 1 and self.in_body and tag == "div" and row not in self.rows,
+                "duplicate or misplaced fixture row: " + row)
+        _, lang, direction = self.expected[row]
+        require([value for key, value in attrs if key == "lang"] == [lang] and
+                [value for key, value in attrs if key == "dir"] == [direction],
+                "fixture row language or direction differs: " + row)
+        self.rows[row] = ""
+        self.active = row
+
+    def handle_endtag(self, tag):
+        if self.active is not None:
+            require(tag == "div", "unclosed fixture row: " + self.active)
+            self.active = None
+        if tag == "body":
+            self.in_body = False
+
+    def handle_data(self, data):
+        if self.active is not None:
+            self.rows[self.active] += data
+
+
+def verify_fixture_rows(html, expected):
+    parser = FixtureRows(expected)
+    parser.feed(html)
+    parser.close()
+    require(parser.active is None and set(parser.rows) == set(expected),
+            "fixture row inventory differs")
+    for row, (text, _, _) in expected.items():
+        require(parser.rows[row] == text, "fixture row Unicode differs: " + row)
 
 
 def audit(path, expected_platform=None, expected_variant=None):
@@ -103,7 +154,8 @@ def audit(path, expected_platform=None, expected_variant=None):
                  ".woff": b"wOFF", ".woff2": b"wOF2"}.get(PurePosixPath(name).suffix)
         require(magic is not None and files[name].startswith(magic), "font signature mismatch: " + name)
     html = files["index.html"].decode("utf-8")
-    edits = one_check(report, "Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls")["scriptEdits"]
+    script_check = one_check(report, "Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls")
+    edits = script_check["scriptEdits"]
     require([e["id"] for e in edits] == ["arabic", "persian", "urdu", "syriac"], "wrong script edit inventory")
     for edit in edits:
         require(edit["text"] in html and edit["original"] not in html,
@@ -111,8 +163,20 @@ def audit(path, expected_platform=None, expected_variant=None):
     hebrew = one_check(report, "UI Content editor persisted Hebrew niqqud and mixed English/numerals")
     require(hebrew["newText"] in html and "שָׁלוֹם OpenMotion 2026" not in html,
             "archived Hebrew edit missing or stale")
+    # This deliberately targets the known qualification fixture, not arbitrary
+    # project HTML. Global substring checks alone accept swapped clip contents
+    # and edited text hidden in a comment. Bind each row to its own identity.
+    controls = ["ሰላም ኢትዮጵያ", "Render ABC-123 at 10:30"]
+    require(script_check["ltrControls"] == controls, "LTR control receipt differs")
+    rows = {"label": (hebrew["newText"], "he", "rtl"),
+            "ethiopic": (controls[0], "am", "ltr"),
+            "latin": (controls[1], "en", "ltr")}
+    for edit, lang in zip(edits, ("ar", "fa", "ur", "syr")):
+        rows[edit["id"]] = (edit["text"], lang, "rtl")
+    verify_fixture_rows(html, rows)
     return {"artifactSha256": digest(path.read_bytes()), "offlineSha256": expected["sha256"],
-            "manifestFiles": len(files), "fontLicensePairs": len(fonts), "verified": True}
+            "manifestFiles": len(files), "fontLicensePairs": len(fonts),
+            "verifiedFixtureRows": sorted(rows), "verified": True}
 
 
 PLATFORMS = {"ubuntu-24.04": "linux", "macos-15": "darwin", "windows-2025": "win32"}
