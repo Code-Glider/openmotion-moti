@@ -1126,6 +1126,15 @@ try {
   assert(!exportedHtml.toString('utf8').includes(originalHebrew), 'Archive restored stale pre-edit text');
   for (const sample of samples) assert(exportedHtml.toString('utf8').includes(sample.copy),
     'Offline ZIP lost author-edited ' + sample.lang + ' Unicode');
+  // A previous inspector edit can survive as an extra stale text node even
+  // when each expected string is present. Reject that source corruption in
+  // the actual exported bytes, after the real Studio history undo/redo path.
+  for (const edit of scriptEdits) {
+    assert(exportedHtml.toString('utf8').includes(edit.text),
+      'Offline ZIP lost final Studio-authored ' + edit.id + ' Unicode');
+    assert(!exportedHtml.toString('utf8').includes(edit.original),
+      'Offline ZIP retained stale pre-edit ' + edit.id + ' Unicode');
+  }
   const assetFiles = [];
   if (woff1) await mkdir(path.join(output, 'woff1-fonts'), { recursive: true });
   for (const face of fontSources) {
@@ -1160,6 +1169,15 @@ try {
   assert(!JSON.stringify(restoredSource.file).includes(originalHebrew), 'Reimport restored stale pre-edit text');
   for (const sample of samples) assert(JSON.stringify(restoredSource.file).includes(sample.copy),
     'Offline reimport lost ' + sample.lang + ' Unicode');
+  // Verify the independent imported project has no stale duplicate of any
+  // edited script, not only that its final text is discoverable somewhere.
+  const reimportedComposition = JSON.stringify(restoredSource.file);
+  for (const edit of scriptEdits) {
+    assert(reimportedComposition.includes(edit.text),
+      'Offline ZIP reimport lost final ' + edit.id + ' Unicode');
+    assert(!reimportedComposition.includes(edit.original),
+      'Offline ZIP reimport resurrected pre-edit ' + edit.id + ' Unicode');
+  }
   for (const face of fontSources) {
     const asset = imported.items.find(item => item.itemId === face.id);
     assert.deepEqual(
