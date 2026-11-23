@@ -337,6 +337,35 @@ export function readWordTransformForGesture(
 }
 
 /**
+ * Cancel a pointer edit or a gesture that returns exactly to its starting
+ * transform. Never leave a wrapper created solely by an abandoned preview.
+ * Do not unwrap an authored/previously persisted wrapper or rewrite the word
+ * element itself (its text, data attributes and GSAP animation stay intact).
+ */
+export function restoreWordTransformAfterGesture(
+  el: HTMLElement,
+  iframeWin: Window,
+  hadWrapper: boolean,
+  x: number,
+  y: number,
+  scale: number,
+  rotation: number,
+  scaleY: number,
+): void {
+  if (hadWrapper) {
+    writeTransform(el, iframeWin, x, y, scale, rotation, scaleY);
+    return;
+  }
+  const wrapper = el.parentElement;
+  // Only remove a wrapper of the exact structure created by this editor.
+  // Unexpected sibling nodes or a different wrapper are not ours to destroy.
+  if (wrapper?.dataset.captionWrapper === "true" &&
+      wrapper.childNodes.length === 1 && wrapper.firstChild === el) {
+    wrapper.replaceWith(el);
+  }
+}
+
+/**
  * Get or create an inline-block wrapper span around a word element.
  * Transforms are applied to the wrapper so the word's GSAP animations are preserved.
  */
