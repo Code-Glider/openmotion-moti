@@ -127,9 +127,12 @@ export function TextAreaField({
     if (d === lastSubmittedDuringFocusRef.current) return false;
     // Returning to the original value is a no-op only if no intervening
     // debounced write was sent. Otherwise it is a necessary undo in source.
+    // Parent props may switch clips while this field is still focused.
+    // A value that was never authored in this focus session must not be
+    // written back over the new clip just because the incoming prop changed.
+    // The focus baseline also survives optimistic preview-prop echoes.
     return lastSubmittedDuringFocusRef.current !== null ||
-      d !== valueRef.current ||
-      (interactionChangedRef.current && d !== focusValueRef.current);
+      d !== focusValueRef.current;
   };
   const commitDraft = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
@@ -195,6 +198,17 @@ export function TextAreaField({
     // the DOM before React's onChange updates latestDraftRef. Otherwise the
     // inspector displays the new Unicode string but quietly saves the old one.
     const liveValue = event.currentTarget.value;
+    // When the selected clip changed externally without any local input,
+    // never commit the previous clip's text into the newly selected source.
+    // The focus-time prop echo is not an acknowledgement of an authored edit.
+    if (liveValue === focusValueRef.current &&
+        !interactionChangedRef.current &&
+        lastSubmittedDuringFocusRef.current === null &&
+        valueRef.current !== liveValue) {
+      latestDraftRef.current = valueRef.current;
+      setDraft(valueRef.current);
+      return;
+    }
     latestDraftRef.current = liveValue;
     if (draft !== liveValue) setDraft(liveValue);
     commitDraft(liveValue);
