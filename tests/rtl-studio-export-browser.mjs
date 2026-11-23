@@ -17,6 +17,7 @@ import { readProjectZip } from '../shared/project-zip.ts';
 import { closeFixtureEditor } from './fixtures.ts';
 import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
 import { readLiveFrameText } from './rtl-preview-frame-read.mjs';
+import { armRtlPostCleanupWatchdog } from './rtl-post-cleanup-watchdog.mjs';
 
 const output = process.argv[2];
 const fontDir = process.argv[3];
@@ -1221,4 +1222,7 @@ try {
   evidence.cleanup = { recoveries: cleanupRecoveries, errors: cleanupErrors };
   await writeFile(path.join(output, 'result.json'), JSON.stringify(evidence, null, 2));
   if (evidence.passed && cleanupErrors.length) throw new Error('RTL integration teardown failed: ' + cleanupErrors.join('; '));
+  // A passing result.json is not qualification if a test-owned event-loop
+  // resource keeps Node alive after all teardown steps have returned.
+  if (evidence.passed) armRtlPostCleanupWatchdog({ output, evidence });
 }
