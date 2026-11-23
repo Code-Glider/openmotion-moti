@@ -56,6 +56,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         type: "move";
         wordEl: HTMLElement;
         segmentId: string;
+        pointerId: number;
         startMX: number;
         startMY: number;
         origTX: number;
@@ -68,6 +69,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         type: "scale";
         wordEl: HTMLElement;
         segmentId: string;
+        pointerId: number;
         startMX: number;
         startDxFromCenter: number;
         origTX: number;
@@ -80,6 +82,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         type: "rotate";
         wordEl: HTMLElement;
         segmentId: string;
+        pointerId: number;
         startMX: number;
         origTX: number;
         origTY: number;
@@ -262,16 +265,19 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const startMove = useCallback(
     (groupIndex: number, wordIndex: number, segmentId: string, e: React.PointerEvent) => {
       e.stopPropagation();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      // Only the pointer that began a transform may own its gesture.
+      if (interactionRef.current) return;
       const iframe = iframeRef.current;
       if (!iframe) return;
       const liveModel = modelRef.current;
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
       interactionRef.current = {
         type: "move",
+        pointerId: e.pointerId,
         wordEl,
         segmentId,
         startMX: e.clientX,
@@ -291,13 +297,14 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     (groupIndex: number, wordIndex: number, segmentId: string, e: React.PointerEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      if (interactionRef.current) return;
       const iframe = iframeRef.current;
       if (!iframe) return;
       const liveModel = modelRef.current;
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const rect = wordEl.getBoundingClientRect();
       const cssScale = getCssScale();
       const boxCenterX =
@@ -307,6 +314,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
       interactionRef.current = {
         type: "scale",
+        pointerId: e.pointerId,
         wordEl,
         segmentId,
         startMX: e.clientX,
@@ -326,16 +334,18 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     (box: WordBox, e: React.PointerEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      if (interactionRef.current) return;
       const iframe = iframeRef.current;
       if (!iframe) return;
       const liveModel = modelRef.current;
       const wordEl = liveModel ? getWordEl(iframe, box.groupIndex, box.wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
       interactionRef.current = {
         type: "rotate",
+        pointerId: e.pointerId,
         wordEl,
         segmentId: box.segmentId,
         startMX: e.clientX,
@@ -361,7 +371,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       const i = interactionRef.current;
-      if (!i) return;
+      if (!i || e.pointerId !== i.pointerId) return;
       const win = getIframeWin();
       if (!win) return;
 
@@ -391,13 +401,26 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   );
 
   // --- Unified pointer up — sync back to store ---
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
     const i = interactionRef.current;
-    if (i) {
-      const win = getIframeWin();
-      if (win) syncToStore(i.segmentId, i.wordEl, win);
-      interactionRef.current = null;
+    if (!i || e.pointerId !== i.pointerId) return;
+    const win = getIframeWin();
+    if (win) syncToStore(i.segmentId, i.wordEl, win);
+    interactionRef.current = null;
+  }, [getIframeWin]);
+
+  // Browser/OS pointercancel is not a successful release. In particular a
+  // two-finger touch or an interrupted pen stroke must not persist a partial
+  // word transform or create an undo entry.
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    const i = interactionRef.current;
+    if (!i || e.pointerId !== i.pointerId) return;
+    const win = getIframeWin();
+    if (win) {
+      writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
     }
+    interactionRef.current = null;
+    scheduleLayoutRef.current?.();
   }, [getIframeWin]);
 
   const handleBackgroundClick = useCallback(
@@ -417,6 +440,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       onClick={handleBackgroundClick}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onLostPointerCapture={handlePointerUp}
     >
       {wordBoxes.length === 0 && model && model.segments.size > 0 && (

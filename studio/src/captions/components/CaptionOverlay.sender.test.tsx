@@ -313,9 +313,9 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
   const flushLayout = () => act(() => {
     for (const cb of callbacks.splice(0)) cb(0);
   });
-  const pointer = (target: Element, type: string, x: number, y: number) => act(() => {
+  const pointer = (target: Element, type: string, x: number, y: number, pointerId = 13) => act(() => {
     const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
-    Object.defineProperty(event, "pointerId", { value: 13 });
+    Object.defineProperty(event, "pointerId", { value: pointerId });
     target.dispatchEvent(event);
   });
   const capture = (element: Element) =>
@@ -333,6 +333,14 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     capture(hit);
     clock += 1000;
     pointer(hit, "pointerdown", 285, 105);
+    // A second touch cannot steal the gesture, translate the Hebrew word or
+    // end the first pointer's pending transaction.
+    pointer(hit, "pointerdown", 285, 105, 29);
+    pointer(hit, "pointermove", 400, 300, 29);
+    pointer(hit, "pointerup", 400, 300, 29);
+    pointer(hit, "lostpointercapture", 400, 300, 29);
+    expect(actualStyle()).toEqual({ x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 });
+    expect(modelStyle()).toEqual({});
     pointer(hit, "pointermove", 309, 117);
     pointer(hit, "pointerup", 309, 117);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1, scaleY: 1, rotation: 0 });
@@ -348,6 +356,9 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     capture(rotateHandle);
     clock += 1000;
     pointer(scaleHandle, "pointerdown", 360, 105);
+    pointer(scaleHandle, "pointermove", 445, 105, 29);
+    pointer(scaleHandle, "pointercancel", 445, 105, 29);
+    expect(actualStyle().scale).toBe(1);
     pointer(scaleHandle, "pointermove", 385, 105);
     pointer(scaleHandle, "pointerup", 385, 105);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 0 });
@@ -384,9 +395,20 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
       expect(actualStyle()).toEqual(expected);
     }
 
+    // Browser pointercancel must roll back the drag without a history entry;
+    // the subsequent lostpointercapture must not recommit the cancelled edit.
+    const historyLength = useCaptionStore.getState().past.length;
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    pointer(hit, "pointercancel", 340, 137);
+    pointer(hit, "lostpointercapture", 340, 137);
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+
     // Esc during a new gesture restores the pre-drag transform and MUST NOT
     // create an undo entry; a late pointerup must not re-commit cancelled work.
-    const historyLength = useCaptionStore.getState().past.length;
     pointer(hit, "pointerdown", 309, 117);
     pointer(hit, "pointermove", 340, 137);
     expect(actualStyle().x).toBe(55);
