@@ -136,7 +136,7 @@ jobs:
       # in bounded lanes on this PR. Running every backend test in one process
       # duplicated that work and hit this job's 45-minute timeout.
       - name: Verify bounded fail-closed RTL temporary cleanup
-        run: node --test tests/rtl-temp-project-cleanup.test.mjs tests/rtl-post-cleanup-watchdog.test.mjs
+        run: node --test tests/rtl-temp-project-cleanup.test.mjs tests/rtl-post-cleanup-watchdog.test.mjs tests/rtl-owned-child-stdio.test.mjs
       - name: Require native editor staging files stay out of project versions
         run: node --experimental-strip-types --test tests/workspace-transient-files.test.ts
       - name: Native captions and font regression
