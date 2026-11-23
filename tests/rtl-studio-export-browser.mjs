@@ -169,6 +169,26 @@ async function replaceStudioInspectorText(page, before, after, script) {
   });
   assert.equal(selected.value, before, script + ': inspector targets wrong Unicode text');
   assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
+  // Record native browser events without mutating the React field or Studio
+  // store. A correct-looking textarea alone did not prove an Arabic WOFF1
+  // source write on Windows (RTL run 45082328771).
+  await page.evaluate(targetScript => {
+    const input = document.activeElement;
+    if (!(input instanceof HTMLTextAreaElement)) throw new Error('Inspector probe lost textarea focus');
+    const receipt = { events: [] };
+    window.__rtlInspectorInputReceipts ??= {};
+    window.__rtlInspectorInputReceipts[targetScript] = receipt;
+    for (const type of ['beforeinput', 'input', 'blur', 'compositionstart', 'compositionend']) {
+      input.addEventListener(type, event => {
+        receipt.events.push({
+          type: event.type,
+          value: event.currentTarget.value,
+          trusted: event.isTrusted,
+          connected: event.currentTarget.isConnected,
+        });
+      }, { capture: true });
+    }
+  }, script);
   await page.keyboard.sendCharacter(after);
   // A CDP insertText acknowledgement alone is not proof that React accepted
   // the edit. Wait for the LIVE focused textarea to show the exact logical
@@ -188,6 +208,10 @@ async function replaceStudioInspectorText(page, before, after, script) {
     }));
     throw new Error(script + ': Studio rejected or reverted the actual Unicode input: ' + JSON.stringify(state), { cause: error });
   }
+  const receipt = await page.evaluate(id => window.__rtlInspectorInputReceipts?.[id], script);
+  assert(receipt?.events?.some(event => event.type === 'input' && event.value === after),
+    script + ': browser did not dispatch an exact Unicode input event to the connected inspector: '
+      + JSON.stringify(receipt));
 }
 
 // The Windows end-to-end gate can finish every browser/MP4 assertion and
@@ -467,6 +491,7 @@ try {
     }
     await replaceStudioInspectorText(page, oldCopy, nextCopy, id);
     await page.keyboard.press('Tab');
+    const inputReceipt = await page.evaluate(script => window.__rtlInspectorInputReceipts?.[script], id);
     let persisted = false;
     for (let attempt = 0; attempt < 80; attempt++) {
       try { current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } }); }
@@ -477,13 +502,45 @@ try {
       if (JSON.stringify(current.file).includes(nextCopy)) { persisted = true; break; }
       await sleep(200);
     }
+    if (!persisted) {
+      // Keep failure evidence on disk for all OS runners. The next diagnosis
+      // must distinguish a missed blur, a React/source commit error, a
+      // selection change and an actual native persistence fault. Do not
+      // synthesize a blur, retry input, or accept a visually edited textarea.
+      const browserState = await page.evaluate(() => ({
+        activeTag: document.activeElement?.tagName ?? null,
+        activeValue: document.activeElement?.value ?? null,
+        selectedLabels: Array.from(document.querySelectorAll('button.timeline-clip[aria-pressed="true"]'))
+          .map(button => button.getAttribute('aria-label')),
+        inspectorValues: Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+          .map(element => ({ value: element.value, connected: element.isConnected,
+            focused: document.activeElement === element })),
+        alerts: Array.from(document.querySelectorAll('[role="alert"]'))
+          .map(element => element.textContent?.trim()).filter(Boolean).slice(-10),
+        linkedSelection: document.querySelector('.motion-timeline-toolbar')
+          ?.getAttribute('data-linked-selection-state') ?? null,
+      }));
+      const diagnostic = {
+        script: id, expected: nextCopy, original: oldCopy,
+        projectRevision: current?.revision ?? null,
+        sourceStillContainsOriginal: JSON.stringify(current?.file).includes(oldCopy),
+        sourceContainsExpected: JSON.stringify(current?.file).includes(nextCopy),
+        inspectorInputEvents: inputReceipt?.events ?? [],
+        browserState,
+      };
+      await writeFile(path.join(output, 'studio-edit-failure-' + id + '.json'),
+        JSON.stringify(diagnostic, null, 2));
+      console.error('Studio source persistence mismatch: ' + JSON.stringify(diagnostic));
+    }
     assert(persisted, id + ' edit did not persist native project Unicode');
     assert(!JSON.stringify(current.file).includes(oldCopy), id + ' old text persisted');
     frame = await findStudioFrame(page, editedHebrew);
     assert.equal(await frame.$eval('#' + id, element => element.textContent), nextCopy,
       id + ' Studio preview has stale text');
     sample.copy = nextCopy;
-    scriptEdits.push({ id, text: nextCopy, revision: current.revision });
+    scriptEdits.push({ id, text: nextCopy, revision: current.revision,
+      inputEvents: inputReceipt?.events?.filter(event => event.type === 'input').length ?? 0,
+      blurEvents: inputReceipt?.events?.filter(event => event.type === 'blur').length ?? 0 });
   }
   const ltrControls = await frame.evaluate(() => [
     document.getElementById('ethiopic')?.textContent,
