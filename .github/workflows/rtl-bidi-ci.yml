@@ -4,7 +4,7 @@ on:
   push:
     branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, feat/rtl-textarea-immediate-blur-save, feat/rtl-caption-word-native-transform-export, feat/rtl-semitic-woff2-cross-os]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate]
+    branches: [main, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, test/rtl-studio-cross-script-native-isolation]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
@@ -35,6 +35,8 @@ on:
       - 'tests/rtl-authored-word-transform-browser.mjs'
       - 'tests/rtl-cross-os-font-provenance.test.mjs'
       - 'scripts/rtl-verify-cross-os-fonts.mjs'
+      - 'scripts/rtl-audit-offline-artifact.py'
+      - 'scripts/rtl-audit-offline-artifact-test.py'
       - 'tests/rtl-studio-export-browser.mjs'
       - 'tests/rtl-preview-frame-read.mjs'
       - 'tests/rtl-preview-frame-read.test.mjs'
@@ -347,12 +349,26 @@ jobs:
           set -euo pipefail
           node --test tests/rtl-cross-os-font-provenance.test.mjs
           node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_FIXTURES" | tee "$RUNNER_TEMP/rtl-cross-os-attestation.json"
+      - name: Download raw WOFF2 archives for independent ZIP byte audit
+        uses: actions/download-artifact@v8
+        with:
+          pattern: rtl-studio-mp4-parity-{ubuntu-24.04,macos-15,windows-2025}
+          path: ${{ runner.temp }}/rtl-raw-woff2
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Independently verify all three WOFF2 offline ZIPs and adversarial fixtures
+        run: |
+          set -euo pipefail
+          python3 scripts/rtl-audit-offline-artifact.py --matrix-root "$RUNNER_TEMP/rtl-raw-woff2" --variant woff2 | tee "$RUNNER_TEMP/rtl-independent-woff2.json"
+          python3 scripts/rtl-audit-offline-artifact-test.py "$RUNNER_TEMP/rtl-raw-woff2/rtl-studio-mp4-parity-ubuntu-24.04/"*
       - name: Preserve reproducible cross-runner attestation
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
           name: rtl-cross-os-font-attestation
-          path: ${{ runner.temp }}/rtl-cross-os-attestation.json
+          path: |
+            ${{ runner.temp }}/rtl-cross-os-attestation.json
+            ${{ runner.temp }}/rtl-independent-woff2.json
           if-no-files-found: warn
           retention-days: 14
 
@@ -383,11 +399,27 @@ jobs:
           set -euo pipefail
           node --test --test-name-pattern WOFF1 tests/rtl-cross-os-font-provenance.test.mjs
           node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_WOFF1_FIXTURES" --woff1 | tee "$RUNNER_TEMP/rtl-cross-os-woff1-attestation.json"
+      - name: Download raw WOFF1 archives for independent ZIP byte audit
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: rtl-studio-woff1-{ubuntu-24.04,macos-15,windows-2025}
+          path: ${{ runner.temp }}/rtl-raw-woff1
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Independently verify all three WOFF1 offline ZIPs and adversarial fixtures
+        if: needs.studio-rtl-export.result == 'success'
+        run: |
+          set -euo pipefail
+          python3 scripts/rtl-audit-offline-artifact.py --matrix-root "$RUNNER_TEMP/rtl-raw-woff1" --variant woff1 | tee "$RUNNER_TEMP/rtl-independent-woff1.json"
+          python3 scripts/rtl-audit-offline-artifact-test.py "$RUNNER_TEMP/rtl-raw-woff1/rtl-studio-woff1-ubuntu-24.04/"*
       - name: Preserve cross-runner WOFF1 attestation
         if: always() && needs.studio-rtl-export.result == 'success'
         uses: actions/upload-artifact@v7.0.2
         with:
           name: rtl-cross-os-woff1-attestation
-          path: ${{ runner.temp }}/rtl-cross-os-woff1-attestation.json
+          path: |
+            ${{ runner.temp }}/rtl-cross-os-woff1-attestation.json
+            ${{ runner.temp }}/rtl-independent-woff1.json
           if-no-files-found: warn
           retention-days: 14

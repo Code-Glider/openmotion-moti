@@ -49,12 +49,15 @@ def one_check(report, name):
     return checks[0]
 
 
-def audit(path):
+def audit(path, expected_platform=None, expected_variant=None):
     require(path.stat().st_size <= MAX_BYTES, "outer ZIP too large")
     with zipfile.ZipFile(path) as archive:
         outer = members(archive)
     report = json.loads(outer["result.json"])
     require(report["passed"] is True, "producer failed")
+    if expected_platform is not None:
+        require(report["scope"] == expected_platform + " Studio browser, source-backed UI edit and native exported MP4",
+                "unexpected artifact platform: " + expected_platform)
     receipt = one_check(report, "Offline ZIP reimport retained exact edited Unicode and six licensed font assets")
     data = outer["offline-project.zip"]
     expected = {"filename": "offline-project.zip", "bytes": len(data), "sha256": digest(data)}
@@ -91,6 +94,10 @@ def audit(path):
     require(len(fonts) == len(licenses) == 6 and
             {str(PurePosixPath(n).with_suffix(".license.txt")) for n in fonts} == licenses,
             "missing or mismatched font/license pairs")
+    if expected_variant is not None:
+        suffix = {"woff1": ".woff", "woff2": ".woff2"}[expected_variant]
+        require(sorted(PurePosixPath(n).suffix for n in fonts) == sorted([suffix] * 4 + [".ttf"] * 2),
+                "unexpected archived font format mix: " + expected_variant)
     for name in fonts:
         magic = {".ttf": b"\x00\x01\x00\x00", ".otf": b"OTTO",
                  ".woff": b"wOFF", ".woff2": b"wOF2"}.get(PurePosixPath(name).suffix)
@@ -108,11 +115,44 @@ def audit(path):
             "manifestFiles": len(files), "fontLicensePairs": len(fonts), "verified": True}
 
 
+PLATFORMS = {"ubuntu-24.04": "linux", "macos-15": "darwin", "windows-2025": "win32"}
+PREFIXES = {"woff1": "rtl-studio-woff1-", "woff2": "rtl-studio-mp4-parity-"}
+
+
+def matrix_artifacts(root, variant):
+    """Exactly one raw Actions archive from each named OS; no partial success."""
+    prefix = PREFIXES[variant]
+    require(root.is_dir(), "missing matrix artifact directory")
+    expected = {prefix + os for os in PLATFORMS}
+    require({p.name for p in root.iterdir()} == expected, "unexpected matrix artifact inventory")
+    found = {}
+    for os in PLATFORMS:
+        directory = root / (prefix + os)
+        require(directory.is_dir() and not directory.is_symlink(), "not an artifact directory: " + os)
+        entries = list(directory.iterdir())
+        require(len(entries) == 1 and entries[0].is_file() and not entries[0].is_symlink(),
+                "expected exactly one raw artifact file: " + os)
+        found[os] = entries[0]
+    return found
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("artifacts", nargs="+", type=Path)
+    parser.add_argument("artifacts", nargs="*", type=Path)
+    parser.add_argument("--matrix-root", type=Path)
+    parser.add_argument("--variant", choices=PREFIXES)
     args = parser.parse_args()
-    print(json.dumps([{"artifact": str(p), **audit(p)} for p in args.artifacts], indent=2))
+    if args.matrix_root is not None:
+        if args.artifacts or args.variant is None:
+            parser.error("--matrix-root requires --variant and no positional artifacts")
+        paths = matrix_artifacts(args.matrix_root, args.variant)
+        results = [{"os": os, "variant": args.variant, "artifact": str(p),
+                    **audit(p, PLATFORMS[os], args.variant)} for os, p in paths.items()]
+    else:
+        if not args.artifacts or args.variant is not None:
+            parser.error("supply artifact paths or --matrix-root with --variant")
+        results = [{"artifact": str(p), **audit(p)} for p in args.artifacts]
+    print(json.dumps(results, indent=2))
 
 
 if __name__ == "__main__":

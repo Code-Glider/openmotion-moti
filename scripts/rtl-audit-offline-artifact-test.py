@@ -36,9 +36,45 @@ def reject(entries, directory, name, expected):
 
 def main(path):
     audit.audit(path)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        def reject_matrix(expected):
+            try:
+                audit.matrix_artifacts(root, "woff2")
+            except ValueError as error:
+                audit.require(expected in str(error), "wrong matrix failure: " + str(error))
+            else:
+                raise RuntimeError("accepted incomplete or ambiguous matrix")
+        reject_matrix("unexpected matrix artifact inventory")
+        for os in audit.PLATFORMS:
+            directory = root / (audit.PREFIXES["woff2"] + os)
+            directory.mkdir()
+            (directory / "raw.zip").write_bytes(b"inventory-only test fixture")
+        audit.require(len(audit.matrix_artifacts(root, "woff2")) == 3, "missing matrix inputs")
+        extra = root / (audit.PREFIXES["woff2"] + "ubuntu-24.04") / "duplicate.zip"
+        extra.write_bytes(b"unexpected")
+        reject_matrix("expected exactly one raw artifact file")
+        extra.unlink()
+        (root / "unexpected").mkdir()
+        reject_matrix("unexpected matrix artifact inventory")
+        print("PASS exact matrix inventory")
     with zipfile.ZipFile(path) as archive:
         original = audit.members(archive)
     report = json.loads(original["result.json"])
+    actual_platform = report["scope"].split(" ", 1)[0]
+    actual_variant = "woff1" if "scriptWoff" in report else "woff2"
+    audit.audit(path, actual_platform, actual_variant)
+    for platform, variant, expected in [
+        ("not-a-platform", actual_variant, "unexpected artifact platform"),
+        (actual_platform, "woff2" if actual_variant == "woff1" else "woff1", "unexpected archived font format mix"),
+    ]:
+        try:
+            audit.audit(path, platform, variant)
+        except ValueError as error:
+            audit.require(expected in str(error), "wrong binding failure: " + str(error))
+        else:
+            raise RuntimeError("accepted mislabeled archive")
+        print("PASS " + expected)
     with tempfile.TemporaryDirectory() as tmp:
         directory = Path(tmp)
         modified = copy.deepcopy(report)
