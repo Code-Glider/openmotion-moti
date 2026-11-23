@@ -255,7 +255,7 @@ it("requests caption hit remeasurement on model changes without a player event",
 });
 
 
-it("commits real pointer drag, scale and rotation on only the authored repeated Hebrew word, with undo and Escape", () => {
+it("dispatches caption pointer move, scale and rotate handlers on one stable Hebrew word, with undo and Escape", () => {
   const host = document.createElement("div");
   const iframe = document.createElement("iframe");
   document.body.append(host, iframe);
