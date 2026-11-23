@@ -302,7 +302,7 @@ it("commits real pointer drag, scale and rotation on only the authored repeated 
         start: index * 0.5, end: index * 0.5 + 0.5, groupIndex: 0,
         style: {}, animation: {},
       },
-    ])),
+    ] as const)),
     groups: new Map([["g", {
       id: "g", segmentIds: ["s0", "s1"], style: DEFAULT_STYLE,
       animation: DEFAULT_ANIMATION_SET, containerStyle: DEFAULT_CONTAINER,
