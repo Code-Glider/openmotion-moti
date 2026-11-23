@@ -3,6 +3,7 @@
 // Fails closed if the licensed fonts, Studio edit, actual export, or glyph pixels are absent.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { paintedCaptionSeekTimes, verifyPaintedCaptionMovement } from '../scripts/rtl-verify-cross-os-fonts.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -110,6 +111,18 @@ function captionInkPixels(rgb) {
   }
   return pixels;
 }
+// Measure painted highlight position in both the real Chromium screenshot and
+// independently decoded native MP4; CSS transforms alone cannot prove parity.
+function yellowCentroid(rgb) {
+  let pixels = 0, sumX = 0, sumY = 0;
+  for (let y = 451; y < height; y++) for (let x = 24; x < width - 24; x++) {
+    const pos = (y * width + x) * 3;
+    const dr = rgb[pos] - 250, dg = rgb[pos + 1] - 204, db = rgb[pos + 2] - 21;
+    if (dr * dr + dg * dg + db * db > 55 * 55) continue;
+    pixels++; sumX += x; sumY += y;
+  }
+  return pixels ? { x: sumX / pixels, y: sumY / pixels, pixels } : null;
+}
 function compositionHtml(fontPaths) {
   const css = Object.entries(fontPaths).map(([face, url]) => {
     const lower = url.toLowerCase();
@@ -120,7 +133,7 @@ function compositionHtml(fontPaths) {
   const timedCaption = '<div id="timed-caption" dir="rtl" lang="he" data-start="0" data-duration="1" data-track-index="7">'
     + '<span id="caption-he" lang="he" dir="rtl">שָׁלוֹם</span> '
     + '<span id="caption-ar" lang="ar" dir="rtl">السَّلَامُ</span></div>';
-  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5).set("#timed-caption",{opacity:0},0.35).set("#timed-caption",{opacity:1},0.65)};</script></body></html>';
+  return '<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><script src="assets/gsap.min.js"></script><style>body{margin:0}' + css + '#main{width:640px;height:480px;position:relative;overflow:hidden;background:#18382f;color:#fff}.sample{position:absolute;left:24px;width:592px;height:57px;line-height:1.45;font-size:30px;font-weight:400;white-space:nowrap;overflow:hidden;text-align:start}#timed-caption{position:absolute;top:451px;left:24px;width:592px;height:29px;line-height:1.2;font-size:21px;text-align:start;white-space:nowrap;overflow:hidden}#timed-caption span{display:inline-block;padding:1px 5px;background:transparent;color:white}#caption-he{font-family:\"OM RTL hebrew\"}#caption-ar{font-family:\"OM RTL arabic\"}</style></head><body><div id="main" data-composition-id="main" data-start="0" data-duration="1" data-width="640" data-height="480" data-fps="10">' + rows + timedCaption + '</div><script>window.__timelines={main:gsap.timeline({paused:true}).to("#label",{opacity:1,duration:1,ease:"none"},0).to("#caption-he",{x:-32,duration:1,ease:"none"},0).to("#caption-ar",{x:-32,duration:1,ease:"none"},0).set("#caption-he",{backgroundColor:"#facc15"},0.01).set("#caption-ar",{backgroundColor:"transparent"},0.01).set("#caption-he",{backgroundColor:"transparent"},0.5).set("#caption-ar",{backgroundColor:"#facc15"},0.5).set("#timed-caption",{opacity:0},0.35).set("#timed-caption",{opacity:1},0.65)};</script></body></html>';
 }
 async function findStudioFrame(page, copy) {
   const deadline = Date.now() + 30_000;
@@ -156,6 +169,26 @@ async function replaceStudioInspectorText(page, before, after, script) {
   });
   assert.equal(selected.value, before, script + ': inspector targets wrong Unicode text');
   assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
+  // Record native browser events without mutating the React field or Studio
+  // store. A correct-looking textarea alone did not prove an Arabic WOFF1
+  // source write on Windows (RTL run 45082328771).
+  await page.evaluate(targetScript => {
+    const input = document.activeElement;
+    if (!(input instanceof HTMLTextAreaElement)) throw new Error('Inspector probe lost textarea focus');
+    const receipt = { events: [] };
+    window.__rtlInspectorInputReceipts ??= {};
+    window.__rtlInspectorInputReceipts[targetScript] = receipt;
+    for (const type of ['beforeinput', 'input', 'blur', 'compositionstart', 'compositionend']) {
+      input.addEventListener(type, event => {
+        receipt.events.push({
+          type: event.type,
+          value: event.currentTarget.value,
+          trusted: event.isTrusted,
+          connected: event.currentTarget.isConnected,
+        });
+      }, { capture: true });
+    }
+  }, script);
   await page.keyboard.sendCharacter(after);
   // A CDP insertText acknowledgement alone is not proof that React accepted
   // the edit. Wait for the LIVE focused textarea to show the exact logical
@@ -175,6 +208,10 @@ async function replaceStudioInspectorText(page, before, after, script) {
     }));
     throw new Error(script + ': Studio rejected or reverted the actual Unicode input: ' + JSON.stringify(state), { cause: error });
   }
+  const receipt = await page.evaluate(id => window.__rtlInspectorInputReceipts?.[id], script);
+  assert(receipt?.events?.some(event => event.type === 'input' && event.value === after),
+    script + ': browser did not dispatch an exact Unicode input event to the connected inspector: '
+      + JSON.stringify(receipt));
 }
 
 // The Windows end-to-end gate can finish every browser/MP4 assertion and
@@ -363,6 +400,41 @@ try {
   samples[0].copy = editedHebrew;
   // The same *actual Studio Content inspector* must save Arabic, Persian,
   // Urdu and Syriac, not only display font-provenanced static rows.
+  // Exercise the public Linked Selection control before multi-script editing.
+  // Windows run 45075179101 reached a correct single-clip precheck, then the
+  // subsequent inspector click found two linked clips and no textarea.
+  // Do not set the selection store directly or retry an inserted character:
+  // disable linked selection through the REAL toolbar, still Alt-click the
+  // requested clip, and require exactly one selected clip and exact Unicode
+  // before any input. Restore the user's prior toolbar preference afterward.
+  // The embedded MVP intentionally has no toggle and forces linked
+  // selection off. Assert the actual subscribed Studio preference in both
+  // shell modes; a missing full-Studio button or an enabled MVP must fail.
+  const linkedSelectionToolbar = '.motion-timeline-toolbar[data-linked-selection-mode]';
+  const linkedSelectionButton = 'button[aria-label="Linked Selection"]';
+  const linkedSelectionMode = await page.$eval(linkedSelectionToolbar,
+    element => element.getAttribute('data-linked-selection-mode'));
+  assert(['host-locked', 'user-toggle'].includes(linkedSelectionMode),
+    'Studio did not expose a recognized linked-selection UI mode');
+  const linkedSelectionControlCount = await page.evaluate(
+    selector => document.querySelectorAll(selector).length, linkedSelectionButton);
+  assert.equal(linkedSelectionControlCount, linkedSelectionMode === 'user-toggle' ? 1 : 0,
+    'Actual Studio linked-selection control visibility disagrees with its host mode');
+  let linkedSelectionInitiallyOn = false;
+  if (linkedSelectionMode === 'user-toggle') {
+    linkedSelectionInitiallyOn = await page.$eval(linkedSelectionButton,
+      element => element.getAttribute('aria-pressed') === 'true');
+    if (linkedSelectionInitiallyOn) {
+      await page.locator(linkedSelectionButton).setTimeout(15_000).click();
+    }
+  }
+  await page.waitForFunction(selector => {
+    const toolbar = document.querySelector('.motion-timeline-toolbar[data-linked-selection-mode]');
+    const button = document.querySelector(selector);
+    return toolbar?.getAttribute('data-linked-selection-state') === 'off'
+      && (button ? button.getAttribute('aria-pressed') === 'false'
+        : toolbar.getAttribute('data-linked-selection-mode') === 'host-locked');
+  }, { timeout: 10_000 }, linkedSelectionButton);
   const scriptEdits = [];
   for (const [id, nextCopy] of [
     ['arabic', 'السَّلَامُ OpenMotion 52%'],
@@ -419,6 +491,7 @@ try {
     }
     await replaceStudioInspectorText(page, oldCopy, nextCopy, id);
     await page.keyboard.press('Tab');
+    const inputReceipt = await page.evaluate(script => window.__rtlInspectorInputReceipts?.[script], id);
     let persisted = false;
     for (let attempt = 0; attempt < 80; attempt++) {
       try { current = await client.call('openmotion_get_project', { projectId, file: { path: 'index.html' } }); }
@@ -429,13 +502,45 @@ try {
       if (JSON.stringify(current.file).includes(nextCopy)) { persisted = true; break; }
       await sleep(200);
     }
+    if (!persisted) {
+      // Keep failure evidence on disk for all OS runners. The next diagnosis
+      // must distinguish a missed blur, a React/source commit error, a
+      // selection change and an actual native persistence fault. Do not
+      // synthesize a blur, retry input, or accept a visually edited textarea.
+      const browserState = await page.evaluate(() => ({
+        activeTag: document.activeElement?.tagName ?? null,
+        activeValue: document.activeElement?.value ?? null,
+        selectedLabels: Array.from(document.querySelectorAll('button.timeline-clip[aria-pressed="true"]'))
+          .map(button => button.getAttribute('aria-label')),
+        inspectorValues: Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
+          .map(element => ({ value: element.value, connected: element.isConnected,
+            focused: document.activeElement === element })),
+        alerts: Array.from(document.querySelectorAll('[role="alert"]'))
+          .map(element => element.textContent?.trim()).filter(Boolean).slice(-10),
+        linkedSelection: document.querySelector('.motion-timeline-toolbar')
+          ?.getAttribute('data-linked-selection-state') ?? null,
+      }));
+      const diagnostic = {
+        script: id, expected: nextCopy, original: oldCopy,
+        projectRevision: current?.revision ?? null,
+        sourceStillContainsOriginal: JSON.stringify(current?.file).includes(oldCopy),
+        sourceContainsExpected: JSON.stringify(current?.file).includes(nextCopy),
+        inspectorInputEvents: inputReceipt?.events ?? [],
+        browserState,
+      };
+      await writeFile(path.join(output, 'studio-edit-failure-' + id + '.json'),
+        JSON.stringify(diagnostic, null, 2));
+      console.error('Studio source persistence mismatch: ' + JSON.stringify(diagnostic));
+    }
     assert(persisted, id + ' edit did not persist native project Unicode');
     assert(!JSON.stringify(current.file).includes(oldCopy), id + ' old text persisted');
     frame = await findStudioFrame(page, editedHebrew);
     assert.equal(await frame.$eval('#' + id, element => element.textContent), nextCopy,
       id + ' Studio preview has stale text');
     sample.copy = nextCopy;
-    scriptEdits.push({ id, text: nextCopy, revision: current.revision });
+    scriptEdits.push({ id, text: nextCopy, revision: current.revision,
+      inputEvents: inputReceipt?.events?.filter(event => event.type === 'input').length ?? 0,
+      blurEvents: inputReceipt?.events?.filter(event => event.type === 'blur').length ?? 0 });
   }
   const ltrControls = await frame.evaluate(() => [
     document.getElementById('ethiopic')?.textContent,
@@ -516,6 +621,17 @@ try {
   assertStep('Real Studio keyboard undo/redo reverses and reapplies Syriac Unicode in native source and preview', {
     modifier: historyModifier, steps: historySteps,
   });
+  if (linkedSelectionInitiallyOn) {
+    await page.locator(linkedSelectionButton).setTimeout(15_000).click();
+    await page.waitForFunction(selector =>
+      document.querySelector(selector)?.getAttribute('aria-pressed') === 'true'
+        && document.querySelector('.motion-timeline-toolbar')?.getAttribute('data-linked-selection-state') === 'on',
+    { timeout: 10_000 }, linkedSelectionButton);
+  } else {
+    assert.equal(await page.$eval(linkedSelectionToolbar,
+      element => element.getAttribute('data-linked-selection-state')), 'off',
+      'Studio linked selection drifted on during multi-script edits');
+  }
   // Qualify the actual Studio transport, not only the raw composition's
   // GSAP timeline. Pointer-seek forwards, backwards, then repeat: a player
   // wired to the wrong timeline could otherwise pass all MP4 parity gates.
@@ -786,7 +902,7 @@ try {
   // Never split or replace authored caption text nodes.
   const timedPreviews = [];
   const priorSeekStates = new Map();
-  for (const [seekIndex, time] of [0.25, 0.45, 0.75, 0.45, 0.25, 0.75].entries()) {
+  for (const [seekIndex, time] of paintedCaptionSeekTimes.entries()) {
     const layout = await direct.evaluate(at => {
       const timeline = window.__timelines?.main;
       if (!timeline || typeof timeline.pause !== 'function') throw Error('Missing authored GSAP timeline');
@@ -802,11 +918,18 @@ try {
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
       };
       return { unchanged, text: caption.textContent, he: measure(he), ar: measure(ar),
+        wordMotion: { he: new DOMMatrixReadOnly(getComputedStyle(he).transform).m41,
+          ar: new DOMMatrixReadOnly(getComputedStyle(ar).transform).m41 },
         parentOpacity: getComputedStyle(caption).opacity,
         heColor: getComputedStyle(he).backgroundColor, arColor: getComputedStyle(ar).backgroundColor };
     }, time);
     assert(layout.unchanged, 'Playback replaced an authored caption text node');
     assert.equal(layout.text, 'שָׁלוֹם السَّلَامُ', 'Playback mutated Unicode caption content');
+    for (const id of ['he', 'ar']) {
+      assert(Number.isFinite(layout.wordMotion[id]) &&
+        Math.abs(layout.wordMotion[id] + 32 * time) <= 2.1,
+        id + ': authored per-word GSAP translation missing at ' + time);
+    }
     assert.equal(Number(layout.parentOpacity) < 0.02, time === 0.45,
       'Authored caption parent opacity did not reverse correctly on seek at ' + time);
     const yellow = color => /250,\s*204,\s*21/.test(color);
@@ -818,6 +941,18 @@ try {
     const heYellow = yellowPixels(pixels, layout.he);
     const arYellow = yellowPixels(pixels, layout.ar);
     const totalInk = captionInkPixels(pixels);
+    const browserCentroid = yellowCentroid(pixels);
+    if (time !== 0.45) {
+      const activeRect = time < 0.5 ? layout.he : layout.ar;
+      assert(browserCentroid && browserCentroid.pixels > 90,
+        'Animated Chromium caption has no painted yellow region');
+      assert(browserCentroid.x >= activeRect.left - 2 && browserCentroid.x <= activeRect.right + 2 &&
+        browserCentroid.y >= activeRect.top - 2 && browserCentroid.y <= activeRect.bottom + 2,
+        'Chromium yellow pixels do not occupy the transformed authored word');
+    } else {
+      assert(!browserCentroid || browserCentroid.pixels < 25,
+        'Hidden animated caption leaked Chromium yellow pixels');
+    }
     if (time === 0.45) {
       assert(totalInk < 25, 'Hidden caption leaked visible glyph or highlight ink in Chromium');
       assert(heYellow < 25 && arYellow < 25,
@@ -830,6 +965,7 @@ try {
     const seekState = {
       he: layout.he, ar: layout.ar,
       heColor: layout.heColor, arColor: layout.arColor, parentOpacity: layout.parentOpacity,
+      wordMotion: layout.wordMotion, browserCentroid,
       browserYellow: { he: heYellow, ar: arYellow }, browserInk: totalInk,
     };
     const previous = priorSeekStates.get(time);
@@ -840,7 +976,7 @@ try {
       priorSeekStates.set(time, seekState);
     }
     timedPreviews.push({ seekIndex, time, screenshot, layout,
-      browserYellow: seekState.browserYellow, browserInk: seekState.browserInk });
+      browserYellow: seekState.browserYellow, browserInk: seekState.browserInk, browserCentroid });
   }
   await direct.close();
   if (woff1) {
@@ -886,6 +1022,8 @@ try {
     const inactive = capture.time < 0.5 ? 'ar' : 'he';
     const videoYellow = { he: heYellow, ar: arYellow };
     const videoInk = captionInkPixels(rgb);
+    const videoCentroid = yellowCentroid(rgb);
+    let centroidDriftPx = null;
     let drift = null;
     if (capture.time === 0.45) {
       assert(videoInk < 25, 'Decoded MP4 leaked visible caption glyph ink while its parent was hidden');
@@ -898,12 +1036,22 @@ try {
       drift = Math.abs(videoYellow[active] - capture.browserYellow[active])
         / Math.max(videoYellow[active], capture.browserYellow[active]);
       assert(drift <= 0.3, 'Browser/MP4 timed highlight geometry mismatch: ' + JSON.stringify({ time: capture.time, drift, videoYellow, browserYellow: capture.browserYellow }));
+      assert(videoCentroid && videoCentroid.pixels > 90,
+        'Decoded MP4 lacks a painted animated caption centroid');
+      centroidDriftPx = Math.hypot(
+        videoCentroid.x - capture.browserCentroid.x, videoCentroid.y - capture.browserCentroid.y);
+      assert(centroidDriftPx <= 9,
+        'MP4 animated word displaced from real Chromium pixels: ' +
+        JSON.stringify({ time: capture.time, centroidDriftPx, browser: capture.browserCentroid, video: videoCentroid }));
     }
     temporal.push({ seekIndex: capture.seekIndex, time: capture.time, visible: capture.time !== 0.45,
       parentOpacity: capture.layout.parentOpacity, active, browserYellow: capture.browserYellow,
       browserInk: capture.browserInk, videoInk,
+      wordMotion: capture.layout.wordMotion,
+      browserCentroid: capture.browserCentroid, videoCentroid, centroidDriftPx,
       videoYellow, areaDrift: drift });
   }
+  verifyPaintedCaptionMovement(temporal, 'Studio/MP4');
   assertStep('Timed RTL caption parent hide/restore and per-word highlights match decoded MP4 on repeated seeks', { temporal });
   // Production project ZIP export must preserve source Unicode and actual
   // imported font/LICENSE bytes, not merely look right in Chrome.
@@ -931,6 +1079,11 @@ try {
   assert.equal(typeof archiveRoot, 'string', 'Missing versioned archive root');
   const exportedHtml = entries.get(archiveRoot + '/index.html');
   assert(exportedHtml, 'Offline export missing edited composition');
+  const authoredMotion = '.to("#caption-he",{x:-32,duration:1,ease:"none"},0).to("#caption-ar",{x:-32,duration:1,ease:"none"},0)';
+  assert(exportedHtml.toString('utf8').includes(authoredMotion) &&
+    exportedHtml.toString('utf8').includes('id="caption-he"') &&
+    exportedHtml.toString('utf8').includes('id="caption-ar"'),
+    'Offline project lost distinct authored word IDs or animated GSAP transforms');
   assert(exportedHtml.toString('utf8').includes(editedHebrew), 'Archive lost edited Hebrew niqqud/Latin copy');
   assert(!exportedHtml.toString('utf8').includes(originalHebrew), 'Archive restored stale pre-edit text');
   for (const sample of samples) assert(exportedHtml.toString('utf8').includes(sample.copy),
@@ -962,6 +1115,10 @@ try {
     projectId: restoredId, file: { path: 'index.html' },
   });
   assert(JSON.stringify(restoredSource.file).includes(editedHebrew), 'Reimport lost edited logical Unicode text');
+  assert(JSON.stringify(restoredSource.file).includes('x:-32') &&
+    JSON.stringify(restoredSource.file).includes('caption-he') &&
+    JSON.stringify(restoredSource.file).includes('caption-ar'),
+    'Offline ZIP reimport lost independently authored word animation');
   assert(!JSON.stringify(restoredSource.file).includes(originalHebrew), 'Reimport restored stale pre-edit text');
   for (const sample of samples) assert(JSON.stringify(restoredSource.file).includes(sample.copy),
     'Offline reimport lost ' + sample.lang + ' Unicode');

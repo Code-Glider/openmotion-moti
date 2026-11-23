@@ -629,12 +629,15 @@ describe("TimelineToolbar Linked Selection", () => {
     const { host } = renderToolbar();
     const button = host.querySelector<HTMLButtonElement>('button[aria-label="Linked Selection"]');
     expect(button?.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector(".motion-timeline-toolbar")?.getAttribute("data-linked-selection-mode")).toBe("user-toggle");
+    expect(host.querySelector(".motion-timeline-toolbar")?.getAttribute("data-linked-selection-state")).toBe("on");
     const snapping = host.querySelector('button[aria-label="Snapping"]');
     expect(snapping && button?.compareDocumentPosition(snapping)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
     act(() => button?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(button?.getAttribute("aria-pressed")).toBe("false");
+    expect(host.querySelector(".motion-timeline-toolbar")?.getAttribute("data-linked-selection-state")).toBe("off");
     expect(readStudioUiPreferences().linkedSelectionEnabled).toBe(false);
     act(() => useLinkedClipPreferences.getState().setLinkedSelection(true));
   });
@@ -652,6 +655,23 @@ describe("TimelineToolbar Linked Selection", () => {
     expect(readStudioUiPreferences().syncIndicatorsVisible).toBe(false);
     act(() => useLinkedClipPreferences.getState().setSyncIndicatorsVisible(true));
   });
+});
+
+it("MVP embeds force linked selection off without advertising an unavailable toggle", async () => {
+  const { useLinkedClipPreferences } = await import("../utils/linkedClipPreferences");
+  const original = useLinkedClipPreferences.getState().linkedSelection;
+  act(() => useLinkedClipPreferences.getState().setLinkedSelection(true));
+  const { host, root } = renderToolbar(undefined, {}, true);
+  try {
+    const toolbar = host.querySelector(".motion-timeline-toolbar");
+    expect(toolbar?.getAttribute("data-linked-selection-mode")).toBe("host-locked");
+    expect(toolbar?.getAttribute("data-linked-selection-state")).toBe("off");
+    expect(host.querySelector('button[aria-label="Linked Selection"]')).toBeNull();
+    expect(useLinkedClipPreferences.getState().linkedSelection).toBe(false);
+  } finally {
+    act(() => root.unmount());
+    act(() => useLinkedClipPreferences.getState().setLinkedSelection(original));
+  }
 });
 
 describe("TimelineToolbar — host right actions", () => {

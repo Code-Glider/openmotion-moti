@@ -26,6 +26,31 @@ const maxOflBytes = 128 * 1024;
 const sha256 = data => createHash('sha256').update(data).digest('hex');
 const gitBlob = data => createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
 const pngHeader = Buffer.from([137,80,78,71,13,10,26,10]);
+const studioSeekTimes = [0.25, 0.45, 0.75, 0.45, 0.25, 0.75];
+export const paintedCaptionSeekTimes = Object.freeze([...studioSeekTimes, 0.1, 0.3, 0.7, 0.9]);
+
+// Each word must move on its own: comparing just one visible frame per script
+// (even if repeated) cannot distinguish a frozen raster from moving paint.
+export function verifyPaintedCaptionMovement(rows, label) {
+  for (const [word, earlyTime, lateTime] of [['he', 0.1, 0.3], ['ar', 0.7, 0.9]]) {
+    const early = rows.find(row => row.time === earlyTime && row.visible && row.active === word);
+    const late = rows.find(row => row.time === lateTime && row.visible && row.active === word);
+    assert(early && late, label + ': missing two visible paint times for ' + word);
+    const dom = late.wordMotion?.[word] - early.wordMotion?.[word];
+    const browser = late.browserCentroid?.x - early.browserCentroid?.x;
+    const video = late.videoCentroid?.x - early.videoCentroid?.x;
+    const expected = -32 * (lateTime - earlyTime);
+    assert(Number.isFinite(dom) && dom < -3 && Math.abs(dom - expected) <= 1,
+      label + ': DOM caption moved incorrectly for ' + word);
+    assert(Number.isFinite(browser) && browser < -3 && Math.abs(browser - dom) <= 2,
+      label + ': browser caption paint did not move with DOM for ' + word);
+    // Both endpoints are exact 10fps frame times. Allow residual subpixel
+    // raster/codec differences, but never allow zero or rightward motion.
+    assert(Number.isFinite(video) && video < -3 && Math.abs(video - browser) <= 2,
+      label + ': decoded MP4 caption paint did not move with browser for ' + word);
+  }
+}
+
 const mediaNames = [
   'exported-rtl.mp4', 'exported-mp4-frame.png', 'preview-frame.png',
   'studio-before-edit.png', 'studio-after-edit.png',
@@ -33,9 +58,7 @@ const mediaNames = [
   'studio-after-reverse-seek.png',
   'studio-caption-playback-paused-hidden.png',
   'studio-caption-playback-paused-restored.png',
-  'preview-caption-seek-0-0.25.png', 'preview-caption-seek-1-0.45.png',
-  'preview-caption-seek-2-0.75.png', 'preview-caption-seek-3-0.45.png',
-  'preview-caption-seek-4-0.25.png', 'preview-caption-seek-5-0.75.png',
+  ...paintedCaptionSeekTimes.map((time, i) => 'preview-caption-seek-' + i + '-' + time + '.png'),
 ];
 
 // Read actual downloaded current-run media, not just self-reported JSON.
@@ -174,6 +197,19 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
       hashes.set(os, conversion.sha256);
     }
 
+    // A changed inspector value alone did not guarantee native text persistence
+    // on Windows WOFF1 (45082328771). Require proof that real browser input
+    // events reached each authored script editor before source/MP4 qualification.
+    const uiEdits = report.checks.find(item =>
+      item.name === 'Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls')?.scriptEdits;
+    assert.deepEqual(uiEdits?.map(edit => edit.id), ['arabic', 'persian', 'urdu', 'syriac'],
+      os + ': real Studio authored input receipts missing or reordered');
+    for (const edit of uiEdits) {
+      assert(Number.isInteger(edit.inputEvents) && edit.inputEvents >= 1,
+        os + ': missing actual browser Unicode input event for ' + edit.id);
+      assert(Number.isInteger(edit.blurEvents) && edit.blurEvents >= 0,
+        os + ': invalid inspector blur receipt for ' + edit.id);
+    }
     const zip = report.checks.find(item =>
       item.name === 'Offline ZIP reimport retained exact edited Unicode and six licensed font assets');
     assert.equal(zip?.assets?.length, 12, os + ': reimport must retain six fonts and six licenses');
@@ -216,14 +252,14 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
     // Contract must track the actual six-state Studio and decoded-MP4
     // hide/reveal run. Do not drop the two hidden seek states or treat their
     // absence as a passing four-state highlight check.
-    const times = [0.25, 0.45, 0.75, 0.45, 0.25, 0.75];
-    const words = ['he', 'he', 'ar', 'he', 'he', 'ar'];
-    const visible = [true, false, true, false, true, true];
+    const times = paintedCaptionSeekTimes;
+    const words = times.map(time => time < 0.5 ? 'he' : 'ar');
+    const visible = times.map(time => time !== 0.45);
     assert.deepEqual(report.temporalCaptions?.map(row => row.time), times,
       os + ': real timed native caption reverse/hide/seek evidence missing');
     const studio = report.checks.find(item =>
       item.name === 'Actual Studio seek hides and restores authored RTL caption parent without mutation')?.studioSeeks;
-    assert.deepEqual(studio?.map(row => row.expectedTime), times,
+    assert.deepEqual(studio?.map(row => row.expectedTime), studioSeekTimes,
       os + ': Studio hide/restore reverse-seek evidence missing');
     for (let i = 0; i < times.length; i++) {
       const row = report.temporalCaptions[i], seek = studio[i];
@@ -233,12 +269,14 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
       assert.equal(row.visible, visible[i], os + ': timed caption visibility receipt mismatch');
       assert.equal(Number(row.parentOpacity) < 0.02, !visible[i],
         os + ': wrong preview caption parent opacity');
-      assert.equal(Number(seek.parentOpacity) < 0.02, !visible[i],
-        os + ': wrong actual Studio caption parent opacity');
-      assert.equal(seek.seekIndex, i, os + ': Studio seek index mismatch');
-      assert.equal(seek.unchangedNodes, true, os + ': seek mutated authored caption DOM');
-      assert(Math.abs(seek.actualTime - times[i]) <= 0.02,
-        os + ': Studio seek time did not match slider request');
+      if (i < studioSeekTimes.length) {
+        assert.equal(Number(seek.parentOpacity) < 0.02, !visible[i],
+          os + ': wrong actual Studio caption parent opacity');
+        assert.equal(seek.seekIndex, i, os + ': Studio seek index mismatch');
+        assert.equal(seek.unchangedNodes, true, os + ': seek mutated authored caption DOM');
+        assert(Math.abs(seek.actualTime - times[i]) <= 0.02,
+          os + ': Studio seek time did not match slider request');
+      }
       for (const [kind, pixels, ink] of [
         ['browser', row.browserYellow, row.browserInk],
         ['native MP4', row.videoYellow, row.videoInk],
@@ -260,14 +298,38 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
             os + ': wrong ' + kind + ' highlight');
         }
       }
+      // Painted word-centroid drift is independent of yellow-area similarity:
+      // a frozen native caption can have identical pixel area but be displaced.
+      for (const id of ['he', 'ar']) {
+        assert(Number.isFinite(row.wordMotion?.[id]) &&
+          Math.abs(row.wordMotion[id] + 32 * times[i]) <= 2.1,
+          os + ': authored caption word animation not observed');
+      }
       if (!visible[i]) {
+        assert.equal(row.browserCentroid, null, os + ': hidden animated caption reports a visible centroid');
+        assert.equal(row.videoCentroid, null, os + ': hidden animated MP4 reports a visible centroid');
+        assert.equal(row.centroidDriftPx, null, os + ': hidden animated caption claims centroid parity');
         assert.equal(row.areaDrift, null,
           os + ': hidden caption must not claim measured visible area parity');
       } else {
+        for (const [kind, centroid] of [
+          ['browser', row.browserCentroid], ['native MP4', row.videoCentroid],
+        ]) {
+          assert(centroid && Number.isFinite(centroid.x) && Number.isFinite(centroid.y) &&
+            Number.isInteger(centroid.pixels) && centroid.pixels > 90 &&
+            centroid.x >= 24 && centroid.x <= 616 && centroid.y >= 451 && centroid.y < 480,
+            os + ': missing actual ' + kind + ' animated word centroid');
+        }
+        const measuredDrift = Math.hypot(row.videoCentroid.x - row.browserCentroid.x,
+          row.videoCentroid.y - row.browserCentroid.y);
+        assert(Number.isFinite(row.centroidDriftPx) && row.centroidDriftPx >= 0 &&
+          row.centroidDriftPx <= 9 && Math.abs(measuredDrift - row.centroidDriftPx) <= 0.01,
+          os + ': decoded MP4 animated word centroid drift');
         assert(Number.isFinite(row.areaDrift) && row.areaDrift >= 0 && row.areaDrift <= 0.35,
           os + ': timed native caption area drift exceeds acceptance threshold');
       }
     }
+    verifyPaintedCaptionMovement(report.temporalCaptions, os);
     // Live Studio transport is separate from six externally sought static
     // frames: the physical Play/Pause/Resume button and clock must cross the
     // same visibility boundaries without replacing authored Hebrew/Arabic nodes.
