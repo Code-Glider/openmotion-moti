@@ -116,3 +116,38 @@ it("keeps unique-IDless legacy captions editable but refuses repeated ambiguous 
     expect(getWordEl(f.iframe, 0, 0, f.model)).toBeNull();
   } finally { f.dispose(); }
 });
+
+it("refuses partial word identities even when the first Hebrew DOM ID matches", () => {
+  const f = authoredFrame([
+    { segmentId: "s1", wordId: "word-a", text: "שָׁלוֹם" },
+    { segmentId: "s2", text: "שָׁלוֹם" },
+  ]);
+  try {
+    f.group.innerHTML = '<span id="word-a">שָׁלוֹם</span> <span id="word-b">שָׁלוֹם</span>';
+    const initialMarkup = f.group.innerHTML;
+    const originalNodes = [...f.group.childNodes];
+    expect(readWordBoxes(f.iframe, f.model, f.overlay)).toEqual([]);
+    expect(getWordEl(f.iframe, 0, 0, f.model)).toBeNull();
+    expect(getWordEl(f.iframe, 0, 1, f.model)).toBeNull();
+    expect(f.group.innerHTML).toBe(initialMarkup);
+    expect([...f.group.childNodes]).toEqual(originalNodes);
+    // Complete exact model identifiers restore safe independent editing.
+    f.model.segments.get("s2")!.wordId = "word-b";
+    expect(readWordBoxes(f.iframe, f.model, f.overlay).map((box) => box.segmentId))
+      .toEqual(["s1", "s2"]);
+    expect(getWordEl(f.iframe, 0, 1, f.model)).toBe(f.group.children[1]);
+  } finally { f.dispose(); }
+});
+
+it("retains unambiguous anonymous legacy caption spans with unrelated DOM IDs", () => {
+  const f = authoredFrame([
+    { segmentId: "legacy-a", text: "שלום" },
+    { segmentId: "legacy-b", text: "OpenMotion" },
+  ]);
+  try {
+    f.group.innerHTML = '<span id="legacy-dom-a">שלום</span> <span id="legacy-dom-b">OpenMotion</span>';
+    expect(readWordBoxes(f.iframe, f.model, f.overlay).map((box) => box.editable))
+      .toEqual([true, true]);
+    expect(getWordEl(f.iframe, 0, 1, f.model)).toBe(f.group.children[1]);
+  } finally { f.dispose(); }
+});
