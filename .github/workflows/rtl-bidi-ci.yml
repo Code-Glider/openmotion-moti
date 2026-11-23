@@ -42,6 +42,7 @@ on:
       - 'tests/rtl-preview-frame-read.test.mjs'
       - 'tests/workspace-transient-files.test.ts'
       - 'scripts/rtl-reference-fonts.mjs'
+      - 'tests/rtl-reference-fonts.test.mjs'
       - 'scripts/rtl-reference-woff2.py'
       - 'tests/rtl-browser-fixture.html'
   workflow_dispatch:
@@ -85,6 +86,8 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
+      - name: Verify bounded pinned font download retries and immediate integrity failures
+        run: node --test tests/rtl-reference-fonts.test.mjs
       - name: Download and verify five licensed reference faces
         run: node scripts/rtl-reference-fonts.mjs "$RUNNER_TEMP/rtl-reference-fonts"
       - name: Require actual Chromium RTL reference geometry
