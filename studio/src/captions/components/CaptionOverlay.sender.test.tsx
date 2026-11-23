@@ -253,3 +253,160 @@ it("requests caption hit remeasurement on model changes without a player event",
     vi.unstubAllGlobals();
   }
 });
+
+
+it("commits real pointer drag, scale and rotation on only the authored repeated Hebrew word, with undo and Escape", () => {
+  const host = document.createElement("div");
+  const iframe = document.createElement("iframe");
+  document.body.append(host, iframe);
+  iframe.style.width = "640px";
+  const doc = iframe.contentDocument!;
+  const group = doc.createElement("div");
+  group.className = "caption-group";
+  group.dataset.captionGroupId = "g";
+  group.style.opacity = "1";
+  group.dir = "rtl";
+  const words = ["w-he-a", "w-he-b"].map(id => {
+    const span = doc.createElement("span");
+    span.id = id;
+    span.className = "word";
+    span.textContent = "שָׁלוֹם";
+    group.append(span);
+    return span;
+  });
+  doc.body.append(group);
+  const originalWords = words.map(word => word.outerHTML);
+  const bounds = (x: number, y: number, width: number, height: number) => ({
+    x, y, left: x, top: y, right: x + width, bottom: y + height,
+    width, height, toJSON: () => ({}),
+  } as DOMRect);
+  vi.spyOn(iframe, "getBoundingClientRect").mockReturnValue(bounds(0, 0, 640, 360));
+  vi.spyOn(words[0], "getBoundingClientRect").mockReturnValue(bounds(120, 90, 100, 35));
+  vi.spyOn(words[1], "getBoundingClientRect").mockReturnValue(bounds(260, 90, 100, 35));
+  const callbacks: FrameRequestCallback[] = [];
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    callbacks.push(cb);
+    return callbacks.length;
+  });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  let clock = 100_000;
+  vi.spyOn(Date, "now").mockImplementation(() => clock);
+  const root = createRoot(host);
+  useCaptionStore.getState().reset();
+  useCaptionStore.getState().setModel({
+    width: 640, height: 360, duration: 3,
+    segments: new Map(words.map((word, index) => [
+      "s" + index, {
+        id: "s" + index, wordId: word.id, text: "שָׁלוֹם",
+        start: index * 0.5, end: index * 0.5 + 0.5, groupIndex: 0,
+        style: {}, animation: {},
+      },
+    ])),
+    groups: new Map([["g", {
+      id: "g", segmentIds: ["s0", "s1"], style: DEFAULT_STYLE,
+      animation: DEFAULT_ANIMATION_SET, containerStyle: DEFAULT_CONTAINER,
+    }]]),
+    groupOrder: ["g"], defaultAnimation: DEFAULT_ANIMATION_SET,
+  });
+  useCaptionStore.getState().setEditMode(true);
+  const flushLayout = () => act(() => {
+    for (const cb of callbacks.splice(0)) cb(0);
+  });
+  const pointer = (target: Element, type: string, x: number, y: number) => act(() => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+    Object.defineProperty(event, "pointerId", { value: 13 });
+    target.dispatchEvent(event);
+  });
+  const capture = (element: Element) =>
+    Object.defineProperty(element, "setPointerCapture", { configurable: true, value: vi.fn() });
+  const modelStyle = () => useCaptionStore.getState().model!.segments.get("s1")!.style;
+  const actualStyle = () => readGsapTransform(getOrCreateWrapper(words[1]), iframe.contentWindow!);
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: iframe }} />));
+    flushLayout();
+    expect(host.querySelectorAll("[data-caption-segment-id]")).toHaveLength(2);
+    const hit = host.querySelector<HTMLElement>('[data-caption-segment-id="s1"]')!;
+    expect(hit).not.toBeNull();
+    act(() => hit.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
+    capture(hit);
+    clock += 1000;
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointermove", 309, 117);
+    pointer(hit, "pointerup", 309, 117);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1, scaleY: 1, rotation: 0 });
+
+    // Work through the visible corner/rotation handles, not a direct store write.
+    const scaleHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "nwse-resize")!;
+    const rotateHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "grab")!;
+    expect(scaleHandle).toBeDefined();
+    expect(rotateHandle).toBeDefined();
+    capture(scaleHandle);
+    capture(rotateHandle);
+    clock += 1000;
+    pointer(scaleHandle, "pointerdown", 360, 105);
+    pointer(scaleHandle, "pointermove", 385, 105);
+    pointer(scaleHandle, "pointerup", 385, 105);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 0 });
+    clock += 1000;
+    pointer(rotateHandle, "pointerdown", 330, 75);
+    pointer(rotateHandle, "pointermove", 350, 75);
+    pointer(rotateHandle, "pointerup", 350, 75);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
+
+    // The same logical word ID must survive full history replay. No transform
+    // may leak onto its visually identical sibling or rewrite either text node.
+    for (const expected of [
+      { x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 0 },
+      { x: 24, y: 12, scale: 1, scaleY: 1, rotation: 0 },
+      { x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 },
+    ]) {
+      act(() => {
+        const restored = useCaptionStore.getState().undo();
+        expect(restored).not.toBeNull();
+        applyCaptionModelToIframe(restored!);
+      });
+      expect(actualStyle()).toEqual(expected);
+    }
+    for (const expected of [
+      { x: 24, y: 12, scale: 1, scaleY: 1, rotation: 0 },
+      { x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 0 },
+      { x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 },
+    ]) {
+      act(() => {
+        const restored = useCaptionStore.getState().redo();
+        expect(restored).not.toBeNull();
+        applyCaptionModelToIframe(restored!);
+      });
+      expect(actualStyle()).toEqual(expected);
+    }
+
+    // Esc during a new gesture restores the pre-drag transform and MUST NOT
+    // create an undo entry; a late pointerup must not re-commit cancelled work.
+    const historyLength = useCaptionStore.getState().past.length;
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(hit, "pointerup", 340, 137);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+    expect(useCaptionStore.getState().model!.segments.get("s0")!.style).toEqual({});
+    expect(words.map(word => word.outerHTML)).toEqual(originalWords);
+    expect(group.textContent).toBe("שָׁלוֹםשָׁלוֹם");
+    expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(1);
+    expect(group.querySelector('[data-caption-wrapper] > #w-he-b')).toBe(words[1]);
+    expect(words[0].parentElement).toBe(group);
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    iframe.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+});
