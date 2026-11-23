@@ -18,6 +18,7 @@ import { closeFixtureEditor } from './fixtures.ts';
 import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
 import { readLiveFrameText } from './rtl-preview-frame-read.mjs';
 import { armRtlPostCleanupWatchdog } from './rtl-post-cleanup-watchdog.mjs';
+import { releaseExitedOwnedChildStdio } from './rtl-owned-child-stdio.mjs';
 
 const output = process.argv[2];
 const fontDir = process.argv[3];
@@ -1168,7 +1169,18 @@ try {
   // Persist the primary test outcome before any teardown. A cleanup failure
   // must not hide a real editor/renderer failure from the uploaded artifact.
   await writeFile(path.join(output, 'result.json'), JSON.stringify(evidence, null, 2));
-  const cleanupErrors = [], cleanupRecoveries = [];
+  const cleanupErrors = [], cleanupRecoveries = [], ownedStdioCleanup = [];
+  // 'exit' can precede stdio 'close'. The macOS WOFF1 evidence succeeded all
+  // eleven checks but left PipeWrap resources after teardown; only release
+  // streams of children owned by this integration and confirmed exited.
+  function releaseOwnedStdioIfExited(child, label) {
+    if (!child || (child.exitCode === null && child.signalCode === null)) return;
+    const receipt = releaseExitedOwnedChildStdio(child, label);
+    ownedStdioCleanup.push(receipt);
+    if (receipt.released.length) {
+      cleanupRecoveries.push(label + ': released exited-child stdio: ' + receipt.released.join(', '));
+    }
+  }
   async function cleanup(label, operation) {
     console.log('RTL teardown start: ' + label);
     try { await operation(); console.log('RTL teardown done: ' + label); }
@@ -1179,9 +1191,13 @@ try {
   }
   await cleanup('Chromium', async () => {
     if (!browser) return;
-    if (await cleanupWithin('Chromium graceful close', () => browser.close(), 15_000)) return;
-    // Only this integration's Puppeteer-launched process may be terminated.
+    // Capture the process before Puppeteer discards its browser connection.
     const owned = browser.process();
+    if (await cleanupWithin('Chromium graceful close', () => browser.close(), 15_000)) {
+      releaseOwnedStdioIfExited(owned, 'Chromium');
+      return;
+    }
+    // Only this integration's Puppeteer-launched process may be terminated.
     assert(owned, 'Chromium timed out, and no owned browser process is available');
     if (owned.exitCode === null && owned.signalCode === null) {
       assert(owned.kill('SIGTERM'), 'Could not terminate test-owned Chromium');
@@ -1189,9 +1205,13 @@ try {
     assert(await cleanupWithin('Chromium exit', () => processExited(owned), 10_000),
       'Test-owned Chromium did not exit after termination');
     cleanupRecoveries.push('Terminated test-owned Chromium after graceful-close timeout');
+    releaseOwnedStdioIfExited(owned, 'Chromium');
   });
   await cleanup('MCP child', async () => {
-    if (await cleanupWithin('MCP graceful EOF', () => client.close(), 15_000)) return;
+    if (await cleanupWithin('MCP graceful EOF', () => client.close(), 15_000)) {
+      releaseOwnedStdioIfExited(client.child, 'MCP');
+      return;
+    }
     // This child was created solely for this temporary project. Do not
     // terminate or restart an external/shared OpenMotion instance.
     const owned = client.child;
@@ -1201,6 +1221,7 @@ try {
     assert(await cleanupWithin('MCP exit', () => client.closed, 10_000),
       'Test-owned MCP child did not exit after termination');
     cleanupRecoveries.push('Terminated test-owned MCP child after graceful EOF timeout');
+    releaseOwnedStdioIfExited(owned, 'MCP');
   });
   await cleanup('owned Windows preview service tree', async () => {
     if (process.platform !== 'win32' || !ownedPreviewUrl) return;
@@ -1219,7 +1240,7 @@ try {
       if (result.retries.length) cleanupRecoveries.push('Removed owned project after ' + result.retries.length + ' transient filesystem errors');
     }, 90_000)
     .then(done => assert(done, 'Temporary project removal exceeded 90 seconds')));
-  evidence.cleanup = { recoveries: cleanupRecoveries, errors: cleanupErrors };
+  evidence.cleanup = { recoveries: cleanupRecoveries, errors: cleanupErrors, ownedStdioCleanup };
   await writeFile(path.join(output, 'result.json'), JSON.stringify(evidence, null, 2));
   if (evidence.passed && cleanupErrors.length) throw new Error('RTL integration teardown failed: ' + cleanupErrors.join('; '));
   // A passing result.json is not qualification if a test-owned event-loop
