@@ -336,24 +336,23 @@ it.each([
   }
 });
 
-/** A visible native edit remains authoritative even without an onChange event. */
-it("commits native Unicode input while props changed during focus when the textarea actually differs from its baseline", () => {
+/** A live native edit is still authoritative if its preview-prop echo arrived first. */
+it("commits a visible native Persian edit on blur after an optimistic prop echo, without a React input event", () => {
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
   const onCommit = vi.fn();
   const original = "فارسی ۲۰۲۶";
-  const switched = "English clip 12";
   const typed = "فارسی ۲۰۶۲";
   const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
   try {
     act(() => root.render(<TextAreaField flat label="Content" value={original} onCommit={onCommit} />));
     const textarea = host.querySelector("textarea")!;
     act(() => textarea.focus());
-    act(() => root.render(<TextAreaField flat label="Content" value={switched} onCommit={onCommit} />));
+    act(() => root.render(<TextAreaField flat label="Content" value={typed} onCommit={onCommit} />));
     act(() => {
       setNative.call(textarea, typed);
-      // The native input arrives before React's onChange observes it.
+      // The final native insertion has not reached React's change handler.
       textarea.blur();
     });
     expect(onCommit).toHaveBeenCalledExactlyOnceWith(typed);
