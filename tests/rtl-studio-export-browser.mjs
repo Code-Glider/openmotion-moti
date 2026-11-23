@@ -16,7 +16,7 @@ import { Client } from './shared-editor-client.mjs';
 import { readProjectZip } from '../shared/project-zip.ts';
 import { closeFixtureEditor } from './fixtures.ts';
 import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
-import { readLiveFrameText } from './rtl-preview-frame-read.mjs';
+import { readLiveFrameText, waitForLiveFrameTexts } from './rtl-preview-frame-read.mjs';
 import { armRtlPostCleanupWatchdog } from './rtl-post-cleanup-watchdog.mjs';
 import { releaseExitedOwnedChildStdio } from './rtl-owned-child-stdio.mjs';
 
@@ -633,28 +633,19 @@ try {
       assert(!nativeHistorySource.includes(earlier.original),
         'Studio keyboard ' + direction + ' restored stale ' + earlier.id + ' source');
     }
-    let previewText = null;
-    for (let attempt = 0; attempt < 100; attempt++) {
-      for (const liveFrame of page.frames()) {
-        const found = await readLiveFrameText(liveFrame, '#syriac');
-        if (found === wanted) { previewText = found; break; }
-      }
-      if (previewText !== null) break;
-      await sleep(200);
-    }
-    assert.equal(previewText, wanted, 'Studio keyboard ' + direction + ' did not update actual preview');
-    // Read the actual refreshed Chromium player after each project-level
-    // history transition; checking only Syriac would miss collateral edits
-    // to other script rows and the Ethiopic/Latin compatibility controls.
-    const historyFrame = await findStudioFrame(page, editedHebrew);
-    for (const row of samples.filter(sample => sample.id !== 'syriac')) {
-      assert.equal(await historyFrame.$eval('#' + row.id, element => element.textContent), row.copy,
-        'Studio keyboard ' + direction + ' changed ' + row.lang + ' Chromium preview');
-    }
+    // The history save can remount the player between separate row reads.
+    // Read every authored row (including Syriac and both LTR controls) in
+    // one live frame evaluation; retry only read-only navigation/mismatch
+    // until the same bounded deadline. Never repeat the keyboard mutation.
+    const expectedHistoryRows = Object.fromEntries(samples.map(row =>
+      ['#' + row.id, row.id === 'syriac' ? wanted : row.copy]));
+    const previewRows = await waitForLiveFrameTexts(page, expectedHistoryRows, {
+      label: 'Studio keyboard ' + direction + ' Chromium preview',
+    });
     await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
       .some(element => element.value === expected), { timeout: 20_000 }, wanted);
     await page.screenshot({ path: path.join(output, 'studio-after-' + direction + '.png') });
-    historySteps.push({ direction, text: wanted, revision: current.revision });
+    historySteps.push({ direction, text: wanted, revision: current.revision, previewRows });
   }
   assertStep('Real Studio keyboard undo/redo reverses and reapplies Syriac Unicode in native source and preview', {
     modifier: historyModifier, steps: historySteps,
