@@ -180,3 +180,80 @@ it("defers blur during active composition until compositionend without losing th
     host.remove();
   }
 });
+
+
+/**
+ * The preview/selection model can echo the edited value into the inspector
+ * props before the durable native-project edit completes. That echo is not a
+ * persistence acknowledgement. Both the 120ms debounce and an immediate
+ * Tab/blur must still send the user's actual logical Unicode text exactly
+ * once, even when the latest prop already equals the textarea.
+ */
+it.each([
+  { script: "Persian", before: "فارسی پ چ ژ گ ۲۰۲۶", final: "فارسی پ چ ژ گ ۲۰۶۲" },
+  { script: "Arabic", before: "السَّلَامُ 25%", final: "السَّلَامُ 52%" },
+])("does not lose an authored $script edit when its props echo before native persistence", async ({ before, final }) => {
+  for (const flush of ["blur", "debounce"] as const) {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const onCommit = vi.fn();
+    const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+    const render = (value: string) => <TextAreaField flat label="Content" value={value} onCommit={onCommit} />;
+    try {
+      act(() => root.render(render(before)));
+      const textarea = host.querySelector("textarea")!;
+      act(() => {
+        textarea.focus();
+        setNative.call(textarea, final);
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      // A preview refresh is not proof the versioned project file was saved.
+      act(() => root.render(render(final)));
+      expect(textarea.value).toBe(final);
+      expect(onCommit).not.toHaveBeenCalled();
+      if (flush === "blur") {
+        act(() => textarea.blur());
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 165));
+      }
+      expect(onCommit).toHaveBeenCalledExactlyOnceWith(final);
+      if (flush === "debounce") {
+        act(() => textarea.blur());
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 165));
+      }
+      expect(onCommit, "blur/debounce duplicated the authoring commit").toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
+  }
+});
+
+it("does not author a phantom commit when an edited RTL field is restored to its focus-time value", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onCommit = vi.fn();
+  const original = "فارسی پ چ ژ گ ۲۰۲۶";
+  const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+  try {
+    act(() => root.render(<TextAreaField flat label="Content" value={original} onCommit={onCommit} />));
+    const textarea = host.querySelector("textarea")!;
+    act(() => {
+      textarea.focus();
+      setNative.call(textarea, "فارسی پ چ ژ گ ۲۰۶۲");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      setNative.call(textarea, original);
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.blur();
+    });
+    expect(onCommit).not.toHaveBeenCalled();
+    await new Promise(resolve => setTimeout(resolve, 165));
+    expect(onCommit).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
