@@ -77,6 +77,10 @@ function directWordElements(
   // text makes positional identity unambiguous. Never guess between identical
   // unlabelled words or accept partially missing generated IDs.
   const hasDomIds = candidates.some((el) => Boolean(el?.id));
+  // A partially identified model cannot safely pair an unnamed sibling
+  // with a named DOM word, especially when the visible words are identical.
+  // A fully anonymous legacy model retains its positional fallback.
+  if (hasDomIds && named.length > 0 && named.length !== expectedIds.length) return null;
   if (hasDomIds && candidates.some((el, index) => expectedIds[index] && el?.id !== expectedIds[index])) return null;
   if (!hasDomIds && named.length && new Set(words.map((word) => word.trim())).size !== words.length) return null;
   if (candidates.some((el, index) => !el || el.textContent?.trim() !== words[index].trim())) return [];
