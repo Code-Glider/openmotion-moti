@@ -197,6 +197,19 @@ export function verifyCrossOsFontEvidence(reports, webfontFormat = 'woff2') {
       hashes.set(os, conversion.sha256);
     }
 
+    // A changed inspector value alone did not guarantee native text persistence
+    // on Windows WOFF1 (45082328771). Require proof that real browser input
+    // events reached each authored script editor before source/MP4 qualification.
+    const uiEdits = report.checks.find(item =>
+      item.name === 'Actual Studio edited all five Semitic scripts without changing Ethiopic/LTR controls')?.scriptEdits;
+    assert.deepEqual(uiEdits?.map(edit => edit.id), ['arabic', 'persian', 'urdu', 'syriac'],
+      os + ': real Studio authored input receipts missing or reordered');
+    for (const edit of uiEdits) {
+      assert(Number.isInteger(edit.inputEvents) && edit.inputEvents >= 1,
+        os + ': missing actual browser Unicode input event for ' + edit.id);
+      assert(Number.isInteger(edit.blurEvents) && edit.blurEvents >= 0,
+        os + ': invalid inspector blur receipt for ' + edit.id);
+    }
     const zip = report.checks.find(item =>
       item.name === 'Offline ZIP reimport retained exact edited Unicode and six licensed font assets');
     assert.equal(zip?.assets?.length, 12, os + ': reimport must retain six fonts and six licenses');
