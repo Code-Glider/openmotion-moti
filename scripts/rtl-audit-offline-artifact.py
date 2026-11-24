@@ -77,6 +77,10 @@ class FixtureRows(HTMLParser):
         require([value for key, value in attrs if key == "lang"] == [lang] and
                 [value for key, value in attrs if key == "dir"] == [direction],
                 "fixture row language or direction differs: " + row)
+        source_ids = {name: hf for name, hf, _ in NATIVE_TEXT_EDITS}
+        if row in source_ids:
+            require([value for key, value in attrs if key == "data-hf-id"] == [source_ids[row]],
+                    "fixture row source identity differs: " + row)
         self.rows[row] = ""
         self.active = row
 
@@ -313,6 +317,8 @@ def audit(path, expected_platform=None, expected_variant=None):
             "latin": (controls[1], "en", "ltr")}
     for edit, lang in zip(edits, ("ar", "fa", "ur", "syr")):
         rows[edit["id"]] = (edit["text"], lang, "rtl")
+    for row, _, value in NATIVE_TEXT_EDITS:
+        require(rows[row][0] == value, "fixture row edit receipt differs: " + row)
     verify_fixture_rows(html, rows)
     caption_rows = verify_caption_fixture(html)
     native_writes = verify_native_text_writes(report, files["index.html"])
