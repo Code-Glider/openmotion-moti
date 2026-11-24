@@ -471,13 +471,43 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
     expect(useCaptionStore.getState().past).toHaveLength(historyLength);
 
-    // Esc during a new gesture restores the pre-drag transform and MUST NOT
-    // create an undo entry; a late pointerup must not re-commit cancelled work.
+    // Capture can be lost without a pointerup or pointercancel (e.g. the
+    // browser transfers capture to another element). This is not a commit.
     pointer(hit, "pointerdown", 309, 117);
     pointer(hit, "pointermove", 340, 137);
     expect(actualStyle().x).toBe(55);
-    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(hit, "lostpointercapture", 340, 137);
     pointer(hit, "pointerup", 340, 137);
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+
+    // Exiting edit mode mid-drag must restore the preview and release the
+    // transaction. Re-entry permits a new gesture on the same authored word.
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    act(() => useCaptionStore.getState().setEditMode(false));
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+    act(() => useCaptionStore.getState().setEditMode(true));
+    flushLayout();
+    const remountedHit = host.querySelector<HTMLElement>('[data-caption-segment-id="s1"]')!;
+    expect(remountedHit).not.toBeNull();
+    capture(remountedHit);
+    pointer(remountedHit, "pointerdown", 309, 117);
+    pointer(remountedHit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    pointer(remountedHit, "pointercancel", 340, 137);
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+
+    // Esc during a new gesture restores the pre-drag transform and MUST NOT
+    // create an undo entry; a late pointerup must not re-commit cancelled work.
+    pointer(remountedHit, "pointerdown", 309, 117);
+    pointer(remountedHit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(remountedHit, "pointerup", 340, 137);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
     expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
     expect(useCaptionStore.getState().past).toHaveLength(historyLength);
