@@ -3,6 +3,7 @@ import copy
 import importlib.util
 import io
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -136,6 +137,26 @@ def main(path):
         reject_html(html.replace("</body>", '<div id="arabic" dir="rtl" lang="ar">' +
                                  first + "</div></body>", 1),
                     "duplicate-row", "duplicate or misplaced fixture row")
+
+        # Real timed-caption fixture: keep parent/word identities, logical
+        # Unicode order, and source timing even if every archive hash is rebuilt.
+        he = re.search(r'<span[^>]*id="caption-he"[^>]*>.*?</span>', html).group()
+        ar = re.search(r'<span[^>]*id="caption-ar"[^>]*>.*?</span>', html).group()
+        he_id = re.search(r'data-hf-id="([^"]+)"', he).group(1)
+        ar_id = re.search(r'data-hf-id="([^"]+)"', ar).group(1)
+        caption_sentinel = "__RTL_TEST_CAPTION_SWAP__"
+        audit.require(caption_sentinel not in html, "caption sentinel already present")
+        swapped_words = html.replace(he, caption_sentinel, 1).replace(ar, he, 1).replace(caption_sentinel, ar, 1)
+        reject_html(html.replace(he, "", 1), "missing-caption-word", "caption fixture inventory differs")
+        reject_html(swapped_words, "reordered-caption-words", "caption logical word order differs")
+        reject_html(html.replace(ar, ar.replace(ar_id, he_id), 1),
+                    "duplicate-caption-source-id", "duplicate caption source identity")
+        timing = 'id="timed-caption" dir="rtl" lang="he" data-start="0" data-duration="1"'
+        audit.require(timing in html, "expected timed caption fixture missing")
+        reject_html(html.replace(timing, timing.replace('data-duration="1"', 'data-duration="0.5"'), 1),
+                    "shortened-caption-parent", "caption parent timing or track differs")
+        reject_html(html.replace(he, "", 1).replace("</body>", he + "</body>", 1),
+                    "orphan-caption-word", "caption word outside authored parent")
 
         modified = copy.deepcopy(report)
         assets = audit.one_check(modified, "Offline ZIP reimport retained exact edited Unicode and six licensed font assets")["assets"]
