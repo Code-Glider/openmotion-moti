@@ -142,9 +142,15 @@ export function useCaptionSync(projectId: string | null) {
       });
   }, [readProjectFile, writeProjectFile]);
 
+  // The project writer is scoped to the current project ID. The subscription
+  // is mount-once, so always invoke its latest callback after project switches.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+
   // Auto-save on model changes with 800ms debounce
   useMountEffect(() => {
     let prevModel = useCaptionStore.getState().model;
+    const flushCurrent = () => saveRef.current();
 
     const unsub = useCaptionStore.subscribe((state) => {
       if (!state.isEditMode || state.model === prevModel || !state.model) return;
@@ -159,7 +165,7 @@ export function useCaptionSync(projectId: string | null) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       pendingRef.current = true;
       editSeqRef.current++;
-      debounceRef.current = setTimeout(save, 800);
+      debounceRef.current = setTimeout(flushCurrent, 800);
     });
 
     // Warn before the tab closes while an edit is unsaved.
@@ -169,14 +175,14 @@ export function useCaptionSync(projectId: string | null) {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
-        save();
+        flushCurrent();
       }
       e.preventDefault();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     // Let the caption error banner retry the save directly.
-    useCaptionStore.getState().setRetrySave(save);
+    useCaptionStore.getState().setRetrySave(flushCurrent);
 
     return () => {
       unsub();
@@ -185,7 +191,7 @@ export function useCaptionSync(projectId: string | null) {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
-        if (pendingRef.current) save();
+        if (pendingRef.current) flushCurrent();
       }
       useCaptionStore.getState().setRetrySave(null);
     };
