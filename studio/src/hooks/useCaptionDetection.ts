@@ -108,6 +108,14 @@ export function useCaptionDetection({
         }
       }
 
+      // A project's root index.html can itself be an explicitly managed
+      // caption composition. The composition-to-file map is not guaranteed
+      // to include its root ID, unlike nested caption assets. Only fall back
+      // to the active root after verifying the exact caption composition ID;
+      // the fetched source must also opt into our SHA-managed format.
+      const managedRootFallback = !captionSrcPath && Boolean(activeCompPath)
+        && Boolean(doc.querySelector('[data-composition-id="captions"]'));
+      if (managedRootFallback) captionSrcPath = activeCompPath;
       if (!captionSrcPath) return;
 
       activating = true;
@@ -116,6 +124,8 @@ export function useCaptionDetection({
         .then((r) => r.json())
         .then(async (data: { content?: string }) => {
           if (!data.content || !doc || !win || useCaptionStore.getState().isEditMode) return;
+          if (managedRootFallback &&
+              !data.content.includes('data-openmotion-caption-source="v1"')) return;
           const root = doc.querySelector("[data-composition-id]");
           const w = parseInt(root?.getAttribute("data-width") ?? "1920", 10);
           const h = parseInt(root?.getAttribute("data-height") ?? "1080", 10);
