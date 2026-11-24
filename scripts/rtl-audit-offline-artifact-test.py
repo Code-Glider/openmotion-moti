@@ -151,6 +151,13 @@ def main(path):
         reject_html(swapped_words, "reordered-caption-words", "caption logical word order differs")
         reject_html(html.replace(ar, ar.replace(ar_id, he_id), 1),
                     "duplicate-caption-source-id", "duplicate caption source identity")
+        reject_html(html.replace(he, he.replace(he_id, "hf-reminted-caption"), 1),
+                    "reminted-caption-source-id", "caption source identity changed")
+        swapped_ids = html.replace(he, he.replace(he_id, ar_id), 1).replace(ar, ar.replace(ar_id, he_id), 1)
+        reject_html(swapped_ids, "swapped-caption-source-ids", "caption source identity changed")
+        parent = re.search(r'<div[^>]*id="timed-caption"[^>]*>.*?</div>', html).group()
+        reject_html(html.replace(parent, "<template>" + parent + "</template>", 1),
+                    "inert-caption-template", "caption parent outside authored composition")
         timing = 'id="timed-caption" dir="rtl" lang="he" data-start="0" data-duration="1"'
         audit.require(timing in html, "expected timed caption fixture missing")
         reject_html(html.replace(timing, timing.replace('data-duration="1"', 'data-duration="0.5"'), 1),
