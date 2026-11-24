@@ -113,9 +113,13 @@ export function useCaptionDetection({
       // to include its root ID, unlike nested caption assets. Only fall back
       // to the active root after verifying the exact caption composition ID;
       // the fetched source must also opt into our SHA-managed format.
-      const managedRootFallback = !captionSrcPath && Boolean(activeCompPath)
+      const managedRootFallback = !captionSrcPath
         && Boolean(doc.querySelector('[data-composition-id="captions"]'));
-      if (managedRootFallback) captionSrcPath = activeCompPath;
+      // Top-level compositions can have activeCompPath === null until the
+      // author drills into a nested file. The authored root source is
+      // index.html, but it must explicitly opt into our managed format before
+      // a caption editor may claim ownership of it.
+      if (managedRootFallback) captionSrcPath = activeCompPath || "index.html";
       if (!captionSrcPath) return;
 
       activating = true;
