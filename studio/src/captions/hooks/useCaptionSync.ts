@@ -6,6 +6,8 @@ import { trackEvent } from "../../telemetry/client";
 import type { CaptionStyle } from "../types";
 import { studioWriteHeaders } from "../../utils/studioFileVersion";
 import { studioApiFetch } from "../../utils/studioApiFetch";
+import { useProjectFileWriter } from "../../hooks/useProjectFileWriter";
+import { rewriteManagedCaptionSource } from "../nativeSource";
 
 interface CaptionOverrideEntry {
   wordId?: string;
@@ -69,6 +71,9 @@ function buildOverrides(model: {
  * Also provides loadOverrides for reading existing overrides on edit mode entry.
  */
 export function useCaptionSync(projectId: string | null) {
+  // Reuse Studio's existing If-Match/ETag writer and pending-save coordinator.
+  // Never introduce an unconditional second writer for authored HTML.
+  const { readProjectFile, writeProjectFile } = useProjectFileWriter({ projectId });
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,7 +103,9 @@ export function useCaptionSync(projectId: string | null) {
     }
 
     const seqAtSave = editSeqRef.current;
-    const overrides = buildOverrides(state.model);
+    const modelAtSave = state.model;
+    const sourcePathAtSave = state.sourceFilePath;
+    const overrides = buildOverrides(modelAtSave);
 
     studioApiFetch(
       buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
@@ -108,10 +115,21 @@ export function useCaptionSync(projectId: string | null) {
         body: JSON.stringify(overrides, null, 2),
       },
     )
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // A newer edit may have re-armed the debounce while this PUT was in
-        // flight — its beforeunload/unmount flush still needs pending=true.
+        // The sidecar is a compatibility layer, not a native-render source.
+        // Only an explicitly SHA-managed generated caption composition can
+        // have its authored JS updated for real MP4/project ZIP export.
+        // Unknown legacy/custom script sources remain untouched.
+        if (/\.html?$/i.test(sourcePathAtSave)) {
+          const original = await readProjectFile(sourcePathAtSave);
+          const rewritten = await rewriteManagedCaptionSource(original, modelAtSave);
+          if (rewritten.status === "updated") {
+            await writeProjectFile(sourcePathAtSave, rewritten.content, original);
+          }
+        }
+        // Only an acknowledged native write (where applicable) clears the
+        // pending bit. An If-Match conflict must stay visible and retryable.
         if (editSeqRef.current === seqAtSave) pendingRef.current = false;
         const s = useCaptionStore.getState();
         if (s.syncError) s.setSyncError(null);
@@ -122,7 +140,7 @@ export function useCaptionSync(projectId: string | null) {
         trackEvent("studio_caption_autosave_failed", { error: String(error) });
         useCaptionStore.getState().setSyncError("Caption changes couldn't be saved");
       });
-  }, []);
+  }, [readProjectFile, writeProjectFile]);
 
   // Auto-save on model changes with 800ms debounce
   useMountEffect(() => {
