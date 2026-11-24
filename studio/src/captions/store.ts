@@ -47,7 +47,10 @@ interface CaptionState {
   clearSelection: () => void;
 
   // Segment mutations
-  updateSegmentStyle: (segmentId: string, style: Partial<CaptionStyle>) => void;
+  /** Independent pointer gestures have their own undo entries, even within the nudge debounce window. */
+  updateSegmentStyle: (
+    segmentId: string, style: Partial<CaptionStyle>, options?: { distinctHistory?: boolean },
+  ) => void;
   updateSegmentText: (segmentId: string, text: string) => void;
   updateSegmentTiming: (segmentId: string, start: number, end: number) => void;
 
@@ -91,19 +94,25 @@ let lastHistoryAt = 0;
  * Snapshot the current model onto the undo stack before a mutation.
  * `key` identifies the edit target so rapid repeats (typing a value, arrow-key
  * nudging) coalesce into a single entry instead of one per keystroke.
+ * A completed drag/scale/rotate is a distinct user transaction, not another
+ * debounce tick. It must neither merge with the preceding action nor swallow
+ * the immediately following nudge or independent gesture.
  */
 function pushHistory(
   state: Pick<CaptionState, "model" | "past">,
   key: string,
+  distinctHistory = false,
 ): Partial<Pick<CaptionState, "past" | "future">> {
   if (!state.model) return {};
   const now = Date.now();
-  if (lastHistoryKey === key && now - lastHistoryAt < HISTORY_COALESCE_MS) {
+  if (!distinctHistory && lastHistoryKey === key && now - lastHistoryAt < HISTORY_COALESCE_MS) {
     lastHistoryAt = now;
     return { future: [] };
   }
-  lastHistoryKey = key;
-  lastHistoryAt = now;
+  // A pointer transaction forms a full undo boundary on *both* sides. The
+  // next keyboard nudge still coalesces with further nudges, not this drag.
+  lastHistoryKey = distinctHistory ? null : key;
+  lastHistoryAt = distinctHistory ? 0 : now;
   const past = [...state.past, state.model].slice(-HISTORY_CAP);
   return { past, future: [] };
 }
@@ -174,7 +183,7 @@ export const useCaptionStore = create<CaptionState>((set, get) => ({
   },
 
   // Segment mutations
-  updateSegmentStyle: (segmentId, style) =>
+  updateSegmentStyle: (segmentId, style, options) =>
     set((state) => {
       if (!state.model) return {};
       const segment = state.model.segments.get(segmentId);
@@ -182,7 +191,7 @@ export const useCaptionStore = create<CaptionState>((set, get) => ({
       const segments = new Map(state.model.segments);
       segments.set(segmentId, { ...segment, style: { ...segment.style, ...style } });
       return {
-        ...pushHistory(state, `seg-style:${segmentId}`),
+        ...pushHistory(state, `seg-style:${segmentId}`, options?.distinctHistory),
         model: { ...state.model, segments },
       };
     }),
