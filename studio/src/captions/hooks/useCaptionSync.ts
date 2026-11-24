@@ -113,7 +113,7 @@ export function useCaptionSync(projectId: string | null) {
     // Resolve exact managed ownership before choosing a write path; the
     // legacy sidecar remains untouched for custom/unmarked compositions.
     void (async () => {
-      if (/\\.html?$/i.test(sourcePathAtSave)) {
+      if (/\.html?$/i.test(sourcePathAtSave)) {
         const original = await readProjectFile(sourcePathAtSave);
         const rewritten = await rewriteManagedCaptionSource(original, modelAtSave);
         if (rewritten.status !== "unsupported") {
