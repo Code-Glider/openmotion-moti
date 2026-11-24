@@ -240,13 +240,17 @@ export function useCaptionSync(projectId: string | null) {
       const model = state.model;
       const allSegIds: string[] = [];
       const segIdByWordId = new Map<string, string>();
+      const ambiguousWordIds = new Set<string>();
       for (const groupId of model.groupOrder) {
         const group = model.groups.get(groupId);
         if (!group) continue;
         for (const segId of group.segmentIds) {
           allSegIds.push(segId);
           const seg = model.segments.get(segId);
-          if (seg?.wordId) segIdByWordId.set(seg.wordId, segId);
+          if (seg?.wordId) {
+            if (segIdByWordId.has(seg.wordId)) ambiguousWordIds.add(seg.wordId);
+            else segIdByWordId.set(seg.wordId, segId);
+          }
         }
       }
 
@@ -258,6 +262,9 @@ export function useCaptionSync(projectId: string | null) {
         // onto a different authored word after captions are edited/reordered.
         // Preserve positional lookup ONLY for older identity-free sidecars.
         if (override.wordId) {
+          if (ambiguousWordIds.has(override.wordId)) {
+            throw new Error("ambiguous authored caption word identity");
+          }
           if (seenWordIds.has(override.wordId)) {
             throw new Error("duplicate authored caption word identity");
           }
