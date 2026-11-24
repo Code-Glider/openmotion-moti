@@ -168,6 +168,7 @@ jobs:
             studio/src/captions/parser.dom.test.ts \
             studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \
             studio/src/components/editor/textAreaImmediateBlur.test.tsx \
+            studio/src/hooks/useDomEditTextCommits.test.tsx \
             studio/src/components/editor/InlineTextCaret.test.tsx \
             studio/src/components/editor/inlineTextStyleRange.test.ts \
             studio/src/components/editor/fontAssets.test.ts \

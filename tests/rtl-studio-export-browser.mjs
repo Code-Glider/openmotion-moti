@@ -347,6 +347,47 @@ try {
   page.setDefaultTimeout(40_000);
   const consoleErrors = [];
   page.on('pageerror', error => consoleErrors.push(error.message));
+  // Observe the real native writer boundary without intercepting, delaying,
+  // retrying or fabricating any browser mutation. This fixture owns its
+  // project; do not capture credentials, other project paths or raw bodies.
+  const sourceWrites = [];
+  const writesByRequest = new WeakMap();
+  page.on('request', request => {
+    const method = request.method();
+    if (!['POST', 'PUT', 'PATCH'].includes(method)) return;
+    const url = new URL(request.url());
+    const prefix = '/api/projects/' + encodeURIComponent(projectId) + '/';
+    if (!url.pathname.startsWith(prefix)) return;
+    const endpoint = url.pathname.slice(prefix.length);
+    if (!endpoint.startsWith('file-mutations/') && !endpoint.startsWith('files/')) return;
+    const body = request.postData();
+    let target = null, operations = null;
+    try {
+      const parsed = JSON.parse(body ?? '');
+      target = parsed.target ?? null;
+      operations = Array.isArray(parsed.operations)
+        ? parsed.operations.map(op => ({ type: op.type, property: op.property, value: op.value }))
+        : null;
+    } catch { /* whole-file writes are text, not JSON */ }
+    const receipt = {
+      method, endpoint, target, operations,
+      requestBodySha256: typeof body === 'string' ? sha256(body) : null,
+      status: null, responseEtag: null, failure: null,
+    };
+    writesByRequest.set(request, receipt);
+    sourceWrites.push(receipt);
+  });
+  page.on('response', response => {
+    const receipt = writesByRequest.get(response.request());
+    if (!receipt) return;
+    receipt.status = response.status();
+    receipt.responseEtag = response.headers().etag ?? null;
+  });
+  page.on('requestfailed', request => {
+    const receipt = writesByRequest.get(request);
+    if (receipt) receipt.failure = request.failure()?.errorText ?? 'unknown';
+  });
+  evidence.sourceWriteReceipts = sourceWrites;
   await page.setViewport({ width: 1440, height: 960, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
   await page.goto(preview.previewUrl, { waitUntil: 'domcontentloaded' });
@@ -509,6 +550,7 @@ try {
       throw new Error(id + ': single-clip Studio inspector did not show exact Unicode after Alt-click: '
         + JSON.stringify(observed), { cause: error });
     }
+    const writeReceiptStart = sourceWrites.length;
     const inspectorPresentation = await replaceStudioInspectorText(page, oldCopy, nextCopy, id, sample.lang);
     await page.keyboard.press('Tab');
     const inputReceipt = await page.evaluate(script => window.__rtlInspectorInputReceipts?.[script], id);
@@ -546,6 +588,8 @@ try {
         sourceStillContainsOriginal: JSON.stringify(current?.file).includes(oldCopy),
         sourceContainsExpected: JSON.stringify(current?.file).includes(nextCopy),
         inspectorInputEvents: inputReceipt?.events ?? [],
+        nativeWriteReceipts: sourceWrites.slice(writeReceiptStart),
+        pageErrors: consoleErrors.slice(-10),
         browserState,
       };
       await writeFile(path.join(output, 'studio-edit-failure-' + id + '.json'),
@@ -580,6 +624,7 @@ try {
     }
     sample.copy = nextCopy;
     scriptEdits.push({ id, original: oldCopy, text: nextCopy, revision: current.revision, inspectorPresentation,
+      nativeWriteReceipts: sourceWrites.slice(writeReceiptStart),
       inputEvents: inputReceipt?.events?.filter(event => event.type === 'input').length ?? 0,
       blurEvents: inputReceipt?.events?.filter(event => event.type === 'blur').length ?? 0 });
   }

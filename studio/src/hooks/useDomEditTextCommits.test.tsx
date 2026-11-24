@@ -270,6 +270,70 @@ describe("useDomEditTextCommits", () => {
     expect(secondElement.textContent).toBe("Saved second");
   });
 
+  it.each([
+    ["persist", "other"],
+    ["persist", "clear"],
+    ["probe", "other"],
+    ["probe", "clear"],
+    ["probe", "same"],
+    ["probe", "replaced-document"],
+  ] as const)("does not republish a stale inspector selection after %s (%s)", async (phase, next) => {
+    const { iframe, element } = previewElement(
+      "<div id='first'>فارسی پ چ ژ گ ۲۰۲۶</div><div id='second'>اردو ٹ ڈ ڑ ں ے</div>",
+      "first",
+    );
+    const initial = selectionFor(element);
+    const second = selectionFor(iframe.contentDocument!.getElementById("second")!);
+    const persistGate = createDeferred<void>();
+    const probeGate = createDeferred<DomEditSelection | null>();
+    const probeStarted = createDeferred<void>();
+    const applyDomSelection = vi.fn();
+    const buildDomSelectionFromTarget = vi.fn(async () => {
+      probeStarted.resolve(undefined);
+      return probeGate.promise;
+    });
+    const previewIframeRef = { current: iframe as HTMLIFrameElement | null };
+    const base = commitParams({
+      previewIframeRef,
+      applyDomSelection,
+      buildDomSelectionFromTarget,
+      persistDomEditOperations: vi.fn(() => persistGate.promise),
+    });
+    const captured: { hook?: ReturnType<typeof useDomEditTextCommits> } = {};
+    function Probe({ selection }: { selection: DomEditSelection | null }) {
+      captured.hook = useDomEditTextCommits({ ...base, domEditSelection: selection });
+      return null;
+    }
+    const root = mountReactHarness(<Probe selection={initial} />);
+    cleanup = () => act(() => root.unmount());
+    const edited = "فارسی پ چ ژ گ ۲۰۶۲";
+    let pending: Promise<unknown> | undefined;
+    act(() => {
+      pending = captured.hook!.handleDomTextCommit(edited, "self");
+    });
+    if (phase === "probe") {
+      await act(async () => {
+        persistGate.resolve(undefined);
+        await probeStarted.promise;
+      });
+    }
+    const selected = next === "other" ? second : next === "clear" ? null : initial;
+    if (next === "replaced-document") {
+      previewIframeRef.current = previewElement("<div id='first'>Replacement</div>", "first").iframe;
+    }
+    act(() => root.render(<Probe selection={selected} />));
+    await act(async () => {
+      persistGate.resolve(undefined);
+      probeGate.resolve(selectionFor(element));
+      await pending;
+    });
+    expect(element.textContent).toBe(edited);
+    expect(second.element?.textContent).toBe("اردو ٹ ڈ ڑ ں ے");
+    expect(base.persistDomEditOperations).toHaveBeenCalledTimes(1);
+    expect(applyDomSelection).toHaveBeenCalledTimes(next === "same" ? 1 : 0);
+    if (phase === "persist") expect(buildDomSelectionFromTarget).not.toHaveBeenCalled();
+  });
+
   it("does not let a stale failed fields commit revert newer text", async () => {
     const { iframe, element } = previewElement("<div id='card'>Original</div>", "card");
     vi.spyOn(console, "warn").mockImplementation(() => {});
