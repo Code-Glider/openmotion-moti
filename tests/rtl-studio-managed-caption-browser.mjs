@@ -24,7 +24,7 @@ assert(output && path.isAbsolute(output) && fontDir && path.isAbsolute(fontDir),
 await mkdir(output, { recursive: true });
 await configureNativeEnvironment(pluginRoot);
 process.env.OPENMOTION_TELEMETRY = '0';
-const data = await mkdtemp(path.join(tmpdir(), 'openmotion-rtl-native-caption-'));
+const data = await mkdtemp(path.join(tmpdir(), 'openmotion-rtl-studio-export-managed-caption-'));
 const client = new Client(data);
 const width = 640, height = 360, duration = 2, at = 0.8;
 const bg = [24, 56, 47];
@@ -122,7 +122,9 @@ async function sendHistory(direction) {
 async function directCapture(origin, id, label) {
   const p = await browser.newPage();
   try {
-    await p.setViewport({ width, height, deviceScaleFactor: 1 });
+    // The raw project-preview route retains an 8px browser body margin.
+    // Screenshot the *composition* itself, not the surrounding white page.
+    await p.setViewport({ width: width + 40, height: height + 40, deviceScaleFactor: 1 });
     const url = new URL('/api/projects/' + encodeURIComponent(id) + '/preview/index.html', origin);
     await p.goto(url.href, { waitUntil: 'load' });
     await p.waitForSelector('#w-he');
@@ -143,7 +145,13 @@ async function directCapture(origin, id, label) {
     assert.equal(dom.he.text, 'שָׁלוֹם');
     assert.equal(dom.en.text, 'ABC-123');
     const filename = path.join(output, label + '.png');
-    await p.screenshot({ path: filename, clip: { x: 0, y: 0, width, height } });
+    const frame = await p.$eval('[data-composition-id="captions"]', el => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+    assert(Math.abs(frame.width - width) < 1 && Math.abs(frame.height - height) < 1,
+      'Raw native composition has unexpected pixel dimensions: ' + JSON.stringify(frame));
+    await p.screenshot({ path: filename, clip: { x: frame.x, y: frame.y, width, height } });
     const c = geometry(decode(filename));
     return { file: filename, dom, ink: c, sha256: sha(await readFile(filename)) };
   } finally { await p.close(); }
