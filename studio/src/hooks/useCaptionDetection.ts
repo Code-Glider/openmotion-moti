@@ -126,7 +126,16 @@ export function useCaptionDetection({
           if (!data.content || !doc || !win || useCaptionStore.getState().isEditMode) return;
           if (managedRootFallback &&
               !data.content.includes('data-openmotion-caption-source="v1"')) return;
-          const root = doc.querySelector("[data-composition-id]");
+          // A full Studio player document can contain several composition
+          // wrappers. For a managed captions source, sample dimensions from
+          // its *exact authored captions root*, not the first unrelated
+          // player/preview composition; otherwise native-source identity
+          // verification rejects the correct file with a false size mismatch.
+          const managedSource = data.content.includes('data-openmotion-caption-source="v1"');
+          const root = managedSource
+            ? doc.querySelector('[data-composition-id="captions"]')
+            : doc.querySelector("[data-composition-id]");
+          if (managedSource && !root) return;
           const w = parseInt(root?.getAttribute("data-width") ?? "1920", 10);
           const h = parseInt(root?.getAttribute("data-height") ?? "1080", 10);
           const dur = parseFloat(root?.getAttribute("data-duration") ?? "0");
