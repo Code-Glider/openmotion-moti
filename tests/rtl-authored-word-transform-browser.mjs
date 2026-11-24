@@ -163,7 +163,15 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   assert.deepEqual(nativeOrigin, { secure: true, uuid: 'function' }, 'Native caption fixture requires a secure Chromium context');
   await page.addStyleTag({ content: '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
     bytes.toString('base64') + '") format("truetype");font-display:block}.caption-group{font-family:"Pinned Hebrew QA",sans-serif}' });
+  const nativePageErrors = [];
+  page.on('pageerror', error => nativePageErrors.push(error.stack || String(error)));
+  page.on('console', message => {
+    if (message.type() === 'error') nativePageErrors.push('console: ' + message.text());
+  });
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
+  const nativeHarnessReady = await page.evaluate(() => Boolean(window.RtlNativeCaptionTransform?.htmlFor));
+  assert(nativeHarnessReady, 'Real Chromium production caption harness did not initialize: ' +
+    JSON.stringify(nativePageErrors));
   const render = async style => page.evaluate(async input => {
     const html = window.RtlNativeCaptionTransform.htmlFor(input);
     const host = document.createElement('template');
@@ -266,7 +274,15 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   await pointerPage.goto(origin + '/pointer', { waitUntil: 'domcontentloaded' });
   const pointerOrigin = await pointerPage.evaluate(() => ({ secure: isSecureContext, uuid: typeof crypto.randomUUID }));
   assert.deepEqual(pointerOrigin, { secure: true, uuid: 'function' }, 'Pointer host requires a secure Chromium context');
+  const pointerPageErrors = [];
+  pointerPage.on('pageerror', error => pointerPageErrors.push(error.stack || String(error)));
+  pointerPage.on('console', message => {
+    if (message.type() === 'error') pointerPageErrors.push('console: ' + message.text());
+  });
   await pointerPage.addScriptTag({ content: bundle.outputFiles[0].text });
+  const pointerHarnessReady = await pointerPage.evaluate(() => Boolean(window.RtlNativeCaptionTransform?.mountPointerOverlay));
+  assert(pointerHarnessReady, 'Real Chromium pointer harness did not initialize: ' +
+    JSON.stringify(pointerPageErrors));
   const fontCss = '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
     bytes.toString('base64') + '") format("truetype");font-display:block}';
   await pointerPage.evaluate(async css => {
