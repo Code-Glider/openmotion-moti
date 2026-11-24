@@ -40,6 +40,7 @@ on:
       - 'scripts/rtl-audit-offline-artifact.py'
       - 'scripts/rtl-audit-offline-artifact-test.py'
       - 'tests/rtl-studio-export-browser.mjs'
+      - 'tests/rtl-studio-managed-caption-browser.mjs'
       - 'tests/rtl-preview-frame-read.mjs'
       - 'tests/rtl-preview-frame-read.test.mjs'
       - 'tests/workspace-transient-files.test.ts'
@@ -310,6 +311,19 @@ jobs:
           name: rtl-studio-woff1-failure-${{ matrix.os }}
           path: ${{ runner.temp }}/rtl-woff1-export
           if-no-files-found: warn
+          retention-days: 14
+
+      - name: Real Studio authored caption drag, native history, ZIP reimport and decoded MP4 (Windows/Linux)
+        if: runner.os != 'macOS'
+        timeout-minutes: 18
+        run: node --experimental-strip-types tests/rtl-studio-managed-caption-browser.mjs "$RUNNER_TEMP/rtl-managed-caption" "$RUNNER_TEMP/rtl-reference-fonts"
+      - name: Retain authored native caption source, history, offline ZIP and decoded MP4 evidence
+        if: always() && runner.os != 'macOS'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-native-caption-authored-${{ matrix.os }}
+          path: ${{ runner.temp }}/rtl-managed-caption
+          if-no-files-found: error
           retention-days: 14
 
   rtl-font-provenance:
