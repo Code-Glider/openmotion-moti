@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { buildCaptionModel } from "./parser";
-import { managedCaptionScriptTag, rewriteManagedCaptionSource } from "./nativeSource";
+import { managedCaptionScriptTag, rewriteManagedCaptionSource, hydrateManagedCaptionSource } from "./nativeSource";
 import { generateCaptionHtml } from "./generator";
 
 const words = [
@@ -31,12 +31,18 @@ describe("managed generated native caption source", () => {
     const updated = await rewriteManagedCaptionSource(baseline, model);
     expect(updated.status).toBe("updated");
     expect(updated.content).toContain('translate(24px, -12px) rotate(8deg) scale(1.4, 0.8)');
-    expect(updated.content).toContain('data-caption-wrapper');
+    expect(updated.content).toContain("dataset.captionWrapper = 'true'");
     expect(updated.content).toContain("שָׁלוֹם");
     expect(updated.content).toContain("السَّلَامُ");
     expect(updated.content).toContain("ABC-123");
     expect(updated.content).toContain('<style id="user-design">.brand{color:#5eef8a}</style>');
     expect(updated.content).toContain('<script id="user-script">window.userAnimation=1;</script>');
+    const freshlyOpened = await hydrateManagedCaptionSource(updated.content, makeModel());
+    expect(freshlyOpened.managed).toBe(true);
+    expect(freshlyOpened.model.segments.get("segment-0")?.style).toMatchObject({
+      x: 24, y: -12, rotation: 8, scaleX: 1.4, scaleY: 0.8,
+    });
+    expect(freshlyOpened.model.segments.get("segment-1")?.style).toEqual({});
     expect(updated.content.slice(0, baseline.indexOf('<script data-openmotion-caption-source=')))
       .toBe(baseline.slice(0, baseline.indexOf('<script data-openmotion-caption-source=')));
     expect(updated.content.slice(updated.content.indexOf('<script id="user-script">')))
