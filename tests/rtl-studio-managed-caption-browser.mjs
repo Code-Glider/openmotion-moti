@@ -228,6 +228,12 @@ try {
   const baseline = await directCapture(previewUrl, projectId, 'rtl-native-caption-before-drag');
   check('Real Chromium baseline contains isolated Hebrew and Latin font glyph rows', baseline);
   page = await browser.newPage();
+  result.nativeFileRequests = [];
+  page.on('response', response => {
+    if (response.url().includes('/files/')) {
+      result.nativeFileRequests.push({ status: response.status(), url: response.url() });
+    }
+  });
   page.on('pageerror', issue => { result.pageErrors ??= []; result.pageErrors.push(issue.message); });
   await page.setViewport({ width: 1440, height: 960, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
@@ -248,6 +254,8 @@ try {
       { timeout: 18_000 });
   } catch (cause) {
     const studio = await page.evaluate(() => ({
+      editModeIndicatorVisible: document.body.textContent?.includes('Editing captions') ?? false,
+      savedSourceErrorVisible: document.body.textContent?.includes('Caption source could not be verified') ?? false,
       selectedCaptionHits: [...document.querySelectorAll('[data-caption-segment-id]')].map(el => ({
         id: el.getAttribute('data-caption-segment-id'), width: el.getBoundingClientRect().width,
       })),
@@ -260,13 +268,16 @@ try {
       try {
         return await frame.evaluate(() => ({
           url: location.href,
-          captionGroups: document.querySelectorAll('.caption-group').length,
+          captionGroups: [...document.querySelectorAll('.caption-group')].map(el => ({
+            id: el.dataset.captionGroupId, opacity: getComputedStyle(el).opacity,
+            width: el.getBoundingClientRect().width, text: el.textContent,
+          })),
           exactHebrewWords: document.querySelectorAll('#w-he').length,
           captionRoot: document.querySelector('[data-composition-id="captions"]')?.outerHTML.slice(0, 180),
         }));
       } catch (error) { return { error: String(error) }; }
     }));
-    result.activationFailure = { studio, iframeState };
+    result.activationFailure = { studio, iframeState, nativeFileRequests: result.nativeFileRequests, pageErrors: result.pageErrors };
     throw new Error('Native managed captions did not activate in real Studio: ' +
       JSON.stringify(result.activationFailure), { cause });
   }
