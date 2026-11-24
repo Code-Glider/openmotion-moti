@@ -21,6 +21,8 @@ on:
       - 'tests/rtl-navigation-browser.mjs'
       - 'studio/src/motion/workspace.css'
       - 'studio/src/components/editor/**'
+      - 'studio/src/hooks/useDomSelection.ts'
+      - 'studio/src/hooks/useDomSelectionSelectionGuards.test.ts'
       - 'studio/src/player/**'
       - 'scripts/rtl-font-audit.ts'
       - 'tests/studio-fonts.test.ts'
@@ -88,6 +90,8 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
+      - name: Reject stale asynchronous canvas group selection after source refresh
+        run: npm run test:studio -- --maxWorkers=2 studio/src/hooks/useDomSelectionSelectionGuards.test.ts studio/src/hooks/useDomSelection.test.ts
       - name: Verify bounded pinned font download retries and immediate integrity failures
         run: node --test tests/rtl-reference-fonts.test.mjs
       - name: Download and verify five licensed reference faces
