@@ -293,6 +293,7 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
   let clock = 100_000;
   vi.spyOn(Date, "now").mockImplementation(() => clock);
   const root = createRoot(host);
+  const iframeRef = { current: iframe };
   useCaptionStore.getState().reset();
   useCaptionStore.getState().setModel({
     width: 640, height: 360, duration: 3,
@@ -324,7 +325,7 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
   // Observing a pointer-down word must itself be non-destructive.
   const actualStyle = () => readWordTransformForGesture(words[1], iframe.contentWindow!);
   try {
-    act(() => root.render(<CaptionOverlay iframeRef={{ current: iframe }} />));
+    act(() => root.render(<CaptionOverlay iframeRef={iframeRef} />));
     flushLayout();
     expect(host.querySelectorAll("[data-caption-segment-id]")).toHaveLength(2);
     const hit = host.querySelector<HTMLElement>('[data-caption-segment-id="s1"]')!;
@@ -511,6 +512,23 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
     expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
     expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+    // The live ref can change before the promotion effect runs. A late
+    // pointerup from the old document must not commit to the new preview.
+    const replacement = document.createElement("iframe");
+    document.body.append(replacement);
+    try {
+      pointer(remountedHit, "pointerdown", 309, 117);
+      pointer(remountedHit, "pointermove", 340, 137);
+      expect(actualStyle().x).toBe(55);
+      iframeRef.current = replacement;
+      pointer(remountedHit, "pointerup", 340, 137);
+      expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+      expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+      expect(replacement.contentDocument!.body.childElementCount).toBe(0);
+    } finally {
+      iframeRef.current = iframe;
+      replacement.remove();
+    }
     expect(useCaptionStore.getState().model!.segments.get("s0")!.style).toEqual({});
     expect(words.map(word => word.outerHTML)).toEqual(originalWords);
     expect(group.textContent).toBe("שָׁלוֹםשָׁלוֹם");
