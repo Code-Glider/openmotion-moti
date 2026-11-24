@@ -58,7 +58,9 @@ jobs:
   checks:
     name: Source, type, build and regression gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # The Ubuntu package mirror took >14 min to deliver signed FFmpeg packages
+    # in run 45308674547. Leave enough budget for all subsequent test gates.
+    timeout-minutes: 40
     steps:
       - name: Check out feature branch without Git LFS media
         uses: actions/checkout@v6.0.2
@@ -127,16 +129,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Install FFmpeg for native caption integration tests
-        timeout-minutes: 12
+        timeout-minutes: 20
         run: |
-          if ! command -v ffmpeg >/dev/null 2>&1; then
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
             apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
             if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
               sudo apt-get "${apt_options[@]}" update
               sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
             fi
           fi
-          ffmpeg -hide_banner -version | head -n 1
+          ffmpeg -hide_banner -version
+          ffprobe -hide_banner -version
       # The upstream standalone workflow already runs broad regression suites
       # in bounded lanes on this PR. Running every backend test in one process
       # duplicated that work and hit this job's 45-minute timeout.
@@ -195,7 +198,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 48
     defaults:
       run:
         shell: bash
@@ -217,7 +220,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Resolve actual browser and FFmpeg on each runner
-        timeout-minutes: 15
+        timeout-minutes: 22
         run: |
           case "$RUNNER_OS" in
             Linux)
