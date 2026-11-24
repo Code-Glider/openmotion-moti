@@ -117,3 +117,73 @@ it("does not conceal native ETag conflicts behind a successful sidecar write", a
   expect(io.nativeWrite).toHaveBeenCalledOnce();
   expect(io.sidecar).toHaveBeenCalledOnce();
 });
+
+it("serializes drag, undo and redo snapshots even when the first sidecar response is delayed", async () => {
+  const original = await fixture();
+  let persisted = original;
+  let releaseFirst!: (response: { ok: boolean }) => void;
+  io.sidecar.mockImplementationOnce(() => new Promise<{ ok: boolean }>((resolve) => {
+    releaseFirst = resolve;
+  }));
+  io.nativeRead.mockImplementation(async () => persisted);
+  io.nativeWrite.mockImplementation(async (_path: string, content: string, expected: string) => {
+    // The next read must observe the actual preceding write, not an invented
+    // version of the file. Model an ETag conflict if that invariant is broken.
+    expect(expected).toBe(persisted);
+    persisted = content;
+  });
+  const moved = buildModel();
+  moved.segments.get("segment-0")!.style = { x: 24, y: -12 };
+  useCaptionStore.getState().setModel(moved);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  const api = mount();
+  act(() => api.save());
+  await vi.waitFor(() => expect(io.sidecar).toHaveBeenCalledOnce());
+  act(() => {
+    useCaptionStore.getState().setModel(buildModel());
+    api.save();
+    useCaptionStore.getState().setModel(moved);
+    api.save();
+  });
+  // Allow promise continuations to run; the two later transactions must
+  // remain behind the delayed sidecar rather than reaching native HTML.
+  await act(async () => { await Promise.resolve(); });
+  expect(io.sidecar).toHaveBeenCalledTimes(1);
+  expect(io.nativeRead).not.toHaveBeenCalled();
+  await act(async () => { releaseFirst({ ok: true }); });
+  await vi.waitFor(() => expect(io.nativeWrite).toHaveBeenCalledTimes(3));
+  const [, first, firstBase] = io.nativeWrite.mock.calls[0];
+  const [, undone, undoBase] = io.nativeWrite.mock.calls[1];
+  const [, redone, redoBase] = io.nativeWrite.mock.calls[2];
+  expect(firstBase).toBe(original);
+  expect(first).toContain("translate(24px, -12px)");
+  expect(undoBase).toBe(first);
+  expect(undone).toBe(original);
+  expect(redoBase).toBe(undone);
+  expect(redone).toBe(first);
+  expect(persisted).toBe(first);
+  expect(io.sidecar.mock.calls.map(([, init]) => JSON.parse(init.body))).toEqual([
+    [{ wordIndex: 0, wordId: "he-1", x: 24, y: -12 }],
+    [],
+    [{ wordIndex: 0, wordId: "he-1", x: 24, y: -12 }],
+  ]);
+  expect(useCaptionStore.getState().syncError).toBeNull();
+});
+
+it("keeps the newest native failure visible and permits an explicit ordered retry", async () => {
+  const original = await fixture();
+  const moved = buildModel();
+  moved.segments.get("segment-0")!.style = { x: 24, y: -12 };
+  io.nativeRead.mockResolvedValue(original);
+  io.nativeWrite.mockRejectedValueOnce(new Error("FILE_VERSION_CONFLICT"));
+  useCaptionStore.getState().setModel(moved);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  const api = mount();
+  act(() => api.save());
+  await vi.waitFor(() => expect(useCaptionStore.getState().syncError)
+    .toBe("Caption changes couldn't be saved"));
+  act(() => api.save());
+  await vi.waitFor(() => expect(io.nativeWrite).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(useCaptionStore.getState().syncError).toBeNull());
+  expect(io.nativeWrite.mock.calls[1]).toEqual(io.nativeWrite.mock.calls[0]);
+});
