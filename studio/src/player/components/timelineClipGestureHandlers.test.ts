@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent } from "react";
 import { usePlayerStore, type TimelineElement } from "../store/playerStore";
 import { createClipGestureHandlers, type ClipGestureDeps } from "./timelineClipGestureHandlers";
 
@@ -62,5 +62,38 @@ describe("hand-editing a multi-selection", () => {
     const { setResizingClip, blockedClipRef } = grabFirstClip(count, "resize");
     expect(setResizingClip).toHaveBeenCalledOnce();
     expect(blockedClipRef.current).toBeNull();
+  });
+});
+
+describe("single-clip selection after a multi-selection", () => {
+  it("Alt-click isolates only the authored target, even when two clips were selected", () => {
+    const store = usePlayerStore.getState();
+    store.setElements(clips);
+    store.setSelection(["clip-1", "clip-2"], "clip-2");
+    const notify = vi.fn();
+    const deps = {
+      pps: 100,
+      blockedClipRef: { current: null },
+      suppressClickRef: { current: false },
+      scrollRef: { current: null },
+      setShowPopover: vi.fn(),
+      setRangeSelection: vi.fn(),
+      setResizingClip: vi.fn(),
+      setDraggedClip: vi.fn(),
+      setSelectedElementId: vi.fn(),
+      onSelectElement: notify,
+    } as unknown as ClipGestureDeps;
+    const handlers = createClipGestureHandlers(clips[1], clips[1].id, clips[1], capabilities, deps);
+    handlers.onClick({
+      stopPropagation: vi.fn(),
+      altKey: true,
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+    } as unknown as ReactMouseEvent);
+    expect([...usePlayerStore.getState().selectedElementIds]).toEqual(["clip-1"]);
+    expect(usePlayerStore.getState().selectedElementId).toBe("clip-1");
+    expect(notify).toHaveBeenCalledExactlyOnceWith(clips[1]);
+    expect(deps.setSelectedElementId).not.toHaveBeenCalled();
   });
 });

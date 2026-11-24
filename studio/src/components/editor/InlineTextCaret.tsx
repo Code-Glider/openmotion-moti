@@ -202,12 +202,52 @@ function endOfCharBefore({ startContainer: at, startOffset: offset }: Range) {
   char.setEnd(at, offset);
   // A trailing space at a wrap has a box on each line; the earlier line's comes first.
   const rect = [...char.getClientRects()].find((each) => each.height > 0);
-  // The logical end of an unmixed RTL run is its *left* visual edge.
-  // A bounding box's right edge is correct for English, but places Hebrew,
-  // Arabic, Persian, Urdu and Syriac carets on the wrong side of a glyph.
-  // Mixed BiDi runs still need browser-level affinity verification; do not
-  // infer their resolved embedding levels from a paragraph direction.
-  return rect ? { left: isUnmixedRtlRun(at) ? rect.left : rect.right, top: rect.top, height: rect.height } : null;
+  // The leading edge of the preceding *complete grapheme* is often
+  // available on the line that just wrapped, even when the browser's
+  // collapsed selection is reported on the next line. Its location has
+  // already been resolved by Chromium's UAX #9 layout, including numerals,
+  // embedding controls and language-specific joining. Do not substitute
+  // paragraph CSS direction for that geometric evidence.
+  if (!rect) return null;
+  const trailing = visualTrailingEdge(char, rect);
+  if (trailing !== null) return { left: trailing, top: rect.top, height: rect.height };
+  // At an ambiguous mixed-script visual boundary we cannot infer an
+  // embedding level from the logical Unicode string. Reuse the browser's
+  // collapsed caret (via caretRect) rather than inventing the opposite edge.
+  if (hasMixedDirectionalRuns(at)) return null;
+  return { left: isUnmixedRtlRun(at) ? rect.left : rect.right, top: rect.top, height: rect.height };
+}
+
+/**
+ * The collapsed caret at a grapheme's logical start is the browser's own
+ * visual *leading* edge for that grapheme, provided it lies on the same
+ * physical line and touches the glyph rectangle. The opposite edge is where
+ * "End" belongs before the soft wrap. This avoids guessing that mixed Hebrew
+ * and Latin glyphs all run in the enclosing element's CSS direction.
+ */
+function visualTrailingEdge(grapheme: Range, glyph: DOMRect): number | null {
+  const start = grapheme.cloneRange();
+  start.collapse(true);
+  const leading = [...start.getClientRects()].find(rect =>
+    rect.height > 0 &&
+    Math.abs(rect.top - glyph.top) <= Math.max(2, Math.min(rect.height, glyph.height) * 0.12),
+  );
+  if (!leading || glyph.right <= glyph.left) return null;
+  const leftDistance = Math.abs(leading.left - glyph.left);
+  const rightDistance = Math.abs(leading.left - glyph.right);
+  // A start caret far from both glyph edges is on another bidi run or has
+  // ambiguous affinity. Return no guess; soft-wrap callers fall back to
+  // Chromium's collapsed native range.
+  const tolerance = Math.max(2, Math.min(4, (glyph.right - glyph.left) * 0.15));
+  if (Math.min(leftDistance, rightDistance) > tolerance ||
+      Math.abs(leftDistance - rightDistance) < 1) return null;
+  return leftDistance < rightDistance ? glyph.right : glyph.left;
+}
+
+function hasMixedDirectionalRuns(node: Node): boolean {
+  const text = node.textContent ?? "";
+  return /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}]/u.test(text) &&
+    /[\p{Script=Latin}\p{N}]/u.test(text);
 }
 
 /** At an element boundary: the end of the node before, or the start of the node after (a line break's own line). */

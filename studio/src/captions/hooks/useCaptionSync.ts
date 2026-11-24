@@ -13,6 +13,8 @@ interface CaptionOverrideEntry {
   x?: number;
   y?: number;
   scale?: number;
+  scaleX?: number;
+  scaleY?: number;
   rotation?: number;
   activeColor?: string;
   dimColor?: string;
@@ -41,7 +43,11 @@ function buildOverrides(model: {
         const s = seg.style;
         if (s.x !== undefined) entry.x = s.x;
         if (s.y !== undefined) entry.y = s.y;
-        if (s.scaleX !== undefined) entry.scale = s.scaleX;
+        // Keep the legacy scalar for uniform edits only. A scalar on a one-axis
+        // override would incorrectly author the other axis when loaded again.
+        if (s.scaleX !== undefined && s.scaleX === s.scaleY) entry.scale = s.scaleX;
+        if (s.scaleX !== undefined) entry.scaleX = s.scaleX;
+        if (s.scaleY !== undefined) entry.scaleY = s.scaleY;
         if (s.rotation !== undefined) entry.rotation = s.rotation;
         if (s.activeColor !== undefined) entry.activeColor = s.activeColor;
         if (s.dimColor !== undefined) entry.dimColor = s.dimColor;
@@ -218,6 +224,9 @@ export function useCaptionSync(projectId: string | null) {
           style.scaleX = override.scale;
           style.scaleY = override.scale;
         }
+        // Explicit axes take precedence over older uniform scale values.
+        if (override.scaleX !== undefined) style.scaleX = override.scaleX;
+        if (override.scaleY !== undefined) style.scaleY = override.scaleY;
         if (override.rotation !== undefined) style.rotation = override.rotation;
         if (override.activeColor !== undefined) style.activeColor = override.activeColor;
         if (override.dimColor !== undefined) style.dimColor = override.dimColor;

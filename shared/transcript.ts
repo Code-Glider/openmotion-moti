@@ -123,9 +123,15 @@ export function exportSubtitleSegments(segments: TranscriptSegment[], format: 's
 export function parseTranscriptSubtitles(text: string): TranscriptSegment[] {
   if (typeof text !== 'string' || text.length > 2_000_000) throw new Error('Subtitle file exceeds 2 MB');
   const time = (s: string) => { const parts = s.replace(',', '.').split(':').map(Number); const seconds = parts.pop()!, minutes = parts.pop()!, hours = parts.pop() ?? 0; if (minutes >= 60 || seconds >= 60) throw new Error('Invalid subtitle timestamp'); return hours * 3600 + minutes * 60 + seconds; };
-  // Read back the references a WebVTT export writes; one pass, so "&amp;lt;" stays the text "&lt;".
-  const references: Record<string, string> = { amp: '&', lt: '<', gt: '>' };
-  const cueText = /^\uFEFF?WEBVTT/.test(text) ? (value: string) => value.replace(/&(amp|lt|gt);/g, (_, name: string) => references[name]) : (value: string) => value;
+  // WebVTT defines six baseline named character references, including bidi
+  // marks and non-breaking spaces. Decode only once: &amp;rlm; is literal
+  // "&rlm;", not an invisible direction mark. SRT remains plain text.
+  const references: Record<string, string> = {
+    amp: '&', lt: '<', gt: '>', lrm: '\u200e', rlm: '\u200f', nbsp: '\u00a0',
+  };
+  const cueText = /^\uFEFF?WEBVTT(?:\s|$)/.test(text)
+    ? (value: string) => value.replace(/&(amp|lt|gt|lrm|rlm|nbsp);/g, (_, name: string) => references[name])
+    : (value: string) => value;
   const rows = text.replace(/^\uFEFF/, '').replace(/\r/g, '').split(/\n\s*\n/).flatMap(block => {
     const match = block.match(/(?:^|\n)((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})\s+-->\s+((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})[^\n]*\n([\s\S]+)/);
     if (!match && block.includes('-->')) throw new Error('Invalid subtitle cue');

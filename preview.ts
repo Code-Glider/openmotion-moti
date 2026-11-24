@@ -120,7 +120,20 @@ export async function openPreview(store = new WorkspaceStore(), environment: Pre
         health = updated.health;
       }
       const file = path.join(store.directory, 'preview.json'); const temporary = file + '.' + crypto.randomUUID() + '.tmp';
-      try { await writeFile(temporary, JSON.stringify({ port, pid, version: health.version }), { mode: 0o600 }); await rename(temporary, file); }
+      // An MCP call can start this preview in the background, then reopen
+      // the same service for Studio. That second discovery has no new child
+      // PID; do not discard the original test/workspace-owned launcher PID.
+      // Only preserve it when the verified live service still matches the
+      // registry's port and version. Do not copy PIDs across workspaces or
+      // incompatible service restarts.
+      let prior: { port?: number; pid?: number; version?: string } | undefined;
+      if (reused && pid === undefined) {
+        try { prior = JSON.parse(await readFile(file, 'utf8')); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
+      }
+      const registeredPid = pid ?? (reused && prior?.port === port && prior?.version === health.version
+        && Number.isSafeInteger(prior?.pid) && (prior?.pid ?? 0) > 0 ? prior!.pid : undefined);
+      try { await writeFile(temporary, JSON.stringify({ port, pid: registeredPid, version: health.version }), { mode: 0o600 }); await rename(temporary, file); }
       finally { await rm(temporary, { force: true }); }
       return { previewUrl: `http://localhost:${port}`, studioUrl: health.studioUrl ? `http://localhost:${port}/#project/${store.projectId}` : undefined, hyperframesCli: health.hyperframesCli, authoringGuide: health.authoringGuide, engine: 'hyperframes', ready: true, reused, ffmpeg: health.ffmpeg, revision: (await store.get()).revision,
         mcp: health.mcp, dataDirectory: store.directory, editorReady: Boolean(health.studioUrl), browserOpened: false, previewTarget: 'host-built-in-browser',

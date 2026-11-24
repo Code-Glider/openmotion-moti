@@ -5,6 +5,7 @@
  * Run: node --experimental-strip-types scripts/rtl-font-audit.ts FILE 'שלום עולם'
  */
 import { createHash } from 'node:crypto';
+import { requiresFontGlyph } from '../shared/font-glyph-coverage.ts';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -12,7 +13,18 @@ import { pathToFileURL } from 'node:url';
 
 const MAX_FONT_FILE = 64 * 1024 * 1024;
 const MAX_DECOMPRESSED = 128 * 1024 * 1024;
-const IGNORABLE = new Set([0x200c,0x200d,0x200e,0x200f,0x061c,0x2066,0x2067,0x2068,0x2069]);
+// Representative script probes, not a Unicode coverage census or shaping certification.
+// Explicit Urdu/Persian-only letters, Hebrew niqqud and Arabic/Syriac vowel marks
+// catch common fallback gaps. Ethiopic is an LTR non-regression probe.
+export const FONT_SCRIPT_PROBES = [
+  { language: 'he', fontkitScript: 'hebr', fontkitLanguage: 'IWR ', direction: 'rtl', sampleText: 'שָׁלוֹם' },
+  { language: 'ar', fontkitScript: 'arab', fontkitLanguage: 'ARA ', direction: 'rtl', sampleText: 'السَّلَامُ' },
+  { language: 'fa', fontkitScript: 'arab', fontkitLanguage: 'FAR ', direction: 'rtl', sampleText: 'فارسی پ چ ژ گ' },
+  { language: 'ur', fontkitScript: 'arab', fontkitLanguage: 'URD ', direction: 'rtl', sampleText: 'اردو ٹ ڈ ڑ ں ے' },
+  { language: 'syr', fontkitScript: 'syrc', fontkitLanguage: 'SYR ', direction: 'rtl', sampleText: 'ܫܠܡܐ ܒܪܝܟܐ ܰ ܳ' },
+  { language: 'am', fontkitScript: 'ethi', fontkitLanguage: 'AMH ', direction: 'ltr', sampleText: 'ሰላም ኢትዮጵያ' },
+  { language: 'en', fontkitScript: 'latn', fontkitLanguage: 'ENG ', direction: 'ltr', sampleText: 'ABC123' },
+] as const;
 
 export type FontAudit = {
   family: string;
@@ -22,9 +34,55 @@ export type FontAudit = {
   sha256: string;
   checkedCodepoints: number;
   missingCodepoints: Array<{ hex: string; character: string }>;
+  /** Probe-only cmap coverage; this is not joining, mark positioning or MP4 evidence. */
+  scriptSamples: Array<{
+    language: (typeof FONT_SCRIPT_PROBES)[number]['language'];
+    /** Explicit OpenType script; localized substitutions still need visual qualification. */
+    fontkitScript: (typeof FONT_SCRIPT_PROBES)[number]['fontkitScript'];
+    /** Four-byte OpenType language-system tag for localized substitutions. */
+    fontkitLanguage: (typeof FONT_SCRIPT_PROBES)[number]['fontkitLanguage'];
+    direction: 'rtl' | 'ltr';
+    sampleText: string;
+    checkedCodepoints: number;
+    missingCodepoints: Array<{ hex: string; character: string }>;
+    allProbeCodepointsPresent: boolean;
+    /** Fontkit shaping diagnostics only; passing here cannot certify browser shaping or GPOS. */
+    fontkitLayout: FontkitLayoutEvidence;
+  }>;
   shapedGlyphCount: number | null;
   shapingError?: string;
 };
+
+export type FontkitLayoutEvidence =
+  | { glyphCount: number; notdefGlyphCount: number; positionedGlyphCount: number }
+  | { error: string };
+
+/** Record concrete glyph-run evidence; this is NOT a pass/fail shaping oracle.
+ * A cmap-complete font may still lack contextual substitutions or correct
+ * mark positioning. Glyph zero is .notdef, and positioning is observable but
+ * must be visually qualified using a real browser and rendered video.
+ */
+export function inspectFontkitLayout(font: {
+  layout: (text: string, features?: undefined, script?: string, language?: string, direction?: 'rtl' | 'ltr') => {
+    glyphs: Array<{ id: number }>;
+    positions: Array<{ xOffset: number; yOffset: number }>;
+  };
+}, text: string, script?: string, direction?: 'rtl' | 'ltr', language?: string): FontkitLayoutEvidence {
+  try {
+    // Explicit script, language-system tag and direction avoid ambiguous auto-detection.
+    // In particular, Persian and Urdu must not silently use Arabic's default language.
+    // This is one-script fontkit evidence, not a UAX #9 bidi layout.
+    const run = script ? font.layout(text, undefined, script, language, direction) : font.layout(text);
+    if (run.glyphs.length !== run.positions.length) throw new Error('LAYOUT_GLYPH_POSITION_MISMATCH');
+    return {
+      glyphCount: run.glyphs.length,
+      notdefGlyphCount: run.glyphs.filter(glyph => glyph.id === 0).length,
+      positionedGlyphCount: run.positions.filter(pos => pos.xOffset !== 0 || pos.yOffset !== 0).length,
+    };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
 
 function detectFormat(bytes: Buffer): FontAudit['format'] {
   const signature = bytes.toString('ascii', 0, 4);
@@ -39,6 +97,61 @@ function detectFormat(bytes: Buffer): FontAudit['format'] {
   throw new Error('UNSUPPORTED_FONT_SIGNATURE');
 }
 
+/** Count actual cmap-dependent characters, not Unicode control/format codepoints.
+ * RTL embeddings, isolates, joiners and variation selectors do not require
+ * standalone cmap glyphs; script combining marks still require coverage.
+ */
+function coverageForText(font: { hasGlyphForCodePoint: (cp: number) => boolean }, text: string) {
+  const unique = new Set(Array.from(text, ch => ch.codePointAt(0)!));
+  const missingCodepoints: FontAudit['missingCodepoints'] = [];
+  let checkedCodepoints = 0;
+  for (const cp of unique) {
+    if (!requiresFontGlyph(cp)) continue;
+    checkedCodepoints += 1;
+    if (!font.hasGlyphForCodePoint(cp)) missingCodepoints.push({
+      hex: 'U+' + cp.toString(16).toUpperCase().padStart(4, '0'),
+      character: String.fromCodePoint(cp),
+    });
+  }
+  return { checkedCodepoints, missingCodepoints };
+}
+
+/**
+ * Optional, deliberately narrow eligibility gate for a *known* sample set.
+ * It fails closed on absent script codepoints but cannot certify contextual
+ * substitutions, mark positioning, browser font fallback or MP4 output.
+ * A positive result says only that the audited face's cmap covers the probe.
+ */
+export function assertRequiredScriptCoverage(report: FontAudit, languages: readonly string[]): void {
+  if (!languages.length) throw new Error('REQUIRED_FONT_SCRIPT_PROBES_EMPTY');
+  for (const language of languages) {
+    if (!FONT_SCRIPT_PROBES.some(probe => probe.language === language))
+      throw new Error('UNKNOWN_FONT_SCRIPT_PROBE: ' + language);
+    const row = report.scriptSamples.find(probe => probe.language === language);
+    if (!row) throw new Error('MISSING_FONT_SCRIPT_PROBE: ' + language);
+    if (!row.allProbeCodepointsPresent) {
+      const missing = row.missingCodepoints.map(cp => cp.hex).join(',');
+      throw new Error(`MISSING_REQUIRED_SCRIPT_GLYPHS: ${language}: ${missing}`);
+    }
+  }
+}
+
+/** Opt-in second-stage gate: rejects .notdef, empty and failed fontkit runs.
+ * Does not certify contextual joins, GPOS marks, browser shaping, or MP4 output.
+ * Keep the existing --require-scripts contract cmap-only.
+ */
+export function assertRequiredScriptLayout(report: FontAudit, languages: readonly string[]): void {
+  assertRequiredScriptCoverage(report, languages);
+  for (const language of languages) {
+    const row = report.scriptSamples.find(probe => probe.language === language)!;
+    const layout = row.fontkitLayout;
+    if ('error' in layout)
+      throw new Error(`REQUIRED_SCRIPT_LAYOUT_ERROR: ${language}: ${layout.error}`);
+    if (layout.glyphCount === 0 || layout.notdefGlyphCount !== 0)
+      throw new Error(`REQUIRED_SCRIPT_LAYOUT_INCOMPLETE: ${language}: glyphs=${layout.glyphCount},notdef=${layout.notdefGlyphCount}`);
+  }
+}
+
 export async function auditFont(fontPath: string, text: string, runtimeRoot: string = process.cwd()): Promise<FontAudit> {
   if (!text) throw new Error('SUPPLY_REAL_TEXT');
   const bytes = await readFile(fontPath);
@@ -48,12 +161,16 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
   const fontkit = require('fontkit') as { create: (bytes: Buffer) => any };
   const parsed = fontkit.create(bytes);
   const font = parsed.fonts?.[0] ?? parsed;
-  const missingCodepoints: FontAudit['missingCodepoints'] = [];
-  const unique = new Set(Array.from(text, ch => ch.codePointAt(0)!));
-  for (const cp of unique) {
-    if (IGNORABLE.has(cp) || /\p{Cc}/u.test(String.fromCodePoint(cp))) continue;
-    if (!font.hasGlyphForCodePoint(cp)) missingCodepoints.push({hex:'U+'+cp.toString(16).toUpperCase().padStart(4,'0'),character:String.fromCodePoint(cp)});
-  }
+  const { checkedCodepoints, missingCodepoints } = coverageForText(font, text);
+  const scriptSamples: FontAudit['scriptSamples'] = FONT_SCRIPT_PROBES.map(probe => {
+    const coverage = coverageForText(font, probe.sampleText);
+    return {
+      ...probe,
+      ...coverage,
+      allProbeCodepointsPresent: coverage.missingCodepoints.length === 0,
+      fontkitLayout: inspectFontkitLayout(font, probe.sampleText, probe.fontkitScript, probe.direction, probe.fontkitLanguage),
+    };
+  });
   let shapedGlyphCount: number | null = null;
   let shapingError: string | undefined;
   try { shapedGlyphCount = font.layout(text).glyphs.length; }
@@ -62,13 +179,22 @@ export async function auditFont(fontPath: string, text: string, runtimeRoot: str
     family: font.getName?.('preferredFamily') || font.familyName || '(unnamed)',
     postscriptName: font.postscriptName || '(unnamed)',format,size:bytes.length,
     sha256:createHash('sha256').update(bytes).digest('hex'),
-    checkedCodepoints:unique.size,missingCodepoints,shapedGlyphCount,
+    checkedCodepoints,missingCodepoints,scriptSamples,shapedGlyphCount,
     ...(shapingError ? {shapingError}:{}),
   };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  const [filename, text] = process.argv.slice(2);
-  if (!filename || !text) throw new Error('Usage: rtl-font-audit.ts FONT-FILE SAMPLE-TEXT');
-  console.log(JSON.stringify(await auditFont(path.resolve(filename), text), null, 2));
+  const args = process.argv.slice(2);
+  const [filename, text, option, requiredLanguages] = args;
+  if (!filename || !text || !(args.length === 2 ||
+    (args.length === 4 && (option === '--require-scripts' || option === '--require-layout-scripts') && requiredLanguages)))
+    throw new Error('Usage: rtl-font-audit.ts FONT-FILE SAMPLE-TEXT [--require-scripts|--require-layout-scripts he,ar,fa,ur,syr,am,en]');
+  const report = await auditFont(path.resolve(filename), text);
+  // Always emit the full diagnostic evidence, including when strict mode fails.
+  console.log(JSON.stringify(report, null, 2));
+  if (requiredLanguages !== undefined) {
+    if (option === '--require-layout-scripts') assertRequiredScriptLayout(report, requiredLanguages.split(','));
+    else assertRequiredScriptCoverage(report, requiredLanguages.split(','));
+  }
 }

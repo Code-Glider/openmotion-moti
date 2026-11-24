@@ -698,3 +698,47 @@ it("MVP keeps text, font, size, color and three alignments without changing adva
   expect(JSON.stringify(element.textFields)).toBe(before);
   act(() => root.unmount());
 });
+
+describe("Inspector content paragraph presentation", () => {
+  it.each([
+    ["rtl", "he", "ABC שָׁלוֹם 2030"],
+    ["rtl", "ar", "ABC السَّلَامُ 52%"],
+    ["rtl", "fa", "ABC فارسی ۲۰۶۲"],
+    ["rtl", "ur", "ABC اردو ٹ ڈ ڑ ں ے"],
+    ["rtl", "syr", "ABC ܫܠܡܐ ܒܪܝܟܐ"],
+    ["ltr", "am", "ሰላም ኢትዮጵያ"],
+    ["ltr", "en", "Render ABC-123 at 10:30"],
+  ] as const)("uses resolved %s direction and %s language without editing source", (dir, lang, text) => {
+    const onSetText = vi.fn();
+    const onSetTextFieldStyle = vi.fn();
+    const field = makeSingleFieldElement({
+      value: text,
+      computedStyles: { direction: dir },
+      attributes: [{ name: "lang", value: lang }],
+    });
+    const before = JSON.stringify(field.textFields);
+    const { host, root } = renderInto(
+      <FlatTextSection
+        element={field}
+        styles={{}}
+        fontAssets={[]}
+        onSetText={onSetText}
+        onSetTextFieldStyle={onSetTextFieldStyle}
+        onAddTextField={vi.fn()}
+        onRemoveTextField={vi.fn()}
+      />,
+    );
+    try {
+      const textarea = host.querySelector("textarea")!;
+      expect(textarea.getAttribute("dir")).toBe(dir);
+      expect(textarea.getAttribute("lang")).toBe(lang);
+      expect(textarea.style.textAlign).toBe("start");
+      expect(textarea.value).toBe(text);
+      expect(JSON.stringify(field.textFields)).toBe(before);
+      expect(onSetText).not.toHaveBeenCalled();
+      expect(onSetTextFieldStyle).not.toHaveBeenCalled();
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+});

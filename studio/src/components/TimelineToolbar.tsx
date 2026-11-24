@@ -190,6 +190,9 @@ export const TimelineToolbar = memo(function TimelineToolbar({
   const audioMetersVisible = useAudioMetersVisible((s) => s.visible);
   const setAudioMetersVisible = useAudioMetersVisible((s) => s.setVisible);
   const projectHasAudio = useProjectHasAudio();
+  // Read the actual preference even when the embedded MVP hides the toggle.
+  // This provides a read-only state receipt for real Studio E2E assertions.
+  const linkedSelectionEnabled = useLinkedClipPreferences((s) => s.linkedSelection);
   // Subscribe so the add-beat button reacts to playhead movement and analysis load.
   const currentTime = usePlayerStore((s) => s.currentTime);
   const beatAnalysisReady = usePlayerStore((s) => s.beatAnalysis !== null);
@@ -249,7 +252,11 @@ export const TimelineToolbar = memo(function TimelineToolbar({
   }, []);
 
   return (
-    <div className="motion-timeline-toolbar motion-timeline-icon-controls border-b border-neutral-800/60">
+    <div
+      className="motion-timeline-toolbar motion-timeline-icon-controls border-b border-neutral-800/60"
+      data-linked-selection-mode={mvp ? "host-locked" : "user-toggle"}
+      data-linked-selection-state={linkedSelectionEnabled ? "on" : "off"}
+    >
       <div className="flex items-center justify-between px-2 py-0.5">
         <div className="flex items-center gap-0.5">
           {showHistory && <TimelineHistoryButtons {...history} />}

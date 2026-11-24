@@ -1,7 +1,24 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { splitCaptionWordRuns } from "./captionWordRuns";
-import { readWordBoxes, getWordEl, sameWordBoxes, type WordBox } from "./CaptionOverlayUtils";
+import { readWordBoxes, getWordEl, sameWordBoxes, readGsapTransform, getOrCreateWrapper, writeTransform, computeTransformStyle, registerCaptionIframe, applyCaptionModelToIframe, type WordBox } from "./CaptionOverlayUtils";
+
+it("clears every saved transform when an authored word returns to neutral", () => {
+  const iframe = document.createElement("iframe");
+  document.body.append(iframe);
+  try {
+    const word = iframe.contentDocument!.createElement("span");
+    word.textContent = "السَّلَامُ";
+    iframe.contentDocument!.body.append(word);
+    const win = iframe.contentWindow!;
+    writeTransform(word, win, 12, -8, 1.25, 30);
+    const previous = computeTransformStyle(word, win);
+    writeTransform(word, win, 0, 0, 1, 0);
+    expect({ ...previous, ...computeTransformStyle(word, win) }).toEqual({
+      x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0,
+    });
+  } finally { iframe.remove(); }
+});
 
 it("retains exact Hebrew whitespace and logical word order", () => {
   const text = "  שלום\t  עולם!\n";
@@ -21,6 +38,8 @@ it("does not guess when timed tokens cannot match visible text", () => {
   expect(splitCaptionWordRuns("שלום עולם", ["שלום"])).toBeNull();
   expect(splitCaptionWordRuns("שלום עולם", ["עולם", "שלום"])).toBeNull();
   expect(splitCaptionWordRuns("שלום עולם", ["שלום", "different"])).toBeNull();
+  expect(splitCaptionWordRuns("שלום, עולם", ["שלום", "עולם"])).toBeNull(); // PR #2 punctuation guard
+  expect(splitCaptionWordRuns("السَّلَامُ 2026", ["السَّلَامُ", "2026"])).toEqual(["السَّلَامُ ", "2026"]);
   expect(splitCaptionWordRuns("こんにちは世界", ["こんにちは", "世界"])).toBeNull();
   expect(splitCaptionWordRuns("בּית", ["ב", "ּית"])).toBeNull();
   expect(splitCaptionWordRuns("   ", [""])).toBeNull();
@@ -124,6 +143,47 @@ it("keeps one-to-one authored word spans transformable and in the same order", (
   } finally { f.dispose(); }
 });
 
+it("does not offer invisible or inert caption words for overlay selection", () => {
+  const f = captionFrame("שָׁלוֹם OpenMotion", ["שָׁלוֹם", "OpenMotion"]);
+  const container = f.doc.createElement("section");
+  const hebrew = f.doc.createElement("span");
+  const latin = f.doc.createElement("span");
+  hebrew.textContent = "שָׁלוֹם";
+  latin.textContent = "OpenMotion";
+  f.group.replaceChildren(hebrew, latin);
+  f.doc.body.append(container);
+  container.append(f.group);
+  const originalMarkup = f.group.innerHTML;
+  const hitIds = () => readWordBoxes(f.iframe, f.model, f.overlay)
+    .map((box) => [box.segmentId, box.editable]);
+  const expected = [["s0", true], ["s1", true]];
+  const cases: Array<[string, () => void, () => void]> = [
+    ["invisible parent opacity", () => { container.style.opacity = "0"; }, () => { container.style.opacity = ""; }],
+    ["hidden parent display", () => { container.style.display = "none"; }, () => { container.style.display = ""; }],
+    ["hidden parent visibility", () => { container.style.visibility = "hidden"; }, () => { container.style.visibility = ""; }],
+    ["hidden parent attribute", () => { container.hidden = true; }, () => { container.hidden = false; }],
+    ["inert parent", () => { container.setAttribute("inert", ""); }, () => { container.removeAttribute("inert"); }],
+    ["hidden group display", () => { f.group.style.display = "none"; }, () => { f.group.style.display = ""; }],
+    ["collapsed group visibility", () => { f.group.style.visibility = "collapse"; }, () => { f.group.style.visibility = ""; }],
+    ["faded group", () => { f.group.style.opacity = "0"; }, () => { f.group.style.opacity = "1"; }],
+  ];
+  try {
+    expect(hitIds()).toEqual(expected);
+    for (const [label, hide, restore] of cases) {
+      hide();
+      expect(hitIds(), label).toEqual([]);
+      restore();
+      expect(hitIds(), label + " restoration").toEqual(expected);
+    }
+    expect(f.group.innerHTML).toBe(originalMarkup);
+    expect([...f.group.children]).toEqual([hebrew, latin]);
+    expect(f.group.textContent).toBe("שָׁלוֹםOpenMotion");
+  } finally {
+    container.remove();
+    f.dispose();
+  }
+});
+
 it("rejects mismatched segment text instead of corrupting or transforming markup", () => {
   const f = captionFrame("שלום עולם", ["שלום", "wrong"]);
   try {
@@ -178,3 +238,60 @@ it("maps rendered caption groups by stable ID when an earlier group was omitted"
   } finally { f.dispose(); }
 });
 
+
+it("retains independent Hebrew word scales through move, rotate, reset and replay", () => {
+  const frame = captionFrame("שָׁלוֹם", ["שָׁלוֹם"]);
+  const word = frame.doc.createElement("span");
+  word.textContent = "שָׁלוֹם";
+  frame.group.replaceChildren(word);
+  const win = frame.iframe.contentWindow!;
+  const unregister = registerCaptionIframe({ current: frame.iframe });
+  const model = (scaleX: number, scaleY: number) => ({
+    groupOrder: ["group-0"],
+    groups: new Map([["group-0", { segmentIds: ["s0"] }]]),
+    segments: new Map([["s0", { text: "שָׁלוֹם", style: { x: 18, y: -11, rotation: 12, scaleX, scaleY } }]]),
+  });
+  try {
+    applyCaptionModelToIframe(model(1.25, 0.9));
+    expect(computeTransformStyle(word, win)).toEqual({
+      x: 18, y: -11, rotation: 12, scaleX: 1.25, scaleY: 0.9,
+    });
+    const before = readGsapTransform(getOrCreateWrapper(word), win);
+    writeTransform(word, win, before.x + 5, before.y - 3, before.scale, before.rotation + 8, before.scaleY);
+    expect(computeTransformStyle(word, win)).toEqual({
+      x: 23, y: -14, rotation: 20, scaleX: 1.25, scaleY: 0.9,
+    });
+    applyCaptionModelToIframe(model(1, 1));
+    expect(computeTransformStyle(word, win)).toMatchObject({ scaleX: 1, scaleY: 1 });
+    applyCaptionModelToIframe(model(1.25, 0.9));
+    expect(computeTransformStyle(word, win)).toMatchObject({ scaleX: 1.25, scaleY: 0.9 });
+    expect(frame.group.textContent).toBe("שָׁלוֹם");
+    expect(frame.group.querySelector("span > span")).toBe(word);
+  } finally {
+    unregister();
+    frame.dispose();
+  }
+});
+
+it("reads and writes GSAP scaleX and scaleY without flattening Arabic word geometry", () => {
+  const iframe = document.createElement("iframe");
+  document.body.append(iframe);
+  try {
+    const win = iframe.contentWindow!;
+    const word = iframe.contentDocument!.createElement("span");
+    word.textContent = "السَّلَامُ";
+    iframe.contentDocument!.body.append(word);
+    const props: Record<string, number> = { x: 7, y: -4, scale: 1.25, scaleX: 1.25, scaleY: 0.75, rotation: 15 };
+    Reflect.set(win, "gsap", {
+      getProperty: (_: HTMLElement, name: string) => props[name] ?? Number.NaN,
+      set: (_: HTMLElement, values: Record<string, number>) => Object.assign(props, values),
+    });
+    const wrapper = getOrCreateWrapper(word);
+    expect(readGsapTransform(wrapper, win)).toMatchObject({ scale: 1.25, scaleY: 0.75 });
+    writeTransform(word, win, 17, -4, 1.25, 15, 0.75);
+    expect(props).toMatchObject({ x: 17, y: -4, scaleX: 1.25, scaleY: 0.75, rotation: 15 });
+    expect(computeTransformStyle(word, win)).toEqual({
+      x: 17, y: -4, scaleX: 1.25, scaleY: 0.75, rotation: 15,
+    });
+  } finally { iframe.remove(); }
+});

@@ -18,7 +18,7 @@ test('an extracted specimen command uses the existing dependency runtime without
   const source = fileURLToPath(new URL('../', import.meta.url));
   try {
     const plugin = path.join(directory, 'plugin');
-    for (const name of ['scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/studio-fonts.ts', 'shared/asset-limits.ts', 'shared/entry.ts', 'skills/openmotion-production/fonts/catalog.json']) {
+    for (const name of ['scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/font-glyph-coverage.ts', 'shared/studio-fonts.ts', 'shared/asset-limits.ts', 'shared/entry.ts', 'skills/openmotion-production/fonts/catalog.json']) {
       const target = path.join(plugin, name); await mkdir(path.dirname(target), { recursive: true }); await cp(path.join(source, name), target);
     }
     await writeFile(path.join(plugin, 'package.json'), '{"type":"module"}');
@@ -91,5 +91,22 @@ test('script-sensitive specimens retain explicit language and text direction wit
     const wrongDirection = request(); wrongDirection.roles[0].direction = 'sideways' as 'rtl';
     await assert.rejects(buildFontSpecimen(wrongDirection, path.join(root, 'invalid-direction')), /INVALID_SPECIMEN_DIRECTION/);
     assert.deepEqual(await readdir(root), ['rtl']);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('mixed RTL font specimens exclude bidi and variation controls but retain combining-mark gaps', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-specimen-bidi-controls-'));
+  try {
+    const req = request();
+    req.roles[0].text = 'A\u2067ש\u05B8\u2069\uFE0F\u200D';
+    req.roles[0].lang = 'he';
+    req.roles[0].direction = 'rtl';
+    const result = await buildFontSpecimen(req, path.join(root, 'rtl'));
+    const record = JSON.parse(await readFile(result.recordPath, 'utf8'));
+    const missing = record.roles[0].candidates[0].missingGlyphs;
+    assert.deepEqual(missing, ['ש', '\u05B8']);
+    assert.equal(record.roles[0].text, req.roles[0].text, 'Bidi controls remain in authored copy');
+    const html = await readFile(result.htmlPath, 'utf8');
+    assert.ok(html.includes(req.roles[0].text), 'The original logical copy is preserved');
   } finally { await rm(root, { recursive: true, force: true }); }
 });

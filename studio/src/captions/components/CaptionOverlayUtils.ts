@@ -37,7 +37,7 @@ export function sameWordBoxes(previous: readonly WordBox[], next: readonly WordB
 interface CaptionHitModel {
   groupOrder: string[];
   groups: Map<string, { segmentIds: string[] }>;
-  segments: Map<string, { text: string }>;
+  segments: Map<string, { text: string; wordId?: string }>;
 }
 
 function groupWords(model: CaptionHitModel, groupId: string): string[] | null {
@@ -52,7 +52,11 @@ function groupWords(model: CaptionHitModel, groupId: string): string[] | null {
  * Only one-to-one direct spans are transform targets. A styled span around a
  * whole sentence is not a word, even when it happens to be the first child.
  */
-function directWordElements(groupEl: HTMLElement, words: readonly string[]): HTMLElement[] {
+function directWordElements(
+  groupEl: HTMLElement,
+  words: readonly string[],
+  expectedIds: readonly (string | undefined)[],
+): HTMLElement[] | null {
   if (Array.from(groupEl.childNodes).some((node) =>
     node.nodeType === 3 && Boolean(node.textContent?.trim()))) return [];
   const children = Array.from(groupEl.children) as HTMLElement[];
@@ -62,6 +66,23 @@ function directWordElements(groupEl: HTMLElement, words: readonly string[]): HTM
       ? child.querySelector<HTMLElement>(":scope > span")
       : child.tagName === "SPAN" ? child : null,
   );
+  // If the model has authored identities, positional text equality is not enough:
+  // repeated identical words could be reordered or recycled in the preview.
+  // Refuse the entire hit mapping rather than selecting or transforming the
+  // wrong saved word. Unidentified legacy spans keep their existing fallback.
+  const named = expectedIds.filter((id): id is string => Boolean(id));
+  if (new Set(named).size !== named.length) return null;
+  // Current generated captions carry wordId as a DOM ID. Older authored
+  // projects may have *no* IDs on their word spans: retain editing only when
+  // text makes positional identity unambiguous. Never guess between identical
+  // unlabelled words or accept partially missing generated IDs.
+  const hasDomIds = candidates.some((el) => Boolean(el?.id));
+  // A partially identified model cannot safely pair an unnamed sibling
+  // with a named DOM word, especially when the visible words are identical.
+  // A fully anonymous legacy model retains its positional fallback.
+  if (hasDomIds && named.length > 0 && named.length !== expectedIds.length) return null;
+  if (hasDomIds && candidates.some((el, index) => expectedIds[index] && el?.id !== expectedIds[index])) return null;
+  if (!hasDomIds && named.length && new Set(words.map((word) => word.trim())).size !== words.length) return null;
   if (candidates.some((el, index) => !el || el.textContent?.trim() !== words[index].trim())) return [];
   return candidates as HTMLElement[];
 }
@@ -154,6 +175,22 @@ function captionGroupLookup(doc: Document): (groupId: string, index: number) => 
     hasIdentifiers ? identified.get(groupId) ?? null : groupEls[index] ?? null;
 }
 
+/** Overlay hit targets must respect the full preview visibility ancestry.
+ * Styles on a parent are not reflected in getComputedStyle(child). In
+ * particular, opacity is not inherited, while a descendant still has a
+ * measurable DOMRect inside an opacity:0 container.
+ */
+function isCaptionHitVisible(groupEl: HTMLElement, win: Window): boolean {
+  for (let el: HTMLElement | null = groupEl; el; el = el.parentElement) {
+    if (el.hidden || el.hasAttribute("inert")) return false;
+    const style = win.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return false;
+    const opacity = parseFloat(style.opacity);
+    if (Number.isFinite(opacity) && opacity <= 0.01) return false;
+  }
+  return true;
+}
+
 export function readWordBoxes(
   iframe: HTMLIFrameElement,
   model: CaptionHitModel,
@@ -185,12 +222,16 @@ export function readWordBoxes(
     if (!group) continue;
     const groupEl = captionGroupAt(groupId, gi);
     if (!groupEl) continue;
-    const computed = win.getComputedStyle(groupEl);
-    if (parseFloat(computed.opacity) <= 0.01 || computed.visibility === "hidden") continue;
+    // A group can have visible children in the DOM while an ancestor is
+    // hidden/inert or a caption animation has faded its container out.
+    // Do not expose invisible words as selectable/transformable overlay hits.
+    if (!isCaptionHitVisible(groupEl, win)) continue;
     const words = groupWords(model, groupId);
     if (!words) continue;
 
-    const elements = directWordElements(groupEl, words);
+    const expectedIds = group.segmentIds.map((id) => model.segments.get(id)?.wordId);
+    const elements = directWordElements(groupEl, words, expectedIds);
+    if (elements === null) continue; // Conflicting authored identity: never guess by text.
     const rects = elements.length
       ? elements.map((wordEl) => wordEl.getBoundingClientRect())
       : measureTextRuns(groupEl, words);
@@ -233,7 +274,10 @@ export function getWordEl(
   if (!words) return null;
   const groupEl = captionGroupLookup(doc)(groupId, groupIndex);
   if (!groupEl) return null;
-  return directWordElements(groupEl, words)[wordIndex] ?? null;
+  const group = model.groups.get(groupId);
+  if (!group) return null;
+  const expectedIds = group.segmentIds.map((id) => model.segments.get(id)?.wordId);
+  return directWordElements(groupEl, words, expectedIds)?.[wordIndex] ?? null;
 }
 
 /**
@@ -243,28 +287,82 @@ export function getWordEl(
 export function readGsapTransform(
   el: HTMLElement,
   iframeWin: Window,
-): { x: number; y: number; scale: number; rotation: number } {
+): { x: number; y: number; scale: number; scaleY: number; rotation: number } {
   const gsap = (
     iframeWin as unknown as { gsap?: { getProperty?: (el: HTMLElement, prop: string) => number } }
   ).gsap;
-  if (gsap && gsap.getProperty) {
+  // "scale" alone loses imported non-uniform word geometry. Preserve the X
+  // alias for existing pointer math, while keeping the independent Y axis.
+  const finiteOr = (value: number, fallback: number) =>
+    Number.isFinite(value) ? value : fallback;
+  if (gsap?.getProperty) {
+    const scale = finiteOr(gsap.getProperty(el, "scaleX"), finiteOr(gsap.getProperty(el, "scale"), 1));
     return {
-      x: gsap.getProperty(el, "x") || 0,
-      y: gsap.getProperty(el, "y") || 0,
-      scale: gsap.getProperty(el, "scale") || 1,
-      rotation: gsap.getProperty(el, "rotation") || 0,
+      x: finiteOr(gsap.getProperty(el, "x"), 0),
+      y: finiteOr(gsap.getProperty(el, "y"), 0),
+      scale,
+      scaleY: finiteOr(gsap.getProperty(el, "scaleY"), scale),
+      rotation: finiteOr(gsap.getProperty(el, "rotation"), 0),
     };
   }
   const t = el.style.transform || "";
-  const scaleMatch = t.match(/scale\(([^)]+)\)/);
+  const scaleMatch = t.match(/scale\(\s*([^,\s)]+)\s*(?:,\s*([^)]+))?\)/);
   const rotMatch = t.match(/rotate\(([^)]+)deg\)/);
   const txyMatch = t.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+  const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
   return {
     x: txyMatch ? parseFloat(txyMatch[1]) : 0,
     y: txyMatch ? parseFloat(txyMatch[2]) : 0,
-    scale: scaleMatch ? parseFloat(scaleMatch[1]) : 1,
+    scale,
+    scaleY: scaleMatch?.[2] ? parseFloat(scaleMatch[2]) : scale,
     rotation: rotMatch ? parseFloat(rotMatch[1]) : 0,
   };
+}
+
+/**
+ * Read only a gesture's existing per-word transform. A press is not an edit:
+ * creating a wrapper here changes authored DOM geometry even if the user
+ * releases without moving. Do not read a word's own GSAP animation as an
+ * editor offset when it has never had an editor transform wrapper.
+ */
+export function readWordTransformForGesture(
+  el: HTMLElement,
+  iframeWin: Window,
+): ReturnType<typeof readGsapTransform> {
+  const wrapper = el.dataset.captionWrapper === "true"
+    ? el
+    : el.parentElement?.dataset.captionWrapper === "true" ? el.parentElement : null;
+  return wrapper ? readGsapTransform(wrapper, iframeWin)
+    : { x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 };
+}
+
+/**
+ * Cancel a pointer edit or a gesture that returns exactly to its starting
+ * transform. Never leave a wrapper created solely by an abandoned preview.
+ * Do not unwrap an authored/previously persisted wrapper or rewrite the word
+ * element itself (its text, data attributes and GSAP animation stay intact).
+ */
+export function restoreWordTransformAfterGesture(
+  el: HTMLElement,
+  iframeWin: Window,
+  hadWrapper: boolean,
+  x: number,
+  y: number,
+  scale: number,
+  rotation: number,
+  scaleY: number,
+): void {
+  if (hadWrapper) {
+    writeTransform(el, iframeWin, x, y, scale, rotation, scaleY);
+    return;
+  }
+  const wrapper = el.parentElement;
+  // Only remove a wrapper of the exact structure created by this editor.
+  // Unexpected sibling nodes or a different wrapper are not ours to destroy.
+  if (wrapper?.dataset.captionWrapper === "true" &&
+      wrapper.childNodes.length === 1 && wrapper.firstChild === el) {
+    wrapper.replaceWith(el);
+  }
 }
 
 /**
@@ -294,6 +392,7 @@ export function writeTransform(
   y: number,
   scale: number,
   rotation: number,
+  scaleY = scale,
 ) {
   const wrapper = getOrCreateWrapper(el);
   const gsap = (
@@ -301,10 +400,14 @@ export function writeTransform(
       gsap?: { set?: (el: HTMLElement, props: Record<string, number>) => void };
     }
   ).gsap;
-  if (gsap && gsap.set) {
-    gsap.set(wrapper, { x, y, scale, rotation });
+  if (gsap?.set) {
+    gsap.set(wrapper, { x, y, scaleX: scale, scaleY, rotation });
   } else {
-    wrapper.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${rotation.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+    // Uniform callers retain the original single-value scale syntax.
+    const cssScale = scaleY === scale
+      ? scale.toFixed(3)
+      : `${scale.toFixed(3)}, ${scaleY.toFixed(3)}`;
+    wrapper.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${rotation.toFixed(1)}deg) scale(${cssScale})`;
   }
 }
 
@@ -336,7 +439,7 @@ export function isCaptionPreviewVisible(): boolean {
 export function applyCaptionModelToIframe(model: {
   groupOrder: string[];
   groups: Map<string, { segmentIds: string[] }>;
-  segments: Map<string, { text: string; style: { x?: number; y?: number; scaleX?: number; rotation?: number } }>;
+  segments: Map<string, { text: string; style: { x?: number; y?: number; scaleX?: number; scaleY?: number; rotation?: number } }>;
 }): void {
   const iframe = registeredIframe?.current;
   if (!iframe) return;
@@ -356,22 +459,24 @@ export function applyCaptionModelToIframe(model: {
       const wordEl = getWordEl(iframe, gi, wi, model);
       if (!wordEl) continue;
       const s = seg.style;
-      writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0);
+      // Undo/redo can visit every segment, including visually identical words
+      // that were never edited. Do not wrap or otherwise mutate untouched
+      // authored DOM for a neutral transform; an existing wrapper still needs
+      // a neutral write to clear an earlier move/scale/rotation on undo.
+      const neutral = (s.x ?? 0) === 0 && (s.y ?? 0) === 0
+        && (s.scaleX ?? 1) === 1 && (s.scaleY ?? 1) === 1
+        && (s.rotation ?? 0) === 0;
+      const hasWrapper = wordEl.dataset.captionWrapper === "true"
+        || wordEl.parentElement?.dataset.captionWrapper === "true";
+      if (neutral && !hasWrapper) continue;
+      writeTransform(wordEl, win, s.x ?? 0, s.y ?? 0, s.scaleX ?? 1, s.rotation ?? 0, s.scaleY ?? 1);
     }
   }
 }
 
-/** Compute style deltas from the current wrapper transform — used by syncToStore in the overlay. */
+/** Include neutral values so merging into saved style clears earlier transforms. */
 export function computeTransformStyle(el: HTMLElement, iframeWin: Window): Record<string, number> {
   const wrapper = getOrCreateWrapper(el);
-  const { x, y, scale, rotation } = readGsapTransform(wrapper, iframeWin);
-  const style: Record<string, number> = {};
-  if (Math.abs(x) > 0.5) style.x = x;
-  if (Math.abs(y) > 0.5) style.y = y;
-  if (Math.abs(scale - 1) > 0.001) {
-    style.scaleX = scale;
-    style.scaleY = scale;
-  }
-  if (Math.abs(rotation) > 0.1) style.rotation = rotation;
-  return style;
+  const { x, y, scale, scaleY, rotation } = readGsapTransform(wrapper, iframeWin);
+  return { x, y, scaleX: scale, scaleY, rotation };
 }

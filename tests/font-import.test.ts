@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { fixture } from './fixtures.ts';
 import { Phase1Service } from '../phase1.ts';
+import { readProjectZip } from '../shared/project-zip.ts';
 import { pluginRoot } from '../hyperframes.ts';
 
 // Uses the actual phase-one version/history boundary, not a mock of the import implementation.
@@ -39,4 +40,45 @@ test('font import retains the actual face and license, rejects corrupt fonts, de
   await service.call('openmotion_restore_version', { projectId: original.projectId, requestId: 'after-font', versionId: imported.version.versionId, expectedRevision: removed.revision, expectedVersionId: removed.version.versionId });
   assert.deepEqual(await readFile(path.join(directory, font.path)), await readFile(sourcePath));
   assert.equal(await readFile(path.join(directory, font.license.path), 'utf8'), await readFile(licensePath, 'utf8'));
+}, false));
+
+test('offline WOFF2 project import retains portable font bytes, a neighboring license and correct CSS', () => fixture(async store => {
+  const service = new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => ({}) });
+  const original = await service.call('openmotion_create_project', {
+    requestId: 'woff2-project', projectType: 'natural_language', title: 'WOFF2 regression', requirements: 'Editable bilingual captions',
+  });
+  const fontFile = fileURLToPath(new URL('../library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/assets/fonts/Inter-400.woff2', import.meta.url));
+  const licensePath = fileURLToPath(new URL('../library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/assets/fonts/OFL-inter.txt', import.meta.url));
+  const imported = await service.call('openmotion_import_assets', {
+    projectId: original.projectId, requestId: 'woff2-import', items: [{ itemId: 'inter-woff2', sourcePath: fontFile, licensePath }],
+  });
+  assert.equal(imported.status, 'completed');
+  const asset = imported.items[0];
+  assert.equal(asset.status, 'completed');
+  assert.equal(asset.font.family, 'Inter');
+  assert.ok(asset.path.endsWith('.woff2'));
+  assert.ok(asset.fontFaceCss.includes(asset.path));
+  const directory = store.projectDirectoryFor(original.projectId);
+  assert.deepEqual(await readFile(path.join(directory, asset.path)), await readFile(fontFile));
+  assert.deepEqual(await readFile(path.join(directory, asset.license.path)), await readFile(licensePath));
+  // The actual font bytes and adjacent license must survive an offline ZIP
+  // handoff and reimport into an independent project, not just a local copy.
+  const exported = await service.call('openmotion_project_archive', {
+    action: 'export', requestId: 'woff2-export', projectIds: [original.projectId],
+  });
+  const entries = readProjectZip(await readFile(exported.archivePath));
+  const manifest = JSON.parse(entries.get('openmotion-projects.json')!.toString('utf8'));
+  assert.equal(manifest.projects.length, 1);
+  const archiveRoot = manifest.projects[0].root as string;
+  assert.deepEqual(entries.get(`${archiveRoot}/${asset.path}`), await readFile(fontFile));
+  assert.deepEqual(entries.get(`${archiveRoot}/${asset.license.path}`), await readFile(licensePath));
+  const reimported = await service.call('openmotion_project_archive', {
+    action: 'import', requestId: 'woff2-reimport', sourcePath: exported.archivePath,
+  });
+  const copiedId = reimported.projects[0].projectId;
+  assert.notEqual(copiedId, original.projectId);
+  const copiedDirectory = store.projectDirectoryFor(copiedId);
+  assert.deepEqual(await readFile(path.join(copiedDirectory, asset.path)), await readFile(fontFile));
+  assert.deepEqual(await readFile(path.join(copiedDirectory, asset.license.path)), await readFile(licensePath));
 }, false));

@@ -3,6 +3,7 @@ import { memo, useCallback } from "react";
 import { useCaptionStore } from "../store";
 import type { CaptionStyle } from "../types";
 import { Section, Row, NumberField } from "./shared";
+import { getOrCreateWrapper, getWordEl, readGsapTransform, writeTransform } from "./CaptionOverlayUtils";
 
 /** True when the given style key differs across the selected segments. */
 function isMixedValue(
@@ -77,17 +78,7 @@ export const CaptionPropertyPanel = memo(function CaptionPropertyPanel({
     (updates: Partial<CaptionStyle>) => {
       const iframe = iframeRef.current;
       if (!iframe || !model) return;
-      let doc: Document | null = null;
-      try {
-        doc = iframe.contentDocument;
-      } catch {
-        return;
-      }
-      if (!doc) return;
-
-      const groupEls = doc.querySelectorAll<HTMLElement>(".caption-group");
-
-      // Build list of word elements to update
+      // Use the same verified word targets as the caption overlay.
       const targetEls: HTMLElement[] = [];
       for (const segId of selectedSegmentIds) {
         for (let gi = 0; gi < model.groupOrder.length; gi++) {
@@ -95,27 +86,8 @@ export const CaptionPropertyPanel = memo(function CaptionPropertyPanel({
           if (!group) continue;
           const wi = group.segmentIds.indexOf(segId);
           if (wi < 0) continue;
-          const groupEl = groupEls[gi];
-          if (!groupEl) continue;
-          // Resolve word span, handling wrappers
-          const children = groupEl.children;
-          let idx = 0;
-          for (const child of children) {
-            const c = child as HTMLElement;
-            if (c.dataset.captionWrapper === "true") {
-              const inner = c.querySelector<HTMLElement>(":scope > span");
-              if (inner && idx === wi) {
-                targetEls.push(inner);
-                break;
-              }
-            } else if (c.tagName === "SPAN") {
-              if (idx === wi) {
-                targetEls.push(c);
-                break;
-              }
-            }
-            idx++;
-          }
+          const el = getWordEl(iframe, gi, wi, model);
+          if (el) targetEls.push(el);
           break;
         }
       }
@@ -130,36 +102,19 @@ export const CaptionPropertyPanel = memo(function CaptionPropertyPanel({
 
       if (hasTransform) {
         try {
-          const iframeGsap = (
-            iframeRef.current?.contentWindow as unknown as {
-              gsap?: {
-                set: (el: HTMLElement, props: Record<string, unknown>) => void;
-                getProperty: (el: HTMLElement, prop: string) => number;
-              };
-            }
-          )?.gsap;
-          if (iframeGsap) {
+          const win = iframe.contentWindow;
+          if (win) {
             for (const el of targetEls) {
-              // Get or create wrapper
-              let wrapper = el.parentElement;
-              if (!wrapper || wrapper.dataset.captionWrapper !== "true") {
-                wrapper = doc.createElement("span") as HTMLElement;
-                wrapper.style.display = "inline-block";
-                wrapper.dataset.captionWrapper = "true";
-                el.parentNode?.insertBefore(wrapper, el);
-                wrapper.appendChild(el);
-              }
-              // Read current wrapper state and merge with updates
-              const curX = iframeGsap.getProperty(wrapper, "x") || 0;
-              const curY = iframeGsap.getProperty(wrapper, "y") || 0;
-              const curScale = iframeGsap.getProperty(wrapper, "scale") || 1;
-              const curRotation = iframeGsap.getProperty(wrapper, "rotation") || 0;
-              iframeGsap.set(wrapper, {
-                x: updates.x ?? curX,
-                y: updates.y ?? curY,
-                scale: updates.scaleX ?? curScale,
-                rotation: updates.rotation ?? curRotation,
-              });
+              const wrapper = getOrCreateWrapper(el);
+              const current = readGsapTransform(wrapper, win);
+              writeTransform(
+                wrapper, win,
+                updates.x ?? current.x,
+                updates.y ?? current.y,
+                updates.scaleX ?? current.scale,
+                updates.rotation ?? current.rotation,
+                updates.scaleY ?? current.scaleY,
+              );
             }
           }
         } catch {

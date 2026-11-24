@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { requiresFontGlyph } from '../shared/font-glyph-coverage.ts';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,7 +73,10 @@ export async function buildFontSpecimen(request: SpecimenRequest, outputDirector
         styles.push(`@font-face{font-family:"${alias}";src:url("${relative}");font-weight:${file.weight};font-style:normal;font-display:block}`);
         resources.push({ id: face.id, family: file.family, weight: file.weight, sha256, path: relative, license: licenseRelative, source: font.source });
       }
-      const missingGlyphs = [...new Set([...role.text].filter(char => !/\s/u.test(char) && !coverage.has(char.codePointAt(0)!)))];
+      const missingGlyphs = [...new Set([...role.text].filter(char => {
+        const cp = char.codePointAt(0)!;
+        return !/\s/u.test(char) && requiresFontGlyph(cp) && !coverage.has(cp);
+      }))];
       const warning = missingGlyphs.length ? `Missing from supplied faces: ${missingGlyphs.join(' ')}` : 'Copy codepoints covered; inspect shaping and rendered faces.';
       const css = `font-family:${families.join(',')};font-size:${role.fontSize * scale}px;font-weight:${role.weight};line-height:${lineHeight};letter-spacing:${letterSpacing * scale}px;width:${role.width * scale}px`;
       const language = role.lang ? ` lang="${escape(role.lang)}"` : '';

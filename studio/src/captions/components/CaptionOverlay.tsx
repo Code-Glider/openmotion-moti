@@ -10,8 +10,10 @@ import {
   sameWordBoxes,
   getWordEl,
   readGsapTransform,
+  readWordTransformForGesture,
   getOrCreateWrapper,
   writeTransform,
+  restoreWordTransformAfterGesture,
   computeTransformStyle,
   registerCaptionIframe,
   type WordBox,
@@ -56,33 +58,48 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         type: "move";
         wordEl: HTMLElement;
         segmentId: string;
+        pointerId: number;
+        moved: boolean;
+        netChanged: boolean;
+        hadWrapper: boolean;
         startMX: number;
         startMY: number;
         origTX: number;
         origTY: number;
         origScale: number;
+        origScaleY: number;
         origRotation: number;
       }
     | {
         type: "scale";
         wordEl: HTMLElement;
         segmentId: string;
+        pointerId: number;
+        moved: boolean;
+        netChanged: boolean;
+        hadWrapper: boolean;
         startMX: number;
         startDxFromCenter: number;
         origTX: number;
         origTY: number;
         origScale: number;
+        origScaleY: number;
         origRotation: number;
       }
     | {
         type: "rotate";
         wordEl: HTMLElement;
         segmentId: string;
+        pointerId: number;
+        moved: boolean;
+        netChanged: boolean;
+        hadWrapper: boolean;
         startMX: number;
         origTX: number;
         origTY: number;
         origRotation: number;
         origScale: number;
+        origScaleY: number;
       }
     | null
   >(null);
@@ -159,9 +176,9 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const i = interactionRef.current;
       if (!i) return false;
       const win = getWin();
-      if (win) {
+      if (win && i.moved) {
         // Restore the pre-drag transform instead of committing the partial one.
-        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation);
+        restoreWordTransformAfterGesture(i.wordEl, win, i.hadWrapper, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
       }
       interactionRef.current = null;
       return true;
@@ -216,7 +233,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
           if (!wordEl) continue;
           const wrapper = getOrCreateWrapper(wordEl);
           const state = readGsapTransform(wrapper, win);
-          writeTransform(wordEl, win, state.x + dx, state.y + dy, state.scale, state.rotation);
+          writeTransform(wordEl, win, state.x + dx, state.y + dy, state.scale, state.rotation, state.scaleY);
           syncToStore(segId, wordEl, win);
           break;
         }
@@ -259,16 +276,22 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const startMove = useCallback(
     (groupIndex: number, wordIndex: number, segmentId: string, e: React.PointerEvent) => {
       e.stopPropagation();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      // Only the pointer that began a transform may own its gesture.
+      if (interactionRef.current) return;
       const iframe = iframeRef.current;
       if (!iframe) return;
       const liveModel = modelRef.current;
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "move",
+        pointerId: e.pointerId,
+        moved: false,
+        netChanged: false,
+        hadWrapper: wordEl.dataset.captionWrapper === "true" || wordEl.parentElement?.dataset.captionWrapper === "true",
         wordEl,
         segmentId,
         startMX: e.clientX,
@@ -276,6 +299,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTX: state.x,
         origTY: state.y,
         origScale: state.scale,
+        origScaleY: state.scaleY,
         origRotation: state.rotation,
       };
     },
@@ -287,22 +311,27 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     (groupIndex: number, wordIndex: number, segmentId: string, e: React.PointerEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      if (interactionRef.current) return;
       const iframe = iframeRef.current;
       if (!iframe) return;
       const liveModel = modelRef.current;
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       const rect = wordEl.getBoundingClientRect();
       const cssScale = getCssScale();
       const boxCenterX =
         rect.left * cssScale +
         (iframeRef.current?.getBoundingClientRect().left ?? 0) +
         (rect.width * cssScale) / 2;
-      const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
+      const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "scale",
+        pointerId: e.pointerId,
+        moved: false,
+        netChanged: false,
+        hadWrapper: wordEl.dataset.captionWrapper === "true" || wordEl.parentElement?.dataset.captionWrapper === "true",
         wordEl,
         segmentId,
         startMX: e.clientX,
@@ -310,6 +339,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTX: state.x,
         origTY: state.y,
         origScale: state.scale,
+        origScaleY: state.scaleY,
         origRotation: state.rotation,
       };
     },
@@ -321,16 +351,21 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     (box: WordBox, e: React.PointerEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      if (interactionRef.current) return;
       const iframe = iframeRef.current;
       if (!iframe) return;
       const liveModel = modelRef.current;
       const wordEl = liveModel ? getWordEl(iframe, box.groupIndex, box.wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      const state = readGsapTransform(getOrCreateWrapper(wordEl), win);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "rotate",
+        pointerId: e.pointerId,
+        moved: false,
+        netChanged: false,
+        hadWrapper: wordEl.dataset.captionWrapper === "true" || wordEl.parentElement?.dataset.captionWrapper === "true",
         wordEl,
         segmentId: box.segmentId,
         startMX: e.clientX,
@@ -338,6 +373,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         origTY: state.y,
         origRotation: state.rotation,
         origScale: state.scale,
+        origScaleY: state.scaleY,
       };
     },
     [iframeRef],
@@ -355,7 +391,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       const i = interactionRef.current;
-      if (!i) return;
+      if (!i || e.pointerId !== i.pointerId) return;
       const win = getIframeWin();
       if (!win) return;
 
@@ -363,31 +399,69 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         const cssScale = getCssScale();
         const dx = (e.clientX - i.startMX) / cssScale;
         const dy = (e.clientY - i.startMY) / cssScale;
-        writeTransform(i.wordEl, win, i.origTX + dx, i.origTY + dy, i.origScale, i.origRotation);
+        // A pointerdown / pointerup click is not a transform or an undo step.
+        const changed = dx !== 0 || dy !== 0;
+        if (!i.moved && !changed) return;
+        i.moved = true;
+        i.netChanged = changed;
+        writeTransform(i.wordEl, win, i.origTX + dx, i.origTY + dy, i.origScale, i.origRotation, i.origScaleY);
       } else if (i.type === "scale") {
         const cx = i.startMX - i.startDxFromCenter;
         const startDist = Math.abs(i.startDxFromCenter);
         const currentDist = Math.abs(e.clientX - cx);
         const factor = startDist > 5 ? currentDist / startDist : 1;
         const newScale = Math.max(0.1, i.origScale * factor);
-        writeTransform(i.wordEl, win, i.origTX, i.origTY, newScale, i.origRotation);
+        // Preserve the non-uniform aspect ratio even at the X-axis floor.
+        const newScaleY = i.origScale !== 0
+          ? i.origScaleY * (newScale / i.origScale)
+          : i.origScaleY * factor;
+        const changed = newScale !== i.origScale || newScaleY !== i.origScaleY;
+        if (!i.moved && !changed) return;
+        i.moved = true;
+        i.netChanged = changed;
+        writeTransform(i.wordEl, win, i.origTX, i.origTY, newScale, i.origRotation, newScaleY);
       } else if (i.type === "rotate") {
         const dx = e.clientX - i.startMX;
         const delta = (dx / 200) * 90;
-        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation + delta);
+        const changed = delta !== 0;
+        if (!i.moved && !changed) return;
+        i.moved = true;
+        i.netChanged = changed;
+        writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation + delta, i.origScaleY);
       }
     },
     [getCssScale, getIframeWin],
   );
 
   // --- Unified pointer up — sync back to store ---
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
     const i = interactionRef.current;
-    if (i) {
-      const win = getIframeWin();
-      if (win) syncToStore(i.segmentId, i.wordEl, win);
-      interactionRef.current = null;
+    if (!i || e.pointerId !== i.pointerId) return;
+    const win = getIframeWin();
+    if (i.moved && win) {
+      if (i.netChanged) {
+        syncToStore(i.segmentId, i.wordEl, win);
+      } else {
+        // Pointer moved away and back: restore the exact pre-gesture DOM and
+        // skip a phantom history entry, including an initially unwrapped word.
+        restoreWordTransformAfterGesture(i.wordEl, win, i.hadWrapper, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
+      }
     }
+    interactionRef.current = null;
+  }, [getIframeWin]);
+
+  // Browser/OS pointercancel is not a successful release. In particular a
+  // two-finger touch or an interrupted pen stroke must not persist a partial
+  // word transform or create an undo entry.
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    const i = interactionRef.current;
+    if (!i || e.pointerId !== i.pointerId) return;
+    const win = getIframeWin();
+    if (win && i.moved) {
+      restoreWordTransformAfterGesture(i.wordEl, win, i.hadWrapper, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
+    }
+    interactionRef.current = null;
+    scheduleLayoutRef.current?.();
   }, [getIframeWin]);
 
   const handleBackgroundClick = useCallback(
@@ -407,6 +481,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       onClick={handleBackgroundClick}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onLostPointerCapture={handlePointerUp}
     >
       {wordBoxes.length === 0 && model && model.segments.size > 0 && (
@@ -420,6 +495,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         return (
           <div
             key={box.segmentId}
+            data-caption-segment-id={box.segmentId}
             className={[
               "absolute",
               isSelected ? "ring-2 ring-studio-accent" : "hover:ring-1 hover:ring-white/30",

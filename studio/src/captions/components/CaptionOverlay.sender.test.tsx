@@ -4,10 +4,84 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { CaptionOverlay } from "./CaptionOverlay";
 import { useCaptionStore } from "../store";
-import { DEFAULT_ANIMATION_SET } from "../types";
+import { DEFAULT_ANIMATION_SET, DEFAULT_STYLE, DEFAULT_CONTAINER } from "../types";
+import { applyCaptionModelToIframe, readGsapTransform, readWordTransformForGesture, getOrCreateWrapper } from "./CaptionOverlayUtils";
 import { usePreviewIframeStore } from "../../player/store/previewIframeStore";
 
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
+
+it("persists a return to the authored caption position through undo and redo", () => {
+  const host = document.createElement("div");
+  const preview = document.createElement("iframe");
+  document.body.append(host, preview);
+  preview.style.width = "640px";
+  const root = createRoot(host);
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  let now = 1000;
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  const doc = preview.contentDocument!;
+  const group = doc.createElement("div");
+  group.className = "caption-group";
+  group.dataset.captionGroup = "g";
+  group.dir = "rtl";
+  const word = doc.createElement("span");
+  word.textContent = "שָׁלוֹם";
+  word.style.transform = "rotate(7deg)";
+  const authoredHTML = word.outerHTML;
+  group.append(word);
+  doc.body.append(group);
+  const segment = {
+    id: "s", wordId: "w0", text: word.textContent, start: 0.25, end: 1.5,
+    groupIndex: 0, style: {}, animation: {},
+  };
+  useCaptionStore.getState().reset();
+  useCaptionStore.getState().setModel({
+    width: 640, height: 360, duration: 3,
+    segments: new Map([["s", segment]]),
+    groups: new Map([["g", {
+      id: "g", segmentIds: ["s"], style: DEFAULT_STYLE,
+      animation: DEFAULT_ANIMATION_SET, containerStyle: DEFAULT_CONTAINER,
+    }]]),
+    groupOrder: ["g"], defaultAnimation: DEFAULT_ANIMATION_SET,
+  });
+  useCaptionStore.getState().setEditMode(true);
+  useCaptionStore.getState().selectSegment("s");
+  const press = (key: string) => act(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: preview }} />));
+    press("ArrowRight");
+    expect(useCaptionStore.getState().model!.segments.get("s")!.style.x).toBe(1);
+    now += 1000; // Separate intentional edits, rather than one coalesced nudge.
+    press("ArrowLeft");
+    expect(useCaptionStore.getState().model!.segments.get("s")!.style.x).toBe(0);
+    for (const [operation, x] of [["undo", 1], ["redo", 0]] as const) {
+      act(() => {
+        const restored = useCaptionStore.getState()[operation]();
+        expect(restored).not.toBeNull();
+        applyCaptionModelToIframe(restored!);
+      });
+      expect(readGsapTransform(getOrCreateWrapper(word), preview.contentWindow!).x).toBe(x);
+      expect(useCaptionStore.getState().model!.segments.get("s")).toMatchObject({
+        ...segment, style: { x },
+      });
+      expect(word.outerHTML).toBe(authoredHTML);
+      expect(group.textContent).toBe(segment.text);
+      expect(group.querySelector("[data-caption-wrapper]")!.firstChild).toBe(word);
+      expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(1);
+    }
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    preview.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+});
 
 it("only schedules caption layout for messages from its preview", () => {
   const host = document.createElement("div");
@@ -176,6 +250,249 @@ it("requests caption hit remeasurement on model changes without a player event",
     useCaptionStore.getState().reset();
     host.remove();
     preview.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+
+it("dispatches caption pointer move, scale and rotate handlers on one stable Hebrew word, with undo and Escape", () => {
+  const host = document.createElement("div");
+  const iframe = document.createElement("iframe");
+  document.body.append(host, iframe);
+  iframe.style.width = "640px";
+  const doc = iframe.contentDocument!;
+  const group = doc.createElement("div");
+  group.className = "caption-group";
+  group.dataset.captionGroupId = "g";
+  group.style.opacity = "1";
+  group.dir = "rtl";
+  const words = ["w-he-a", "w-he-b"].map(id => {
+    const span = doc.createElement("span");
+    span.id = id;
+    span.className = "word";
+    span.textContent = "שָׁלוֹם";
+    group.append(span);
+    return span;
+  });
+  doc.body.append(group);
+  const originalWords = words.map(word => word.outerHTML);
+  const bounds = (x: number, y: number, width: number, height: number) => ({
+    x, y, left: x, top: y, right: x + width, bottom: y + height,
+    width, height, toJSON: () => ({}),
+  } as DOMRect);
+  vi.spyOn(iframe, "getBoundingClientRect").mockReturnValue(bounds(0, 0, 640, 360));
+  vi.spyOn(words[0], "getBoundingClientRect").mockReturnValue(bounds(120, 90, 100, 35));
+  vi.spyOn(words[1], "getBoundingClientRect").mockReturnValue(bounds(260, 90, 100, 35));
+  const callbacks: FrameRequestCallback[] = [];
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    callbacks.push(cb);
+    return callbacks.length;
+  });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  let clock = 100_000;
+  vi.spyOn(Date, "now").mockImplementation(() => clock);
+  const root = createRoot(host);
+  useCaptionStore.getState().reset();
+  useCaptionStore.getState().setModel({
+    width: 640, height: 360, duration: 3,
+    segments: new Map(words.map((word, index) => [
+      "s" + index, {
+        id: "s" + index, wordId: word.id, text: "שָׁלוֹם",
+        start: index * 0.5, end: index * 0.5 + 0.5, groupIndex: 0,
+        style: {}, animation: {},
+      },
+    ] as const)),
+    groups: new Map([["g", {
+      id: "g", segmentIds: ["s0", "s1"], style: DEFAULT_STYLE,
+      animation: DEFAULT_ANIMATION_SET, containerStyle: DEFAULT_CONTAINER,
+    }]]),
+    groupOrder: ["g"], defaultAnimation: DEFAULT_ANIMATION_SET,
+  });
+  useCaptionStore.getState().setEditMode(true);
+  const flushLayout = () => act(() => {
+    for (const cb of callbacks.splice(0)) cb(0);
+  });
+  const pointer = (target: Element, type: string, x: number, y: number, pointerId = 13) => act(() => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+    Object.defineProperty(event, "pointerId", { value: pointerId });
+    target.dispatchEvent(event);
+  });
+  const capture = (element: Element) =>
+    Object.defineProperty(element, "setPointerCapture", { configurable: true, value: vi.fn() });
+  const modelStyle = () => useCaptionStore.getState().model!.segments.get("s1")!.style;
+  // Observing a pointer-down word must itself be non-destructive.
+  const actualStyle = () => readWordTransformForGesture(words[1], iframe.contentWindow!);
+  try {
+    act(() => root.render(<CaptionOverlay iframeRef={{ current: iframe }} />));
+    flushLayout();
+    expect(host.querySelectorAll("[data-caption-segment-id]")).toHaveLength(2);
+    const hit = host.querySelector<HTMLElement>('[data-caption-segment-id="s1"]')!;
+    expect(hit).not.toBeNull();
+    act(() => hit.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
+    capture(hit);
+    // Clicking, stationary mousemove, a cancelled press and Escape before
+    // movement must not create an anonymous wrapper or any transform history.
+    // This is an authored two-word Hebrew/niqqud group with stable IDs, not a
+    // model-only simulation of a transformed word.
+    const idleHistoryLength = useCaptionStore.getState().past.length;
+    const untouchedMarkup = group.innerHTML;
+    pointer(hit, "pointerdown", 285, 105);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    pointer(hit, "pointermove", 285, 105);
+    pointer(hit, "pointerup", 285, 105);
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointercancel", 285, 105);
+    pointer(hit, "lostpointercapture", 285, 105);
+    pointer(hit, "pointerdown", 285, 105);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(hit, "pointerup", 285, 105);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(0);
+    expect(actualStyle()).toEqual({ x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 });
+    expect(modelStyle()).toEqual({});
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+    expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
+    // A genuine preview movement that returns to the origin is also a no-op.
+    // Without this regression the first move creates an anonymous wrapper,
+    // then pointerup commits a neutral transform and an undo entry.
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointermove", 309, 117);
+    expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(1);
+    pointer(hit, "pointermove", 285, 105);
+    pointer(hit, "pointerup", 285, 105);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(modelStyle()).toEqual({});
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+
+    // A cancelled real drag that began on an originally unwrapped word must
+    // restore its exact markup, not merely set a leftover wrapper to zero.
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointermove", 309, 117);
+    pointer(hit, "pointercancel", 309, 117);
+    pointer(hit, "lostpointercapture", 309, 117);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+
+    // Repeat return-to-origin for actual scale and rotate UI hit targets.
+    const idleScaleHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "nwse-resize")!;
+    const idleRotateHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "grab")!;
+    expect(idleScaleHandle).toBeDefined();
+    expect(idleRotateHandle).toBeDefined();
+    capture(idleScaleHandle);
+    capture(idleRotateHandle);
+    pointer(idleScaleHandle, "pointerdown", 360, 105);
+    pointer(idleScaleHandle, "pointermove", 385, 105);
+    pointer(idleScaleHandle, "pointermove", 360, 105);
+    pointer(idleScaleHandle, "pointerup", 360, 105);
+    pointer(idleRotateHandle, "pointerdown", 330, 75);
+    pointer(idleRotateHandle, "pointermove", 350, 75);
+    pointer(idleRotateHandle, "pointermove", 330, 75);
+    pointer(idleRotateHandle, "pointerup", 330, 75);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(modelStyle()).toEqual({});
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+    clock += 1000;
+    pointer(hit, "pointerdown", 285, 105);
+    // A second touch cannot steal the gesture, translate the Hebrew word or
+    // end the first pointer's pending transaction.
+    pointer(hit, "pointerdown", 285, 105, 29);
+    pointer(hit, "pointermove", 400, 300, 29);
+    pointer(hit, "pointerup", 400, 300, 29);
+    pointer(hit, "lostpointercapture", 400, 300, 29);
+    expect(actualStyle()).toEqual({ x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 });
+    expect(modelStyle()).toEqual({});
+    pointer(hit, "pointermove", 309, 117);
+    pointer(hit, "pointerup", 309, 117);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1, scaleY: 1, rotation: 0 });
+
+    // Work through the visible corner/rotation handles, not a direct store write.
+    const scaleHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "nwse-resize")!;
+    const rotateHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "grab")!;
+    expect(scaleHandle).toBeDefined();
+    expect(rotateHandle).toBeDefined();
+    capture(scaleHandle);
+    capture(rotateHandle);
+    clock += 1000;
+    pointer(scaleHandle, "pointerdown", 360, 105);
+    pointer(scaleHandle, "pointermove", 445, 105, 29);
+    pointer(scaleHandle, "pointercancel", 445, 105, 29);
+    expect(actualStyle().scale).toBe(1);
+    pointer(scaleHandle, "pointermove", 385, 105);
+    pointer(scaleHandle, "pointerup", 385, 105);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 0 });
+    clock += 1000;
+    pointer(rotateHandle, "pointerdown", 330, 75);
+    pointer(rotateHandle, "pointermove", 350, 75);
+    pointer(rotateHandle, "pointerup", 350, 75);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
+
+    // The same logical word ID must survive full history replay. No transform
+    // may leak onto its visually identical sibling or rewrite either text node.
+    for (const expected of [
+      { x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 0 },
+      { x: 24, y: 12, scale: 1, scaleY: 1, rotation: 0 },
+      { x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 },
+    ]) {
+      act(() => {
+        const restored = useCaptionStore.getState().undo();
+        expect(restored).not.toBeNull();
+        applyCaptionModelToIframe(restored!);
+      });
+      expect(actualStyle()).toEqual(expected);
+    }
+    for (const expected of [
+      { x: 24, y: 12, scale: 1, scaleY: 1, rotation: 0 },
+      { x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 0 },
+      { x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 },
+    ]) {
+      act(() => {
+        const restored = useCaptionStore.getState().redo();
+        expect(restored).not.toBeNull();
+        applyCaptionModelToIframe(restored!);
+      });
+      expect(actualStyle()).toEqual(expected);
+    }
+
+    // Browser pointercancel must roll back the drag without a history entry;
+    // the subsequent lostpointercapture must not recommit the cancelled edit.
+    const historyLength = useCaptionStore.getState().past.length;
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    pointer(hit, "pointercancel", 340, 137);
+    pointer(hit, "lostpointercapture", 340, 137);
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+
+    // Esc during a new gesture restores the pre-drag transform and MUST NOT
+    // create an undo entry; a late pointerup must not re-commit cancelled work.
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(hit, "pointerup", 340, 137);
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+    expect(useCaptionStore.getState().model!.segments.get("s0")!.style).toEqual({});
+    expect(words.map(word => word.outerHTML)).toEqual(originalWords);
+    expect(group.textContent).toBe("שָׁלוֹםשָׁלוֹם");
+    expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(1);
+    expect(group.querySelector('[data-caption-wrapper] > #w-he-b')).toBe(words[1]);
+    expect(words[0].parentElement).toBe(group);
+  } finally {
+    act(() => root.unmount());
+    useCaptionStore.getState().reset();
+    host.remove();
+    iframe.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   }
 });

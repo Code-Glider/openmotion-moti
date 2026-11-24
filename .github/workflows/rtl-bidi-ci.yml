@@ -2,21 +2,53 @@ name: RTL and BiDi feature validation
 
 on:
   push:
-    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret]
+    branches: [feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-browser-qualification, feat/rtl-bidi-phase5-ui-locale, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, feat/rtl-textarea-immediate-blur-save, feat/rtl-caption-word-native-transform-export, feat/rtl-semitic-woff2-cross-os]
   pull_request:
-    branches: [main, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs]
+    branches: [main, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase1, feat/rtl-bidi-phase2-caption-word-runs, feat/rtl-bidi-phase3-grapheme-caret, feat/rtl-bidi-phase4-font-portability, feat/rtl-bidi-phase6-real-studio-scrub, feat/rtl-bidi-visual-caret-affinity, feat/rtl-caption-id-collision, feat/rtl-caption-grapheme-word-timing, feat/rtl-all-scripts-studio-edit-qualification, feat/rtl-bidi-arrow-selection-ime-browser, feat/rtl-hebrew-woff2-preview-mp4, feat/rtl-caption-range-chromium-evidence, feat/rtl-cross-os-font-provenance-gate, test/rtl-studio-cross-script-native-isolation, test/rtl-independent-offline-evidence, fix/rtl-inspector-authored-direction]
     paths:
       - '.github/workflows/rtl-bidi-ci.yml'
       - 'shared/caption-style.ts'
       - 'shared/text-flow.ts'
       - 'shared/transcript-captions.ts'
+      - 'shared/transcript.ts'
+      - 'tests/rtl-subtitle-bidi-entities.test.ts'
       - 'shared/transcript-tool.ts'
       - 'studio/src/captions/**'
+      - 'studio/src/i18n/**'
+      - 'studio/src/motion/WorkspaceFrame.tsx'
+      - 'studio/src/motion/ApplicationChrome.tsx'
+      - 'studio/src/motion/ApplicationChrome.test.tsx'
+      - 'tests/rtl-navigation-browser.mjs'
+      - 'studio/src/motion/workspace.css'
       - 'studio/src/components/editor/**'
+      - 'studio/src/hooks/useDomSelection.ts'
+      - 'studio/src/hooks/useDomSelectionSelectionGuards.test.ts'
       - 'studio/src/player/**'
       - 'scripts/rtl-font-audit.ts'
+      - 'tests/studio-fonts.test.ts'
+      - 'tests/font-import.test.ts'
       - 'tests/text-flow.test.ts'
       - 'tests/rtl-font-audit.test.ts'
+      - 'tests/rtl-browser-rendering.test.ts'
+      - 'tests/rtl-mixed-caret-browser.mjs'
+      - 'tests/rtl-bidi-keyboard-ime-browser.mjs'
+      - 'tests/rtl-studio-ime-composition-browser.mjs'
+      - 'tests/rtl-caption-range-browser.mjs'
+      - 'tests/rtl-authored-word-transform-browser.mjs'
+      - 'tests/rtl-cross-os-font-provenance.test.mjs'
+      - 'scripts/rtl-verify-cross-os-fonts.mjs'
+      - 'scripts/rtl-audit-offline-artifact.py'
+      - 'scripts/rtl-audit-offline-artifact-test.py'
+      - 'tests/rtl-studio-export-browser.mjs'
+      - 'tests/rtl-preview-frame-read.mjs'
+      - 'tests/rtl-preview-frame-read.test.mjs'
+      - 'tests/workspace-transient-files.test.ts'
+      - 'scripts/rtl-reference-fonts.mjs'
+      - 'tests/rtl-reference-fonts.test.mjs'
+      - 'scripts/rtl-reference-woff2.py'
+      - 'scripts/rtl-install-linux-ffmpeg.sh'
+      - 'tests/rtl-install-linux-ffmpeg.test.sh'
+      - 'tests/rtl-browser-fixture.html'
   workflow_dispatch:
 
 permissions:
@@ -30,7 +62,8 @@ jobs:
   checks:
     name: Source, type, build and regression gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # Separate bounded provisioning from the remaining real test gates.
+    timeout-minutes: 52
     steps:
       - name: Check out feature branch without Git LFS media
         uses: actions/checkout@v6.0.2
@@ -46,8 +79,10 @@ jobs:
           package-manager-cache: false
       - name: Install exact locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Focused text-flow and font-audit tests
-        run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts
+      - name: Focused text-flow, font-audit and font-specimen tests
+        run: node --experimental-strip-types --test tests/text-flow.test.ts tests/rtl-font-audit.test.ts tests/font-specimen.test.ts
+      - name: Reject stale/detached Studio player iframe handles during native history
+        run: node --test tests/rtl-preview-frame-read.test.mjs
       - name: Repository source checks
         run: npm run check
       - name: Backend typecheck
@@ -56,26 +91,67 @@ jobs:
         run: npm run typecheck:studio
       - name: Studio production build
         run: npm run build:studio
+      - name: Reject stale asynchronous canvas group selection after source refresh
+        run: npm run test:studio -- --maxWorkers=2 studio/src/hooks/useDomSelectionSelectionGuards.test.ts studio/src/hooks/useDomSelection.test.ts
+      - name: Verify bounded pinned font download retries and immediate integrity failures
+        run: node --test tests/rtl-reference-fonts.test.mjs
+      - name: Download and verify five licensed reference faces
+        run: node scripts/rtl-reference-fonts.mjs "$RUNNER_TEMP/rtl-reference-fonts"
+      - name: Require actual Chromium RTL reference geometry
+        env:
+          RTL_BROWSER_ARTIFACT_DIR: .artifacts/rtl-browser
+          RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
+          RTL_BROWSER_PINNED_REQUIRED: '1'
+        run: node --experimental-strip-types --test tests/rtl-browser-rendering.test.ts
+      - name: Prove non-destructive RTL caption word ranges in real Chromium
+        env:
+          RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
+          RTL_CAPTION_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-caption-range-browser.mjs
+      - name: Verify generated native caption word transforms in real Chromium
+        env:
+          RTL_BROWSER_FONT_DIR: ${{ runner.temp }}/rtl-reference-fonts
+          RTL_CAPTION_EXPORT_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-authored-word-transform-browser.mjs
+      - name: Verify actual Studio mixed-script visual End caret in Chromium
+        env:
+          RTL_CARET_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-mixed-caret-browser.mjs
+      - name: Exercise native Chromium mixed-script arrow and Shift selection with actual Studio overlay
+        env:
+          RTL_CARET_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-bidi-keyboard-ime-browser.mjs
+      - name: Prevent provisional IME composition from being saved in real Chromium inspector
+        env:
+          RTL_IME_ARTIFACT_DIR: .artifacts/rtl-browser
+        run: node --experimental-strip-types --test tests/rtl-studio-ime-composition-browser.mjs
+      - name: Retain RTL Chromium screenshot and JSON
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-chromium-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/rtl-browser
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Verify signed Ubuntu mirror rewrite is narrow and idempotent
+        run: bash tests/rtl-install-linux-ffmpeg.test.sh
       - name: Install FFmpeg for native caption integration tests
-        timeout-minutes: 12
-        run: |
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
-            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
-              sudo apt-get "${apt_options[@]}" update
-              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
-            fi
-          fi
-          ffmpeg -hide_banner -version | head -n 1
+        timeout-minutes: 30
+        run: bash scripts/rtl-install-linux-ffmpeg.sh
       # The upstream standalone workflow already runs broad regression suites
       # in bounded lanes on this PR. Running every backend test in one process
       # duplicated that work and hit this job's 45-minute timeout.
+      - name: Verify bounded fail-closed RTL temporary cleanup
+        run: node --test tests/rtl-temp-project-cleanup.test.mjs tests/rtl-post-cleanup-watchdog.test.mjs tests/rtl-owned-child-stdio.test.mjs
+      - name: Require native editor staging files stay out of project versions
+        run: node --experimental-strip-types --test tests/workspace-transient-files.test.ts
       - name: Native captions and font regression
         timeout-minutes: 12
         run: |
           node --experimental-strip-types --test --test-concurrency=1 \
             tests/transcription.test.ts \
             tests/caption-export.test.ts \
+            tests/rtl-subtitle-bidi-entities.test.ts \
             tests/studio-fonts.test.ts \
             tests/font-import.test.ts
       - name: Focused Studio RTL editor regression
@@ -83,13 +159,266 @@ jobs:
         run: |
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
+            studio/src/i18n/I18n.test.tsx \
+            studio/src/motion/ApplicationChrome.test.tsx \
             studio/src/captions/components/captionWordRuns.test.ts \
+            studio/src/captions/components/CaptionOverlayUtils.identity.test.ts \
             studio/src/captions/components/CaptionOverlay.sender.test.tsx \
             studio/src/captions/parser.test.ts \
             studio/src/captions/parser.dom.test.ts \
             studio/src/components/editor/propertyPanelFlatTextSection.test.tsx \
+            studio/src/components/editor/textAreaImmediateBlur.test.tsx \
             studio/src/components/editor/InlineTextCaret.test.tsx \
             studio/src/components/editor/inlineTextStyleRange.test.ts \
             studio/src/components/editor/fontAssets.test.ts \
             studio/src/components/editor/fontImport.test.ts \
             studio/src/player/components/TextClipContent.test.ts
+
+      - name: Actual Studio RTL account-menu and sidebar browser regression
+        timeout-minutes: 5
+        env:
+          HYPERFRAMES_BROWSER_PATH: /usr/bin/google-chrome
+          OPENMOTION_TELEMETRY: '0'
+        run: node --experimental-strip-types tests/rtl-navigation-browser.mjs "$RUNNER_TEMP/rtl-navigation"
+      - name: Preserve real Studio RTL navigation screenshots
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-navigation-browser-evidence
+          path: ${{ runner.temp }}/rtl-navigation
+          if-no-files-found: warn
+          retention-days: 14
+
+  studio-rtl-export:
+    name: Real Studio RTL edit and MP4 parity (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 58
+    defaults:
+      run:
+        shell: bash
+    env:
+      OPENMOTION_TELEMETRY: '0'
+    steps:
+      - name: Checkout feature branch without Git LFS media
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+          lfs: false
+          persist-credentials: false
+      - name: Use upstream-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Resolve actual browser and FFmpeg on each runner
+        timeout-minutes: 30
+        run: |
+          case "$RUNNER_OS" in
+            Linux)
+              browser=/usr/bin/google-chrome
+              bash scripts/rtl-install-linux-ffmpeg.sh
+              ;;
+            macOS)
+              browser="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+              if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then brew install ffmpeg; fi
+              ;;
+            Windows)
+              browser="/c/Program Files/Google/Chrome/Application/chrome.exe"
+              if [[ ! -f "$browser" ]]; then browser="/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"; fi
+              if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+                choco install ffmpeg --yes --no-progress
+                export PATH="$PATH:/c/ProgramData/chocolatey/bin"
+              fi
+              ;;
+            *) echo "::error::Unsupported runner OS $RUNNER_OS"; exit 1 ;;
+          esac
+          [[ -f "$browser" ]] || { echo "::error::Real Google Chrome binary not found: $browser"; exit 1; }
+          "$browser" --version
+          ffmpeg_bin="$(command -v ffmpeg)" || { echo "::error::FFmpeg missing"; exit 1; }
+          ffprobe_bin="$(command -v ffprobe)" || { echo "::error::FFprobe missing"; exit 1; }
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            browser="$(cygpath -w "$browser")"
+            ffmpeg_bin="$(cygpath -w "$ffmpeg_bin")"
+            ffprobe_bin="$(cygpath -w "$ffprobe_bin")"
+          fi
+          echo "HYPERFRAMES_BROWSER_PATH=$browser" >> "$GITHUB_ENV"
+          echo "HYPERFRAMES_FFMPEG_PATH=$ffmpeg_bin" >> "$GITHUB_ENV"
+          echo "HYPERFRAMES_FFPROBE_PATH=$ffprobe_bin" >> "$GITHUB_ENV"
+      - name: Build actual Studio and tracking runtime
+        run: |
+          # The full Vite bundle exceeded Node 26's default ~2 GiB heap on
+          # macos-15 arm64 (Actions 44886902367, job 136794024198).
+          if [[ "$RUNNER_OS" == macOS ]]; then export NODE_OPTIONS=--max-old-space-size=6144; fi
+          npm run build:studio
+          npm run build:tracking
+      - name: Download immutable licensed RTL font files
+        run: node scripts/rtl-reference-fonts.mjs "$RUNNER_TEMP/rtl-reference-fonts"
+      - name: Set up pinned font converter Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Deterministically derive four pinned Semitic WOFF2 families and verify layout/glyph round trip
+        timeout-minutes: 5
+        run: |
+          python -m pip install --disable-pip-version-check --no-input fonttools==4.59.0 Brotli==1.1.0
+          # Simulate the strict Windows cp1252 console even on macOS/Linux;
+          # never allow logging to abort a successful font conversion.
+          python tests/test_rtl_reference_woff2_console.py
+          python scripts/rtl-reference-woff2.py "$RUNNER_TEMP/rtl-reference-fonts"
+      - name: Edit in real Studio, export real MP4 and compare decoded glyph rows
+        timeout-minutes: 12
+        run: node --experimental-strip-types tests/rtl-studio-export-browser.mjs "$RUNNER_TEMP/rtl-studio-export" "$RUNNER_TEMP/rtl-reference-fonts"
+      - name: Retain Studio, font-use, decoded-video and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-studio-mp4-parity-${{ matrix.os }}
+          path: ${{ runner.temp }}/rtl-studio-export
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Verify WOFF1 in real Studio, MP4 and offline ZIP
+        id: woff1
+        timeout-minutes: 12
+        # A WOFF1 failure must fail this runner so a failed-jobs retry really
+        # reruns the failing producer, not only the downstream reducer.
+        run: |
+          set -euo pipefail
+          python scripts/rtl-reference-woff2.py "$RUNNER_TEMP/rtl-reference-fonts" --woff1
+          node --experimental-strip-types tests/rtl-studio-export-browser.mjs "$RUNNER_TEMP/rtl-woff1-export" "$RUNNER_TEMP/rtl-reference-fonts" --woff1
+      - name: Retain successful WOFF1 Studio and archive evidence
+        if: steps.woff1.outcome == 'success'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-studio-woff1-${{ matrix.os }}
+          path: ${{ runner.temp }}/rtl-woff1-export
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain WOFF1 failure diagnostics separately
+        if: always() && steps.woff1.outcome == 'failure'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-studio-woff1-failure-${{ matrix.os }}
+          path: ${{ runner.temp }}/rtl-woff1-export
+          if-no-files-found: warn
+          retention-days: 14
+
+  rtl-font-provenance:
+    name: Cross-OS reproducible font and offline evidence gate
+    needs: studio-rtl-export
+    # Attest retained WOFF2 independently if the later WOFF1 step failed.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact RTL feature source
+        uses: actions/checkout@v6.0.2
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Use upstream-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+      - name: Download actual current-run Linux Studio, MP4 and offline ZIP evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-mp4-parity-ubuntu-24.04
+          path: ${{ runner.temp }}/rtl-cross-os/ubuntu-24.04
+      - name: Download actual current-run macOS Studio, MP4 and offline ZIP evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-mp4-parity-macos-15
+          path: ${{ runner.temp }}/rtl-cross-os/macos-15
+      - name: Download actual current-run Windows Studio, MP4 and offline ZIP evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-mp4-parity-windows-2025
+          path: ${{ runner.temp }}/rtl-cross-os/windows-2025
+      - name: Fail on any OS, imported licensed font, byte hash, ZIP or MP4 regression
+        env:
+          RTL_CROSS_OS_FIXTURES: ${{ runner.temp }}/rtl-cross-os
+        run: |
+          set -euo pipefail
+          node --test tests/rtl-cross-os-font-provenance.test.mjs
+          node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_FIXTURES" | tee "$RUNNER_TEMP/rtl-cross-os-attestation.json"
+      - name: Download raw WOFF2 archives for independent ZIP byte audit
+        uses: actions/download-artifact@v8
+        with:
+          pattern: rtl-studio-mp4-parity-{ubuntu-24.04,macos-15,windows-2025}
+          path: ${{ runner.temp }}/rtl-raw-woff2
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Independently verify all three WOFF2 offline ZIPs and adversarial fixtures
+        run: |
+          set -euo pipefail
+          python3 scripts/rtl-audit-offline-artifact.py --matrix-root "$RUNNER_TEMP/rtl-raw-woff2" --variant woff2 | tee "$RUNNER_TEMP/rtl-independent-woff2.json"
+          python3 scripts/rtl-audit-offline-artifact-test.py "$RUNNER_TEMP/rtl-raw-woff2/rtl-studio-mp4-parity-ubuntu-24.04/"*
+      - name: Preserve reproducible cross-runner attestation
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-cross-os-font-attestation
+          path: |
+            ${{ runner.temp }}/rtl-cross-os-attestation.json
+            ${{ runner.temp }}/rtl-independent-woff2.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Download actual current-run WOFF1 evidence for Linux
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-woff1-ubuntu-24.04
+          path: ${{ runner.temp }}/rtl-cross-os-woff1/ubuntu-24.04
+      - name: Download actual current-run WOFF1 evidence for macOS
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-woff1-macos-15
+          path: ${{ runner.temp }}/rtl-cross-os-woff1/macos-15
+      - name: Download actual current-run WOFF1 evidence for Windows
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: rtl-studio-woff1-windows-2025
+          path: ${{ runner.temp }}/rtl-cross-os-woff1/windows-2025
+      - name: Require independent cross-OS WOFF1 byte and SFNT evidence
+        if: needs.studio-rtl-export.result == 'success'
+        env:
+          RTL_CROSS_OS_FIXTURES: ${{ runner.temp }}/rtl-cross-os
+          RTL_CROSS_OS_WOFF1_FIXTURES: ${{ runner.temp }}/rtl-cross-os-woff1
+        run: |
+          set -euo pipefail
+          node --test --test-name-pattern WOFF1 tests/rtl-cross-os-font-provenance.test.mjs
+          node scripts/rtl-verify-cross-os-fonts.mjs "$RTL_CROSS_OS_WOFF1_FIXTURES" --woff1 | tee "$RUNNER_TEMP/rtl-cross-os-woff1-attestation.json"
+      - name: Download raw WOFF1 archives for independent ZIP byte audit
+        if: needs.studio-rtl-export.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: rtl-studio-woff1-{ubuntu-24.04,macos-15,windows-2025}
+          path: ${{ runner.temp }}/rtl-raw-woff1
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Independently verify all three WOFF1 offline ZIPs and adversarial fixtures
+        if: needs.studio-rtl-export.result == 'success'
+        run: |
+          set -euo pipefail
+          python3 scripts/rtl-audit-offline-artifact.py --matrix-root "$RUNNER_TEMP/rtl-raw-woff1" --variant woff1 | tee "$RUNNER_TEMP/rtl-independent-woff1.json"
+          python3 scripts/rtl-audit-offline-artifact-test.py "$RUNNER_TEMP/rtl-raw-woff1/rtl-studio-woff1-ubuntu-24.04/"*
+      - name: Preserve cross-runner WOFF1 attestation
+        if: always() && needs.studio-rtl-export.result == 'success'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rtl-cross-os-woff1-attestation
+          path: |
+            ${{ runner.temp }}/rtl-cross-os-woff1-attestation.json
+            ${{ runner.temp }}/rtl-independent-woff1.json
+          if-no-files-found: warn
+          retention-days: 14
