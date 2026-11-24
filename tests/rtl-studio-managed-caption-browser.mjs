@@ -24,7 +24,7 @@ assert(output && path.isAbsolute(output) && fontDir && path.isAbsolute(fontDir),
 await mkdir(output, { recursive: true });
 await configureNativeEnvironment(pluginRoot);
 process.env.OPENMOTION_TELEMETRY = '0';
-const data = await mkdtemp(path.join(tmpdir(), 'openmotion-rtl-native-caption-'));
+const data = await mkdtemp(path.join(tmpdir(), 'openmotion-rtl-studio-export-managed-caption-'));
 const client = new Client(data);
 const width = 640, height = 360, duration = 2, at = 0.8;
 const bg = [24, 56, 47];
@@ -196,7 +196,8 @@ try {
     '<script src="assets/gsap.min.js"></script><style>' +
     '@font-face{font-family:"RTL Managed Hebrew";src:url("' + fontPath('hebrew') + '") format("truetype")}' +
     '@font-face{font-family:"RTL Managed Latin";src:url("' + fontPath('latin') + '") format("truetype")}' +
-    css + '[data-composition-id="captions"]{background:#18382f}</style></head><body>' +
+    css + 'html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden}' +
+    '[data-composition-id="captions"]{background:#18382f}</style></head><body>' +
     '<div id="caption-composition" data-composition-id="captions" data-width="640" data-height="360" ' +
     'data-start="0" data-duration="2" data-fps="10"><div id="captions-container"></div></div>' +
     nativeTag + '</body></html>';
