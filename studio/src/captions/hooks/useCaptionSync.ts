@@ -107,32 +107,38 @@ export function useCaptionSync(projectId: string | null) {
     const sourcePathAtSave = state.sourceFilePath;
     const overrides = buildOverrides(modelAtSave);
 
-    studioApiFetch(
-      buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
-      {
-        method: "PUT",
-        headers: { "Content-Type": "text/plain", ...studioWriteHeaders() },
-        body: JSON.stringify(overrides, null, 2),
-      },
-    )
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // The sidecar is a compatibility layer, not a native-render source.
-        // Only an explicitly SHA-managed generated caption composition can
-        // have its authored JS updated for real MP4/project ZIP export.
-        // Unknown legacy/custom script sources remain untouched.
-        if (/\.html?$/i.test(sourcePathAtSave)) {
-          const original = await readProjectFile(sourcePathAtSave);
-          const rewritten = await rewriteManagedCaptionSource(original, modelAtSave);
+    // The managed native HTML is the export source of truth. Writing the old
+    // sidecar FIRST fails against the versioned project-file API (HTTP 428),
+    // preventing the real drag from ever reaching native project source.
+    // Resolve exact managed ownership before choosing a write path; the
+    // legacy sidecar remains untouched for custom/unmarked compositions.
+    void (async () => {
+      if (/\\.html?$/i.test(sourcePathAtSave)) {
+        const original = await readProjectFile(sourcePathAtSave);
+        const rewritten = await rewriteManagedCaptionSource(original, modelAtSave);
+        if (rewritten.status !== "unsupported") {
           if (rewritten.status === "updated") {
             await writeProjectFile(sourcePathAtSave, rewritten.content, original);
           }
+          return;
         }
-        // Only an acknowledged native write (where applicable) clears the
-        // pending bit. An If-Match conflict must stay visible and retryable.
+      }
+      const response = await studioApiFetch(
+        buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "text/plain", ...studioWriteHeaders() },
+          body: JSON.stringify(overrides, null, 2),
+        },
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    })()
+      .then(() => {
+        // An already-started save never clears the pending bit for a newer
+        // edit; the newer gesture retains its own durable save obligation.
         if (editSeqRef.current === seqAtSave) pendingRef.current = false;
-        const s = useCaptionStore.getState();
-        if (s.syncError) s.setSyncError(null);
+        const state = useCaptionStore.getState();
+        if (state.syncError) state.setSyncError(null);
       })
       .catch((error: unknown) => {
         // Caption auto-save is a data-loss path: surface it to the user, not
