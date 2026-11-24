@@ -124,7 +124,13 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
     stdin: { contents: harness, resolveDir: process.cwd(), sourcefile: 'rtl-word-transform-harness.ts', loader: 'ts' },
     bundle: true, platform: 'browser', format: 'iife', globalName: 'RtlNativeCaptionTransform',
     write: false, logLevel: 'silent', jsx: 'automatic', loader: { '.svg': 'text' },
-    plugins: [browserDependencyShim], define: { 'process.env.NODE_ENV': '"production"' },
+    plugins: [browserDependencyShim],
+    // The imported Studio asset registry uses Vite's compile-time glob macro.
+    // Its catalog is unrelated to caption interaction, so only the *test*
+    // build substitutes an empty catalog; fail if a caption/transcript path
+    // ever tries to rely on the shim instead of the real production module.
+    banner: { js: 'function __rtlBrowserViteGlob(pattern) { if (/caption|transcript/i.test(String(pattern))) throw Error("Caption evidence cannot use a glob shim: " + pattern); return {}; }' },
+    define: { 'process.env.NODE_ENV': '"production"', 'import.meta.glob': '__rtlBrowserViteGlob' },
   });
   assert.equal(bundle.outputFiles.length, 1);
   // The imported production UI initializes crypto.randomUUID. about:blank
