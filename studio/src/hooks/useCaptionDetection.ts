@@ -165,10 +165,38 @@ export function useCaptionDetection({
       }
     };
 
+    // The iframe can finish its initial script after this effect's first
+    // read, without sending a later trusted hf-preview state message. Observe
+    // the live document only until it exposes its first caption group; this
+    // cannot rewrite source or activate an unrelated, non-caption project.
+    let observedDocument: MutationObserver | null = null;
+    const previewFrame = previewIframeRef.current;
+    const observePreview = () => {
+      observedDocument?.disconnect();
+      observedDocument = null;
+      let current: Document | null = null;
+      try { current = previewIframeRef.current?.contentDocument ?? null; }
+      catch { return; }
+      if (!current?.documentElement) return;
+      if (current.querySelector(".caption-group")) {
+        tryActivateCaptions();
+        return;
+      }
+      observedDocument = new MutationObserver(() => {
+        if (!current?.querySelector(".caption-group")) return;
+        observedDocument?.disconnect();
+        observedDocument = null;
+        tryActivateCaptions();
+      });
+      observedDocument.observe(current.documentElement, { childList: true, subtree: true });
+    };
     window.addEventListener("message", handleMessage);
-    tryActivateCaptions();
+    previewFrame?.addEventListener("load", observePreview);
+    observePreview();
 
     return () => {
+      observedDocument?.disconnect();
+      previewFrame?.removeEventListener("load", observePreview);
       window.removeEventListener("message", handleMessage);
     };
   }, [activeCompPath, projectId, compIdToSrc, captionSync, previewIframeRef, livePreviewIframe]);
