@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { importedFontFaceCssFor, injectPreviewImportedFont } from "../../utils/studioFontHelpers";
-import { fontFamilyFromAssetPath, importedFontFaceCss, type ImportedFontAsset } from "./fontAssets";
+import { fontFamilyFromAssetPath, importedFontFaceCss, resolveInspectorProjectFont, type ImportedFontAsset } from "./fontAssets";
 
 it("derives labels from both encoded paths and literal percent filenames", () => {
   expect(fontFamilyFromAssetPath("assets/My%20Font-Regular.ttf")).toBe("My Font");
@@ -62,4 +62,55 @@ it("a weight the browser would drop is left out, and a family cannot close the s
   expect(importedFontFaceCss({ ...face("x.ttf"), family: "</style><b>x" })).not.toContain(
     "</style>",
   );
+});
+
+
+const studioBase = "https://studio.example/";
+const projectBase = studioBase + "api/projects/current/preview/";
+const inspectorAsset = face("NotoSansSyriac.woff2", {
+  family: "Noto Sans Syriac", path: "assets/fonts/syr.woff2",
+  url: "/api/projects/current/preview/assets/fonts/syr.woff2",
+});
+
+function fontSheet(src: string, family = '"Authored alias"', href: string | null = null) {
+  return { href, cssRules: [{ type: 5, style: {
+    getPropertyValue: (property: string) => property === "font-family" ? family : src,
+  } }] };
+}
+function previewWith(...styleSheets: unknown[]): Document {
+  return { baseURI: projectBase + "index.html", styleSheets } as unknown as Document;
+}
+
+it("resolves an authored alias against the actual current-project font inventory, not metadata names", () => {
+  const preview = previewWith(fontSheet('url("assets/fonts/syr.woff2") format("woff2")'));
+  expect(resolveInspectorProjectFont(preview, '"Authored alias", serif', [inspectorAsset], studioBase))
+    .toBe(projectBase + "assets/fonts/syr.woff2");
+  expect(resolveInspectorProjectFont(preview, "Different alias", [inspectorAsset], studioBase)).toBeNull();
+  expect(resolveInspectorProjectFont(preview, '"Authored alias"', [], studioBase)).toBeNull();
+});
+
+it("refuses remote, cross-project, unlisted, and multiple-source font CSS", () => {
+  for (const src of [
+    'url("https://other.example/assets/fonts/syr.woff2")',
+    'url("/api/projects/other/preview/assets/fonts/syr.woff2")',
+    'url("assets/fonts/unlisted.woff2")',
+    'local("Noto Sans Syriac"), url("assets/fonts/syr.woff2")',
+    'url("assets/fonts/syr.woff2"), url("https://other.example/x.woff2")',
+  ]) {
+    expect(resolveInspectorProjectFont(previewWith(fontSheet(src)), '"Authored alias"', [inspectorAsset], studioBase)).toBeNull();
+  }
+  const remote = { ...inspectorAsset, url: "https://other.example/assets/fonts/syr.woff2" };
+  expect(resolveInspectorProjectFont(previewWith(fontSheet('url("https://other.example/assets/fonts/syr.woff2")')),
+    '"Authored alias"', [remote], studioBase)).toBeNull();
+});
+
+it("uses a readable stylesheet's own base, skips inaccessible sheets, and rejects ambiguous inventory matches", () => {
+  const denied = { get cssRules() { throw new Error("cross-origin"); } };
+  const linked = fontSheet('url("../fonts/syr.woff2")', '"Authored alias"', projectBase + "assets/css/main.css");
+  expect(resolveInspectorProjectFont(previewWith(denied, linked), '"Authored alias"', [inspectorAsset], studioBase))
+    .toBe(projectBase + "assets/fonts/syr.woff2");
+  const second = { ...inspectorAsset, path: "assets/fonts/other.woff2",
+    url: "/api/projects/current/preview/assets/fonts/other.woff2" };
+  expect(resolveInspectorProjectFont(previewWith(linked, fontSheet('url("assets/fonts/other.woff2")')),
+    '"Authored alias"', [inspectorAsset, second], studioBase)).toBeNull();
 });

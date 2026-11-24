@@ -354,6 +354,47 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     expect(modelStyle()).toEqual({});
     expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
     expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
+    // A genuine preview movement that returns to the origin is also a no-op.
+    // Without this regression the first move creates an anonymous wrapper,
+    // then pointerup commits a neutral transform and an undo entry.
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointermove", 309, 117);
+    expect(group.querySelectorAll("[data-caption-wrapper]")).toHaveLength(1);
+    pointer(hit, "pointermove", 285, 105);
+    pointer(hit, "pointerup", 285, 105);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(modelStyle()).toEqual({});
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+
+    // A cancelled real drag that began on an originally unwrapped word must
+    // restore its exact markup, not merely set a leftover wrapper to zero.
+    pointer(hit, "pointerdown", 285, 105);
+    pointer(hit, "pointermove", 309, 117);
+    pointer(hit, "pointercancel", 309, 117);
+    pointer(hit, "lostpointercapture", 309, 117);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
+
+    // Repeat return-to-origin for actual scale and rotate UI hit targets.
+    const idleScaleHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "nwse-resize")!;
+    const idleRotateHandle = [...hit.querySelectorAll<HTMLElement>("div")]
+      .find(el => el.style.cursor === "grab")!;
+    expect(idleScaleHandle).toBeDefined();
+    expect(idleRotateHandle).toBeDefined();
+    capture(idleScaleHandle);
+    capture(idleRotateHandle);
+    pointer(idleScaleHandle, "pointerdown", 360, 105);
+    pointer(idleScaleHandle, "pointermove", 385, 105);
+    pointer(idleScaleHandle, "pointermove", 360, 105);
+    pointer(idleScaleHandle, "pointerup", 360, 105);
+    pointer(idleRotateHandle, "pointerdown", 330, 75);
+    pointer(idleRotateHandle, "pointermove", 350, 75);
+    pointer(idleRotateHandle, "pointermove", 330, 75);
+    pointer(idleRotateHandle, "pointerup", 330, 75);
+    expect(group.innerHTML).toBe(untouchedMarkup);
+    expect(modelStyle()).toEqual({});
+    expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
     clock += 1000;
     pointer(hit, "pointerdown", 285, 105);
     // A second touch cannot steal the gesture, translate the Hebrew word or
