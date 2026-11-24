@@ -333,6 +333,12 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     act(() => hit.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
     capture(hit);
+    const stableOwner = host.querySelector<HTMLElement>(".absolute.inset-0.z-50")!;
+    expect(stableOwner).not.toBeNull();
+    const stableCapture = vi.fn();
+    Object.defineProperty(stableOwner, "setPointerCapture", {
+      configurable: true, value: stableCapture,
+    });
     // Clicking, stationary mousemove, a cancelled press and Escape before
     // movement must not create an anonymous wrapper or any transform history.
     // This is an authored two-word Hebrew/niqqud group with stable IDs, not a
@@ -398,6 +404,7 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
     clock += 1000;
     pointer(hit, "pointerdown", 285, 105);
+    expect(stableCapture).toHaveBeenCalledWith(13);
     // A second touch cannot steal the gesture, translate the Hebrew word or
     // end the first pointer's pending transaction.
     pointer(hit, "pointerdown", 285, 105, 29);
@@ -406,8 +413,10 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     pointer(hit, "lostpointercapture", 400, 300, 29);
     expect(actualStyle()).toEqual({ x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 });
     expect(modelStyle()).toEqual({});
-    pointer(hit, "pointermove", 309, 117);
-    pointer(hit, "pointerup", 309, 117);
+    // Chromium may replace the hit during remeasurement. Move/up must still
+    // reach the stable capture owner even when the original hit is obsolete.
+    pointer(stableOwner, "pointermove", 309, 117);
+    pointer(stableOwner, "pointerup", 309, 117);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1, scaleY: 1, rotation: 0 });
 
     // Work through the visible corner/rotation handles, not a direct store write.
