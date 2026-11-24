@@ -5,6 +5,7 @@ producer JSON or the production importer's ZIP implementation. It is not a
 substitute for real Studio, rendering, or cross-platform acceptance.
 """
 import argparse
+from collections import Counter
 import hashlib
 from html.parser import HTMLParser
 import io
@@ -100,6 +101,78 @@ def verify_fixture_rows(html, expected):
         require(parser.rows[row] == text, "fixture row Unicode differs: " + row)
 
 
+class CaptionFixture(HTMLParser):
+    """Inspect the known untransformed timed-caption fixture, not arbitrary HTML."""
+
+    EXPECTED = {"timed-caption": ("div", "he", "שָׁלוֹם السَّلَامُ"),
+                "caption-he": ("span", "he", "שָׁלוֹם"),
+                "caption-ar": ("span", "ar", "السَّلَامُ")}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.active = []
+        self.rows = {}
+        self.ids = {}
+        self.all_hf = Counter()
+        self.in_body = False
+        self.word_order = []
+
+    def handle_starttag(self, tag, attrs):
+        def values(key):
+            return [value for name, value in attrs if name == key]
+        self.all_hf.update(values("data-hf-id"))
+        if tag == "body":
+            self.in_body = True
+        matching = [value for value in values("id") if value in self.EXPECTED]
+        if not matching:
+            require(not self.active, "unexpected markup inside timed caption fixture")
+            return
+        row = matching[0]
+        expected_tag, lang, _ = self.EXPECTED[row]
+        require(len(values("id")) == 1 and self.in_body and row not in self.rows and tag == expected_tag,
+                "duplicate or misplaced caption element: " + row)
+        require(values("lang") == [lang] and values("dir") == ["rtl"],
+                "caption language or direction differs: " + row)
+        hf = values("data-hf-id")
+        require(len(hf) == 1 and bool(hf[0]), "missing caption source identity: " + row)
+        if row == "timed-caption":
+            require(not self.active, "nested timed caption parent")
+            require(values("data-start") == ["0"] and values("data-duration") == ["1"] and
+                    values("data-track-index") == ["7"], "caption parent timing or track differs")
+        else:
+            require(self.active == ["timed-caption"], "caption word outside authored parent: " + row)
+            self.word_order.append(row)
+        self.ids[row] = hf[0]
+        self.rows[row] = ""
+        self.active.append(row)
+
+    def handle_endtag(self, tag):
+        if self.active:
+            row = self.active[-1]
+            require(tag == self.EXPECTED[row][0], "unclosed caption element: " + row)
+            self.active.pop()
+        if tag == "body":
+            self.in_body = False
+
+    def handle_data(self, data):
+        for row in self.active:
+            self.rows[row] += data
+
+
+def verify_caption_fixture(html):
+    parser = CaptionFixture()
+    parser.feed(html)
+    parser.close()
+    require(not parser.active and set(parser.rows) == set(parser.EXPECTED),
+            "caption fixture inventory differs")
+    require(parser.word_order == ["caption-he", "caption-ar"], "caption logical word order differs")
+    require(all(parser.all_hf[hf] == 1 for hf in parser.ids.values()),
+            "duplicate caption source identity")
+    for row, (_, _, text) in parser.EXPECTED.items():
+        require(parser.rows[row] == text, "caption fixture Unicode differs: " + row)
+    return sorted(parser.rows)
+
+
 def audit(path, expected_platform=None, expected_variant=None):
     require(path.stat().st_size <= MAX_BYTES, "outer ZIP too large")
     with zipfile.ZipFile(path) as archive:
@@ -174,9 +247,10 @@ def audit(path, expected_platform=None, expected_variant=None):
     for edit, lang in zip(edits, ("ar", "fa", "ur", "syr")):
         rows[edit["id"]] = (edit["text"], lang, "rtl")
     verify_fixture_rows(html, rows)
+    caption_rows = verify_caption_fixture(html)
     return {"artifactSha256": digest(path.read_bytes()), "offlineSha256": expected["sha256"],
             "manifestFiles": len(files), "fontLicensePairs": len(fonts),
-            "verifiedFixtureRows": sorted(rows), "verified": True}
+            "verifiedFixtureRows": sorted(rows), "verifiedCaptionRows": caption_rows, "verified": True}
 
 
 PLATFORMS = {"ubuntu-24.04": "linux", "macos-15": "darwin", "windows-2025": "win32"}
