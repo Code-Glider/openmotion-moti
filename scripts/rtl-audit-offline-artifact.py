@@ -107,6 +107,12 @@ class CaptionFixture(HTMLParser):
     EXPECTED = {"timed-caption": ("div", "he", "שָׁלוֹם السَّلَامُ"),
                 "caption-he": ("span", "he", "שָׁלוֹם"),
                 "caption-ar": ("span", "ar", "السَّلَامُ")}
+    # These deterministic source identities are observed in all six qualified
+    # baseline archives. Re-minting or swapping unique IDs still breaks
+    # authored identity. Deliberate fixture changes require requalification.
+    SOURCE_IDS = {"timed-caption": "hf-4n47", "caption-he": "hf-qtiz", "caption-ar": "hf-g1we"}
+    VOID_TAGS = frozenset(("area", "base", "br", "col", "embed", "hr", "img",
+                           "input", "link", "meta", "param", "source", "track", "wbr"))
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -116,11 +122,15 @@ class CaptionFixture(HTMLParser):
         self.all_hf = Counter()
         self.in_body = False
         self.word_order = []
+        self.stack = []
 
     def handle_starttag(self, tag, attrs):
         def values(key):
             return [value for name, value in attrs if name == key]
         self.all_hf.update(values("data-hf-id"))
+        parent_path = self.stack.copy()
+        if tag not in self.VOID_TAGS:
+            self.stack.append((tag, tuple(values("id"))))
         if tag == "body":
             self.in_body = True
         matching = [value for value in values("id") if value in self.EXPECTED]
@@ -137,6 +147,8 @@ class CaptionFixture(HTMLParser):
         require(len(hf) == 1 and bool(hf[0]), "missing caption source identity: " + row)
         if row == "timed-caption":
             require(not self.active, "nested timed caption parent")
+            require(parent_path == [("html", ()), ("body", ()), ("div", ("main",))],
+                    "caption parent outside authored composition")
             require(values("data-start") == ["0"] and values("data-duration") == ["1"] and
                     values("data-track-index") == ["7"], "caption parent timing or track differs")
         else:
@@ -146,7 +158,15 @@ class CaptionFixture(HTMLParser):
         self.rows[row] = ""
         self.active.append(row)
 
+    def handle_startendtag(self, tag, attrs):
+        # Only actual HTML void elements may self-close in this fixture.
+        require(tag in self.VOID_TAGS, "unexpected self-closing fixture element")
+        self.handle_starttag(tag, attrs)
+
     def handle_endtag(self, tag):
+        require(bool(self.stack) and self.stack[-1][0] == tag,
+                "unbalanced fixture HTML: " + tag)
+        self.stack.pop()
         if self.active:
             row = self.active[-1]
             require(tag == self.EXPECTED[row][0], "unclosed caption element: " + row)
@@ -163,11 +183,12 @@ def verify_caption_fixture(html):
     parser = CaptionFixture()
     parser.feed(html)
     parser.close()
-    require(not parser.active and set(parser.rows) == set(parser.EXPECTED),
+    require(not parser.active and not parser.stack and set(parser.rows) == set(parser.EXPECTED),
             "caption fixture inventory differs")
     require(parser.word_order == ["caption-he", "caption-ar"], "caption logical word order differs")
     require(all(parser.all_hf[hf] == 1 for hf in parser.ids.values()),
             "duplicate caption source identity")
+    require(parser.ids == parser.SOURCE_IDS, "caption source identity changed")
     for row, (_, _, text) in parser.EXPECTED.items():
         require(parser.rows[row] == text, "caption fixture Unicode differs: " + row)
     return sorted(parser.rows)
