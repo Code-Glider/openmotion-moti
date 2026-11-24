@@ -159,6 +159,8 @@ jobs:
         run: |
           npm run test:studio -- --maxWorkers=2 \
             studio/src/captions/generator.test.ts \
+            studio/src/captions/nativeSource.test.ts \
+            studio/src/captions/hooks/nativeSourceSync.test.tsx \
             studio/src/i18n/I18n.test.tsx \
             studio/src/motion/ApplicationChrome.test.tsx \
             studio/src/captions/components/captionWordRuns.test.ts \
