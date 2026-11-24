@@ -10,6 +10,7 @@ import hashlib
 from html.parser import HTMLParser
 import io
 import json
+import re
 from pathlib import Path, PurePosixPath
 import zipfile
 
@@ -194,6 +195,51 @@ def verify_caption_fixture(html):
     return sorted(parser.rows)
 
 
+# Exact one-edit-per-row qualification fixture, not a general project policy.
+# The last successful patch's file ETag must match the exported index.html
+# bytes after undo/redo. A later authored transform will require its own
+# explicitly enumerated write and final-byte receipt in this fixture.
+NATIVE_TEXT_EDITS = (
+    ("label", "hf-yvr3", "שָׁלוֹם OpenMotion 2030"),
+    ("arabic", "hf-5tt0", "السَّلَامُ OpenMotion 52%"),
+    ("persian", "hf-1tc8", "فارسی پ چ ژ گ ۲۰۶۲"),
+    ("urdu", "hf-mnw2", "اردو ڈ ٹ ڑ ں ے"),
+    ("syriac", "hf-jrdr", "ܒܪܝܟܐ ܫܠܡܐ"),
+)
+
+
+def verify_native_text_writes(report, html_bytes):
+    receipts = report.get("sourceWriteReceipts")
+    require(isinstance(receipts, list), "missing native write receipts")
+    # The probe endpoint is read-only despite POST; do not count probes as
+    # source mutations or let an unexpected whole-file write pass silently.
+    writes = [r for r in receipts if r.get("endpoint") != "file-mutations/probe-elements/index.html"]
+    require(len(writes) == len(NATIVE_TEXT_EDITS), "native write count differs")
+    etags = set()
+    request_hashes = set()
+    for receipt, (row, hf_id, value) in zip(writes, NATIVE_TEXT_EDITS):
+        require(receipt.get("method") == "POST" and
+                receipt.get("endpoint") == "file-mutations/patch-element/index.html",
+                "unexpected native write endpoint: " + row)
+        require(receipt.get("target") == {"id": row, "hfId": hf_id, "selector": "#" + row},
+                "native write target differs: " + row)
+        require(receipt.get("operations") == [{"type": "text-content", "property": "text", "value": value}],
+                "native write Unicode or operation differs: " + row)
+        require(receipt.get("status") == 200 and receipt.get("failure") is None,
+                "native write did not acknowledge: " + row)
+        request_hash = receipt.get("requestBodySha256")
+        etag = receipt.get("responseEtag")
+        require(isinstance(request_hash, str) and re.fullmatch(r"[0-9a-f]{64}", request_hash) and
+                request_hash not in request_hashes, "invalid or repeated native request digest: " + row)
+        require(isinstance(etag, str) and re.fullmatch(r'"sha256:[0-9a-f]{64}"', etag) and
+                etag not in etags, "invalid or repeated native file ETag: " + row)
+        request_hashes.add(request_hash)
+        etags.add(etag)
+    require(writes[-1]["responseEtag"] == '"sha256:' + digest(html_bytes) + '"',
+            "final acknowledged native file ETag differs from archived index.html")
+    return len(writes)
+
+
 def audit(path, expected_platform=None, expected_variant=None):
     require(path.stat().st_size <= MAX_BYTES, "outer ZIP too large")
     with zipfile.ZipFile(path) as archive:
@@ -269,9 +315,10 @@ def audit(path, expected_platform=None, expected_variant=None):
         rows[edit["id"]] = (edit["text"], lang, "rtl")
     verify_fixture_rows(html, rows)
     caption_rows = verify_caption_fixture(html)
+    native_writes = verify_native_text_writes(report, files["index.html"])
     return {"artifactSha256": digest(path.read_bytes()), "offlineSha256": expected["sha256"],
             "manifestFiles": len(files), "fontLicensePairs": len(fonts),
-            "verifiedFixtureRows": sorted(rows), "verifiedCaptionRows": caption_rows, "verified": True}
+            "verifiedFixtureRows": sorted(rows), "verifiedCaptionRows": caption_rows, "verifiedNativeTextWrites": native_writes, "verified": True}
 
 
 PLATFORMS = {"ubuntu-24.04": "linux", "macos-15": "darwin", "windows-2025": "win32"}
