@@ -28,10 +28,12 @@ const HANDLE_HIT = 24; // pointer target size (invisible padding around the dot)
 const ROTATION_OFFSET = 20; // px above the selection box
 
 /** Sync canvas state back to the Zustand store so the property panel reflects it. */
-function syncToStore(segmentId: string, el: HTMLElement, iframeWin: Window) {
+function syncToStore(
+  segmentId: string, el: HTMLElement, iframeWin: Window, distinctHistory = false,
+) {
   const style = computeTransformStyle(el, iframeWin);
   if (Object.keys(style).length > 0) {
-    useCaptionStore.getState().updateSegmentStyle(segmentId, style);
+    useCaptionStore.getState().updateSegmentStyle(segmentId, style, { distinctHistory });
   }
 }
 
@@ -443,7 +445,9 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     }
     if (i.moved) {
       if (i.netChanged) {
-        syncToStore(i.segmentId, i.wordEl, win);
+        // A completed pointer gesture is a separate undo step even when it
+        // follows another drag or a nudge within the 800ms coalescing window.
+        syncToStore(i.segmentId, i.wordEl, win, true);
       } else {
         // Pointer moved away and back: restore the exact pre-gesture DOM and
         // skip a phantom history entry, including an initially unwrapped word.
