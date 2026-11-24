@@ -185,3 +185,69 @@ it("keeps the newest native failure visible and permits an explicit ordered retr
   await vi.waitFor(() => expect(useCaptionStore.getState().syncError).toBeNull());
   expect(io.nativeWrite.mock.calls[1]).toEqual(io.nativeWrite.mock.calls[0]);
 });
+
+
+it("rejects a stale explicit word ID without applying its positional fallback or later overrides", async () => {
+  const model = buildModel();
+  model.segments.get("segment-0")!.wordId = "authored-hebrew";
+  model.segments.get("segment-1")!.wordId = "authored-latin";
+  useCaptionStore.getState().setModel(model);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  io.sidecar.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      content: JSON.stringify([
+        { wordId: "deleted-hebrew", wordIndex: 0, x: 100 },
+        { wordId: "authored-latin", wordIndex: 1, x: 200 },
+      ]),
+    }),
+  });
+  const api = mount();
+  await act(async () => { await api.loadOverrides(); });
+  expect(useCaptionStore.getState().syncError).toMatch(/corrupt/);
+  expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({});
+  expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({});
+  expect(io.nativeWrite).not.toHaveBeenCalled();
+});
+
+it("rejects duplicate authored word IDs instead of applying the second override", async () => {
+  const model = buildModel();
+  model.segments.get("segment-0")!.wordId = "authored-hebrew";
+  useCaptionStore.getState().setModel(model);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  io.sidecar.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      content: JSON.stringify([
+        { wordId: "authored-hebrew", wordIndex: 0, x: 10 },
+        { wordId: "authored-hebrew", wordIndex: 0, x: 99 },
+      ]),
+    }),
+  });
+  const api = mount();
+  await act(async () => { await api.loadOverrides(); });
+  expect(useCaptionStore.getState().syncError).toMatch(/corrupt/);
+  expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({});
+});
+
+it("loads stable-ID overrides by identity and preserves anonymous legacy positional overrides", async () => {
+  const model = buildModel();
+  model.segments.get("segment-0")!.wordId = "authored-hebrew";
+  model.segments.get("segment-1")!.wordId = "authored-latin";
+  useCaptionStore.getState().setModel(model);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  io.sidecar.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      content: JSON.stringify([
+        { wordId: "authored-latin", wordIndex: 0, x: 17 },
+        { wordIndex: 0, y: -8 },
+      ]),
+    }),
+  });
+  const api = mount();
+  await act(async () => { await api.loadOverrides(); });
+  expect(useCaptionStore.getState().syncError).toBeNull();
+  expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({ y: -8 });
+  expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({ x: 17 });
+});
