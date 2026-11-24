@@ -251,3 +251,26 @@ it("loads stable-ID overrides by identity and preserves anonymous legacy positio
   expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({ y: -8 });
   expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({ x: 17 });
 });
+
+
+it("refuses an explicit word ID shared by two authored model segments", async () => {
+  const model = buildModel();
+  model.segments.get("segment-0")!.wordId = "duplicate-authored-id";
+  model.segments.get("segment-1")!.wordId = "duplicate-authored-id";
+  useCaptionStore.getState().setModel(model);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  io.sidecar.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      content: JSON.stringify([
+        { wordId: "duplicate-authored-id", wordIndex: 0, x: 42 },
+      ]),
+    }),
+  });
+  const api = mount();
+  await act(async () => { await api.loadOverrides(); });
+  expect(useCaptionStore.getState().syncError).toMatch(/corrupt/);
+  expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({});
+  expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({});
+  expect(io.nativeWrite).not.toHaveBeenCalled();
+});
