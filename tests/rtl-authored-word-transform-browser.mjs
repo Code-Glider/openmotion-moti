@@ -1,11 +1,41 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import puppeteer from 'puppeteer-core';
 import { browserExecutable } from '../browser.ts';
+
+// This standalone esbuild fixture imports the *real* caption component, not
+// Vite's compiled bundle. The transitive editor graph contains Node-only
+// recast/os, Vite SVG ?raw and CSS imports unrelated to caption pointer logic.
+// Stub only these ancillary resources; never stub React, CaptionOverlay,
+// the Zustand store, pointer events, generated captions or Unicode handlers.
+const browserDependencyShim = {
+  name: 'caption-unrelated-browser-build-resources',
+  setup(bundle) {
+    bundle.onResolve({ filter: /^(?:node:)?os$/ }, () => ({
+      path: 'os', namespace: 'rtl-caption-os-shim',
+    }));
+    bundle.onLoad({ filter: /.*/, namespace: 'rtl-caption-os-shim' }, () => ({
+      contents: "export const EOL = '\\n'; export default { EOL: '\\n' };",
+      loader: 'js',
+    }));
+    bundle.onLoad({ filter: /\.svg\?raw$/ }, () => ({
+      contents: "export default '';",
+      loader: 'js',
+    }));
+    // No CSS file's styles are required for the tested caption overlay:
+    // its geometry fixture supplies explicit position classes. This avoids
+    // producing an extra CSS output file and preserves CSS-module imports.
+    bundle.onLoad({ filter: /\.css$/ }, () => ({
+      contents: 'export default {};',
+      loader: 'js',
+    }));
+  },
+};
 
 const harness = [
   "import { createElement } from 'react';",
@@ -93,15 +123,44 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   const bundle = await build({
     stdin: { contents: harness, resolveDir: process.cwd(), sourcefile: 'rtl-word-transform-harness.ts', loader: 'ts' },
     bundle: true, platform: 'browser', format: 'iife', globalName: 'RtlNativeCaptionTransform',
-    write: false, logLevel: 'silent', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' },
+    write: false, logLevel: 'silent', jsx: 'automatic', loader: { '.svg': 'text' },
+    plugins: [browserDependencyShim], define: { 'process.env.NODE_ENV': '"production"' },
   });
   assert.equal(bundle.outputFiles.length, 1);
+  // The imported production UI initializes crypto.randomUUID. about:blank
+  // does not match the secure-context semantics of served Studio. Loopback
+  // reproduces real Chromium's trustworthy origin without mocking crypto.
+  const originalPageHtml = '<!doctype html><html lang="en"><head></head><body style="margin:0;background:#111827">' +
+    '<div id="captions-container" style="width:640px;height:360px"></div></body></html>';
+  const pointerPageHtml = '<!doctype html><html lang="en" dir="ltr"><head><style>' +
+    'body{margin:0;background:#111827}.absolute{position:absolute}.inset-0{inset:0}.z-50{z-index:50}' +
+    '.ring-2{outline:2px solid #3ce6ac}</style></head><body>' +
+    '<div style="position:relative;width:640px;height:360px;margin:40px">' +
+    '<iframe id="pointer-frame" title="Caption preview" style="position:absolute;left:0;top:0;width:640px;height:360px;border:0"></iframe>' +
+    '<div id="overlay-host" style="position:absolute;inset:0"></div></div></body></html>';
+  const server = createServer((req, response) => {
+    const pathname = new URL(req.url, 'http://127.0.0.1').pathname;
+    if (pathname !== '/native' && pathname !== '/pointer') {
+      response.writeHead(404); response.end('Not found'); return;
+    }
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end(pathname === '/native' ? originalPageHtml : pointerPageHtml);
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const address = server.address();
+  assert(address && typeof address !== 'string');
+  const origin = 'http://127.0.0.1:' + address.port;
   const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
   await page.setViewport({ width: 760, height: 520, deviceScaleFactor: 1 });
-  await page.setContent('<!doctype html><html lang="en"><head></head><body style="margin:0;background:#111827">' +
-    '<div id="captions-container" style="width:640px;height:360px"></div></body></html>');
+  await page.goto(origin + '/native', { waitUntil: 'domcontentloaded' });
+  const nativeOrigin = await page.evaluate(() => ({ secure: isSecureContext, uuid: typeof crypto.randomUUID }));
+  assert.deepEqual(nativeOrigin, { secure: true, uuid: 'function' }, 'Native caption fixture requires a secure Chromium context');
   await page.addStyleTag({ content: '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
     bytes.toString('base64') + '") format("truetype");font-display:block}.caption-group{font-family:"Pinned Hebrew QA",sans-serif}' });
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
@@ -204,12 +263,9 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   // calls to the transform helpers. This component host is not full Studio.
   const pointerPage = await browser.newPage();
   await pointerPage.setViewport({ width: 760, height: 520, deviceScaleFactor: 1 });
-  await pointerPage.setContent('<!doctype html><html lang="en" dir="ltr"><head><style>' +
-    'body{margin:0;background:#111827}.absolute{position:absolute}.inset-0{inset:0}.z-50{z-index:50}' +
-    '.ring-2{outline:2px solid #3ce6ac}</style></head><body>' +
-    '<div style="position:relative;width:640px;height:360px;margin:40px">' +
-    '<iframe id="pointer-frame" title="Caption preview" style="position:absolute;left:0;top:0;width:640px;height:360px;border:0"></iframe>' +
-    '<div id="overlay-host" style="position:absolute;inset:0"></div></div></body></html>');
+  await pointerPage.goto(origin + '/pointer', { waitUntil: 'domcontentloaded' });
+  const pointerOrigin = await pointerPage.evaluate(() => ({ secure: isSecureContext, uuid: typeof crypto.randomUUID }));
+  assert.deepEqual(pointerOrigin, { secure: true, uuid: 'function' }, 'Pointer host requires a secure Chromium context');
   await pointerPage.addScriptTag({ content: bundle.outputFiles[0].text });
   const fontCss = '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
     bytes.toString('base64') + '") format("truetype");font-display:block}';
