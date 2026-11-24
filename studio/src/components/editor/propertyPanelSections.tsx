@@ -71,6 +71,8 @@ export function TextAreaField({
   autoFocus,
   flat,
   boxed,
+  direction,
+  language,
   onCommit,
 }: {
   label: string;
@@ -79,6 +81,9 @@ export function TextAreaField({
   autoFocus?: boolean;
   flat?: boolean;
   boxed?: boolean;
+  /** Presentation only: the selected field's resolved paragraph direction. */
+  direction?: "ltr" | "rtl";
+  language?: string;
   onCommit: (nextValue: string) => void;
 }) {
   const { t } = useI18n();
@@ -195,7 +200,9 @@ export function TextAreaField({
           disabled={disabled}
           rows={2}
           aria-label={t(label)}
-          style={boxed ? { outline: "none" } : undefined}
+          dir={direction}
+          lang={language || undefined}
+          style={boxed || direction ? { ...(boxed ? { outline: "none" } : {}), ...(direction ? { textAlign: "start" } : {}) } : undefined}
           onFocus={handleFocus}
           onChange={handleChange}
           onCompositionStart={handleCompositionStart}
@@ -216,6 +223,9 @@ export function TextAreaField({
           value={draft}
           disabled={disabled}
           rows={4}
+          dir={direction}
+          lang={language || undefined}
+          style={direction ? { textAlign: "start" } : undefined}
           onFocus={handleFocus}
           onChange={handleChange}
           onCompositionStart={handleCompositionStart}

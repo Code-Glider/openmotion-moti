@@ -96,6 +96,8 @@ function FlatTextFieldEditor({
             boxed={mvp}
             label={t("Content")}
             value={value ?? field.value}
+            direction={direction}
+            language={htmlLanguage}
             autoFocus={autoFocus}
             onCommit={onCommit ?? ((next) => onSetText(next, field.key))}
           />

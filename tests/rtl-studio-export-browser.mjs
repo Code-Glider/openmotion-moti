@@ -153,7 +153,7 @@ async function findStudioFrame(page, copy) {
 // after a real click (macOS 45008326986). Puppeteer's Locator re-resolves the
 // live textarea before clicking, so a pre-input detach can safely recover
 // WITHOUT retrying a rejected character insertion or mutating DOM values.
-async function replaceStudioInspectorText(page, before, after, script) {
+async function replaceStudioInspectorText(page, before, after, script, language) {
   await page.locator('[data-flat-group-open="true"] textarea')
     .filter(element => element.isConnected)
     .setTimeout(15_000)
@@ -167,9 +167,16 @@ async function replaceStudioInspectorText(page, before, after, script) {
       throw new Error('Inspector input is not the active connected textarea');
     }
     element.setSelectionRange(0, element.value.length);
-    return { value: element.value, start: element.selectionStart, end: element.selectionEnd, length: element.value.length };
+    const style = getComputedStyle(element);
+    return { value: element.value, start: element.selectionStart, end: element.selectionEnd, length: element.value.length,
+      presentation: { dir: element.getAttribute('dir'), lang: element.getAttribute('lang'),
+        direction: style.direction, textAlign: style.textAlign, fontFamily: style.fontFamily } };
   });
   assert.equal(selected.value, before, script + ': inspector targets wrong Unicode text');
+  assert.equal(selected.presentation.dir, 'rtl', script + ': native inspector has no authored RTL paragraph direction');
+  assert.equal(selected.presentation.direction, 'rtl', script + ': computed inspector direction is not RTL');
+  assert.equal(selected.presentation.lang, language, script + ': native inspector language differs from authored language');
+  assert.equal(selected.presentation.textAlign, 'start', script + ': inspector alignment is not logical start');
   assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
   // Record native browser events without mutating the React field or Studio
   // store. A correct-looking textarea alone did not prove an Arabic WOFF1
@@ -214,6 +221,7 @@ async function replaceStudioInspectorText(page, before, after, script) {
   assert(receipt?.events?.some(event => event.type === 'input' && event.value === after),
     script + ': browser did not dispatch an exact Unicode input event to the connected inspector: '
       + JSON.stringify(receipt));
+  return selected.presentation;
 }
 
 // The Windows end-to-end gate can finish every browser/MP4 assertion and
@@ -375,7 +383,7 @@ try {
   // Locate the live controlled field by its exact Unicode string. Locator
   // click retries pre-input detachment, never a failed text edit.
   // The full logical selection and caret-affinity remain separately gated.
-  await replaceStudioInspectorText(page, originalHebrew, editedHebrew, 'hebrew');
+  const hebrewInspectorPresentation = await replaceStudioInspectorText(page, originalHebrew, editedHebrew, 'hebrew', 'he');
   await page.keyboard.press('Tab');
   let edited = false, conflictingReads = 0;
   for (let attempt = 0; attempt < 80; attempt++) {
@@ -398,7 +406,7 @@ try {
   assert(!JSON.stringify(current.file).includes(originalHebrew), 'Old Hebrew source text still present after Studio edit');
   frame = await findStudioFrame(page, editedHebrew);
   await page.screenshot({ path: path.join(output, 'studio-after-edit.png') });
-  assertStep('UI Content editor persisted Hebrew niqqud and mixed English/numerals', { newText: editedHebrew, revision: current.revision });
+  assertStep('UI Content editor persisted Hebrew niqqud and mixed English/numerals', { newText: editedHebrew, revision: current.revision, inspectorPresentation: hebrewInspectorPresentation });
   samples[0].copy = editedHebrew;
   // The same *actual Studio Content inspector* must save Arabic, Persian,
   // Urdu and Syriac, not only display font-provenanced static rows.
@@ -491,7 +499,7 @@ try {
       throw new Error(id + ': single-clip Studio inspector did not show exact Unicode after Alt-click: '
         + JSON.stringify(observed), { cause: error });
     }
-    await replaceStudioInspectorText(page, oldCopy, nextCopy, id);
+    const inspectorPresentation = await replaceStudioInspectorText(page, oldCopy, nextCopy, id, sample.lang);
     await page.keyboard.press('Tab');
     const inputReceipt = await page.evaluate(script => window.__rtlInspectorInputReceipts?.[script], id);
     let persisted = false;
@@ -561,7 +569,7 @@ try {
         id + ' save changed LTR control ' + control.id + ' in browser preview');
     }
     sample.copy = nextCopy;
-    scriptEdits.push({ id, original: oldCopy, text: nextCopy, revision: current.revision,
+    scriptEdits.push({ id, original: oldCopy, text: nextCopy, revision: current.revision, inspectorPresentation,
       inputEvents: inputReceipt?.events?.filter(event => event.type === 'input').length ?? 0,
       blurEvents: inputReceipt?.events?.filter(event => event.type === 'blur').length ?? 0 });
   }
