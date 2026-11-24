@@ -410,6 +410,25 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     pointer(hit, "pointerup", 309, 117);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1, scaleY: 1, rotation: 0 });
 
+    // Two *separate* successful drags on one Hebrew word within the 800ms
+    // nudge debounce must produce two independently reversible history steps.
+    // Keep Date.now() unchanged between them to expose incorrect coalescing.
+    const historyAfterFirstDrag = useCaptionStore.getState().past.length;
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 314, 117);
+    pointer(hit, "pointerup", 314, 117);
+    expect(modelStyle()).toMatchObject({ x: 29, y: 12 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyAfterFirstDrag + 1);
+    act(() => {
+      const restored = useCaptionStore.getState().undo();
+      expect(restored).not.toBeNull();
+      applyCaptionModelToIframe(restored!);
+    });
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12 });
+    expect(actualStyle()).toMatchObject({ x: 24, y: 12 });
+    expect(words.map(word => word.textContent)).toEqual(["שָׁלוֹם", "שָׁלוֹם"]);
+    expect(words[0].parentElement).toBe(group);
+
     // Work through the visible corner/rotation handles, not a direct store write.
     const scaleHandle = [...hit.querySelectorAll<HTMLElement>("div")]
       .find(el => el.style.cursor === "nwse-resize")!;
