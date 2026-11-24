@@ -68,7 +68,7 @@ function mount(projectId = "p") {
   return api;
 }
 
-it("writes the exact RTL word transform into version-guarded native source after sidecar", async () => {
+it("writes managed RTL native source without an unconditional legacy sidecar PUT", async () => {
   const original = await fixture();
   const model = buildModel();
   model.segments.get("segment-0")!.style = { x: 24, y: -12, rotation: 8, scaleX: 1.4, scaleY: 0.8 };
@@ -84,9 +84,9 @@ it("writes the exact RTL word transform into version-guarded native source after
   expect(content).toContain('translate(24px, -12px) rotate(8deg) scale(1.4, 0.8)');
   expect(content).toContain("שָׁלוֹם");
   expect(content).toContain("ABC-123");
-  expect(io.sidecar).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(io.sidecar.mock.calls[0][1].body)[0])
-    .toMatchObject({ wordId: "he-1", x: 24, y: -12, rotation: 8, scaleX: 1.4, scaleY: 0.8 });
+  // The legacy PUT lacks a version precondition. The real API responds 428
+  // and blocked every managed native save, so it must not run here.
+  expect(io.sidecar).not.toHaveBeenCalled();
   await vi.waitFor(() => expect(useCaptionStore.getState().syncError).toBeNull());
 });
 
@@ -97,9 +97,9 @@ it("does not overwrite unmarked legacy caption HTML", async () => {
   io.nativeRead.mockResolvedValue(legacy);
   const api = mount();
   act(() => api.save());
-  await vi.waitFor(() => expect(io.nativeRead).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(io.sidecar).toHaveBeenCalledOnce());
+  expect(io.nativeRead).toHaveBeenCalledOnce();
   expect(io.nativeWrite).not.toHaveBeenCalled();
-  expect(io.sidecar).toHaveBeenCalledTimes(1);
   expect(useCaptionStore.getState().syncError).toBeNull();
 });
 
@@ -115,5 +115,5 @@ it("does not conceal native ETag conflicts behind a successful sidecar write", a
   await vi.waitFor(() =>
     expect(useCaptionStore.getState().syncError).toBe("Caption changes couldn't be saved"));
   expect(io.nativeWrite).toHaveBeenCalledOnce();
-  expect(io.sidecar).toHaveBeenCalledOnce();
+  expect(io.sidecar).not.toHaveBeenCalled();
 });
