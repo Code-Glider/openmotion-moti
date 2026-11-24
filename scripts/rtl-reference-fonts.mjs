@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const GOOGLE_FONTS_COMMIT = '06bfe0d62a98375cb09c942fa18e68bd32cff057';
 const pins = [
@@ -14,22 +15,38 @@ const pins = [
 ];
 function sha256(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 function gitBlob(bytes) { return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex'); }
-async function verifiedDownload(directory, name, expectedBlob) {
+// Retry availability failures only; an integrity mismatch is never retried.
+const retryDelays = [2_000, 8_000, 25_000];
+const retryStatuses = new Set([408, 429, 500, 502, 503, 504]);
+export async function verifiedDownload(directory, name, expectedBlob, {
+  request = fetch,
+  sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  onRetry = ({ attempt, error, delay }) => console.warn('Pinned font download retry ' + attempt + ' after ' + delay + 'ms: ' + error.message),
+} = {}) {
   const url = 'https://raw.githubusercontent.com/google/fonts/' + GOOGLE_FONTS_COMMIT + '/ofl/' + directory + '/' + encodeURIComponent(name);
-  let lastError;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; ; attempt++) {
+    let response, bytes, error;
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(40_000) });
-      if (!response.ok) throw new Error('PINNED_FONT_HTTP_' + response.status + ': ' + url);
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (gitBlob(bytes) !== expectedBlob) throw new Error('PINNED_FONT_INTEGRITY_MISMATCH: ' + directory + '/' + name);
-      return bytes;
-    } catch (error) {
-      lastError = error;
-      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+      response = await request(url, { signal: AbortSignal.timeout(40_000) });
+      if (response.ok) bytes = Buffer.from(await response.arrayBuffer());
+    } catch (failure) {
+      if (!(failure instanceof TypeError) && !['TimeoutError', 'AbortError'].includes(failure?.name)) throw failure;
+      error = failure;
     }
+    if (!error) {
+      if (response.ok) {
+        if (gitBlob(bytes) !== expectedBlob) throw new Error('PINNED_FONT_INTEGRITY_MISMATCH: ' + directory + '/' + name);
+        return bytes;
+      }
+      error = new Error('PINNED_FONT_HTTP_' + response.status + ': ' + url);
+      if (response.body) await response.body.cancel().catch(() => {});
+      if (!retryStatuses.has(response.status)) throw error;
+    }
+    if (attempt >= retryDelays.length) throw error;
+    const delay = retryDelays[attempt];
+    onRetry({ attempt: attempt + 1, error, delay });
+    await sleep(delay);
   }
-  throw lastError;
 }
 async function main() {
   const destination = process.argv[2];
@@ -55,4 +72,4 @@ async function main() {
   await writeFile(path.join(destination, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx' });
   console.log(JSON.stringify({ sourceCommit: GOOGLE_FONTS_COMMIT, pinnedFamilies: evidence.map(row => row.id), verifiedFiles: evidence.length * 2 }));
 }
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await main();

@@ -442,3 +442,95 @@ describe("useDomSelection — picking a clip with no canvas node", () => {
     harness.cleanup();
   });
 });
+
+
+describe("useDomSelection — stale group refresh ownership", () => {
+  beforeEach(() => {
+    deferreds.clear();
+    usePlayerStore.getState().clearSelection();
+  });
+  afterEach(() => {
+    deferreds.clear();
+    usePlayerStore.getState().clearSelection();
+  });
+
+  it.each(["clear", "survivor", "other", "timeline-only", "unchanged"] as const)(
+    "does not resurrect an old group after %s during preview re-resolution",
+    async (action) => {
+      const iframe = document.createElement("iframe");
+      document.body.append(iframe);
+      const doc = iframe.contentDocument!;
+      const nodes = ["arabic", "persian", "urdu"].map((id) => {
+        const el = doc.createElement("div");
+        el.id = id;
+        doc.body.append(el);
+        return el;
+      });
+      const [primary, survivor, other] = nodes.map((el) => makeSelection(el.id, el));
+      const store = usePlayerStore.getState();
+      const harness = renderHarness({
+        rightPanelTab: "design",
+        setRightPanelTab: vi.fn(),
+        iframe,
+        timelineElements: nodes.map((el, track) => ({
+          id: el.id, domId: el.id, tag: "div", start: 0, duration: 1, track,
+        })),
+        setSelectedTimelineElementId: store.setSelectedElementId,
+        setTimelineSelectionSet: store.setSelectedElementIds,
+      });
+
+      try {
+        act(() => harness.current().applyMarqueeSelection([primary, survivor], false));
+        expect(usePlayerStore.getState().selectedElementIds)
+          .toEqual(new Set(["arabic", "persian"]));
+        // A transient document refresh lost the primary. Resolving the
+        // surviving member suspends on a controlled source probe.
+        primary.element.remove();
+        let pending!: Promise<void>;
+        act(() => {
+          pending = harness.current().refreshDomEditSelectionFromPreview(primary);
+        });
+        const deferred = deferreds.get("persian");
+        expect(deferred, "expected the real group-refresh fallback to suspend").toBeDefined();
+
+        if (action === "clear") {
+          act(() => harness.current().applyDomSelection(null));
+        } else if (action === "survivor") {
+          act(() => harness.current().applyMarqueeSelection([survivor], false));
+        } else if (action === "other") {
+          act(() => harness.current().applyDomSelection(other));
+        } else if (action === "timeline-only") {
+          // Timeline selection can change before its asynchronous canvas
+          // counterpart resolves. A refresh must not echo the old set back.
+          act(() => {
+            store.setSelectedElementId("urdu");
+            store.setSelectedElementIds(new Set(["urdu"]));
+          });
+        }
+
+        const beforePrimary = harness.current().domEditSelection;
+        const beforeGroup = harness.current().domEditGroupSelections;
+        const beforeTimeline = new Set(usePlayerStore.getState().selectedElementIds);
+        await act(async () => {
+          deferred!.resolve();
+          await pending;
+        });
+
+        if (action === "unchanged") {
+          // Control: a legitimate refresh must still preserve the surviving
+          // member and remove the missing primary from the timeline set.
+          expect(harness.current().domEditSelection?.id).toBe("persian");
+          expect(harness.current().domEditGroupSelections.map((s) => s.id)).toEqual(["persian"]);
+          expect(usePlayerStore.getState().selectedElementIds).toEqual(new Set(["persian"]));
+        } else {
+          expect(harness.current().domEditSelection).toBe(beforePrimary);
+          expect(harness.current().domEditGroupSelections).toBe(beforeGroup);
+          expect(usePlayerStore.getState().selectedElementIds).toEqual(beforeTimeline);
+        }
+      } finally {
+        harness.cleanup();
+        iframe.remove();
+      }
+    },
+  );
+});

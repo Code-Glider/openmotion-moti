@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readLiveFrameText } from './rtl-preview-frame-read.mjs';
+import { readLiveFrameText, readLiveFrameTexts, waitForLiveFrameTexts } from './rtl-preview-frame-read.mjs';
 
 test('return exact logical mixed-script and combining-mark text from a live iframe', async () => {
   const expected = 'ܒܪܝܟܐ שָׁלוֹם 52%';
@@ -39,4 +39,46 @@ test('fail closed on actual evaluation defects in a live iframe', async () => {
 test('return null when the live frame does not yet expose an authored selector', async () => {
   const frame = { detached: false, async evaluate() { return null; } };
   assert.equal(await readLiveFrameText(frame, '#syriac'), null);
+});
+
+const expectedRows = { '#label': 'שָׁלוֹם 2030', '#syriac': 'ܫܠܡܐ ܒܪܝܟܐ', '#latin': 'ABC-123' };
+
+test('skip exact Linux detached execution-context failure even before detached flag updates', async () => {
+  const frame = { detached: false, async evaluate() {
+    throw Error('Execution context is not available in detached frame or worker "preview" (are you trying to evaluate?)');
+  } };
+  assert.equal(await readLiveFrameText(frame, '#label'), null);
+  assert.equal(await readLiveFrameTexts(frame, Object.keys(expectedRows)), null);
+});
+
+test('discard a snapshot from a frame detached before its evaluation response arrives', async () => {
+  const frame = { detached: false, async evaluate() { this.detached = true; return expectedRows; } };
+  assert.equal(await readLiveFrameTexts(frame, Object.keys(expectedRows)), null);
+});
+
+test('reacquire the new player after history remount and require every logical row together', async () => {
+  const old = { detached: false, async evaluate() {
+    throw Error('Execution context is not available in detached frame or worker "preview"');
+  } };
+  const fresh = { detached: false, async evaluate(_callback, selectors) {
+    assert.deepEqual(selectors, Object.keys(expectedRows));
+    return expectedRows;
+  } };
+  let scans = 0;
+  const page = { frames() { return ++scans === 1 ? [old] : [fresh]; } };
+  assert.deepEqual(await waitForLiveFrameTexts(page, expectedRows, { timeoutMs: 1000, pollMs: 0 }), expectedRows);
+  assert.equal(scans, 2);
+});
+
+test('reject mixed generations and persistent collateral Unicode regressions', async () => {
+  const first = { detached: false, async evaluate() { return { ...expectedRows, '#latin': 'wrong' }; } };
+  const second = { detached: false, async evaluate() { return { ...expectedRows, '#syriac': 'wrong' }; } };
+  await assert.rejects(waitForLiveFrameTexts({ frames: () => [first, second] }, expectedRows,
+    { timeoutMs: 0, label: 'history undo' }), /history undo did not reach exact authored Unicode.*last snapshot/);
+});
+
+test('do not swallow unexpected live-frame evaluation defects while polling', async () => {
+  const frame = { detached: false, async evaluate() { throw Error('Invalid selector'); } };
+  await assert.rejects(waitForLiveFrameTexts({ frames: () => [frame] }, expectedRows,
+    { timeoutMs: 0 }), /Invalid selector/);
 });

@@ -16,7 +16,7 @@ import { Client } from './shared-editor-client.mjs';
 import { readProjectZip } from '../shared/project-zip.ts';
 import { closeFixtureEditor } from './fixtures.ts';
 import { removeTemporaryRtlProject, stopOwnedWindowsPreviewTree } from './rtl-temp-project-cleanup.mjs';
-import { readLiveFrameText } from './rtl-preview-frame-read.mjs';
+import { readLiveFrameText, waitForLiveFrameTexts } from './rtl-preview-frame-read.mjs';
 import { armRtlPostCleanupWatchdog } from './rtl-post-cleanup-watchdog.mjs';
 import { releaseExitedOwnedChildStdio } from './rtl-owned-child-stdio.mjs';
 
@@ -153,7 +153,16 @@ async function findStudioFrame(page, copy) {
 // after a real click (macOS 45008326986). Puppeteer's Locator re-resolves the
 // live textarea before clicking, so a pre-input detach can safely recover
 // WITHOUT retrying a rejected character insertion or mutating DOM values.
-async function replaceStudioInspectorText(page, before, after, script) {
+async function replaceStudioInspectorText(page, before, after, script, language) {
+  // The project font is loaded in Studio's outer document, under a private
+  // inspector alias. A successful preview font load alone cannot prove this.
+  await page.waitForFunction(expected => {
+    const input = document.querySelector('[data-flat-group-open="true"] textarea');
+    if (!(input instanceof HTMLTextAreaElement) || input.value !== expected) return false;
+    const family = getComputedStyle(input).fontFamily.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+    return family.startsWith('OpenMotionInspectorFont-') &&
+      Array.from(document.fonts).some(face => face.family.replace(/^['"]|['"]$/g, '') === family && face.status === 'loaded');
+  }, { timeout: 15_000 }, before);
   await page.locator('[data-flat-group-open="true"] textarea')
     .filter(element => element.isConnected)
     .setTimeout(15_000)
@@ -167,9 +176,17 @@ async function replaceStudioInspectorText(page, before, after, script) {
       throw new Error('Inspector input is not the active connected textarea');
     }
     element.setSelectionRange(0, element.value.length);
-    return { value: element.value, start: element.selectionStart, end: element.selectionEnd, length: element.value.length };
+    const style = getComputedStyle(element);
+    return { value: element.value, start: element.selectionStart, end: element.selectionEnd, length: element.value.length,
+      presentation: { dir: element.getAttribute('dir'), lang: element.getAttribute('lang'),
+        direction: style.direction, textAlign: style.textAlign, fontFamily: style.fontFamily } };
   });
   assert.equal(selected.value, before, script + ': inspector targets wrong Unicode text');
+  assert.equal(selected.presentation.dir, 'rtl', script + ': native inspector has no authored RTL paragraph direction');
+  assert.equal(selected.presentation.direction, 'rtl', script + ': computed inspector direction is not RTL');
+  assert.equal(selected.presentation.lang, language, script + ': native inspector language differs from authored language');
+  assert.equal(selected.presentation.textAlign, 'start', script + ': inspector alignment is not logical start');
+  assert.match(selected.presentation.fontFamily, /OpenMotionInspectorFont-/, script + ': project font was not applied to the native inspector');
   assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
   // Record native browser events without mutating the React field or Studio
   // store. A correct-looking textarea alone did not prove an Arabic WOFF1
@@ -214,6 +231,7 @@ async function replaceStudioInspectorText(page, before, after, script) {
   assert(receipt?.events?.some(event => event.type === 'input' && event.value === after),
     script + ': browser did not dispatch an exact Unicode input event to the connected inspector: '
       + JSON.stringify(receipt));
+  return selected.presentation;
 }
 
 // The Windows end-to-end gate can finish every browser/MP4 assertion and
@@ -375,7 +393,7 @@ try {
   // Locate the live controlled field by its exact Unicode string. Locator
   // click retries pre-input detachment, never a failed text edit.
   // The full logical selection and caret-affinity remain separately gated.
-  await replaceStudioInspectorText(page, originalHebrew, editedHebrew, 'hebrew');
+  const hebrewInspectorPresentation = await replaceStudioInspectorText(page, originalHebrew, editedHebrew, 'hebrew', 'he');
   await page.keyboard.press('Tab');
   let edited = false, conflictingReads = 0;
   for (let attempt = 0; attempt < 80; attempt++) {
@@ -398,7 +416,7 @@ try {
   assert(!JSON.stringify(current.file).includes(originalHebrew), 'Old Hebrew source text still present after Studio edit');
   frame = await findStudioFrame(page, editedHebrew);
   await page.screenshot({ path: path.join(output, 'studio-after-edit.png') });
-  assertStep('UI Content editor persisted Hebrew niqqud and mixed English/numerals', { newText: editedHebrew, revision: current.revision });
+  assertStep('UI Content editor persisted Hebrew niqqud and mixed English/numerals', { newText: editedHebrew, revision: current.revision, inspectorPresentation: hebrewInspectorPresentation });
   samples[0].copy = editedHebrew;
   // The same *actual Studio Content inspector* must save Arabic, Persian,
   // Urdu and Syriac, not only display font-provenanced static rows.
@@ -491,7 +509,7 @@ try {
       throw new Error(id + ': single-clip Studio inspector did not show exact Unicode after Alt-click: '
         + JSON.stringify(observed), { cause: error });
     }
-    await replaceStudioInspectorText(page, oldCopy, nextCopy, id);
+    const inspectorPresentation = await replaceStudioInspectorText(page, oldCopy, nextCopy, id, sample.lang);
     await page.keyboard.press('Tab');
     const inputReceipt = await page.evaluate(script => window.__rtlInspectorInputReceipts?.[script], id);
     let persisted = false;
@@ -539,8 +557,29 @@ try {
     frame = await findStudioFrame(page, editedHebrew);
     assert.equal(await frame.$eval('#' + id, element => element.textContent), nextCopy,
       id + ' Studio preview has stale text');
+    // The latest clip saving correctly is not enough: a rapid selection/blur
+    // race can write the previous clip's textarea value into the newly selected
+    // source. Re-check every earlier authored RTL script in BOTH the durable
+    // native project and live Chromium preview after each subsequent save.
+    const nativeAfterEdit = JSON.stringify(current.file);
+    for (const earlier of scriptEdits) {
+      assert(nativeAfterEdit.includes(earlier.text),
+        id + ' save overwrote previously authored ' + earlier.id + ' native Unicode');
+      assert(!nativeAfterEdit.includes(earlier.original),
+        id + ' save restored the original ' + earlier.id + ' native Unicode');
+      assert.equal(await frame.$eval('#' + earlier.id, element => element.textContent), earlier.text,
+        id + ' save corrupted earlier ' + earlier.id + ' Chromium preview');
+    }
+    // LTR and Ethiopic projects must remain untouched throughout the session,
+    // not only in the last preview frame after all RTL edits have finished.
+    for (const control of samples.filter(row => row.dir === 'ltr')) {
+      assert(nativeAfterEdit.includes(control.copy),
+        id + ' save removed LTR control ' + control.id + ' from native source');
+      assert.equal(await frame.$eval('#' + control.id, element => element.textContent), control.copy,
+        id + ' save changed LTR control ' + control.id + ' in browser preview');
+    }
     sample.copy = nextCopy;
-    scriptEdits.push({ id, text: nextCopy, revision: current.revision,
+    scriptEdits.push({ id, original: oldCopy, text: nextCopy, revision: current.revision, inspectorPresentation,
       inputEvents: inputReceipt?.events?.filter(event => event.type === 'input').length ?? 0,
       blurEvents: inputReceipt?.events?.filter(event => event.type === 'blur').length ?? 0 });
   }
@@ -601,24 +640,30 @@ try {
       await sleep(200);
     }
     assert(persisted, 'Studio keyboard ' + direction + ' did not persist exact Syriac Unicode in native project source');
+    const nativeHistorySource = JSON.stringify(current.file);
     for (const row of samples.filter(sample => sample.id !== 'syriac')) {
-      assert(JSON.stringify(current.file).includes(row.copy),
+      assert(nativeHistorySource.includes(row.copy),
         'Studio keyboard ' + direction + ' altered unrelated ' + row.lang + ' source');
     }
-    let previewText = null;
-    for (let attempt = 0; attempt < 100; attempt++) {
-      for (const liveFrame of page.frames()) {
-        const found = await readLiveFrameText(liveFrame, '#syriac');
-        if (found === wanted) { previewText = found; break; }
-      }
-      if (previewText !== null) break;
-      await sleep(200);
+    // A later undo/redo must never resurrect an earlier clip's original
+    // Unicode even when the most recently edited Syriac clip is correct.
+    for (const earlier of scriptEdits.filter(row => row.id !== 'syriac')) {
+      assert(!nativeHistorySource.includes(earlier.original),
+        'Studio keyboard ' + direction + ' restored stale ' + earlier.id + ' source');
     }
-    assert.equal(previewText, wanted, 'Studio keyboard ' + direction + ' did not update actual preview');
+    // The history save can remount the player between separate row reads.
+    // Read every authored row (including Syriac and both LTR controls) in
+    // one live frame evaluation; retry only read-only navigation/mismatch
+    // until the same bounded deadline. Never repeat the keyboard mutation.
+    const expectedHistoryRows = Object.fromEntries(samples.map(row =>
+      ['#' + row.id, row.id === 'syriac' ? wanted : row.copy]));
+    const previewRows = await waitForLiveFrameTexts(page, expectedHistoryRows, {
+      label: 'Studio keyboard ' + direction + ' Chromium preview',
+    });
     await page.waitForFunction(expected => Array.from(document.querySelectorAll('[data-flat-group-open="true"] textarea'))
       .some(element => element.value === expected), { timeout: 20_000 }, wanted);
     await page.screenshot({ path: path.join(output, 'studio-after-' + direction + '.png') });
-    historySteps.push({ direction, text: wanted, revision: current.revision });
+    historySteps.push({ direction, text: wanted, revision: current.revision, previewRows });
   }
   assertStep('Real Studio keyboard undo/redo reverses and reapplies Syriac Unicode in native source and preview', {
     modifier: historyModifier, steps: historySteps,
@@ -1090,6 +1135,15 @@ try {
   assert(!exportedHtml.toString('utf8').includes(originalHebrew), 'Archive restored stale pre-edit text');
   for (const sample of samples) assert(exportedHtml.toString('utf8').includes(sample.copy),
     'Offline ZIP lost author-edited ' + sample.lang + ' Unicode');
+  // A previous inspector edit can survive as an extra stale text node even
+  // when each expected string is present. Reject that source corruption in
+  // the actual exported bytes, after the real Studio history undo/redo path.
+  for (const edit of scriptEdits) {
+    assert(exportedHtml.toString('utf8').includes(edit.text),
+      'Offline ZIP lost final Studio-authored ' + edit.id + ' Unicode');
+    assert(!exportedHtml.toString('utf8').includes(edit.original),
+      'Offline ZIP retained stale pre-edit ' + edit.id + ' Unicode');
+  }
   const assetFiles = [];
   if (woff1) await mkdir(path.join(output, 'woff1-fonts'), { recursive: true });
   for (const face of fontSources) {
@@ -1124,6 +1178,15 @@ try {
   assert(!JSON.stringify(restoredSource.file).includes(originalHebrew), 'Reimport restored stale pre-edit text');
   for (const sample of samples) assert(JSON.stringify(restoredSource.file).includes(sample.copy),
     'Offline reimport lost ' + sample.lang + ' Unicode');
+  // Verify the independent imported project has no stale duplicate of any
+  // edited script, not only that its final text is discoverable somewhere.
+  const reimportedComposition = JSON.stringify(restoredSource.file);
+  for (const edit of scriptEdits) {
+    assert(reimportedComposition.includes(edit.text),
+      'Offline ZIP reimport lost final ' + edit.id + ' Unicode');
+    assert(!reimportedComposition.includes(edit.original),
+      'Offline ZIP reimport resurrected pre-edit ' + edit.id + ' Unicode');
+  }
   for (const face of fontSources) {
     const asset = imported.items.find(item => item.itemId === face.id);
     assert.deepEqual(

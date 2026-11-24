@@ -411,14 +411,39 @@ export function useDomSelection({
       }
       if (!doc) return;
 
+      // A source refresh may await several network probes. It does not own
+      // a later user selection, even when its new primary is a member of
+      // the old group. Snapshot the exact selection and timeline membership
+      // before resolving anything; never republish a superseded group.
+      const originalPrimary = domEditSelectionRef.current;
+      const originalGroup = domEditGroupSelectionsRef.current;
+      const originalTimelineIds = new Set(getTimelineSelectionSet());
+      const originalSequence = timelineSelectSeqRef.current;
+      const stillOwnsGroup = () => {
+        const timelineIds = getTimelineSelectionSet();
+        return originalGroup === selections &&
+          domEditGroupSelectionsRef.current === originalGroup &&
+          domEditSelectionRef.current === originalPrimary &&
+          timelineSelectSeqRef.current === originalSequence &&
+          timelineIds.size === originalTimelineIds.size &&
+          [...originalTimelineIds].every((id) => timelineIds.has(id));
+      };
+      if (!stillOwnsGroup()) return;
       const nextGroup: DomEditSelection[] = [];
       for (const selection of selections) {
         const element = findElementForSelection(doc, selection, activeCompPath);
         if (!element) continue;
         const nextSelection = await buildDomSelectionFromTarget(element, { previous: selection });
+        if (!stillOwnsGroup()) return;
         if (nextSelection) nextGroup.push(nextSelection);
       }
-      if (nextGroup.length === 0) return;
+      if (nextGroup.length === 0 || !stillOwnsGroup()) return;
+      // Also reject work from a document that was replaced during the probe.
+      try {
+        if (previewIframeRef.current !== iframe || iframe?.contentDocument !== doc) return;
+      } catch {
+        return;
+      }
 
       const currentSelection = domEditSelectionRef.current;
       const nextSelection =
@@ -431,9 +456,11 @@ export function useDomSelection({
       setDomEditSelection(nextSelection);
       setDomEditGroupSelections(nextGroup);
 
-      announceTimelineSelection(nextGroup, nextSelection);
+      // This is the complete surviving group, not a late primary-only
+      // notification. Publish its exact set even when only one member remains.
+      announceTimelineSelection(nextGroup, nextSelection, true);
     },
-    [activeCompPath, announceTimelineSelection, buildDomSelectionFromTarget, previewIframeRef],
+    [activeCompPath, announceTimelineSelection, buildDomSelectionFromTarget, getTimelineSelectionSet, previewIframeRef],
   );
 
   // ── Effects ──
