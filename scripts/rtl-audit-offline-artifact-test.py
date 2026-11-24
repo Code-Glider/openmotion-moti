@@ -169,6 +169,9 @@ def main(path):
                                  first + "</div></body>", 1),
                     "duplicate-row", "duplicate or misplaced fixture row")
 
+        reject_html(html.replace('data-hf-id="hf-1tc8"', 'data-hf-id="hf-reminted-persian"', 1),
+                    "reminted-native-row", "fixture row source identity differs")
+
         # Real timed-caption fixture: keep parent/word identities, logical
         # Unicode order, and source timing even if every archive hash is rebuilt.
         he = re.search(r'<span[^>]*id="caption-he"[^>]*>.*?</span>', html).group()
