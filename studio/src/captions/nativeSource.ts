@@ -1,18 +1,20 @@
 /**
- * Managed native caption composition source.
+ * Opt-in versioned native caption sources.
  *
- * The legacy caption editor persists overrides in a sidecar. Native MP4 and
- * offline ZIP exports read the authored HTML, not browser-only wrapper state.
- * Only a source that explicitly opts into this managed script format may be
- * rewritten. Unknown/legacy scripts must NEVER be regenerated or flattened.
+ * A live drag currently updates the model/sidecar, but native MP4 and offline
+ * project export read the authored HTML. Only compositions created with this
+ * exact managed marker may be regenerated. Unknown legacy/custom scripts are
+ * never flattened. Both script and its exact model input are embedded so a
+ * reopened Studio can reconstruct authored positioning/group styles without
+ * inferring them from animated/computed DOM geometry.
  */
 import type { CaptionModel } from "./types";
 import { extractTranscript } from "./parser";
 import { generateCaptionHtml } from "./generator";
 
+const MARKER = 'data-openmotion-caption-source="v1"';
 const SCRIPT_RE =
-  /<script data-openmotion-caption-source="v1" data-sha256="([a-f0-9]{64})">([\s\S]*?)<\/script>/g;
-const MANAGED_MARKER = 'data-openmotion-caption-source="v1"';
+  /<script data-openmotion-caption-source="v1" data-sha256="([a-f0-9]{64})" data-model-hex="([a-f0-9]+)">([\s\S]*?)<\/script>/g;
 
 export type ManagedCaptionSourceResult =
   | { status: "unsupported"; content: string }
@@ -21,7 +23,7 @@ export type ManagedCaptionSourceResult =
 async function digest(content: string): Promise<string> {
   const bytes = new TextEncoder().encode(content);
   const hash = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(hash), (value) => value.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function generatedScript(model: CaptionModel): string {
@@ -33,16 +35,9 @@ function generatedScript(model: CaptionModel): string {
   return match[1];
 }
 
-/** Produce the opt-in tag used by a generated, versioned native composition. */
-export async function managedCaptionScriptTag(model: CaptionModel): Promise<string> {
-  const script = generatedScript(model);
-  return '<script ' + MANAGED_MARKER + ' data-sha256="' + await digest(script) + '">' +
-    script + '</script>';
-}
-
 function authoredWords(model: CaptionModel) {
   const words: Array<{ id: string; text: string; start: number; end: number }> = [];
-  const wordIds = new Set<string>();
+  const ids = new Set<string>();
   for (const groupId of model.groupOrder) {
     const group = model.groups.get(groupId);
     if (!group || group.segmentIds.length === 0) {
@@ -50,12 +45,12 @@ function authoredWords(model: CaptionModel) {
     }
     for (const segmentId of group.segmentIds) {
       const segment = model.segments.get(segmentId);
-      if (!segment || !segment.wordId || wordIds.has(segment.wordId) ||
+      if (!segment || !segment.wordId || ids.has(segment.wordId) ||
           !Number.isFinite(segment.start) || !Number.isFinite(segment.end) ||
           segment.end <= segment.start) {
         throw new Error("MANAGED_CAPTION_WORD_IDENTITY_INVALID");
       }
-      wordIds.add(segment.wordId);
+      ids.add(segment.wordId);
       words.push({ id: segment.wordId, text: segment.text, start: segment.start, end: segment.end });
     }
   }
@@ -65,170 +60,134 @@ function authoredWords(model: CaptionModel) {
   return words;
 }
 
-function authoredGroupIds(script: string): string[] {
-  const ids: string[] = [];
-  for (const match of script.matchAll(/\.dataset\.captionGroupId = ([^\r\n;]+);/g)) {
-    try {
-      const id: unknown = JSON.parse(match[1]);
-      if (typeof id !== "string") throw new Error("invalid");
-      ids.push(id);
-    } catch {
-      throw new Error("MANAGED_CAPTION_GROUP_IDENTITY_INVALID");
-    }
-  }
-  return ids;
+function encodeModel(model: CaptionModel): string {
+  const dto = {
+    width: model.width, height: model.height, duration: model.duration,
+    segments: [...model.segments], groups: [...model.groups],
+    groupOrder: model.groupOrder, defaultAnimation: model.defaultAnimation,
+  };
+  return Array.from(new TextEncoder().encode(JSON.stringify(dto)),
+    (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/**
- * Read persisted transforms back from the *managed authored source*, rather
- * than trusting a browser-mutated iframe or a possibly stale sidecar.
- * Rebuilding the canonical script from the recovered transform values is a
- * fail-closed safeguard against overwriting customized animation JavaScript.
- */
-export async function hydrateManagedCaptionSource(
-  source: string,
-  model: CaptionModel,
-): Promise<{ managed: boolean; model: CaptionModel }> {
-  if (!source.includes(MANAGED_MARKER)) return { managed: false, model };
-  const matches = [...source.matchAll(SCRIPT_RE)];
-  if (matches.length !== 1 || source.split(MANAGED_MARKER).length !== 2) {
-    throw new Error("MANAGED_CAPTION_SOURCE_MARKER_INVALID");
+function decodeModel(hex: string): CaptionModel {
+  if (hex.length % 2 || hex.length > 2_000_000) {
+    throw new Error("MANAGED_CAPTION_MODEL_INVALID");
   }
-  const script = matches[0][3 - 1];
-  if (await digest(script) !== matches[0][1]) {
-    throw new Error("MANAGED_CAPTION_SOURCE_CHANGED_EXTERNALLY");
+  try {
+    const pairs = hex.match(/../g);
+    if (!pairs) throw new Error("missing encoded model");
+    const dto = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(
+      Uint8Array.from(pairs, (pair) => parseInt(pair, 16)),
+    ));
+    if (!dto || !Array.isArray(dto.segments) || !Array.isArray(dto.groups) ||
+        !Array.isArray(dto.groupOrder) || !dto.defaultAnimation ||
+        !Number.isFinite(dto.width) || !Number.isFinite(dto.height) ||
+        !Number.isFinite(dto.duration) || dto.width <= 0 || dto.height <= 0 ||
+        dto.duration <= 0) throw new Error("malformed");
+    const segments = new Map(dto.segments) as CaptionModel["segments"];
+    const groups = new Map(dto.groups) as CaptionModel["groups"];
+    if (segments.size !== dto.segments.length || groups.size !== dto.groups.length) {
+      throw new Error("duplicate entries");
+    }
+    return {
+      width: dto.width, height: dto.height, duration: dto.duration,
+      segments, groups, groupOrder: dto.groupOrder,
+      defaultAnimation: dto.defaultAnimation,
+    };
+  } catch {
+    throw new Error("MANAGED_CAPTION_MODEL_INVALID");
   }
-  const originalWords = extractTranscript(script);
-  const expectedWords = authoredWords(model);
-  if (originalWords.length !== expectedWords.length ||
-      originalWords.some((word, index) =>
-        word.id !== expectedWords[index].id ||
-        word.text !== expectedWords[index].text ||
-        word.start !== expectedWords[index].start ||
-        word.end !== expectedWords[index].end)) {
+}
+
+function sameIdentity(a: CaptionModel, b: CaptionModel): void {
+  if (a.width !== b.width || a.height !== b.height || a.duration !== b.duration ||
+      JSON.stringify(a.groupOrder) !== JSON.stringify(b.groupOrder)) {
+    throw new Error("MANAGED_CAPTION_COMPOSITION_IDENTITY_CHANGED");
+  }
+  const left = authoredWords(a), right = authoredWords(b);
+  if (left.length !== right.length || left.some((word, index) =>
+    word.id !== right[index].id ||
+    word.text !== right[index].text ||
+    word.start !== right[index].start ||
+    word.end !== right[index].end)) {
     throw new Error("MANAGED_CAPTION_WORD_IDENTITY_CHANGED");
   }
-  const groupIds = authoredGroupIds(script);
-  if (groupIds.length !== model.groupOrder.length ||
-      groupIds.some((id, index) => id !== model.groupOrder[index])) {
-    throw new Error("MANAGED_CAPTION_GROUP_IDENTITY_CHANGED");
+}
+
+async function readManaged(source: string): Promise<
+  { tag: string; script: string; model: CaptionModel; index: number } | null
+> {
+  if (!source.includes(MARKER)) return null;
+  const matches = [...source.matchAll(SCRIPT_RE)];
+  if (matches.length !== 1 || source.split(MARKER).length !== 2) {
+    throw new Error("MANAGED_CAPTION_SOURCE_MARKER_INVALID");
   }
+  const match = matches[0];
+  const [tag, checksum, modelHex, script] = match;
+  if (await digest(script) !== checksum) {
+    throw new Error("MANAGED_CAPTION_SOURCE_CHANGED_EXTERNALLY");
+  }
+  const model = decodeModel(modelHex);
+  authoredWords(model); // Reject missing, duplicate, non-finite IDs/timings.
+  if (generatedScript(model) !== script) {
+    throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
+  }
+  const transcript = extractTranscript(script);
+  const expected = authoredWords(model);
+  if (transcript.length !== expected.length || transcript.some((word, index) =>
+    word.id !== expected[index].id || word.text !== expected[index].text ||
+    word.start !== expected[index].start || word.end !== expected[index].end)) {
+    throw new Error("MANAGED_CAPTION_WORD_IDENTITY_CHANGED");
+  }
+  // A managed script belongs to one composition. Never update a user project
+  // whose container ID/size/duration disagree with its embedded model.
   if (!source.includes('data-composition-id="captions"') ||
       !source.includes('data-width="' + model.width + '"') ||
       !source.includes('data-height="' + model.height + '"') ||
       !source.includes('data-duration="' + model.duration + '"')) {
     throw new Error("MANAGED_CAPTION_COMPOSITION_IDENTITY_CHANGED");
   }
+  return { tag, script, model, index: match.index };
+}
 
-  const varToId = new Map<string, string>();
-  for (const match of script.matchAll(/^\s*(w_[a-zA-Z0-9_]+)\.id = ("(?:[^"\\]|\\.)*");\s*$/gm)) {
-    const id: unknown = JSON.parse(match[2]);
-    if (typeof id !== "string" || varToId.has(match[1])) {
-      throw new Error("MANAGED_CAPTION_WORD_IDENTITY_INVALID");
-    }
-    varToId.set(match[1], id);
-  }
-  const wrappers = new Map<string, string>();
-  for (const match of script.matchAll(/^\s*(wrap_[a-zA-Z0-9_]+)\.appendChild\((w_[a-zA-Z0-9_]+)\);\s*$/gm)) {
-    if (wrappers.has(match[1]) || !varToId.has(match[2])) {
-      throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-    }
-    wrappers.set(match[1], varToId.get(match[2])!);
-  }
-  const recovered = new Map<string, {
-    x: number; y: number; rotation: number; scaleX: number; scaleY: number;
-  }>();
-  let styledWrappers = 0;
-  for (const match of script.matchAll(/^\s*(wrap_[a-zA-Z0-9_]+)\.style\.transform = ("(?:[^"\\]|\\.)*");\s*$/gm)) {
-    const id = wrappers.get(match[1]);
-    if (!id || recovered.has(id)) {
-      throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-    }
-    const transform: unknown = JSON.parse(match[2]);
-    if (typeof transform !== "string") throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-    const literal = /^translate\(([^,]+)px,\s*([^)]+)px\) rotate\(([^)]+)deg\) scale\(([^,]+),\s*([^)]+)\)$/.exec(transform);
-    if (!literal) throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-    const values = literal.slice(1).map(Number);
-    if (!values.every(Number.isFinite)) throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-    recovered.set(id, {
-      x: values[0], y: values[1], rotation: values[2],
-      scaleX: values[3], scaleY: values[4],
-    });
-    styledWrappers++;
-  }
-  if (styledWrappers !== wrappers.size) {
-    throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-  }
-  const segments = new Map(model.segments);
-  for (const [segmentId, segment] of segments) {
-    const style = { ...segment.style };
-    // The current editor model may contain a newer, unsaved gesture. Derive
-    // the original native transform strictly from the source, not that edit.
-    delete style.x; delete style.y; delete style.rotation;
-    delete style.scaleX; delete style.scaleY;
-    const old = recovered.get(segment.wordId ?? "");
-    segments.set(segmentId, {
-      ...segment, style: old ? { ...style, ...old } : style,
-    });
-  }
-  const hydrated = { ...model, segments };
-  if (generatedScript(hydrated) !== script) {
-    throw new Error("MANAGED_CAPTION_SCRIPT_UNRECOGNIZED");
-  }
-  return { managed: true, model: hydrated };
+/** Produce an explicit managed marker; never add one to legacy source. */
+export async function managedCaptionScriptTag(model: CaptionModel): Promise<string> {
+  authoredWords(model);
+  const script = generatedScript(model);
+  return '<script ' + MARKER + ' data-sha256="' + await digest(script) +
+    '" data-model-hex="' + encodeModel(model) + '">' + script + '</script>';
 }
 
 /**
- * Replace exactly one SHA-verified generated caption script. The surrounding
- * project HTML, user CSS, fonts, audio, other scripts and timing are unchanged.
- * The marker is deliberately not added to existing legacy projects: those
- * require an explicit, separately verified source conversion.
+ * Persist a model edit into the versioned native HTML for the render/export
+ * pipeline. Preserve everything outside the identified script tag verbatim.
  */
 export async function rewriteManagedCaptionSource(
   source: string,
   model: CaptionModel,
 ): Promise<ManagedCaptionSourceResult> {
-  if (!source.includes(MANAGED_MARKER)) {
-    return { status: "unsupported", content: source };
-  }
-  const occurrences = [...source.matchAll(SCRIPT_RE)];
-  if (occurrences.length !== 1 || source.split(MANAGED_MARKER).length !== 2) {
-    throw new Error("MANAGED_CAPTION_SOURCE_MARKER_INVALID");
-  }
-  // Establish that the prior authored program is byte-for-byte a recognized
-  // generator output before replacing its script, even if its SHA marker was
-  // edited manually. User-authored animation code must not be flattened.
-  await hydrateManagedCaptionSource(source, model);
-  const [originalTag, hash, originalScript] = occurrences[0];
-  if (await digest(originalScript) !== hash) {
-    throw new Error("MANAGED_CAPTION_SOURCE_CHANGED_EXTERNALLY");
-  }
-  const originalWords = extractTranscript(originalScript);
-  const expectedWords = authoredWords(model);
-  if (originalWords.length !== expectedWords.length ||
-      originalWords.some((word, index) =>
-        word.id !== expectedWords[index].id ||
-        word.text !== expectedWords[index].text ||
-        word.start !== expectedWords[index].start ||
-        word.end !== expectedWords[index].end)) {
-    throw new Error("MANAGED_CAPTION_WORD_IDENTITY_CHANGED");
-  }
-  const groups = authoredGroupIds(originalScript);
-  if (groups.length !== model.groupOrder.length ||
-      groups.some((id, index) => id !== model.groupOrder[index])) {
-    throw new Error("MANAGED_CAPTION_GROUP_IDENTITY_CHANGED");
-  }
-  // A script from a different composition or dimension cannot silently
-  // replace the current author's file, even if some word IDs happen to match.
-  if (!source.includes('data-composition-id="captions"') ||
-      !source.includes('data-width="' + model.width + '"') ||
-      !source.includes('data-height="' + model.height + '"') ||
-      !source.includes('data-duration="' + model.duration + '"')) {
-    throw new Error("MANAGED_CAPTION_COMPOSITION_IDENTITY_CHANGED");
-  }
-  const updatedTag = await managedCaptionScriptTag(model);
-  if (originalTag === updatedTag) return { status: "unchanged", content: source };
-  const start = occurrences[0].index;
-  const updated = source.slice(0, start) + updatedTag + source.slice(start + originalTag.length);
-  return { status: "updated", content: updated };
+  const prior = await readManaged(source);
+  if (!prior) return { status: "unsupported", content: source };
+  sameIdentity(prior.model, model);
+  const tag = await managedCaptionScriptTag(model);
+  if (prior.tag === tag) return { status: "unchanged", content: source };
+  return {
+    status: "updated",
+    content: source.slice(0, prior.index) + tag + source.slice(prior.index + prior.tag.length),
+  };
+}
+
+/** Reopen exact saved authored geometry, independent of live GSAP animation. */
+export async function hydrateManagedCaptionSource(
+  source: string,
+  observed: CaptionModel,
+): Promise<{ managed: boolean; model: CaptionModel }> {
+  const prior = await readManaged(source);
+  if (!prior) return { managed: false, model: observed };
+  sameIdentity(prior.model, observed);
+  // Persisted model is the source of truth, including group-specific fonts,
+  // positions, animation parameters and stable word IDs. The observed DOM
+  // model can otherwise lose authored values when it samples computed styles.
+  return { managed: true, model: prior.model };
 }
