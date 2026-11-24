@@ -251,10 +251,24 @@ export function useCaptionSync(projectId: string | null) {
       }
 
       const newSegments = new Map(model.segments);
+      const seenWordIds = new Set<string>();
       for (const override of overrides) {
-        const segId =
-          (override.wordId ? segIdByWordId.get(override.wordId) : undefined) ??
-          allSegIds[override.wordIndex];
+        // A supplied stable word identity is authoritative. Falling back to a
+        // positional index when that identity is missing silently moves styles
+        // onto a different authored word after captions are edited/reordered.
+        // Preserve positional lookup ONLY for older identity-free sidecars.
+        if (override.wordId) {
+          if (seenWordIds.has(override.wordId)) {
+            throw new Error("duplicate authored caption word identity");
+          }
+          seenWordIds.add(override.wordId);
+        }
+        const segId = override.wordId
+          ? segIdByWordId.get(override.wordId)
+          : allSegIds[override.wordIndex];
+        if (override.wordId && !segId) {
+          throw new Error("authored caption word identity no longer exists");
+        }
         if (!segId) continue;
         const seg = newSegments.get(segId);
         if (!seg) continue;
