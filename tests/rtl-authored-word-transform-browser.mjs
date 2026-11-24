@@ -296,7 +296,12 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
     window.__pointerReceipts = [];
     for (const type of ['pointerdown','pointermove','pointerup','gotpointercapture','lostpointercapture']) {
       document.addEventListener(type, e => {
-        window.__pointerReceipts.push({ type, trusted:e.isTrusted, pointerId:e.pointerId });
+        window.__pointerReceipts.push({
+          type, trusted: e.isTrusted, pointerId: e.pointerId,
+          target: e.target?.getAttribute?.('data-caption-segment-id') ??
+            e.target?.closest?.('[data-caption-segment-id]')?.getAttribute('data-caption-segment-id') ?? null,
+          buttons: e.buttons, x: e.clientX, y: e.clientY,
+        });
       }, true);
     }
     window.__overlayRoot = await window.RtlNativeCaptionTransform.mountPointerOverlay(frame, css);
@@ -342,13 +347,26 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   await beginDrag();
   await pointerPage.mouse.up();
   const committed = await snapshot();
-  assert.equal(committed.past, baseline.past + 1, 'Completed drag did not create one history entry');
+  const events = await pointerPage.evaluate(() => window.__pointerReceipts);
+  // A genuine product or harness failure must retain enough evidence to
+  // distinguish lost capture, a rerender, and a missing durable history write.
+  if (committed.past !== baseline.past + 1) {
+    const failure = {
+      reason: 'Completed trusted drag did not persist exactly one undo entry',
+      baseline, provisional, cancelled, committed, events, pageErrors: pointerPageErrors,
+    };
+    if (outputDir) {
+      await pointerPage.screenshot({ path: path.join(outputDir, 'rtl-trusted-caption-pointer-failure.png') });
+      await writeFile(path.join(outputDir, 'rtl-trusted-caption-pointer-failure.json'),
+        JSON.stringify(failure, null, 2) + '\n');
+    }
+    assert.fail(JSON.stringify(failure));
+  }
   assert.deepEqual(committed.segments[0].style, { x:24, y:-12, scaleX:1, scaleY:1, rotation:0 });
   assert.deepEqual(committed.segments[1], baseline.segments[1], 'Dragging Hebrew changed the Latin sibling');
   assert.deepEqual(committed.dom[1], baseline.dom[1], 'Dragging Hebrew mutated the Latin DOM sibling');
   assert.equal(committed.dom[0].markup, baseline.dom[0].markup, 'Drag rewrote the authored Hebrew word');
   assert.deepEqual(committed.dom[0].transform, { x:24, y:-12, scale:1, scaleY:1, rotation:0 });
-  const events = await pointerPage.evaluate(() => window.__pointerReceipts);
   assert(events.every(e => e.trusted), 'Pointer fixture received synthetic events');
   assert(events.some(e => e.type === 'gotpointercapture'), 'Browser never granted actual pointer capture');
   assert(events.some(e => e.type === 'lostpointercapture'), 'Browser never released actual pointer capture');
