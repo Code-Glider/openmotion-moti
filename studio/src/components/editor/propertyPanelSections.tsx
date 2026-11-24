@@ -73,6 +73,7 @@ export function TextAreaField({
   boxed,
   direction,
   language,
+  fontFamily,
   onCommit,
 }: {
   label: string;
@@ -84,6 +85,7 @@ export function TextAreaField({
   /** Presentation only: the selected field's resolved paragraph direction. */
   direction?: "ltr" | "rtl";
   language?: string;
+  fontFamily?: string;
   onCommit: (nextValue: string) => void;
 }) {
   const { t } = useI18n();
@@ -202,7 +204,7 @@ export function TextAreaField({
           aria-label={t(label)}
           dir={direction}
           lang={language || undefined}
-          style={boxed || direction ? { ...(boxed ? { outline: "none" } : {}), ...(direction ? { textAlign: "start" } : {}) } : undefined}
+          style={boxed || direction || fontFamily ? { ...(boxed ? { outline: "none" } : {}), ...(direction ? { textAlign: "start" } : {}), ...(fontFamily ? { fontFamily } : {}) } : undefined}
           onFocus={handleFocus}
           onChange={handleChange}
           onCompositionStart={handleCompositionStart}

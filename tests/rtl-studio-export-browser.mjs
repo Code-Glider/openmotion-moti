@@ -154,6 +154,15 @@ async function findStudioFrame(page, copy) {
 // live textarea before clicking, so a pre-input detach can safely recover
 // WITHOUT retrying a rejected character insertion or mutating DOM values.
 async function replaceStudioInspectorText(page, before, after, script, language) {
+  // The project font is loaded in Studio's outer document, under a private
+  // inspector alias. A successful preview font load alone cannot prove this.
+  await page.waitForFunction(expected => {
+    const input = document.querySelector('[data-flat-group-open="true"] textarea');
+    if (!(input instanceof HTMLTextAreaElement) || input.value !== expected) return false;
+    const family = getComputedStyle(input).fontFamily.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+    return family.startsWith('OpenMotionInspectorFont-') &&
+      Array.from(document.fonts).some(face => face.family.replace(/^['"]|['"]$/g, '') === family && face.status === 'loaded');
+  }, { timeout: 15_000 }, before);
   await page.locator('[data-flat-group-open="true"] textarea')
     .filter(element => element.isConnected)
     .setTimeout(15_000)
@@ -177,6 +186,7 @@ async function replaceStudioInspectorText(page, before, after, script, language)
   assert.equal(selected.presentation.direction, 'rtl', script + ': computed inspector direction is not RTL');
   assert.equal(selected.presentation.lang, language, script + ': native inspector language differs from authored language');
   assert.equal(selected.presentation.textAlign, 'start', script + ': inspector alignment is not logical start');
+  assert.match(selected.presentation.fontFamily, /OpenMotionInspectorFont-/, script + ': project font was not applied to the native inspector');
   assert.deepEqual([selected.start, selected.end], [0, selected.length], script + ': logical selection did not span original text');
   // Record native browser events without mutating the React field or Studio
   // store. A correct-looking textarea alone did not prove an Arabic WOFF1

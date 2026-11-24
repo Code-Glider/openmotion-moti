@@ -14,6 +14,7 @@ import type { ImportedFontAsset, FontImportInput } from "./fontAssets";
 import { normalizeTextMetricValue } from "./propertyPanelHelpers";
 import { ColorField } from "./propertyPanelColor";
 import { FontFamilyField } from "./propertyPanelFont";
+import { useInspectorProjectFont } from "./useInspectorProjectFont";
 import { PromotableControl } from "./PromotableControl";
 import { FlatRow, FlatSegmentedRow } from "./propertyPanelFlatPrimitives";
 import {
@@ -52,6 +53,7 @@ function FlatTextFieldEditor({
   field,
   styles,
   fontAssets,
+  previewDocument,
   onImportFonts,
   onSetText,
   onSetTextFieldStyle,
@@ -62,6 +64,7 @@ function FlatTextFieldEditor({
   field: DomEditSelection["textFields"][number];
   styles: Record<string, string>;
   fontAssets: ImportedFontAsset[];
+  previewDocument?: Document;
   onImportFonts?: (files: FontImportInput) => Promise<ImportedFontAsset[]>;
   onSetText: (value: string, fieldKey?: string) => void;
   onSetTextFieldStyle: (fieldKey: string, property: string, value: string) => void;
@@ -84,6 +87,9 @@ function FlatTextFieldEditor({
   const fontStyle = getTextStyleValue(field, styles, "font-style", "normal");
   const htmlDir = field.attributes.find((attr) => attr.name === "dir")?.value ?? "";
   const htmlLanguage = field.attributes.find((attr) => attr.name === "lang")?.value ?? "";
+  const inspectorFont = useInspectorProjectFont(
+    previewDocument, field.computedStyles["font-family"] || styles["font-family"] || "", fontAssets,
+  );
   const [languageError, setLanguageError] = useState(false);
   useEffect(() => setLanguageError(false), [field.key, htmlLanguage]);
 
@@ -98,6 +104,7 @@ function FlatTextFieldEditor({
             value={value ?? field.value}
             direction={direction}
             language={htmlLanguage}
+            fontFamily={inspectorFont}
             autoFocus={autoFocus}
             onCommit={onCommit ?? ((next) => onSetText(next, field.key))}
           />
@@ -385,6 +392,7 @@ export function FlatTextSection({
           field={activeField}
           styles={styles}
           fontAssets={fontAssets}
+          previewDocument={element.element?.ownerDocument}
           onImportFonts={onImportFonts}
           onSetText={onSetText}
           onSetTextFieldStyle={onSetTextFieldStyle}
@@ -401,6 +409,7 @@ export function FlatTextSection({
         field={activeField}
         styles={styles}
         fontAssets={fontAssets}
+        previewDocument={element.element?.ownerDocument}
         onImportFonts={onImportFonts}
         onSetText={onSetText}
         onSetTextFieldStyle={onSetTextFieldStyle}
