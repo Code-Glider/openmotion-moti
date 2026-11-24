@@ -99,7 +99,7 @@ it("re-runs caption activation on the promoted iframe's document", () => {
   }
 });
 
-it("discovers an explicit managed captions root inside index.html without matching a legacy project", () => {
+it("discovers a managed index.html caption root added after preview mount without a runtime message", async () => {
   const host = document.createElement("div");
   const managed = document.createElement("iframe");
   const other = document.createElement("iframe");
@@ -136,8 +136,9 @@ it("discovers an explicit managed captions root inside index.html without matchi
     managedRoot.className = "caption-group";
     managedRoot.setAttribute("data-composition-id", "captions");
     managed.contentDocument!.body.append(managedRoot);
-    emit();
-    expect(fetchMock).toHaveBeenCalledOnce();
+    // Neither a synthetic hf-preview state event nor a mocked hook/store
+    // write is allowed to stand in for actual iframe DOM readiness.
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     expect(String(fetchMock.mock.calls[0][0])).toContain("index.html");
   } finally {
     act(() => root.unmount());
