@@ -242,9 +242,34 @@ try {
   assert(box && box.width > 120, 'Studio seek slider has no physical geometry');
   const inset = Math.min(14, box.height / 2);
   await slider.click({ offset: { x: inset + (box.width - 2 * inset) * at / max, y: box.height / 2 } });
-  await page.waitForFunction(() =>
-    document.querySelector('[data-caption-segment-id="segment-0"]')?.getBoundingClientRect().width > 24,
-    { timeout: 30_000 });
+  try {
+    await page.waitForFunction(() =>
+      document.querySelector('[data-caption-segment-id="segment-0"]')?.getBoundingClientRect().width > 24,
+      { timeout: 18_000 });
+  } catch (cause) {
+    const studio = await page.evaluate(() => ({
+      selectedCaptionHits: [...document.querySelectorAll('[data-caption-segment-id]')].map(el => ({
+        id: el.getAttribute('data-caption-segment-id'), width: el.getBoundingClientRect().width,
+      })),
+      captionVisibility: document.querySelector('button[aria-label="Caption visibility"]')?.textContent,
+      seek: document.querySelector('input[data-studio-control="seek-preview"]')?.value,
+      timelineCount: document.querySelector('[data-timeline-element-count]')?.getAttribute('data-timeline-element-count'),
+      selection: document.querySelector('[data-caption-edit-mode]')?.getAttribute('data-caption-edit-mode'),
+    }));
+    const iframeState = await Promise.all(page.frames().map(async frame => {
+      try {
+        return await frame.evaluate(() => ({
+          url: location.href,
+          captionGroups: document.querySelectorAll('.caption-group').length,
+          exactHebrewWords: document.querySelectorAll('#w-he').length,
+          captionRoot: document.querySelector('[data-composition-id="captions"]')?.outerHTML.slice(0, 180),
+        }));
+      } catch (error) { return { error: String(error) }; }
+    }));
+    result.activationFailure = { studio, iframeState };
+    throw new Error('Native managed captions did not activate in real Studio: ' +
+      JSON.stringify(result.activationFailure), { cause });
+  }
   const hit = '[data-caption-segment-id="segment-0"]';
   await page.click(hit);
   await page.waitForFunction(sel => document.querySelector(sel)?.style.cursor === 'move',
