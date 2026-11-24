@@ -122,7 +122,9 @@ async function sendHistory(direction) {
 async function directCapture(origin, id, label) {
   const p = await browser.newPage();
   try {
-    await p.setViewport({ width, height, deviceScaleFactor: 1 });
+    // The raw project-preview route retains an 8px browser body margin.
+    // Screenshot the *composition* itself, not the surrounding white page.
+    await p.setViewport({ width: width + 40, height: height + 40, deviceScaleFactor: 1 });
     const url = new URL('/api/projects/' + encodeURIComponent(id) + '/preview/index.html', origin);
     await p.goto(url.href, { waitUntil: 'load' });
     await p.waitForSelector('#w-he');
@@ -143,7 +145,13 @@ async function directCapture(origin, id, label) {
     assert.equal(dom.he.text, 'שָׁלוֹם');
     assert.equal(dom.en.text, 'ABC-123');
     const filename = path.join(output, label + '.png');
-    await p.screenshot({ path: filename, clip: { x: 0, y: 0, width, height } });
+    const frame = await p.$eval('[data-composition-id="captions"]', el => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+    assert(Math.abs(frame.width - width) < 1 && Math.abs(frame.height - height) < 1,
+      'Raw native composition has unexpected pixel dimensions: ' + JSON.stringify(frame));
+    await p.screenshot({ path: filename, clip: { x: frame.x, y: frame.y, width, height } });
     const c = geometry(decode(filename));
     return { file: filename, dom, ink: c, sha256: sha(await readFile(filename)) };
   } finally { await p.close(); }
@@ -196,8 +204,7 @@ try {
     '<script src="assets/gsap.min.js"></script><style>' +
     '@font-face{font-family:"RTL Managed Hebrew";src:url("' + fontPath('hebrew') + '") format("truetype")}' +
     '@font-face{font-family:"RTL Managed Latin";src:url("' + fontPath('latin') + '") format("truetype")}' +
-    css + 'html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden}' +
-    '[data-composition-id="captions"]{background:#18382f}</style></head><body>' +
+    css + '[data-composition-id="captions"]{background:#18382f}</style></head><body>' +
     '<div id="caption-composition" data-composition-id="captions" data-width="640" data-height="360" ' +
     'data-start="0" data-duration="2" data-fps="10"><div id="captions-container"></div></div>' +
     nativeTag + '</body></html>';
@@ -221,6 +228,12 @@ try {
   const baseline = await directCapture(previewUrl, projectId, 'rtl-native-caption-before-drag');
   check('Real Chromium baseline contains isolated Hebrew and Latin font glyph rows', baseline);
   page = await browser.newPage();
+  result.nativeFileRequests = [];
+  page.on('response', response => {
+    if (response.url().includes('/files/')) {
+      result.nativeFileRequests.push({ status: response.status(), url: response.url() });
+    }
+  });
   page.on('pageerror', issue => { result.pageErrors ??= []; result.pageErrors.push(issue.message); });
   await page.setViewport({ width: 1440, height: 960, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument(() => localStorage.setItem('motion.studio.locale', 'en'));
@@ -235,9 +248,39 @@ try {
   assert(box && box.width > 120, 'Studio seek slider has no physical geometry');
   const inset = Math.min(14, box.height / 2);
   await slider.click({ offset: { x: inset + (box.width - 2 * inset) * at / max, y: box.height / 2 } });
-  await page.waitForFunction(() =>
-    document.querySelector('[data-caption-segment-id="segment-0"]')?.getBoundingClientRect().width > 24,
-    { timeout: 30_000 });
+  try {
+    await page.waitForFunction(() =>
+      document.querySelector('[data-caption-segment-id="segment-0"]')?.getBoundingClientRect().width > 24,
+      { timeout: 18_000 });
+  } catch (cause) {
+    const studio = await page.evaluate(() => ({
+      editModeIndicatorVisible: document.body.textContent?.includes('Editing captions') ?? false,
+      savedSourceErrorVisible: document.body.textContent?.includes('Caption source could not be verified') ?? false,
+      selectedCaptionHits: [...document.querySelectorAll('[data-caption-segment-id]')].map(el => ({
+        id: el.getAttribute('data-caption-segment-id'), width: el.getBoundingClientRect().width,
+      })),
+      captionVisibility: document.querySelector('button[aria-label="Caption visibility"]')?.textContent,
+      seek: document.querySelector('input[data-studio-control="seek-preview"]')?.value,
+      timelineCount: document.querySelector('[data-timeline-element-count]')?.getAttribute('data-timeline-element-count'),
+      selection: document.querySelector('[data-caption-edit-mode]')?.getAttribute('data-caption-edit-mode'),
+    }));
+    const iframeState = await Promise.all(page.frames().map(async frame => {
+      try {
+        return await frame.evaluate(() => ({
+          url: location.href,
+          captionGroups: [...document.querySelectorAll('.caption-group')].map(el => ({
+            id: el.dataset.captionGroupId, opacity: getComputedStyle(el).opacity,
+            width: el.getBoundingClientRect().width, text: el.textContent,
+          })),
+          exactHebrewWords: document.querySelectorAll('#w-he').length,
+          captionRoot: document.querySelector('[data-composition-id="captions"]')?.outerHTML.slice(0, 180),
+        }));
+      } catch (error) { return { error: String(error) }; }
+    }));
+    result.activationFailure = { studio, iframeState, nativeFileRequests: result.nativeFileRequests, pageErrors: result.pageErrors };
+    throw new Error('Native managed captions did not activate in real Studio: ' +
+      JSON.stringify(result.activationFailure), { cause });
+  }
   const hit = '[data-caption-segment-id="segment-0"]';
   await page.click(hit);
   await page.waitForFunction(sel => document.querySelector(sel)?.style.cursor === 'move',

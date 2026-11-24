@@ -108,6 +108,18 @@ export function useCaptionDetection({
         }
       }
 
+      // A project's root index.html can itself be an explicitly managed
+      // caption composition. The composition-to-file map is not guaranteed
+      // to include its root ID, unlike nested caption assets. Only fall back
+      // to the active root after verifying the exact caption composition ID;
+      // the fetched source must also opt into our SHA-managed format.
+      const managedRootFallback = !captionSrcPath
+        && Boolean(doc.querySelector('[data-composition-id="captions"]'));
+      // Top-level compositions can have activeCompPath === null until the
+      // author drills into a nested file. The authored root source is
+      // index.html, but it must explicitly opt into our managed format before
+      // a caption editor may claim ownership of it.
+      if (managedRootFallback) captionSrcPath = activeCompPath || "index.html";
       if (!captionSrcPath) return;
 
       activating = true;
@@ -116,7 +128,18 @@ export function useCaptionDetection({
         .then((r) => r.json())
         .then(async (data: { content?: string }) => {
           if (!data.content || !doc || !win || useCaptionStore.getState().isEditMode) return;
-          const root = doc.querySelector("[data-composition-id]");
+          if (managedRootFallback &&
+              !data.content.includes('data-openmotion-caption-source="v1"')) return;
+          // A full Studio player document can contain several composition
+          // wrappers. For a managed captions source, sample dimensions from
+          // its *exact authored captions root*, not the first unrelated
+          // player/preview composition; otherwise native-source identity
+          // verification rejects the correct file with a false size mismatch.
+          const managedSource = data.content.includes('data-openmotion-caption-source="v1"');
+          const root = managedSource
+            ? doc.querySelector('[data-composition-id="captions"]')
+            : doc.querySelector("[data-composition-id]");
+          if (managedSource && !root) return;
           const w = parseInt(root?.getAttribute("data-width") ?? "1920", 10);
           const h = parseInt(root?.getAttribute("data-height") ?? "1080", 10);
           const dur = parseFloat(root?.getAttribute("data-duration") ?? "0");
@@ -155,10 +178,38 @@ export function useCaptionDetection({
       }
     };
 
+    // The iframe can finish its initial script after this effect's first
+    // read, without sending a later trusted hf-preview state message. Observe
+    // the live document only until it exposes its first caption group; this
+    // cannot rewrite source or activate an unrelated, non-caption project.
+    let observedDocument: MutationObserver | null = null;
+    const previewFrame = previewIframeRef.current;
+    const observePreview = () => {
+      observedDocument?.disconnect();
+      observedDocument = null;
+      let current: Document | null = null;
+      try { current = previewIframeRef.current?.contentDocument ?? null; }
+      catch { return; }
+      if (!current?.documentElement) return;
+      if (current.querySelector(".caption-group")) {
+        tryActivateCaptions();
+        return;
+      }
+      observedDocument = new MutationObserver(() => {
+        if (!current?.querySelector(".caption-group")) return;
+        observedDocument?.disconnect();
+        observedDocument = null;
+        tryActivateCaptions();
+      });
+      observedDocument.observe(current.documentElement, { childList: true, subtree: true });
+    };
     window.addEventListener("message", handleMessage);
-    tryActivateCaptions();
+    previewFrame?.addEventListener("load", observePreview);
+    observePreview();
 
     return () => {
+      observedDocument?.disconnect();
+      previewFrame?.removeEventListener("load", observePreview);
       window.removeEventListener("message", handleMessage);
     };
   }, [activeCompPath, projectId, compIdToSrc, captionSync, previewIframeRef, livePreviewIframe]);

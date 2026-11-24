@@ -68,7 +68,7 @@ function mount(projectId = "p") {
   return api;
 }
 
-it("writes the exact RTL word transform into version-guarded native source after sidecar", async () => {
+it("writes managed RTL native source without an unconditional legacy sidecar PUT", async () => {
   const original = await fixture();
   const model = buildModel();
   model.segments.get("segment-0")!.style = { x: 24, y: -12, rotation: 8, scaleX: 1.4, scaleY: 0.8 };
@@ -84,9 +84,9 @@ it("writes the exact RTL word transform into version-guarded native source after
   expect(content).toContain('translate(24px, -12px) rotate(8deg) scale(1.4, 0.8)');
   expect(content).toContain("שָׁלוֹם");
   expect(content).toContain("ABC-123");
-  expect(io.sidecar).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(io.sidecar.mock.calls[0][1].body)[0])
-    .toMatchObject({ wordId: "he-1", x: 24, y: -12, rotation: 8, scaleX: 1.4, scaleY: 0.8 });
+  // The legacy PUT lacks a version precondition. The real API responds 428
+  // and blocked every managed native save, so it must not run here.
+  expect(io.sidecar).not.toHaveBeenCalled();
   await vi.waitFor(() => expect(useCaptionStore.getState().syncError).toBeNull());
 });
 
@@ -97,9 +97,9 @@ it("does not overwrite unmarked legacy caption HTML", async () => {
   io.nativeRead.mockResolvedValue(legacy);
   const api = mount();
   act(() => api.save());
-  await vi.waitFor(() => expect(io.nativeRead).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(io.sidecar).toHaveBeenCalledOnce());
+  expect(io.nativeRead).toHaveBeenCalledOnce();
   expect(io.nativeWrite).not.toHaveBeenCalled();
-  expect(io.sidecar).toHaveBeenCalledTimes(1);
   expect(useCaptionStore.getState().syncError).toBeNull();
 });
 
@@ -115,18 +115,19 @@ it("does not conceal native ETag conflicts behind a successful sidecar write", a
   await vi.waitFor(() =>
     expect(useCaptionStore.getState().syncError).toBe("Caption changes couldn't be saved"));
   expect(io.nativeWrite).toHaveBeenCalledOnce();
-  expect(io.sidecar).toHaveBeenCalledOnce();
+  expect(io.sidecar).not.toHaveBeenCalled();
 });
 
-it("serializes drag, undo and redo snapshots even when the first sidecar response is delayed", async () => {
+it("serializes drag, undo and redo snapshots even when the first guarded native write is delayed", async () => {
   const original = await fixture();
   let persisted = original;
-  let releaseFirst!: (response: { ok: boolean }) => void;
-  io.sidecar.mockImplementationOnce(() => new Promise<{ ok: boolean }>((resolve) => {
-    releaseFirst = resolve;
-  }));
+  let releaseFirst!: () => void;
+  let writeCount = 0;
   io.nativeRead.mockImplementation(async () => persisted);
   io.nativeWrite.mockImplementation(async (_path: string, content: string, expected: string) => {
+    if (++writeCount === 1) {
+      await new Promise<void>((resolve) => { releaseFirst = resolve; });
+    }
     // The next read must observe the actual preceding write, not an invented
     // version of the file. Model an ETag conflict if that invariant is broken.
     expect(expected).toBe(persisted);
@@ -138,7 +139,7 @@ it("serializes drag, undo and redo snapshots even when the first sidecar respons
   useCaptionStore.getState().setSourceFilePath("captions.html");
   const api = mount();
   act(() => api.save());
-  await vi.waitFor(() => expect(io.sidecar).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(io.nativeWrite).toHaveBeenCalledOnce());
   act(() => {
     useCaptionStore.getState().setModel(buildModel());
     api.save();
@@ -146,11 +147,12 @@ it("serializes drag, undo and redo snapshots even when the first sidecar respons
     api.save();
   });
   // Allow promise continuations to run; the two later transactions must
-  // remain behind the delayed sidecar rather than reaching native HTML.
+  // remain behind the delayed native write instead of reading stale HTML.
   await act(async () => { await Promise.resolve(); });
-  expect(io.sidecar).toHaveBeenCalledTimes(1);
-  expect(io.nativeRead).not.toHaveBeenCalled();
-  await act(async () => { releaseFirst({ ok: true }); });
+  expect(io.nativeRead).toHaveBeenCalledOnce();
+  expect(io.nativeWrite).toHaveBeenCalledOnce();
+  expect(io.sidecar).not.toHaveBeenCalled();
+  await act(async () => { releaseFirst(); });
   await vi.waitFor(() => expect(io.nativeWrite).toHaveBeenCalledTimes(3));
   const [, first, firstBase] = io.nativeWrite.mock.calls[0];
   const [, undone, undoBase] = io.nativeWrite.mock.calls[1];
@@ -162,11 +164,7 @@ it("serializes drag, undo and redo snapshots even when the first sidecar respons
   expect(redoBase).toBe(undone);
   expect(redone).toBe(first);
   expect(persisted).toBe(first);
-  expect(io.sidecar.mock.calls.map(([, init]) => JSON.parse(init.body))).toEqual([
-    [{ wordIndex: 0, wordId: "he-1", x: 24, y: -12 }],
-    [],
-    [{ wordIndex: 0, wordId: "he-1", x: 24, y: -12 }],
-  ]);
+  expect(io.sidecar).not.toHaveBeenCalled();
   expect(useCaptionStore.getState().syncError).toBeNull();
 });
 
