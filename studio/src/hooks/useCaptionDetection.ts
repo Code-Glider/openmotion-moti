@@ -5,6 +5,7 @@ import { useCaptionStore } from "../captions/store";
 import { acceptStudioRuntimeMessage } from "../player/lib/runtimeProtocol";
 import { useCaptionSync } from "../captions/hooks/useCaptionSync";
 import { parseCaptionComposition } from "../captions/parser";
+import { hydrateManagedCaptionSource } from "../captions/nativeSource";
 import { studioApiFetch } from "../utils/studioApiFetch";
 
 interface UseCaptionDetectionParams {
@@ -113,7 +114,7 @@ export function useCaptionDetection({
       const srcPath = captionSrcPath;
       studioApiFetch(buildProjectApiPath(projectId, `/files/${encodeURIComponent(srcPath)}`))
         .then((r) => r.json())
-        .then((data: { content?: string }) => {
+        .then(async (data: { content?: string }) => {
           if (!data.content || !doc || !win || useCaptionStore.getState().isEditMode) return;
           const root = doc.querySelector("[data-composition-id]");
           const w = parseInt(root?.getAttribute("data-width") ?? "1920", 10);
@@ -121,13 +122,25 @@ export function useCaptionDetection({
           const dur = parseFloat(root?.getAttribute("data-duration") ?? "0");
           const model = parseCaptionComposition(doc, win, data.content, w, h, dur);
           if (!model) return;
+          // Managed caption scripts are the native-render source of truth.
+          // Verify their hash and canonical authored word IDs, and hydrate
+          // saved wrapper transforms before enabling editing. The legacy
+          // sidecar remains the fallback ONLY for unmarked custom sources.
+          const hydrated = await hydrateManagedCaptionSource(data.content, model);
+          if (useCaptionStore.getState().isEditMode) return;
           const store = useCaptionStore.getState();
-          store.setModel(model);
+          store.setModel(hydrated.model);
           store.setSourceFilePath(srcPath);
           store.setEditMode(true);
-          captionSync.loadOverrides();
+          if (!hydrated.managed) void captionSync.loadOverrides();
         })
-        .catch(() => {})
+        .catch((error: unknown) => {
+          // A corrupted managed source must fail closed, not reopen an editor
+          // with empty offsets that would overwrite the authored native file.
+          useCaptionStore.getState().setSyncError(
+            "Caption source could not be verified: " + String(error),
+          );
+        })
         .finally(() => {
           activating = false;
         });
