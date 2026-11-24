@@ -86,6 +86,10 @@ export function useCaptionSync(projectId: string | null) {
   // Bumped on every new edit: a PUT's success may only clear the pending flag
   // when no newer edit re-armed the debounce while it was in flight.
   const editSeqRef = useRef(0);
+  // Sidecar and native HTML are one ordered save transaction. In particular,
+  // an older sidecar response must never begin a native read/write after a
+  // newer undo/redo snapshot has already reached disk.
+  const saveTailRef = useRef<Promise<void>>(Promise.resolve());
 
   const save = useCallback(() => {
     const state = useCaptionStore.getState();
@@ -102,20 +106,28 @@ export function useCaptionSync(projectId: string | null) {
       return;
     }
 
-    const seqAtSave = editSeqRef.current;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    pendingRef.current = true;
+    const seqAtSave = ++editSeqRef.current;
     const modelAtSave = state.model;
     const sourcePathAtSave = state.sourceFilePath;
     const overrides = buildOverrides(modelAtSave);
 
-    studioApiFetch(
-      buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
-      {
-        method: "PUT",
-        headers: { "Content-Type": "text/plain", ...studioWriteHeaders() },
-        body: JSON.stringify(overrides, null, 2),
-      },
-    )
-      .then(async (res) => {
+    const ownsSaveStatus = () => editSeqRef.current === seqAtSave &&
+      projectIdRef.current === pid && useCaptionStore.getState().sourceFilePath === sourcePathAtSave;
+    const persist = async () => {
+      try {
+        const res = await studioApiFetch(
+          buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
+          {
+            method: "PUT",
+            headers: { "Content-Type": "text/plain", ...studioWriteHeaders() },
+            body: JSON.stringify(overrides, null, 2),
+          },
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         // The sidecar is a compatibility layer, not a native-render source.
         // Only an explicitly SHA-managed generated caption composition can
@@ -130,16 +142,23 @@ export function useCaptionSync(projectId: string | null) {
         }
         // Only an acknowledged native write (where applicable) clears the
         // pending bit. An If-Match conflict must stay visible and retryable.
-        if (editSeqRef.current === seqAtSave) pendingRef.current = false;
-        const s = useCaptionStore.getState();
-        if (s.syncError) s.setSyncError(null);
-      })
-      .catch((error: unknown) => {
+        if (ownsSaveStatus()) {
+          pendingRef.current = false;
+          const s = useCaptionStore.getState();
+          if (s.syncError) s.setSyncError(null);
+        }
+      } catch (error: unknown) {
         // Caption auto-save is a data-loss path: surface it to the user, not
         // just telemetry. pendingRef stays true so beforeunload still warns.
         trackEvent("studio_caption_autosave_failed", { error: String(error) });
-        useCaptionStore.getState().setSyncError("Caption changes couldn't be saved");
-      });
+        if (ownsSaveStatus()) {
+          useCaptionStore.getState().setSyncError("Caption changes couldn't be saved");
+        }
+      }
+    };
+    // Keep the queue usable after an unexpected rejection. Each closure owns
+    // the model, path and project-scoped writer captured at enqueue time.
+    saveTailRef.current = saveTailRef.current.then(persist, persist);
   }, [readProjectFile, writeProjectFile]);
 
   // The project writer is scoped to the current project ID. The subscription
