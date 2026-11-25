@@ -274,3 +274,57 @@ it("refuses an explicit word ID shared by two authored model segments", async ()
   expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({});
   expect(io.nativeWrite).not.toHaveBeenCalled();
 });
+
+
+it.each([
+  { label: "empty explicit ID", row: { wordId: "", wordIndex: 0, x: 77 } },
+  { label: "whitespace explicit ID", row: { wordId: "   ", wordIndex: 0, x: 77 } },
+  { label: "null explicit ID", row: { wordId: null, wordIndex: 0, x: 77 } },
+  { label: "numeric explicit ID", row: { wordId: 123, wordIndex: 0, x: 77 } },
+  { label: "negative legacy index", row: { wordIndex: -1, x: 77 } },
+  { label: "fractional legacy index", row: { wordIndex: 0.5, x: 77 } },
+  { label: "out-of-range legacy index", row: { wordIndex: 200, x: 77 } },
+  { label: "string legacy index", row: { wordIndex: "0", x: 77 } },
+  { label: "null entry", row: null },
+])("atomically rejects $label without positional retargeting", async ({ row }) => {
+  const model = buildModel();
+  model.segments.get("segment-0")!.wordId = "authored-hebrew";
+  model.segments.get("segment-1")!.wordId = "authored-latin";
+  useCaptionStore.getState().setModel(model);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  const original = useCaptionStore.getState().model;
+  io.sidecar.mockResolvedValue({
+    ok: true,
+    json: async () => ({ content: JSON.stringify([
+      { wordId: "authored-latin", wordIndex: 1, x: 50 },
+      row,
+    ]) }),
+  });
+  const api = mount();
+  await act(async () => { await api.loadOverrides(); });
+  expect(useCaptionStore.getState().syncError).toMatch(/corrupt/);
+  expect(useCaptionStore.getState().model).toBe(original);
+  expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({});
+  expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({});
+  expect(io.nativeWrite).not.toHaveBeenCalled();
+});
+
+it("retains valid identity-free legacy index zero and stable-ID precedence", async () => {
+  const model = buildModel();
+  model.segments.get("segment-0")!.wordId = "authored-hebrew";
+  model.segments.get("segment-1")!.wordId = "authored-latin";
+  useCaptionStore.getState().setModel(model);
+  useCaptionStore.getState().setSourceFilePath("captions.html");
+  io.sidecar.mockResolvedValue({
+    ok: true,
+    json: async () => ({ content: JSON.stringify([
+      { wordIndex: 0, y: -8 },
+      { wordId: "authored-latin", wordIndex: 0, x: 17 },
+    ]) }),
+  });
+  const api = mount();
+  await act(async () => { await api.loadOverrides(); });
+  expect(useCaptionStore.getState().syncError).toBeNull();
+  expect(useCaptionStore.getState().model?.segments.get("segment-0")?.style).toEqual({ y: -8 });
+  expect(useCaptionStore.getState().model?.segments.get("segment-1")?.style).toEqual({ x: 17 });
+});
