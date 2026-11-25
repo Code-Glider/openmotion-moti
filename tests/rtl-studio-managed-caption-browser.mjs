@@ -9,6 +9,7 @@ import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { build } from 'esbuild';
+import { stampHfIdsInPlace } from '@hyperframes/parsers/hf-ids';
 import puppeteer from 'puppeteer-core';
 import { Client } from './shared-editor-client.mjs';
 import { closeFixtureEditor } from './fixtures.ts';
@@ -91,6 +92,7 @@ async function nodeSourceGenerator() {
   await writeFile(compiled, bundle.outputFiles[0].text);
   return createRequire(import.meta.url)(compiled);
 }
+let sourceReceiptCount = 0;
 async function waitSource(predicate, label) {
   for (let attempt = 0; attempt < 120; attempt++) {
     let current;
@@ -101,7 +103,15 @@ async function waitSource(predicate, label) {
       await sleep(200); continue;
     }
     const content = current.file?.content;
-    if (typeof content === 'string' && predicate(content)) return current;
+    if (typeof content === 'string' && predicate(content)) {
+      const name = 'native-source-' + String(++sourceReceiptCount).padStart(2, '0');
+      await writeFile(path.join(output, name + '.html'), content);
+      await writeFile(path.join(output, name + '.json'), JSON.stringify({
+        label, sourceSha256: sha(content), revision: current.revision,
+        versionId: current.currentVersionId, etag: current.file.etag ?? current.etag,
+      }, null, 2));
+      return current;
+    }
     await sleep(200);
   }
   throw Error('Real Studio native source did not reach ' + label);
@@ -241,6 +251,16 @@ try {
   await page.waitForSelector('[data-studio-control="playback"]:not(:disabled)', { timeout: 60_000 });
   const slider = await page.waitForSelector('input[data-studio-control="seek-preview"]:not(:disabled)',
     { timeout: 30_000 });
+  // Opening the native editor can persist deterministic element identities
+  // before the first gesture. Verify that boundary independently, then require
+  // byte-for-byte history replay against the source actually edited.
+  const openedSource = stampHfIdsInPlace(source);
+  assert.notEqual(openedSource, source, 'Fixture must exercise native editor ID initialization');
+  const openedBaseline = await waitSource(content => content === openedSource,
+    'native editor initialization preserves all source except deterministic element IDs');
+  check('Opening Studio persists exactly the expected native editor IDs', {
+    revision: openedBaseline.revision, sourceSha256: sha(openedSource),
+  });
   const max = await slider.evaluate(input => Number(input.max));
   assert(Math.abs(max - duration) < 0.15, 'Actual Studio did not load the managed two-second composition');
   await slider.evaluate(input => input.scrollIntoView({ block: 'center' }));
@@ -248,6 +268,15 @@ try {
   assert(box && box.width > 120, 'Studio seek slider has no physical geometry');
   const inset = Math.min(14, box.height / 2);
   await slider.click({ offset: { x: inset + (box.width - 2 * inset) * at / max, y: box.height / 2 } });
+  let seekTime = await slider.evaluate(input => input.valueAsNumber);
+  if (Math.abs(seekTime - at) > 0.08) {
+    await slider.focus();
+    for (let attempt = 0; attempt < 100 && Math.abs(seekTime - at) > 0.08; attempt++) {
+      await page.keyboard.press(seekTime < at ? 'ArrowRight' : 'ArrowLeft');
+      seekTime = await slider.evaluate(input => input.valueAsNumber);
+    }
+  }
+  assert(Math.abs(seekTime - at) <= 0.08, 'Real Studio transport did not seek to the caption fixture time');
   try {
     await page.waitForFunction(() =>
       document.querySelector('[data-caption-segment-id="segment-0"]')?.getBoundingClientRect().width > 24,
@@ -356,7 +385,7 @@ try {
   await sendHistory('undo');
   const undone = await waitSource(content => !movedOffset(content),
     'second keyboard Undo restores original native word geometry');
-  assert.equal(undone.file.content, source,
+  assert.equal(undone.file.content, openedBaseline.file.content,
     'Second Undo failed to restore exact original native project source bytes');
   check('Real Studio second Undo reverses first pointer gesture', {
     revision: undone.revision, sourceSha256: sha(undone.file.content),
