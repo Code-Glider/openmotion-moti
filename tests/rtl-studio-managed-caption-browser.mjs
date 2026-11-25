@@ -470,9 +470,13 @@ try {
   // in-memory authoring preview. Mid-interval samples deliberately avoid the
   // default 0.2-second fades; animated in/out parity is a separate release gate.
   // These new checks add frames without weakening the original t=0.8 bounds.
+  // Explicitly open the reimported project's own preview instead of assuming
+  // the original project's preview server also serves a new project ID.
+  const restoredPreview = await client.call('openmotion_open_preview', { projectId: restoredId });
+  const restoredOrigin = restoredPreview.serverUrl || new URL(restoredPreview.previewUrl).origin;
   const temporalParity = [];
   for (const seconds of [0.4, 1.2]) {
-    const captured = await directCapture(previewUrl, restoredId,
+    const captured = await directCapture(restoredOrigin, restoredId,
       'rtl-native-caption-reimported-' + String(seconds).replace('.', '-'), seconds);
     const decodedAtTime = geometry(decode(mp4, seconds));
     const scriptParity = {};
