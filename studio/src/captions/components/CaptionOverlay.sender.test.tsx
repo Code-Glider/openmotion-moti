@@ -293,6 +293,7 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
   let clock = 100_000;
   vi.spyOn(Date, "now").mockImplementation(() => clock);
   const root = createRoot(host);
+  const iframeRef = { current: iframe };
   useCaptionStore.getState().reset();
   useCaptionStore.getState().setModel({
     width: 640, height: 360, duration: 3,
@@ -324,7 +325,7 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
   // Observing a pointer-down word must itself be non-destructive.
   const actualStyle = () => readWordTransformForGesture(words[1], iframe.contentWindow!);
   try {
-    act(() => root.render(<CaptionOverlay iframeRef={{ current: iframe }} />));
+    act(() => root.render(<CaptionOverlay iframeRef={iframeRef} />));
     flushLayout();
     expect(host.querySelectorAll("[data-caption-segment-id]")).toHaveLength(2);
     const hit = host.querySelector<HTMLElement>('[data-caption-segment-id="s1"]')!;
@@ -332,6 +333,12 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     act(() => hit.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect([...useCaptionStore.getState().selectedSegmentIds]).toEqual(["s1"]);
     capture(hit);
+    const stableOwner = host.querySelector<HTMLElement>(".absolute.inset-0.z-50")!;
+    expect(stableOwner).not.toBeNull();
+    const stableCapture = vi.fn();
+    Object.defineProperty(stableOwner, "setPointerCapture", {
+      configurable: true, value: stableCapture,
+    });
     // Clicking, stationary mousemove, a cancelled press and Escape before
     // movement must not create an anonymous wrapper or any transform history.
     // This is an authored two-word Hebrew/niqqud group with stable IDs, not a
@@ -397,6 +404,7 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     expect(useCaptionStore.getState().past).toHaveLength(idleHistoryLength);
     clock += 1000;
     pointer(hit, "pointerdown", 285, 105);
+    expect(stableCapture).toHaveBeenCalledWith(13);
     // A second touch cannot steal the gesture, translate the Hebrew word or
     // end the first pointer's pending transaction.
     pointer(hit, "pointerdown", 285, 105, 29);
@@ -405,9 +413,29 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     pointer(hit, "lostpointercapture", 400, 300, 29);
     expect(actualStyle()).toEqual({ x: 0, y: 0, scale: 1, scaleY: 1, rotation: 0 });
     expect(modelStyle()).toEqual({});
-    pointer(hit, "pointermove", 309, 117);
-    pointer(hit, "pointerup", 309, 117);
+    // Chromium may replace the hit during remeasurement. Move/up must still
+    // reach the stable capture owner even when the original hit is obsolete.
+    pointer(stableOwner, "pointermove", 309, 117);
+    pointer(stableOwner, "pointerup", 309, 117);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1, scaleY: 1, rotation: 0 });
+
+    // Two completed gestures within the nudge window must be separate history
+    // entries. The stable overlay capture owner survives hit-box remeasurement.
+    const historyAfterFirstDrag = useCaptionStore.getState().past.length;
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(stableOwner, "pointermove", 314, 117);
+    pointer(stableOwner, "pointerup", 314, 117);
+    expect(modelStyle()).toMatchObject({ x: 29, y: 12 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyAfterFirstDrag + 1);
+    act(() => {
+      const restored = useCaptionStore.getState().undo();
+      expect(restored).not.toBeNull();
+      applyCaptionModelToIframe(restored!);
+    });
+    expect(modelStyle()).toMatchObject({ x: 24, y: 12 });
+    expect(actualStyle()).toMatchObject({ x: 24, y: 12 });
+    expect(words.map(word => word.textContent)).toEqual(["שָׁלוֹם", "שָׁלוֹם"]);
+    expect(words[0].parentElement).toBe(group);
 
     // Work through the visible corner/rotation handles, not a direct store write.
     const scaleHandle = [...hit.querySelectorAll<HTMLElement>("div")]
@@ -471,16 +499,63 @@ it("dispatches caption pointer move, scale and rotate handlers on one stable Heb
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
     expect(useCaptionStore.getState().past).toHaveLength(historyLength);
 
-    // Esc during a new gesture restores the pre-drag transform and MUST NOT
-    // create an undo entry; a late pointerup must not re-commit cancelled work.
+    // Capture can be lost without a pointerup or pointercancel (e.g. the
+    // browser transfers capture to another element). This is not a commit.
     pointer(hit, "pointerdown", 309, 117);
     pointer(hit, "pointermove", 340, 137);
     expect(actualStyle().x).toBe(55);
-    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(hit, "lostpointercapture", 340, 137);
     pointer(hit, "pointerup", 340, 137);
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+
+    // Exiting edit mode mid-drag must restore the preview and release the
+    // transaction. Re-entry permits a new gesture on the same authored word.
+    pointer(hit, "pointerdown", 309, 117);
+    pointer(hit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    act(() => useCaptionStore.getState().setEditMode(false));
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+    act(() => useCaptionStore.getState().setEditMode(true));
+    flushLayout();
+    const remountedHit = host.querySelector<HTMLElement>('[data-caption-segment-id="s1"]')!;
+    expect(remountedHit).not.toBeNull();
+    capture(remountedHit);
+    pointer(remountedHit, "pointerdown", 309, 117);
+    pointer(remountedHit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    pointer(remountedHit, "pointercancel", 340, 137);
+    expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+    expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+
+    // Esc during a new gesture restores the pre-drag transform and MUST NOT
+    // create an undo entry; a late pointerup must not re-commit cancelled work.
+    pointer(remountedHit, "pointerdown", 309, 117);
+    pointer(remountedHit, "pointermove", 340, 137);
+    expect(actualStyle().x).toBe(55);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    pointer(remountedHit, "pointerup", 340, 137);
     expect(modelStyle()).toMatchObject({ x: 24, y: 12, scaleX: 1.5, scaleY: 1.5, rotation: 9 });
     expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
     expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+    // The live ref can change before the promotion effect runs. A late
+    // pointerup from the old document must not commit to the new preview.
+    const replacement = document.createElement("iframe");
+    document.body.append(replacement);
+    try {
+      pointer(remountedHit, "pointerdown", 309, 117);
+      pointer(remountedHit, "pointermove", 340, 137);
+      expect(actualStyle().x).toBe(55);
+      iframeRef.current = replacement;
+      pointer(remountedHit, "pointerup", 340, 137);
+      expect(actualStyle()).toEqual({ x: 24, y: 12, scale: 1.5, scaleY: 1.5, rotation: 9 });
+      expect(useCaptionStore.getState().past).toHaveLength(historyLength);
+      expect(replacement.contentDocument!.body.childElementCount).toBe(0);
+    } finally {
+      iframeRef.current = iframe;
+      replacement.remove();
+    }
     expect(useCaptionStore.getState().model!.segments.get("s0")!.style).toEqual({});
     expect(words.map(word => word.outerHTML)).toEqual(originalWords);
     expect(group.textContent).toBe("שָׁלוֹםשָׁלוֹם");

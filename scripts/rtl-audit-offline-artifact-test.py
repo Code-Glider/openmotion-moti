@@ -83,6 +83,37 @@ def main(path):
         reject({**original, "result.json": json.dumps(modified)}, directory,
                "receipt-digest", "offline archive receipt")
 
+        # Native writer evidence is mandatory, not just diagnostic. Keep the
+        # genuine archive and final Unicode intact while corrupting receipts.
+        def patch_receipts(value):
+            return [r for r in value["sourceWriteReceipts"]
+                    if r["endpoint"] == "file-mutations/patch-element/index.html"]
+
+        for name, mutate, expected in [
+            ("missing-native-receipts", lambda value: value.pop("sourceWriteReceipts"),
+             "missing native write receipts"),
+            ("duplicate-native-write", lambda value: value["sourceWriteReceipts"].append(
+                copy.deepcopy(patch_receipts(value)[0])), "native write count differs"),
+            ("wrong-native-target", lambda value: patch_receipts(value)[2]["target"].update(
+                hfId="hf-mnw2"), "native write target differs"),
+            ("wrong-native-unicode", lambda value: patch_receipts(value)[3]["operations"][0].update(
+                value="اردو ٹ ڈ ڑ ں ے"), "native write Unicode or operation differs"),
+            ("failed-native-write", lambda value: patch_receipts(value)[1].update(status=409),
+             "native write did not acknowledge"),
+            ("duplicate-native-request-hash", lambda value: patch_receipts(value)[1].update(
+                requestBodySha256=patch_receipts(value)[0]["requestBodySha256"]),
+             "invalid or repeated native request digest"),
+            ("duplicate-native-etag", lambda value: patch_receipts(value)[1].update(
+                responseEtag=patch_receipts(value)[0]["responseEtag"]),
+             "invalid or repeated native file ETag"),
+            ("unbound-native-etag", lambda value: patch_receipts(value)[-1].update(
+                responseEtag='"sha256:' + '0' * 64 + '"'),
+             "final acknowledged native file ETag differs"),
+        ]:
+            modified = copy.deepcopy(report)
+            mutate(modified)
+            reject({**original, "result.json": json.dumps(modified)}, directory, name, expected)
+
         with zipfile.ZipFile(io.BytesIO(original["offline-project.zip"])) as archive:
             nested = audit.members(archive)
         manifest = json.loads(nested["openmotion-projects.json"])
@@ -137,6 +168,9 @@ def main(path):
         reject_html(html.replace("</body>", '<div id="arabic" dir="rtl" lang="ar">' +
                                  first + "</div></body>", 1),
                     "duplicate-row", "duplicate or misplaced fixture row")
+
+        reject_html(html.replace('data-hf-id="hf-1tc8"', 'data-hf-id="hf-reminted-persian"', 1),
+                    "reminted-native-row", "fixture row source identity differs")
 
         # Real timed-caption fixture: keep parent/word identities, logical
         # Unicode order, and source timing even if every archive hash is rebuilt.

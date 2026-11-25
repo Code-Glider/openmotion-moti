@@ -105,6 +105,14 @@ export function TextAreaField({
   const blurPendingRef = useRef(false);
   const valueRef = useRef(value);
   valueRef.current = value;
+  // Inspector props can echo a live preview before the native project save
+  // completes. Compare authored edits with the value at focus, not only the
+  // latest props, or a same-value echo silently suppresses persistence.
+  const focusValueRef = useRef(value);
+  // A debounced source commit can still be in flight when the field blurs.
+  // Suppress an identical second write, but do not suppress a later reversal
+  // to the original Unicode after an intermediate value was submitted.
+  const lastSubmittedDuringFocusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (focusedRef.current || composingRef.current || blurPendingRef.current) return;
@@ -122,31 +130,43 @@ export function TextAreaField({
     textareaRef.current?.focus();
   }, [autoFocus]);
 
+  const shouldCommitDraft = (d: string) => {
+    if (d === lastSubmittedDuringFocusRef.current) return false;
+    // Returning to the original value is a no-op only if no intervening
+    // debounced write was sent. Otherwise it is a necessary undo in source.
+    // Parent props may switch clips while this field is still focused.
+    // A value that was never authored in this focus session must not be
+    // written back over the new clip just because the incoming prop changed.
+    // The focus baseline also survives optimistic preview-prop echoes.
+    return lastSubmittedDuringFocusRef.current !== null ||
+      d !== focusValueRef.current;
+  };
   const commitDraft = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    const shouldCommit = shouldCommitDraft(d);
     if (interactionChangedRef.current) {
       interactionChangedRef.current = false;
       track("text", label);
     }
-    if (d !== valueRef.current) onCommit(d);
+    if (shouldCommit) {
+      lastSubmittedDuringFocusRef.current = d;
+      onCommit(d);
+    }
   };
   const scheduleCommit = (d: string) => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     commitTimerRef.current = setTimeout(() => {
+      commitTimerRef.current = null;
       // A pending debounce from pre-composition text must never write an IME preedit.
-      if (composingRef.current) return;
-      if (d !== valueRef.current) {
-        if (interactionChangedRef.current) {
-          interactionChangedRef.current = false;
-          track("text", label);
-        }
-        onCommit(d);
-      }
+      if (!composingRef.current) commitDraft(d);
     }, 120);
   };
 
   const handleFocus = () => {
     focusedRef.current = true;
+    focusValueRef.current = valueRef.current;
+    // A distinct editing session may intentionally retry a rejected save.
+    lastSubmittedDuringFocusRef.current = null;
   };
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     latestDraftRef.current = e.target.value;
@@ -185,6 +205,17 @@ export function TextAreaField({
     // the DOM before React's onChange updates latestDraftRef. Otherwise the
     // inspector displays the new Unicode string but quietly saves the old one.
     const liveValue = event.currentTarget.value;
+    // When the selected clip changed externally without any local input,
+    // never commit the previous clip's text into the newly selected source.
+    // The focus-time prop echo is not an acknowledgement of an authored edit.
+    if (liveValue === focusValueRef.current &&
+        !interactionChangedRef.current &&
+        lastSubmittedDuringFocusRef.current === null &&
+        valueRef.current !== liveValue) {
+      latestDraftRef.current = valueRef.current;
+      setDraft(valueRef.current);
+      return;
+    }
     latestDraftRef.current = liveValue;
     if (draft !== liveValue) setDraft(liveValue);
     commitDraft(liveValue);

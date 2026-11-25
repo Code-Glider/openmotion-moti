@@ -27,11 +27,25 @@ const HANDLE = 8; // visual size of a handle dot
 const HANDLE_HIT = 24; // pointer target size (invisible padding around the dot)
 const ROTATION_OFFSET = 20; // px above the selection box
 
+// Caption hit targets are remeasured and can be replaced during a drag.
+// A pointer captured on a transient word hit is then lost by Chromium before
+// pointerup, so the gesture is cancelled without a history commit. Capture on
+// the persistent overlay owner instead; fallback retains non-layout test DOMs
+// that only implement capture on the event target.
+function captureCaptionPointerOnStableRoot(
+  overlay: HTMLElement | null,
+  event: React.PointerEvent,
+): void {
+  const rootIsCapturable = overlay?.isConnected && typeof overlay.setPointerCapture === "function";
+  const owner = rootIsCapturable ? overlay : (event.currentTarget as HTMLElement);
+  owner.setPointerCapture(event.pointerId);
+}
+
 /** Sync canvas state back to the Zustand store so the property panel reflects it. */
-function syncToStore(segmentId: string, el: HTMLElement, iframeWin: Window) {
+function syncToStore(segmentId: string, el: HTMLElement, iframeWin: Window, distinctHistory = false) {
   const style = computeTransformStyle(el, iframeWin);
   if (Object.keys(style).length > 0) {
-    useCaptionStore.getState().updateSegmentStyle(segmentId, style);
+    useCaptionStore.getState().updateSegmentStyle(segmentId, style, { distinctHistory });
   }
 }
 
@@ -164,23 +178,16 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     syncPlaybackInterval();
     tick();
 
-    const getWin = (): Window | null => {
-      try {
-        return iframeRef.current?.contentWindow ?? null;
-      } catch {
-        return null;
-      }
-    };
-
     const cancelActiveDrag = (): boolean => {
       const i = interactionRef.current;
       if (!i) return false;
-      const win = getWin();
-      if (win && i.moved) {
-        // Restore the pre-drag transform instead of committing the partial one.
+      interactionRef.current = null;
+      // A promoted preview may already have replaced iframeRef.current.
+      // Roll back only in the original word's document, never the new one.
+      const win = i.wordEl.ownerDocument.defaultView;
+      if (win && i.wordEl.isConnected && i.moved) {
         restoreWordTransformAfterGesture(i.wordEl, win, i.hadWrapper, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
       }
-      interactionRef.current = null;
       return true;
     };
     cancelDragRef.current = cancelActiveDrag;
@@ -243,6 +250,9 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      // Leaving caption edit mode or promoting the iframe aborts the gesture;
+      // no pointerup from the previous preview may publish its partial edit.
+      cancelActiveDrag();
       unregisterIframe();
       unsubPlayer();
       unsubPlayback();
@@ -284,7 +294,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      captureCaptionPointerOnStableRoot(overlayRef.current, e);
       const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "move",
@@ -318,7 +328,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      captureCaptionPointerOnStableRoot(overlayRef.current, e);
       const rect = wordEl.getBoundingClientRect();
       const cssScale = getCssScale();
       const boxCenterX =
@@ -358,7 +368,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const wordEl = liveModel ? getWordEl(iframe, box.groupIndex, box.wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      captureCaptionPointerOnStableRoot(overlayRef.current, e);
       const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "rotate",
@@ -393,7 +403,10 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const i = interactionRef.current;
       if (!i || e.pointerId !== i.pointerId) return;
       const win = getIframeWin();
-      if (!win) return;
+      if (!win || !i.wordEl.isConnected || i.wordEl.ownerDocument !== iframeRef.current?.contentDocument) {
+        cancelDragRef.current?.();
+        return;
+      }
 
       if (i.type === "move") {
         const cssScale = getCssScale();
@@ -430,7 +443,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
         writeTransform(i.wordEl, win, i.origTX, i.origTY, i.origScale, i.origRotation + delta, i.origScaleY);
       }
     },
-    [getCssScale, getIframeWin],
+    [getCssScale, getIframeWin, iframeRef],
   );
 
   // --- Unified pointer up — sync back to store ---
@@ -438,9 +451,14 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     const i = interactionRef.current;
     if (!i || e.pointerId !== i.pointerId) return;
     const win = getIframeWin();
-    if (i.moved && win) {
+    if (!win || !i.wordEl.isConnected || i.wordEl.ownerDocument !== iframeRef.current?.contentDocument) {
+      cancelDragRef.current?.();
+      return;
+    }
+    if (i.moved) {
       if (i.netChanged) {
-        syncToStore(i.segmentId, i.wordEl, win);
+        // Only a completed, net-changing pointerup creates one isolated undo step.
+        syncToStore(i.segmentId, i.wordEl, win, true);
       } else {
         // Pointer moved away and back: restore the exact pre-gesture DOM and
         // skip a phantom history entry, including an initially unwrapped word.
@@ -448,7 +466,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       }
     }
     interactionRef.current = null;
-  }, [getIframeWin]);
+  }, [getIframeWin, iframeRef]);
 
   // Browser/OS pointercancel is not a successful release. In particular a
   // two-finger touch or an interrupted pen stroke must not persist a partial
@@ -456,13 +474,9 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
   const handlePointerCancel = useCallback((e: React.PointerEvent) => {
     const i = interactionRef.current;
     if (!i || e.pointerId !== i.pointerId) return;
-    const win = getIframeWin();
-    if (win && i.moved) {
-      restoreWordTransformAfterGesture(i.wordEl, win, i.hadWrapper, i.origTX, i.origTY, i.origScale, i.origRotation, i.origScaleY);
-    }
-    interactionRef.current = null;
+    cancelDragRef.current?.();
     scheduleLayoutRef.current?.();
-  }, [getIframeWin]);
+  }, []);
 
   const handleBackgroundClick = useCallback(
     (e: React.MouseEvent) => {
@@ -482,7 +496,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
-      onLostPointerCapture={handlePointerUp}
+      onLostPointerCapture={handlePointerCancel}
     >
       {wordBoxes.length === 0 && model && model.segments.size > 0 && (
         <div className="absolute inset-x-0 top-3 flex justify-center pointer-events-none">

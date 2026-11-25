@@ -56,19 +56,30 @@ function canCommitInlineTextSelection(selection: DomEditSelection, element: HTML
   return canEditElementTextInline(element);
 }
 
+function ownsDomTextSelection(current: DomEditSelection | null, original: DomEditSelection): boolean {
+  return current !== null && current.element === original.element &&
+    getDomEditTargetKey(current) === getDomEditTargetKey(original);
+}
+
 async function resyncDomTextSelectionFromPreview(
   doc: Document | null | undefined,
   selection: DomEditSelection,
   activeCompPath: string | null,
   buildDomSelectionFromTarget: UseDomEditTextCommitsParams["buildDomSelectionFromTarget"],
   applyDomSelection: UseDomEditTextCommitsParams["applyDomSelection"],
+  previewIframeRef: UseDomEditTextCommitsParams["previewIframeRef"],
+  ownsSelection: () => boolean,
 ): Promise<void> {
-  if (!doc) return;
+  if (!doc || previewIframeRef.current?.contentDocument !== doc) return;
   const refreshed = findElementForSelection(doc, selection, activeCompPath);
   if (!refreshed) return;
   refreshTimelineRowText(refreshed);
+  // The file write and source probe both yield. The edited clip still owns
+  // its source write, but it does not own a newer user selection.
+  if (!ownsSelection()) return;
   const nextSelection = await buildDomSelectionFromTarget(refreshed);
-  if (!nextSelection) return;
+  if (!nextSelection || !ownsSelection() || !refreshed.isConnected ||
+      previewIframeRef.current?.contentDocument !== doc) return;
   applyDomSelection(nextSelection, { revealPanel: false, preserveGroup: true });
 }
 
@@ -205,6 +216,8 @@ export function useDomEditTextCommits({
             activeCompPath,
             buildDomSelectionFromTarget,
             applyDomSelection,
+            previewIframeRef,
+            () => isLatestTextCommit() && ownsDomTextSelection(latestSelectionRef.current, selection),
           ),
         onFinally: isLatestTextCommit.release,
       });
@@ -307,6 +320,8 @@ export function useDomEditTextCommits({
             activeCompPath,
             buildDomSelectionFromTarget,
             applyDomSelection,
+            previewIframeRef,
+            () => isLatestTextCommit() && ownsDomTextSelection(latestSelectionRef.current, selection),
           ),
         onFinally: isLatestTextCommit.release,
       });
@@ -380,6 +395,8 @@ export function useDomEditTextCommits({
             activeCompPath,
             buildDomSelectionFromTarget,
             applyDomSelection,
+            previewIframeRef,
+            () => isLatestTextCommit() && ownsDomTextSelection(latestSelectionRef.current, selection),
           ),
         onFinally: isLatestTextCommit.release,
       });

@@ -180,3 +180,184 @@ it("defers blur during active composition until compositionend without losing th
     host.remove();
   }
 });
+
+
+/**
+ * The preview/selection model can echo the edited value into the inspector
+ * props before the durable native-project edit completes. That echo is not a
+ * persistence acknowledgement. Both the 120ms debounce and an immediate
+ * Tab/blur must still send the user's actual logical Unicode text exactly
+ * once, even when the latest prop already equals the textarea.
+ */
+it.each([
+  { script: "Persian", before: "فارسی پ چ ژ گ ۲۰۲۶", final: "فارسی پ چ ژ گ ۲۰۶۲" },
+  { script: "Arabic", before: "السَّلَامُ 25%", final: "السَّلَامُ 52%" },
+])("does not lose an authored $script edit when its props echo before native persistence", async ({ before, final }) => {
+  for (const flush of ["blur", "debounce"] as const) {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const onCommit = vi.fn();
+    const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+    const render = (value: string) => <TextAreaField flat label="Content" value={value} onCommit={onCommit} />;
+    try {
+      act(() => root.render(render(before)));
+      const textarea = host.querySelector("textarea")!;
+      act(() => {
+        textarea.focus();
+        setNative.call(textarea, final);
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      // A preview refresh is not proof the versioned project file was saved.
+      act(() => root.render(render(final)));
+      expect(textarea.value).toBe(final);
+      expect(onCommit).not.toHaveBeenCalled();
+      if (flush === "blur") {
+        act(() => textarea.blur());
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 165));
+      }
+      expect(onCommit).toHaveBeenCalledExactlyOnceWith(final);
+      if (flush === "debounce") {
+        act(() => textarea.blur());
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 165));
+      }
+      expect(onCommit, "blur/debounce duplicated the authoring commit").toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
+  }
+});
+
+it("does not author a phantom commit when an edited RTL field is restored to its focus-time value", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onCommit = vi.fn();
+  const original = "فارسی پ چ ژ گ ۲۰۲۶";
+  const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+  try {
+    act(() => root.render(<TextAreaField flat label="Content" value={original} onCommit={onCommit} />));
+    const textarea = host.querySelector("textarea")!;
+    act(() => {
+      textarea.focus();
+      setNative.call(textarea, "فارسی پ چ ژ گ ۲۰۶۲");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      setNative.call(textarea, original);
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.blur();
+    });
+    expect(onCommit).not.toHaveBeenCalled();
+    await new Promise(resolve => setTimeout(resolve, 165));
+    expect(onCommit).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
+
+/**
+ * Native source writes are async. A 120ms debounce can dispatch before the
+ * parent has acknowledged its revision. Blurring the same field must not send
+ * a second identical write against that stale revision, but a later return
+ * to the original text must undo the already-submitted intermediate edit.
+ */
+it.each([
+  { script: "Persian", before: "فارسی پ چ ژ گ ۲۰۲۶", after: "فارسی پ چ ژ گ ۲۰۶۲" },
+  { script: "Arabic", before: "السَّلَامُ 25%", after: "السَّلَامُ 52%" },
+])("deduplicates $script debounce/blur while preserving an authored reversal", async ({ before, after }) => {
+  const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+  for (const reverse of [false, true]) {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const onCommit = vi.fn();
+    try {
+      // The parent intentionally continues to report the previous source
+      // revision while an asynchronous save is still unresolved.
+      act(() => root.render(<TextAreaField flat label="Content" value={before} onCommit={onCommit} />));
+      const textarea = host.querySelector("textarea")!;
+      const input = (next: string) => act(() => {
+        setNative.call(textarea, next);
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      act(() => textarea.focus());
+      input(after);
+      await new Promise(resolve => setTimeout(resolve, 175));
+      expect(onCommit).toHaveBeenCalledTimes(1);
+      expect(onCommit).toHaveBeenNthCalledWith(1, after);
+      if (reverse) input(before);
+      act(() => textarea.blur());
+      expect(onCommit).toHaveBeenCalledTimes(reverse ? 2 : 1);
+      if (reverse) expect(onCommit).toHaveBeenNthCalledWith(2, before);
+      await new Promise(resolve => setTimeout(resolve, 165));
+      expect(onCommit, "a late debounce duplicated the native save").toHaveBeenCalledTimes(reverse ? 2 : 1);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
+  }
+});
+
+/**
+ * Switching the selected clip can update inspector props while the old
+ * textarea remains focused. Its unchanged draft is not a newly authored
+ * source edit. Blurring must NOT write the old clip's text over the newly
+ * selected clip; after blur the field must display the new source text.
+ * This is distinct from a preview echo following a real input (covered above).
+ */
+it.each([
+  { from: "فارسی پ چ ژ گ ۲۰۲۶", to: "السَّلَامُ 25%", script: "Persian to Arabic" },
+  { from: "شָׁלוֹם OpenMotion", to: "English LTR ABC-123", script: "Hebrew to English" },
+])("does not persist untouched $script inspector content into a different clip on blur", async ({ from, to }) => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onCommit = vi.fn();
+  const render = (value: string) => <TextAreaField flat label="Content" value={value} onCommit={onCommit} />;
+  try {
+    act(() => root.render(render(from)));
+    const textarea = host.querySelector("textarea")!;
+    act(() => textarea.focus());
+    expect(textarea.value).toBe(from);
+    // Studio selection changes without a single trusted input into this field.
+    act(() => root.render(render(to)));
+    expect(textarea.value).toBe(from);
+    act(() => textarea.blur());
+    expect(onCommit, "an old clip was written into a new source").not.toHaveBeenCalled();
+    expect(textarea.value, "the unedited draft was not replaced on blur").toBe(to);
+    await new Promise(resolve => setTimeout(resolve, 165));
+    expect(onCommit).not.toHaveBeenCalled();
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
+
+/** A live native edit is still authoritative if its preview-prop echo arrived first. */
+it("commits a visible native Persian edit on blur after an optimistic prop echo, without a React input event", () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onCommit = vi.fn();
+  const original = "فارسی ۲۰۲۶";
+  const typed = "فارسی ۲۰۶۲";
+  const setNative = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!;
+  try {
+    act(() => root.render(<TextAreaField flat label="Content" value={original} onCommit={onCommit} />));
+    const textarea = host.querySelector("textarea")!;
+    act(() => textarea.focus());
+    act(() => root.render(<TextAreaField flat label="Content" value={typed} onCommit={onCommit} />));
+    act(() => {
+      setNative.call(textarea, typed);
+      // The final native insertion has not reached React's change handler.
+      textarea.blur();
+    });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(typed);
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
