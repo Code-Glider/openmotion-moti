@@ -70,6 +70,18 @@ it("round-trips independent, zero, neutral and absent axes, with stable IDs and 
       { wordIndex: 2, wordId: "missing", scale: 3, scaleX: 1 },
     ]) }) });
     await act(async () => sync.loadOverrides());
+    // An explicitly missing stable word ID must fail atomically, even if its
+    // positional index happens to identify an existing segment. Previously this
+    // test assumed the dangerous fallback and silently styled the wrong word.
+    expect(useCaptionStore.getState().syncError).toMatch(/corrupt/);
+    expect([...useCaptionStore.getState().model!.segments.values()].map(s => s.style)).toEqual(styles);
+
+    // A valid stable ID retains the original per-axis legacy scale semantics.
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ content: JSON.stringify([
+      { wordIndex: 0, scale: 0 }, { wordIndex: 1, scale: 2, scaleY: 0 },
+      { wordIndex: 2, wordId: "w2", scale: 3, scaleX: 1 },
+    ]) }) });
+    await act(async () => sync.loadOverrides());
     expect([...useCaptionStore.getState().model!.segments.values()].map(s => s.style)).toEqual([
       { scaleX: 0, scaleY: 0 }, { scaleX: 2, scaleY: 0 },
       { scaleX: 1, scaleY: 3 }, { scaleX: 1, scaleY: 1 },
