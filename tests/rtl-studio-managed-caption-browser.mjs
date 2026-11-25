@@ -9,6 +9,7 @@ import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { build } from 'esbuild';
+import { stampHfIdsInPlace } from '@hyperframes/parsers/hf-ids';
 import puppeteer from 'puppeteer-core';
 import { Client } from './shared-editor-client.mjs';
 import { closeFixtureEditor } from './fixtures.ts';
@@ -91,6 +92,7 @@ async function nodeSourceGenerator() {
   await writeFile(compiled, bundle.outputFiles[0].text);
   return createRequire(import.meta.url)(compiled);
 }
+let sourceReceiptCount = 0;
 async function waitSource(predicate, label) {
   for (let attempt = 0; attempt < 120; attempt++) {
     let current;
@@ -101,7 +103,15 @@ async function waitSource(predicate, label) {
       await sleep(200); continue;
     }
     const content = current.file?.content;
-    if (typeof content === 'string' && predicate(content)) return current;
+    if (typeof content === 'string' && predicate(content)) {
+      const name = 'native-source-' + String(++sourceReceiptCount).padStart(2, '0');
+      await writeFile(path.join(output, name + '.html'), content);
+      await writeFile(path.join(output, name + '.json'), JSON.stringify({
+        label, sourceSha256: sha(content), revision: current.revision,
+        versionId: current.currentVersionId, etag: current.file.etag ?? current.etag,
+      }, null, 2));
+      return current;
+    }
     await sleep(200);
   }
   throw Error('Real Studio native source did not reach ' + label);
@@ -119,7 +129,7 @@ async function sendHistory(direction) {
     for (const key of held.reverse()) await page.keyboard.up(key);
   }
 }
-async function directCapture(origin, id, label) {
+async function directCapture(origin, id, label, seconds = at) {
   const p = await browser.newPage();
   try {
     // The raw project-preview route retains an 8px browser body margin.
@@ -141,7 +151,7 @@ async function directCapture(origin, id, label) {
           wrapper: el.parentElement?.dataset.captionWrapper === 'true' };
       };
       return { he: measure('w-he'), en: measure('w-en'), timeline: tl.time() };
-    }, at);
+    }, seconds);
     assert.equal(dom.he.text, 'שָׁלוֹם');
     assert.equal(dom.en.text, 'ABC-123');
     const filename = path.join(output, label + '.png');
@@ -241,6 +251,16 @@ try {
   await page.waitForSelector('[data-studio-control="playback"]:not(:disabled)', { timeout: 60_000 });
   const slider = await page.waitForSelector('input[data-studio-control="seek-preview"]:not(:disabled)',
     { timeout: 30_000 });
+  // Opening the native editor can persist deterministic element identities
+  // before the first gesture. Verify that boundary independently, then require
+  // byte-for-byte history replay against the source actually edited.
+  const openedSource = stampHfIdsInPlace(source);
+  assert.notEqual(openedSource, source, 'Fixture must exercise native editor ID initialization');
+  const openedBaseline = await waitSource(content => content === openedSource,
+    'native editor initialization preserves all source except deterministic element IDs');
+  check('Opening Studio persists exactly the expected native editor IDs', {
+    revision: openedBaseline.revision, sourceSha256: sha(openedSource),
+  });
   const max = await slider.evaluate(input => Number(input.max));
   assert(Math.abs(max - duration) < 0.15, 'Actual Studio did not load the managed two-second composition');
   await slider.evaluate(input => input.scrollIntoView({ block: 'center' }));
@@ -248,6 +268,15 @@ try {
   assert(box && box.width > 120, 'Studio seek slider has no physical geometry');
   const inset = Math.min(14, box.height / 2);
   await slider.click({ offset: { x: inset + (box.width - 2 * inset) * at / max, y: box.height / 2 } });
+  let seekTime = await slider.evaluate(input => input.valueAsNumber);
+  if (Math.abs(seekTime - at) > 0.08) {
+    await slider.focus();
+    for (let attempt = 0; attempt < 100 && Math.abs(seekTime - at) > 0.08; attempt++) {
+      await page.keyboard.press(seekTime < at ? 'ArrowRight' : 'ArrowLeft');
+      seekTime = await slider.evaluate(input => input.valueAsNumber);
+    }
+  }
+  assert(Math.abs(seekTime - at) <= 0.08, 'Real Studio transport did not seek to the caption fixture time');
   try {
     await page.waitForFunction(() =>
       document.querySelector('[data-caption-segment-id="segment-0"]')?.getBoundingClientRect().width > 24,
@@ -348,12 +377,16 @@ try {
     const xy = movedOffset(content);
     return xy && xy.x === moved.x && xy.y === moved.y;
   }, 'first keyboard Undo restores first independently authored drag');
+  assert.equal(firstUndone.file.content, authored.file.content,
+    'First Undo changed unrelated native project bytes instead of restoring first drag');
   check('Real Studio first Undo reverses only the second pointer gesture', {
     revision: firstUndone.revision, sourceSha256: sha(firstUndone.file.content),
   });
   await sendHistory('undo');
   const undone = await waitSource(content => !movedOffset(content),
     'second keyboard Undo restores original native word geometry');
+  assert.equal(undone.file.content, openedBaseline.file.content,
+    'Second Undo failed to restore exact original native project source bytes');
   check('Real Studio second Undo reverses first pointer gesture', {
     revision: undone.revision, sourceSha256: sha(undone.file.content),
   });
@@ -362,6 +395,8 @@ try {
     const xy = movedOffset(content);
     return xy && xy.x === moved.x && xy.y === moved.y;
   }, 'first keyboard Redo reapplies first native drag');
+  assert.equal(firstRedone.file.content, authored.file.content,
+    'First Redo failed to restore exact first-drag native source bytes');
   check('Real Studio first Redo reapplies first pointer gesture', {
     revision: firstRedone.revision, sourceSha256: sha(firstRedone.file.content),
   });
@@ -371,6 +406,8 @@ try {
     return xy && xy.x === secondMoved.x && xy.y === secondMoved.y;
   }, 'second keyboard Redo reapplies independently saved native drag');
   finalSrc = redone.file.content;
+  assert.equal(finalSrc, secondAuthored.file.content,
+    'Second Redo did not exactly restore second-drag native source bytes');
   check('Real Studio second Redo reapplies exact final saved native word transform', {
     revision: redone.revision, first: moved, final: secondMoved,
   });
@@ -458,11 +495,49 @@ try {
   check('Independently decoded native MP4 preserves dragged Hebrew word and unaffected Latin control', {
     parity, nativeExportVerification: completed.verification,
   });
+  // Independently sample the REIMPORTED native project's timeline, not the
+  // in-memory authoring preview. Mid-interval samples deliberately avoid the
+  // default 0.2-second fades; animated in/out parity is a separate release gate.
+  // These new checks add frames without weakening the original t=0.8 bounds.
+  // Explicitly open the reimported project's own preview instead of assuming
+  // the original project's preview server also serves a new project ID.
+  const restoredPreview = await client.call('openmotion_open_preview', { projectId: restoredId });
+  const restoredOrigin = restoredPreview.serverUrl || new URL(restoredPreview.previewUrl).origin;
+  const temporalParity = [];
+  for (const seconds of [0.4, 1.2]) {
+    const captured = await directCapture(restoredOrigin, restoredId,
+      'rtl-native-caption-reimported-' + String(seconds).replace('.', '-'), seconds);
+    const decodedAtTime = geometry(decode(mp4, seconds));
+    const scriptParity = {};
+    for (const id of ['hebrew', 'latin']) {
+      const expected = captured.ink[id];
+      const actual = decodedAtTime[id];
+      const drift = Math.hypot(actual.x - expected.x, actual.y - expected.y);
+      const inkAreaDrift = Math.abs(actual.pixels - expected.pixels) /
+        Math.max(actual.pixels, expected.pixels);
+      assert(drift <= 8, id + ' reimported temporal MP4 centroid mismatch at ' + seconds +
+        ': ' + JSON.stringify({ expected, actual, drift }));
+      assert(inkAreaDrift <= 0.4,
+        id + ' reimported temporal MP4 glyph ink mismatch at ' + seconds +
+        ': ' + JSON.stringify({ expected, actual, inkAreaDrift }));
+      scriptParity[id] = { expected, actual, drift, inkAreaDrift };
+    }
+    assert(Math.hypot(captured.ink.hebrew.x - finalPreview.ink.hebrew.x,
+      captured.ink.hebrew.y - finalPreview.ink.hebrew.y) < 2.5,
+    'Authored Hebrew word changed position during stable caption interval');
+    assert(Math.hypot(captured.ink.latin.x - finalPreview.ink.latin.x,
+      captured.ink.latin.y - finalPreview.ink.latin.y) < 2.5,
+    'Unchanged Latin control changed position during caption playback');
+    temporalParity.push({ seconds, browserSha256: captured.sha256, parity: scriptParity });
+  }
+  check('Reimported native project matches independently decoded MP4 at three real times', {
+    baseTime: at, samples: temporalParity,
+  });
   result.passed = true;
   result.browser = await browser.version();
   result.preview = { baseline, finalPreview, delta };
   result.gesture = { moved, sourceSha256: sha(finalSrc) };
-  result.native = { parity, mp4Sha256: sha(await readFile(mp4)), projectZipSha256: sha(bytes) };
+  result.native = { parity, temporalParity, mp4Sha256: sha(await readFile(mp4)), projectZipSha256: sha(bytes) };
 } catch (e) {
   error = e;
   result.error = String(e?.stack || e);
