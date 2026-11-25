@@ -119,7 +119,7 @@ async function sendHistory(direction) {
     for (const key of held.reverse()) await page.keyboard.up(key);
   }
 }
-async function directCapture(origin, id, label) {
+async function directCapture(origin, id, label, seconds = at) {
   const p = await browser.newPage();
   try {
     // The raw project-preview route retains an 8px browser body margin.
@@ -141,7 +141,7 @@ async function directCapture(origin, id, label) {
           wrapper: el.parentElement?.dataset.captionWrapper === 'true' };
       };
       return { he: measure('w-he'), en: measure('w-en'), timeline: tl.time() };
-    }, at);
+    }, seconds);
     assert.equal(dom.he.text, 'שָׁלוֹם');
     assert.equal(dom.en.text, 'ABC-123');
     const filename = path.join(output, label + '.png');
@@ -348,12 +348,16 @@ try {
     const xy = movedOffset(content);
     return xy && xy.x === moved.x && xy.y === moved.y;
   }, 'first keyboard Undo restores first independently authored drag');
+  assert.equal(firstUndone.file.content, authored.file.content,
+    'First Undo changed unrelated native project bytes instead of restoring first drag');
   check('Real Studio first Undo reverses only the second pointer gesture', {
     revision: firstUndone.revision, sourceSha256: sha(firstUndone.file.content),
   });
   await sendHistory('undo');
   const undone = await waitSource(content => !movedOffset(content),
     'second keyboard Undo restores original native word geometry');
+  assert.equal(undone.file.content, source,
+    'Second Undo failed to restore exact original native project source bytes');
   check('Real Studio second Undo reverses first pointer gesture', {
     revision: undone.revision, sourceSha256: sha(undone.file.content),
   });
@@ -362,6 +366,8 @@ try {
     const xy = movedOffset(content);
     return xy && xy.x === moved.x && xy.y === moved.y;
   }, 'first keyboard Redo reapplies first native drag');
+  assert.equal(firstRedone.file.content, authored.file.content,
+    'First Redo failed to restore exact first-drag native source bytes');
   check('Real Studio first Redo reapplies first pointer gesture', {
     revision: firstRedone.revision, sourceSha256: sha(firstRedone.file.content),
   });
@@ -371,6 +377,8 @@ try {
     return xy && xy.x === secondMoved.x && xy.y === secondMoved.y;
   }, 'second keyboard Redo reapplies independently saved native drag');
   finalSrc = redone.file.content;
+  assert.equal(finalSrc, secondAuthored.file.content,
+    'Second Redo did not exactly restore second-drag native source bytes');
   check('Real Studio second Redo reapplies exact final saved native word transform', {
     revision: redone.revision, first: moved, final: secondMoved,
   });
@@ -458,11 +466,45 @@ try {
   check('Independently decoded native MP4 preserves dragged Hebrew word and unaffected Latin control', {
     parity, nativeExportVerification: completed.verification,
   });
+  // Independently sample the REIMPORTED native project's timeline, not the
+  // in-memory authoring preview. Mid-interval samples deliberately avoid the
+  // default 0.2-second fades; animated in/out parity is a separate release gate.
+  // These new checks add frames without weakening the original t=0.8 bounds.
+  const temporalParity = [];
+  for (const seconds of [0.4, 1.2]) {
+    const captured = await directCapture(previewUrl, restoredId,
+      'rtl-native-caption-reimported-' + String(seconds).replace('.', '-'), seconds);
+    const decodedAtTime = geometry(decode(mp4, seconds));
+    const scriptParity = {};
+    for (const id of ['hebrew', 'latin']) {
+      const expected = captured.ink[id];
+      const actual = decodedAtTime[id];
+      const drift = Math.hypot(actual.x - expected.x, actual.y - expected.y);
+      const inkAreaDrift = Math.abs(actual.pixels - expected.pixels) /
+        Math.max(actual.pixels, expected.pixels);
+      assert(drift <= 8, id + ' reimported temporal MP4 centroid mismatch at ' + seconds +
+        ': ' + JSON.stringify({ expected, actual, drift }));
+      assert(inkAreaDrift <= 0.4,
+        id + ' reimported temporal MP4 glyph ink mismatch at ' + seconds +
+        ': ' + JSON.stringify({ expected, actual, inkAreaDrift }));
+      scriptParity[id] = { expected, actual, drift, inkAreaDrift };
+    }
+    assert(Math.hypot(captured.ink.hebrew.x - finalPreview.ink.hebrew.x,
+      captured.ink.hebrew.y - finalPreview.ink.hebrew.y) < 2.5,
+    'Authored Hebrew word changed position during stable caption interval');
+    assert(Math.hypot(captured.ink.latin.x - finalPreview.ink.latin.x,
+      captured.ink.latin.y - finalPreview.ink.latin.y) < 2.5,
+    'Unchanged Latin control changed position during caption playback');
+    temporalParity.push({ seconds, browserSha256: captured.sha256, parity: scriptParity });
+  }
+  check('Reimported native project matches independently decoded MP4 at three real times', {
+    baseTime: at, samples: temporalParity,
+  });
   result.passed = true;
   result.browser = await browser.version();
   result.preview = { baseline, finalPreview, delta };
   result.gesture = { moved, sourceSha256: sha(finalSrc) };
-  result.native = { parity, mp4Sha256: sha(await readFile(mp4)), projectZipSha256: sha(bytes) };
+  result.native = { parity, temporalParity, mp4Sha256: sha(await readFile(mp4)), projectZipSha256: sha(bytes) };
 } catch (e) {
   error = e;
   result.error = String(e?.stack || e);
