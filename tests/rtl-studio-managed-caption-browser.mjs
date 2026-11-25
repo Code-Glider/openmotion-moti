@@ -307,22 +307,72 @@ try {
   check('Trusted Studio pointer gesture persists a native versioned transform (not sidecar-only)', {
     moved, revision: authored.revision, sourceSha256: sha(authored.file.content),
   });
+  // A *second real pointer gesture* must be another reversible transaction
+  // even inside the 800ms nudge history-coalescing window. Reacquire the
+  // live hit after Studio's preview remeasurement, never mutate store/DOM.
+  await page.click(hit);
+  await page.waitForFunction(sel => document.querySelector(sel)?.style.cursor === 'move',
+    { timeout: 10_000 }, hit);
+  const secondRect = await page.$eval(hit, el => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+  assert(secondRect.width > 28 && secondRect.height > 20,
+    'Second caption pointer gesture has no real hit area');
+  const secondCenter = {
+    x: Math.round(secondRect.x + secondRect.width / 2),
+    y: Math.round(secondRect.y + secondRect.height / 2),
+  };
+  await page.mouse.move(secondCenter.x, secondCenter.y);
+  await page.mouse.down();
+  await page.mouse.move(secondCenter.x + 16, secondCenter.y, { steps: 5 });
+  await page.mouse.up();
+  const secondAuthored = await waitSource(content => {
+    const xy = movedOffset(content);
+    return xy && xy.x > moved.x + 7 && Math.abs(xy.y - moved.y) < 5;
+  }, 'second separately authored Studio pointer transform');
+  const secondMoved = movedOffset(secondAuthored.file.content);
+  assert(secondMoved, 'Second pointer transform was not persisted');
+  check('Second trusted drag persists a separate native source revision', {
+    first: moved, second: secondMoved,
+    firstRevision: authored.revision, secondRevision: secondAuthored.revision,
+    firstSourceSha256: sha(authored.file.content),
+    secondSourceSha256: sha(secondAuthored.file.content),
+  });
+
   // These are actual keyboard shortcuts registered in Studio, not direct
-  // Zustand history calls, and must rewrite native HTML in both directions.
+  // Zustand history calls. Two undos must restore first move then original;
+  // two redos must restore each drag, with matching versioned native HTML.
+  await sendHistory('undo');
+  const firstUndone = await waitSource(content => {
+    const xy = movedOffset(content);
+    return xy && xy.x === moved.x && xy.y === moved.y;
+  }, 'first keyboard Undo restores first independently authored drag');
+  check('Real Studio first Undo reverses only the second pointer gesture', {
+    revision: firstUndone.revision, sourceSha256: sha(firstUndone.file.content),
+  });
   await sendHistory('undo');
   const undone = await waitSource(content => !movedOffset(content),
-    'keyboard Undo in native project');
-  check('Real Studio keyboard Undo reverses persisted authored word geometry', {
+    'second keyboard Undo restores original native word geometry');
+  check('Real Studio second Undo reverses first pointer gesture', {
     revision: undone.revision, sourceSha256: sha(undone.file.content),
+  });
+  await sendHistory('redo');
+  const firstRedone = await waitSource(content => {
+    const xy = movedOffset(content);
+    return xy && xy.x === moved.x && xy.y === moved.y;
+  }, 'first keyboard Redo reapplies first native drag');
+  check('Real Studio first Redo reapplies first pointer gesture', {
+    revision: firstRedone.revision, sourceSha256: sha(firstRedone.file.content),
   });
   await sendHistory('redo');
   const redone = await waitSource(content => {
     const xy = movedOffset(content);
-    return xy && xy.x === moved.x && xy.y === moved.y;
-  }, 'keyboard Redo in native project');
+    return xy && xy.x === secondMoved.x && xy.y === secondMoved.y;
+  }, 'second keyboard Redo reapplies independently saved native drag');
   finalSrc = redone.file.content;
-  check('Real Studio keyboard Redo reapplies exact saved native word transform', {
-    revision: redone.revision, moved,
+  check('Real Studio second Redo reapplies exact final saved native word transform', {
+    revision: redone.revision, first: moved, final: secondMoved,
   });
   const finalPreview = await directCapture(previewUrl, projectId, 'rtl-native-caption-after-redo');
   const delta = { x: finalPreview.ink.hebrew.x - baseline.ink.hebrew.x,
