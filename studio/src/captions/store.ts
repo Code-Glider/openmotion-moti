@@ -47,7 +47,7 @@ interface CaptionState {
   clearSelection: () => void;
 
   // Segment mutations
-  /** Independent pointer gestures have their own undo entries, even within the nudge debounce window. */
+  /** A completed pointer gesture is an independent undo transaction, not a keyboard nudge. */
   updateSegmentStyle: (
     segmentId: string, style: Partial<CaptionStyle>, options?: { distinctHistory?: boolean },
   ) => void;
@@ -94,9 +94,7 @@ let lastHistoryAt = 0;
  * Snapshot the current model onto the undo stack before a mutation.
  * `key` identifies the edit target so rapid repeats (typing a value, arrow-key
  * nudging) coalesce into a single entry instead of one per keystroke.
- * A completed drag/scale/rotate is a distinct user transaction, not another
- * debounce tick. It must neither merge with the preceding action nor swallow
- * the immediately following nudge or independent gesture.
+ * A pointer-up/drag is distinct and cannot merge with the preceding or next nudge.
  */
 function pushHistory(
   state: Pick<CaptionState, "model" | "past">,
@@ -109,8 +107,7 @@ function pushHistory(
     lastHistoryAt = now;
     return { future: [] };
   }
-  // A pointer transaction forms a full undo boundary on *both* sides. The
-  // next keyboard nudge still coalesces with further nudges, not this drag.
+  // The next keyboard nudge starts a fresh coalescing group after a drag.
   lastHistoryKey = distinctHistory ? null : key;
   lastHistoryAt = distinctHistory ? 0 : now;
   const past = [...state.past, state.model].slice(-HISTORY_CAP);

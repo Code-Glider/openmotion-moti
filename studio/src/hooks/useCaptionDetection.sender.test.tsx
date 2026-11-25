@@ -98,3 +98,53 @@ it("re-runs caption activation on the promoted iframe's document", () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("discovers a managed index.html caption root added after preview mount without a runtime message", async () => {
+  const host = document.createElement("div");
+  const managed = document.createElement("iframe");
+  const other = document.createElement("iframe");
+  document.body.append(host, managed, other);
+  const root = createRoot(host);
+  const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+  vi.stubGlobal("fetch", fetchMock);
+  const params = {
+    projectId: "demo",
+    activeCompPath: "index.html",
+    compIdToSrc: new Map<string, string>(),
+    captionEditMode: false,
+    captionHasSelection: false,
+    previewIframeRef: { current: managed },
+    captionSync: { save: vi.fn(), loadOverrides: vi.fn(async () => {}) },
+    setRightCollapsed: vi.fn(),
+  };
+  function Harness() { useCaptionDetection(params); return null; }
+  const emit = () => act(() => {
+    window.dispatchEvent(new MessageEvent("message", {
+      source: managed.contentWindow,
+      data: { source: "hf-preview", type: "state" },
+    }));
+  });
+  try {
+    act(() => root.render(<Harness />));
+    const legacy = other.contentDocument!.createElement("div");
+    legacy.className = "caption-group";
+    legacy.setAttribute("data-composition-id", "main");
+    other.contentDocument!.body.append(legacy);
+    emit();
+    expect(fetchMock).not.toHaveBeenCalled();
+    const managedRoot = managed.contentDocument!.createElement("div");
+    managedRoot.className = "caption-group";
+    managedRoot.setAttribute("data-composition-id", "captions");
+    managed.contentDocument!.body.append(managedRoot);
+    // Neither a synthetic hf-preview state event nor a mocked hook/store
+    // write is allowed to stand in for actual iframe DOM readiness.
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(String(fetchMock.mock.calls[0][0])).toContain("index.html");
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+    managed.remove();
+    other.remove();
+    vi.unstubAllGlobals();
+  }
+});

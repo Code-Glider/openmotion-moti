@@ -6,6 +6,8 @@ import { trackEvent } from "../../telemetry/client";
 import type { CaptionStyle } from "../types";
 import { studioWriteHeaders } from "../../utils/studioFileVersion";
 import { studioApiFetch } from "../../utils/studioApiFetch";
+import { useProjectFileWriter } from "../../hooks/useProjectFileWriter";
+import { rewriteManagedCaptionSource } from "../nativeSource";
 
 interface CaptionOverrideEntry {
   wordId?: string;
@@ -69,6 +71,9 @@ function buildOverrides(model: {
  * Also provides loadOverrides for reading existing overrides on edit mode entry.
  */
 export function useCaptionSync(projectId: string | null) {
+  // Reuse Studio's existing If-Match/ETag writer and pending-save coordinator.
+  // Never introduce an unconditional second writer for authored HTML.
+  const { readProjectFile, writeProjectFile } = useProjectFileWriter({ projectId });
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,6 +86,8 @@ export function useCaptionSync(projectId: string | null) {
   // Bumped on every new edit: a PUT's success may only clear the pending flag
   // when no newer edit re-armed the debounce while it was in flight.
   const editSeqRef = useRef(0);
+  // Serialize native reads/guarded writes and legacy sidecar saves in enqueue order.
+  const saveTailRef = useRef<Promise<void>>(Promise.resolve());
 
   const save = useCallback(() => {
     const state = useCaptionStore.getState();
@@ -97,36 +104,71 @@ export function useCaptionSync(projectId: string | null) {
       return;
     }
 
-    const seqAtSave = editSeqRef.current;
-    const overrides = buildOverrides(state.model);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    pendingRef.current = true;
+    const seqAtSave = ++editSeqRef.current;
+    const modelAtSave = state.model;
+    const sourcePathAtSave = state.sourceFilePath;
+    const overrides = buildOverrides(modelAtSave);
 
-    studioApiFetch(
-      buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
-      {
-        method: "PUT",
-        headers: { "Content-Type": "text/plain", ...studioWriteHeaders() },
-        body: JSON.stringify(overrides, null, 2),
-      },
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // A newer edit may have re-armed the debounce while this PUT was in
-        // flight — its beforeunload/unmount flush still needs pending=true.
-        if (editSeqRef.current === seqAtSave) pendingRef.current = false;
-        const s = useCaptionStore.getState();
-        if (s.syncError) s.setSyncError(null);
-      })
-      .catch((error: unknown) => {
-        // Caption auto-save is a data-loss path: surface it to the user, not
-        // just telemetry. pendingRef stays true so beforeunload still warns.
+    // The managed native HTML is the export source of truth. Writing the old
+    // sidecar FIRST fails against the versioned project-file API (HTTP 428),
+    // preventing the real drag from ever reaching native project source.
+    // Resolve exact managed ownership before choosing a write path; the
+    // legacy sidecar remains untouched for custom/unmarked compositions.
+    const ownsSaveStatus = () => editSeqRef.current === seqAtSave &&
+      projectIdRef.current === pid && useCaptionStore.getState().sourceFilePath === sourcePathAtSave;
+    const persist = async () => {
+      try {
+        await (async () => {
+          if (/\.html?$/i.test(sourcePathAtSave)) {
+            const original = await readProjectFile(sourcePathAtSave);
+            const rewritten = await rewriteManagedCaptionSource(original, modelAtSave);
+            if (rewritten.status !== "unsupported") {
+              if (rewritten.status === "updated") {
+                await writeProjectFile(sourcePathAtSave, rewritten.content, original);
+              }
+              return;
+            }
+          }
+          const response = await studioApiFetch(
+            buildProjectApiPath(pid, `/files/${encodeURIComponent("caption-overrides.json")}`),
+            {
+              method: "PUT",
+              headers: { "Content-Type": "text/plain", ...studioWriteHeaders() },
+              body: JSON.stringify(overrides, null, 2),
+            },
+          );
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        })();
+        if (ownsSaveStatus()) {
+          pendingRef.current = false;
+          const state = useCaptionStore.getState();
+          if (state.syncError) state.setSyncError(null);
+        }
+      } catch (error: unknown) {
+        // Keep an unacknowledged newest save visible and explicitly retryable.
         trackEvent("studio_caption_autosave_failed", { error: String(error) });
-        useCaptionStore.getState().setSyncError("Caption changes couldn't be saved");
-      });
-  }, []);
+        if (ownsSaveStatus()) {
+          useCaptionStore.getState().setSyncError("Caption changes couldn't be saved");
+        }
+      }
+    };
+    saveTailRef.current = saveTailRef.current.then(persist, persist);
+  }, [readProjectFile, writeProjectFile]);
+
+  // The project writer is scoped to the current project ID. The subscription
+  // is mount-once, so always invoke its latest callback after project switches.
+  const saveRef = useRef(save);
+  saveRef.current = save;
 
   // Auto-save on model changes with 800ms debounce
   useMountEffect(() => {
     let prevModel = useCaptionStore.getState().model;
+    const flushCurrent = () => saveRef.current();
 
     const unsub = useCaptionStore.subscribe((state) => {
       if (!state.isEditMode || state.model === prevModel || !state.model) return;
@@ -141,7 +183,7 @@ export function useCaptionSync(projectId: string | null) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       pendingRef.current = true;
       editSeqRef.current++;
-      debounceRef.current = setTimeout(save, 800);
+      debounceRef.current = setTimeout(flushCurrent, 800);
     });
 
     // Warn before the tab closes while an edit is unsaved.
@@ -151,14 +193,14 @@ export function useCaptionSync(projectId: string | null) {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
-        save();
+        flushCurrent();
       }
       e.preventDefault();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     // Let the caption error banner retry the save directly.
-    useCaptionStore.getState().setRetrySave(save);
+    useCaptionStore.getState().setRetrySave(flushCurrent);
 
     return () => {
       unsub();
@@ -167,7 +209,7 @@ export function useCaptionSync(projectId: string | null) {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
-        if (pendingRef.current) save();
+        if (pendingRef.current) flushCurrent();
       }
       useCaptionStore.getState().setRetrySave(null);
     };
@@ -198,21 +240,52 @@ export function useCaptionSync(projectId: string | null) {
       const model = state.model;
       const allSegIds: string[] = [];
       const segIdByWordId = new Map<string, string>();
+      const ambiguousWordIds = new Set<string>();
       for (const groupId of model.groupOrder) {
         const group = model.groups.get(groupId);
         if (!group) continue;
         for (const segId of group.segmentIds) {
           allSegIds.push(segId);
           const seg = model.segments.get(segId);
-          if (seg?.wordId) segIdByWordId.set(seg.wordId, segId);
+          if (seg?.wordId) {
+            if (segIdByWordId.has(seg.wordId)) ambiguousWordIds.add(seg.wordId);
+            else segIdByWordId.set(seg.wordId, segId);
+          }
         }
       }
 
       const newSegments = new Map(model.segments);
+      const seenWordIds = new Set<string>();
       for (const override of overrides) {
-        const segId =
-          (override.wordId ? segIdByWordId.get(override.wordId) : undefined) ??
-          allSegIds[override.wordIndex];
+        // Only a genuinely identity-free legacy row may use a positional
+        // fallback. A present-but-empty/null/non-string wordId is corrupt, not
+        // an anonymous word: treating it as falsy silently retargets edits.
+        if (!override || typeof override !== "object" || Array.isArray(override)) {
+          throw new Error("invalid caption override entry");
+        }
+        const hasIdentity = Object.prototype.hasOwnProperty.call(override, "wordId");
+        if (hasIdentity && (typeof override.wordId !== "string" || !override.wordId.trim())) {
+          throw new Error("invalid authored caption word identity");
+        }
+        if (hasIdentity) {
+          const wordId = override.wordId!;
+          if (ambiguousWordIds.has(wordId)) {
+            throw new Error("ambiguous authored caption word identity");
+          }
+          if (seenWordIds.has(wordId)) {
+            throw new Error("duplicate authored caption word identity");
+          }
+          seenWordIds.add(wordId);
+        } else if (!Number.isSafeInteger(override.wordIndex) ||
+                   override.wordIndex < 0 || override.wordIndex >= allSegIds.length) {
+          throw new Error("invalid legacy caption word index");
+        }
+        const segId = hasIdentity
+          ? segIdByWordId.get(override.wordId!)
+          : allSegIds[override.wordIndex];
+        if (hasIdentity && !segId) {
+          throw new Error("authored caption word identity no longer exists");
+        }
         if (!segId) continue;
         const seg = newSegments.get(segId);
         if (!seg) continue;

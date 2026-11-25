@@ -27,10 +27,22 @@ const HANDLE = 8; // visual size of a handle dot
 const HANDLE_HIT = 24; // pointer target size (invisible padding around the dot)
 const ROTATION_OFFSET = 20; // px above the selection box
 
+// Caption hit targets are remeasured and can be replaced during a drag.
+// A pointer captured on a transient word hit is then lost by Chromium before
+// pointerup, so the gesture is cancelled without a history commit. Capture on
+// the persistent overlay owner instead; fallback retains non-layout test DOMs
+// that only implement capture on the event target.
+function captureCaptionPointerOnStableRoot(
+  overlay: HTMLElement | null,
+  event: React.PointerEvent,
+): void {
+  const rootIsCapturable = overlay?.isConnected && typeof overlay.setPointerCapture === "function";
+  const owner = rootIsCapturable ? overlay : (event.currentTarget as HTMLElement);
+  owner.setPointerCapture(event.pointerId);
+}
+
 /** Sync canvas state back to the Zustand store so the property panel reflects it. */
-function syncToStore(
-  segmentId: string, el: HTMLElement, iframeWin: Window, distinctHistory = false,
-) {
+function syncToStore(segmentId: string, el: HTMLElement, iframeWin: Window, distinctHistory = false) {
   const style = computeTransformStyle(el, iframeWin);
   if (Object.keys(style).length > 0) {
     useCaptionStore.getState().updateSegmentStyle(segmentId, style, { distinctHistory });
@@ -282,7 +294,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      captureCaptionPointerOnStableRoot(overlayRef.current, e);
       const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "move",
@@ -316,7 +328,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const wordEl = liveModel ? getWordEl(iframe, groupIndex, wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      captureCaptionPointerOnStableRoot(overlayRef.current, e);
       const rect = wordEl.getBoundingClientRect();
       const cssScale = getCssScale();
       const boxCenterX =
@@ -356,7 +368,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const wordEl = liveModel ? getWordEl(iframe, box.groupIndex, box.wordIndex, liveModel) : null;
       const win = iframe.contentWindow;
       if (!wordEl || !win) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      captureCaptionPointerOnStableRoot(overlayRef.current, e);
       const state = readWordTransformForGesture(wordEl, win);
       interactionRef.current = {
         type: "rotate",
@@ -445,8 +457,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
     }
     if (i.moved) {
       if (i.netChanged) {
-        // A completed pointer gesture is a separate undo step even when it
-        // follows another drag or a nudge within the 800ms coalescing window.
+        // Only a completed, net-changing pointerup creates one isolated undo step.
         syncToStore(i.segmentId, i.wordEl, win, true);
       } else {
         // Pointer moved away and back: restore the exact pre-gesture DOM and

@@ -1,13 +1,48 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import puppeteer from 'puppeteer-core';
 import { browserExecutable } from '../browser.ts';
 
+// This standalone esbuild fixture imports the *real* caption component, not
+// Vite's compiled bundle. The transitive editor graph contains Node-only
+// recast/os, Vite SVG ?raw and CSS imports unrelated to caption pointer logic.
+// Stub only these ancillary resources; never stub React, CaptionOverlay,
+// the Zustand store, pointer events, generated captions or Unicode handlers.
+const browserDependencyShim = {
+  name: 'caption-unrelated-browser-build-resources',
+  setup(bundle) {
+    bundle.onResolve({ filter: /^(?:node:)?os$/ }, () => ({
+      path: 'os', namespace: 'rtl-caption-os-shim',
+    }));
+    bundle.onLoad({ filter: /.*/, namespace: 'rtl-caption-os-shim' }, () => ({
+      contents: "export const EOL = '\\n'; export default { EOL: '\\n' };",
+      loader: 'js',
+    }));
+    bundle.onLoad({ filter: /\.svg\?raw$/ }, () => ({
+      contents: "export default '';",
+      loader: 'js',
+    }));
+    // No CSS file's styles are required for the tested caption overlay:
+    // its geometry fixture supplies explicit position classes. This avoids
+    // producing an extra CSS output file and preserves CSS-module imports.
+    bundle.onLoad({ filter: /\.css$/ }, () => ({
+      contents: 'export default {};',
+      loader: 'js',
+    }));
+  },
+};
+
 const harness = [
+  "import { createElement } from 'react';",
+  "import { createRoot } from 'react-dom/client';",
+  "import { CaptionOverlay } from './studio/src/captions/components/CaptionOverlay.tsx';",
+  "import { useCaptionStore } from './studio/src/captions/store.ts';",
+  "import { applyCaptionModelToIframe, readWordTransformForGesture } from './studio/src/captions/components/CaptionOverlayUtils.ts';",
   "import { generateCaptionHtml } from './studio/src/captions/generator.ts';",
   "import { buildCaptionModel } from './studio/src/captions/parser.ts';",
   "import { readGsapTransform, writeTransform, computeTransformStyle, getOrCreateWrapper } from './studio/src/captions/components/CaptionOverlayUtils.ts';",
@@ -16,7 +51,7 @@ const harness = [
   " writeTransform(word, window, state.x + dx, state.y, state.scale, state.rotation + rotationDelta, state.scaleY);",
   " return computeTransformStyle(word, window);",
   "}",
-  "export function htmlFor(style) {",
+  "function modelFor(style) {",
   " const words = [",
   "   { id: 'w-he', text: 'שָׁלוֹם', start: 0.1, end: 0.45 },",
   "   { id: 'w-en', text: 'ABC-123', start: 0.5, end: 0.95 },",
@@ -26,7 +61,48 @@ const harness = [
   " group.style.fontFamily = 'Pinned Hebrew QA';",
   " const first = model.segments.get(group.segmentIds[0]);",
   " first.style = style;",
-  " return generateCaptionHtml(model);",
+  "return model;",
+  "}",
+  "export function htmlFor(style) { return generateCaptionHtml(modelFor(style)); }",
+  "export async function replay(frame, fontCss) {",
+  " const doc = frame.contentDocument;",
+  " const host = doc.createElement('template');",
+  " host.innerHTML = generateCaptionHtml(useCaptionStore.getState().model);",
+  " const inner = host.content.querySelector('template');",
+  " const script = inner?.content.querySelector('script')?.textContent;",
+  " const css = inner?.content.querySelector('style')?.textContent;",
+  " if (!script || !css) throw Error('Missing generated caption source');",
+  " doc.head.innerHTML = '';",
+  " doc.body.innerHTML = '<div id=\"captions-container\" style=\"width:640px;height:360px\"></div>';",
+  " doc.body.style.cssText = 'margin:0;background:#111827';",
+  " const sheet = doc.createElement('style');",
+  " sheet.textContent = fontCss + css; doc.head.append(sheet);",
+  " frame.contentWindow.gsap = { timeline: () => ({ to() { return this; } }) };",
+  " new frame.contentWindow.Function(script)();",
+  " await doc.fonts.ready;",
+  " doc.querySelector('.caption-group').style.opacity = '1';",
+  "}",
+  "export async function mountPointerOverlay(frame, fontCss) {",
+  " const store = useCaptionStore.getState();",
+  " store.reset(); store.setModel(modelFor({})); store.setEditMode(true);",
+  " await replay(frame, fontCss);",
+  " const root = createRoot(document.getElementById('overlay-host'));",
+  " root.render(createElement(CaptionOverlay, { iframeRef: { current: frame } }));",
+  " return root;",
+  "}",
+  "export function snapshot(frame) {",
+  " const store = useCaptionStore.getState();",
+  " const model = store.model; const group = model.groups.get(model.groupOrder[0]);",
+  " const words = [...frame.contentDocument.querySelectorAll('.caption-group .word')];",
+  " return { past: store.past.length, future: store.future.length, selected: [...store.selectedSegmentIds],",
+  "   segments: group.segmentIds.map(id => { const s = model.segments.get(id); return { id, wordId:s.wordId, text:s.text, start:s.start, end:s.end, style:s.style }; }),",
+  "   dom: words.map(word => ({ id:word.id, text:word.textContent, start:word.dataset.start, end:word.dataset.end, transform:readWordTransformForGesture(word, frame.contentWindow), wrapper:word.parentElement?.dataset.captionWrapper === 'true', markup:word.outerHTML })),",
+  " };",
+  "}",
+  "export function history(direction) {",
+  " const model = useCaptionStore.getState()[direction]();",
+  " if (!model) throw Error('No caption history to ' + direction);",
+  " applyCaptionModelToIframe(model);",
   "}",
 ].join('\n');
 
@@ -47,18 +123,61 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
   const bundle = await build({
     stdin: { contents: harness, resolveDir: process.cwd(), sourcefile: 'rtl-word-transform-harness.ts', loader: 'ts' },
     bundle: true, platform: 'browser', format: 'iife', globalName: 'RtlNativeCaptionTransform',
-    write: false, logLevel: 'silent',
+    write: false, logLevel: 'silent', jsx: 'automatic', loader: { '.svg': 'text' },
+    plugins: [browserDependencyShim],
+    // The imported Studio asset registry uses Vite's compile-time glob macro.
+    // Its catalog is unrelated to caption interaction, so only the *test*
+    // build substitutes an empty catalog; fail if a caption/transcript path
+    // ever tries to rely on the shim instead of the real production module.
+    banner: { js: 'function __rtlBrowserViteGlob(pattern) { if (/caption|transcript/i.test(String(pattern))) throw Error("Caption evidence cannot use a glob shim: " + pattern); return {}; }' },
+    define: { 'process.env.NODE_ENV': '"production"', 'import.meta.glob': '__rtlBrowserViteGlob' },
   });
   assert.equal(bundle.outputFiles.length, 1);
+  // The imported production UI initializes crypto.randomUUID. about:blank
+  // does not match the secure-context semantics of served Studio. Loopback
+  // reproduces real Chromium's trustworthy origin without mocking crypto.
+  const originalPageHtml = '<!doctype html><html lang="en"><head></head><body style="margin:0;background:#111827">' +
+    '<div id="captions-container" style="width:640px;height:360px"></div></body></html>';
+  const pointerPageHtml = '<!doctype html><html lang="en" dir="ltr"><head><style>' +
+    'body{margin:0;background:#111827}.absolute{position:absolute}.inset-0{inset:0}.z-50{z-index:50}' +
+    '.ring-2{outline:2px solid #3ce6ac}</style></head><body>' +
+    '<div style="position:relative;width:640px;height:360px;margin:40px">' +
+    '<iframe id="pointer-frame" title="Caption preview" style="position:absolute;left:0;top:0;width:640px;height:360px;border:0"></iframe>' +
+    '<div id="overlay-host" style="position:absolute;inset:0"></div></div></body></html>';
+  const server = createServer((req, response) => {
+    const pathname = new URL(req.url, 'http://127.0.0.1').pathname;
+    if (pathname !== '/native' && pathname !== '/pointer') {
+      response.writeHead(404); response.end('Not found'); return;
+    }
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end(pathname === '/native' ? originalPageHtml : pointerPageHtml);
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const address = server.address();
+  assert(address && typeof address !== 'string');
+  const origin = 'http://127.0.0.1:' + address.port;
   const browser = await puppeteer.launch({ executablePath: await browserExecutable(), headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
   await page.setViewport({ width: 760, height: 520, deviceScaleFactor: 1 });
-  await page.setContent('<!doctype html><html lang="en"><head></head><body style="margin:0;background:#111827">' +
-    '<div id="captions-container" style="width:640px;height:360px"></div></body></html>');
+  await page.goto(origin + '/native', { waitUntil: 'domcontentloaded' });
+  const nativeOrigin = await page.evaluate(() => ({ secure: isSecureContext, uuid: typeof crypto.randomUUID }));
+  assert.deepEqual(nativeOrigin, { secure: true, uuid: 'function' }, 'Native caption fixture requires a secure Chromium context');
   await page.addStyleTag({ content: '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
     bytes.toString('base64') + '") format("truetype");font-display:block}.caption-group{font-family:"Pinned Hebrew QA",sans-serif}' });
+  const nativePageErrors = [];
+  page.on('pageerror', error => nativePageErrors.push(error.stack || String(error)));
+  page.on('console', message => {
+    if (message.type() === 'error') nativePageErrors.push('console: ' + message.text());
+  });
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
+  const nativeHarnessReady = await page.evaluate(() => Boolean(window.RtlNativeCaptionTransform?.htmlFor));
+  assert(nativeHarnessReady, 'Real Chromium production caption harness did not initialize: ' +
+    JSON.stringify(nativePageErrors));
   const render = async style => page.evaluate(async input => {
     const html = window.RtlNativeCaptionTransform.htmlFor(input);
     const host = document.createElement('template');
@@ -154,6 +273,123 @@ test('real Chromium native caption export replays Hebrew word transforms and neu
     assert.equal(state.secondWordText, 'ABC-123');
     assert.equal(state.children, 2);
   }
+  // Trusted pointer events through the production CaptionOverlay, not direct
+  // calls to the transform helpers. This component host is not full Studio.
+  const pointerPage = await browser.newPage();
+  await pointerPage.setViewport({ width: 760, height: 520, deviceScaleFactor: 1 });
+  await pointerPage.goto(origin + '/pointer', { waitUntil: 'domcontentloaded' });
+  const pointerOrigin = await pointerPage.evaluate(() => ({ secure: isSecureContext, uuid: typeof crypto.randomUUID }));
+  assert.deepEqual(pointerOrigin, { secure: true, uuid: 'function' }, 'Pointer host requires a secure Chromium context');
+  const pointerPageErrors = [];
+  pointerPage.on('pageerror', error => pointerPageErrors.push(error.stack || String(error)));
+  pointerPage.on('console', message => {
+    if (message.type() === 'error') pointerPageErrors.push('console: ' + message.text());
+  });
+  await pointerPage.addScriptTag({ content: bundle.outputFiles[0].text });
+  const pointerHarnessReady = await pointerPage.evaluate(() => Boolean(window.RtlNativeCaptionTransform?.mountPointerOverlay));
+  assert(pointerHarnessReady, 'Real Chromium pointer harness did not initialize: ' +
+    JSON.stringify(pointerPageErrors));
+  const fontCss = '@font-face{font-family:"Pinned Hebrew QA";src:url("data:font/ttf;base64,' +
+    bytes.toString('base64') + '") format("truetype");font-display:block}';
+  await pointerPage.evaluate(async css => {
+    const frame = document.getElementById('pointer-frame');
+    window.__pointerReceipts = [];
+    for (const type of ['pointerdown','pointermove','pointerup','gotpointercapture','lostpointercapture']) {
+      document.addEventListener(type, e => {
+        window.__pointerReceipts.push({
+          type, trusted: e.isTrusted, pointerId: e.pointerId,
+          target: e.target?.getAttribute?.('data-caption-segment-id') ??
+            e.target?.closest?.('[data-caption-segment-id]')?.getAttribute('data-caption-segment-id') ?? null,
+          buttons: e.buttons, x: e.clientX, y: e.clientY,
+        });
+      }, true);
+    }
+    window.__overlayRoot = await window.RtlNativeCaptionTransform.mountPointerOverlay(frame, css);
+  }, fontCss);
+  const snapshot = () => pointerPage.evaluate(() => window.RtlNativeCaptionTransform.snapshot(document.getElementById('pointer-frame')));
+  const baseline = await snapshot();
+  assert.equal(baseline.dom.length, 2);
+  assert.equal(baseline.segments[0].wordId, 'w-he');
+  const selector = '[data-caption-segment-id="' + baseline.segments[0].id + '"]';
+  await pointerPage.waitForSelector(selector, { visible: true });
+  await pointerPage.click(selector);
+  await pointerPage.waitForFunction(sel => document.querySelector(sel)?.style.cursor === 'move', {}, selector);
+  const center = async () => {
+    const hit = await pointerPage.$(selector);
+    assert(hit, 'Missing authored Hebrew word hit');
+    const box = await hit.boundingBox();
+    await hit.dispose();
+    assert(box && box.width > 24 && box.height > 12, 'Real overlay has no usable pointer target');
+    return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+  };
+  const beginDrag = async () => {
+    const start = await center();
+    await pointerPage.mouse.move(start.x, start.y);
+    await pointerPage.mouse.down();
+    await pointerPage.mouse.move(start.x + 24, start.y - 12, { steps: 4 });
+  };
+  await beginDrag();
+  const provisional = await snapshot();
+  assert.equal(provisional.past, baseline.past, 'Provisional drag created history before pointerup');
+  assert.deepEqual(provisional.segments, baseline.segments, 'Provisional drag changed the saved model');
+  assert.equal(provisional.dom[0].transform.x, 24);
+  assert.equal(provisional.dom[0].transform.y, -12);
+  await pointerPage.keyboard.press('Escape');
+  await pointerPage.mouse.up();
+  const cancelled = await snapshot();
+  assert.deepEqual(cancelled.dom, baseline.dom, 'Escape did not restore authored DOM');
+  assert.deepEqual(cancelled.segments, baseline.segments);
+  assert.equal(cancelled.past, baseline.past);
+  // Re-establish selection via the actual hit if cancellation cleared it.
+  if (!cancelled.selected.includes(baseline.segments[0].id)) await pointerPage.click(selector);
+  await pointerPage.waitForFunction(sel => document.querySelector(sel)?.style.cursor === 'move', {}, selector);
+  // Complete a second trusted drag; require exactly one history entry.
+  await beginDrag();
+  await pointerPage.mouse.up();
+  const committed = await snapshot();
+  const events = await pointerPage.evaluate(() => window.__pointerReceipts);
+  // A genuine product or harness failure must retain enough evidence to
+  // distinguish lost capture, a rerender, and a missing durable history write.
+  if (committed.past !== baseline.past + 1) {
+    const failure = {
+      reason: 'Completed trusted drag did not persist exactly one undo entry',
+      baseline, provisional, cancelled, committed, events, pageErrors: pointerPageErrors,
+    };
+    if (outputDir) {
+      await pointerPage.screenshot({ path: path.join(outputDir, 'rtl-trusted-caption-pointer-failure.png') });
+      await writeFile(path.join(outputDir, 'rtl-trusted-caption-pointer-failure.json'),
+        JSON.stringify(failure, null, 2) + '\n');
+    }
+    assert.fail(JSON.stringify(failure));
+  }
+  assert.deepEqual(committed.segments[0].style, { x:24, y:-12, scaleX:1, scaleY:1, rotation:0 });
+  assert.deepEqual(committed.segments[1], baseline.segments[1], 'Dragging Hebrew changed the Latin sibling');
+  assert.deepEqual(committed.dom[1], baseline.dom[1], 'Dragging Hebrew mutated the Latin DOM sibling');
+  assert.equal(committed.dom[0].markup, baseline.dom[0].markup, 'Drag rewrote the authored Hebrew word');
+  assert.deepEqual(committed.dom[0].transform, { x:24, y:-12, scale:1, scaleY:1, rotation:0 });
+  assert(events.every(e => e.trusted), 'Pointer fixture received synthetic events');
+  assert(events.some(e => e.type === 'gotpointercapture'), 'Browser never granted actual pointer capture');
+  assert(events.some(e => e.type === 'lostpointercapture'), 'Browser never released actual pointer capture');
+  if (outputDir) await pointerPage.screenshot({ path: path.join(outputDir, 'rtl-trusted-caption-pointer.png') });
+  // Caption store history and its live iframe replay helper, not app hotkeys.
+  await pointerPage.evaluate(() => window.RtlNativeCaptionTransform.history('undo'));
+  const undone = await snapshot();
+  assert.deepEqual(undone.segments, baseline.segments);
+  assert.deepEqual(undone.dom[0].transform, baseline.dom[0].transform);
+  await pointerPage.evaluate(() => window.RtlNativeCaptionTransform.history('redo'));
+  const redone = await snapshot();
+  assert.deepEqual(redone.segments, committed.segments);
+  assert.deepEqual(redone.dom[0].transform, committed.dom[0].transform);
+  // Generate fresh source from the model, not a native project ZIP.
+  await pointerPage.evaluate(css => window.RtlNativeCaptionTransform.replay(document.getElementById('pointer-frame'), css), fontCss);
+  const regenerated = await snapshot();
+  assert.deepEqual(regenerated.segments, committed.segments);
+  assert.deepEqual(regenerated.dom, committed.dom, 'Generated source replay changed word identity or transform');
+  if (outputDir) await writeFile(path.join(outputDir, 'rtl-trusted-caption-pointer.json'),
+    JSON.stringify({ passed:true, browser:await browser.version(), baseline, provisional, cancelled, committed, undone, redone, regenerated, events,
+      scope:'Trusted Chromium CaptionOverlay pointer events, caption store history, generated source replay; native Studio persistence, offline ZIP and MP4 remain separate.' }, null, 2) + '\n');
+  await pointerPage.close();
+
   if (outputDir) await writeFile(path.join(outputDir, 'rtl-authored-word-transform.json'),
     JSON.stringify({ passed: true, browser: await browser.version(), pinnedHebrewSha256: sha(bytes),
       original: neutral, moved, styled, edited, reset, scope: 'Native generated DOM plus live Chromium move/rotate with preserved non-uniform scale; native MP4 transform parity remains separate.' }, null, 2) + '\n');
