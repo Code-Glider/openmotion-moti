@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   bundle:
@@ -68,9 +69,20 @@ jobs:
           sha256sum "$RUNNER_TEMP/rtl-macos-all-in-one.zip"
           du -h "$RUNNER_TEMP/rtl-macos-all-in-one.zip"
       - name: Upload single ZIP
+        id: upload
         uses: actions/upload-artifact@v7.0.2
         with:
           name: rtl-macos-all-in-one-source-handoff
           path: ${{ runner.temp }}/rtl-macos-all-in-one.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Record artifact location on handoff pull request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          set -euo pipefail
+          printf -v message 'Offline Mac source handoff ZIP built successfully from workflow run %s. Artifact ID: %s. Download: %s. The ZIP includes a Git bundle and all required refs; Git LFS payloads and npm packages are excluded.' "$GITHUB_RUN_ID" "$ARTIFACT_ID" "$ARTIFACT_URL"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/63/comments" -f body="$message"
