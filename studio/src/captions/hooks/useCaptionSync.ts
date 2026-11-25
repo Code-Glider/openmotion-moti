@@ -257,23 +257,33 @@ export function useCaptionSync(projectId: string | null) {
       const newSegments = new Map(model.segments);
       const seenWordIds = new Set<string>();
       for (const override of overrides) {
-        // A supplied stable word identity is authoritative. Falling back to a
-        // positional index when that identity is missing silently moves styles
-        // onto a different authored word after captions are edited/reordered.
-        // Preserve positional lookup ONLY for older identity-free sidecars.
-        if (override.wordId) {
-          if (ambiguousWordIds.has(override.wordId)) {
+        // Only a genuinely identity-free legacy row may use a positional
+        // fallback. A present-but-empty/null/non-string wordId is corrupt, not
+        // an anonymous word: treating it as falsy silently retargets edits.
+        if (!override || typeof override !== "object" || Array.isArray(override)) {
+          throw new Error("invalid caption override entry");
+        }
+        const hasIdentity = Object.prototype.hasOwnProperty.call(override, "wordId");
+        if (hasIdentity && (typeof override.wordId !== "string" || !override.wordId.trim())) {
+          throw new Error("invalid authored caption word identity");
+        }
+        if (hasIdentity) {
+          const wordId = override.wordId!;
+          if (ambiguousWordIds.has(wordId)) {
             throw new Error("ambiguous authored caption word identity");
           }
-          if (seenWordIds.has(override.wordId)) {
+          if (seenWordIds.has(wordId)) {
             throw new Error("duplicate authored caption word identity");
           }
-          seenWordIds.add(override.wordId);
+          seenWordIds.add(wordId);
+        } else if (!Number.isSafeInteger(override.wordIndex) ||
+                   override.wordIndex < 0 || override.wordIndex >= allSegIds.length) {
+          throw new Error("invalid legacy caption word index");
         }
-        const segId = override.wordId
-          ? segIdByWordId.get(override.wordId)
+        const segId = hasIdentity
+          ? segIdByWordId.get(override.wordId!)
           : allSegIds[override.wordIndex];
-        if (override.wordId && !segId) {
+        if (hasIdentity && !segId) {
           throw new Error("authored caption word identity no longer exists");
         }
         if (!segId) continue;
